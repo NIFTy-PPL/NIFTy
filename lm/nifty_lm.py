@@ -636,7 +636,7 @@ class lm_space(space):
             else:
                 return gl.dotlm(x,y,lmax=self.para[0],mmax=self.para[1])
         else:
-            self._dotlm(x,y)
+            return self._dotlm(x,y)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
