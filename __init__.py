@@ -36,6 +36,7 @@ except(ImportError):
 try:
     from lm import *
 except(ImportError):
+    print 'asdf'    
     pass
 
 from demos import *

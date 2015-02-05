@@ -44,11 +44,15 @@ from nifty.nifty_core import about,                                          \
                              field
 import nifty.smoothing as gs
 import powerspectrum as gp
+'''
 try:
     import gfft as gf
 except(ImportError):
     about.infos.cprint('INFO: "plain" gfft version 0.1.0')
     import gfft_rg as gf
+'''
+import fft_rg
+  
 
 
 ##-----------------------------------------------------------------------------
@@ -198,6 +202,8 @@ class rg_space(space):
         self.vol = np.real(dist)[::-1]
 
         self.fourier = bool(fourier)
+    
+        self.my_fft_object = fft_rg.fft_factory()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -808,22 +814,26 @@ class rg_space(space):
             naxes = (np.size(self.para)-1)//2
             ## select machine
             if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
+                ## Use the codomain information only for the rescaling. The direction
+                ## of transformation is infered from the fourier attribute of the 
+                ## supplied space
                 if(codomain.fourier):
-                    ftmachine = "fft"
+                    #ftmachine = "fft"
                     ## correct for 'fft'
                     x = self.calc_weight(x,power=1)
                 else:
-                    ftmachine = "ifft"
+                    #ftmachine = "ifft"
                     ## correct for 'ifft'
                     x = self.calc_weight(x,power=1)
                     x *= self.dim(split=False)
             else:
-                ftmachine = "none"
+                ## TODO: Is this error correct?                
+                raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))                
+                #ftmachine = "none"
+            
             ## transform
-            if(self.datatype==np.float64):
-                Tx = gf.gfft(x.astype(np.complex128),in_ax=[],out_ax=[],ftmachine=ftmachine,in_zero_center=self.para[-naxes:].astype(np.bool).tolist(),out_zero_center=codomain.para[-naxes:].astype(np.bool).tolist(),enforce_hermitian_symmetry=bool(codomain.para[naxes]==1),W=-1,alpha=-1,verbose=False)
-            else:
-                Tx = gf.gfft(x,in_ax=[],out_ax=[],ftmachine=ftmachine,in_zero_center=self.para[-naxes:].astype(np.bool).tolist(),out_zero_center=codomain.para[-naxes:].astype(np.bool).tolist(),enforce_hermitian_symmetry=bool(codomain.para[naxes]==1),W=-1,alpha=-1,verbose=False)
+            Tx = self.my_fft_object(x,self,codomain)            
+            
             ## check complexity
             if(not codomain.para[naxes]): ## purely real
                 ## check imaginary part
