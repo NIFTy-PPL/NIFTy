@@ -28,7 +28,7 @@ setup(name="nifty",
       author="Marco Selig",
       author_email="mselig@mpa-garching.mpg.de",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=["nifty", "nifty.demos"],
+      packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm"],
       package_dir={"nifty": ""},
       data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])])
 
