@@ -1656,6 +1656,12 @@ class space(object):
     def __len__(self):
         return int(self.dim(split=False))
 
+    ## __identiftier__ returns an object which contains all information needed 
+    ## to uniquely idetnify a space. It returns a (immutable) tuple which therefore
+    ## can be compored. 
+    def __identifier__(self):
+        return tuple(sorted(vars(self).items()))
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _meta_vars(self): ## > captures all nonstandard properties

@@ -202,9 +202,12 @@ class rg_space(space):
         self.vol = np.real(dist)[::-1]
 
         self.fourier = bool(fourier)
-    
-        self.my_fft_object = fft_rg.fft_factory()
+        
+        ## Initializes the fast-fourier-transform machine, which will be used 
+        ## to transform the spaace
+        self.fft_machine = fft_rg.fft_factory()
 
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def naxes(self):
@@ -281,7 +284,9 @@ class rg_space(space):
         else:
             return 2*np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
 
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
     def enforce_power(self,spec,size=None,**kwargs):
         """
@@ -814,7 +819,7 @@ class rg_space(space):
             naxes = (np.size(self.para)-1)//2
             ## select machine
             if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                ## Use the codomain information only for the rescaling. The direction
+                ## Use the codomain information here only for the rescaling. The direction
                 ## of transformation is infered from the fourier attribute of the 
                 ## supplied space
                 if(codomain.fourier):
@@ -832,7 +837,7 @@ class rg_space(space):
                 #ftmachine = "none"
             
             ## transform
-            Tx = self.my_fft_object(x,self,codomain)            
+            Tx = self.fft_machine.transform(x,self,codomain)            
             
             ## check complexity
             if(not codomain.para[naxes]): ## purely real
@@ -1223,6 +1228,19 @@ class rg_space(space):
         zerocenter = self.para[-naxes:][::-1].astype(np.bool).tolist()
         dist = self.vol[::-1].tolist()
         return "nifty_rg.rg_space instance\n- num        = "+str(num)+"\n- naxes      = "+str(naxes)+"\n- hermitian  = "+str(bool(self.para[naxes]<2))+"\n- purelyreal = "+str(bool(not self.para[naxes]))+"\n- zerocenter = "+str(zerocenter)+"\n- dist       = "+str(dist)+"\n- fourier    = "+str(self.fourier)
+    
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    ## __identiftier__ returns an object which contains all information needed 
+    ## to uniquely idetnify a space. It returns a (immutable) tuple which therefore
+    ## can be compored. 
+    ## The rg_space version of __identifier__ filters out the vars-information
+    ## which is describing the rg_space's structure
+    def __identifier__(self):
+        ## Extract the identifying parts from the vars(self) dict.
+        temp = [(ii[0],((lambda x: tuple(x) if isinstance(x,np.ndarray) else x)(ii[1]))) for ii in vars(self).iteritems() if ii[0] not in ["fft_machine","power_indices"]]
+        ## Return the sorted identifiers as a tuple.
+        return tuple(sorted(temp))
 
 ##-----------------------------------------------------------------------------
 
