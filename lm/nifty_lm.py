@@ -457,10 +457,10 @@ class lm_space(space):
                 if(_gl_available): ## default
                     x = gl.synalm_f(arg[1],lmax=lmax,mmax=lmax)
                 else:
-                    x = hp.synalm(arg[1].astype(np.complex128),lmax=lmax,mmax=lmax).astype(np.complex64)
+                    x = hp.synalm(arg[1].astype(np.complex128),lmax=lmax,mmax=lmax).astype(np.complex64) ## FIXME: `verbose` kwarg
             else:
                 if(_hp_available): ## default
-                    x = hp.synalm(arg[1],lmax=lmax,mmax=lmax)
+                    x = hp.synalm(arg[1],lmax=lmax,mmax=lmax) ## FIXME: `verbose` kwarg
                 else:
                     x = gl.synalm(arg[1],lmax=lmax,mmax=lmax)
 
@@ -680,7 +680,7 @@ class lm_space(space):
 
         elif(isinstance(codomain,hp_space)):
             ## transform
-            Tx =  hp.alm2map(x.astype(np.complex128),codomain.para[0],lmax=self.para[0],mmax=self.para[1],pixwin=False,fwhm=0.0,sigma=None,invert=False,pol=True,inplace=False)
+            Tx =  hp.alm2map(x.astype(np.complex128),codomain.para[0],lmax=self.para[0],mmax=self.para[1],pixwin=False,fwhm=0.0,sigma=None,invert=False,pol=True,inplace=False) ## FIXME: `verbose` kwarg
             ## weight if discrete
             if(codomain.discrete):
                 Tx = codomain.calc_weight(Tx,power=0.5)
@@ -1866,7 +1866,7 @@ class hp_space(space):
 
         elif(arg[0]=="syn"):
             lmax = 3*self.para[0]-1 ## 3*nside-1
-            x = hp.synfast(arg[1],self.para[0],lmax=lmax,mmax=lmax,alm=False,pol=True,pixwin=False,fwhm=0.0,sigma=None)
+            x = hp.synfast(arg[1],self.para[0],lmax=lmax,mmax=lmax,alm=False,pol=True,pixwin=False,fwhm=0.0,sigma=None) ## FIXME: `verbose` kwarg
             ## weight if discrete
             if(self.discrete):
                 x = self.calc_weight(x,power=0.5)
@@ -2007,7 +2007,7 @@ class hp_space(space):
             if(self.discrete):
                 x = self.calc_weight(x,power=-0.5)
             ## transform
-            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,datapath=None)
+            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,regression=False,datapath=None)
 
         else:
             raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
@@ -2081,7 +2081,7 @@ class hp_space(space):
         if(self.discrete):
             x = self.calc_weight(x,power=-0.5)
         ## power spectrum
-        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,datapath=None)
+        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,regression=False,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

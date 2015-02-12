@@ -87,36 +87,58 @@ Requirements
         (standard library)
 
 *   `GFFT <https://github.com/mrbell/gfft>`_ (v0.1.0) - Generalized Fast
-    Fourier Transformations for Python
+    Fourier Transformations for Python - **optional**
 
 *   `HEALPy <https://github.com/healpy/healpy>`_ (v1.4 without openmp) - A
-    Python wrapper for `HEALPix <http://sourceforge.net/projects/healpix/>`_
+    Python wrapper for `HEALPix <http://sourceforge.net/projects/healpix/>`_ -
+    **optional**
 
 *   `libsharp-wrapper <https://github.com/mselig/libsharp-wrapper>`_ (v0.1.2
     without openmp) - A Python wrapper for the
-    `libsharp <http://sourceforge.net/projects/libsharp/>`_ library
+    `libsharp <http://sourceforge.net/projects/libsharp/>`_ library -
+    **optional**
 
 Download
 ........
 
-The latest release is tagged **v0.9.0** and is available as a source package
-at `<https://github.com/mselig/nifty/tags>`_. The current version can be
-obtained by cloning the repository::
+The latest release is tagged **v1.0.6** and is available as a source package
+at `<https://github.com/information-field-theory/nifty/tags>`_. The current
+version can be obtained by cloning the repository::
 
-    git clone git://github.com/mselig/nifty.git
-    cd nifty
+    git clone git://github.com/information-field-theory/nifty.git
 
 Installation
 ............
 
-NIFTY is installed using Distutils by running the following command::
+*   NIFTY can be installed using `PyPI <https://pypi.python.org/pypi>`_ and
+    **pip** by running the following command::
 
-    python setup.py install
+        pip install ift_nifty
 
-Alternatively, a private or user specific installation can be done by::
+    Alternatively, a private or user specific installation can be done by::
 
-    python setup.py install --user
-    python setup.py install --install-lib=/SOMEWHERE
+        pip install --user ift_nifty
+
+
+*   NIFTY can be installed using **Distutils** by running the following
+    command::
+
+        cd nifty
+        python setup.py install
+
+    Alternatively, a private or user specific installation can be done by::
+
+        python setup.py install --user
+        python setup.py install --install-lib=/SOMEWHERE
+
+First Steps
+...........
+
+For a quickstart, you can browse through the
+`informal introduction <http://www.mpa-garching.mpg.de/ift/nifty/start.html>`_
+or dive into NIFTY by running one of the demonstrations, e.g.::
+
+        >>> run -m nifty.demos.demo_wf1
 
 Acknowledgement
 ---------------
