@@ -14,6 +14,7 @@ build
 
 rg/*
 !rg/__init__.py
+!rg/fft_rg.py
 !rg/nifty_rg.py
 !rg/nifty_power_conversion_rg.py
 !rg/gfft_rg.py
