@@ -10,6 +10,7 @@
 .git/
 .svn/
 .spyderproject
+.document
 build
 
 rg/*
