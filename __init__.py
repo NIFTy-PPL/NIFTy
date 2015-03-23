@@ -25,6 +25,7 @@ from nifty_cmaps import *
 from nifty_power import *
 from nifty_tools import *
 from nifty_explicit import *
+from nifty_mpi_data import distributed_data_object
 
 ## optional submodule `rg`
 try:
@@ -42,3 +43,4 @@ except(ImportError):
 from demos import *
 from pickling import *
 
+#import pyximport; pyximport.install(pyimport = True)

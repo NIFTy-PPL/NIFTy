@@ -148,7 +148,7 @@ import pylab as pl
 from multiprocessing import Pool as mp
 from multiprocessing import Value as mv
 from multiprocessing import Array as ma
-
+from nifty_mpi_data import distributed_data_object
 
 __version__ = "1.0.6"
 
@@ -4983,12 +4983,24 @@ class field(object):
         else:
             self.domain.check_codomain(target)
         self.target = target
+
+        self.distributed_val = distributed_data_object(global_shape=domain.dim(split=True), dtype=domain.datatype)                
+
         ## check values
         if(val is None):
             self.val = self.domain.get_random_values(codomain=self.target,**kwargs)
         else:
             self.val = self.domain.enforce_values(val,extend=True)
-
+        
+        
+    @property
+    def val(self):
+        return self.distributed_val.get_full_data()
+        #return self.distributed_val
+    
+    @val.setter
+    def val(self, x):
+        return self.distributed_val.set_full_data(x)
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def dim(self,split=False):
@@ -5357,11 +5369,11 @@ class field(object):
         else:
             self.domain.check_codomain(target) ## a bit pointless
         if(overwrite):
-            self.val = self.domain.calc_transform(self.val,codomain=target,**kwargs)
+            self.val = self.domain.calc_transform(self.val,codomain=target,field_val=self.distributed_val, **kwargs)
             self.target = self.domain
             self.domain = target
         else:
-            return field(target,val=self.domain.calc_transform(self.val,codomain=target,**kwargs),target=self.domain)
+            return field(target,val=self.domain.calc_transform(self.val,codomain=target, field_val=self.distributed_val, **kwargs),target=self.domain)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

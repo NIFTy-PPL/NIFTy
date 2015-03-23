@@ -42,6 +42,7 @@ from nifty.nifty_core import about,                                          \
                              random,                                         \
                              space,                                          \
                              field
+import nifty.nifty_mpi_data
 import nifty.smoothing as gs
 import powerspectrum as gp
 '''
@@ -204,7 +205,7 @@ class rg_space(space):
         self.fourier = bool(fourier)
         
         ## Initializes the fast-fourier-transform machine, which will be used 
-        ## to transform the spaace
+        ## to transform the space
         self.fft_machine = fft_rg.fft_factory()
 
         
@@ -823,11 +824,9 @@ class rg_space(space):
                 ## of transformation is infered from the fourier attribute of the 
                 ## supplied space
                 if(codomain.fourier):
-                    #ftmachine = "fft"
                     ## correct for 'fft'
                     x = self.calc_weight(x,power=1)
                 else:
-                    #ftmachine = "ifft"
                     ## correct for 'ifft'
                     x = self.calc_weight(x,power=1)
                     x *= self.dim(split=False)
@@ -837,7 +836,7 @@ class rg_space(space):
                 #ftmachine = "none"
             
             ## transform
-            Tx = self.fft_machine.transform(x,self,codomain)            
+            Tx = self.fft_machine.transform(x,self,codomain,**kwargs)            
             
             ## check complexity
             if(not codomain.para[naxes]): ## purely real
