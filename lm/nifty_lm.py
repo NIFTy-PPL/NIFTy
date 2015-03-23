@@ -2007,7 +2007,7 @@ class hp_space(space):
             if(self.discrete):
                 x = self.calc_weight(x,power=-0.5)
             ## transform
-            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,regression=False,datapath=None)
+            Tx = hp.map2alm(x.astype(np.float64),lmax=codomain.para[0],mmax=codomain.para[1],iter=kwargs.get("iter",self.niter),pol=True,use_weights=False,datapath=None)
 
         else:
             raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
