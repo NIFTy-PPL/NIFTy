@@ -1,4 +1,26 @@
 # -*- coding: utf-8 -*-
+## NIFTY (Numerical Information Field Theory) has been developed at the
+## Max-Planck-Institute for Astrophysics.
+##
+## Copyright (C) 2015 Max-Planck-Society
+##
+## Author: Theo Steininger
+## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
+##
+## This program is free software: you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+## See the GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
 
 ##initialize the 'found-packages'-dictionary 
 found = {}
@@ -93,6 +115,13 @@ class distributed_data_object(object):
     def __repr__(self):
         return '<distributed_data_object>\n'+self.data.__repr__()
     
+    def __pos__(self):
+        temp_d2o = distributed_data_object(global_shape=self.shape, 
+                                           dtype=self.dtype,
+                                           distribution_strategy=self.distribution_strategy)
+        temp_d2o.set_local_data(data = self.get_local_data())
+        return temp_d2o
+        
     def __neg__(self):
         temp_d2o = distributed_data_object(global_shape=self.shape, 
                                            dtype=self.dtype,
