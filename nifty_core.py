@@ -150,7 +150,7 @@ from multiprocessing import Value as mv
 from multiprocessing import Array as ma
 from nifty_mpi_data import distributed_data_object
 
-__version__ = "1.0.6"
+__version__ = "1.0.7"
 
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
