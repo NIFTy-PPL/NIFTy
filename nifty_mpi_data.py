@@ -109,6 +109,26 @@ class distributed_data_object(object):
         self.dtype = self.distributor.dtype
         self.shape = self.distributor.global_shape
         
+        self.init_args = args 
+        self.init_kwargs = kwargs
+    
+        
+    def copy(self):
+        temp_d2o = self.copy_empty()        
+        temp_d2o.set_local_data(self.get_local_data())
+        return temp_d2o
+    
+    def copy_empty(self):
+        temp_d2o = distributed_data_object(global_shape=self.shape,
+                                           dtype=self.dtype,
+                                           distribution_strategy=self.distribution_strategy,
+                                           *self.init_args,
+                                           **self.init_kwargs)
+        return temp_d2o
+    
+    def apply_function(self, function):
+        self.data[:] = np.vectorize(function)(self.data)
+        
     def __str__(self):
         return self.data.__str__()
     
@@ -821,8 +841,10 @@ class dtype_converter:
         return self._to_mpi_dict.has_key(self.dictionize_np(dtype))
 
 class test(object):
-    def __init__(self,x=None):
+    def __init__(self,x=None, *args, **kwargs):
         self.x =x
+        print args
+        print kwargs
     @property
     def val(self):
         return self.x

@@ -23,6 +23,283 @@
 
 from __future__ import division
 import numpy as np
+from mpi4py import MPI
+
+from nifty.nifty_core import about
+from nifty.nifty_mpi_data import distributed_data_object
+
+class power_indices(object):
+    def __init__(self, shape, dgrid, zerocentered=False, log=False, nbin=None, 
+                 binbounds=None, comm=MPI.COMM_WORLD):
+        """
+        initialize default kindex, pindex, rho and pundex
+        store them in a dict (refering to set_power_indices) and store this dict
+        in the 'history dict'. 
+        Set a pointer for the default dict.
+        Redirect via __getattr__ to this dict
+        """
+        self.comm = comm
+        self.shape = np.array(shape).astype(int)
+        self.dgrid = np.array(dgrid)
+        if self.shape.shape != self.dgrid.shape:
+            raise ValueError(about._errors.cstring("ERROR: The supplied shape and dgrid have not the same dimensionality"))         
+        self.zerocentered = self.__cast_zerocentered__(zerocentered)
+
+        self.global_dict={}
+        
+        temp_config_dict = self.__cast_config__(log=log, nbin=nbin, 
+                                                binbounds=binbounds)
+        temp_key = self.__freeze_config__(temp_config_dict)
+        
+        self.global_dict[temp_key] = self.get_index_dict(temp_config_dict, 
+                                                        store=True)
+        self.set_default(**temp_config_dict)
+        
+        
+    def __cast_zerocentered__(self, zerocentered=False):
+        zc = np.array(zerocentered).astype(bool)
+        if zc.shape == self.shape.shape:
+            return tuple(zc)
+        else:
+            temp = np.empty(shape=self.shape.shape, dtype=bool)
+            temp[:] = zc
+            return tuple(temp)
+        
+    def __cast_config__(self, *args, **kwargs):
+        temp_config_dict = kwargs.get('config_dict', None)        
+        if temp_config_dict != None:
+            return self.__cast_config_helper__(**temp_config_dict)
+        else:
+            temp_log = kwargs.get("log", None)
+            temp_nbin = kwargs.get("nbin", None)
+            temp_binbounds = kwargs.get("binbounds", None)            
+            
+            return self.__cast_config_helper__(log=temp_log, 
+                                               nbin=temp_nbin, 
+                                               binbounds=temp_binbounds)
+    
+    def __cast_config_helper__(self, log, nbin, binbounds):
+        try:
+            temp_log = bool(log)
+        except(TypeError):
+            temp_log = False
+        
+        try:
+            temp_nbin = int(nbin)
+        except(TypeError):
+            temp_nbin = None
+        
+        try:
+            temp_binbounds = tuple(np.array(binbounds))
+        except(TypeError):
+            temp_binbounds = None
+        
+        temp_dict = {"log":temp_log, 
+                     "nbin":temp_nbin, 
+                     "binbounds":temp_binbounds}
+        return temp_dict
+    
+    def __freeze_config__(self, config_dict):
+        return frozenset(config_dict.items())
+        
+    def set_default(self, *args, **kwargs):
+        """
+        set_default 
+        """        
+        
+        temp_config_dict = self.__cast_config__(*args, **kwargs)
+        temp_key = self.__freeze_config__(temp_config_dict)
+       
+        try:
+            self.default_indices = self.global_dict[temp_key]
+        except:
+            self.get_index_dict(store =True, **temp_config_dict)
+            self.default_indices = self.global_dict[temp_key]           
+        
+    
+    def get_index_dict(self, *args, **kwargs):
+        """
+        Returns the powerindices accordings to the given scheme. The boolean
+        'store' indicates whether the power index dict should be saved for future
+        calls or not. 
+        """
+        temp_config_dict = self.__cast_config__(*args, **kwargs)
+        temp_key = self.__freeze_config__(temp_config_dict)
+        storeQ = kwargs.get("store", True)
+        try:
+            return self.global_dict[temp_key]
+        except(KeyError):
+            temp_index_dict = self.compute_index_dict(temp_config_dict)
+            if storeQ == True:
+                self.global_dict[temp_key] = temp_index_dict
+                return self.global_dict[temp_key]
+            else:
+                return temp_index_dict
+        
+    
+    def compute_nkdict(self):
+        """
+        Compute a certain slice of the nkdict. The individual nodes use this 
+        function to compute their own portion of the nkdict. The layout is 
+        fixed to the not_distributor or the fftw_distributor.
+        
+        Use the code from nkdict_fast2 and scatter the first dists instance 
+        over the nodes, using the locallengths from the distributor.
+        """      
+        
+        """
+        Calculates an n-dimensional array with its entries being the lengths of
+        the k-vectors from the zero point of the grid.
+        """
+        
+        ##if(fourier):
+        ##   dk = dgrid
+        ##else:
+        ##    dk = np.array([1/dgrid[i]/axes[i] for i in range(len(axes))])
+        
+        dk = self.dgrid
+        shape = self.shape
+        
+        ## prepare the distributed_data_object        
+        nkdict = distributed_data_object(global_shape=shape, 
+                                         dtype=np.float128, 
+                                         distribution_strategy="fftw")
+        ## get the node's individual slice of the first dimension 
+        slice_of_first_dimension = slice(*nkdict.distributor.local_slice[0:2])
+        
+        inds = []
+        for a in shape:
+            inds += [slice(0,a)]
+        
+        cords = np.ogrid[inds]
+    
+        dists = ((cords[0]-shape[0]//2)*dk[0])**2
+        ## apply zerocenteredQ shift
+        if self.zerocentered[0] == False:
+            dists = np.fft.fftshift(dists)
+        ## only save the individual slice
+        dists = dists[slice_of_first_dimension]
+        for ii in range(1,len(shape)):
+            temp = ((cords[ii]-shape[ii]//2)*dk[ii])**2
+            if self.zerocentered[ii] == False:
+                temp = np.fft.fftshift(temp)
+            dists = dists + temp
+        dists = np.sqrt(dists)
+        nkdict.set_local_data(dists)
+        return nkdict
+
+    def compute_indices(self, nkdict):
+        ##########
+        # kindex #        
+        ##########
+        ## compute the local kindex array        
+        local_kindex = np.unique(nkdict.get_local_data())
+        ## unify the local_kindex arrays
+        global_kindex = self.comm.allgather(local_kindex)
+        ## flatten the gathered lists        
+        global_kindex = np.hstack(global_kindex)
+        ## remove duplicates        
+        global_kindex = np.unique(global_kindex)
+        
+        ##########
+        # pindex #        
+        ##########
+        ## compute the local pindex slice on basis of the local nkdict data
+        local_pindex = np.searchsorted(global_kindex, nkdict.get_local_data())
+        ## prepare the distributed_data_object
+        global_pindex = distributed_data_object(global_shape=nkdict.shape, 
+                                                dtype=local_pindex.dtype.type,
+                                                distribution_strategy='fftw')  
+        ## store the local pindex data in the global_pindex d2o
+        global_pindex.set_local_data(local_pindex)
+        
+        #######
+        # rho #        
+        #######
+        ## Prepare the local pindex data in order to conut the degeneracy 
+        ## factors
+        temp = local_pindex.flatten()
+        ## Remember: np.array.sort is an inplace function        
+        temp.sort()        
+        ## In local_count we save how many of the indvidual values in 
+        ## local_value occured. Therefore we use np.unique to calculate the 
+        ## offset...
+        local_value, local_count = np.unique(temp, return_index=True)
+        ## ...and then build the offset differences
+        if local_count.shape != (0,):
+            local_count = np.append(local_count[1:]-local_count[:-1],
+                                    [temp.shape[0]-local_count[-1]])
+        ## Prepare the global rho array, and store the individual counts in it
+        ## rho has the same length as the kindex array
+        local_rho = np.zeros(shape=global_kindex.shape, dtype=np.int)
+        global_rho = np.empty_like(local_rho)
+        ## Store the individual counts
+        local_rho[local_value] = local_count
+        ## Use Allreduce to spread the information
+        self.comm.Allreduce(local_rho , global_rho, op=MPI.SUM)
+        
+        ##########
+        # pundex #        
+        ##########     
+        ## Compute the local pundices for the local pindices
+        (temp_uniqued_pindex, local_temp_pundex) = np.unique(local_pindex, 
+                                                        return_index=True)
+        ## Shift the local pundices by the nodes' local_dim_offset
+        local_temp_pundex += global_pindex.distributor.local_dim_offset
+        
+        ## Prepare the pundex arrays used for the Allreduce operation        
+        ## pundex has the same length as the kindex array
+        local_pundex = np.zeros(shape=global_kindex.shape, dtype=np.int)
+        ## Set the default value higher than the maximal possible pundex value
+        ## so that MPI.MIN can sort out the default
+        local_pundex += np.prod(global_pindex.shape) + 1
+        ## Set the default value higher than the length 
+        global_pundex = np.empty_like(local_pundex)
+        ## Store the individual pundices in the local_pundex array
+        local_pundex[temp_uniqued_pindex] = local_temp_pundex
+        ## Use Allreduce to find the first occurences/smallest pundices 
+        self.comm.Allreduce(local_pundex, global_pundex, op=MPI.MIN)
+
+        
+    def compute_index_dict(self, config_dict):
+        temp = self.compute_nkdict()        
+        return {"config": config_dict, "nkdict":temp}
+
+
+
+def nkdict_to_indices(kdict):
+
+    kindex,pindex = np.unique(kdict,return_inverse=True)
+    print pindex
+    pindex = pindex.reshape(kdict.shape)
+
+    rho = pindex.flatten()
+    rho.sort()
+    rho = np.unique(rho,return_index=True,return_inverse=False)[1]
+    print rho
+    rho = np.append(rho[1:]-rho[:-1],[np.prod(pindex.shape)-rho[-1]])
+
+    return kindex,rho,pindex
+        
+        
+        
+
+from mpi4py import MPI
+import time
+if __name__ == '__main__':    
+    comm = MPI.COMM_WORLD
+    rank = comm.rank
+    size = comm.size
+    p = power_indices((4,4),(1,1), zerocentered=True)
+    obj = p.default_indices['nkdict']
+    for i in np.arange(size):
+        if rank==i:
+            print obj.data
+        time.sleep(0.1)
+    temp = obj.get_full_data()
+    if rank == 0:
+        print temp 
+    p.compute_indices(p.default_indices["nkdict"])
 
 
 def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False,kpack=None):
@@ -431,7 +708,7 @@ def get_power_indices2(axes,dgrid,zerocentered,fourier=True):
 
     return ind,klength,rho
 
-
+"""
 def nkdict_to_indices(kdict):
 
     kindex,pindex = np.unique(kdict,return_inverse=True)
@@ -444,7 +721,7 @@ def nkdict_to_indices(kdict):
 
     return kindex,rho,pindex
 
-
+"""
 def bin_power_indices(pindex,kindex,rho,log=False,nbin=None,binbounds=None):
     """
         Returns the (re)binned power indices associated with the Fourier grid.
@@ -696,7 +973,6 @@ def nkdict_fast2(axes,dgrid,fourier=True):
     inds = []
     for a in axes:
         inds += [slice(0,a)]
-
     cords = np.ogrid[inds]
 
     dists = ((cords[0]-axes[0]//2)*dk[0])**2
