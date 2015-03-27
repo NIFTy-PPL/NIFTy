@@ -19,7 +19,6 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-## TODO: cythonize
 
 from __future__ import division
 import numpy as np
@@ -32,31 +31,61 @@ class power_indices(object):
     def __init__(self, shape, dgrid, zerocentered=False, log=False, nbin=None, 
                  binbounds=None, comm=MPI.COMM_WORLD):
         """
-        initialize default kindex, pindex, rho and pundex
-        store them in a dict (refering to set_power_indices) and store this dict
-        in the 'history dict'. 
-        Set a pointer for the default dict.
-        Redirect via __getattr__ to this dict
-        """
+            Returns an instance of the power_indices class. Given the shape and
+            the density of a underlying rectangular grid it provides the user
+            with the pindex, kindex, rho and pundex. The indices are bined 
+            according to the supplied parameter scheme. If wanted, computed 
+            results are stored for future reuse.
+    
+            Parameters
+            ----------
+            shape : tuple, list, ndarray
+                Array-like object which specifies the shape of the underlying 
+                rectangular grid
+            dgrid : tuple, list, ndarray
+                Array-like object which specifies the step-width of the 
+                underlying grid
+            zerocentered : boolean, tuple/list/ndarray of boolean *optional*
+                Specifies which dimensions are zerocentered. (default:False)
+            log : bool *optional*
+                Flag specifying if the binning of the default indices is 
+                performed on logarithmic scale.
+            nbin : integer *optional*
+                Number of used bins for the binning of the default indices.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins of the default 
+                indices.
+        """ 
+        ## Basic inits and consistency checks
         self.comm = comm
         self.shape = np.array(shape).astype(int)
         self.dgrid = np.array(dgrid)
         if self.shape.shape != self.dgrid.shape:
-            raise ValueError(about._errors.cstring("ERROR: The supplied shape and dgrid have not the same dimensionality"))         
+            raise ValueError(about._errors.cstring("ERROR: The supplied shape\
+                and dgrid have not the same dimensionality"))         
         self.zerocentered = self.__cast_zerocentered__(zerocentered)
-
+        
+        ## Initialize the dictonary which stores all individual index-dicts
         self.global_dict={}
+    
+        ## Calculate the default dictonory according to the kwargs and set it 
+        ## as default
+        self.get_index_dict(log=log, nbin=nbin, binbounds=binbounds, 
+                            store=True)
+        self.set_default(log=log, nbin=nbin, binbounds=binbounds)
         
-        temp_config_dict = self.__cast_config__(log=log, nbin=nbin, 
-                                                binbounds=binbounds)
-        temp_key = self.__freeze_config__(temp_config_dict)
-        
-        self.global_dict[temp_key] = self.get_index_dict(temp_config_dict, 
-                                                        store=True)
-        self.set_default(**temp_config_dict)
-        
+    ## Redirect the direct calls approaching a power_index instance to the 
+    ## default_indices dict
+    def __getitem__(self, x):
+        return self.default_indices.get(x)
+    def __getattr__(self, x):
+        return self.default_indices.__getattribute__(x)
         
     def __cast_zerocentered__(self, zerocentered=False):
+        """        
+            internal helper function which brings the zerocentered input in 
+            the form of a boolean-tuple
+        """
         zc = np.array(zerocentered).astype(bool)
         if zc.shape == self.shape.shape:
             return tuple(zc)
@@ -66,6 +95,10 @@ class power_indices(object):
             return tuple(temp)
         
     def __cast_config__(self, *args, **kwargs):
+        """
+            internal helper function which casts the various combinations of 
+            possible parameters into a properly defaulted dictionary
+        """
         temp_config_dict = kwargs.get('config_dict', None)        
         if temp_config_dict != None:
             return self.__cast_config_helper__(**temp_config_dict)
@@ -79,6 +112,11 @@ class power_indices(object):
                                                binbounds=temp_binbounds)
     
     def __cast_config_helper__(self, log, nbin, binbounds):
+        """
+            internal helper function which sets the defaults for the 
+            __cast_config__ function
+        """
+        
         try:
             temp_log = bool(log)
         except(TypeError):
@@ -100,57 +138,100 @@ class power_indices(object):
         return temp_dict
     
     def __freeze_config__(self, config_dict):
+        """
+            a helper function which forms a hashable identifying object from 
+            a config dictionary which can be used as key of a dict
+        """        
         return frozenset(config_dict.items())
         
     def set_default(self, *args, **kwargs):
         """
-        set_default 
-        """        
-        
-        temp_config_dict = self.__cast_config__(*args, **kwargs)
-        temp_key = self.__freeze_config__(temp_config_dict)
-       
-        try:
-            self.default_indices = self.global_dict[temp_key]
-        except:
-            self.get_index_dict(store =True, **temp_config_dict)
-            self.default_indices = self.global_dict[temp_key]           
+            Sets the index-set which is specified by the parameters as the 
+            default for the power_index instance. 
+            
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic 
+                scale.
+            nbin : integer
+                Number of used bins.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins.
+    
+            Returns
+            -------
+            None    
+        """ 
+        ## This shortcut relies on the fact, that get_index_dict returns a
+        ## reference on the default dict and not a copy!!
+        self.default_indices = self.get_index_dict(*args, **kwargs)         
         
     
     def get_index_dict(self, *args, **kwargs):
         """
-        Returns the powerindices accordings to the given scheme. The boolean
-        'store' indicates whether the power index dict should be saved for future
-        calls or not. 
-        """
+            Returns a dictionary containing the pindex, kindex, rho and pundex
+            binned according to the supplied parameter scheme and a 
+            configuration dict containing this scheme.
+    
+            Parameters
+            ----------
+            store : bool
+                Flag specifying if  the calculated index dictionary should be 
+                stored in the global_dict for future use.
+            log : bool
+                Flag specifying if the binning is performed on logarithmic 
+                scale.
+            nbin : integer
+                Number of used bins.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins.
+    
+            Returns
+            -------
+            index_dict : dict
+                Contains the keys: 'config', 'pindex', 'kindex', 'rho' and 
+                'pundex'    
+        """        
+        ## Cast the input arguments        
         temp_config_dict = self.__cast_config__(*args, **kwargs)
+        ## Compute a hashable identifier from the config which will be used 
+        ## as dict key
         temp_key = self.__freeze_config__(temp_config_dict)
+        ## Check if the result should be stored for future use.
         storeQ = kwargs.get("store", True)
+        ## Try to find the requested index dict in the global_dict
         try:
             return self.global_dict[temp_key]
         except(KeyError):
-            temp_index_dict = self.compute_index_dict(temp_config_dict)
+            ## If it is not found, calculate it.
+            temp_index_dict = self.__compute_index_dict__(temp_config_dict)
+            ## Store it, if required
             if storeQ == True:
                 self.global_dict[temp_key] = temp_index_dict
+                ## Important: If the result is stored, return a reference to 
+                ## the dictionary entry, not anly a plain copy. Otherwise, 
+                ## set_default breaks!
                 return self.global_dict[temp_key]
             else:
+                ## Return the plain result.
                 return temp_index_dict
         
     
     def compute_nkdict(self):
         """
-        Compute a certain slice of the nkdict. The individual nodes use this 
-        function to compute their own portion of the nkdict. The layout is 
-        fixed to the not_distributor or the fftw_distributor.
-        
-        Use the code from nkdict_fast2 and scatter the first dists instance 
-        over the nodes, using the locallengths from the distributor.
-        """      
-        
+            Calculates an n-dimensional array with its entries being the 
+            lengths of the k-vectors from the zero point of the grid.    
+            
+            Parameters
+            ----------
+            None : All information is taken from the parent object.
+    
+            Returns
+            -------
+            nkdict : distributed_data_object
         """
-        Calculates an n-dimensional array with its entries being the lengths of
-        the k-vectors from the zero point of the grid.
-        """
+        
         
         ##if(fourier):
         ##   dk = dgrid
@@ -188,7 +269,11 @@ class power_indices(object):
         nkdict.set_local_data(dists)
         return nkdict
 
-    def compute_indices(self, nkdict):
+    def __compute_indices__(self, nkdict):
+        """
+        Internal helper function which computes pindex, kindex, rho and pundex
+        from a given nkdict
+        """
         ##########
         # kindex #        
         ##########
@@ -237,10 +322,26 @@ class power_indices(object):
         local_rho[local_value] = local_count
         ## Use Allreduce to spread the information
         self.comm.Allreduce(local_rho , global_rho, op=MPI.SUM)
-        
         ##########
         # pundex #        
-        ##########     
+        ##########  
+        global_pundex = self.__compute_pundex__(global_pindex,
+                                            global_kindex)
+
+        return global_pindex, global_kindex, global_rho, global_pundex
+
+    def __compute_pundex__(self, global_pindex, global_kindex):
+        """
+        Internal helper function which computes the pundex array from a
+        pindex and a kindex array. This function is separated from the 
+        __compute_indices__ function as it is needed in __bin_power_indices__,
+        too.
+        """
+        ##########
+        # pundex #        
+        ##########
+        ## Prepare the local data
+        local_pindex = global_pindex.get_local_data()
         ## Compute the local pundices for the local pindices
         (temp_uniqued_pindex, local_temp_pundex) = np.unique(local_pindex, 
                                                         return_index=True)
@@ -259,38 +360,126 @@ class power_indices(object):
         local_pundex[temp_uniqued_pindex] = local_temp_pundex
         ## Use Allreduce to find the first occurences/smallest pundices 
         self.comm.Allreduce(local_pundex, global_pundex, op=MPI.MIN)
-
+        return global_pundex
         
-    def compute_index_dict(self, config_dict):
-        temp = self.compute_nkdict()        
-        return {"config": config_dict, "nkdict":temp}
+    def __compute_index_dict__(self, config_dict):
+        """
+            Internal helper function which takes a config_dict, asks for the 
+            pindex/kindex/rho/pundex set, and bins them according to the config
+        """        
+        ## if no binning is requested, compute the indices, build the dict, 
+        ## and return it straight.        
+        if config_dict["log"]==False and config_dict["nbin"]==None and \
+          config_dict["binbounds"]==None:
+            temp_nkdict = self.compute_nkdict()
+            (temp_pindex, temp_kindex, temp_rho, temp_pundex) = self.__compute_indices__(temp_nkdict)
+            
+        ## if binning is required, make a recursive call to get the unbinned
+        ## indices, bin them, compute the pundex and then return everything.
+        else:
+            temp_unbinned_indices = self.get_index_dict(store=False)
+            (temp_pindex, temp_kindex, temp_rho, temp_pundex) = \
+                self.__bin_power_indices__(temp_unbinned_indices, **config_dict)
+                        
+        temp_index_dict = {"config": config_dict, 
+                               "pindex": temp_pindex,
+                               "kindex": temp_kindex,
+                               "rho": temp_rho,
+                               "pundex": temp_pundex}
+        return temp_index_dict
 
-
-
-def nkdict_to_indices(kdict):
-
-    kindex,pindex = np.unique(kdict,return_inverse=True)
-    print pindex
-    pindex = pindex.reshape(kdict.shape)
-
-    rho = pindex.flatten()
-    rho.sort()
-    rho = np.unique(rho,return_index=True,return_inverse=False)[1]
-    print rho
-    rho = np.append(rho[1:]-rho[:-1],[np.prod(pindex.shape)-rho[-1]])
-
-    return kindex,rho,pindex
+    def __bin_power_indices__(self, index_dict, **kwargs):
+        """
+            Returns the binned power indices associated with the Fourier grid.
+    
+            Parameters
+            ----------
+            pindex : distributed_data_object
+                Index of the Fourier grid points in a distributed_data_object.
+            kindex : ndarray
+                Array of all k-vector lengths.
+            rho : ndarray
+                Degeneracy factor of the individual k-vectors.
+            log : bool
+                Flag specifying if the binning is performed on logarithmic 
+                scale.
+            nbin : integer
+                Number of used bins.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins.
+    
+            Returns
+            -------
+            pindex : distributed_data_object
+            kindex, rho, pundex : ndarrays
+                The (re)binned power indices.
+    
+        """
+        ## Cast the given config
+        temp_config_dict = self.__cast_config__(**kwargs)
+        log = temp_config_dict['log']
+        nbin = temp_config_dict['nbin']
+        binbounds = temp_config_dict['binbounds']
         
+        ## Extract the necessary indices from the supplied index dict        
+        pindex = index_dict["pindex"]
+        kindex = index_dict["kindex"]
+        rho = index_dict["rho"]
+        
+        ## boundaries
+        if(binbounds is not None):
+            binbounds = np.sort(binbounds)
+        ## equal binning
+        else:
+            if(log is None):
+                log = False
+            if(log):
+                k = np.r_[0,np.log(kindex[1:])]
+            else:
+                k = kindex
+            dk = np.max(k[2:]-k[1:-1]) ## minimal dk
+            if(nbin is None):
+                nbin = int((k[-1]-0.5*(k[2]+k[1]))/dk-0.5) ## maximal nbin
+            else:
+                nbin = min(int(nbin),int((k[-1]-0.5*(k[2]+k[1]))/dk+2.5))
+                dk = (k[-1]-0.5*(k[2]+k[1]))/(nbin-2.5)
+            binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
+            if(log):
+                binbounds = np.exp(binbounds)
+        ## reordering
+        reorder = np.searchsorted(binbounds,kindex)
+        rho_ = np.zeros(len(binbounds)+1,dtype=rho.dtype)
+        kindex_ = np.empty(len(binbounds)+1,dtype=kindex.dtype)    
+        for ii in range(len(reorder)):
+            if(rho_[reorder[ii]]==0):
+                kindex_[reorder[ii]] = kindex[ii]
+                rho_[reorder[ii]] += rho[ii]
+            else:
+                kindex_[reorder[ii]] = (kindex_[reorder[ii]]*rho_[reorder[ii]]+kindex[ii]*rho[ii])/(rho_[reorder[ii]]+rho[ii])
+                rho_[reorder[ii]] += rho[ii]
+        
+        pindex_ = pindex.copy_empty()
+        pindex_.set_local_data(reorder[pindex.get_local_data()])
+        
+        pundex_ = self.__compute_pundex__(pindex_, kindex_)     
+        return pindex_, kindex_, rho_, pundex_
+
+
+
         
         
 
 from mpi4py import MPI
-import time
+#import time
 if __name__ == '__main__':    
     comm = MPI.COMM_WORLD
     rank = comm.rank
     size = comm.size
-    p = power_indices((4,4),(1,1), zerocentered=True)
+    p = power_indices((4,4),(1,1), zerocentered=(True,False), nbin = 4)
+    #pindex = p.default_indices['pindex']
+    #kindex = p.default_indices['kindex']
+    #rho = p.default_indices['rho']
+    """
     obj = p.default_indices['nkdict']
     for i in np.arange(size):
         if rank==i:
@@ -299,7 +488,8 @@ if __name__ == '__main__':
     temp = obj.get_full_data()
     if rank == 0:
         print temp 
-    p.compute_indices(p.default_indices["nkdict"])
+    """
+    
 
 
 def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False,kpack=None):
@@ -708,7 +898,6 @@ def get_power_indices2(axes,dgrid,zerocentered,fourier=True):
 
     return ind,klength,rho
 
-"""
 def nkdict_to_indices(kdict):
 
     kindex,pindex = np.unique(kdict,return_inverse=True)
@@ -721,7 +910,8 @@ def nkdict_to_indices(kdict):
 
     return kindex,rho,pindex
 
-"""
+
+
 def bin_power_indices(pindex,kindex,rho,log=False,nbin=None,binbounds=None):
     """
         Returns the (re)binned power indices associated with the Fourier grid.
@@ -783,6 +973,7 @@ def bin_power_indices(pindex,kindex,rho,log=False,nbin=None,binbounds=None):
             rho_[reorder[ii]] += rho[ii]
 
     return reorder[pindex],kindex_,rho_
+
 
 
 def nhermitianize(field,zerocentered):
