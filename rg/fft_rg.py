@@ -3,6 +3,7 @@
 import numpy as np
 from nifty import nifty_mpi_data
 
+
 # Try to import pyfftw. If this fails fall back to gfft. If this fails fall back to local gfft_rg
 
 try:
@@ -175,15 +176,31 @@ if fft_machine == 'pyfftw':
             ## cast input
             to_center = np.array(to_center_input)
             dimensions = np.array(dimensions_input)  
+            
+            if np.all(dimensions == np.array(1)) or np.all(dimensions == np.array([1])):
+                return dimensions
+            ## The dimensions of size 1 must be sorted out for computing the
+            ## centering_mask. The depth of the array will be restored in the 
+            ## end.
+            size_one_dimensions = []            
+            temp_dimensions = [] 
+            temp_to_center = []
+            for i in range(len(dimensions)):
+                if dimensions[i]==1:
+                    size_one_dimensions += [True]
+                else:
+                    size_one_dimensions += [False]                    
+                    temp_dimensions += [dimensions[i]]
+                    temp_to_center += [to_center[i]]
+            dimensions = np.array(temp_dimensions)
+            to_center = np.array(temp_to_center)
             ## cast the offset_input into the shape of to_center
             offset = np.zeros(to_center.shape,dtype=int)
             offset[0] = int(offset_input)
             ## check for dimension match
             if to_center.size != dimensions.size:
                 raise TypeError('The length of the supplied lists does not match.')
-            ## check that every dimension is larger than 1
-            if np.any(dimensions == 1):
-                return TypeError('Every dimensions must have an extent greater than 1.')
+
             ## build up the value memory
             ## compute an identifier for the parameter set
             temp_id = tuple((tuple(to_center),tuple(dimensions),tuple(offset)))
@@ -201,7 +218,16 @@ if fft_machine == 'pyfftw':
                     temp_slice=(slice(None),)*i + (slice(-2,-1,1),) + (slice(None),)*(centering_mask.ndim -1 - i)
                     ## append the slice to the centering_mask                    
                     centering_mask = np.append(centering_mask,centering_mask[temp_slice],axis=i)                
-                self.centering_mask_dict[temp_id] = centering_mask
+                ## Add depth to the centering_mask where the length of a 
+                ## dimension was one
+                temp_slice = ()
+                for i in range(len(size_one_dimensions)):
+                    if size_one_dimensions[i] == True:
+                        temp_slice += (None,)
+                    else:
+                        temp_slice += (slice(None),)
+                centering_mask = centering_mask[temp_slice]
+                self.centering_mask_dict[temp_id] = centering_mask        
             return self.centering_mask_dict[temp_id]
                 
 
@@ -259,11 +285,9 @@ if fft_machine == 'pyfftw':
                 result = result/float(result.size)
             else:
                 result *= float(result.size)
-                
             ## build a distributed_data_object
-            data_object = nifty_mpi_data.distributed_data_object(global_shape = current_plan_and_info.global_output_shape, dtype = np.complex128, distribution_strategy='fftw')
+            data_object = nifty_mpi_data.distributed_data_object(global_shape = tuple(current_plan_and_info.global_output_shape), dtype = np.complex128, distribution_strategy='fftw')
             data_object.set_local_data(data=result)            
-
             return data_object.get_full_data()
             
             

@@ -41,6 +41,7 @@ from matplotlib.ticker import LogFormatter as lf
 from nifty.nifty_core import about,                                          \
                              random,                                         \
                              space,                                          \
+                             point_space,                                    \
                              field
 import nifty.nifty_mpi_data
 import nifty.smoothing as gs
@@ -58,7 +59,7 @@ import fft_rg
 
 ##-----------------------------------------------------------------------------
 
-class rg_space(space):
+class rg_space(point_space):
     """
         ..      _____   _______
         ..    /   __/ /   _   /
@@ -837,7 +838,6 @@ class rg_space(space):
             
             ## transform
             Tx = self.fft_machine.transform(x,self,codomain,**kwargs)            
-            
             ## check complexity
             if(not codomain.para[naxes]): ## purely real
                 ## check imaginary part

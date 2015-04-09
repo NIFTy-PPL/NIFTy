@@ -1012,9 +1012,38 @@ class space(object):
 
         self.discrete = True
         self.vol = np.real(np.array([1],dtype=self.datatype))
+        
+        self.shape = None
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def _freeze_config(self, dictionary):
+        """
+            a helper function which forms a hashable identifying object from 
+            a dictionary which can be used as key of a dict
+        """        
+        return frozenset(dictionary.items())
 
+
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def getitem(self, key):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'getitem'."))
+        
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def setitem(self, key):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'getitem'."))
+        
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
+    def unary_operation(self, x, op=None):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'unary_operation'."))
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
+    def binary_operation(self, x, y, op=None):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'binary_operation'."))
+
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def dim(self,split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
@@ -1173,8 +1202,12 @@ class space(object):
             set_power_indices
 
         """
-        self.set_power_indices(**kwargs)
-        return self.power_indices.get("kindex"),self.power_indices.get("rho"),self.power_indices.get("pindex"),self.power_indices.get("pundex")
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_indices'."))
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
+    def cast(self, x):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'cast'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1193,14 +1226,7 @@ class space(object):
             y : numpy.ndarray
                 Correctly shaped array.
         """
-        x = np.array(x)
-
-        if(np.size(x)!=self.dim(split=False)):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(x))+" <> "+str(self.dim(split=False))+" )."))
-#        elif(not np.all(np.array(np.shape(x))==self.dim(split=True))):
-#            about.warnings.cprint("WARNING: reshaping forced.")
-
-        return x.reshape(self.dim(split=True),order='C')
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'enforce_shape'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1225,31 +1251,8 @@ class space(object):
                 Whether a scalar is extented to a constant array or not
                 (default: True).
         """
-        if(isinstance(x,field)):
-            if(self==x.domain):
-                if(self.datatype is not x.domain.datatype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
-                else:
-                    x = np.copy(x.val)
-            else:
-                raise ValueError(about._errors.cstring("ERROR: inequal domains."))
-        else:
-            if(np.size(x)==1):
-                if(extend):
-                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
-                else:
-                    if(np.isscalar(x)):
-                        x = np.array([x],dtype=self.datatype)
-                    else:
-                        x = np.array(x,dtype=self.datatype)
-            else:
-                x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'enforce_values'."))
 
-        ## check finiteness
-        if(not np.all(np.isfinite(x))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-
-        return x
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1311,24 +1314,7 @@ class space(object):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.arguments(self,**kwargs)
-
-        if(arg is None):
-            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
-
-        elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
-
-        elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
-
-        elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
-
-        return x
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_random_values'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1346,13 +1332,7 @@ class space(object):
             check : bool
                 Whether or not the given codomain is compatible to the space.
         """
-        if(not isinstance(codomain,space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        if(self==codomain):
-            return True
-
-        return False
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'check_codomain'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1424,9 +1404,7 @@ class space(object):
             y : numpy.ndarray
                 Weighted array.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## weight
-        return x*self.vol**power
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_weight'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1447,14 +1425,7 @@ class space(object):
             dot : scalar
                 Inner product of the two arrays.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        y = self.enforce_shape(np.array(y,dtype=self.datatype))
-        ## inner product
-        dot = np.dot(np.conjugate(x),y,out=None)
-        if(np.isreal(dot)):
-            return np.asscalar(np.real(dot))
-        else:
-            return dot
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_dot'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1480,19 +1451,7 @@ class space(object):
             iter : int, *optional*
                 Number of iterations performed in specific transformations.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(codomain is None):
-            return x ## T == id
-
-        ## check codomain
-        self.check_codomain(codomain) ## a bit pointless
-
-        if(self==codomain):
-            return x ## T == id
-
-        else:
-            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_transform'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1906,7 +1865,239 @@ class point_space(space):
             return self.para[0]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def get_power_indices(self,**kwargs):
+        """
+            Provides the (un)indexing objects for spectral indexing.
 
+            Provides one-dimensional arrays containing the scales of the
+            spectral bands and the numbers of modes per scale, and an array
+            giving for each component of a field the corresponding index of a
+            power spectrum as well as an Unindexing array.
+
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer
+                Number of used bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
+
+            Returns
+            -------
+            kindex : numpy.ndarray
+                Scale of each spectral band.
+            rho : numpy.ndarray
+                Number of modes per scale represented in the discretization.
+            pindex : numpy.ndarray
+                Indexing array giving the power spectrum index for each
+                represented mode.
+            pundex : numpy.ndarray
+                Unindexing array undoing power spectrum indexing.
+
+            Notes
+            -----
+            The ``kindex`` and ``rho`` are each one-dimensional arrays.
+            The indexing array is of the same shape as a field living in this
+            space and contains the indices of the associated bands.
+            Indexing with the unindexing array undoes the indexing with the
+            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
+
+            See Also
+            --------
+            set_power_indices
+
+        """
+        self.set_power_indices(**kwargs)
+        return self.power_indices.get("kindex"),self.power_indices.get("rho"),self.power_indices.get("pindex"),self.power_indices.get("pundex")
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def enforce_shape(self,x):
+        """
+            Shapes an array of valid field values correctly, according to the
+            specifications of the space instance.
+
+            Parameters
+            ----------
+            x : numpy.ndarray
+                Array containing the field values to be put into shape.
+
+            Returns
+            -------
+            y : numpy.ndarray
+                Correctly shaped array.
+        """
+        x = np.array(x)
+
+        if(np.size(x)!=self.dim(split=False)):
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(x))+" <> "+str(self.dim(split=False))+" )."))
+#        elif(not np.all(np.array(np.shape(x))==self.dim(split=True))):
+#            about.warnings.cprint("WARNING: reshaping forced.")
+
+        return x.reshape(self.dim(split=True),order='C')
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def enforce_values(self,x,extend=True):
+        """
+            Computes valid field values from a given object, according to the
+            constraints from the space instance.
+
+            Parameters
+            ----------
+            x : {float, numpy.ndarray, nifty.field}
+                Object to be transformed into an array of valid field values.
+
+            Returns
+            -------
+            x : numpy.ndarray
+                Array containing the valid field values.
+
+            Other parameters
+            ----------------
+            extend : bool, *optional*
+                Whether a scalar is extented to a constant array or not
+                (default: True).
+        """
+        if(isinstance(x,field)):
+            if(self==x.domain):
+                if(self.datatype is not x.domain.datatype):
+                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
+                else:
+                    x = np.copy(x.val)
+            else:
+                raise ValueError(about._errors.cstring("ERROR: inequal domains."))
+        else:
+            if(np.size(x)==1):
+                if(extend):
+                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+                else:
+                    if(np.isscalar(x)):
+                        x = np.array([x],dtype=self.datatype)
+                    else:
+                        x = np.array(x,dtype=self.datatype)
+            else:
+                x = self.enforce_shape(np.array(x,dtype=self.datatype))
+
+        ## check finiteness
+        if(not np.all(np.isfinite(x))):
+            about.warnings.cprint("WARNING: infinite value(s).")
+
+        return x
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def get_random_values(self,**kwargs):
+        """
+            Generates random field values according to the specifications given
+            by the parameters.
+
+            Returns
+            -------
+            x : numpy.ndarray
+                Valid field values.
+
+            Other parameters
+            ----------------
+            random : string, *optional*
+                Specifies the probability distribution from which the random
+                numbers are to be drawn.
+                Supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given standard
+                    deviation or variance)
+                - "syn" (synthesizes from a given power spectrum)
+                - "uni" (uniform distribution over [vmin,vmax[)
+
+                (default: None).
+            dev : float, *optional*
+                Standard deviation (default: 1).
+            var : float, *optional*
+                Variance, overriding `dev` if both are specified
+                (default: 1).
+            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
+                Power spectrum (default: 1).
+            pindex : numpy.ndarray, *optional*
+                Indexing array giving the power spectrum index of each band
+                (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain with power indices (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+            vmin : float, *optional*
+                Lower limit for a uniform distribution (default: 0).
+            vmax : float, *optional*
+                Upper limit for a uniform distribution (default: 1).
+        """
+        arg = random.arguments(self,**kwargs)
+
+        if(arg is None):
+            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+
+        elif(arg[0]=="pm1"):
+            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+
+        elif(arg[0]=="gau"):
+            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+
+        elif(arg[0]=="uni"):
+            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+
+        else:
+            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
+
+        return x
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def check_codomain(self,codomain):
+        """
+            Checks whether a given codomain is compatible to the space or not.
+
+            Parameters
+            ----------
+            codomain : nifty.space
+                Space to be checked for compatibility.
+
+            Returns
+            -------
+            check : bool
+                Whether or not the given codomain is compatible to the space.
+        """
+        if(not isinstance(codomain,space)):
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+
+        if(self==codomain):
+            return True
+
+        return False
+        
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        
     def enforce_power(self,spec,**kwargs):
         """
             Raises an error since the power spectrum is ill-defined for point
@@ -1973,6 +2164,96 @@ class point_space(space):
             return self.dim(split=False)
         else:
             return np.ones(self.dim(split=True),dtype=self.vol.dtype,order='C')
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def calc_weight(self,x,power=1):
+        """
+            Weights a given array of field values with the pixel volumes (not
+            the meta volumes) to a given power.
+
+            Parameters
+            ----------
+            x : numpy.ndarray
+                Array to be weighted.
+            power : float, *optional*
+                Power of the pixel volumes to be used (default: 1).
+
+            Returns
+            -------
+            y : numpy.ndarray
+                Weighted array.
+        """
+        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        ## weight
+        return x*self.vol**power
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def calc_dot(self,x,y):
+        """
+            Computes the discrete inner product of two given arrays of field
+            values.
+
+            Parameters
+            ----------
+            x : numpy.ndarray
+                First array
+            y : numpy.ndarray
+                Second array
+
+            Returns
+            -------
+            dot : scalar
+                Inner product of the two arrays.
+        """
+        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        y = self.enforce_shape(np.array(y,dtype=self.datatype))
+        ## inner product
+        dot = np.dot(np.conjugate(x),y,out=None)
+        if(np.isreal(dot)):
+            return np.asscalar(np.real(dot))
+        else:
+            return dot
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def calc_transform(self,x,codomain=None,**kwargs):
+        """
+            Computes the transform of a given array of field values.
+
+            Parameters
+            ----------
+            x : numpy.ndarray
+                Array to be transformed.
+            codomain : nifty.space, *optional*
+                Target space to which the transformation shall map
+                (default: self).
+
+            Returns
+            -------
+            Tx : numpy.ndarray
+                Transformed array
+
+            Other parameters
+            ----------------
+            iter : int, *optional*
+                Number of iterations performed in specific transformations.
+        """
+        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+
+        if(codomain is None):
+            return x ## T == id
+
+        ## check codomain
+        self.check_codomain(codomain) ## a bit pointless
+
+        if(self==codomain):
+            return x ## T == id
+
+        else:
+            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
+
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5563,6 +5844,10 @@ class field(object):
         medmean = [np.median(self.val,axis=None,out=None,overwrite_input=False),np.mean(self.val,axis=None,dtype=self.domain.datatype,out=None)]
         return "nifty_core.field instance\n- domain      = "+repr(self.domain)+"\n- val         = [...]"+"\n  - min.,max. = "+str(minmax)+"\n  - med.,mean = "+str(medmean)+"\n- target      = "+repr(self.target)
 
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def apply_function(self, function, copy=True):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'apply_function'."))
+ 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def min(self,ignore=False,**kwargs):

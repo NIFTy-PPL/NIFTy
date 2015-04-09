@@ -475,10 +475,7 @@ if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     rank = comm.rank
     size = comm.size
-    p = power_indices((4,4),(1,1), zerocentered=(True,False), nbin = 4)
-    #pindex = p.default_indices['pindex']
-    #kindex = p.default_indices['kindex']
-    #rho = p.default_indices['rho']
+    p = power_indices((4,4),(1,1), zerocentered=(True,True), nbin = 4)
     """
     obj = p.default_indices['nkdict']
     for i in np.arange(size):

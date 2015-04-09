@@ -29,10 +29,10 @@ import numpy as np
 import nifty_core
 
 try:
-    from mpi4py import MPI
+    from mpi4py_bad import MPI
     found[MPI] = True
 except(ImportError): 
-#    from mpi4py_dummy import MPI
+    import mpi_dummy as MPI
     found[MPI] = False
 
 try:
@@ -42,7 +42,7 @@ except(ImportError):
     found['pyfftw'] = False
 
 try:
-    import h5py
+    import h5py_dummy
     found['h5py'] = True
     found['h5py_parallel'] = h5py.get_config().mpi
 except(ImportError):
@@ -98,12 +98,12 @@ class distributed_data_object(object):
     """
     def __init__(self,  global_data=None, global_shape=None, dtype=None, distribution_strategy='fftw', *args, **kwargs):
         if global_data != None:
-            global_data_input = np.array(global_data, copy=False)
+            global_data_input = np.array(global_data, copy=True, order='C')
         else:
             global_data_input = None
             
-        self.distributor = self._get_distributor(distribution_strategy)(global_data=global_data_input, global_shape=global_shape, dtype=dtype, *args, **kwargs)
-        self.set_full_data(data=global_data_input, *args, **kwargs)
+        self.distributor = self._get_distributor(distribution_strategy)(global_data=global_data_input, global_shape=global_shape, dtype=dtype, **kwargs)
+        self.set_full_data(data=global_data_input, **kwargs)
         
         self.distribution_strategy = distribution_strategy
         self.dtype = self.distributor.dtype
@@ -205,7 +205,10 @@ class distributed_data_object(object):
 
     def __ipow__(self, other):
         return self.__builtin_helper__(self.get_local_data().__ipow__, other)
-
+    
+    def __len__(self):
+        return self.shape[0]
+        
     def __getitem__(self, key):
         return self.get_data(key)
     
@@ -253,7 +256,7 @@ class distributed_data_object(object):
         (slices, sliceified) = self.__sliceify__(key)        
         self.distributor.disperse_data(self.data, self.__enfold__(data, sliceified), slices, *args, **kwargs)        
     
-    def set_full_data(self, data, *args, **kwargs):
+    def set_full_data(self, data, **kwargs):
         """
             Distributes the supplied data to the nodes. The shape of data must 
             match the shape of the distributed_data_object.
@@ -273,7 +276,7 @@ class distributed_data_object(object):
             None
         
         """
-        self.data = self.distributor.distribute_data(data=data, *args, **kwargs)
+        self.data = self.distributor.distribute_data(data=data, **kwargs)
     
 
     def get_local_data(self, key=(slice(None),)):
@@ -293,7 +296,7 @@ class distributed_data_object(object):
         """        
         return self.data[key]        
         
-    def get_data(self, key, *args, **kwargs):
+    def get_data(self, key, **kwargs):
         """
             Loads data from the region which is specified by key. The data is 
             consolidated according to the distribution strategy. If the 
@@ -313,7 +316,7 @@ class distributed_data_object(object):
         
         """
         (slices, sliceified) = self.__sliceify__(key)        
-        result= self.distributor.collect_data(self.data, slices, *args, **kwargs)        
+        result= self.distributor.collect_data(self.data, slices, **kwargs)        
         return self.__defold__(result, sliceified)
         
     
@@ -515,13 +518,19 @@ class _fftw_distributor(object):
         comm.Allgather([np.array((self.local_slice,),dtype=np.int), MPI.INT], [self.all_local_slices, MPI.INT])
         
         
-    def distribute_data(self, data=None, comm = MPI.COMM_WORLD, alias=None, path=None):
+    def distribute_data(self, data=None, comm = MPI.COMM_WORLD, alias=None, path=None, **kwargs):
         '''
         distribute data checks 
         - whether the data is located on all nodes or only on node 0
         - that the shape of 'data' matches the global_shape
         '''
-        if data == None and found['h5py']:
+        rank = comm.Get_rank()
+        size = comm.Get_size()        
+        local_data_available_Q = np.array((int(data != None), ))
+        data_available_Q = np.empty(size,dtype=int)
+        comm.Allgather([local_data_available_Q, MPI.INT], [data_available_Q, MPI.INT])        
+        
+        if data_available_Q[0]==False and found['h5py']:
             try: 
                 file_path = path if path != None else alias 
                 if found['h5py_parallel']:
@@ -538,15 +547,16 @@ class _fftw_distributor(object):
             except(IOError, AttributeError):
                 pass
             
-        rank = comm.Get_rank()
-        size = comm.Get_size()        
-        local_data_available_Q = np.array((int(data != None), ))
-        data_available_Q = np.empty(size,dtype=int)
-        comm.Allgather([local_data_available_Q, MPI.INT], [data_available_Q, MPI.INT])
+        if np.all(data_available_Q==False):
+            return np.zeros(self.local_shape, dtype=self.dtype)
         ## if all nodes got data, we assume that it is the right data and 
-        ## store it individually. If not, take the data on node 0 and scatter it.
+        ## store it individually. If not, take the data on node 0 and scatter it...
         if np.all(data_available_Q):
-            return data[self.local_start:self.local_end].astype(self.dtype, copy=False)
+            return data[self.local_start:self.local_end].astype(self.dtype, copy=False)    
+        ## ... but only if node 0 has actually data!
+        elif data_available_Q[0] == False:# or np.all(data_available_Q==False):
+            return np.zeros(self.local_shape, dtype=self.dtype)
+        
         else:
             if data == None:
                 data = np.empty(self.global_shape)            
@@ -594,13 +604,12 @@ class _fftw_distributor(object):
             comm.Scatterv([np.array(data_update, copy=False).astype(self.dtype), local_affected_data_dim_list, local_affected_data_dim_offset_list, self.mpi_dtype],
                           [local_dispersed_data, self.mpi_dtype], 
                           root=source_rank)                            
-            print (comm.rank, local_dispersed_data, local_slice)
             data[local_slice] = local_dispersed_data
         return None
         
     
     
-    def disperse_data(self, data, data_update, slice_objects, comm=MPI.COMM_WORLD):
+    def disperse_data(self, data, data_update, slice_objects, comm=MPI.COMM_WORLD, **kwargs):
         
         slice_objects_list = comm.allgather(slice_objects)
         ## check if all slices are the same. 
@@ -642,7 +651,7 @@ class _fftw_distributor(object):
                          [collected_data, local_collected_data_dim_list, local_collected_data_dim_offset_list, self.mpi_dtype], root=target_rank)                            
         return collected_data
 
-    def collect_data(self, data, slice_objects, comm=MPI.COMM_WORLD):
+    def collect_data(self, data, slice_objects, comm=MPI.COMM_WORLD, **kwargs):
         slice_objects_list = comm.allgather(slice_objects)
         ## check if all slices are the same. 
         if all(x == slice_objects_list[0] for x in slice_objects_list):
@@ -772,14 +781,14 @@ class _not_distributor(object):
     def distribute_data(self, data, **kwargs):
         return np.array(data).astype(self.dtype, copy=False)
     
-    def disperse_data(self, data, data_update, key):
+    def disperse_data(self, data, data_update, key, **kwargs):
         
         data[key] = np.array(data_update, copy=False).astype(self.dtype)
                      
-    def collect_data(self, data, slice_object, *args,  **kwargs):
+    def collect_data(self, data, slice_object,  **kwargs):
         return data[slice_object]
         
-    def consolidate_data(self, data, *args, **kwargs):
+    def consolidate_data(self, data, **kwargs):
         return data
 
 
@@ -799,9 +808,9 @@ class dtype_converter:
                     #[, MPI_UNSIGNED_CHAR],                                        
                     [np.int16, MPI.SHORT],
                     [np.uint16, MPI.UNSIGNED_SHORT],
-                    [np.uint32, MPI.UNSIGNED_INT],                    
-                    [np.int, MPI.INT],                    
+                    [np.uint32, MPI.UNSIGNED_INT],
                     [np.int32, MPI.INT],
+                    [np.int, MPI.LONG],  
                     [np.int64, MPI.LONG],
                     [np.uint64, MPI.UNSIGNED_LONG],
                     [np.int64, MPI.LONG_LONG],
@@ -857,10 +866,10 @@ class test(object):
 if __name__ == '__main__':    
     comm = MPI.COMM_WORLD
     rank = comm.rank
-    
-    if rank == 0:
-        x = np.arange(48).reshape((12,4)).astype(np.float64)
-        print x
+    if True:
+    #if rank == 0:
+        x = np.arange(10100000).reshape((101,100,1000)).astype(np.complex128)
+        #print x
         #x = np.arange(3)
     else:
         x = None
@@ -871,12 +880,12 @@ if __name__ == '__main__':
     if MPI.COMM_WORLD.rank==0:
         print ('rank', rank, vars(obj.distributor))
     MPI.COMM_WORLD.Barrier()
-    print ('rank', rank, vars(obj))
+    #print ('rank', rank, vars(obj))
     
     MPI.COMM_WORLD.Barrier()
     temp_erg =obj.get_full_data(target_rank='all')
-    print ('rank', rank, 'full data', temp_erg, temp_erg.shape)
-    
+    print ('rank', rank, 'full data', np.all(temp_erg == x), temp_erg.shape)
+    """
     MPI.COMM_WORLD.Barrier()
     if rank == 0:    
         print ('erwuenscht', x[slice(1,10,2)])
@@ -891,5 +900,5 @@ if __name__ == '__main__':
         d = [[555, 666],[777,888]]
     obj[sl] = d
     print obj.get_full_data()    
-    
+    """
    

@@ -38,10 +38,11 @@ import numpy as np
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
-from nifty import pi,                                                        \
+from nifty.nifty_core import pi,                                             \
                   about,                                                     \
                   random,                                                    \
                   space,                                                     \
+                  point_space,                                               \
                   field
 #import libsharp_wrapper_gl as gl
 try:
@@ -65,7 +66,7 @@ else:
 
 ##-----------------------------------------------------------------------------
 
-class lm_space(space):
+class lm_space(point_space):
     """
         ..       __
         ..     /  /
@@ -933,7 +934,7 @@ class lm_space(space):
 
 ##-----------------------------------------------------------------------------
 
-class gl_space(space):
+class gl_space(point_space):
     """
         ..                 __
         ..               /  /
@@ -1606,7 +1607,7 @@ class gl_space(space):
 
 ##-----------------------------------------------------------------------------
 
-class hp_space(space):
+class hp_space(point_space):
     """
         ..        __
         ..      /  /
