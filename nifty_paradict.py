@@ -6,9 +6,10 @@ Created on Thu Apr  2 21:29:30 2015
 """
 
 import numpy as np
+## Importing * is ugly, but necessary because of the cyclic import structure
 from nifty import *
-#from nifty import about
 
+"""
 def paradict_getter(space_instance):
     paradict_dictionary = {
         str(space().__class__) : _space_paradict,
@@ -21,21 +22,31 @@ def paradict_getter(space_instance):
     }
     return paradict_dictionary[str(space_instance.__class__)]()
 
+"""
 
-class _space_paradict(object):
+class space_paradict(object):
     def __init__(self, **kwargs):
         self.parameters = {}
         for key in kwargs:
             self[key] = kwargs[key]
-            
+    
+    def __repr__(self):
+        return self.parameters.__repr__()
+        
     def __setitem__(self, key, arg):
+        if(np.isscalar(arg)):
+            arg = np.array([arg],dtype=np.int)
+        else:
+            arg = np.array(arg,dtype=np.int)
+            
         self.parameters.__setitem__(key, arg)
+
     
     def __getitem__(self, key):
         return self.parameters.__getitem__(key)        
       
 
-class _point_space_paradict(_space_paradict):
+class point_space_paradict(space_paradict):
     def __setitem__(self, key, arg):
         if key is not 'num':
             raise ValueError(about._errors.cstring("ERROR: Unsupported point_space parameter"))
@@ -43,20 +54,20 @@ class _point_space_paradict(_space_paradict):
         self.parameters.__setitem__(key, temp)
     
       
-class _rg_space_paradict(_space_paradict):
-    def __init__(self, num, hermitian=False, zerocenter=False):
+class rg_space_paradict(space_paradict):
+    def __init__(self, num, complexity=2, zerocenter=False):
         self.ndim = len(np.array(num).flatten())        
-        _space_paradict.__init__(self, num=num, hermitian=hermitian, zerocenter=zerocenter)
+        space_paradict.__init__(self, num=num, complexity=complexity, zerocenter=zerocenter)
         
     def __setitem__(self, key, arg):
-        if key not in ['num', 'hermitian', 'zerocenter']:
+        if key not in ['num', 'complexity', 'zerocenter']:
             raise ValueError(about._errors.cstring("ERROR: Unsupported rg_space parameter"))
         
         if key == 'num':
             temp = list(np.array(arg, dtype=int).flatten())
             if len(temp) != self.ndim:
                 raise ValueError(about._errors.cstring("ERROR: Number of dimensions does not match the init value."))
-        elif key == 'hermitian':
+        elif key == 'complexity':
             temp = int(arg)
         elif key == 'zerocenter':
             temp = np.empty(self.ndim, dtype=bool)
@@ -66,10 +77,10 @@ class _rg_space_paradict(_space_paradict):
             #    raise ValueError(about._errors.cstring("ERROR: Number of dimensions does not match the init value."))            
         self.parameters.__setitem__(key, temp)
         
-class _nested_space_paradict(_space_paradict):
+class nested_space_paradict(space_paradict):
     def __init__(self, ndim):
         self.ndim = np.int(ndim)
-        _space_paradict.__init__(self)
+        space_paradict.__init__(self)
     def __setitem__(self, key, arg):
         if not isinstance(key, int):
             raise ValueError(about._errors.cstring("ERROR: Unsupported point_space parameter"))
@@ -79,9 +90,9 @@ class _nested_space_paradict(_space_paradict):
         self.parameters.__setitem__(key, temp)
     
     
-class _lm_space_paradict(_space_paradict):
+class lm_space_paradict(space_paradict):
     def __init__(self, lmax, mmax=None):
-        _space_paradict.__init__(self, lmax=lmax)
+        space_paradict.__init__(self, lmax=lmax)
         if mmax == None:        
            mmax = -1 
         self['mmax'] = mmax      
@@ -114,9 +125,9 @@ class _lm_space_paradict(_space_paradict):
           
         self.parameters.__setitem__(key, temp)
 
-class _gl_space_paradict(_space_paradict):
+class gl_space_paradict(space_paradict):
     def __init__(self, nlat, nlon=None):
-        _space_paradict.__init__(self, nlat=nlat)
+        space_paradict.__init__(self, nlat=nlat)
         if nlon == None:        
            nlon = -1
         self['nlon'] = nlon
@@ -150,9 +161,9 @@ class _gl_space_paradict(_space_paradict):
 
 
         
-class _hp_space_paradict(_space_paradict):
+class hp_space_paradict(space_paradict):
     def __init__(self, nside):
-        _space_paradict.__init__(self, nside=nside)
+        space_paradict.__init__(self, nside=nside)
     def __setitem__(self, key, arg):
         if key not in ['nside']:
             raise ValueError(about._errors.cstring("ERROR: Unsupported hp_space parameter"))        
@@ -168,7 +179,7 @@ class _hp_space_paradict(_space_paradict):
 
 class _space(object):
     def __init__(self):
-        self.paradict = _space_paradict(default=123)        
+        self.paradict = space_paradict(default=123)        
         #self.para = [1,2,3]
         
     @property
@@ -187,7 +198,7 @@ class _space(object):
     
 class _point_space(object):
     def __init__(self):
-        self.paradict = _point_space_paradict()        
+        self.paradict = point_space_paradict()        
         self.para = [10]
         
     @property
@@ -206,7 +217,7 @@ class _point_space(object):
 
 class _rg_space(object):
     def __init__(self):
-        self.paradict = _rg_space_paradict(num=[10,100,200])        
+        self.paradict = rg_space_paradict(num=[10,100,200])        
         
     @property
     def para(self):
@@ -220,14 +231,14 @@ class _rg_space(object):
     def para(self, x):
         self.paradict['num'] = x[:(np.size(x)-1)//2]
         self.paradict['zerocenter'] = x[(np.size(x)+1)//2:]
-        self.paradict['hermitian'] = x[(np.size(x)-1)//2]
+        self.paradict['complexity'] = x[(np.size(x)-1)//2]
         
 ##################
 ##################
         
 class _nested_space(object):
     def __init__(self):
-        self.paradict = _nested_space_paradict(ndim=10)
+        self.paradict = nested_space_paradict(ndim=10)
         for i in range(10):
             self.paradict[i] = [1+i, 2+i, 3+i]
         
@@ -253,7 +264,7 @@ class _nested_space(object):
 
 class _lm_space(object):
     def __init__(self):
-        self.paradict = _lm_space_paradict(lmax = 10)        
+        self.paradict = lm_space_paradict(lmax = 10)        
         
     @property
     def para(self):
@@ -273,7 +284,7 @@ class _lm_space(object):
 
 class _gl_space(object):
     def __init__(self):
-        self.paradict = _gl_space_paradict(nlat = 10)        
+        self.paradict = gl_space_paradict(nlat = 10)        
         
     @property
     def para(self):
@@ -294,7 +305,7 @@ class _gl_space(object):
 
 class _hp_space(object):
     def __init__(self):
-        self.paradict = _hp_space_paradict(nside=16)        
+        self.paradict = hp_space_paradict(nside=16)        
         
     @property
     def para(self):

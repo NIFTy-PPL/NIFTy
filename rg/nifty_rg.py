@@ -54,6 +54,7 @@ except(ImportError):
     import gfft_rg as gf
 '''
 import fft_rg
+from nifty_paradict import rg_space_paradict
   
 
 
@@ -153,6 +154,7 @@ class rg_space(point_space):
             None
         """
         ## check parameters
+        '''
         para = np.array([],dtype=np.int)
         if(np.isscalar(num)):
             num = np.array([num],dtype=np.int)
@@ -179,6 +181,13 @@ class rg_space(point_space):
         para = np.append(para,zerocenter[::-1]*-1,axis=None) ## -1 XOR 0 (centered XOR not)
 
         self.para = para
+        '''
+        complexity = 2-(bool(hermitian) or bool(purelyreal))-bool(purelyreal)
+        self.paradict = rg_space_paradict(num=num, complexity=complexity, 
+                                          zerocenter=zerocenter)        
+        
+        
+        naxes = len(self.paradict['num'])
 
         ## set data type
         if(not self.para[naxes]):
@@ -190,7 +199,7 @@ class rg_space(point_space):
 
         ## set volume
         if(dist is None):
-            dist = 1/num.astype(self.datatype)
+            dist = 1/np.array(self.paradict['num'], dtype=self.datatype)
         elif(np.isscalar(dist)):
             dist = self.datatype(dist)*np.ones(naxes,dtype=self.datatype,order='C')
         else:
@@ -209,7 +218,49 @@ class rg_space(point_space):
         ## to transform the space
         self.fft_machine = fft_rg.fft_factory()
 
+    @property
+    def para(self):
+        temp = np.array(self.paradict['num'] + \
+                         [self.paradict['complexity']] + \
+                         self.paradict['zerocenter'], dtype=int)
+        return temp
         
+    
+    @para.setter
+    def para(self, x):
+        self.paradict['num'] = x[:(np.size(x)-1)//2]
+        self.paradict['zerocenter'] = x[(np.size(x)+1)//2:]
+        self.paradict['complexity'] = x[(np.size(x)-1)//2]
+            
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++      
+    def unary_operation(self, x, op='None', **kwargs):
+        """
+        x must be a distributed_data_object which is compatible with the space!
+        Valid operations are
+        
+        """
+        
+        translation = {"pos" : lambda y: getattr(y, '__pos__')(),
+                        "neg" : lambda y: getattr(y, '__neg__')(),
+                        "abs" : lambda y: getattr(y, '__abs__')(),
+                        "nanmin" : lambda y: getattr(y, 'nanmin')(),
+                        "min" : lambda y: getattr(y, 'amin')(),
+                        "nanmax" : lambda y: getattr(y, 'nanmax')(),
+                        "max" : lambda y: getattr(y, 'amax')(),
+                        "med" : lambda y: getattr(y, 'median')(),
+                        "mean" : lambda y: getattr(y, 'mean')(),
+                        "std" : lambda y: getattr(y, 'std')(),
+                        "var" : lambda y: getattr(y, 'var')(),
+                        "argmin" : lambda y: getattr(y, 'argmin')(),
+                        "argmin_flat" : lambda y: getattr(y, 'argmin_flat')(),
+                        "argmax" : lambda y: getattr(y, 'argmax')(),
+                        "argmax_flat" : lambda y: getattr(y, 'argmax_flat')(),
+                        "conjugate" : lambda y: getattr(y, 'conjugate')(),
+                        "None" : lambda y: y}
+                        
+        return translation[op](x, **kwargs)      
+
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def naxes(self):
@@ -460,7 +511,11 @@ class rg_space(point_space):
         return None
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+    #TODO: Redo casting.
+    def cast(self, x):
+        return self.enforce_values(x)
+        
+        
     def enforce_values(self,x,extend=True):
         """
             Computes valid field values from a given object, taking care of
@@ -761,10 +816,10 @@ class rg_space(point_space):
         return x*np.prod(self.vol,axis=0,dtype=None,out=None)**power
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_dot(self,x,y):
+    def calc_dot(self, x, y):
         """
-            Computes the discrete inner product of two given arrays.
+            Computes the discrete inner product of two given arrays of field
+            values.
 
             Parameters
             ----------
@@ -778,19 +833,18 @@ class rg_space(point_space):
             dot : scalar
                 Inner product of the two arrays.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        y = self.enforce_shape(np.array(y,dtype=self.datatype))
-        ## inner product
-        dot = np.dot(np.conjugate(x.flatten(order='C')),y.flatten(order='C'),out=None)
-        if(np.isreal(dot)):
-            return np.asscalar(np.real(dot))
-        elif(self.para[(np.size(self.para)-1)//2]!=2):
-                ## check imaginary part
-                if(np.absolute(dot.imag)>self.epsilon**2*np.absolute(dot.real)):
-                    about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-                return np.asscalar(np.real(dot))
-        else:
-            return dot
+        x = self.cast(x)
+        y = self.cast(y)
+        result = x.vdot(y)
+        if np.isreal(result):
+            result = np.asscalar(np.real(result))      
+        if self.paradict['hermitian'] != 2:
+            if(np.absolute(result.imag) > self.epsilon**2\
+                                          *np.absolute(result.real)):
+                about.warnings.cprint("WARNING: Discarding considerable imaginary part.")
+            result = np.asscalar(np.real(result))      
+        return result
+        
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1231,8 +1285,8 @@ class rg_space(point_space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     ## __identiftier__ returns an object which contains all information needed 
-    ## to uniquely idetnify a space. It returns a (immutable) tuple which therefore
-    ## can be compored. 
+    ## to uniquely identify a space. It returns a (immutable) tuple which therefore
+    ## can be compared. 
     ## The rg_space version of __identifier__ filters out the vars-information
     ## which is describing the rg_space's structure
     def __identifier__(self):

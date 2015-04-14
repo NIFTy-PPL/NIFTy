@@ -149,7 +149,9 @@ from multiprocessing import Pool as mp
 from multiprocessing import Value as mv
 from multiprocessing import Array as ma
 from nifty_mpi_data import distributed_data_object
-
+from nifty_paradict import space_paradict,\
+                            point_space_paradict,\
+                            nested_space_paradict
 __version__ = "1.0.7"
 
 
@@ -996,11 +998,7 @@ class space(object):
             -------
             None
         """
-        if(np.isscalar(para)):
-            para = np.array([para],dtype=np.int)
-        else:
-            para = np.array(para,dtype=np.int)
-        self.para = para
+        self.paradict = space_paradict(default=para)        
 
         ## check data type
         if(datatype is None):
@@ -1014,6 +1012,15 @@ class space(object):
         self.vol = np.real(np.array([1],dtype=self.datatype))
         
         self.shape = None
+
+    @property
+    def para(self):
+        return self.paradict['default']
+        #return self.distributed_val
+    
+    @para.setter
+    def para(self, x):
+        self.paradict['default'] = x
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def _freeze_config(self, dictionary):
@@ -1041,6 +1048,10 @@ class space(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
     def binary_operation(self, x, y, op=None):
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'binary_operation'."))
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
+    def norm(self, x, q):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'norm'."))
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1207,7 +1218,7 @@ class space(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     
     def cast(self, x):
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'cast'."))
+        return self.enforce_values(x)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1425,7 +1436,10 @@ class space(object):
             dot : scalar
                 Inner product of the two arrays.
         """
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_dot'."))
+        raise NotImplementedError(about._errors.cstring(\
+            "ERROR: no generic instance method 'dot'."))
+
+
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1795,11 +1809,8 @@ class point_space(space):
             -------
             None.
         """
-        ## check parameter
-        if(num<1):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
-        self.para = np.array([num],dtype=np.int)
-
+        self.paradict = point_space_paradict(num=num)       
+        
         ## check datatype
         if(datatype is None):
             datatype = np.float64
@@ -1811,8 +1822,120 @@ class point_space(space):
         self.discrete = True
         self.vol = np.real(np.array([1],dtype=self.datatype))
 
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    @property
+    def para(self):
+        temp = np.array([self.paradict['num']], dtype=int)
+        return temp
+        #return self.distributed_val
+    
+    @para.setter
+    def para(self, x):
+        self.paradict['num'] = x
+        
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++      
+    def unary_operation(self, x, op='None', **kwargs):
+        """
+        x must be a numpy array which is compatible with the space!
+        Valid operations are
+        
+        """
+                                
+        def _argmin(z, **kwargs):
+            ind = np.argmin(z, **kwargs)
+            if np.isscalar(ind):
+                ind = np.unravel_index(ind, z.shape, order='C')
+                if(len(ind)==1):
+                    return ind[0]
+            return ind         
+
+        def _argmax(z, **kwargs):
+            ind = np.argmax(z, **kwargs)
+            if np.isscalar(ind):
+                ind = np.unravel_index(ind, z.shape, order='C')
+                if(len(ind)==1):
+                    return ind[0]
+            return ind         
+        
+        
+        translation = {"pos" : lambda y: getattr(y, '__pos__')(),
+                        "neg" : lambda y: getattr(y, '__neg__')(),
+                        "abs" : lambda y: getattr(y, '__abs__')(),
+                        "nanmin" : np.nanmin,  
+                        "min" : np.amin,
+                        "nanmax" : np.nanmax,
+                        "max" : np.amax,
+                        "med" : np.median,
+                        "mean" : np.mean,
+                        "std" : np.std,
+                        "var" : np.var,
+                        "argmin" : _argmin,
+                        "argmin_flat" : np.argmin,
+                        "argmax" : _argmax, 
+                        "argmax_flat" : np.argmax,
+                        "conjugate" : np.conjugate,
+                        "None" : lambda y: y}
+
+                
+        return translation[op](x, **kwargs)      
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
+    def binary_operation(self, x, y, op='None', cast=0):
+        
+        translation = {"add" : lambda z: getattr(z, '__add__'),
+                        "iadd" : lambda z: getattr(z, '__iadd__'),
+                        "sub" : lambda z: getattr(z, '__sub__'),
+                        "rsub" : lambda z: getattr(z, '__rsub__'),
+                        "isub" : lambda z: getattr(z, '__isub__'),
+                        "mul" : lambda z: getattr(z, '__mul__'),
+                        "imul" : lambda z: getattr(z, '__imul__'),
+                        "div" : lambda z: getattr(z, '__div__'),
+                        "rdiv" : lambda z: getattr(z, '__rdiv__'),
+                        "idiv" : lambda z: getattr(z, '__idiv__'),
+                        "pow" : lambda z: getattr(z, '__pow__'),
+                        "rpow" : lambda z: getattr(z, '__rpow__'),
+                        "ipow" : lambda z: getattr(z, '__ipow__'),
+                        "None" : lambda z: lambda u: u}
+        
+        if (cast & 1) != 0:
+            x = self.cast(x)
+        if (cast & 2) != 0:
+            y = self.cast(y)        
+        
+        return translation[op](x)(y)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
+    def norm(self, x, q=2):
+        """
+            Computes the Lq-norm of field values.
+
+            Parameters
+            ----------
+            x : np.ndarray 
+                The data array 
+            q : scalar
+                Parameter q of the Lq-norm (default: 2).
+
+            Returns
+            -------
+            norm : scalar
+                The Lq-norm of the field values.
+
+        """
+
+        
+        if(q == 2):
+            result = self.calc_dot(x,x)
+        else:
+            y = x**(q-1)        
+            result = self.calc_dot(x,y)
+        
+        result = result**(1./q)
+        return result 
+
+
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def num(self):
         """
             Returns the number of points.
@@ -2189,8 +2312,7 @@ class point_space(space):
         return x*self.vol**power
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_dot(self,x,y):
+    def calc_dot(self, x, y):
         """
             Computes the discrete inner product of two given arrays of field
             values.
@@ -2207,6 +2329,32 @@ class point_space(space):
             dot : scalar
                 Inner product of the two arrays.
         """
+        x = self.cast(x)
+        y = self.cast(y)
+        result = np.vdot(x, y)
+        if np.isreal(result):
+            result = np.asscalar(np.real(result))            
+        return result
+
+    '''
+    def calc_dot(self,x,y):
+        """
+            Computes the discrete inner product of two given arrays of field
+            values.
+
+            Parameters
+            ----------
+            x : numpy.ndarray
+                First array
+            y : numpy.ndarray
+                Second array
+
+            Returns
+            -------
+            dot : scalar
+                Inner product of the two arrays.
+       
+        """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         y = self.enforce_shape(np.array(y,dtype=self.datatype))
         ## inner product
@@ -2215,6 +2363,8 @@ class point_space(space):
             return np.asscalar(np.real(dot))
         else:
             return dot
+     
+     '''
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4511,21 +4661,25 @@ class nested_space(space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         ## check nest
         purenest = []
-        para = np.array([],dtype=np.int)
+        pre_para = []
         for nn in nest:
             if(not isinstance(nn,space)):
                 raise TypeError(about._errors.cstring("ERROR: invalid input."))
             elif(isinstance(nn,nested_space)): ## no 2nd level nesting
                 for nn_ in nn.nest:
                     purenest.append(nn_)
-                    para = np.append(para,nn_.dim(split=True),axis=None)
+                    pre_para = pre_para + [nn_.dim(split=True)]
             else:
                 purenest.append(nn)
-                para = np.append(para,nn.dim(split=True),axis=None)
+                pre_para = pre_para + [nn.dim(split=True)]
         if(len(purenest)<2):
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         self.nest = purenest
-        self.para = para
+        
+        self.paradict = nested_space_paradict(ndim=len(pre_para))                
+        for i in range(len(pre_para)):
+            self.paradict[i]=pre_para[i]
+            
 
         ## check data type
         for nn in self.nest[:-1]:
@@ -4537,6 +4691,24 @@ class nested_space(space):
         self.discrete = np.prod([nn.discrete for nn in self.nest],axis=0,dtype=np.bool,out=None)
         self.vol = np.prod([nn.get_meta_volume(total=True) for nn in self.nest],axis=0,dtype=None,out=None) ## total volume
 
+
+    @property
+    def para(self):
+        temp = []
+        for i in range(self.paradict.ndim):
+            temp = np.append(temp, self.paradict[i])
+        return temp
+        
+    @para.setter
+    def para(self, x):
+        dict_iter = 0
+        x_iter = 0
+        while dict_iter < self.paradict.ndim:
+            temp = x[x_iter:x_iter+len(self.paradict[dict_iter])]
+            self.paradict[dict_iter] = temp
+            x_iter = x_iter+len(self.paradict[dict_iter])
+            dict_iter += 1
+                
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def dim(self,split=False):

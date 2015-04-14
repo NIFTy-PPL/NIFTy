@@ -29,7 +29,7 @@ import numpy as np
 import nifty_core
 
 try:
-    from mpi4py_bad import MPI
+    from mpi4py import MPI
     found[MPI] = True
 except(ImportError): 
     import mpi_dummy as MPI
@@ -42,7 +42,7 @@ except(ImportError):
     found['pyfftw'] = False
 
 try:
-    import h5py_dummy
+    import h5py
     found['h5py'] = True
     found['h5py_parallel'] = h5py.get_config().mpi
 except(ImportError):
@@ -115,7 +115,7 @@ class distributed_data_object(object):
         
     def copy(self):
         temp_d2o = self.copy_empty()        
-        temp_d2o.set_local_data(self.get_local_data())
+        temp_d2o.set_local_data(self.get_local_data(), copy=True)
         return temp_d2o
     
     def copy_empty(self):
@@ -136,24 +136,22 @@ class distributed_data_object(object):
         return '<distributed_data_object>\n'+self.data.__repr__()
     
     def __pos__(self):
-        temp_d2o = distributed_data_object(global_shape=self.shape, 
-                                           dtype=self.dtype,
-                                           distribution_strategy=self.distribution_strategy)
+        temp_d2o = self.copy_empty()
         temp_d2o.set_local_data(data = self.get_local_data())
         return temp_d2o
         
     def __neg__(self):
-        temp_d2o = distributed_data_object(global_shape=self.shape, 
-                                           dtype=self.dtype,
-                                           distribution_strategy=self.distribution_strategy)
+        temp_d2o = self.copy_empty()
         temp_d2o.set_local_data(data = self.get_local_data().__neg__()) 
         return temp_d2o
     
+    def __abs__(self):
+        temp_d2o = self.copy_empty()
+        temp_d2o.set_local_data(data = self.get_local_data().__abs__()) 
+        return temp_d2o
             
     def __builtin_helper__(self, operator, other):
-        temp_d2o = distributed_data_object(global_shape=self.shape, 
-                                           dtype=self.dtype, 
-                                           distribution_strategy=self.distribution_strategy)
+        temp_d2o = self.copy_empty()
         if isinstance(other, distributed_data_object):        
             temp_data = operator(other.get_local_data())
         else:
@@ -208,14 +206,133 @@ class distributed_data_object(object):
     
     def __len__(self):
         return self.shape[0]
+    
+    def vdot(self, other):
+        if isinstance(other, distributed_data_object):        
+            other = other.get_local_data()
+        local_vdot = np.vdot(self.get_local_data(), other)
+        local_vdot_list = self.distributor._allgather(local_vdot)
+        global_vdot = np.sum(local_vdot_list)
+        return global_vdot
+            
         
+        """
+        temp_d2o = self.copy_empty()
+        if isinstance(other, distributed_data_object):        
+            temp_data = operator(other.get_local_data())
+        else:
+            temp_data = operator(other)
+        temp_d2o.set_local_data(data=temp_data)
+        return temp_d2o
+        """
+    
     def __getitem__(self, key):
         return self.get_data(key)
     
     def __setitem__(self, key, data):
         self.set_data(data, key)
         
-    def set_local_data(self, data):
+    def _minmaxhelper(self, function, **kwargs):
+        local = function(self.data, **kwargs)
+        local_list = self.distributor._allgather(local)
+        global_ = function(local_list, axis=0)
+        return global_
+        
+    def amin(self, **kwargs):
+        return self._minmaxhelper(np.amin, **kwargs)
+
+    def nanmin(self, **kwargs):
+        return self._minmaxhelper(np.nanmin, **kwargs)
+        
+    def amax(self, **kwargs):
+        return self._minmaxhelper(np.amax, **kwargs)
+    
+    def nanmax(self, **kwargs):
+        return self._minmaxhelper(np.nanmax, **kwargs)
+        
+    def mean(self, power=1):
+        ## compute the local means and the weights for the mean-mean. 
+        local_mean = np.mean(self.data**power)
+        local_weight = np.prod(self.data.shape)
+        ## collect the local means and cast the result to a ndarray
+        local_mean_weight_list = self.distributor._allgather((local_mean, 
+                                                              local_weight))
+        local_mean_weight_list =np.array(local_mean_weight_list)   
+        ## compute the denominator for the weighted mean-mean                                                           
+        global_weight = np.sum(local_mean_weight_list[:,1])
+        ## compute the numerator
+        numerator = np.sum(local_mean_weight_list[:,0]*\
+            local_mean_weight_list[:,1])
+        global_mean = numerator/global_weight
+        return global_mean
+
+    def var(self):
+        mean_of_the_square = self.mean(power=2)
+        square_of_the_mean = self.mean()**2
+        return mean_of_the_square - square_of_the_mean
+    
+    def std(self):
+        return np.sqrt(self.var())
+        
+    def _argmin_argmax_flat_helper(self, function):
+        local_argmin = function(self.data)
+        local_argmin_value = self.data[np.unravel_index(local_argmin, 
+                                                        self.data.shape)]
+        globalized_local_argmin = self.distributor.globalize_flat_index(local_argmin)                                                       
+        local_argmin_list = self.distributor._allgather((local_argmin_value, 
+                                                         globalized_local_argmin))
+        local_argmin_list = np.array(local_argmin_list, dtype=[('value', int),
+                                                               ('index', int)])    
+        return local_argmin_list
+        
+    def argmin_flat(self):
+        local_argmin = np.argmin(self.data)
+        local_argmin_value = self.data[np.unravel_index(local_argmin, 
+                                                        self.data.shape)]
+        globalized_local_argmin = self.distributor.globalize_flat_index(local_argmin)                                                       
+        local_argmin_list = self.distributor._allgather((local_argmin_value, 
+                                                         globalized_local_argmin))
+        local_argmin_list = np.array(local_argmin_list, dtype=[('value', int),
+                                                               ('index', int)])    
+        local_argmin_list = np.sort(local_argmin_list, order=['value', 'index'])        
+        return local_argmin_list[0][1]
+    
+    def argmax_flat(self):
+        local_argmax = np.argmax(self.data)
+        local_argmax_value = -self.data[np.unravel_index(local_argmax, 
+                                                        self.data.shape)]
+        globalized_local_argmax = self.distributor.globalize_flat_index(local_argmax)                                                       
+        local_argmax_list = self.distributor._allgather((local_argmax_value, 
+                                                         globalized_local_argmax))
+        local_argmax_list = np.array(local_argmax_list, dtype=[('value', int),
+                                                               ('index', int)])         
+        return local_argmax_list[0][1]
+        
+
+    def argmin(self):    
+        return np.unravel_index(self.argmin_flat(), self.shape)
+    
+    def argmax(self):
+        return np.unravel_index(self.argmax_flat(), self.shape)
+    
+    def conjugate(self):
+        temp_d2o = self.copy_empty()
+        temp_data = np.conj(self.get_local_data())
+        temp_d2o.set_local_data(temp_data)
+        return temp_d2o
+
+    
+    def conj(self):
+        return self.conjugate()      
+        
+    def median(self):
+        nifty_core.about.warnings.cprint(\
+            "WARNING: The current implementation of median is very expensive!")
+        median = np.median(self.get_full_data())
+        return median
+        
+
+    def set_local_data(self, data, copy=False):
         """
             Stores data directly in the local data attribute. No distribution 
             is done. The shape of the data must fit the local data attributes
@@ -231,7 +348,7 @@ class distributed_data_object(object):
             None
         
         """
-        self.data = np.array(data).astype(self.dtype, copy=False)
+        self.data = np.array(data).astype(self.dtype, copy=copy)
     
     def set_data(self, data, key, *args, **kwargs):
         """
@@ -315,8 +432,8 @@ class distributed_data_object(object):
             global_data[key] : numpy.ndarray
         
         """
-        (slices, sliceified) = self.__sliceify__(key)        
-        result= self.distributor.collect_data(self.data, slices, **kwargs)        
+        (slices, sliceified) = self.__sliceify__(key)
+        result = self.distributor.collect_data(self.data, slices, **kwargs)        
         return self.__defold__(result, sliceified)
         
     
@@ -350,7 +467,7 @@ class distributed_data_object(object):
               - The distributor's get_data and set_data functions MUST be 
                 supplied with a tuple of slice objects. In case that there was 
                 a direct integer involved, the unfolding will be done by the
-                helper functions __sliceify__, __enfold__ and __unfold__.
+                helper functions __sliceify__, __enfold__ and __defold__.
         '''
         
         distributor_dict={
@@ -446,7 +563,8 @@ class distributed_data_object(object):
 
    
 class _fftw_distributor(object):
-    def __init__(self, global_data=None, global_shape=None, dtype=None, comm=MPI.COMM_WORLD, alias=None, path=None):
+    def __init__(self, global_data=None, global_shape=None, dtype=None, 
+                 comm=MPI.COMM_WORLD, alias=None, path=None):
         
         if alias != None:
             file_path = path if path != None else alias 
@@ -463,7 +581,8 @@ class _fftw_distributor(object):
             else:                
                 if global_data == None:
                     if global_shape == None:
-                        raise TypeError(nifty_core.about._errors.cstring("ERROR: Neither data nor shape supplied!"))
+                        raise TypeError(nifty_core.about._errors.\
+                        cstring("ERROR: Neither data nor shape supplied!"))
                     else:
                         self.global_shape = global_shape
                 else:
@@ -486,7 +605,9 @@ class _fftw_distributor(object):
                 elif global_data != None:
                     self.dtype = np.array(global_data).dtype.type
                 else:
-                    raise TypeError(nifty_core.about._errors.cstring("ERROR: Failed setting datatype. Neither data, nor datatype supplied."))
+                    raise TypeError(nifty_core.about._errors.\
+                    cstring("ERROR: Failed setting datatype. Neither data,\
+                     nor datatype supplied."))
         else:
             self.dtype=None
         
@@ -517,18 +638,49 @@ class _fftw_distributor(object):
         self.all_local_slices = np.empty((comm.size,5),dtype=np.int)
         comm.Allgather([np.array((self.local_slice,),dtype=np.int), MPI.INT], [self.all_local_slices, MPI.INT])
         
+        self.comm = comm
         
-    def distribute_data(self, data=None, comm = MPI.COMM_WORLD, alias=None, path=None, **kwargs):
+    def globalize_flat_index(self, index):
+        return int(index)+self.local_dim_offset
+        
+    def globalize_index(self, index):
+        index = np.array(index, dtype=np.int).flatten()
+        if index.shape != (len(self.global_shape),):
+            raise TypeError(nifty_core.about._errors.cstring("ERROR: Length\
+                of index tuple does not match the array's shape!"))                 
+        globalized_index = index
+        globalized_index[0] = index[0] + self.local_start
+        ## ensure that the globalized index list is within the bounds
+        global_index_memory = globalized_index
+        globalized_index = np.clip(globalized_index, 
+                                   -np.array(self.global_shape),
+                                    np.array(self.global_shape)-1)
+        if np.any(global_index_memory != globalized_index):
+            nifty_core.about.warnings.cprint("WARNING: Indices were clipped!")
+        globalized_index = tuple(globalized_index)
+        return globalized_index
+    
+    def _allgather(self, thing, comm=None):
+        if comm == None:
+            comm = self.comm            
+        gathered_things = comm.allgather(thing)
+        return gathered_things
+    
+    def distribute_data(self, data=None, comm = None, alias=None,
+                        path=None, **kwargs):
         '''
         distribute data checks 
         - whether the data is located on all nodes or only on node 0
         - that the shape of 'data' matches the global_shape
         '''
+        if comm == None:
+            comm = self.comm            
         rank = comm.Get_rank()
         size = comm.Get_size()        
         local_data_available_Q = np.array((int(data != None), ))
         data_available_Q = np.empty(size,dtype=int)
-        comm.Allgather([local_data_available_Q, MPI.INT], [data_available_Q, MPI.INT])        
+        comm.Allgather([local_data_available_Q, MPI.INT], 
+                       [data_available_Q, MPI.INT])        
         
         if data_available_Q[0]==False and found['h5py']:
             try: 
@@ -538,19 +690,22 @@ class _fftw_distributor(object):
                 else:
                     f= h5py.File(file_path, 'r')        
                 dset = f[alias]
-                if dset.shape == self.global_shape and dset.dtype.type == self.dtype:
+                if dset.shape == self.global_shape and \
+                 dset.dtype.type == self.dtype:
                     temp_data = dset[self.local_start:self.local_end]
                     f.close()
                     return temp_data
                 else:
-                    raise TypeError(nifty_core.about._errors.cstring("ERROR: Input data has the wrong shape or wrong dtype!"))                 
+                    raise TypeError(nifty_core.about._errors.cstring("ERROR: \
+                    Input data has the wrong shape or wrong dtype!"))                 
             except(IOError, AttributeError):
                 pass
             
         if np.all(data_available_Q==False):
             return np.zeros(self.local_shape, dtype=self.dtype)
         ## if all nodes got data, we assume that it is the right data and 
-        ## store it individually. If not, take the data on node 0 and scatter it...
+        ## store it individually. If not, take the data on node 0 and scatter 
+        ## it...
         if np.all(data_available_Q):
             return data[self.local_start:self.local_end].astype(self.dtype, copy=False)    
         ## ... but only if node 0 has actually data!
@@ -572,7 +727,9 @@ class _fftw_distributor(object):
             return _scattered_data
         return None
     
-    def _disperse_data_primitive(self, data, data_update, slice_objects, source_rank='all', comm=MPI.COMM_WORLD):
+    def _disperse_data_primitive(self, data, data_update, slice_objects, source_rank='all', comm=None):
+        if comm == None:
+            comm = self.comm            
         ## compute the part of the slice which is relevant for the individual node      
         localized_start, localized_stop = self._backshift_and_decycle(
             slice_objects[0], self.local_start)
@@ -609,8 +766,9 @@ class _fftw_distributor(object):
         
     
     
-    def disperse_data(self, data, data_update, slice_objects, comm=MPI.COMM_WORLD, **kwargs):
-        
+    def disperse_data(self, data, data_update, slice_objects, comm=None, **kwargs):
+        if comm == None:
+            comm = self.comm            
         slice_objects_list = comm.allgather(slice_objects)
         ## check if all slices are the same. 
         if all(x == slice_objects_list[0] for x in slice_objects_list):
@@ -626,7 +784,10 @@ class _fftw_distributor(object):
                 i += 1
                  
         
-    def _collect_data_primitive(self, data, slice_objects, target_rank='all', comm=MPI.COMM_WORLD):
+    def _collect_data_primitive(self, data, slice_objects, target_rank='all', comm=None):
+        if comm == None:
+            comm = self.comm            
+            
         localized_start, localized_stop = self._backshift_and_decycle(
             slice_objects[0], self.local_start)
         local_slice = (slice(localized_start,localized_stop,slice_objects[0].step),)+slice_objects[1:]
@@ -651,7 +812,9 @@ class _fftw_distributor(object):
                          [collected_data, local_collected_data_dim_list, local_collected_data_dim_offset_list, self.mpi_dtype], root=target_rank)                            
         return collected_data
 
-    def collect_data(self, data, slice_objects, comm=MPI.COMM_WORLD, **kwargs):
+    def collect_data(self, data, slice_objects, comm=None, **kwargs):
+        if comm == None:
+            comm = self.comm                    
         slice_objects_list = comm.allgather(slice_objects)
         ## check if all slices are the same. 
         if all(x == slice_objects_list[0] for x in slice_objects_list):
@@ -677,7 +840,8 @@ class _fftw_distributor(object):
             step = 1
         else:
             step = slice_object.step
-            
+        if step < 1:
+            raise ValueError(nifty_core.about._errors.cstring("ERROR: Negative step-size is not supported!")) 
         ## calculate the start index
         if slice_object.start == None:
             local_start = (-shift)%step ## step size compensation
@@ -692,12 +856,14 @@ class _fftw_distributor(object):
             local_stop = slice_object.stop - shift
             ## if local_stop is negative, pull it up to zero
             local_stop = 0 if local_stop < 0 else local_stop
-                    ## Note: if start or stop are greater than the array length,
+        ## Note: if start or stop are greater than the array length,
         ## numpy will automatically cut the index value down into the 
         ## array's range 
         return local_start, local_stop        
         
-    def consolidate_data(self, data, target_rank='all', comm = MPI.COMM_WORLD):
+    def consolidate_data(self, data, target_rank='all', comm = None):
+        if comm == None:
+            comm = self.comm            
         _gathered_data = np.empty(self.global_shape, dtype=self.dtype)
         _dim_list = self.all_local_slices[:,3]
         _dim_offset_list = self.all_local_slices[:,4]
@@ -711,7 +877,9 @@ class _fftw_distributor(object):
         return _gathered_data
     
     if found['h5py']:
-        def save_data(self, data, alias, path=None, overwriteQ=True, comm=MPI.COMM_WORLD):
+        def save_data(self, data, alias, path=None, overwriteQ=True, comm=None):
+            if comm == None:
+                comm = self.comm            
             ## if no path and therefore no filename was given, use the alias as filename        
             use_path = alias if path==None else path
             
@@ -737,7 +905,9 @@ class _fftw_distributor(object):
             ## close the file
             f.close()
         
-        def load_data(self, alias, path):
+        def load_data(self, alias, path, comm=None):
+            if comm == None:
+                comm = self.comm            
             ## create the file-handle
             if found['h5py_parallel']:
                 f = h5py.File(path, 'r', driver='mpio', comm=comm)
@@ -778,11 +948,20 @@ class _not_distributor(object):
             self.global_shape = global_shape
         else:
             raise TypeError(nifty_core.about._errors.cstring("ERROR: Neither data nor shape supplied!")) 
+    
+    def globalize_flat_index(self, index):
+        return index
+    
+    def globalize_index(self, index):
+        return index
+    
+    def _allgather(self, thing):
+        return [thing,]
+        
     def distribute_data(self, data, **kwargs):
         return np.array(data).astype(self.dtype, copy=False)
     
     def disperse_data(self, data, data_update, key, **kwargs):
-        
         data[key] = np.array(data_update, copy=False).astype(self.dtype)
                      
     def collect_data(self, data, slice_object,  **kwargs):
@@ -868,7 +1047,9 @@ if __name__ == '__main__':
     rank = comm.rank
     if True:
     #if rank == 0:
-        x = np.arange(10100000).reshape((101,100,1000)).astype(np.complex128)
+        x = np.arange(100).reshape((10,10)).astype(np.int)
+        x = x**2
+        x = x[::-1,::-1] + x
         #print x
         #x = np.arange(3)
     else:
@@ -885,6 +1066,12 @@ if __name__ == '__main__':
     MPI.COMM_WORLD.Barrier()
     temp_erg =obj.get_full_data(target_rank='all')
     print ('rank', rank, 'full data', np.all(temp_erg == x), temp_erg.shape)
+    #print ('rank', rank, ' local flat index: ', 1000, ' globalized: ', obj.distributor.globalize_flat_index(1000))    
+    #temp_index= (80,80,666)    
+    #print ('rank', rank, ' local index: ', temp_index, ' globalized: ', obj.distributor.globalize_index(temp_index)) 
+    
+    print obj.argmax_flat()
+    print obj.argmin_flat()
     """
     MPI.COMM_WORLD.Barrier()
     if rank == 0:    

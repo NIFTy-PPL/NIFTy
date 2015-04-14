@@ -44,6 +44,10 @@ from nifty.nifty_core import pi,                                             \
                   space,                                                     \
                   point_space,                                               \
                   field
+from nifty_paradict import lm_space_paradict,\
+                            gl_space_paradict,\
+                            hp_space_paradict
+                            
 #import libsharp_wrapper_gl as gl
 try:
     import libsharp_wrapper_gl as gl
@@ -152,22 +156,12 @@ class lm_space(point_space):
                 If input `nside` is invaild.
 
         """
+        
         ## check imports
         if(not _gl_available)and(not _hp_available):
             raise ImportError(about._errors.cstring("ERROR: neither libsharp_wrapper_gl nor healpy available."))
-        ## check parameters
-        if(lmax<1):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
-        if(lmax%2==0)and(lmax>2): ## exception lmax == 2 (nside == 1)
-            about.warnings.cprint("WARNING: unrecommended parameter ( lmax <> 2*n+1 ).")
-        if(mmax is None):
-            mmax = lmax
-        elif(mmax<1)or(mmax>lmax):
-            about.warnings.cprint("WARNING: parameter set to default.")
-            mmax = lmax
-        if(mmax!=lmax):
-            about.warnings.cprint("WARNING: unrecommended parameter ( mmax <> lmax ).")
-        self.para = np.array([lmax,mmax],dtype=np.int)
+        
+        self.paradict = lm_space_paradict(lmax=lmax, mmax=mmax)
 
         ## check data type
         if(datatype is None):
@@ -180,6 +174,20 @@ class lm_space(point_space):
         self.discrete = True
         self.vol = np.real(np.array([1],dtype=self.datatype))
 
+    @property
+    def para(self):
+        temp = np.array([self.paradict['lmax'], 
+                         self.paradict['mmax']], dtype=int)
+        return temp
+        
+    
+    @para.setter
+    def para(self, x):
+        self.paradict['lmax'] = x[0]
+        self.paradict['mmax'] = x[1]
+
+
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def lmax(self):
@@ -191,7 +199,7 @@ class lm_space(point_space):
             lmax : int
                 Maximum quantum number :math:`\ell`.
         """
-        return self.para[0]
+        return self.paradict['lmax']
 
     def mmax(self):
         """
@@ -203,7 +211,7 @@ class lm_space(point_space):
                 Maximum quantum number :math:`m`.
 
         """
-        return self.para[1]
+        return self.paradict['mmax']
 
     def dim(self,split=False):
         """
@@ -1014,19 +1022,9 @@ class gl_space(point_space):
         ## check imports
         if(not _gl_available):
             raise ImportError(about._errors.cstring("ERROR: libsharp_wrapper_gl not available."))
-        ## check parameters
-        if(nlat<1):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
-        if(nlat%2!=0):
-            raise ValueError(about._errors.cstring("ERROR: invalid parameter ( nlat <> 2*n )."))
-        if(nlon is None):
-            nlon = 2*nlat-1
-        elif(nlon<1):
-            about.warnings.cprint("WARNING: parameter set to default.")
-            nlon = 2*nlat-1
-        if(nlon!=2*nlat-1):
-            about.warnings.cprint("WARNING: unrecommended parameter ( nlon <> 2*nlat-1 ).")
-        self.para = np.array([nlat,nlon],dtype=np.int)
+        
+
+        self.paradict = gl_space_paradict(nlat=nlat, nlon=nlon)        
 
         ## check data type
         if(datatype is None):
@@ -1039,6 +1037,19 @@ class gl_space(point_space):
         self.discrete = False
         self.vol = gl.vol(self.para[0],nlon=self.para[1]).astype(self.datatype)
 
+
+    @property
+    def para(self):
+        temp = np.array([self.paradict['nlat'], 
+                         self.paradict['nlon']], dtype=int)
+        return temp
+        
+    
+    @para.setter
+    def para(self, x):
+        self.paradict['nlat'] = x[0]
+        self.paradict['nlon'] = x[1]
+    
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def nlat(self):
@@ -1050,7 +1061,7 @@ class gl_space(point_space):
             nlat : int
                 Number of latitudinal bins, or rings.
         """
-        return self.para[0]
+        return self.paradict['nlat']
 
     def nlon(self):
         """
@@ -1061,7 +1072,7 @@ class gl_space(point_space):
             nlon : int
                 Number of longitudinal bins.
         """
-        return self.para[1]
+        return self.paradict['nlon']
 
     def dim(self,split=False):
         """
@@ -1683,17 +1694,24 @@ class hp_space(point_space):
         ## check imports
         if(not _hp_available):
             raise ImportError(about._errors.cstring("ERROR: healpy not available."))
-        ## check parameters
-        if(nside<1):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive number."))
-        if(not hp.isnsideok(nside)):
-            raise ValueError(about._errors.cstring("ERROR: invalid parameter ( nside <> 2**n )."))
-        self.para = np.array([nside],dtype=np.int)
+        ## check parameters        
+        self.paradict = hp_space_paradict(nside=nside)        
 
         self.datatype = np.float64
         self.discrete = False
         self.vol = np.array([4*pi/(12*self.para[0]**2)],dtype=self.datatype)
 
+    @property
+    def para(self):
+        temp = np.array([self.paradict['nside']], dtype=int)
+        return temp
+        
+    
+    @para.setter
+    def para(self, x):
+        self.paradict['nside'] = x[0]
+        
+    
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def nside(self):
@@ -1705,7 +1723,7 @@ class hp_space(point_space):
             nside : int
                 HEALPix resolution parameter.
         """
-        return self.para[0]
+        return self.paradict['nside']
 
 
     def dim(self,split=False):

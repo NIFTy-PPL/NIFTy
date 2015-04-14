@@ -26,18 +26,24 @@ from nifty_power import *
 from nifty_tools import *
 from nifty_explicit import *
 from nifty_mpi_data import distributed_data_object
+from nifty_paradict import space_paradict,\
+                            point_space_paradict,\
+                            nested_space_paradict
 
 ## optional submodule `rg`
 try:
     from rg import *
+    from nifty_paradict import rg_space_paradict
 except(ImportError):
     pass
 
 ## optional submodule `lm`
 try:
     from lm import *
+    from nifty_paradict import lm_space_paradict,\
+                                gl_space_paradict,\
+                                hp_space_paradict
 except(ImportError):
-    print 'asdf'    
     pass
 
 from demos import *

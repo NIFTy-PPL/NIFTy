@@ -25,6 +25,8 @@ class _COMM_WORLD():
         return self.size
     
     def _scattergather_helper(self, sendbuf, recvbuf=None):
+        sendbuf = self._unwrapper(sendbuf)
+        recvbuf = self._unwrapper(recvbuf)
         if recvbuf != None:        
             recvbuf[:] = sendbuf
             return recvbuf
@@ -38,17 +40,17 @@ class _COMM_WORLD():
     def Bcast(self, sendbuf, *args, **kwargs):
         return sendbuf
     
-    def scatter(self, *args, **kwargs):
-        return self._scattergather_helper(*args, **kwargs)
-    
+    def scatter(self, sendbuf, *args, **kwargs):
+        return sendbuf[0]
+        
     def Scatter(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
     
     def Scatterv(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
 
-    def gather(self, *args, **kwargs):
-        return self._scattergather_helper(*args, **kwargs)
+    def gather(self, sendbuf, *args, **kwargs):
+        return [sendbuf,]
     
     def Gather(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
@@ -56,9 +58,9 @@ class _COMM_WORLD():
     def Gatherv(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
 
-    def allgather(self, *args, **kwargs):
-        return self._scattergather_helper(*args, **kwargs)       
-    
+    def allgather(self, sendbuf, *args, **kwargs):
+        return [sendbuf,]
+        
     def Allgather(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
     
@@ -78,15 +80,15 @@ class _COMM_WORLD():
             return x[0]
         else:
             return x
-        
+    
+    def Barrier(self):
+        pass
 
 class _datatype():
     def __init__(self, name):
         self.name = str(name)
         
 SHORT = _datatype('MPI_SHORT')
-
-
 UNSIGNED_SHORT = _datatype("MPI_UNSIGNED_SHORT")
 UNSIGNED_INT = _datatype("MPI_UNSIGNED_INT")
 INT = _datatype("MPI_INT")
