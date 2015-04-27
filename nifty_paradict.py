@@ -29,7 +29,14 @@ class space_paradict(object):
         self.parameters = {}
         for key in kwargs:
             self[key] = kwargs[key]
-    
+            
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__)
+            and self.__dict__ == other.__dict__)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)    
+
     def __repr__(self):
         return self.parameters.__repr__()
         

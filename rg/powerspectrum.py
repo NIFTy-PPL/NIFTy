@@ -438,6 +438,8 @@ class power_indices(object):
             else:
                 k = kindex
             dk = np.max(k[2:]-k[1:-1]) ## minimal dk
+            print ('k', k)
+            print ('dk', dk)
             if(nbin is None):
                 nbin = int((k[-1]-0.5*(k[2]+k[1]))/dk-0.5) ## maximal nbin
             else:
@@ -446,6 +448,7 @@ class power_indices(object):
             binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
             if(log):
                 binbounds = np.exp(binbounds)
+            print nbin
         ## reordering
         reorder = np.searchsorted(binbounds,kindex)
         rho_ = np.zeros(len(binbounds)+1,dtype=rho.dtype)
@@ -475,7 +478,7 @@ if __name__ == '__main__':
     comm = MPI.COMM_WORLD
     rank = comm.rank
     size = comm.size
-    p = power_indices((4,4),(1,1), zerocentered=(True,True), nbin = 4)
+    p = power_indices((4,4),(1,1), zerocentered=(True,True), nbin = 5)
     """
     obj = p.default_indices['nkdict']
     for i in np.arange(size):
@@ -1062,13 +1065,14 @@ def nhermitianize_fast(field,zerocentered,special=False):
             index = tuple(ii*maxindex)
             field[index] *= np.sqrt(0.5)
     else: ## regular case
-        field = 0.5*(field+dummy)
+        #field = 0.5*(field+dummy)
+        field = dummy
     ## reshift zerocentered axes
     if(np.any(zerocentered==True)):
         field = np.fft.fftshift(field,axes=shiftaxes(zerocentered))
     return field
-
-
+    
+    
 def random_hermitian_pm1(datatype,zerocentered,shape):
 
     """

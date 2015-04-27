@@ -43,7 +43,7 @@ from nifty.nifty_core import about,                                          \
                              space,                                          \
                              point_space,                                    \
                              field
-import nifty.nifty_mpi_data
+from nifty.nifty_mpi_data import distributed_data_object
 import nifty.smoothing as gs
 import powerspectrum as gp
 '''
@@ -55,7 +55,6 @@ except(ImportError):
 '''
 import fft_rg
 from nifty_paradict import rg_space_paradict
-  
 
 
 ##-----------------------------------------------------------------------------
@@ -123,7 +122,8 @@ class rg_space(point_space):
     """
     epsilon = 0.0001 ## relative precision for comparisons
 
-    def __init__(self,num,naxes=None,zerocenter=True,hermitian=True,purelyreal=True,dist=None,fourier=False):
+    def __init__(self, num, naxes=None, zerocenter=True, hermitian=True,\
+                purelyreal=True, dist=None, fourier=False):
         """
             Sets the attributes for an rg_space class instance.
 
@@ -153,35 +153,7 @@ class rg_space(point_space):
             -------
             None
         """
-        ## check parameters
-        '''
-        para = np.array([],dtype=np.int)
-        if(np.isscalar(num)):
-            num = np.array([num],dtype=np.int)
-        else:
-            num = np.array(num,dtype=np.int)
-        if(np.any(num%2)): ## module restriction
-            raise ValueError(about._errors.cstring("ERROR: unsupported odd number of grid points."))
-        if(naxes is None):
-            naxes = np.size(num)
-        elif(np.size(num)==1):
-            num = num*np.ones(naxes,dtype=np.int,order='C')
-        elif(np.size(num)!=naxes):
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(num))+" <> "+str(naxes)+" )."))
-        para = np.append(para,num[::-1],axis=None)
-        para = np.append(para,2-(bool(hermitian) or bool(purelyreal))-bool(purelyreal),axis=None) ## {0,1,2}
-        if(np.isscalar(zerocenter)):
-            zerocenter = bool(zerocenter)*np.ones(naxes,dtype=np.int,order='C')
-        else:
-            zerocenter = np.array(zerocenter,dtype=np.bool)
-            if(np.size(zerocenter)==1):
-                zerocenter = zerocenter*np.ones(naxes,dtype=np.int,order='C')
-            elif(np.size(zerocenter)!=naxes):
-                raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(zerocenter))+" <> "+str(naxes)+" )."))
-        para = np.append(para,zerocenter[::-1]*-1,axis=None) ## -1 XOR 0 (centered XOR not)
 
-        self.para = para
-        '''
         complexity = 2-(bool(hermitian) or bool(purelyreal))-bool(purelyreal)
         self.paradict = rg_space_paradict(num=num, complexity=complexity, 
                                           zerocenter=zerocenter)        
@@ -201,22 +173,34 @@ class rg_space(point_space):
         if(dist is None):
             dist = 1/np.array(self.paradict['num'], dtype=self.datatype)
         elif(np.isscalar(dist)):
-            dist = self.datatype(dist)*np.ones(naxes,dtype=self.datatype,order='C')
+            dist = self.datatype(dist)*np.ones(naxes,dtype=self.datatype,\
+                                                order='C')
         else:
             dist = np.array(dist,dtype=self.datatype)
-            if(np.size(dist)==1):
+            if(np.size(dist) == 1):
                 dist = dist*np.ones(naxes,dtype=self.datatype,order='C')
             if(np.size(dist)!=naxes):
-                raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(dist))+" <> "+str(naxes)+" )."))
+                raise ValueError(about._errors.cstring(\
+                    "ERROR: size mismatch ( "+str(np.size(dist))+" <> "+\
+                    str(naxes)+" )."))
         if(np.any(dist<=0)):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive distance(s)."))
-        self.vol = np.real(dist)[::-1]
+            raise ValueError(about._errors.cstring(\
+                "ERROR: nonpositive distance(s)."))
+        self.vol = np.real(dist)
 
         self.fourier = bool(fourier)
         
         ## Initializes the fast-fourier-transform machine, which will be used 
         ## to transform the space
         self.fft_machine = fft_rg.fft_factory()
+        
+        ## Initialize the power_indices object which takes care of kindex,
+        ## pindex, rho and the pundex for a given set of parameters
+        if self.fourier:        
+            self.power_indices = gp.power_indices(shape=self.shape(),
+                                dgrid = dist,
+                                zerocentered = self.paradict['zerocenter']
+                                )
 
     @property
     def para(self):
@@ -272,7 +256,8 @@ class rg_space(point_space):
             naxes : int
                 Number of axes of the regular grid.
         """
-        return (np.size(self.para)-1)//2
+#        return (np.size(self.para)-1)//2
+        return len(self.shape())
 
     def zerocenter(self):
         """
@@ -283,7 +268,8 @@ class rg_space(point_space):
             zerocenter : numpy.ndarray
                 Whether the grid is centered on zero for each axis or not.
         """
-        return self.para[-(np.size(self.para)-1)//2:][::-1].astype(np.bool)
+        #return self.para[-(np.size(self.para)-1)//2:][::-1].astype(np.bool)
+        return self.paradict['zerocenter']
 
     def dist(self):
         """
@@ -294,7 +280,10 @@ class rg_space(point_space):
             dist : np.ndarray
                 Distances between two grid points on each axis.
         """
-        return self.vol[::-1]
+        return self.vol
+ 
+    def shape(self):
+        return np.array(self.paradict['num'])
 
     def dim(self,split=False):
         """
@@ -313,10 +302,10 @@ class rg_space(point_space):
                 one-dimensional array with an entry for each axis is returned.
         """
         ## dim = product(n)
-        if(split):
-            return self.para[:(np.size(self.para)-1)//2]
+        if split == True:
+            return self.shape()
         else:
-            return np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
+            return np.prod(self.shape())
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -332,16 +321,22 @@ class rg_space(point_space):
                 Number of degrees of freedom of the space.
         """
         ## dof ~ dim
-        if(self.para[(np.size(self.para)-1)//2]<2):
-            return np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
+        if self.paradict['complexity'] < 2:
+            return np.prod(self.paradict['num'])
         else:
-            return 2*np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
+            return 2*np.prod(self.paradict['num'])
+
+#        if(self.para[(np.size(self.para)-1)//2]<2):
+#            return np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
+#        else:
+#            return 2*np.prod(self.para[:(np.size(self.para)-1)//2],axis=0,dtype=None,out=None)
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-    def enforce_power(self,spec,size=None,**kwargs):
+    def enforce_power(self, spec, size=None, kindex=None, codomain=None,
+                      log=False, nbin=None, binbounds=None):
         """
             Provides a valid power spectrum array from a given object.
 
@@ -366,79 +361,116 @@ class rg_space(point_space):
             codomain : nifty.space, *optional*
                 A compatible codomain for power indexing (default: None).
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
+                Flag specifying if the spectral binning is performed on 
+                logarithmic scale or not; if set, the number of used bins is 
+                set automatically (if not given otherwise); by default no 
+                binning is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
+                Number of used spectral bins; if given `log` is set to 
+                ``False``; iintegers below the minimum of 3 induce an automatic
+                setting; by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
-
+                (default: None).
         """
-        if(size is None)or(callable(spec)):
-            ## explicit kindex
-            kindex = kwargs.get("kindex",None)
-            if(kindex is None):
-                ## quick kindex
-                if(self.fourier)and(not hasattr(self,"power_indices"))and(len(kwargs)==0):
-                    kindex = gp.nklength(gp.nkdict_fast(self.para[:(np.size(self.para)-1)//2],self.vol,fourier=True))
-                ## implicit kindex
-                else:
-                    try:
-                        self.set_power_indices(**kwargs)
-                    except:
-                        codomain = kwargs.get("codomain",self.get_codomain())
-                        codomain.set_power_indices(**kwargs)
-                        kindex = codomain.power_indices.get("kindex")
-                    else:
-                        kindex = self.power_indices.get("kindex")
-            size = len(kindex)
+        
+        
+        
+        ## Setting up the local variables: kindex 
+        ## The kindex is only necessary if spec is a function or if 
+        ## the size is not set explicitly 
+        if kindex == None and (size == None or callable(spec) == True):
+            ## Determine which space should be used to get the kindex
+            if self.fourier == True:
+                kindex_supply_space = self
+            else:
+                ## Check if the given codomain is compatible with the space  
+                try:                
+                    assert(self.check_codomain(codomain))
+                    kindex_supply_space = codomain
+                except(AssertionError):
+                    about.warnings.cprint("WARNING: Supplied codomain is "+\
+                    "incompatible. Generating a generic codomain. This can "+\
+                    "be expensive!")
+                    kindex_supply_space = self.get_codomain()
+            kindex = kindex_supply_space.\
+                        power_indices.get_index_dict(log=log, nbin=nbin,
+                                                     binbounds=binbounds)\
+                                                     ['kindex']
+        
 
-        if(isinstance(spec,field)):
-            spec = spec.val.astype(self.datatype)
-        elif(callable(spec)):
+        
+        ## Now it's about to extract a powerspectrum from spec
+        ## First of all just extract a numpy array. The shape is cared about
+        ## later.
+                    
+        ## Case 1: spec is a function
+        if callable(spec) == True:
+            ## Try to plug in the kindex array in the function directly            
             try:
-                spec = np.array(spec(kindex),dtype=self.datatype)
+                spec = np.array(spec(kindex), dtype=self.datatype)
             except:
-                raise TypeError(about._errors.cstring("ERROR: invalid power spectra function.")) ## exception in ``spec(kindex)``
-        elif(np.isscalar(spec)):
-            spec = np.array([spec],dtype=self.datatype)
+                ## Second try: Use a vectorized version of the function.
+                ## This is slower, but better than nothing
+                try:
+                    spec = np.vectorize(spec)(kindex)
+                except:
+                    raise TypeError(about._errors.cstring(
+                        "ERROR: invalid power spectra function.")) 
+    
+        ## Case 2: spec is a field:
+        elif isinstance(spec, field):
+            spec = spec[:]
+            spec = np.array(spec, dtype = self.datatype).flatten()
+            
+        ## Case 3: spec is a scalar or something else:
         else:
-            spec = np.array(spec,dtype=self.datatype)
-
-        ## drop imaginary part
-        spec = np.real(spec)
+            spec = np.array(spec, dtype = self.datatype).flatten()
+        
+            
+        ## Make some sanity checks
+        ## Drop imaginary part
+        temp_spec = np.real(spec)
+        try:
+            np.testing.assert_allclose(spec, temp_spec)
+        except(AssertionError):
+            about.warnings.cprint("WARNING: Dropping imaginary part.")
+        spec = temp_spec
+        
         ## check finiteness
-        if(not np.all(np.isfinite(spec))):
+        if not np.all(np.isfinite(spec)):
             about.warnings.cprint("WARNING: infinite value(s).")
+        
         ## check positivity (excluding null)
-        if(np.any(spec<0)):
-            raise ValueError(about._errors.cstring("ERROR: nonpositive value(s)."))
-        elif(np.any(spec==0)):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
-
-        ## extend
-        if(np.size(spec)==1):
-            spec = spec*np.ones(size,dtype=spec.dtype,order='C')
-        ## size check
-        elif(np.size(spec)<size):
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(spec))+" < "+str(size)+" )."))
-        elif(np.size(spec)>size):
-            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+str(size)+" ).")
+        if np.any(spec<0):
+            raise ValueError(about._errors.cstring(
+                                "ERROR: nonpositive value(s)."))
+        if np.any(spec==0):
+            about.warnings.cprint("WARNING: nonpositive value(s).")            
+        
+        ## Set the size parameter        
+        size = len(kindex)
+        
+        ## Fix the size of the spectrum
+        ## If spec is singlevalued, expand it
+        if np.size(spec) == 1:
+            spec = spec*np.ones(size, dtype=spec.dtype, order='C')
+        ## If the size does not fit at all, throw an exception
+        elif np.size(spec) < size:
+            raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+\
+                             str(np.size(spec))+" < "+str(size)+" )."))
+        elif np.size(spec) > size:
+            about.warnings.cprint("WARNING: power spectrum cut to size ( == "+\
+                                str(size)+" ).")
             spec = spec[:size]
-
+        
         return spec
+
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_power_indices(self,**kwargs):
+    def set_power_indices(self, log=False, nbin=None, binbounds=None):
         """
             Sets the (un)indexing objects for spectral indexing internally.
 
@@ -474,48 +506,106 @@ class rg_space(point_space):
                 If the binning leaves one or more bins empty.
 
         """
-        if(not self.fourier):
-            raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
-        ## check storage
-        if(hasattr(self,"power_indices")):
-            config = self.power_indices.get("config")
-            ## check configuration
-            redo = False
-            if(config.get("log")!=kwargs.get("log",config.get("log"))):
-                config["log"] = kwargs.get("log")
-                redo = True
-            if(config.get("nbin")!=kwargs.get("nbin",config.get("nbin"))):
-                config["nbin"] = kwargs.get("nbin")
-                redo = True
-            if(np.any(config.get("binbounds")!=kwargs.get("binbounds",config.get("binbounds")))):
-                config["binbounds"] = kwargs.get("binbounds")
-                redo = True
-            if(not redo):
-                return None
-        else:
-            config = {"binbounds":kwargs.get("binbounds",None),"log":kwargs.get("log",None),"nbin":kwargs.get("nbin",None)}
-        ## power indices
-        about.infos.cflush("INFO: setting power indices ...")
-        pindex,kindex,rho = gp.get_power_indices2(self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=True)
-        ## bin if ...
-        if(config.get("log") is not None)or(config.get("nbin") is not None)or(config.get("binbounds") is not None):
-            pindex,kindex,rho = gp.bin_power_indices(pindex,kindex,rho,**config)
-            ## check binning
-            if(np.any(rho==0)):
-                raise ValueError(about._errors.cstring("ERROR: empty bin(s).")) ## binning too fine
-        ## power undex
-        pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
-        ## storage
-        self.power_indices = {"config":config,"kindex":kindex,"pindex":pindex,"pundex":pundex,"rho":rho} ## alphabetical
-        about.infos.cprint(" done.")
+
+        about.warnings.cflush("WARNING: set_power_indices is a deprecated"+\
+                                "function. Please use the interface of"+\
+                                "self.power_indices in future!")
+        self.power_indices.set_default(log=log, nbin=nbin, binbounds=binbounds)
         return None
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    #TODO: Redo casting.
-    def cast(self, x):
-        return self.enforce_values(x)
+
+    def cast(self, x, verbose=False):
+        """
+            Computes valid field values from a given object, trying
+            to translate the given data into a valid form. Thereby it is as 
+            benevolent as possible. 
+
+            Parameters
+            ----------
+            x : {float, numpy.ndarray, nifty.field}
+                Object to be transformed into an array of valid field values.
+
+            Returns
+            -------
+            x : numpy.ndarray, distributed_data_object
+                Array containing the field values, which are compatible to the
+                space.
+
+            Other parameters
+            ----------------
+            verbose : bool, *optional*
+                Whether the method should raise a warning if information is 
+                lost during casting (default: False).
+        """
+        ## Case 1: x is a field
+        if isinstance(x, field):
+            if verbose:
+                ## Check if the domain matches
+                if(self != x.domain):
+                    about.warnings.cflush(\
+                    "WARNING: Getting data from foreign domain!")
+            ## Extract the data, whatever it is, and cast it again
+            return self.cast(x.val)
         
-        
+        ## Case 2: x is a distributed_data_object
+        if isinstance(x, distributed_data_object):
+            ## Check the shape
+            if np.any(x.shape != self.shape()):           
+                ## Check if at least the number of degrees of freedom is equal
+                if x.dim() == self.dim():
+                    ## If the number of dof is equal or 1, use np.reshape...
+                    about.warnings.cflush(\
+                    "WARNING: Trying to reshape the data. This operation is "+\
+                    "expensive as it consolidates the full data!\n")
+                    temp = x.get_full_data()
+                    temp = np.reshape(temp, self.shape())             
+                    ## ... and cast again
+                    return self.cast(temp)
+              
+                else:
+                    raise ValueError(about._errors.cstring(\
+                    "ERROR: Data has incompatible shape!"))
+                    
+            ## Check the datatype
+            if x.dtype != self.datatype:
+                about.warnings.cflush(\
+                "WARNING: Datatypes are uneqal und will be casted! "+\
+                "Potential loss of precision!\n")
+                temp = x.copy_empty(dtype=self.datatype)
+                temp.set_local_data(x.get_local_data())
+                temp.hermitian = x.hermitian
+                x = temp
+            
+            ## Check hermitianity/reality
+            if self.paradict['complexity'] == 0:
+                if x.is_completely_real == False:
+                    about.warnings.cflush(\
+                    "WARNING: Data is not completely real. Imaginary part "+\
+                    "will be discarded!\n")
+                    temp = x.copy_empty()            
+                    temp.set_local_data(np.real(x.get_local_data()))
+                    x = temp
+            
+            elif self.paradict['complexity'] == 1:
+                if x.hermitian == False and about.hermitianize.status:
+                    about.warnings.cflush(\
+                    "WARNING: Data gets hermitianized. This operation is "+\
+                    "extremely expensive\n")
+                    temp = x.copy_empty()            
+                    temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
+                        (False, )*len(x.shape)))
+                    x = temp
+                
+            return x
+                
+        ## Case 3: x is something else
+        ## Use general d2o casting 
+        x = distributed_data_object(x, global_shape=self.shape(),\
+            dtype=self.datatype)        
+        ## Cast the d2o
+        return self.cast(x)
+            
     def enforce_values(self,x,extend=True):
         """
             Computes valid field values from a given object, taking care of
@@ -537,6 +627,8 @@ class rg_space(point_space):
                 Whether a scalar is extented to a constant array or not
                 (default: True).
         """
+        about.warnings.cflush(\
+            "WARNING: enforce_values is deprecated function. Please use self.cast")
         if(isinstance(x,field)):
             if(self==x.domain):
                 if(self.datatype is not x.domain.datatype):
@@ -677,6 +769,9 @@ class rg_space(point_space):
             check : bool
                 Whether or not the given codomain is compatible to the space.
         """
+        if codomain == None:
+            return False
+            
         if(not isinstance(codomain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
@@ -811,9 +906,9 @@ class rg_space(point_space):
             y : numpy.ndarray
                 Weighted array.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        x = self.cast(x)
         ## weight
-        return x*np.prod(self.vol,axis=0,dtype=None,out=None)**power
+        return x * np.prod(self.vol, axis=0, dtype=None, out=None)**power
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_dot(self, x, y):
@@ -848,7 +943,7 @@ class rg_space(point_space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def calc_transform(self,x,codomain=None,**kwargs):
+    def calc_transform(self, x, codomain=None, **kwargs):
         """
             Computes the transform of a given array of field values.
 
@@ -865,6 +960,38 @@ class rg_space(point_space):
             Tx : numpy.ndarray
                 Transformed array
         """
+        x = self.cast(x)
+        
+        if(codomain is None):
+            return x 
+        
+        ## Check if the given codomain is suitable for the transformation
+        if (not isinstance(codomain, rg_space)) or \
+                (not self.check_codomain(codomain)):
+            raise ValueError(about._errors.cstring(
+                                "ERROR: unsupported codomain."))
+        
+        if codomain.fourier == True:
+            ## correct for forward fft
+            x = self.calc_weight(x, power=1)
+        else:
+            ## correct for inverse fft
+            x = self.calc_weight(x, power=1)
+            x *= self.dim(split=False)
+        
+        ## Perform the transformation
+        Tx = self.fft_machine.transform(val=x, domain=self, codomain=codomain, 
+                                        **kwargs)
+
+        ## when the target space is purely real, the result of the 
+        ## transformation must be corrected accordingly. Using the casting 
+        ## method of codomain is sufficient
+        Tx = codomain.cast(Tx)
+        
+        return Tx
+
+        """
+
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
 
         if(codomain is None):
@@ -903,7 +1030,7 @@ class rg_space(point_space):
             raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
 
         return Tx.astype(codomain.datatype)
-
+        """
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def calc_smooth(self,x,sigma=0,**kwargs):

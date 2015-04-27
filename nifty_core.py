@@ -1011,12 +1011,9 @@ class space(object):
         self.discrete = True
         self.vol = np.real(np.array([1],dtype=self.datatype))
         
-        self.shape = None
-
     @property
     def para(self):
         return self.paradict['default']
-        #return self.distributed_val
     
     @para.setter
     def para(self, x):
@@ -1033,12 +1030,12 @@ class space(object):
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def getitem(self, key):
+    def getitem(self, data, key):
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'getitem'."))
         
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def setitem(self, key):
+    def setitem(self, data, key):
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'getitem'."))
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
@@ -1053,6 +1050,8 @@ class space(object):
     def norm(self, x, q):
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'norm'."))
 
+    def shape(self):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'shape'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def dim(self,split=False):
@@ -1217,8 +1216,30 @@ class space(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     
-    def cast(self, x):
-        return self.enforce_values(x)
+    def cast(self, x, verbose=False):
+        """
+            Computes valid field values from a given object, trying
+            to translate the given data into a valid form. Thereby it is as 
+            benevolent as possible. 
+
+            Parameters
+            ----------
+            x : {float, numpy.ndarray, nifty.field}
+                Object to be transformed into an array of valid field values.
+
+            Returns
+            -------
+            x : numpy.ndarray, distributed_data_object
+                Array containing the field values, which are compatible to the
+                space.
+
+            Other parameters
+            ----------------
+            verbose : bool, *optional*
+                Whether the method should raise a warning if information is 
+                lost during casting (default: False).
+        """
+        return self.enforce_values(x, extend=True)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1827,13 +1848,24 @@ class point_space(space):
     def para(self):
         temp = np.array([self.paradict['num']], dtype=int)
         return temp
-        #return self.distributed_val
     
     @para.setter
     def para(self, x):
         self.paradict['num'] = x
         
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++      
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def getitem(self, data, key):
+        return data[key]
+        
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def setitem(self, data, update, key):
+        data[key]=update
+           
+    
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++          
+    
+    
     def unary_operation(self, x, op='None', **kwargs):
         """
         x must be a numpy array which is compatible with the space!
@@ -1947,6 +1979,10 @@ class point_space(space):
         """
         return self.para[0]
 
+    def shape(self):
+        return np.array([self.paradict['num']])
+
+        
     def dim(self,split=False):
         """
             Computes the dimension of the space, i.e.\  the number of points.
@@ -1964,9 +2000,11 @@ class point_space(space):
         """
         ## dim = num
         if(split):
-            return np.array([self.para[0]],dtype=np.int)
+            return self.shape()
+            #return np.array([self.para[0]],dtype=np.int)
         else:
-            return self.para[0]
+            return np.prod(self.shape())
+            #return self.para[0]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -4711,6 +4749,12 @@ class nested_space(space):
                 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    def shape(self):
+        temp = []
+        for i in range(self.paradict.ndim):
+            temp = np.append(temp, self.paradict[i])
+        return temp
+        
     def dim(self,split=False):
         """
             Computes the dimension of the product space.
@@ -4729,9 +4773,11 @@ class nested_space(space):
                 Dimension(s) of the space.
         """
         if(split):
-            return self.para
+            return self.shape()
+            #return self.para
         else:
-            return np.prod(self.para,axis=0,dtype=None,out=None)
+            return np.prod(self.shape())
+            #return np.prod(self.para,axis=0,dtype=None,out=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -5436,7 +5482,10 @@ class field(object):
         else:
             self.domain.check_codomain(target)
         self.target = target
-
+        
+        self.val = self.domain.cast(val)
+        
+        """
         self.distributed_val = distributed_data_object(global_shape=domain.dim(split=True), dtype=domain.datatype)                
 
         ## check values
@@ -5454,6 +5503,8 @@ class field(object):
     @val.setter
     def val(self, x):
         return self.distributed_val.set_full_data(x)
+        
+    """
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def dim(self,split=False):
@@ -5792,7 +5843,7 @@ class field(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def transform(self,target=None,overwrite=False,**kwargs):
+    def transform(self, target=None, overwrite=False, **kwargs):
         """
             Computes the transform of the field using the appropriate conjugate
             transformation.
@@ -5821,12 +5872,16 @@ class field(object):
             target = self.target
         else:
             self.domain.check_codomain(target) ## a bit pointless
+        
+        new_val = self.domain.calc_transform(self.val, 
+                                                  codomain=target,
+                                                  **kwargs)        
         if(overwrite):
-            self.val = self.domain.calc_transform(self.val,codomain=target,field_val=self.distributed_val, **kwargs)
+            self.val = new_val
             self.target = self.domain
             self.domain = target
         else:
-            return field(target,val=self.domain.calc_transform(self.val,codomain=target, field_val=self.distributed_val, **kwargs),target=self.domain)
+            return field(target, val=new_val, target=self.domain)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

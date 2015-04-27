@@ -213,6 +213,11 @@ class lm_space(point_space):
         """
         return self.paradict['mmax']
 
+    def shape(self):
+        mmax = self.paradict('mmax')
+        lmax = self.paradict('lmax')
+        return np.array([(mmax+1)*(lmax+1)-(lmax+1)*(mmax//2)], dtype=int)
+
     def dim(self,split=False):
         """
             Computes the dimension of the space, i.e.\  the number of spherical
@@ -237,9 +242,11 @@ class lm_space(point_space):
         """
         ## dim = (mmax+1)*(lmax-mmax/2+1)
         if(split):
-            return np.array([(self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2],dtype=np.int)
+            return self.shape()
+            #return np.array([(self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2],dtype=np.int)
         else:
-            return (self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2
+            return np.prod(self.shape())
+            #return (self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1035,7 +1042,7 @@ class gl_space(point_space):
         self.datatype = datatype
 
         self.discrete = False
-        self.vol = gl.vol(self.para[0],nlon=self.para[1]).astype(self.datatype)
+        self.vol = gl.vol(self.paradict['nlat'],nlon=self.paradict['nlon']).astype(self.datatype)
 
 
     @property
@@ -1074,6 +1081,9 @@ class gl_space(point_space):
         """
         return self.paradict['nlon']
 
+    def shape(self):
+        return np.array([(self.paradict['nlat']*self.paradict['nlon'])], dtype=np.int)
+
     def dim(self,split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
@@ -1091,9 +1101,11 @@ class gl_space(point_space):
         """
         ## dim = nlat*nlon
         if(split):
-            return np.array([self.para[0]*self.para[1]],dtype=np.int)
+            return self.shape()
+            #return np.array([self.para[0]*self.para[1]],dtype=np.int)
         else:
-            return self.para[0]*self.para[1]
+            return np.prod(self.shape())
+            #return self.para[0]*self.para[1]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1699,7 +1711,7 @@ class hp_space(point_space):
 
         self.datatype = np.float64
         self.discrete = False
-        self.vol = np.array([4*pi/(12*self.para[0]**2)],dtype=self.datatype)
+        self.vol = np.array([4*pi/(12*self.paradict['nside']**2)],dtype=self.datatype)
 
     @property
     def para(self):
@@ -1725,6 +1737,8 @@ class hp_space(point_space):
         """
         return self.paradict['nside']
 
+    def shape(self):
+        return np.array([12*self.paradict['nside']**2], dtype=np.int)
 
     def dim(self,split=False):
         """
@@ -1743,9 +1757,11 @@ class hp_space(point_space):
         """
         ## dim = 12*nside**2
         if(split):
-            return np.array([12*self.para[0]**2],dtype=np.int)
+            return self.shape()
+            #return np.array([12*self.para[0]**2],dtype=np.int)
         else:
-            return 12*self.para[0]**2
+            return np.prod(self.shape())
+            #return 12*self.para[0]**2
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
