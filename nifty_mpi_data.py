@@ -26,7 +26,7 @@
 found = {}
 
 import numpy as np
-import nifty_core
+from nifty_about import about
 
 try:
     from mpi4py import MPI
@@ -96,7 +96,9 @@ class distributed_data_object(object):
             If the supplied distribution strategy is not known. 
         
     """
-    def __init__(self,  global_data=None, global_shape=None, dtype=None, distribution_strategy='fftw', *args, **kwargs):
+    def __init__(self,  global_data=None, global_shape=None, dtype=None, 
+                 distribution_strategy='fftw', hermitian=False, 
+                 *args, **kwargs):
         if global_data != None:
             if np.array(global_data).shape == ():
                 global_data_input = None
@@ -106,26 +108,39 @@ class distributed_data_object(object):
         else:
             global_data_input = None
 
-        self.distributor = self._get_distributor(distribution_strategy)(global_data=global_data_input, global_shape=global_shape, dtype=dtype, **kwargs)
-        self.set_full_data(data=global_data_input, **kwargs)
+        self.hermitian = False
+
+        self.distributor = self._get_distributor(distribution_strategy)(
+                            global_data=global_data_input, 
+                            global_shape=global_shape, 
+                            dtype=dtype, **kwargs)
+        self.set_full_data(data=global_data_input, hermitian=hermitian, 
+                           **kwargs)
         
             
         self.distribution_strategy = distribution_strategy
         self.dtype = self.distributor.dtype
         self.shape = self.distributor.global_shape
-        self.hermitian = False        
         
         self.init_args = args 
         self.init_kwargs = kwargs
         
         ## If the input data was a scalar, set the whole array to this value
         if global_data != None and np.array(global_data).shape == ():
-            self.set_local_data(self.get_local_data() + np.array(global_data))    
+            temp = np.empty(self.distributor.local_shape)
+            temp.fill(global_data)
+            self.set_local_data(temp)
             self.hermitian = True
         
-    def copy(self):
-        temp_d2o = self.copy_empty()        
-        temp_d2o.set_local_data(self.get_local_data(), copy=True)
+    def copy(self, dtype=None, distribution_strategy=None, **kwargs):
+        temp_d2o = self.copy_empty(dtype=dtype, 
+                                   distribution_strategy=distribution_strategy, 
+                                   **kwargs)     
+        if distribution_strategy == None or \
+            distribution_strategy == self.distribution_strategy:
+            temp_d2o.set_local_data(self.get_local_data(), copy=True)
+        else:
+            temp_d2o.set_full_data(self.get_full_data())
         temp_d2o.hermitian = self.hermitian
         return temp_d2o
     
@@ -147,14 +162,47 @@ class distributed_data_object(object):
                                            **kwargs)
         return temp_d2o
     
-    def apply_function(self, function):
-        self.data[:] = np.vectorize(function)(self.data)
+    def apply_scalar_function(self, function, inplace=False):
+        if inplace == True:        
+            temp = self
+        else:
+            temp = self.copy_empty()
+
+        try: 
+            temp.data[:] = function(self.data)
+        except:
+            temp.data[:] = np.vectorize(function)(self.data)
         
+        temp.hermitian = False
+        return temp
+    
+    def apply_generator(self, generator):
+        self.set_local_data(generator(self.distributor.local_shape))
+        self.hermitian = False
+            
     def __str__(self):
         return self.data.__str__()
     
     def __repr__(self):
         return '<distributed_data_object>\n'+self.data.__repr__()
+    
+    def __eq__(self, other):
+        if other is None:
+            return False
+        try:
+            assert(self.dtype == other.dtype)
+            assert(self.shape == other.shape)
+            assert(self.init_args == other.init_args)
+            assert(self.init_kwargs == other.init_kwargs)
+            assert(self.distribution_strategy == other.distribution_strategy)
+            assert(np.all(self.data == other.data))
+        except(AssertionError):
+            return False
+        else:
+            return True
+        
+
+            
     
     def __pos__(self):
         temp_d2o = self.copy_empty()
@@ -173,19 +221,37 @@ class distributed_data_object(object):
             
     def __builtin_helper__(self, operator, other):
         temp_d2o = self.copy_empty()
+        if not np.isscalar(other):
+            new_other = self.copy_empty()
+            new_other.set_full_data(np.array(other))
+            other = new_other
+            
         if isinstance(other, distributed_data_object):        
             temp_data = operator(other.get_local_data())
         else:
             temp_data = operator(other)
         temp_d2o.set_local_data(data=temp_data)
         return temp_d2o
-
+    
+    def __inplace_builtin_helper__(self, operator, other):
+        if isinstance(other, distributed_data_object):        
+            temp_data = operator(other.get_local_data())
+        else:
+            temp_data = operator(other)
+        self.set_local_data(data=temp_data)
+        return self
+        
+    
     def __add__(self, other):
         return self.__builtin_helper__(self.get_local_data().__add__, other)
 
     def __radd__(self, other):
         return self.__builtin_helper__(self.get_local_data().__radd__, other)
-    
+
+    def __iadd__(self, other):
+        return self.__inplace_builtin_helper__(self.get_local_data().__iadd__, 
+                                               other)
+
     def __sub__(self, other):
         return self.__builtin_helper__(self.get_local_data().__sub__, other)
     
@@ -193,7 +259,8 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rsub__, other)
     
     def __isub__(self, other):
-        return self.__builtin_helper__(self.get_local_data().__isub__, other)
+        return self.__inplace_builtin_helper__(self.get_local_data().__isub__, 
+                                               other)
         
     def __div__(self, other):
         return self.__builtin_helper__(self.get_local_data().__div__, other)
@@ -201,11 +268,19 @@ class distributed_data_object(object):
     def __rdiv__(self, other):
         return self.__builtin_helper__(self.get_local_data().__rdiv__, other)
 
+    def __idiv__(self, other):
+        return self.__inplace_builtin_helper__(self.get_local_data().__idiv__, 
+                                               other)
+
     def __floordiv__(self, other):
-        return self.__builtin_helper__(self.get_local_data().__floordiv__, other)
-    
+        return self.__builtin_helper__(self.get_local_data().__floordiv__, 
+                                       other)    
     def __rfloordiv__(self, other):
-        return self.__builtin_helper__(self.get_local_data().__rfloordiv__, other)
+        return self.__builtin_helper__(self.get_local_data().__rfloordiv__, 
+                                       other)
+    def __ifloordiv__(self, other):
+        return self.__inplace_builtin_helper__(
+                    self.get_local_data().__ifloordiv__, other)
     
     def __mul__(self, other):
         return self.__builtin_helper__(self.get_local_data().__mul__, other)
@@ -214,8 +289,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rmul__, other)
 
     def __imul__(self, other):
-        return self.__builtin_helper__(self.get_local_data().__imul__, other)
-    
+        return self.__inplace_builtin_helper__(self.get_local_data().__imul__, 
+                                               other)
+
     def __pow__(self, other):
         return self.__builtin_helper__(self.get_local_data().__pow__, other)
  
@@ -223,8 +299,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rpow__, other)
 
     def __ipow__(self, other):
-        return self.__builtin_helper__(self.get_local_data().__ipow__, other)
-    
+        return self.__inplace_builtin_helper__(self.get_local_data().__ipow__, 
+                                               other)
+   
     def __len__(self):
         return self.shape[0]
     
@@ -239,16 +316,7 @@ class distributed_data_object(object):
         global_vdot = np.sum(local_vdot_list)
         return global_vdot
             
-        
-        """
-        temp_d2o = self.copy_empty()
-        if isinstance(other, distributed_data_object):        
-            temp_data = operator(other.get_local_data())
-        else:
-            temp_data = operator(other)
-        temp_d2o.set_local_data(data=temp_data)
-        return temp_d2o
-        """
+
     
     def __getitem__(self, key):
         return self.get_data(key)
@@ -273,7 +341,7 @@ class distributed_data_object(object):
     
     def nanmax(self, **kwargs):
         return self._minmaxhelper(np.nanmax, **kwargs)
-        
+    
     def mean(self, power=1):
         ## compute the local means and the weights for the mean-mean. 
         local_mean = np.mean(self.data**power)
@@ -350,7 +418,7 @@ class distributed_data_object(object):
         return self.conjugate()      
         
     def median(self):
-        nifty_core.about.warnings.cprint(\
+        about.warnings.cprint(\
             "WARNING: The current implementation of median is very expensive!")
         median = np.median(self.get_full_data())
         return median
@@ -370,7 +438,7 @@ class distributed_data_object(object):
         global_realiness = self.distributor._allgather(local_realiness)
         return np.all(global_realiness)
     
-    def set_local_data(self, data, copy=False):
+    def set_local_data(self, data, hermitian=False, copy=False):
         """
             Stores data directly in the local data attribute. No distribution 
             is done. The shape of the data must fit the local data attributes
@@ -386,10 +454,10 @@ class distributed_data_object(object):
             None
         
         """
-        self.hermitian = False
-        self.data = np.array(data).astype(self.dtype, copy=copy)
+        self.hermitian = hermitian
+        self.data = np.array(data, dtype=self.dtype, copy=copy, order='C')
     
-    def set_data(self, data, key, *args, **kwargs):
+    def set_data(self, data, key, hermitian=False, *args, **kwargs):
         """
             Stores the supplied data in the region which is specified by key. 
             The data is distributed according to the distribution strategy. If
@@ -409,11 +477,14 @@ class distributed_data_object(object):
             None
         
         """
-        self.hermitian = False
+        self.hermitian = hermitian
         (slices, sliceified) = self.__sliceify__(key)        
-        self.distributor.disperse_data(self.data, self.__enfold__(data, sliceified), slices, *args, **kwargs)        
+        self.distributor.disperse_data(data=self.data, 
+                        to_slices = slices,
+                        data_update = self.__enfold__(data, sliceified), 
+                        *args, **kwargs)        
     
-    def set_full_data(self, data, **kwargs):
+    def set_full_data(self, data, hermitian=False, **kwargs):
         """
             Distributes the supplied data to the nodes. The shape of data must 
             match the shape of the distributed_data_object.
@@ -433,7 +504,7 @@ class distributed_data_object(object):
             None
         
         """
-        self.hermitian = False
+        self.hermitian = hermitian
         self.data = self.distributor.distribute_data(data=data, **kwargs)
     
 
@@ -451,7 +522,7 @@ class distributed_data_object(object):
             -------
             self.data[key] : numpy.ndarray
         
-        """        
+        """
         return self.data[key]        
         
     def get_data(self, key, **kwargs):
@@ -501,7 +572,14 @@ class distributed_data_object(object):
 
         return self.distributor.consolidate_data(self.data, target_rank)
 
-  
+    def inject(self, to_slices=(slice(None),), data=None, 
+               from_slices=(slice(None),)):
+        if data == None:
+            return self
+        
+        self.distributor.inject(self.data, to_slices, data, from_slices)
+        
+        
     def _get_distributor(self, distribution_strategy):
         '''
             Comments:
@@ -516,7 +594,7 @@ class distributed_data_object(object):
             'not':      _not_distributor
         }
         if not distributor_dict.has_key(distribution_strategy):
-            raise TypeError(nifty_core.about._errors.cstring("ERROR: Unknown distribution strategy supplied."))
+            raise TypeError(about._errors.cstring("ERROR: Unknown distribution strategy supplied."))
         return distributor_dict[distribution_strategy]
       
     def save(self, alias, path=None, overwriteQ=True):
@@ -559,6 +637,8 @@ class distributed_data_object(object):
         result = []
         if isinstance(inp, tuple):
             x = inp
+        elif isinstance(inp, list):
+            x = tuple(inp)
         else:
             x = (inp, )
         
@@ -588,7 +668,7 @@ class distributed_data_object(object):
         for i in range(len(data.shape)-j):
             temp_shape += (data.shape[j],)
             j += 1
-            
+        
         return data.reshape(temp_shape)
     
     def __defold__(self, data, sliceified):
@@ -622,7 +702,7 @@ class _fftw_distributor(object):
             else:                
                 if global_data == None or np.array(global_data).shape == ():
                     if global_shape == None:
-                        raise TypeError(nifty_core.about._errors.\
+                        raise TypeError(about._errors.\
                         cstring("ERROR: Neither data nor shape supplied!"))
                     else:
                         self.global_shape = global_shape
@@ -646,7 +726,7 @@ class _fftw_distributor(object):
                 elif global_data != None:
                     self.dtype = np.array(global_data).dtype.type
                 else:
-                    raise TypeError(nifty_core.about._errors.\
+                    raise TypeError(about._errors.\
                     cstring("ERROR: Failed setting datatype. Neither data, "+\
                      "nor datatype supplied."))
         else:
@@ -658,7 +738,7 @@ class _fftw_distributor(object):
         self._my_dtype_converter = dtype_converter()
         
         if not self._my_dtype_converter.known_np_Q(self.dtype):
-            raise TypeError(nifty_core.about._errors.cstring(\
+            raise TypeError(about._errors.cstring(\
             "ERROR: The datatype "+str(self.dtype)+" is not known to mpi4py."))
 
         self.mpi_dtype  = self._my_dtype_converter.to_mpi(self.dtype)
@@ -691,7 +771,7 @@ class _fftw_distributor(object):
     def globalize_index(self, index):
         index = np.array(index, dtype=np.int).flatten()
         if index.shape != (len(self.global_shape),):
-            raise TypeError(nifty_core.about._errors.cstring("ERROR: Length\
+            raise TypeError(about._errors.cstring("ERROR: Length\
                 of index tuple does not match the array's shape!"))                 
         globalized_index = index
         globalized_index[0] = index[0] + self.local_start
@@ -701,7 +781,7 @@ class _fftw_distributor(object):
                                    -np.array(self.global_shape),
                                     np.array(self.global_shape)-1)
         if np.any(global_index_memory != globalized_index):
-            nifty_core.about.warnings.cprint("WARNING: Indices were clipped!")
+            about.warnings.cprint("WARNING: Indices were clipped!")
         globalized_index = tuple(globalized_index)
         return globalized_index
     
@@ -741,13 +821,13 @@ class _fftw_distributor(object):
                     f.close()
                     return temp_data
                 else:
-                    raise TypeError(nifty_core.about._errors.cstring("ERROR: \
+                    raise TypeError(about._errors.cstring("ERROR: \
                     Input data has the wrong shape or wrong dtype!"))                 
             except(IOError, AttributeError):
                 pass
             
         if np.all(data_available_Q==False):
-            return np.zeros(self.local_shape, dtype=self.dtype)
+            return np.empty(self.local_shape, dtype=self.dtype, order='C')
         ## if all nodes got data, we assume that it is the right data and 
         ## store it individually. If not, take the data on node 0 and scatter 
         ## it...
@@ -756,17 +836,17 @@ class _fftw_distributor(object):
                 copy=False)    
         ## ... but only if node 0 has actually data!
         elif data_available_Q[0] == False:# or np.all(data_available_Q==False):
-            return np.zeros(self.local_shape, dtype=self.dtype)
+            return np.empty(self.local_shape, dtype=self.dtype, order='C')
         
         else:
             if data == None:
                 data = np.empty(self.global_shape)            
             if rank == 0:
                 if np.all(data.shape != self.global_shape):
-                    raise TypeError(nifty_core.about._errors.cstring(\
+                    raise TypeError(about._errors.cstring(\
                         "ERROR: Input data has the wrong shape!"))
             ## Scatter the data!            
-            _scattered_data = np.zeros(self.local_shape, dtype = self.dtype)
+            _scattered_data = np.empty(self.local_shape, dtype = self.dtype)
             _dim_list = self.all_local_slices[:,3]
             _dim_offset_list = self.all_local_slices[:,4]
             comm.Scatterv([data, _dim_list, _dim_offset_list, self.mpi_dtype],\
@@ -774,17 +854,17 @@ class _fftw_distributor(object):
             return _scattered_data
         return None
     
-    def _disperse_data_primitive(self, data, data_update, slice_objects,\
-                                source_rank='all', comm=None):
+    def _disperse_data_primitive(self, data, to_slices, data_update, 
+                                 from_slices, source_rank='all', comm=None):
         if comm == None:
             comm = self.comm            
         ## compute the part of the slice which is relevant for the 
         ## individual node      
         localized_start, localized_stop = self._backshift_and_decycle(
-            slice_objects[0], self.local_start, self.local_end,\
+            to_slices[0], self.local_start, self.local_end,\
                 self.global_shape[0])
         local_slice = (slice(localized_start, localized_stop,\
-                        slice_objects[0].step),) + slice_objects[1:]
+                        to_slices[0].step),) + to_slices[1:]
         
         ## compute the parameter sets and list for the data splitting
         local_slice_shape = data[local_slice].shape        
@@ -803,7 +883,24 @@ class _fftw_distributor(object):
             r = comm.rank
             o = local_affected_data_length_offset_list
             l = local_affected_data_length
-            update_slice = (slice(o[r], o[r]+l),) 
+            
+            ## if the from_slices object is not None, i.e. only a part from
+            ## the data source is used, form the update_slice accordingly
+            if from_slices == None:
+                update_slice = (slice(o[r], o[r]+l),)
+            else:
+                f_start = from_slices[0].start                
+                f_step = from_slices[0].step
+                if f_step == None:
+                    f_step = 1
+                f_direction = np.sign(f_step)
+                ## combine the slicing for the first dimension 
+                update_slice = (slice(f_start + f_direction*o[r],
+                                      f_start + f_direction*(o[r]+l),
+                                      f_step),
+                                )
+                ## add the rest of the from_slicing
+                update_slice += from_slices[1:]
             data[local_slice] = np.array(data_update[update_slice],\
                                     copy=False).astype(self.dtype)
             
@@ -813,7 +910,7 @@ class _fftw_distributor(object):
             
             ## if the first slice object has a negative step size, the ordering 
             ## of the Scatterv function must be reversed         
-            order = slice_objects[0].step
+            order = to_slices[0].step
             if order == None:
                 order = 1
             else:
@@ -829,7 +926,8 @@ class _fftw_distributor(object):
             local_dispersed_data = np.zeros(local_slice_shape,\
                 dtype=self.dtype)
             comm.Scatterv(\
-                [np.array(data_update, copy=False).astype(self.dtype),\
+                [np.array(data_update[from_slices],copy=False).\
+                                                        astype(self.dtype),\
                     local_affected_data_dim_list,\
                     local_affected_data_dim_offset_list, self.mpi_dtype],
                           [local_dispersed_data, self.mpi_dtype], 
@@ -839,26 +937,33 @@ class _fftw_distributor(object):
         
     
     
-    def disperse_data(self, data, data_update, slice_objects, comm=None,\
-                        **kwargs):
+    def disperse_data(self, data, to_slices, data_update, from_slices=None,
+                      comm=None, **kwargs):
         if comm == None:
             comm = self.comm            
-        slice_objects_list = comm.allgather(slice_objects)
+        to_slices_list = comm.allgather(to_slices)
         ## check if all slices are the same. 
-        if all(x == slice_objects_list[0] for x in slice_objects_list):
+        if all(x == to_slices_list[0] for x in to_slices_list):
             ## in this case, the _disperse_data_primitive can simply be called 
             ##with target_rank = 'all'
-            self._disperse_data_primitive(data=data, data_update=data_update,\
-                slice_objects=slice_objects, source_rank='all', comm=comm)
+            self._disperse_data_primitive(data = data, 
+                                          to_slices = to_slices,
+                                          data_update=data_update,
+                                          from_slices=from_slices, 
+                                          source_rank='all', 
+                                          comm=comm)
         ## if the different nodes got different slices, disperse the data 
         ## individually
         else:
             i = 0        
-            for temp_slices in slice_objects_list:
+            for temp_to_slices in to_slices_list:
                 ## make the collect_data call on all nodes            
-                self._disperse_data_primitive(data=data,\
-                    data_update=data_update, slice_objects=temp_slices,\
-                    source_rank=i, comm=comm)
+                self._disperse_data_primitive(data=data,
+                                              to_slices=temp_to_slices,
+                                              data_update=data_update,
+                                              from_slices=from_slices,
+                                              source_rank=i, 
+                                              comm=comm)
                 i += 1
                  
         
@@ -933,7 +1038,7 @@ class _fftw_distributor(object):
         if slice_object.start < 0 and slice_object.start != None:
             temp_start = slice_object.start + global_length
             if temp_start < 0:
-                raise ValueError(nifty_core.about._errors.cstring(\
+                raise ValueError(about._errors.cstring(\
                 "ERROR: Index is out of bounds!"))
             slice_object = slice(temp_start, slice_object.stop,\
             slice_object.step) 
@@ -941,7 +1046,7 @@ class _fftw_distributor(object):
         if slice_object.stop < 0 and slice_object.stop != None:
             temp_stop = slice_object.stop + global_length
             if temp_stop < 0:
-                raise ValueError(nifty_core.about._errors.cstring(\
+                raise ValueError(about._errors.cstring(\
                 "ERROR: Index is out of bounds!"))
             slice_object = slice(slice_object.start, temp_stop,\
             slice_object.step) 
@@ -998,7 +1103,30 @@ class _fftw_distributor(object):
         ## array's range 
         return local_start, local_stop        
     
-    
+    def inject(self, data, to_slices, data_update, from_slices, comm=None, 
+               **kwargs):
+        ## check if to_key and from_key is completely build of slices 
+        if not np.all(
+            np.vectorize(lambda x: isinstance(x, slice))(to_slices)):
+            raise ValueError(about._errors.cstring(
+            "ERROR: The to_slices argument must be a list or tuple of slices!")
+            )
+
+        if not np.all(
+            np.vectorize(lambda x: isinstance(x, slice))(from_slices)):
+            raise ValueError(about._errors.cstring(
+            "ERROR: The from_slices argument must be a list or tuple of slices!")
+            )
+            
+        to_slices = tuple(to_slices)
+        from_slices = tuple(from_slices)
+        self.disperse_data(data = data, 
+                           to_slices = to_slices,
+                           data_update = data_update,
+                           from_slices = from_slices,
+                           comm=comm,
+                           **kwargs)
+        
     def consolidate_data(self, data, target_rank='all', comm = None):
         if comm == None:
             comm = self.comm            
@@ -1030,7 +1158,7 @@ class _fftw_distributor(object):
             try: 
                 f[alias]
                 if overwriteQ == False: #if yes, and overwriteQ is set to False, raise an Error
-                    raise KeyError(nifty_core.about._errors.cstring("ERROR: overwriteQ == False, but alias already in use!"))
+                    raise KeyError(about._errors.cstring("ERROR: overwriteQ == False, but alias already in use!"))
                 else: # if yes, remove the existing dataset
                     del f[alias]
             except(KeyError):
@@ -1054,10 +1182,10 @@ class _fftw_distributor(object):
             dset = f[alias]        
             ## check shape
             if dset.shape != self.global_shape:
-                raise TypeError(nifty_core.about._errors.cstring("ERROR: The shape of the given dataset does not match the distributed_data_object."))
+                raise TypeError(about._errors.cstring("ERROR: The shape of the given dataset does not match the distributed_data_object."))
             ## check dtype
             if dset.dtype.type != self.dtype:
-                raise TypeError(nifty_core.about._errors.cstring("ERROR: The datatype of the given dataset does not match the distributed_data_object."))
+                raise TypeError(about._errors.cstring("ERROR: The datatype of the given dataset does not match the distributed_data_object."))
             ## if everything seems to fit, load the data
             data = dset[self.local_start:self.local_end]
             ## close the file
@@ -1065,9 +1193,9 @@ class _fftw_distributor(object):
             return data
     else:
         def save_data(self, *args, **kwargs):
-            raise ImportError(nifty_core.about._errors.cstring("ERROR: h5py was not imported")) 
+            raise ImportError(about._errors.cstring("ERROR: h5py was not imported")) 
         def load_data(self, *args, **kwargs):
-            raise ImportError(nifty_core.about._errors.cstring("ERROR: h5py was not imported")) 
+            raise ImportError(about._errors.cstring("ERROR: h5py was not imported")) 
         
         
         
@@ -1085,7 +1213,7 @@ class _not_distributor(object):
         elif global_shape != None:
             self.global_shape = global_shape
         else:
-            raise TypeError(nifty_core.about._errors.cstring("ERROR: Neither data nor shape supplied!")) 
+            raise TypeError(about._errors.cstring("ERROR: Neither data nor shape supplied!")) 
     
     def globalize_flat_index(self, index):
         return index
@@ -1097,7 +1225,11 @@ class _not_distributor(object):
         return [thing,]
         
     def distribute_data(self, data, **kwargs):
-        return np.array(data).astype(self.dtype, copy=False).reshape(self.global_shape)
+        if data == None:        
+            return np.zeros(self.global_shape, dtype=self.dtype)
+        else:
+            return np.array(data).astype(self.dtype, copy=False).\
+                    reshape(self.global_shape)
     
     def disperse_data(self, data, data_update, key, **kwargs):
         data[key] = np.array(data_update, copy=False).astype(self.dtype)
@@ -1107,8 +1239,18 @@ class _not_distributor(object):
         
     def consolidate_data(self, data, **kwargs):
         return data
-
-
+        
+    def inject(self, data, to_slices = (slice(None),), data_update = None, 
+               from_slices = (slice(None),)):
+        data[to_slices] = data_update[from_slices]
+        
+    def save_data(self, *args, **kwargs):
+        raise AttributeError(about._errors.cstring(
+                                        "ERROR: save_data not implemented")) 
+    def load_data(self, *args, **kwargs):
+        raise AttributeError(about._errors.cstring(
+                                        "ERROR: load_data not implemented")) 
+                                        
 
 
 
@@ -1166,68 +1308,68 @@ class dtype_converter:
     
     def known_np_Q(self, dtype):
         return self._to_mpi_dict.has_key(self.dictionize_np(dtype))
-
-class test(object):
-    def __init__(self,x=None, *args, **kwargs):
-        self.x =x
-        print args
-        print kwargs
-    @property
-    def val(self):
-        return self.x
-    
-    @val.setter
-    def val(self, x):
-        self.x = x
-
-
-if __name__ == '__main__':    
-    comm = MPI.COMM_WORLD
-    rank = comm.rank
-    if True:
-    #if rank == 0:
-        x = np.arange(100).reshape((10,10)).astype(np.int)
-        #x = x**2
-        #x = x[::-1,::-1] + x
-        
-        #print x
-        #x = np.arange(3)
-
-
-    else:
-        x = None
-    obj = distributed_data_object(global_data=x, distribution_strategy='fftw')
-    
-    
-    #obj.load('myalias', 'mpitest.hdf5')
-    if MPI.COMM_WORLD.rank==0:
-        print ('rank', rank, vars(obj.distributor))
-    MPI.COMM_WORLD.Barrier()
-    #print ('rank', rank, vars(obj))
-    
-    MPI.COMM_WORLD.Barrier()
-    temp_erg =obj.get_full_data(target_rank='all')
-    print ('rank', rank, 'full data', np.all(temp_erg == x), temp_erg.shape)
-    #print ('rank', rank, ' local flat index: ', 1000, ' globalized: ', obj.distributor.globalize_flat_index(1000))    
-    #temp_index= (80,80,666)    
-    #print ('rank', rank, ' local index: ', temp_index, ' globalized: ', obj.distributor.globalize_index(temp_index)) 
-    
-
-    MPI.COMM_WORLD.Barrier()
-    sl = slice(13,1,-3)
-    if rank == 0:    
-        print ('erwuenscht', x[sl])
-    print obj[sl]
-    """
-    sl = slice(1,2+rank,1)
-    print ('slice', rank, sl, obj[sl,2])
-    print obj[1:5:2,1:3]
-    if rank == 0:
-        sl = (slice(1,9,2), slice(1,5,2))
-        d = [[111, 222],[333,444],[111, 222],[333,444]]
-    else:
-        sl = (slice(6,10,2), slice(1,5,2))
-        d = [[555, 666],[777,888]]
-    obj[sl] = d
-    print obj.get_full_data()    
-   """
+#
+#class test(object):
+#    def __init__(self,x=None, *args, **kwargs):
+#        self.x =x
+#        print args
+#        print kwargs
+#    @property
+#    def val(self):
+#        return self.x
+#    
+#    @val.setter
+#    def val(self, x):
+#        self.x = x
+#
+#
+#if __name__ == '__main__':    
+#    comm = MPI.COMM_WORLD
+#    rank = comm.rank
+#    if True:
+#    #if rank == 0:
+#        x = np.arange(100).reshape((10,10)).astype(np.int)
+#        #x = x**2
+#        #x = x[::-1,::-1] + x
+#        
+#        #print x
+#        #x = np.arange(3)
+#
+#
+#    else:
+#        x = None
+#    obj = distributed_data_object(global_data=x, distribution_strategy='fftw')
+#    
+#    
+#    #obj.load('myalias', 'mpitest.hdf5')
+#    if MPI.COMM_WORLD.rank==0:
+#        print ('rank', rank, vars(obj.distributor))
+#    MPI.COMM_WORLD.Barrier()
+#    #print ('rank', rank, vars(obj))
+#    
+#    MPI.COMM_WORLD.Barrier()
+#    temp_erg =obj.get_full_data(target_rank='all')
+#    print ('rank', rank, 'full data', np.all(temp_erg == x), temp_erg.shape)
+#    #print ('rank', rank, ' local flat index: ', 1000, ' globalized: ', obj.distributor.globalize_flat_index(1000))    
+#    #temp_index= (80,80,666)    
+#    #print ('rank', rank, ' local index: ', temp_index, ' globalized: ', obj.distributor.globalize_index(temp_index)) 
+#    
+#
+#    MPI.COMM_WORLD.Barrier()
+#    sl = slice(13,1,-3)
+#    if rank == 0:    
+#        print ('erwuenscht', x[sl])
+#    print obj[sl]
+#    """
+#    sl = slice(1,2+rank,1)
+#    print ('slice', rank, sl, obj[sl,2])
+#    print obj[1:5:2,1:3]
+#    if rank == 0:
+#        sl = (slice(1,9,2), slice(1,5,2))
+#        d = [[111, 222],[333,444],[111, 222],[333,444]]
+#    else:
+#        sl = (slice(6,10,2), slice(1,5,2))
+#        d = [[555, 666],[777,888]]
+#    obj[sl] = d
+#    print obj.get_full_data()    
+#   """

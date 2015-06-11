@@ -1,3 +1,4 @@
+
 ## NIFTY (Numerical Information Field Theory) has been developed at the
 ## Max-Planck-Institute for Astrophysics.
 ##
@@ -42,12 +43,12 @@
 """
 from __future__ import division
 from scipy.interpolate import interp1d as ip ## FIXME: conflicts with sphinx's autodoc
-#from nifty_core import *
 import numpy as np
-from nifty_core import about,                                                \
-                       space,                                                \
-                       field,                                                \
-                       projection_operator
+
+from nifty_about import about
+from nifty_core import space,                                                \
+                       field
+from operators import projection_operator
 import smoothing as gs
 
 

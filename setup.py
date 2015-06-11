@@ -30,8 +30,8 @@ setup(name="ift_nifty",
       maintainer_email="theos@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm"],
+      packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm",\
+                "nifty.operators"],
       package_dir={"nifty": ""},
       data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])],
       license="GPLv3")
-

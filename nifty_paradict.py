@@ -6,8 +6,7 @@ Created on Thu Apr  2 21:29:30 2015
 """
 
 import numpy as np
-## Importing * is ugly, but necessary because of the cyclic import structure
-from nifty import *
+from nifty_about import about
 
 """
 def paradict_getter(space_instance):
