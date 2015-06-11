@@ -38,15 +38,15 @@ import numpy as np
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
+from nifty.nifty_about import about
 from nifty.nifty_core import pi,                                             \
-                  about,                                                     \
-                  random,                                                    \
                   space,                                                     \
                   point_space,                                               \
                   field
-from nifty_paradict import lm_space_paradict,\
+from nifty.nifty_paradict import lm_space_paradict,\
                             gl_space_paradict,\
                             hp_space_paradict
+from nifty.nifty_random import random
                             
 #import libsharp_wrapper_gl as gl
 try:

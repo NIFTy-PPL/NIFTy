@@ -20,32 +20,39 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty import about
+from nifty.nifty_about import about
 
 from distutils.version import LooseVersion as lv
 
-#from nifty_lm import *
+
 try:
     import libsharp_wrapper_gl as gl
 except(ImportError):
     try:
         import healpy as hp
         if lv(hp.__version__) < lv('1.8.1'):
-            raise ImportError(about._errors.cprint("ERROR: installed healpy version is older than 1.8.1!"))
+            raise ImportError(
+                about._errors.cprint(
+                "ERROR: installed healpy version is older than 1.8.1!"))
     except(ImportError):
-        about.infos.cprint("INFO: neither libsharp_wrapper_gl nor healpy available.")
+        about.infos.cprint(
+            "INFO: neither libsharp_wrapper_gl nor healpy available.")
         pass ## import nothing
     else:
-        from nifty_lm import lm_space,hp_space ## import lm & hp
+        from nifty_lm import lm_space, hp_space ## import lm & hp
         ## TODO: change about
 else:
     try:
         import healpy as hp
         if lv(hp.__version__) < lv('1.8.1'):
-            raise ImportError(about._errors.cprint("ERROR: installed healpy version is older than 1.8.1!"))
+            raise ImportError(
+                about._errors.cprint(
+                "ERROR: installed healpy version is older than 1.8.1!"))
     except(ImportError):
-        from nifty_lm import lm_space,gl_space ## import lm & gl
+        from nifty_lm import lm_space, gl_space ## import lm & gl
     else:        
-        from nifty_lm import lm_space,gl_space,hp_space ## import all 3
-from nifty_power_conversion_lm import *
+        from nifty_lm import lm_space, gl_space, hp_space ##import all 
+
+from nifty.lm.nifty_power_conversion_lm import power_backward_conversion_lm,\
+                                            power_forward_conversion_lm
 

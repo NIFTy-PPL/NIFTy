@@ -21,10 +21,9 @@
 
 #from nifty import *
 import numpy as np
-from nifty import pi,                                                        \
-                  about,                                                     \
-                  field,                                                     \
-                  sqrt,exp,log
+from nifty.nifty_about import about
+from nifty.nifty_core import pi, field                                             
+from nifty.nifty_simple_math import sqrt, exp, log
 
 
 def power_backward_conversion_lm(k_space,p,mean=None):
