@@ -27,12 +27,12 @@
 
 """
 import os
-import nifty as nt
+import nifty
 
 def get_demo_dir():
     """
         Returns the path of the NIFTY demos directory.
 
     """
-    return os.path.split(nt.demos.__file__)[0]
+    return os.path.split(nifty.demos.__file__)[0]
 
