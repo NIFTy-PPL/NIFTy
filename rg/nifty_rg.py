@@ -38,14 +38,18 @@ import numpy as np
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
-from nifty.nifty_core import about,                                          \
-                             random,                                         \
-                             space,                                          \
-                             point_space,                                    \
+
+from nifty.nifty_about import about
+from nifty.nifty_core import point_space,                                    \
                              field
+from nifty.nifty_random import random
 from nifty.nifty_mpi_data import distributed_data_object
+from nifty.nifty_paradict import rg_space_paradict
+
 import nifty.smoothing as gs
 import powerspectrum as gp
+import fft_rg
+
 '''
 try:
     import gfft as gf
@@ -53,8 +57,8 @@ except(ImportError):
     about.infos.cprint('INFO: "plain" gfft version 0.1.0')
     import gfft_rg as gf
 '''
-import fft_rg
-from nifty_paradict import rg_space_paradict
+
+
 
 
 ##-----------------------------------------------------------------------------
@@ -122,7 +126,7 @@ class rg_space(point_space):
     """
     epsilon = 0.0001 ## relative precision for comparisons
 
-    def __init__(self, num, naxes=None, zerocenter=True, hermitian=True,\
+    def __init__(self, num, naxes=None, zerocenter=False, hermitian=True,\
                 purelyreal=True, dist=None, fourier=False):
         """
             Sets the attributes for an rg_space class instance.
@@ -136,7 +140,7 @@ class rg_space(point_space):
             zerocenter : {bool, numpy.ndarray}, *optional*
                 Whether the Fourier zero-mode is located in the center of the
                 grid (or the center of each axis speparately) or not
-                (default: True).
+                (default: False).
             hermitian : bool, *optional*
                 Whether the fields living in the space follow hermitian
                 symmetry or not (default: True).
@@ -155,6 +159,9 @@ class rg_space(point_space):
         """
 
         complexity = 2-(bool(hermitian) or bool(purelyreal))-bool(purelyreal)
+        if np.isscalar(num):
+            num = (num,)*np.asscalar(np.array(naxes))
+            
         self.paradict = rg_space_paradict(num=num, complexity=complexity, 
                                           zerocenter=zerocenter)        
         
@@ -162,7 +169,7 @@ class rg_space(point_space):
         naxes = len(self.paradict['num'])
 
         ## set data type
-        if(not self.para[naxes]):
+        if  self.paradict['complexity'] == 0:
             self.datatype = np.float64
         else:
             self.datatype = np.complex128
@@ -215,7 +222,13 @@ class rg_space(point_space):
         self.paradict['num'] = x[:(np.size(x)-1)//2]
         self.paradict['zerocenter'] = x[(np.size(x)+1)//2:]
         self.paradict['complexity'] = x[(np.size(x)-1)//2]
-            
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def apply_scalar_function(self, x, function, inplace=False):
+        return x.apply_scalar_function(function, inplace=inplace)
+
+    
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++      
     def unary_operation(self, x, op='None', **kwargs):
         """
@@ -231,7 +244,7 @@ class rg_space(point_space):
                         "min" : lambda y: getattr(y, 'amin')(),
                         "nanmax" : lambda y: getattr(y, 'nanmax')(),
                         "max" : lambda y: getattr(y, 'amax')(),
-                        "med" : lambda y: getattr(y, 'median')(),
+                        "median" : lambda y: getattr(y, 'median')(),
                         "mean" : lambda y: getattr(y, 'mean')(),
                         "std" : lambda y: getattr(y, 'std')(),
                         "var" : lambda y: getattr(y, 'var')(),
@@ -450,7 +463,8 @@ class rg_space(point_space):
             about.warnings.cprint("WARNING: nonpositive value(s).")            
         
         ## Set the size parameter        
-        size = len(kindex)
+        if size == None:
+            size = len(kindex)
         
         ## Fix the size of the spectrum
         ## If spec is singlevalued, expand it
@@ -470,7 +484,7 @@ class rg_space(point_space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_power_indices(self, log=False, nbin=None, binbounds=None):
+    def set_power_indices(self, log=False, nbin=None, binbounds=None, **kwargs):
         """
             Sets the (un)indexing objects for spectral indexing internally.
 
@@ -570,8 +584,10 @@ class rg_space(point_space):
             ## Check the datatype
             if x.dtype != self.datatype:
                 about.warnings.cflush(\
-                "WARNING: Datatypes are uneqal und will be casted! "+\
-                "Potential loss of precision!\n")
+                "WARNING: Datatypes are uneqal (own: "\
+                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
+                + ") and will be casted! "\
+                + "Potential loss of precision!\n")
                 temp = x.copy_empty(dtype=self.datatype)
                 temp.set_local_data(x.get_local_data())
                 temp.hermitian = x.hermitian
@@ -602,10 +618,44 @@ class rg_space(point_space):
         ## Case 3: x is something else
         ## Use general d2o casting 
         x = distributed_data_object(x, global_shape=self.shape(),\
-            dtype=self.datatype)        
+            dtype=self.datatype)       
         ## Cast the d2o
         return self.cast(x)
+
+    def _hermitianize_inverter(self, x):
+        ## calculate the number of dimensions the input array has
+        dimensions = len(x.shape)
+        ## prepare the slicing object which will be used for mirroring
+        slice_primitive = [slice(None),]*dimensions
+        ## copy the input data
+        y = x.copy()
+        ## flip in every direction
+        for i in xrange(dimensions):
+            slice_picker = slice_primitive[:]
+            slice_picker[i] = slice(1, None)
+            slice_inverter = slice_primitive[:]
+            slice_inverter[i] = slice(None, None, -1)
+            y[slice_picker] = y[slice_picker][slice_inverter]
+        return y
+    """
+    def hermitianize(self, x, random=None):
+        if random == None:
+            ## perform the hermitianize flips
+            y = self._hermitianize_inverter(x)
+            ## make pointwise conjugation             
+            y = np.conjugate(y)
+            ## and return the pointwise mean
+            return self.cast((x+y)/2.)
+        
+        elif random == 'uni':
+            return self.hermitianize(x, random=None)
+        
+        elif random == 'gau':
+            y = self._hermitianize_inverter(x)
+            y = np.conjugate(y)
             
+    """ 
+    
     def enforce_values(self,x,extend=True):
         """
             Computes valid field values from a given object, taking care of
@@ -699,7 +749,7 @@ class rg_space(point_space):
             kindex : numpy.ndarray, *optional*
                 Scale of each band (default: None).
             codomain : nifty.rg_space, *optional*
-                A compatible codomain with power indices (default: None).
+                A compatible codomain (default: None).
             log : bool, *optional*
                 Flag specifying if the spectral binning is performed on logarithmic
                 scale or not; if set, the number of used bins is set
@@ -719,39 +769,196 @@ class rg_space(point_space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.arguments(self,**kwargs)
+        
+        ## Parse the keyword arguments
+        arg = random.parse_arguments(self,**kwargs)
+        
+        ## Prepare the empty distributed_data_object
+        sample = distributed_data_object(global_shape=self.shape(), 
+                                         dtype=self.datatype)
 
-        if(arg is None):
-            return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+        ## Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
+        if arg[0] == 'pm1':
+            gen = lambda s: random.pm1(datatype=self.datatype,
+                                       shape = s)
+            sample.apply_generator(gen)
+                        
+            
+        ## Case 2: normal distribution with zero-mean and a given standard
+        ##         deviation or variance
+        elif arg[0] == 'gau':
+            gen = lambda s: random.gau(datatype=self.datatype,
+                                       shape = s,
+                                       mean = None,
+                                       dev = arg[2],
+                                       var = arg[3])
+            sample.apply_generator(gen)
 
-        elif(arg[0]=="pm1"):
-            if(about.hermitianize.status)and(self.para[(np.size(self.para)-1)//2]==1):
-                return gp.random_hermitian_pm1(self.datatype,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),self.dim(split=True)) ## special case
-            else:
-                x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
-
-        elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+        elif arg[0] == "uni":
+            gen = lambda s: random.uni(datatype=self.datatype,
+                                       shape = s,
+                                       vmin = arg[1],
+                                       vmax = arg[2])
+            sample.apply_generator(gen)
 
         elif(arg[0]=="syn"):
+            """
             naxes = (np.size(self.para)-1)//2
             x = gp.draw_vector_nd(self.para[:naxes],self.vol,arg[1],symtype=self.para[naxes],fourier=self.fourier,zerocentered=self.para[-naxes:].astype(np.bool),kpack=arg[2])
             ## correct for 'ifft'
             if(not self.fourier):
                 x = self.calc_weight(x,power=-1)
-            return x
+            """
+            spec = arg[1]
+            kpack = arg[2]
+            harmonic_domain = arg[3]
+            log = arg[4]
+            nbin = arg[5]
+            binbounds = arg[6]
+            ## Check whether there is a kpack available or not.
+            ## kpack is only used for computing kdict and extracting kindex
+            ## If not, take kdict and kindex from the fourier_domain
+            if kpack == None:
+                power_indices =\
+                    harmonic_domain.power_indices.get_index_dict(log = log,
+                                                        nbin = nbin,
+                                                        binbounds = binbounds)
+                
+                kindex = power_indices['kindex']
+                kdict = power_indices['kdict']
+                kpack = [power_indices['pindex'], power_indices['kindex']]
+            else:
+                kindex = kpack[1]
+                kdict = harmonic_domain.power_indices.\
+                    __compute_kdict_from_pindex_kindex__(kpack[0], kpack[1])           
+                
 
-        elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+            ## draw the random samples
+            ## Case 1: self is a harmonic space
+            if self.fourier:
+                ## subcase 1: self is real
+                ## -> simply generate a random field in fourier space and 
+                ## weight the entries accordingly to the powerspectrum
+                if self.paradict['complexity'] == 0:
+                    ## set up the sample object. Overwrite the default from 
+                    ## above to be sure, that the distribution strategy matches
+                    ## with the one from kdict
+                    sample = kdict.copy_empty(dtype = self.datatype)
+                    ## set up the random number generator
+                    gen = lambda s: np.random.normal(loc=0, scale=1, size=s)
+                    ## apply the random number generator                    
+                    sample.apply_generator(gen)
 
+                
+                ## subcase 2: self is hermitian but probably complex
+                ## -> generate a real field (in position space) and transform
+                ## it to harmonic space -> field in harmonic space is 
+                ## hermitian. Now weight the modes accordingly to the 
+                ## powerspectrum.
+                elif self.paradict['complexity'] == 1:
+                    temp_codomain = self.get_codomain()
+                    ## set up the sample object. Overwrite the default from 
+                    ## above to be sure, that the distribution strategy matches
+                    ## with the one from kdict
+                    sample = kdict.copy_empty(
+                                            dtype = temp_codomain.datatype)
+                    ## set up the random number generator
+                    gen = lambda s: np.random.normal(loc=0, scale=1, size=s)
+                    ## apply the random number generator                    
+                    sample.apply_generator(gen)
+                    ## tronsform the random field to harmonic space
+                    sample = self.get_codomain().\
+                                        calc_transform(sample, codomain=self)
+                    ## ensure that the kdict and the harmonic_sample have the
+                    ## same distribution strategy
+                    assert(kdict.distribution_strategy ==\
+                            sample.distribution_strategy)
+
+                    
+                ## subcase 3: self is fully complex
+                ## -> generate a complex random field in harmonic space and
+                ## weight the modes accordingly to the powerspectrum
+                elif self.paradict['complexity'] == 2:
+                    ## set up the sample object. Overwrite the default from 
+                    ## above to be sure, that the distribution strategy matches
+                    ## with the one from kdict
+                    sample = kdict.copy_empty(dtype = self.datatype)
+                    ## set up the random number generator
+                    gen = lambda s: (
+                        np.random.normal(loc=0, scale=1/np.sqrt(2), size=s)+
+                        np.random.normal(loc=0, scale=1/np.sqrt(2), size=s)*1.j
+                        )
+                    ## apply the random number generator                    
+                    sample.apply_generator(gen)
+                
+                ## apply the powerspectrum renormalization
+                ## therefore extract the local data from kdict
+                local_kdict = kdict.get_local_data()
+                rescaler = np.sqrt(
+                            spec[np.searchsorted(kindex,local_kdict)])
+                sample.apply_scalar_function(lambda x: x*rescaler, 
+                                             inplace=True)
+            ## Case 2: self is a position space
+            else:
+                ## get a suitable codomain
+                temp_codomain = self.get_codomain()                   
+
+                ## subcase 1: self is a real space. 
+                ## -> generate a hermitian sample with the codomain in harmonic
+                ## space and make a fourier transformation.
+                if self.paradict['complexity'] == 0:
+                    ## check that the codomain is hermitian
+                    assert(temp_codomain.paradict['complexity'] == 1)
+                                                          
+                ## subcase 2: self is hermitian but probably complex
+                ## -> generate a real-valued random sample in fourier space
+                ## and transform it to real space
+                elif self.paradict['complexity'] == 1:
+                    ## check that the codomain is real
+                    assert(temp_codomain.paradict['complexity'] == 0)            
+                
+                ## subcase 3: self is fully complex
+                ## -> generate a complex-valued random sample in fourier space
+                ## and transform it to real space
+                elif self.paradict['complexity'] == 2:
+                    ## check that the codomain is real
+                    assert(temp_codomain.paradict['complexity'] == 2)            
+
+
+                ## Get a hermitian/real/complex sample in harmonic space from 
+                ## the codomain
+                sample = temp_codomain.get_random_values(
+                                                    random='syn',
+                                                    pindex = kpack[0],
+                                                    kindex = kpack[1],
+                                                    spec = spec,
+                                                    codomain = self,
+                                                    log = log,
+                                                    nbin = nbin,
+                                                    binbounds = binbounds
+                                                    )
+                ## Take the fourier transform
+                sample = temp_codomain.calc_transform(sample, 
+                                                      codomain=self)
+
+            if self.paradict['complexity'] == 1:
+               sample.hermitian = True
+           
         else:
-            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
-
+            raise KeyError(about._errors.cstring(
+                        "ERROR: unsupported random key '"+str(arg[0])+"'."))
+     
+       
         ## hermitianize if ...
-        if(about.hermitianize.status)and(self.para[(np.size(self.para)-1)//2]==1):
-            x = gp.nhermitianize_fast(x,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),special=(arg[0] in ["gau","pm1"]))
+#        if(about.hermitianize.status)and(self.para[(np.size(self.para)-1)//2]==1):
+#            x = gp.nhermitianize_fast(x,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),special=(arg[0] in ["gau","pm1"]))
 
-        return x
+        #sample = self.cast(sample)       
+        return sample
+
+
+
+
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -772,43 +979,93 @@ class rg_space(point_space):
         if codomain == None:
             return False
             
-        if(not isinstance(codomain,space)):
+        if(not isinstance(codomain,rg_space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        elif(isinstance(codomain,rg_space)):
-            ##                       naxes==naxes
-            if((np.size(codomain.para)-1)//2==(np.size(self.para)-1)//2):
-                naxes = (np.size(self.para)-1)//2
-                ##                            num'==num
-                if(np.all(codomain.para[:naxes]==self.para[:naxes])):
-                    ##                 typ'==typ             ==2
-                    if(codomain.para[naxes]==self.para[naxes]==2):
-                        ##                                         dist'~=1/(num*dist)
-                        if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                            return True
-                        ##           fourier'==fourier
-                        elif(codomain.fourier==self.fourier):
-                            ##                           dist'~=dist
-                            if(np.all(np.absolute(codomain.vol/self.vol-1)<self.epsilon)):
-                                return True
-                            else:
-                                about.warnings.cprint("WARNING: unrecommended codomain.")
-                    ##   2!=                typ'!=typ             !=2                                             dist'~=1/(num*dist)
-                    elif(2!=codomain.para[naxes]!=self.para[naxes]!=2)and(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
+        ## check number of number and size of axes 
+        if not np.all(self.paradict['num'] == codomain.paradict['num']):
+            return False
+            
+        ## check fourier flag
+        if self.fourier == codomain.fourier:
+            return False
+            
+        ## check complexity-type
+        ## prepare the shorthands
+        dcomp = self.paradict['complexity']
+        cocomp = codomain.paradict['complexity']
+        
+        ## Case 1: if the domain is copmleteley complex 
+        ## -> the codomain must be complex, too
+        if dcomp == 2:
+            if cocomp != 2:
+                return False
+        ## Case 2: domain is hermitian
+        ## -> codmomain can be real. If it is marked as hermitian or even 
+        ## fully complex, a warning is raised
+        elif dcomp == 1:
+            if cocomp > 0:
+                about.warnings.cprint("WARNING: Unrecommended codomain! "+\
+                    "The domain is hermitian, hence the codomain should "+\
+                    "be restricted to real values!")
+        
+        ## Case 3: domain is real
+        ## -> codmain should be hermitian
+        elif dcomp == 0:
+            if cocomp == 2:
+                about.warnings.cprint("WARNING: Unrecommended codomain! "+\
+                    "The domain is real, hence the codomain should "+\
+                    "be restricted to hermitian configurations!")
+            elif cocomp == 0:
+                return False
+
+        ## Check if the distances match, i.e. dist'=1/(num*dist)
+        if not np.all(
+                np.absolute(self.paradict['num']*
+                            self.vol*
+                            codomain.vol-1) < self.epsilon):
+            return False
+            
+        return True
+        
+        """    
+        ##                       naxes==naxes
+        if((np.size(codomain.para)-1)//2==(np.size(self.para)-1)//2):
+            naxes = (np.size(self.para)-1)//2
+            print '1'
+            ##                            num'==num
+            if(np.all(codomain.para[:naxes]==self.para[:naxes])):
+                ##                 typ'==typ             ==2
+                print '2'
+                if(codomain.para[naxes]==self.para[naxes]==2):
+                    print '3'
+                    ##                                         dist'~=1/(num*dist)
+                    if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
                         return True
-                    ##                   typ'==typ             !=2
-                    elif(codomain.para[naxes]==self.para[naxes]!=2)and(codomain.fourier==self.fourier):
+                    ##           fourier'==fourier
+                    elif(codomain.fourier==self.fourier):
                         ##                           dist'~=dist
                         if(np.all(np.absolute(codomain.vol/self.vol-1)<self.epsilon)):
                             return True
                         else:
                             about.warnings.cprint("WARNING: unrecommended codomain.")
+                ##   2!=                typ'!=typ             !=2                                             dist'~=1/(num*dist)
+                elif(2!=codomain.para[naxes]!=self.para[naxes]!=2)and(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
+                    return True
+                ##                   typ'==typ             !=2
+                elif(codomain.para[naxes]==self.para[naxes]!=2)and(codomain.fourier==self.fourier):
+                    ##                           dist'~=dist
+                    if(np.all(np.absolute(codomain.vol/self.vol-1)<self.epsilon)):
+                        return True
+                    else:
+                        about.warnings.cprint("WARNING: unrecommended codomain.")
 
         return False
-
+        """
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_codomain(self,coname=None,cozerocenter=None,**kwargs):
+    def get_codomain(self, coname=None, cozerocenter=None, **kwargs):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  either a shifted grid or a Fourier conjugate
@@ -830,35 +1087,67 @@ class rg_space(point_space):
             Notes
             -----
             Possible arguments for `coname` are ``'f'`` in which case the
-            codomain arises from a Fourier transformation, ``'i'`` in which case
-            it arises from an inverse Fourier transformation, and ``'?'`` in
-            which case it arises from a simple shift. If no `coname` is given,
-            the Fourier conjugate grid is produced.
+            codomain arises from a Fourier transformation, ``'i'`` in which 
+            case it arises from an inverse Fourier transformation.If no 
+            `coname` is given, the Fourier conjugate grid is produced.
         """
-        naxes = (np.size(self.para)-1)//2
+        naxes = self.naxes() 
+        ## Parse the cozerocenter input
         if(cozerocenter is None):
-            cozerocenter = self.para[-naxes:][::-1]
+            cozerocenter = self.paradict['zerocenter']
+        ## if the input is something scalar, cast it to a boolean
         elif(np.isscalar(cozerocenter)):
             cozerocenter = bool(cozerocenter)
+        ## if it is not a scalar...
         else:
+            ## ...cast it to a numpy array of booleans
             cozerocenter = np.array(cozerocenter,dtype=np.bool)
+            ## if it was a list of length 1, extract the boolean
             if(np.size(cozerocenter)==1):
                 cozerocenter = np.asscalar(cozerocenter)
+            ## if the length of the input does not match the number of 
+            ## dimensions, raise an exception
             elif(np.size(cozerocenter)!=naxes):
-                raise ValueError(about._errors.cstring("ERROR: size mismatch ( "+str(np.size(cozerocenter))+" <> "+str(naxes)+" )."))
-
+                raise ValueError(about._errors.cstring(
+                    "ERROR: size mismatch ( "+\
+                    str(np.size(cozerocenter))+" <> "+str(naxes)+" )."))
+        
+        ## Set up the initialization variables
+        num = self.paradict['num']
+        purelyreal = (self.paradict['complexity'] == 1)        
+        hermitian = (self.paradict['complexity'] < 2)
+        dist = 1/(self.paradict['num']*self.vol)        
+        
+        if coname == None:
+            fourier = bool(not self.fourier)            
+        elif coname[0] == 'f':
+            fourier = True
+        elif coname[0] == 'i':
+            fourier = False
+        else:
+            raise ValueError(about._errors.cstring(
+                                            "ERROR: Unknown coname keyword"))
+        new_space = rg_space(num,
+                             zerocenter = cozerocenter,
+                             hermitian = hermitian,
+                             purelyreal = purelyreal,
+                             dist = dist,
+                             fourier = fourier)                                            
+        return new_space
+        """
         if(coname is None):
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol)[::-1],fourier=bool(not self.fourier)) ## dist',fourier' = 1/(num*dist),NOT fourier
+            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol),fourier=bool(not self.fourier)) ## dist',fourier' = 1/(num*dist),NOT fourier
 
         elif(coname[0]=='f'):
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol)[::-1],fourier=True) ## dist',fourier' = 1/(num*dist),True
+            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol),fourier=True) ## dist',fourier' = 1/(num*dist),True
 
         elif(coname[0]=='i'):
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol)[::-1],fourier=False) ## dist',fourier' = 1/(num*dist),False
+            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol),fourier=False) ## dist',fourier' = 1/(num*dist),False
 
         else:
-            return rg_space(self.para[:naxes][::-1],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(not self.para[naxes]),dist=self.vol[::-1],fourier=self.fourier) ## dist',fourier' = dist,fourier
+            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(not self.para[naxes]),dist=self.vol,fourier=self.fourier) ## dist',fourier' = dist,fourier
 
+        """    
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_meta_volume(self,total=False):
@@ -933,10 +1222,11 @@ class rg_space(point_space):
         result = x.vdot(y)
         if np.isreal(result):
             result = np.asscalar(np.real(result))      
-        if self.paradict['hermitian'] != 2:
+        if self.paradict['complexity'] != 2:
             if(np.absolute(result.imag) > self.epsilon**2\
                                           *np.absolute(result.real)):
-                about.warnings.cprint("WARNING: Discarding considerable imaginary part.")
+                about.warnings.cprint(
+                    "WARNING: Discarding considerable imaginary part.")
             result = np.asscalar(np.real(result))      
         return result
         
@@ -963,7 +1253,7 @@ class rg_space(point_space):
         x = self.cast(x)
         
         if(codomain is None):
-            return x 
+            codomain = self.get_codomain()
         
         ## Check if the given codomain is suitable for the transformation
         if (not isinstance(codomain, rg_space)) or \
@@ -986,6 +1276,7 @@ class rg_space(point_space):
         ## when the target space is purely real, the result of the 
         ## transformation must be corrected accordingly. Using the casting 
         ## method of codomain is sufficient
+        ## TODO: Let .transform  yield the correct datatype
         Tx = codomain.cast(Tx)
         
         return Tx
@@ -1073,7 +1364,7 @@ class rg_space(point_space):
             ## check imaginary part
             if(np.any(Gx.imag!=0))and(np.dot(Gx.imag.flatten(order='C'),Gx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Gx.real.flatten(order='C'),Gx.real.flatten(order='C'),out=None)):
                 about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-            Gx = np.real(Gx)
+            Gx = self.cast(np.real(Gx))
         return Gx
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1404,9 +1695,9 @@ class rg_space(point_space):
 
     def __str__(self):
         naxes = (np.size(self.para)-1)//2
-        num = self.para[:naxes][::-1].tolist()
-        zerocenter = self.para[-naxes:][::-1].astype(np.bool).tolist()
-        dist = self.vol[::-1].tolist()
+        num = self.para[:naxes].tolist()
+        zerocenter = self.para[-naxes:].astype(np.bool).tolist()
+        dist = self.vol.tolist()
         return "nifty_rg.rg_space instance\n- num        = "+str(num)+"\n- naxes      = "+str(naxes)+"\n- hermitian  = "+str(bool(self.para[naxes]<2))+"\n- purelyreal = "+str(bool(not self.para[naxes]))+"\n- zerocenter = "+str(zerocenter)+"\n- dist       = "+str(dist)+"\n- fourier    = "+str(self.fourier)
     
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

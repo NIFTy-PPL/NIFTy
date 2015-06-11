@@ -24,7 +24,7 @@ from __future__ import division
 import numpy as np
 from mpi4py import MPI
 
-from nifty.nifty_core import about
+from nifty.nifty_about import about
 from nifty.nifty_mpi_data import distributed_data_object
 
 class power_indices(object):
@@ -58,16 +58,20 @@ class power_indices(object):
         """ 
         ## Basic inits and consistency checks
         self.comm = comm
-        self.shape = np.array(shape).astype(int)
-        self.dgrid = np.array(dgrid)
+        self.shape = np.array(shape, dtype = int)
+        self.dgrid = np.abs(np.array(dgrid))
         if self.shape.shape != self.dgrid.shape:
             raise ValueError(about._errors.cstring("ERROR: The supplied shape\
                 and dgrid have not the same dimensionality"))         
         self.zerocentered = self.__cast_zerocentered__(zerocentered)
+
+        ## Compute the global kdict
+        self.kdict = self.compute_kdict()
+        
         
         ## Initialize the dictonary which stores all individual index-dicts
         self.global_dict={}
-    
+        
         ## Calculate the default dictonory according to the kwargs and set it 
         ## as default
         self.get_index_dict(log=log, nbin=nbin, binbounds=binbounds, 
@@ -218,7 +222,7 @@ class power_indices(object):
                 return temp_index_dict
         
     
-    def compute_nkdict(self):
+    def compute_kdict(self):
         """
             Calculates an n-dimensional array with its entries being the 
             lengths of the k-vectors from the zero point of the grid.    
@@ -253,7 +257,7 @@ class power_indices(object):
             inds += [slice(0,a)]
         
         cords = np.ogrid[inds]
-    
+
         dists = ((cords[0]-shape[0]//2)*dk[0])**2
         ## apply zerocenteredQ shift
         if self.zerocentered[0] == False:
@@ -268,6 +272,16 @@ class power_indices(object):
         dists = np.sqrt(dists)
         nkdict.set_local_data(dists)
         return nkdict
+    
+#    def compute_klength(self, kdict):
+#        local_klength = np.sort(list(set(kdict.get_local_data().flatten())))
+#        
+#        global_klength = kdict.distributor._allgather(local_klength)
+#        global_klength = np.array(global_klength).flatten()
+#        global_klength = np.sort(list(set(global_klength)))
+#
+#        return global_klength
+
 
     def __compute_indices__(self, nkdict):
         """
@@ -284,8 +298,8 @@ class power_indices(object):
         ## flatten the gathered lists        
         global_kindex = np.hstack(global_kindex)
         ## remove duplicates        
-        global_kindex = np.unique(global_kindex)
-        
+        global_kindex = np.unique(global_kindex)        
+
         ##########
         # pindex #        
         ##########
@@ -361,7 +375,11 @@ class power_indices(object):
         ## Use Allreduce to find the first occurences/smallest pundices 
         self.comm.Allreduce(local_pundex, global_pundex, op=MPI.MIN)
         return global_pundex
-        
+    
+    def __compute_kdict_from_pindex_kindex__(self, pindex, kindex):
+        tempindex = pindex.copy(dtype=kindex.dtype.type)        
+        return tempindex.apply_scalar_function(lambda x: kindex[x])
+
     def __compute_index_dict__(self, config_dict):
         """
             Internal helper function which takes a config_dict, asks for the 
@@ -371,21 +389,28 @@ class power_indices(object):
         ## and return it straight.        
         if config_dict["log"]==False and config_dict["nbin"]==None and \
           config_dict["binbounds"]==None:
-            temp_nkdict = self.compute_nkdict()
-            (temp_pindex, temp_kindex, temp_rho, temp_pundex) = self.__compute_indices__(temp_nkdict)
+            (temp_pindex, temp_kindex, temp_rho, temp_pundex) =\
+                                        self.__compute_indices__(self.kdict)
+            temp_kdict = self.kdict
             
         ## if binning is required, make a recursive call to get the unbinned
         ## indices, bin them, compute the pundex and then return everything.
         else:
-            temp_unbinned_indices = self.get_index_dict(store=False)
+            ## Get the unbinned indices 
+            temp_unbinned_indices = self.get_index_dict(store=False)            
+            ## Bin them            
             (temp_pindex, temp_kindex, temp_rho, temp_pundex) = \
                 self.__bin_power_indices__(temp_unbinned_indices, **config_dict)
-                        
+            ## Make a binned version of kdict
+            temp_kdict = self.__compute_kdict_from_pindex_kindex__(temp_pindex, 
+                                                                   temp_kindex)
+            
         temp_index_dict = {"config": config_dict, 
                                "pindex": temp_pindex,
                                "kindex": temp_kindex,
                                "rho": temp_rho,
-                               "pundex": temp_pundex}
+                               "pundex": temp_pundex,
+                               "kdict": temp_kdict}
         return temp_index_dict
 
     def __bin_power_indices__(self, index_dict, **kwargs):
@@ -438,8 +463,6 @@ class power_indices(object):
             else:
                 k = kindex
             dk = np.max(k[2:]-k[1:-1]) ## minimal dk
-            print ('k', k)
-            print ('dk', dk)
             if(nbin is None):
                 nbin = int((k[-1]-0.5*(k[2]+k[1]))/dk-0.5) ## maximal nbin
             else:
@@ -448,7 +471,6 @@ class power_indices(object):
             binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
             if(log):
                 binbounds = np.exp(binbounds)
-            print nbin
         ## reordering
         reorder = np.searchsorted(binbounds,kindex)
         rho_ = np.zeros(len(binbounds)+1,dtype=rho.dtype)
@@ -469,27 +491,6 @@ class power_indices(object):
 
 
 
-        
-        
-
-from mpi4py import MPI
-#import time
-if __name__ == '__main__':    
-    comm = MPI.COMM_WORLD
-    rank = comm.rank
-    size = comm.size
-    p = power_indices((4,4),(1,1), zerocentered=(True,True), nbin = 5)
-    """
-    obj = p.default_indices['nkdict']
-    for i in np.arange(size):
-        if rank==i:
-            print obj.data
-        time.sleep(0.1)
-    temp = obj.get_full_data()
-    if rank == 0:
-        print temp 
-    """
-    
 
 
 def draw_vector_nd(axes,dgrid,ps,symtype=0,fourier=False,zerocentered=False,kpack=None):
@@ -743,237 +744,237 @@ def calc_ps_fast(field,axes,dgrid,zerocentered=False,fourier=False,pindex=None,k
     ps = np.divide(ps,rho)
     return ps
 
-
-def get_power_index(axes,dgrid,zerocentered,irred=False,fourier=True):
-
-    """
-        Returns the index of the Fourier grid points in a numpy
-        array, ordered following the zerocentered flag.
-
-        Parameters
-        ----------
-        axes : ndarray
-            An array with the length of each axis.
-
-        dgrid : ndarray
-            An array with the pixel length of each axis.
-
-        zerocentered : bool
-            Whether the output array should be zerocentered, i.e. starting with
-            negative Fourier modes going over the zero mode to positive modes,
-            or not zerocentered, where zero, positive and negative modes are
-            simpy ordered consecutively.
-
-        irred : bool : *optional*
-            If True, the function returns an array of all k-vector lengths and
-            their degeneracy factors. If False, just the power index array is
-            returned.
-
-        fourier : bool : *optional*
-            Whether the output should be in Fourier space or not
-            (default=False).
-
-        Returns
-        -------
-            index or {klength, rho} : scalar or list
-                Returns either an array of all k-vector lengths and
-                their degeneracy factors or just the power index array
-                depending on the flag irred.
-
-    """
-
-    ## kdict, klength
-    if(np.any(zerocentered==False)):
-        kdict = np.fft.fftshift(nkdict_fast(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
-    else:
-        kdict = nkdict_fast(axes,dgrid,fourier)
-    klength = nklength(kdict)
-    ## output
-    if(irred):
-        rho = np.zeros(klength.shape,dtype=np.int)
-        for ii in np.ndindex(kdict.shape):
-            rho[np.searchsorted(klength,kdict[ii])] += 1
-        return klength,rho
-    else:
-        ind = np.empty(axes,dtype=np.int)
-        for ii in np.ndindex(kdict.shape):
-            ind[ii] = np.searchsorted(klength,kdict[ii])
-        return ind
-
-
-def get_power_indices(axes,dgrid,zerocentered,fourier=True):
-    """
-        Returns the index of the Fourier grid points in a numpy
-        array, ordered following the zerocentered flag.
-
-        Parameters
-        ----------
-        axes : ndarray
-            An array with the length of each axis.
-
-        dgrid : ndarray
-            An array with the pixel length of each axis.
-
-        zerocentered : bool
-            Whether the output array should be zerocentered, i.e. starting with
-            negative Fourier modes going over the zero mode to positive modes,
-            or not zerocentered, where zero, positive and negative modes are
-            simpy ordered consecutively.
-
-        irred : bool : *optional*
-            If True, the function returns an array of all k-vector lengths and
-            their degeneracy factors. If False, just the power index array is
-            returned.
-
-        fourier : bool : *optional*
-            Whether the output should be in Fourier space or not
-            (default=False).
-
-        Returns
-        -------
-        index, klength, rho : ndarrays
-            Returns the power index array, an array of all k-vector lengths and
-            their degeneracy factors.
-
-    """
-
-    ## kdict, klength
-    if(np.any(zerocentered==False)):
-        kdict = np.fft.fftshift(nkdict_fast(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
-    else:
-        kdict = nkdict_fast(axes,dgrid,fourier)
-    klength = nklength(kdict)
-    ## output
-    ind = np.empty(axes,dtype=np.int)
-    rho = np.zeros(klength.shape,dtype=np.int)
-    for ii in np.ndindex(kdict.shape):
-        ind[ii] = np.searchsorted(klength,kdict[ii])
-        rho[ind[ii]] += 1
-    return ind,klength,rho
-
-
-def get_power_indices2(axes,dgrid,zerocentered,fourier=True):
-    """
-        Returns the index of the Fourier grid points in a numpy
-        array, ordered following the zerocentered flag.
-
-        Parameters
-        ----------
-        axes : ndarray
-            An array with the length of each axis.
-
-        dgrid : ndarray
-            An array with the pixel length of each axis.
-
-        zerocentered : bool
-            Whether the output array should be zerocentered, i.e. starting with
-            negative Fourier modes going over the zero mode to positive modes,
-            or not zerocentered, where zero, positive and negative modes are
-            simpy ordered consecutively.
-
-        irred : bool : *optional*
-            If True, the function returns an array of all k-vector lengths and
-            their degeneracy factors. If False, just the power index array is
-            returned.
-
-        fourier : bool : *optional*
-            Whether the output should be in Fourier space or not
-            (default=False).
-
-        Returns
-        -------
-        index, klength, rho : ndarrays
-            Returns the power index array, an array of all k-vector lengths and
-            their degeneracy factors.
-
-    """
-
-    ## kdict, klength
-    if(np.any(zerocentered==False)):
-        kdict = np.fft.fftshift(nkdict_fast2(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
-    else:
-        kdict = nkdict_fast2(axes,dgrid,fourier)
-
-    klength,rho,ind = nkdict_to_indices(kdict)
-
-    return ind,klength,rho
-
-def nkdict_to_indices(kdict):
-
-    kindex,pindex = np.unique(kdict,return_inverse=True)
-    pindex = pindex.reshape(kdict.shape)
-
-    rho = pindex.flatten()
-    rho.sort()
-    rho = np.unique(rho,return_index=True,return_inverse=False)[1]
-    rho = np.append(rho[1:]-rho[:-1],[np.prod(pindex.shape)-rho[-1]])
-
-    return kindex,rho,pindex
-
-
-
-def bin_power_indices(pindex,kindex,rho,log=False,nbin=None,binbounds=None):
-    """
-        Returns the (re)binned power indices associated with the Fourier grid.
-
-        Parameters
-        ----------
-        pindex : ndarray
-            Index of the Fourier grid points in a numpy.ndarray ordered
-            following the zerocentered flag (default=None).
-        kindex : ndarray
-            Array of all k-vector lengths (default=None).
-        rho : ndarray
-            Degeneracy of the Fourier grid, indicating how many k-vectors in
-            Fourier space have the same length (default=None).
-        log : bool
-            Flag specifying if the binning is performed on logarithmic scale
-            (default: False).
-        nbin : integer
-            Number of used bins (default: None).
-        binbounds : {list, array}
-            Array-like inner boundaries of the used bins (default: None).
-
-        Returns
-        -------
-        pindex, kindex, rho : ndarrays
-            The (re)binned power indices.
-
-    """
-    ## boundaries
-    if(binbounds is not None):
-        binbounds = np.sort(binbounds)
-    ## equal binning
-    else:
-        if(log is None):
-            log = False
-        if(log):
-            k = np.r_[0,np.log(kindex[1:])]
-        else:
-            k = kindex
-        dk = np.max(k[2:]-k[1:-1]) ## minimal dk
-        if(nbin is None):
-            nbin = int((k[-1]-0.5*(k[2]+k[1]))/dk-0.5) ## maximal nbin
-        else:
-            nbin = min(int(nbin),int((k[-1]-0.5*(k[2]+k[1]))/dk+2.5))
-            dk = (k[-1]-0.5*(k[2]+k[1]))/(nbin-2.5)
-        binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
-        if(log):
-            binbounds = np.exp(binbounds)
-    ## reordering
-    reorder = np.searchsorted(binbounds,kindex)
-    rho_ = np.zeros(len(binbounds)+1,dtype=rho.dtype)
-    kindex_ = np.empty(len(binbounds)+1,dtype=kindex.dtype)
-    for ii in range(len(reorder)):
-        if(rho_[reorder[ii]]==0):
-            kindex_[reorder[ii]] = kindex[ii]
-            rho_[reorder[ii]] += rho[ii]
-        else:
-            kindex_[reorder[ii]] = (kindex_[reorder[ii]]*rho_[reorder[ii]]+kindex[ii]*rho[ii])/(rho_[reorder[ii]]+rho[ii])
-            rho_[reorder[ii]] += rho[ii]
-
-    return reorder[pindex],kindex_,rho_
-
+#
+#def get_power_index(axes,dgrid,zerocentered,irred=False,fourier=True):
+#
+#    """
+#        Returns the index of the Fourier grid points in a numpy
+#        array, ordered following the zerocentered flag.
+#
+#        Parameters
+#        ----------
+#        axes : ndarray
+#            An array with the length of each axis.
+#
+#        dgrid : ndarray
+#            An array with the pixel length of each axis.
+#
+#        zerocentered : bool
+#            Whether the output array should be zerocentered, i.e. starting with
+#            negative Fourier modes going over the zero mode to positive modes,
+#            or not zerocentered, where zero, positive and negative modes are
+#            simpy ordered consecutively.
+#
+#        irred : bool : *optional*
+#            If True, the function returns an array of all k-vector lengths and
+#            their degeneracy factors. If False, just the power index array is
+#            returned.
+#
+#        fourier : bool : *optional*
+#            Whether the output should be in Fourier space or not
+#            (default=False).
+#
+#        Returns
+#        -------
+#            index or {klength, rho} : scalar or list
+#                Returns either an array of all k-vector lengths and
+#                their degeneracy factors or just the power index array
+#                depending on the flag irred.
+#
+#    """
+#
+#    ## kdict, klength
+#    if(np.any(zerocentered==False)):
+#        kdict = np.fft.fftshift(nkdict_fast(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+#    else:
+#        kdict = nkdict_fast(axes,dgrid,fourier)
+#    klength = nklength(kdict)
+#    ## output
+#    if(irred):
+#        rho = np.zeros(klength.shape,dtype=np.int)
+#        for ii in np.ndindex(kdict.shape):
+#            rho[np.searchsorted(klength,kdict[ii])] += 1
+#        return klength,rho
+#    else:
+#        ind = np.empty(axes,dtype=np.int)
+#        for ii in np.ndindex(kdict.shape):
+#            ind[ii] = np.searchsorted(klength,kdict[ii])
+#        return ind
+#
+#
+#def get_power_indices(axes,dgrid,zerocentered,fourier=True):
+#    """
+#        Returns the index of the Fourier grid points in a numpy
+#        array, ordered following the zerocentered flag.
+#
+#        Parameters
+#        ----------
+#        axes : ndarray
+#            An array with the length of each axis.
+#
+#        dgrid : ndarray
+#            An array with the pixel length of each axis.
+#
+#        zerocentered : bool
+#            Whether the output array should be zerocentered, i.e. starting with
+#            negative Fourier modes going over the zero mode to positive modes,
+#            or not zerocentered, where zero, positive and negative modes are
+#            simpy ordered consecutively.
+#
+#        irred : bool : *optional*
+#            If True, the function returns an array of all k-vector lengths and
+#            their degeneracy factors. If False, just the power index array is
+#            returned.
+#
+#        fourier : bool : *optional*
+#            Whether the output should be in Fourier space or not
+#            (default=False).
+#
+#        Returns
+#        -------
+#        index, klength, rho : ndarrays
+#            Returns the power index array, an array of all k-vector lengths and
+#            their degeneracy factors.
+#
+#    """
+#
+#    ## kdict, klength
+#    if(np.any(zerocentered==False)):
+#        kdict = np.fft.fftshift(nkdict_fast(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+#    else:
+#        kdict = nkdict_fast(axes,dgrid,fourier)
+#    klength = nklength(kdict)
+#    ## output
+#    ind = np.empty(axes,dtype=np.int)
+#    rho = np.zeros(klength.shape,dtype=np.int)
+#    for ii in np.ndindex(kdict.shape):
+#        ind[ii] = np.searchsorted(klength,kdict[ii])
+#        rho[ind[ii]] += 1
+#    return ind,klength,rho
+#
+#
+#def get_power_indices2(axes,dgrid,zerocentered,fourier=True):
+#    """
+#        Returns the index of the Fourier grid points in a numpy
+#        array, ordered following the zerocentered flag.
+#
+#        Parameters
+#        ----------
+#        axes : ndarray
+#            An array with the length of each axis.
+#
+#        dgrid : ndarray
+#            An array with the pixel length of each axis.
+#
+#        zerocentered : bool
+#            Whether the output array should be zerocentered, i.e. starting with
+#            negative Fourier modes going over the zero mode to positive modes,
+#            or not zerocentered, where zero, positive and negative modes are
+#            simpy ordered consecutively.
+#
+#        irred : bool : *optional*
+#            If True, the function returns an array of all k-vector lengths and
+#            their degeneracy factors. If False, just the power index array is
+#            returned.
+#
+#        fourier : bool : *optional*
+#            Whether the output should be in Fourier space or not
+#            (default=False).
+#
+#        Returns
+#        -------
+#        index, klength, rho : ndarrays
+#            Returns the power index array, an array of all k-vector lengths and
+#            their degeneracy factors.
+#
+#    """
+#
+#    ## kdict, klength
+#    if(np.any(zerocentered==False)):
+#        kdict = np.fft.fftshift(nkdict_fast2(axes,dgrid,fourier),axes=shiftaxes(zerocentered,st_to_zero_mode=True))
+#    else:
+#        kdict = nkdict_fast2(axes,dgrid,fourier)
+#
+#    klength,rho,ind = nkdict_to_indices(kdict)
+#
+#    return ind,klength,rho
+#
+#def nkdict_to_indices(kdict):
+#
+#    kindex,pindex = np.unique(kdict,return_inverse=True)
+#    pindex = pindex.reshape(kdict.shape)
+#
+#    rho = pindex.flatten()
+#    rho.sort()
+#    rho = np.unique(rho,return_index=True,return_inverse=False)[1]
+#    rho = np.append(rho[1:]-rho[:-1],[np.prod(pindex.shape)-rho[-1]])
+#
+#    return kindex,rho,pindex
+#
+#
+#
+#def bin_power_indices(pindex,kindex,rho,log=False,nbin=None,binbounds=None):
+#    """
+#        Returns the (re)binned power indices associated with the Fourier grid.
+#
+#        Parameters
+#        ----------
+#        pindex : ndarray
+#            Index of the Fourier grid points in a numpy.ndarray ordered
+#            following the zerocentered flag (default=None).
+#        kindex : ndarray
+#            Array of all k-vector lengths (default=None).
+#        rho : ndarray
+#            Degeneracy of the Fourier grid, indicating how many k-vectors in
+#            Fourier space have the same length (default=None).
+#        log : bool
+#            Flag specifying if the binning is performed on logarithmic scale
+#            (default: False).
+#        nbin : integer
+#            Number of used bins (default: None).
+#        binbounds : {list, array}
+#            Array-like inner boundaries of the used bins (default: None).
+#
+#        Returns
+#        -------
+#        pindex, kindex, rho : ndarrays
+#            The (re)binned power indices.
+#
+#    """
+#    ## boundaries
+#    if(binbounds is not None):
+#        binbounds = np.sort(binbounds)
+#    ## equal binning
+#    else:
+#        if(log is None):
+#            log = False
+#        if(log):
+#            k = np.r_[0,np.log(kindex[1:])]
+#        else:
+#            k = kindex
+#        dk = np.max(k[2:]-k[1:-1]) ## minimal dk
+#        if(nbin is None):
+#            nbin = int((k[-1]-0.5*(k[2]+k[1]))/dk-0.5) ## maximal nbin
+#        else:
+#            nbin = min(int(nbin),int((k[-1]-0.5*(k[2]+k[1]))/dk+2.5))
+#            dk = (k[-1]-0.5*(k[2]+k[1]))/(nbin-2.5)
+#        binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
+#        if(log):
+#            binbounds = np.exp(binbounds)
+#    ## reordering
+#    reorder = np.searchsorted(binbounds,kindex)
+#    rho_ = np.zeros(len(binbounds)+1,dtype=rho.dtype)
+#    kindex_ = np.empty(len(binbounds)+1,dtype=kindex.dtype)
+#    for ii in range(len(reorder)):
+#        if(rho_[reorder[ii]]==0):
+#            kindex_[reorder[ii]] = kindex[ii]
+#            rho_[reorder[ii]] += rho[ii]
+#        else:
+#            kindex_[reorder[ii]] = (kindex_[reorder[ii]]*rho_[reorder[ii]]+kindex[ii]*rho[ii])/(rho_[reorder[ii]]+rho[ii])
+#            rho_[reorder[ii]] += rho[ii]
+#
+#    return reorder[pindex],kindex_,rho_
+#
 
 
 def nhermitianize(field,zerocentered):
@@ -1061,12 +1062,15 @@ def nhermitianize_fast(field,zerocentered,special=False):
     if(special): ## special normalisation for certain random fields
         field = np.sqrt(0.5)*(field+dummy)
         maxindex = np.array(field.shape,dtype=np.int)//2
+        print ('maxindex: ', maxindex)
         for ii in np.ndindex((2,)*maxindex.size):
+            print ('ii: ', ii)
             index = tuple(ii*maxindex)
+            print ('index: ', index)
             field[index] *= np.sqrt(0.5)
     else: ## regular case
-        #field = 0.5*(field+dummy)
-        field = dummy
+        field = 0.5*(field+dummy)
+        #field = dummy
     ## reshift zerocentered axes
     if(np.any(zerocentered==True)):
         field = np.fft.fftshift(field,axes=shiftaxes(zerocentered))
@@ -1115,23 +1119,23 @@ def shiftaxes(zerocentered,st_to_zero_mode=False):
     return axes
 
 
-def nkdict(axes,dgrid,fourier=True):
-    """
-        Calculates an n-dimensional array with its entries being the lengths of
-        the k-vectors from the zero point of the Fourier grid.
-
-    """
-    if(fourier):
-        dk = dgrid
-    else:
-        dk = np.array([1/axes[i]/dgrid[i] for i in range(len(axes))])
-
-    kdict = np.empty(axes)
-    for ii in np.ndindex(kdict.shape):
-        kdict[ii] = np.sqrt(np.sum(((ii-axes//2)*dk)**2))
-    return kdict
-
-
+#def nkdict(axes,dgrid,fourier=True):
+#    """
+#        Calculates an n-dimensional array with its entries being the lengths of
+#        the k-vectors from the zero point of the Fourier grid.
+#
+#    """
+#    if(fourier):
+#        dk = dgrid
+#    else:
+#        dk = np.array([1/axes[i]/dgrid[i] for i in range(len(axes))])
+#
+#    kdict = np.empty(axes)
+#    for ii in np.ndindex(kdict.shape):
+#        kdict[ii] = np.sqrt(np.sum(((ii-axes//2)*dk)**2))
+#    return kdict
+#
+#
 def nkdict_fast(axes,dgrid,fourier=True):
     """
         Calculates an n-dimensional array with its entries being the lengths of
@@ -1151,43 +1155,33 @@ def nkdict_fast(axes,dgrid,fourier=True):
     return np.sqrt(np.sum((temp_vecs),axis=-1))
 
 
-def nkdict_fast2(axes,dgrid,fourier=True):
-    """
-        Calculates an n-dimensional array with its entries being the lengths of
-        the k-vectors from the zero point of the grid.
-
-    """
-    if(fourier):
-        dk = dgrid
-    else:
-        dk = np.array([1/dgrid[i]/axes[i] for i in range(len(axes))])
-
-    inds = []
-    for a in axes:
-        inds += [slice(0,a)]
-    cords = np.ogrid[inds]
-
-    dists = ((cords[0]-axes[0]//2)*dk[0])**2
-    for ii in range(1,len(axes)):
-        dists = dists + ((cords[ii]-axes[ii]//2)*dk[ii])**2
-    dists = np.sqrt(dists)
-
-    return dists
-
-
+#def nkdict_fast2(axes,dgrid,fourier=True):
+#    """
+#        Calculates an n-dimensional array with its entries being the lengths of
+#        the k-vectors from the zero point of the grid.
+#
+#    """
+#    if(fourier):
+#        dk = dgrid
+#    else:
+#        dk = np.array([1/dgrid[i]/axes[i] for i in range(len(axes))])
+#
+#    inds = []
+#    for a in axes:
+#        inds += [slice(0,a)]
+#    cords = np.ogrid[inds]
+#
+#    dists = ((cords[0]-axes[0]//2)*dk[0])**2
+#    for ii in range(1,len(axes)):
+#        dists = dists + ((cords[ii]-axes[ii]//2)*dk[ii])**2
+#    dists = np.sqrt(dists)
+#
+#    return dists
+#
+#
 def nklength(kdict):
     return np.sort(list(set(kdict.flatten())))
 
-
-#def drawherm(vector,klength,kdict,ps): ## vector = np.zeros(kdict.shape,dtype=np.complex)
-#    for ii in np.ndindex(vector.shape):
-#        if(vector[ii]==np.complex(0.,0.)):
-#            vector[ii] = np.sqrt(0.5*ps[np.searchsorted(klength,kdict[ii])])*np.complex(np.random.normal(0.,1.),np.random.normal(0.,1.))
-#            negii = tuple(-np.array(ii))
-#            vector[negii] = np.conjugate(vector[ii])
-#            if(vector[negii]==vector[ii]):
-#                vector[ii] = np.float(np.sqrt(ps[klength==kdict[ii]]))*np.random.normal(0.,1.)
-#    return vector
 
 def drawherm(klength,kdict,ps):
 

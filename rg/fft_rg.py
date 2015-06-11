@@ -2,9 +2,10 @@
 
 import numpy as np
 from nifty.nifty_mpi_data import distributed_data_object
+from nifty.nifty_about import about
 
-
-# Try to import pyfftw. If this fails fall back to gfft. If this fails fall back to local gfft_rg
+# Try to import pyfftw. If this fails fall back to gfft. 
+# If this fails fall back to local gfft_rg
 
 try:
     import pyfftw
@@ -13,11 +14,11 @@ except(ImportError):
     try:
         import gfft
         fft_machine='gfft'
-        #about.infos.cprint('INFO: Using gfft')
+        about.infos.cprint('INFO: Using gfft')
     except(ImportError):
         import gfft_rg as gfft
         fft_machine='gfft_fallback'
-        #about.infos.cprint('INFO: Using builtin "plain" gfft version 0.1.0')
+        about.infos.cprint('INFO: Using builtin "plain" gfft version 0.1.0')
 
 
 def fft_factory():
@@ -346,8 +347,7 @@ if fft_machine == 'pyfftw':
                         
             return return_val
             
-            
-        
+
     
 elif fft_machine == 'gfft' or 'gfft_fallback':
     class fft_gfft(fft):                    

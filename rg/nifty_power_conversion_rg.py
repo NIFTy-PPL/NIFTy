@@ -21,10 +21,11 @@
 
 #from nifty import *
 import numpy as np
-from nifty import about,                                                     \
-                  field,                                                     \
-                  sqrt,exp,log,                                              \
-                  power_operator
+from nifty.nifty_about import about
+from nifty.nifty_core import field                                          
+from nifty.nifty_simple_math import sqrt,exp,log                                          
+from nifty.operators import power_operator            
+                  
 
 
 def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
