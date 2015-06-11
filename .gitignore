@@ -13,6 +13,13 @@
 .document
 build
 
+operators/*
+!operators/__init__py
+!operators/nifty_explicit.py
+!operators/nifty_operators.py
+!operators/nifty_probing.py
+
+
 rg/*
 !rg/__init__.py
 !rg/fft_rg.py
