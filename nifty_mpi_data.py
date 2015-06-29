@@ -100,7 +100,7 @@ class distributed_data_object(object):
                  distribution_strategy='fftw', hermitian=False, 
                  *args, **kwargs):
         if global_data != None:
-            if np.array(global_data).shape == ():
+            if np.isscalar(global_data):
                 global_data_input = None
                 dtype = np.array(global_data).dtype.type
             else:
@@ -114,6 +114,7 @@ class distributed_data_object(object):
                             global_data=global_data_input, 
                             global_shape=global_shape, 
                             dtype=dtype, **kwargs)
+
         self.set_full_data(data=global_data_input, hermitian=hermitian, 
                            **kwargs)
         
@@ -126,7 +127,7 @@ class distributed_data_object(object):
         self.init_kwargs = kwargs
         
         ## If the input data was a scalar, set the whole array to this value
-        if global_data != None and np.array(global_data).shape == ():
+        if global_data != None and np.isscalar(global_data):
             temp = np.empty(self.distributor.local_shape)
             temp.fill(global_data)
             self.set_local_data(temp)
@@ -187,6 +188,35 @@ class distributed_data_object(object):
         return '<distributed_data_object>\n'+self.data.__repr__()
     
     def __eq__(self, other):
+        result = self.copy_empty(dtype = np.bool)
+        ## Case 1: 'other' is a scalar
+        ## -> make point-wise comparison
+        if np.isscalar(other):
+            result.set_local_data(self.get_local_data(copy = False) == other)
+            return result        
+
+        ## Case 2: 'other' is a numpy array or a distributed_data_object
+        ## -> extract the local data and make point-wise comparison
+        elif isinstance(other, np.ndarray) or\
+        isinstance(other, distributed_data_object):
+            temp_data = self.distributor.extract_local_data(other)
+            result.set_local_data(self.get_local_data(copy=False) == temp_data)
+            return result
+        
+        ## Case 3: 'other' is None
+        elif other == None:
+            return False
+        
+        ## Case 4: 'other' is something different
+        ## -> make a numpy casting and make a recursion
+        else:
+            temp_other = np.array(other)
+            return self.__eq__(temp_other)
+            
+            
+        
+    
+    def equal(self, other):
         if other is None:
             return False
         try:
@@ -196,7 +226,7 @@ class distributed_data_object(object):
             assert(self.init_kwargs == other.init_kwargs)
             assert(self.distribution_strategy == other.distribution_strategy)
             assert(np.all(self.data == other.data))
-        except(AssertionError):
+        except(AssertionError, AttributeError):
             return False
         else:
             return True
@@ -215,27 +245,44 @@ class distributed_data_object(object):
         return temp_d2o
     
     def __abs__(self):
-        temp_d2o = self.copy_empty()
+        ## translate complex dtypes
+        if self.dtype == np.complex64:
+            new_dtype = np.float32
+        elif self.dtype == np.complex128:
+            new_dtype = np.float64
+        elif self.dtype == np.complex:
+            new_dtype = np.float
+        elif issubclass(self.dtype, np.complexfloating):
+            new_dtype = np.float
+        else:
+            new_dtype = self.dtype
+        temp_d2o = self.copy_empty(dtype = new_dtype)
         temp_d2o.set_local_data(data = self.get_local_data().__abs__()) 
         return temp_d2o
             
     def __builtin_helper__(self, operator, other):
-        temp_d2o = self.copy_empty()
-        if not np.isscalar(other):
-            new_other = self.copy_empty()
-            new_other.set_full_data(np.array(other))
-            other = new_other
+        ## Case 1: other is not a scalar
+        if not (np.isscalar(other) or np.shape(other) == (1,)):
+##            if self.shape != other.shape:            
+##                raise AttributeError(about._errors.cstring(
+##                    "ERROR: Shapes do not match!")) 
+        
+            ## extract the local data from the 'other' object
+            temp_data = self.distributor.extract_local_data(other)
+            temp_data = operator(temp_data)
             
-        if isinstance(other, distributed_data_object):        
-            temp_data = operator(other.get_local_data())
         else:
             temp_data = operator(other)
+        
+        ## write the new data into a new distributed_data_object        
+        temp_d2o = self.copy_empty()        
         temp_d2o.set_local_data(data=temp_data)
         return temp_d2o
     
     def __inplace_builtin_helper__(self, operator, other):
-        if isinstance(other, distributed_data_object):        
-            temp_data = operator(other.get_local_data())
+        if not (np.isscalar(other) or np.shape(other) == (1,)):        
+            temp_data = self.distributor.extract_local_data(other)
+            temp_data = operator(temp_data)
         else:
             temp_data = operator(other)
         self.set_local_data(data=temp_data)
@@ -319,7 +366,28 @@ class distributed_data_object(object):
 
     
     def __getitem__(self, key):
-        return self.get_data(key)
+        ## Case 1: key is a boolean array.
+        ## -> take the local data portion from key, use this for data 
+        ## extraction, and then merge the result in a flat numpy array
+        if isinstance(key, np.ndarray):
+            found = 'ndarray'
+            found_boolean = (key.dtype.type == np.bool)
+        elif isinstance(key, distributed_data_object):
+            found = 'd2o'
+            found_boolean = (key.dtype == np.bool)
+        else:
+            found = 'other'
+                
+        if (found == 'ndarray' or found == 'd2o') and found_boolean == True:
+            ## extract the data of local relevance
+            local_bool_array = self.distributor.extract_local_data(key)
+            local_results = self.get_local_data(copy=False)[local_bool_array]
+            global_results = self.distributor._allgather(local_results)
+            global_results = np.concatenate(global_results)
+            return global_results            
+            
+        else:
+            return self.get_data(key)
     
     def __setitem__(self, key, data):
         self.set_data(data, key)
@@ -508,7 +576,7 @@ class distributed_data_object(object):
         self.data = self.distributor.distribute_data(data=data, **kwargs)
     
 
-    def get_local_data(self, key=(slice(None),)):
+    def get_local_data(self, key=(slice(None),), copy=True):
         """
             Loads data directly from the local data attribute. No consolidation 
             is done. 
@@ -523,7 +591,10 @@ class distributed_data_object(object):
             self.data[key] : numpy.ndarray
         
         """
-        return self.data[key]        
+        if copy == True:
+            return self.data[key]        
+        if copy == False:
+            return self.data
         
     def get_data(self, key, **kwargs):
         """
@@ -697,23 +768,25 @@ class _fftw_distributor(object):
 
         
         if comm.rank == 0:        
+            ## Case 1: hdf5 path supplied
             if alias != None:
                 self.global_shape = dset.shape
-            else:                
-                if global_data == None or np.array(global_data).shape == ():
+            ## Case 2: no hdf5 path supplied
+            else:           
+                ## subcase 1: input data is scalar or None
+                if global_data == None or np.isscalar(global_data):
                     if global_shape == None:
                         raise TypeError(about._errors.\
-                        cstring("ERROR: Neither data nor shape supplied!"))
+                cstring("ERROR: Neither non-scalar data nor shape supplied!"))
                     else:
                         self.global_shape = global_shape
+                ## subcase 2: input data is non-scalar 
+                ## -> Take the shape of the input data
                 else:
                     self.global_shape = global_data.shape
-
-
         else:
             self.global_shape = None
-        
-        
+            
         self.global_shape = comm.bcast(self.global_shape, root = 0)
         self.global_shape = tuple(self.global_shape)
         
@@ -889,18 +962,33 @@ class _fftw_distributor(object):
             if from_slices == None:
                 update_slice = (slice(o[r], o[r]+l),)
             else:
-                f_start = from_slices[0].start                
+                    
                 f_step = from_slices[0].step
                 if f_step == None:
                     f_step = 1
+                    
                 f_direction = np.sign(f_step)
+
+                f_relative_start = from_slices[0].start
+                if f_relative_start != None:
+                    f_start = f_relative_start + f_direction*o[r]
+                else:
+                    f_start = None
+                    f_relative_start = 0
+                    
+                f_stop = f_relative_start + f_direction*(o[r]+l*np.abs(f_step))
+                if f_stop < 0:
+                    f_stop = None
+
+
                 ## combine the slicing for the first dimension 
-                update_slice = (slice(f_start + f_direction*o[r],
-                                      f_start + f_direction*(o[r]+l),
+                update_slice = (slice(f_start,
+                                      f_stop,
                                       f_step),
                                 )
                 ## add the rest of the from_slicing
                 update_slice += from_slices[1:]
+
             data[local_slice] = np.array(data_update[update_slice],\
                                     copy=False).astype(self.dtype)
             
@@ -1105,7 +1193,7 @@ class _fftw_distributor(object):
     
     def inject(self, data, to_slices, data_update, from_slices, comm=None, 
                **kwargs):
-        ## check if to_key and from_key is completely build of slices 
+        ## check if to_key and from_key are completely built of slices 
         if not np.all(
             np.vectorize(lambda x: isinstance(x, slice))(to_slices)):
             raise ValueError(about._errors.cstring(
@@ -1126,7 +1214,103 @@ class _fftw_distributor(object):
                            from_slices = from_slices,
                            comm=comm,
                            **kwargs)
+
+    def extract_local_data(self, data_object):
+        ## if data_object is not a ndarray or a d2o, cast it to a ndarray
+        if not (isinstance(data_object, np.ndarray) or 
+                isinstance(data_object, distributed_data_object)):
+            data_object = np.array(data_object)
+        ## check if the shapes are remotely compatible, reshape if possible
+        ## and determine which dimensions match only via broadcasting
+        try:
+            (data_object, matching_dimensions) = \
+                self._reshape_foreign_data(data_object)
+        ## if the shape-casting fails, try to fix things via locall data
+        ## matching
+        except(ValueError):
+            ## Check if all the local shapes match the supplied data
+            local_matchQ = (self.local_shape == data_object.shape)
+            global_matchQ = self._allgather(local_matchQ)            
+            ## if the local shapes match, simply return the data_object            
+            if np.all(global_matchQ):
+                extracted_data = data_object[:] 
+            ## if not, allgather the local data pieces and extract from this
+            else:
+                allgathered_data = self._allgather(data_object)
+                allgathered_data = np.concatenate(allgathered_data)
+                if allgathered_data.shape != self.global_shape:
+                    raise ValueError(
+                            about._errors.cstring(
+            "ERROR: supplied shapes do neither match globally nor locally"))
+                return self.extract_local_data(allgathered_data)
+            
+        ## if shape-casting was successfull, extract the data
+        else:
+            ## If the first dimension matches only via broadcasting...
+            ## Case 1: ...do broadcasting. This procedure does not depend on the
+            ## array type (ndarray or d2o)
+            if matching_dimensions[0] == False:
+                extracted_data = data_object[0:1]
+    
+    
+            ## Case 2: First dimension fits directly and data_object is a d2o
+            elif isinstance(data_object, distributed_data_object):
+                ## Check if the distribution_strategy and the comm match 
+                ## the own ones.            
+                if type(self) == type(data_object.distributor) and\
+                    self.comm == data_object.distributor.comm:
+                    ## Case 1: yes. Simply take the local data
+                    extracted_data = data_object.data
+                else:            
+                    ## Case 2: no. All nodes extract their local slice from the 
+                    ## data_object
+                    extracted_data =\
+                        data_object[self.local_start:self.local_end]
+            
+            ## Case 3: First dimension fits directly and data_object is an generic
+            ## array        
+            else:
+                extracted_data =\
+                    data_object[self.local_start:self.local_end]
+            
+        return extracted_data
+
+    def _reshape_foreign_data(self, foreign):
+        ## Case 1:        
+        ## check if the shapes match directly 
+        if self.global_shape == foreign.shape:
+            matching_dimensions = [True,]*len(self.global_shape)            
+            return (foreign, matching_dimensions)
+        ## Case 2:
+        ## if not, try to reshape the input data
+        ## in particular, this will fail when foreign is a d2o as long as 
+        ## reshaping is not implemented
+        try:
+            output = foreign.reshape(self.global_shape)
+            matching_dimensions = [True,]*len(self.global_shape)
+            return (output, matching_dimensions)
+        except(ValueError, AttributeError):
+            pass
+        ## Case 3:
+        ## if this does not work, try to broadcast the shape
+        ## check if the dimensions match
+        if len(self.global_shape) != len(foreign.shape):
+           raise ValueError(
+               about._errors.cstring("ERROR: unequal number of dimensions!")) 
+        ## check direct matches
+        direct_match = (np.array(self.global_shape) == np.array(foreign.shape))
+        ## check broadcast compatibility
+        broadcast_match = (np.ones(len(self.global_shape), dtype=int) ==\
+                            np.array(foreign.shape))
+        ## combine the matches and assert that all are true
+        combined_match = (direct_match | broadcast_match)
+        if not np.all(combined_match):
+            raise ValueError(
+                about._errors.cstring("ERROR: incompatible shapes!")) 
+        matching_dimensions = tuple(direct_match)
+        return (foreign, matching_dimensions)
         
+                
     def consolidate_data(self, data, target_rank='all', comm = None):
         if comm == None:
             comm = self.comm            
@@ -1243,6 +1427,9 @@ class _not_distributor(object):
     def inject(self, data, to_slices = (slice(None),), data_update = None, 
                from_slices = (slice(None),)):
         data[to_slices] = data_update[from_slices]
+    
+    def extract_local_data(self, data_object):
+        return data_object.get_full_data()
         
     def save_data(self, *args, **kwargs):
         raise AttributeError(about._errors.cstring(

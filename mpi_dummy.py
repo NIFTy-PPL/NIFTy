@@ -87,7 +87,8 @@ class _COMM_WORLD():
 class _datatype():
     def __init__(self, name):
         self.name = str(name)
-        
+
+BYTE = _datatype('MPI_BYTE')        
 SHORT = _datatype('MPI_SHORT')
 UNSIGNED_SHORT = _datatype("MPI_UNSIGNED_SHORT")
 UNSIGNED_INT = _datatype("MPI_UNSIGNED_INT")

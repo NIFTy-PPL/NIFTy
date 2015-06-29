@@ -8,7 +8,7 @@ from nifty.nifty_about import about
 # If this fails fall back to local gfft_rg
 
 try:
-    import pyfftw
+    import pyfftw_BAD
     fft_machine='pyfftw'
 except(ImportError):
     try:
@@ -315,12 +315,14 @@ if fft_machine == 'pyfftw':
             result = p.output_array * current_plan_and_info.\
                                 get_domain_centering_mask()
 
+            """            
             ## renorm the result according to the convention of gfft            
             if current_plan_and_info.direction == 'FFTW_FORWARD':
                 result = result/float(result.size)
             else:
                 result *= float(result.size)
-                    
+            """
+            
             ## build the return object according to the input val
             try:
                 if return_val.distribution_strategy == 'fftw':
@@ -391,10 +393,12 @@ elif fft_machine == 'gfft' or 'gfft_fallback':
             ## if the input is a distributed_data_object, extract the data
             if isinstance(val, distributed_data_object):
                 d2oQ = True
-                val = val.get_full_data()
+                temp = val.get_full_data()
+            else:
+                temp = val
             ## transform and return
             if(domain.datatype==np.float64):
-                temp = gfft.gfft(val.astype(np.complex128), 
+                temp = gfft.gfft(temp.astype(np.complex128), 
                                 in_ax=[], 
                                 out_ax=[], 
                                 ftmachine=ftmachine, 
@@ -408,7 +412,7 @@ elif fft_machine == 'gfft' or 'gfft_fallback':
                                 alpha=-1,
                                 verbose=False)
             else:
-                temp = gfft.gfft(val,
+                temp = gfft.gfft(temp,
                                 in_ax=[],
                                 out_ax=[],
                                 ftmachine=ftmachine,
@@ -422,7 +426,13 @@ elif fft_machine == 'gfft' or 'gfft_fallback':
                                 alpha=-1,
                                 verbose=False)
             if d2oQ == True:
-                val.set_full_data(temp)
+                new_val = val.copy_empty(dtype=np.complex128)                
+                new_val.set_full_data(temp)
+                ## If the values living in domain are purely real, the 
+                ## result of the fft is hermitian
+                if domain.paradict['complexity'] == 0:
+                    new_val.hermitian = True
+                val = new_val
             else:
                 val = temp
                 

@@ -1335,7 +1335,10 @@ class point_space(space):
 
         """
         self.set_power_indices(**kwargs)
-        return self.power_indices.get("kindex"),self.power_indices.get("rho"),self.power_indices.get("pindex"),self.power_indices.get("pundex")
+        return self.power_indices.get("kindex"),\
+                self.power_indices.get("rho"),\
+                self.power_indices.get("pindex"),\
+                self.power_indices.get("pundex")
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1472,7 +1475,7 @@ class point_space(space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.arguments(self,**kwargs)
+        arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
             x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
@@ -2111,7 +2114,7 @@ class nested_space(space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.arguments(self,**kwargs)
+        arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
             return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
@@ -3263,14 +3266,22 @@ class field(object):
             corresponding :py:meth:`get_plot` method.
 
         """
-        interactive = pl.isinteractive()
-        pl.matplotlib.interactive(not bool(kwargs.get("save",False)))
+        ## if a save path is given, set pylab to not-interactive
+        remember_interactive = pl.isinteractive()
+        pl.matplotlib.interactive(not bool(
+                                            kwargs.get("save", False)
+                                            )
+                                        )
 
-        if("codomain" in kwargs):
+        if "codomain" in kwargs:
             kwargs.__delitem__("codomain")
-        self.domain.get_plot(self.val,codomain=self.target,**kwargs)
+            about.warnings.cprint("WARNING: codomain was removed from kwargs.")
 
-        pl.matplotlib.interactive(interactive)
+        ## draw/save the plot(s)
+        self.domain.get_plot(self.val, codomain=self.target, **kwargs)
+        
+        ## restore the pylab interactiveness
+        pl.matplotlib.interactive(remember_interactive)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

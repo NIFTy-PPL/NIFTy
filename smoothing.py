@@ -285,7 +285,7 @@ def gaussian_kernel(nx, dx, smooth_length):
         nk = nx[i]
 
         k.append(-0.5*nk*dk + np.arange(nk)*dk)
-
+        print k
         shp=shp+(nk,)
 
     # The image of the Fourier transformed kernel.

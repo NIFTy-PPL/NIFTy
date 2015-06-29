@@ -20,6 +20,10 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
+
+import matplotlib as mpl
+mpl.use('Agg')
+
 from nifty_about import about
 from nifty_cmaps import ncmap
 from nifty_core import space,\

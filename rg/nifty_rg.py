@@ -32,12 +32,15 @@
 
 """
 from __future__ import division
-#from nifty import *
+
 import os
 import numpy as np
+from scipy.special import erf 
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
+
+from mpi4py import MPI
 
 from nifty.nifty_about import about
 from nifty.nifty_core import point_space,                                    \
@@ -46,8 +49,6 @@ from nifty.nifty_random import random
 from nifty.nifty_mpi_data import distributed_data_object
 from nifty.nifty_paradict import rg_space_paradict
 
-import nifty.smoothing as gs
-import powerspectrum as gp
 import fft_rg
 
 '''
@@ -204,7 +205,7 @@ class rg_space(point_space):
         ## Initialize the power_indices object which takes care of kindex,
         ## pindex, rho and the pundex for a given set of parameters
         if self.fourier:        
-            self.power_indices = gp.power_indices(shape=self.shape(),
+            self.power_indices = power_indices(shape=self.shape(),
                                 dgrid = dist,
                                 zerocentered = self.paradict['zerocenter']
                                 )
@@ -298,7 +299,7 @@ class rg_space(point_space):
     def shape(self):
         return np.array(self.paradict['num'])
 
-    def dim(self,split=False):
+    def dim(self, split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
 
@@ -608,10 +609,10 @@ class rg_space(point_space):
                     about.warnings.cflush(\
                     "WARNING: Data gets hermitianized. This operation is "+\
                     "extremely expensive\n")
-                    temp = x.copy_empty()            
-                    temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
-                        (False, )*len(x.shape)))
-                    x = temp
+                    #temp = x.copy_empty()            
+                    #temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
+                    #    (False, )*len(x.shape)))
+                    x = utilities.hermitianize(x)
                 
             return x
                 
@@ -622,40 +623,6 @@ class rg_space(point_space):
         ## Cast the d2o
         return self.cast(x)
 
-    def _hermitianize_inverter(self, x):
-        ## calculate the number of dimensions the input array has
-        dimensions = len(x.shape)
-        ## prepare the slicing object which will be used for mirroring
-        slice_primitive = [slice(None),]*dimensions
-        ## copy the input data
-        y = x.copy()
-        ## flip in every direction
-        for i in xrange(dimensions):
-            slice_picker = slice_primitive[:]
-            slice_picker[i] = slice(1, None)
-            slice_inverter = slice_primitive[:]
-            slice_inverter[i] = slice(None, None, -1)
-            y[slice_picker] = y[slice_picker][slice_inverter]
-        return y
-    """
-    def hermitianize(self, x, random=None):
-        if random == None:
-            ## perform the hermitianize flips
-            y = self._hermitianize_inverter(x)
-            ## make pointwise conjugation             
-            y = np.conjugate(y)
-            ## and return the pointwise mean
-            return self.cast((x+y)/2.)
-        
-        elif random == 'uni':
-            return self.hermitianize(x, random=None)
-        
-        elif random == 'gau':
-            y = self._hermitianize_inverter(x)
-            y = np.conjugate(y)
-            
-    """ 
-    
     def enforce_values(self,x,extend=True):
         """
             Computes valid field values from a given object, taking care of
@@ -701,8 +668,8 @@ class rg_space(point_space):
 
         ## hermitianize if ...
         if(about.hermitianize.status)and(np.size(x)!=1)and(self.para[(np.size(self.para)-1)//2]==1):
-            x = gp.nhermitianize_fast(x,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),special=False)
-
+            #x = gp.nhermitianize_fast(x,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),special=False)
+            x = utilities.hermitianize(x)
         ## check finiteness
         if(not np.all(np.isfinite(x))):
             about.warnings.cprint("WARNING: infinite value(s).")
@@ -764,7 +731,8 @@ class rg_space(point_space):
                 over the above parameters; by default no binning is done
                 (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).            vmin : float, *optional*
+                (default: 0).            
+            vmin : float, *optional*
                 Lower limit for a uniform distribution (default: 0).
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
@@ -777,38 +745,73 @@ class rg_space(point_space):
         sample = distributed_data_object(global_shape=self.shape(), 
                                          dtype=self.datatype)
 
+        ## Should the output be hermitianized?
+        hermitianizeQ = about.hermitianize.status and \
+                        self.paradict['complexity']          
+
         ## Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
-        if arg[0] == 'pm1':
+        if arg[0] == 'pm1' and hermitianizeQ == False:
             gen = lambda s: random.pm1(datatype=self.datatype,
                                        shape = s)
             sample.apply_generator(gen)
                         
+        elif arg[0] == 'pm1' and hermitianizeQ == True:
+            sample = self.get_random_values(random = 'uni', vmin=-1, vmax=1)
+            local_data = sample.get_local_data()
+            if issubclass(sample.dtype, np.complexfloating):
+                temp_data = local_data.copy()
+                local_data[temp_data.real >= 0.5] = 1
+                local_data[(temp_data.real >= 0)*(temp_data.real < 0.5)] = -1
+                local_data[(temp_data.real < 0)*(temp_data.imag >= 0)] = 1j
+                local_data[(temp_data.real < 0)*(temp_data.imag < 0)] = -1j
+            else:
+                local_data[local_data >= 0] = 1
+                local_data[local_data < 0] = -1
+            sample.set_local_data(local_data)
             
         ## Case 2: normal distribution with zero-mean and a given standard
         ##         deviation or variance
         elif arg[0] == 'gau':
             gen = lambda s: random.gau(datatype=self.datatype,
                                        shape = s,
-                                       mean = None,
+                                       mean = arg[1],
                                        dev = arg[2],
                                        var = arg[3])
             sample.apply_generator(gen)
+            
+            if hermitianizeQ == True:
+                sample = utilities.hermitianize(sample)
 
-        elif arg[0] == "uni":
+        ## Case 3: uniform distribution
+        elif arg[0] == "uni" and hermitianizeQ == False:
             gen = lambda s: random.uni(datatype=self.datatype,
                                        shape = s,
                                        vmin = arg[1],
                                        vmax = arg[2])
             sample.apply_generator(gen)
+            
+        elif arg[0] == "uni" and hermitianizeQ == True:
+            ## For a hermitian uniform sample, generate a gaussian one
+            ## and then convert it to a uniform one
+            sample = self.get_random_values(random = 'gau')
+            ## Use the cummulative of the gaussian, the error function in order 
+            ## to transform it to a uniform distribution.
+            if issubclass(sample.dtype, np.complexfloating):
+                temp_func = lambda x: erf(x.real) + 1j*erf(x.imag)                  
+            else:
+                temp_func = lambda x: erf(x/np.sqrt(2))
+            sample.apply_scalar_function(function = temp_func,
+                                             inplace = True)
+            
+            ## Shift and stretch the uniform distribution into the given limits
+            ## sample = (sample + 1)/2 * (vmax-vmin) + vmin
+            vmin = arg[1]
+            vmax = arg[2]            
+            sample *= (vmax-vmin)/2.
+            sample += 1/2.*(vmax+vmin)
+            
 
         elif(arg[0]=="syn"):
-            """
-            naxes = (np.size(self.para)-1)//2
-            x = gp.draw_vector_nd(self.para[:naxes],self.vol,arg[1],symtype=self.para[naxes],fourier=self.fourier,zerocentered=self.para[-naxes:].astype(np.bool),kpack=arg[2])
-            ## correct for 'ifft'
-            if(not self.fourier):
-                x = self.calc_weight(x,power=-1)
-            """
             spec = arg[1]
             kpack = arg[2]
             harmonic_domain = arg[3]
@@ -863,12 +866,24 @@ class rg_space(point_space):
                     sample = kdict.copy_empty(
                                             dtype = temp_codomain.datatype)
                     ## set up the random number generator
+
                     gen = lambda s: np.random.normal(loc=0, scale=1, size=s)
                     ## apply the random number generator                    
                     sample.apply_generator(gen)
+                    
+                    ## In order to get the normalisation right, the sqrt
+                    ## of self.dim must be divided out. 
+                    ## Furthermore, the normalisation in the fft routine 
+                    ## must be undone
+                    ## TODO: Insert explanation
+                    sqrt_of_dim = np.sqrt(self.dim())
+                    sample /= sqrt_of_dim
+                    sample = temp_codomain.calc_weight(sample, power=-1)
+
                     ## tronsform the random field to harmonic space
-                    sample = self.get_codomain().\
+                    sample = temp_codomain.\
                                         calc_transform(sample, codomain=self)
+                    
                     ## ensure that the kdict and the harmonic_sample have the
                     ## same distribution strategy
                     assert(kdict.distribution_strategy ==\
@@ -937,9 +952,12 @@ class rg_space(point_space):
                                                     nbin = nbin,
                                                     binbounds = binbounds
                                                     )
+                ## Correct the weighting
+                #sample = self.calc_weight(sample, power=-1)
+                
                 ## Take the fourier transform
                 sample = temp_codomain.calc_transform(sample, 
-                                                      codomain=self)
+                                                      codomain = self)
 
             if self.paradict['complexity'] == 1:
                sample.hermitian = True
@@ -948,12 +966,7 @@ class rg_space(point_space):
             raise KeyError(about._errors.cstring(
                         "ERROR: unsupported random key '"+str(arg[0])+"'."))
      
-       
-        ## hermitianize if ...
-#        if(about.hermitianize.status)and(self.para[(np.size(self.para)-1)//2]==1):
-#            x = gp.nhermitianize_fast(x,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),special=(arg[0] in ["gau","pm1"]))
-
-        #sample = self.cast(sample)       
+             
         return sample
 
 
@@ -1027,41 +1040,7 @@ class rg_space(point_space):
             return False
             
         return True
-        
-        """    
-        ##                       naxes==naxes
-        if((np.size(codomain.para)-1)//2==(np.size(self.para)-1)//2):
-            naxes = (np.size(self.para)-1)//2
-            print '1'
-            ##                            num'==num
-            if(np.all(codomain.para[:naxes]==self.para[:naxes])):
-                ##                 typ'==typ             ==2
-                print '2'
-                if(codomain.para[naxes]==self.para[naxes]==2):
-                    print '3'
-                    ##                                         dist'~=1/(num*dist)
-                    if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                        return True
-                    ##           fourier'==fourier
-                    elif(codomain.fourier==self.fourier):
-                        ##                           dist'~=dist
-                        if(np.all(np.absolute(codomain.vol/self.vol-1)<self.epsilon)):
-                            return True
-                        else:
-                            about.warnings.cprint("WARNING: unrecommended codomain.")
-                ##   2!=                typ'!=typ             !=2                                             dist'~=1/(num*dist)
-                elif(2!=codomain.para[naxes]!=self.para[naxes]!=2)and(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                    return True
-                ##                   typ'==typ             !=2
-                elif(codomain.para[naxes]==self.para[naxes]!=2)and(codomain.fourier==self.fourier):
-                    ##                           dist'~=dist
-                    if(np.all(np.absolute(codomain.vol/self.vol-1)<self.epsilon)):
-                        return True
-                    else:
-                        about.warnings.cprint("WARNING: unrecommended codomain.")
 
-        return False
-        """
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1134,23 +1113,10 @@ class rg_space(point_space):
                              dist = dist,
                              fourier = fourier)                                            
         return new_space
-        """
-        if(coname is None):
-            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol),fourier=bool(not self.fourier)) ## dist',fourier' = 1/(num*dist),NOT fourier
 
-        elif(coname[0]=='f'):
-            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol),fourier=True) ## dist',fourier' = 1/(num*dist),True
-
-        elif(coname[0]=='i'):
-            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(self.para[naxes]==1),dist=1/(self.para[:naxes]*self.vol),fourier=False) ## dist',fourier' = 1/(num*dist),False
-
-        else:
-            return rg_space(self.para[:naxes],naxes=naxes,zerocenter=cozerocenter,hermitian=bool(self.para[naxes]<2),purelyreal=bool(not self.para[naxes]),dist=self.vol,fourier=self.fourier) ## dist',fourier' = dist,fourier
-
-        """    
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_meta_volume(self,total=False):
+    def get_meta_volume(self, total=False):
         """
             Calculates the meta volumes.
 
@@ -1172,14 +1138,14 @@ class rg_space(point_space):
                 Meta volume of the pixels or the complete space.
         """
         if(total):
-            return self.dim(split=False)*np.prod(self.vol,axis=0,dtype=None,out=None)
+            return self.dim(split=False)*np.prod(self.vol)
         else:
-            mol = np.ones(self.dim(split=True),dtype=self.vol.dtype,order='C')
+            mol = np.ones(self.dim(split=True),dtype=self.vol.dtype)
             return self.calc_weight(mol,power=1)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def calc_weight(self,x,power=1):
+    def calc_weight(self, x, power=1):
         """
             Weights a given array with the pixel volumes to a given power.
 
@@ -1196,8 +1162,11 @@ class rg_space(point_space):
                 Weighted array.
         """
         x = self.cast(x)
+        is_hermitianQ = x.hermitian
         ## weight
-        return x * np.prod(self.vol, axis=0, dtype=None, out=None)**power
+        x =  x * (np.prod(self.vol)**power)
+        x.hermitian = is_hermitianQ
+        return x
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_dot(self, x, y):
@@ -1260,18 +1229,22 @@ class rg_space(point_space):
                 (not self.check_codomain(codomain)):
             raise ValueError(about._errors.cstring(
                                 "ERROR: unsupported codomain."))
-        
         if codomain.fourier == True:
             ## correct for forward fft
             x = self.calc_weight(x, power=1)
-        else:
-            ## correct for inverse fft
-            x = self.calc_weight(x, power=1)
-            x *= self.dim(split=False)
+        
+#            ## correct for inverse fft
+#            x = self.calc_weight(x, power=1)
+#            x *= self.dim(split=False)
         
         ## Perform the transformation
         Tx = self.fft_machine.transform(val=x, domain=self, codomain=codomain, 
                                         **kwargs)
+
+        if codomain.fourier == False:
+            ## correct for inverse fft
+            Tx = codomain.calc_weight(Tx, power=-1)
+
 
         ## when the target space is purely real, the result of the 
         ## transformation must be corrected accordingly. Using the casting 
@@ -1281,50 +1254,9 @@ class rg_space(point_space):
         
         return Tx
 
-        """
-
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(codomain is None):
-            return x ## T == id
-
-        ## mandatory(!) codomain check
-        if(isinstance(codomain,rg_space))and(self.check_codomain(codomain)):
-            naxes = (np.size(self.para)-1)//2
-            ## select machine
-            if(np.all(np.absolute(self.para[:naxes]*self.vol*codomain.vol-1)<self.epsilon)):
-                ## Use the codomain information here only for the rescaling. The direction
-                ## of transformation is infered from the fourier attribute of the 
-                ## supplied space
-                if(codomain.fourier):
-                    ## correct for 'fft'
-                    x = self.calc_weight(x,power=1)
-                else:
-                    ## correct for 'ifft'
-                    x = self.calc_weight(x,power=1)
-                    x *= self.dim(split=False)
-            else:
-                ## TODO: Is this error correct?                
-                raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))                
-                #ftmachine = "none"
-            
-            ## transform
-            Tx = self.fft_machine.transform(x,self,codomain,**kwargs)            
-            ## check complexity
-            if(not codomain.para[naxes]): ## purely real
-                ## check imaginary part
-                if(np.any(Tx.imag!=0))and(np.dot(Tx.imag.flatten(order='C'),Tx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Tx.real.flatten(order='C'),Tx.real.flatten(order='C'),out=None)):
-                    about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-                Tx = np.real(Tx)
-
-        else:
-            raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
-
-        return Tx.astype(codomain.datatype)
-        """
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def calc_smooth(self,x,sigma=0,**kwargs):
+    def calc_smooth(self, x, sigma=0, codomain=None):
         """
             Smoothes an array of field values by convolution with a Gaussian
             kernel.
@@ -1343,29 +1275,79 @@ class rg_space(point_space):
             Gx : numpy.ndarray
                 Smoothed array.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        naxes = (np.size(self.para)-1)//2
 
-        ## check sigma
-        if(sigma==0):
+        
+        ## Check sigma
+        if sigma == 0:
             return x
-        elif(sigma==-1):
-            about.infos.cprint("INFO: invalid sigma reset.")
-            if(self.fourier):
-                sigma = 1.5/np.min(self.para[:naxes]*self.vol) ## sqrt(2)*max(dist)
-            else:
-                sigma = 1.5*np.max(self.vol) ## sqrt(2)*max(dist)
+        elif sigma == -1:
+            about.infos.cprint(
+                "INFO: Resetting sigma to sqrt(2)*max(dist).")
+            sigma = np.sqrt(2)*np.max(self.dist())
         elif(sigma<0):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        ## smooth
-        Gx = gs.smooth_field(x,self.fourier,self.para[-naxes:].astype(np.bool).tolist(),bool(self.para[naxes]==1),self.vol,smooth_length=sigma)
-        ## check complexity
-        if(not self.para[naxes]): ## purely real
-            ## check imaginary part
-            if(np.any(Gx.imag!=0))and(np.dot(Gx.imag.flatten(order='C'),Gx.imag.flatten(order='C'),out=None)>self.epsilon**2*np.dot(Gx.real.flatten(order='C'),Gx.real.flatten(order='C'),out=None)):
-                about.warnings.cprint("WARNING: discarding considerable imaginary part.")
-            Gx = self.cast(np.real(Gx))
-        return Gx
+        
+
+        ## if a codomain was given...
+        if codomain != None:
+            ## ...check if it was suitable
+            if not isinstance(codomain, rg_space):
+                raise ValueError(about._errors.cstring(
+                    "ERROR: codomain is not a rg_space instance!"))
+            if self.fourier == False and codomain.fourier == False:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: fourier_domain is not a fourier space!"))
+            if not self.check_codomain(codomain):
+                raise ValueError(about._errors.cstring(
+                    "ERROR: fourier_codomain is not a valid codomain!"))
+        elif self.fourier == False:
+            codomain = self.get_codomain()
+
+        ## Case1: 
+        ## If self is a position-space, fourier transform the input and
+        ## call calc_smooth of the fourier codomain
+        if self.fourier == False:
+            x = self.calc_transform(x, codomain = codomain)
+            x = codomain.calc_smooth(x, sigma)
+            x = codomain.calc_transform(x, codomain = self)
+            return x
+        
+        ## Case 2: 
+        ## if self is fourier multiply the gaussian kernel, etc...
+        
+        ## Cast the input
+        x = self.cast(x)       
+         
+        ## if x is hermitian it remains hermitian during smoothing
+        remeber_hermitianQ = x.hermitian
+
+        ## Define the Gaussian kernel function 
+        gaussian = lambda x: np.exp(-2.*np.pi**2*x**2*sigma**2)
+        
+        ## Define the variables in the dialect of the legacy smoothing.py 
+        nx = self.shape()
+        dx = 1/nx/self.vol
+        ## Multiply the data along each axis with suitable the gaussian kernel
+        for i in range(len(nx)):
+            ## Prepare the exponent
+            dk = 1./nx[i]/dx[i]
+            nk = nx[i]
+            k = -0.5*nk*dk + np.arange(nk)*dk
+            if self.paradict['zerocenter'][i] == False:
+                k = np.fft.fftshift(k)
+            ## compute the actual kernel vector
+            gaussian_kernel_vector = gaussian(k)
+            ## blow up the vector to an array of shape (1,.,1,len(nk),1,.,1)
+            blown_up_shape = [1,]*len(nx)
+            blown_up_shape[i] = len(gaussian_kernel_vector)
+            gaussian_kernel_vector =\
+                gaussian_kernel_vector.reshape(blown_up_shape)
+            ## apply the blown-up gaussian_kernel_vector
+            x *= gaussian_kernel_vector
+        x.hermitian = remeber_hermitianQ
+        
+        return x
+        
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1389,9 +1371,6 @@ class rg_space(point_space):
             pindex : numpy.ndarray, *optional*
                 Indexing array assigning the input array components to
                 components of the power spectrum (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale corresponding to each band in the power spectrum
-                (default: None).
             rho : numpy.ndarray, *optional*
                 Number of degrees of freedom per band (default: None).
             codomain : nifty.space, *optional*
@@ -1413,25 +1392,80 @@ class rg_space(point_space):
                 (default: 0).
 
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        ## correct for 'fft'
-        if(not self.fourier):
-            x = self.calc_weight(x,power=1)
-        ## explicit power indices
-        pindex,kindex,rho = kwargs.get("pindex",None),kwargs.get("kindex",None),kwargs.get("rho",None)
-        ## implicit power indices
-        if(pindex is None)or(kindex is None)or(rho is None):
-            try:
-                self.set_power_indices(**kwargs)
-            except:
-                codomain = kwargs.get("codomain",self.get_codomain())
-                codomain.set_power_indices(**kwargs)
-                pindex,kindex,rho = codomain.power_indices.get("pindex"),codomain.power_indices.get("kindex"),codomain.power_indices.get("rho")
-            else:
-                pindex,kindex,rho = self.power_indices.get("pindex"),self.power_indices.get("kindex"),self.power_indices.get("rho")
-        ## power spectrum
-        return gp.calc_ps_fast(x,self.para[:(np.size(self.para)-1)//2],self.vol,self.para[-((np.size(self.para)-1)//2):].astype(np.bool),fourier=self.fourier,pindex=pindex,kindex=kindex,rho=rho)
+        x = self.cast(x)
 
+        ## If self is a position space, delegate calc_power to its codomain.
+        if self.fourier == False:
+            try:
+                codomain = kwargs.get('codomain')
+            except(KeyError):
+                codomain = self.get_codomain()
+                
+            y = self.calc_transform(x, codomain)
+            kwargs.update({'codomain': self})
+            return codomain.calc_power(y, **kwargs)
+            
+        ## If some of the pindex, kindex or rho arrays are given explicitly,
+        ## favor them over those from the self.power_indices dictionary.
+        ## As the default value in kwargs.get(key, default) does NOT evaluate
+        ## lazy, a distinction of cases is necessary. Otherwise the 
+        ## powerindices might be computed, although not necessary
+        if kwargs.has_key('pindex') and kwargs.has_key('kindex') and\
+                kwargs.has_key('rho'):
+            pindex = kwargs.get('pindex')
+            rho = kwargs.get('rho')
+        else:
+            log = kwargs.get('log', None)
+            nbin = kwargs.get('nbin', None)
+            binbounds = kwargs.get('binbounds', None)            
+            power_indices = self.power_indices.get_index_dict(log = log,
+                                                              nbin = nbin,
+                                                        binbounds = binbounds)            
+            pindex = kwargs.get('pindex', power_indices['pindex'])
+            rho = kwargs.get('rho', power_indices['rho'])
+        
+        fieldabs = abs(x)**2
+        power_spectrum = np.zeros(rho.shape) 
+        """
+        ##TODO: Replace this super slow ndindex solution
+        for ii in np.ndindex(pindex.shape):
+            power_spectrum[pindex[ii]] += fieldabs[ii]
+        """
+                
+        ## In order to make the summation over identical pindices fast, 
+        ## the pindex and the kindex must have the same distribution strategy
+        if pindex.distribution_strategy == fieldabs.distribution_strategy and\
+            pindex.distributor.comm == fieldabs.distributor.comm:
+            working_field = fieldabs
+        else:
+            working_field = pindex.copy_empty(dtype = fieldabs.dtype)
+            working_field.inject((slice(None),), fieldabs, (slice(None,)))
+        
+        local_power_spectrum = np.bincount(pindex.get_local_data().flatten(),
+                        weights = working_field.get_local_data().flatten())        
+        power_spectrum =\
+            pindex.distributor._allgather(local_power_spectrum)
+        power_spectrum = np.sum(power_spectrum, axis = 0)
+                    
+        """
+        ## Iterate over the k-vectors, extract those fieldabs, where the pindex
+        ## has the according value and build the sum of the resulting array    
+        
+        power_spectrum = np.zeros(rho.size, dtype = np.float)
+        
+        
+        for ii in xrange(rho.size):
+            ## extract those fieldabs where the pindex equals the current ii
+            extracted_fieldabs = working_field[pindex == ii]            
+            ## sum the extracted field values up and store them
+            power_spectrum[ii] = np.sum(extracted_fieldabs)
+        """
+        ## Divide out the degeneracy factor        
+        power_spectrum /= rho
+        return power_spectrum
+        
+
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_plot(self,x,title="",vmin=None,vmax=None,power=None,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
@@ -1698,20 +1732,538 @@ class rg_space(point_space):
         num = self.para[:naxes].tolist()
         zerocenter = self.para[-naxes:].astype(np.bool).tolist()
         dist = self.vol.tolist()
-        return "nifty_rg.rg_space instance\n- num        = "+str(num)+"\n- naxes      = "+str(naxes)+"\n- hermitian  = "+str(bool(self.para[naxes]<2))+"\n- purelyreal = "+str(bool(not self.para[naxes]))+"\n- zerocenter = "+str(zerocenter)+"\n- dist       = "+str(dist)+"\n- fourier    = "+str(self.fourier)
+        return "nifty_rg.rg_space instance\n- num        = " + str(num) + \
+                "\n- naxes      = " + str(naxes) + \
+                "\n- hermitian  = " + str(bool(self.para[naxes]==1)) + \
+                "\n- purelyreal = " + str(bool(not self.para[naxes])) + \
+                "\n- zerocenter = " + str(zerocenter) + \
+                "\n- dist       = " + str(dist) + \
+                "\n- fourier    = " + str(self.fourier)
     
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     ## __identiftier__ returns an object which contains all information needed 
-    ## to uniquely identify a space. It returns a (immutable) tuple which therefore
-    ## can be compared. 
+    ## to uniquely identify a space. It returns a (immutable) tuple which 
+    ## therefore can be compared. 
     ## The rg_space version of __identifier__ filters out the vars-information
     ## which is describing the rg_space's structure
     def __identifier__(self):
         ## Extract the identifying parts from the vars(self) dict.
-        temp = [(ii[0],((lambda x: tuple(x) if isinstance(x,np.ndarray) else x)(ii[1]))) for ii in vars(self).iteritems() if ii[0] not in ["fft_machine","power_indices"]]
+        temp = [(ii[0], 
+            ((lambda x: tuple(x) if isinstance(x,np.ndarray) else x)(ii[1])))\
+            for ii in vars(self).iteritems()\
+            if ii[0] not in ["fft_machine","power_indices"]]
         ## Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
 
 ##-----------------------------------------------------------------------------
+
+
+class power_indices(object):
+    def __init__(self, shape, dgrid, zerocentered=False, log=False, nbin=None, 
+                 binbounds=None, comm=MPI.COMM_WORLD):
+        """
+            Returns an instance of the power_indices class. Given the shape and
+            the density of a underlying rectangular grid it provides the user
+            with the pindex, kindex, rho and pundex. The indices are bined 
+            according to the supplied parameter scheme. If wanted, computed 
+            results are stored for future reuse.
+    
+            Parameters
+            ----------
+            shape : tuple, list, ndarray
+                Array-like object which specifies the shape of the underlying 
+                rectangular grid
+            dgrid : tuple, list, ndarray
+                Array-like object which specifies the step-width of the 
+                underlying grid
+            zerocentered : boolean, tuple/list/ndarray of boolean *optional*
+                Specifies which dimensions are zerocentered. (default:False)
+            log : bool *optional*
+                Flag specifying if the binning of the default indices is 
+                performed on logarithmic scale.
+            nbin : integer *optional*
+                Number of used bins for the binning of the default indices.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins of the default 
+                indices.
+        """ 
+        ## Basic inits and consistency checks
+        self.comm = comm
+        self.shape = np.array(shape, dtype = int)
+        self.dgrid = np.abs(np.array(dgrid))
+        if self.shape.shape != self.dgrid.shape:
+            raise ValueError(about._errors.cstring("ERROR: The supplied shape\
+                and dgrid have not the same dimensionality"))         
+        self.zerocentered = self.__cast_zerocentered__(zerocentered)
+
+        ## Compute the global kdict
+        self.kdict = self.compute_kdict()
+        
+        
+        ## Initialize the dictonary which stores all individual index-dicts
+        self.global_dict={}
+        
+        ## Calculate the default dictonory according to the kwargs and set it 
+        ## as default
+        self.get_index_dict(log=log, nbin=nbin, binbounds=binbounds, 
+                            store=True)
+        self.set_default(log=log, nbin=nbin, binbounds=binbounds)
+        
+    ## Redirect the direct calls approaching a power_index instance to the 
+    ## default_indices dict
+    def __getitem__(self, x):
+        return self.default_indices.get(x)
+    def __getattr__(self, x):
+        return self.default_indices.__getattribute__(x)
+        
+    def __cast_zerocentered__(self, zerocentered=False):
+        """        
+            internal helper function which brings the zerocentered input in 
+            the form of a boolean-tuple
+        """
+        zc = np.array(zerocentered).astype(bool)
+        if zc.shape == self.shape.shape:
+            return tuple(zc)
+        else:
+            temp = np.empty(shape=self.shape.shape, dtype=bool)
+            temp[:] = zc
+            return tuple(temp)
+        
+    def __cast_config__(self, *args, **kwargs):
+        """
+            internal helper function which casts the various combinations of 
+            possible parameters into a properly defaulted dictionary
+        """
+        temp_config_dict = kwargs.get('config_dict', None)        
+        if temp_config_dict != None:
+            return self.__cast_config_helper__(**temp_config_dict)
+        else:
+            temp_log = kwargs.get("log", None)
+            temp_nbin = kwargs.get("nbin", None)
+            temp_binbounds = kwargs.get("binbounds", None)            
+            
+            return self.__cast_config_helper__(log=temp_log, 
+                                               nbin=temp_nbin, 
+                                               binbounds=temp_binbounds)
+    
+    def __cast_config_helper__(self, log, nbin, binbounds):
+        """
+            internal helper function which sets the defaults for the 
+            __cast_config__ function
+        """
+        
+        try:
+            temp_log = bool(log)
+        except(TypeError):
+            temp_log = False
+        
+        try:
+            temp_nbin = int(nbin)
+        except(TypeError):
+            temp_nbin = None
+        
+        try:
+            temp_binbounds = tuple(np.array(binbounds))
+        except(TypeError):
+            temp_binbounds = None
+        
+        temp_dict = {"log":temp_log, 
+                     "nbin":temp_nbin, 
+                     "binbounds":temp_binbounds}
+        return temp_dict
+    
+    def __freeze_config__(self, config_dict):
+        """
+            a helper function which forms a hashable identifying object from 
+            a config dictionary which can be used as key of a dict
+        """        
+        return frozenset(config_dict.items())
+        
+    def set_default(self, *args, **kwargs):
+        """
+            Sets the index-set which is specified by the parameters as the 
+            default for the power_index instance. 
+            
+            Parameters
+            ----------
+            log : bool
+                Flag specifying if the binning is performed on logarithmic 
+                scale.
+            nbin : integer
+                Number of used bins.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins.
+    
+            Returns
+            -------
+            None    
+        """ 
+        ## This shortcut relies on the fact, that get_index_dict returns a
+        ## reference on the default dict and not a copy!!
+        self.default_indices = self.get_index_dict(*args, **kwargs)         
+        
+    
+    def get_index_dict(self, *args, **kwargs):
+        """
+            Returns a dictionary containing the pindex, kindex, rho and pundex
+            binned according to the supplied parameter scheme and a 
+            configuration dict containing this scheme.
+    
+            Parameters
+            ----------
+            store : bool
+                Flag specifying if  the calculated index dictionary should be 
+                stored in the global_dict for future use.
+            log : bool
+                Flag specifying if the binning is performed on logarithmic 
+                scale.
+            nbin : integer
+                Number of used bins.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins.
+    
+            Returns
+            -------
+            index_dict : dict
+                Contains the keys: 'config', 'pindex', 'kindex', 'rho' and 
+                'pundex'    
+        """        
+        ## Cast the input arguments        
+        temp_config_dict = self.__cast_config__(*args, **kwargs)
+        ## Compute a hashable identifier from the config which will be used 
+        ## as dict key
+        temp_key = self.__freeze_config__(temp_config_dict)
+        ## Check if the result should be stored for future use.
+        storeQ = kwargs.get("store", True)
+        ## Try to find the requested index dict in the global_dict
+        try:
+            return self.global_dict[temp_key]
+        except(KeyError):
+            ## If it is not found, calculate it.
+            temp_index_dict = self.__compute_index_dict__(temp_config_dict)
+            ## Store it, if required
+            if storeQ == True:
+                self.global_dict[temp_key] = temp_index_dict
+                ## Important: If the result is stored, return a reference to 
+                ## the dictionary entry, not anly a plain copy. Otherwise, 
+                ## set_default breaks!
+                return self.global_dict[temp_key]
+            else:
+                ## Return the plain result.
+                return temp_index_dict
+        
+    
+    def compute_kdict(self):
+        """
+            Calculates an n-dimensional array with its entries being the 
+            lengths of the k-vectors from the zero point of the grid.    
+            
+            Parameters
+            ----------
+            None : All information is taken from the parent object.
+    
+            Returns
+            -------
+            nkdict : distributed_data_object
+        """
+        
+        
+        ##if(fourier):
+        ##   dk = dgrid
+        ##else:
+        ##    dk = np.array([1/dgrid[i]/axes[i] for i in range(len(axes))])
+        
+        dk = self.dgrid
+        shape = self.shape
+        
+        ## prepare the distributed_data_object        
+        nkdict = distributed_data_object(global_shape=shape, 
+                                         dtype=np.float128, 
+                                         distribution_strategy="fftw")
+        ## get the node's individual slice of the first dimension 
+        slice_of_first_dimension = slice(*nkdict.distributor.local_slice[0:2])
+        
+        inds = []
+        for a in shape:
+            inds += [slice(0,a)]
+        
+        cords = np.ogrid[inds]
+
+        dists = ((cords[0]-shape[0]//2)*dk[0])**2
+        ## apply zerocenteredQ shift
+        if self.zerocentered[0] == False:
+            dists = np.fft.fftshift(dists)
+        ## only save the individual slice
+        dists = dists[slice_of_first_dimension]
+        for ii in range(1,len(shape)):
+            temp = ((cords[ii]-shape[ii]//2)*dk[ii])**2
+            if self.zerocentered[ii] == False:
+                temp = np.fft.fftshift(temp)
+            dists = dists + temp
+        dists = np.sqrt(dists)
+        nkdict.set_local_data(dists)
+        return nkdict
+    
+#    def compute_klength(self, kdict):
+#        local_klength = np.sort(list(set(kdict.get_local_data().flatten())))
+#        
+#        global_klength = kdict.distributor._allgather(local_klength)
+#        global_klength = np.array(global_klength).flatten()
+#        global_klength = np.sort(list(set(global_klength)))
+#
+#        return global_klength
+
+
+    def __compute_indices__(self, nkdict):
+        """
+        Internal helper function which computes pindex, kindex, rho and pundex
+        from a given nkdict
+        """
+        ##########
+        # kindex #        
+        ##########
+        ## compute the local kindex array        
+        local_kindex = np.unique(nkdict.get_local_data())
+        ## unify the local_kindex arrays
+        global_kindex = self.comm.allgather(local_kindex)
+        ## flatten the gathered lists        
+        global_kindex = np.hstack(global_kindex)
+        ## remove duplicates        
+        global_kindex = np.unique(global_kindex)        
+
+        ##########
+        # pindex #        
+        ##########
+        ## compute the local pindex slice on basis of the local nkdict data
+        local_pindex = np.searchsorted(global_kindex, nkdict.get_local_data())
+        ## prepare the distributed_data_object
+        global_pindex = distributed_data_object(global_shape=nkdict.shape, 
+                                                dtype=local_pindex.dtype.type,
+                                                distribution_strategy='fftw')  
+        ## store the local pindex data in the global_pindex d2o
+        global_pindex.set_local_data(local_pindex)
+        
+        #######
+        # rho #        
+        #######
+        ## Prepare the local pindex data in order to count the degeneracy 
+        ## factors
+        temp = local_pindex.flatten()
+        ## Remember: np.array.sort is an inplace function        
+        temp.sort()        
+        ## In local_count we save how many of the indvidual values in 
+        ## local_value occured. Therefore we use np.unique to calculate the 
+        ## offset...
+        local_value, local_count = np.unique(temp, return_index=True)
+        ## ...and then build the offset differences
+        if local_count.shape != (0,):
+            local_count = np.append(local_count[1:]-local_count[:-1],
+                                    [temp.shape[0]-local_count[-1]])
+        ## Prepare the global rho array, and store the individual counts in it
+        ## rho has the same length as the kindex array
+        local_rho = np.zeros(shape=global_kindex.shape, dtype=np.int)
+        global_rho = np.empty_like(local_rho)
+        ## Store the individual counts
+        local_rho[local_value] = local_count
+        ## Use Allreduce to spread the information
+        self.comm.Allreduce(local_rho , global_rho, op=MPI.SUM)
+        ##########
+        # pundex #        
+        ##########  
+        global_pundex = self.__compute_pundex__(global_pindex,
+                                            global_kindex)
+
+        return global_pindex, global_kindex, global_rho, global_pundex
+
+    def __compute_pundex__(self, global_pindex, global_kindex):
+        """
+        Internal helper function which computes the pundex array from a
+        pindex and a kindex array. This function is separated from the 
+        __compute_indices__ function as it is needed in __bin_power_indices__,
+        too.
+        """
+        ##########
+        # pundex #        
+        ##########
+        ## Prepare the local data
+        local_pindex = global_pindex.get_local_data()
+        ## Compute the local pundices for the local pindices
+        (temp_uniqued_pindex, local_temp_pundex) = np.unique(local_pindex, 
+                                                        return_index=True)
+        ## Shift the local pundices by the nodes' local_dim_offset
+        local_temp_pundex += global_pindex.distributor.local_dim_offset
+        
+        ## Prepare the pundex arrays used for the Allreduce operation        
+        ## pundex has the same length as the kindex array
+        local_pundex = np.zeros(shape=global_kindex.shape, dtype=np.int)
+        ## Set the default value higher than the maximal possible pundex value
+        ## so that MPI.MIN can sort out the default
+        local_pundex += np.prod(global_pindex.shape) + 1
+        ## Set the default value higher than the length 
+        global_pundex = np.empty_like(local_pundex)
+        ## Store the individual pundices in the local_pundex array
+        local_pundex[temp_uniqued_pindex] = local_temp_pundex
+        ## Use Allreduce to find the first occurences/smallest pundices 
+        self.comm.Allreduce(local_pundex, global_pundex, op=MPI.MIN)
+        return global_pundex
+    
+    def __compute_kdict_from_pindex_kindex__(self, pindex, kindex):
+        tempindex = pindex.copy(dtype=kindex.dtype.type)        
+        return tempindex.apply_scalar_function(lambda x: kindex[x])
+
+    def __compute_index_dict__(self, config_dict):
+        """
+            Internal helper function which takes a config_dict, asks for the 
+            pindex/kindex/rho/pundex set, and bins them according to the config
+        """        
+        ## if no binning is requested, compute the indices, build the dict, 
+        ## and return it straight.        
+        if config_dict["log"]==False and config_dict["nbin"]==None and \
+          config_dict["binbounds"]==None:
+            (temp_pindex, temp_kindex, temp_rho, temp_pundex) =\
+                                        self.__compute_indices__(self.kdict)
+            temp_kdict = self.kdict
+            
+        ## if binning is required, make a recursive call to get the unbinned
+        ## indices, bin them, compute the pundex and then return everything.
+        else:
+            ## Get the unbinned indices 
+            temp_unbinned_indices = self.get_index_dict(store=False)            
+            ## Bin them            
+            (temp_pindex, temp_kindex, temp_rho, temp_pundex) = \
+                self.__bin_power_indices__(temp_unbinned_indices, **config_dict)
+            ## Make a binned version of kdict
+            temp_kdict = self.__compute_kdict_from_pindex_kindex__(temp_pindex, 
+                                                                   temp_kindex)
+            
+        temp_index_dict = {"config": config_dict, 
+                               "pindex": temp_pindex,
+                               "kindex": temp_kindex,
+                               "rho": temp_rho,
+                               "pundex": temp_pundex,
+                               "kdict": temp_kdict}
+        return temp_index_dict
+
+    def __bin_power_indices__(self, index_dict, **kwargs):
+        """
+            Returns the binned power indices associated with the Fourier grid.
+    
+            Parameters
+            ----------
+            pindex : distributed_data_object
+                Index of the Fourier grid points in a distributed_data_object.
+            kindex : ndarray
+                Array of all k-vector lengths.
+            rho : ndarray
+                Degeneracy factor of the individual k-vectors.
+            log : bool
+                Flag specifying if the binning is performed on logarithmic 
+                scale.
+            nbin : integer
+                Number of used bins.
+            binbounds : {list, array}
+                Array-like inner boundaries of the used bins.
+    
+            Returns
+            -------
+            pindex : distributed_data_object
+            kindex, rho, pundex : ndarrays
+                The (re)binned power indices.
+    
+        """
+        ## Cast the given config
+        temp_config_dict = self.__cast_config__(**kwargs)
+        log = temp_config_dict['log']
+        nbin = temp_config_dict['nbin']
+        binbounds = temp_config_dict['binbounds']
+        
+        ## Extract the necessary indices from the supplied index dict        
+        pindex = index_dict["pindex"]
+        kindex = index_dict["kindex"]
+        rho = index_dict["rho"]
+        
+        ## boundaries
+        if(binbounds is not None):
+            binbounds = np.sort(binbounds)
+        ## equal binning
+        else:
+            if(log is None):
+                log = False
+            if(log):
+                k = np.r_[0,np.log(kindex[1:])]
+            else:
+                k = kindex
+            dk = np.max(k[2:]-k[1:-1]) ## minimal dk
+            if(nbin is None):
+                nbin = int((k[-1]-0.5*(k[2]+k[1]))/dk-0.5) ## maximal nbin
+            else:
+                nbin = min(int(nbin),int((k[-1]-0.5*(k[2]+k[1]))/dk+2.5))
+                dk = (k[-1]-0.5*(k[2]+k[1]))/(nbin-2.5)
+            binbounds = np.r_[0.5*(3*k[1]-k[2]),0.5*(k[1]+k[2])+dk*np.arange(nbin-2)]
+            if(log):
+                binbounds = np.exp(binbounds)
+        ## reordering
+        reorder = np.searchsorted(binbounds,kindex)
+        rho_ = np.zeros(len(binbounds)+1,dtype=rho.dtype)
+        kindex_ = np.empty(len(binbounds)+1,dtype=kindex.dtype)    
+        for ii in range(len(reorder)):
+            if(rho_[reorder[ii]]==0):
+                kindex_[reorder[ii]] = kindex[ii]
+                rho_[reorder[ii]] += rho[ii]
+            else:
+                kindex_[reorder[ii]] = (kindex_[reorder[ii]]*rho_[reorder[ii]]+kindex[ii]*rho[ii])/(rho_[reorder[ii]]+rho[ii])
+                rho_[reorder[ii]] += rho[ii]
+        
+        pindex_ = pindex.copy_empty()
+        pindex_.set_local_data(reorder[pindex.get_local_data()])
+        
+        pundex_ = self.__compute_pundex__(pindex_, kindex_)     
+        return pindex_, kindex_, rho_, pundex_
+
+class utilities(object):
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def hermitianize(x):
+        ## make the point inversions
+        flipped_x = utilities._hermitianize_inverter(x)
+        flipped_x = flipped_x.conjugate()
+        ## average x and flipped_x. 
+        ## Correct the variance by multiplying sqrt(0.5)
+        x = (x + flipped_x) * np.sqrt(0.5)
+        ## The fixed points of the point inversion must not be avaraged.
+        ## Hence one must multiply them again with sqrt(0.5)
+        ## -> Get the middle index of the array
+        mid_index = np.array(x.shape, dtype=np.int)//2
+        dimensions = mid_index.size
+        ## Use ndindex to iterate over all combinations of zeros and the
+        ## mid_index in order to correct all fixed points.
+        for i in np.ndindex((2,)*dimensions):
+            temp_index = tuple(i*mid_index)
+            x[temp_index] *= np.sqrt(0.5)
+        try:
+            x.hermitian = True
+        except(AttributeError):
+            pass
+            
+        return x
+    
+    @staticmethod
+    def _hermitianize_inverter(x):
+        ## calculate the number of dimensions the input array has
+        dimensions = len(x.shape)
+        ## prepare the slicing object which will be used for mirroring
+        slice_primitive = [slice(None),]*dimensions
+        ## copy the input data
+        y = x.copy()
+        ## flip in every direction
+        for i in xrange(dimensions):
+            slice_picker = slice_primitive[:]
+            slice_picker[i] = slice(1, None)
+            slice_inverter = slice_primitive[:]
+            slice_inverter[i] = slice(None, 0, -1)
+            y[slice_picker] = y[slice_inverter]
+        return y
 

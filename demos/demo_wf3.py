@@ -36,7 +36,7 @@ from nifty import *                                                   # version 
 
 
 # some signal space; e.g., a one-dimensional regular grid
-x_space = rg_space(128)                                               # define signal space
+x_space = rg_space([128,])                                               # define signal space
 
 k_space = x_space.get_codomain()                                      # get conjugate space
 
