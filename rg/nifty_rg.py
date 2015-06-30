@@ -1747,7 +1747,7 @@ class rg_space(point_space):
     ## therefore can be compared. 
     ## The rg_space version of __identifier__ filters out the vars-information
     ## which is describing the rg_space's structure
-    def __identifier__(self):
+    def _identifier(self):
         ## Extract the identifying parts from the vars(self) dict.
         temp = [(ii[0], 
             ((lambda x: tuple(x) if isinstance(x,np.ndarray) else x)(ii[1])))\
