@@ -164,8 +164,14 @@ class distributed_data_object(object):
         return temp_d2o
     
     def apply_scalar_function(self, function, inplace=False, dtype=None):
+        remember_hermitianQ = self.hermitian
+        
         if inplace == True:        
             temp = self
+            if dtype != None and self.dtype != dtype:
+                about.warnings.cprint(\
+            "WARNING: Inplace dtype conversion is not possible!")
+                
         else:
             temp = self.copy_empty(dtype=dtype)
 
@@ -174,7 +180,10 @@ class distributed_data_object(object):
         except:
             temp.data[:] = np.vectorize(function)(self.data)
         
-        temp.hermitian = False
+        if function in (np.exp, np.log):
+            temp.hermitian = remember_hermitianQ
+        else:
+            temp.hermitian = False
         return temp
     
     def apply_generator(self, generator):
@@ -763,8 +772,11 @@ class distributed_data_object(object):
         for i in sliceified:
             if i == True:
                 temp_shape += (1,)
-                if data.shape[j] == 1:
-                    j +=1
+                try:
+                    if data.shape[j] == 1:
+                        j +=1
+                except(IndexError):
+                    pass
             else:
                 try:
                     temp_shape += (data.shape[j],)

@@ -23,12 +23,12 @@
 import numpy as np
 from nifty.nifty_about import about
 from nifty.nifty_core import field                                          
-from nifty.nifty_simple_math import sqrt,exp,log                                          
-from nifty.operators import power_operator            
+#from nifty.nifty_simple_math import sqrt,exp,log                                          
+#from nifty.operators import power_operator            
                   
 
 
-def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
+def power_backward_conversion_rg(k_space, p, mean=None, bare=True):
     """
         This function is designed to convert a theoretical/statistical power
         spectrum of a log-normal field to the theoretical power spectrum of
@@ -68,6 +68,60 @@ def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
         .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter power spectrum";
             `arXiv:1312.1354 <http://arxiv.org/abs/1312.1354>`_
     """
+    
+    
+    pindex = k_space.power_indices['pindex']
+    weight = k_space.get_weight()    
+    
+    monopole_index = pindex.argmin()
+    
+    ## Cast the supplied spectrum     
+    spec = k_space.enforce_power(p)
+    ## Now we mimick the weightning behaviour of 
+    ## spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
+    ## by appliying the weight from the k_space
+    if bare == True:
+        spec *= weight
+    
+    #TODO: Does this realy set the mean to the monopole as promised in the docs? -> Check!
+    if mean is None:
+        mean = 0.
+    else:
+        spec[0] = 0.
+        
+    p_val =  pindex.apply_scalar_function(lambda x: spec[x], 
+                                           dtype=spec.dtype.type)
+    power_field = field(k_space, val = p_val, zerocenter=True).transform()        
+    power_field += (mean**2)        
+            
+    if power_field.min() < 0:
+        raise ValueError(about._errors.cstring(
+        "ERROR: spectrum or mean incompatible with positive definiteness."+\
+        "\n Try increasing the mean."))
+
+    log_of_power_field = power_field.apply_scalar_function(np.log, 
+                                                           inplace=True)
+    power_spectrum_1 = log_of_power_field.power()**(0.5)
+    power_spectrum_1[0] = log_of_power_field.transform()[monopole_index]
+    
+    power_spectrum_0 = k_space.calc_weight(p_val).sum() + (mean**2)
+    power_spectrum_0 = np.log(power_spectrum_0)
+    power_spectrum_0 *= (0.5 / weight)
+    
+    log_mean = weight * (power_spectrum_1[0]- power_spectrum_0)
+    
+    power_spectrum_1[0] = 0.
+    
+    ## Mimik
+    ## power_operator(k_space,spec=power_spectrum_1,bare=False).\
+    ##  get_power(bare=True).real
+    if bare == True:
+        power_spectrum_1 /= weight
+    
+    return log_mean.real, power_spectrum_1.real
+                                        
+    
+    """
     pindex = k_space.get_power_indices()[2]
     V = k_space.vol.prod()**(-1)
 
@@ -104,7 +158,8 @@ def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
         return logmean.real,power_operator(k_space,spec=p1,bare=False).get_power(bare=True).real
     else:
         return logmean.real,p1.real
-
+    
+    """
 
 def power_forward_conversion_rg(k_space, p, mean=0, bare=True):
     """
@@ -158,9 +213,7 @@ def power_forward_conversion_rg(k_space, p, mean=0, bare=True):
     ## Calculate the new power_field
     S_x += s_0
     S_x += 2*mean
-    
-    print S_x
-    print s_0
+
     power_field = S_x.apply_scalar_function(np.exp, inplace=True)
     
     new_spec = power_field.power()**(0.5)
