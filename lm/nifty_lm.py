@@ -1372,6 +1372,13 @@ class gl_space(point_space):
         else:
             return gl.weight(x,self.vol,p=np.float64(power),nlat=self.para[0],nlon=self.para[1],overwrite=False)
 
+    def get_weight(self, power = 1):
+        ## TODO: Check if this function is compatible to the rest of the nifty code
+        ## TODO: Can this be done more efficiently?
+        dummy = self.enforce_values(1)
+        weighted_dummy = self.calc_weight(dummy, power = power)
+        return weighted_dummy/dummy
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def calc_transform(self,x,codomain=None,**kwargs):

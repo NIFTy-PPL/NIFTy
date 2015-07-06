@@ -583,9 +583,9 @@ class rg_space(point_space):
                     "ERROR: Data has incompatible shape!"))
                     
             ## Check the datatype
-            if x.dtype != self.datatype:
+            if x.dtype < self.datatype:
                 about.warnings.cflush(\
-                "WARNING: Datatypes are uneqal (own: "\
+            "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
                 + str(self.datatype) + " <> foreign: " + str(x.dtype) \
                 + ") and will be casted! "\
                 + "Potential loss of precision!\n")
@@ -1161,12 +1161,17 @@ class rg_space(point_space):
             y : numpy.ndarray
                 Weighted array.
         """
-        x = self.cast(x)
-        is_hermitianQ = x.hermitian
+        #x = self.cast(x)
+        if isinstance(x, distributed_data_object):
+            is_hermitianQ = x.hermitian
         ## weight
-        x =  x * (np.prod(self.vol)**power)
-        x.hermitian = is_hermitianQ
+        x =  x * self.get_weight(power = power)
+        if isinstance(x, distributed_data_object):        
+            x.hermitian = is_hermitianQ
         return x
+
+    def get_weight(self, power = 1):
+        return np.prod(self.vol)**power
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_dot(self, x, y):
@@ -1426,11 +1431,7 @@ class rg_space(point_space):
         
         fieldabs = abs(x)**2
         power_spectrum = np.zeros(rho.shape) 
-        """
-        ##TODO: Replace this super slow ndindex solution
-        for ii in np.ndindex(pindex.shape):
-            power_spectrum[pindex[ii]] += fieldabs[ii]
-        """
+
                 
         ## In order to make the summation over identical pindices fast, 
         ## the pindex and the kindex must have the same distribution strategy
@@ -1446,20 +1447,7 @@ class rg_space(point_space):
         power_spectrum =\
             pindex.distributor._allgather(local_power_spectrum)
         power_spectrum = np.sum(power_spectrum, axis = 0)
-                    
-        """
-        ## Iterate over the k-vectors, extract those fieldabs, where the pindex
-        ## has the according value and build the sum of the resulting array    
-        
-        power_spectrum = np.zeros(rho.size, dtype = np.float)
-        
-        
-        for ii in xrange(rho.size):
-            ## extract those fieldabs where the pindex equals the current ii
-            extracted_fieldabs = working_field[pindex == ii]            
-            ## sum the extracted field values up and store them
-            power_spectrum[ii] = np.sum(extracted_fieldabs)
-        """
+
         ## Divide out the degeneracy factor        
         power_spectrum /= rho
         return power_spectrum

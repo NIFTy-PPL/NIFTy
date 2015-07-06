@@ -106,7 +106,7 @@ def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
         return logmean.real,p1.real
 
 
-def power_forward_conversion_rg(k_space,p,mean=0,bare=True):
+def power_forward_conversion_rg(k_space, p, mean=0, bare=True):
     """
         This function is designed to convert a theoretical/statistical power
         spectrum of a Gaussian field to the theoretical power spectrum of
@@ -137,6 +137,44 @@ def power_forward_conversion_rg(k_space,p,mean=0,bare=True):
             `arXiv:1312.1354 <http://arxiv.org/abs/1312.1354>`_
     """
 
+    pindex = k_space.power_indices['pindex']
+    weight = k_space.get_weight()    
+    ## Cast the supplied spectrum     
+    spec = k_space.enforce_power(p)
+    ## Now we mimick the weightning behaviour of 
+    ## spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
+    ## by appliying the weight from the k_space
+    if bare == True:
+        spec *= weight
+    
+    S_val = pindex.apply_scalar_function(lambda x: spec[x], 
+                                           dtype=spec.dtype.type)
+                                           
+    ## S_x is a field                                           
+    S_x = field(k_space, val=S_val, zerocenter=True).transform()
+    ## s_0 is a scalar
+    s_0 = k_space.calc_weight(S_val, power = 1).sum()
+    
+    ## Calculate the new power_field
+    S_x += s_0
+    S_x += 2*mean
+    
+    print S_x
+    print s_0
+    power_field = S_x.apply_scalar_function(np.exp, inplace=True)
+    
+    new_spec = power_field.power()**(0.5)
+    
+    ## Mimik
+    ## power_operator(k_space,spec=p1,bare=False).get_power(bare=True).real
+    if bare == True:
+        new_spec /= weight
+    
+    return new_spec.real
+    
+
+    """
+
     pindex = k_space.get_power_indices()[2]
 
     spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
@@ -154,3 +192,4 @@ def power_forward_conversion_rg(k_space,p,mean=0,bare=True):
     else:
         return p1.real
 
+    """

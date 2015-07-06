@@ -163,11 +163,11 @@ class distributed_data_object(object):
                                            **kwargs)
         return temp_d2o
     
-    def apply_scalar_function(self, function, inplace=False):
+    def apply_scalar_function(self, function, inplace=False, dtype=None):
         if inplace == True:        
             temp = self
         else:
-            temp = self.copy_empty()
+            temp = self.copy_empty(dtype=dtype)
 
         try: 
             temp.data[:] = function(self.data)
@@ -260,34 +260,54 @@ class distributed_data_object(object):
         temp_d2o.set_local_data(data = self.get_local_data().__abs__()) 
         return temp_d2o
             
-    def __builtin_helper__(self, operator, other):
+    def __builtin_helper__(self, operator, other, inplace=False):
         ## Case 1: other is not a scalar
         if not (np.isscalar(other) or np.shape(other) == (1,)):
 ##            if self.shape != other.shape:            
 ##                raise AttributeError(about._errors.cstring(
 ##                    "ERROR: Shapes do not match!")) 
-        
+            try:            
+                hermitian_Q = other.hermitian
+            except(AttributeError):
+                hermitian_Q = False
             ## extract the local data from the 'other' object
             temp_data = self.distributor.extract_local_data(other)
             temp_data = operator(temp_data)
             
-        else:
+        ## Case 2: other is a real scalar -> preserve hermitianity
+        elif np.isreal(other) or (self.dtype not in (np.complex, np.complex128,
+                                                np.complex256)):
+            hermitian_Q = self.hermitian
             temp_data = operator(other)
-        
+        ## Case 3: other is complex
+        else:
+            hermitian_Q = False
+            temp_data = operator(other)        
         ## write the new data into a new distributed_data_object        
-        temp_d2o = self.copy_empty()        
+        if inplace == True:
+            temp_d2o = self
+        else:
+            temp_d2o = self.copy_empty()        
         temp_d2o.set_local_data(data=temp_data)
+        temp_d2o.hermitian = hermitian_Q
         return temp_d2o
-    
+    """
     def __inplace_builtin_helper__(self, operator, other):
+        ## Case 1: other is not a scalar
         if not (np.isscalar(other) or np.shape(other) == (1,)):        
             temp_data = self.distributor.extract_local_data(other)
             temp_data = operator(temp_data)
-        else:
+        ## Case 2: other is a real scalar -> preserve hermitianity
+        elif np.isreal(other):
+            hermitian_Q = self.hermitian
             temp_data = operator(other)
+        ## Case 3: other is complex
+        else:
+            temp_data = operator(other)        
         self.set_local_data(data=temp_data)
+        self.hermitian = hermitian_Q
         return self
-        
+    """ 
     
     def __add__(self, other):
         return self.__builtin_helper__(self.get_local_data().__add__, other)
@@ -296,8 +316,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__radd__, other)
 
     def __iadd__(self, other):
-        return self.__inplace_builtin_helper__(self.get_local_data().__iadd__, 
-                                               other)
+        return self.__builtin_helper__(self.get_local_data().__iadd__, 
+                                               other,
+                                               inplace = True)
 
     def __sub__(self, other):
         return self.__builtin_helper__(self.get_local_data().__sub__, other)
@@ -306,8 +327,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rsub__, other)
     
     def __isub__(self, other):
-        return self.__inplace_builtin_helper__(self.get_local_data().__isub__, 
-                                               other)
+        return self.__builtin_helper__(self.get_local_data().__isub__, 
+                                               other,
+                                               inplace = True)
         
     def __div__(self, other):
         return self.__builtin_helper__(self.get_local_data().__div__, other)
@@ -316,8 +338,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rdiv__, other)
 
     def __idiv__(self, other):
-        return self.__inplace_builtin_helper__(self.get_local_data().__idiv__, 
-                                               other)
+        return self.__builtin_helper__(self.get_local_data().__idiv__, 
+                                               other,
+                                               inplace = True)
 
     def __floordiv__(self, other):
         return self.__builtin_helper__(self.get_local_data().__floordiv__, 
@@ -326,8 +349,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rfloordiv__, 
                                        other)
     def __ifloordiv__(self, other):
-        return self.__inplace_builtin_helper__(
-                    self.get_local_data().__ifloordiv__, other)
+        return self.__builtin_helper__(
+                    self.get_local_data().__ifloordiv__, other,
+                                               inplace = True)
     
     def __mul__(self, other):
         return self.__builtin_helper__(self.get_local_data().__mul__, other)
@@ -336,8 +360,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rmul__, other)
 
     def __imul__(self, other):
-        return self.__inplace_builtin_helper__(self.get_local_data().__imul__, 
-                                               other)
+        return self.__builtin_helper__(self.get_local_data().__imul__, 
+                                               other,
+                                               inplace = True)
 
     def __pow__(self, other):
         return self.__builtin_helper__(self.get_local_data().__pow__, other)
@@ -346,8 +371,9 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rpow__, other)
 
     def __ipow__(self, other):
-        return self.__inplace_builtin_helper__(self.get_local_data().__ipow__, 
-                                               other)
+        return self.___builtin_helper__(self.get_local_data().__ipow__, 
+                                               other,
+                                               inplace = True)
    
     def __len__(self):
         return self.shape[0]
@@ -392,24 +418,30 @@ class distributed_data_object(object):
     def __setitem__(self, key, data):
         self.set_data(data, key)
         
-    def _minmaxhelper(self, function, **kwargs):
+    def _contraction_helper(self, function, **kwargs):
         local = function(self.data, **kwargs)
         local_list = self.distributor._allgather(local)
         global_ = function(local_list, axis=0)
         return global_
         
     def amin(self, **kwargs):
-        return self._minmaxhelper(np.amin, **kwargs)
+        return self._contraction_helper(np.amin, **kwargs)
 
     def nanmin(self, **kwargs):
-        return self._minmaxhelper(np.nanmin, **kwargs)
+        return self._contraction_helper(np.nanmin, **kwargs)
         
     def amax(self, **kwargs):
-        return self._minmaxhelper(np.amax, **kwargs)
+        return self._contraction_helper(np.amax, **kwargs)
     
     def nanmax(self, **kwargs):
-        return self._minmaxhelper(np.nanmax, **kwargs)
+        return self._contraction_helper(np.nanmax, **kwargs)
     
+    def sum(self, **kwargs):
+        return self._contraction_helper(np.sum, **kwargs)
+
+    def prod(self, **kwargs):
+        return self._contraction_helper(np.prod, **kwargs)        
+        
     def mean(self, power=1):
         ## compute the local means and the weights for the mean-mean. 
         local_mean = np.mean(self.data**power)
@@ -731,8 +763,13 @@ class distributed_data_object(object):
         for i in sliceified:
             if i == True:
                 temp_shape += (1,)
+                if data.shape[j] == 1:
+                    j +=1
             else:
-                temp_shape += (data.shape[j],)
+                try:
+                    temp_shape += (data.shape[j],)
+                except(IndexError):
+                    temp_shape += (1,)
                 j += 1
         ## take into account that the sliceified tuple may be too short, because 
         ## of a non-exaustive list of slices

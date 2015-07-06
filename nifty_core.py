@@ -682,6 +682,9 @@ class space(object):
         """
         raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'calc_weight'."))
 
+    def get_weight(self, power=1):
+        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_weight'."))
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def calc_dot(self,x,y):
@@ -1608,8 +1611,11 @@ class point_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## weight
-        return x*self.vol**power
+        return x*self.get_weight(power = power)
+        #return x*self.vol**power
 
+    def get_weight(self, power = 1):
+        return self.vol**power
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_dot(self, x, y):
         """
@@ -2291,7 +2297,11 @@ class nested_space(space):
         """
         x = self.enforce_shape(np.array(x,dtype=self.datatype))
         ## weight
-        return x*self.get_meta_volume(total=False)**power
+        return x*self.get_weight(power = power)
+        
+    def get_weight(self, power = 1):
+        return self.get_meta_volume(total=False)**power
+        
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2669,7 +2679,7 @@ class field(object):
         
         if val == None:
             if kwargs == {}:
-                self.val = self.domain.cast(0)
+                self.val = self.domain.cast(0.)
             else:
                 self.val = self.domain.get_random_values(codomain=self.target, 
                                                          **kwargs)
@@ -3349,8 +3359,9 @@ class field(object):
             temp = self
         else:
             temp = self.copy_empty()
-        data_object = self.domain.apply_scalar_function(self.val,\
-                                                        function, inplace)
+        data_object = self.domain.apply_scalar_function(self.val,
+                                                        function, 
+                                                        inplace)
         temp.set_val(data_object)
         return temp
         

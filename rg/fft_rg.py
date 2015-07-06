@@ -8,7 +8,7 @@ from nifty.nifty_about import about
 # If this fails fall back to local gfft_rg
 
 try:
-    import pyfftw_BAD
+    import pyfftw
     fft_machine='pyfftw'
 except(ImportError):
     try:
@@ -182,6 +182,10 @@ if fft_machine == 'pyfftw':
             ## cast input
             to_center = np.array(to_center_input)
             dimensions = np.array(dimensions_input)  
+
+            ## if none of the dimensions are zero centered, return a 1
+            if np.all(to_center == 0):
+                return 1
             
             if np.all(dimensions == np.array(1)) or \
                 np.all(dimensions == np.array([1])):
@@ -221,7 +225,9 @@ if fft_machine == 'pyfftw':
                         offset.reshape(offset.shape + \
                             (1,)*(np.array(args).ndim - 1)),1)),\
                     (2,)*to_center.size)
-                    
+                ## Cast the core to the smallest integers we can get
+                core = core.astype(np.int8)
+                
                 centering_mask = np.tile(core,dimensions//2)           
                 ## for the dimensions of odd size corresponding slices must be added
                 for i in range(centering_mask.ndim):
@@ -249,7 +255,7 @@ if fft_machine == 'pyfftw':
 
         def _get_plan_and_info(self,domain,codomain,**kwargs):
             ## generate a id-tuple which identifies the domain-codomain setting                
-            temp_id = (domain.__identifier__(), codomain.__identifier__())
+            temp_id = (domain._identifier(), codomain._identifier())
             ## generate the plan_and_info object if not already there                
             if not temp_id in self.plan_dict:
                 self.plan_dict[temp_id]=_fftw_plan_and_info(domain, codomain,

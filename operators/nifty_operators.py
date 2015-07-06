@@ -26,7 +26,7 @@ from nifty.nifty_core import space, \
                          point_space, \
                          nested_space, \
                          field
-from nifty.nifty_tools import conjugate_gradient
+from nifty_minimization import conjugate_gradient
 from nifty_probing import trace_probing, \
                             diagonal_probing
 
@@ -1803,8 +1803,9 @@ class power_operator(diagonal_operator):
         try:
             #diag = self.domain.enforce_power(spec,size=np.max(pindex,axis=None,out=None)+1)[pindex]
             temp_spec = self.domain.enforce_power(
-                            spec,size=np.max(pindex,axis=None,out=None)+1)            
-            diag = pindex.apply_scalar_function(lambda x: temp_spec[x])
+                            spec,size=np.max(pindex,axis=None,out=None)+1)
+            diag = pindex.apply_scalar_function(lambda x: temp_spec[x],
+                                              dtype = temp_spec.dtype.type)
         except(AttributeError):
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         ## weight if ...

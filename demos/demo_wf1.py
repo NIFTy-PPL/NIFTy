@@ -63,8 +63,8 @@ D = propagator_operator(S=S, N=N, R=R)                           # define inform
 
 m = D(j, W=S, tol=1E-3, note=True)                               # reconstruct map
 
-s.plot(title="signal")                                           # plot signal
+s.plot(title="signal", save = 'plot_s.png')                                           # plot signal
 d_ = field(x_space, val=d.val, target=k_space)
-d_.plot(title="data", vmin=s.min(), vmax=s.max())                # plot data
-m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max())    # plot map
+d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')                # plot data
+m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')    # plot map
 
