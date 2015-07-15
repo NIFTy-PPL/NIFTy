@@ -1728,6 +1728,11 @@ class point_space(space):
         """
         raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point space."))
 
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def calc_real_Q(self, x):
+        return np.all(np.isreal(x))
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_plot(self,x,title="",vmin=None,vmax=None,unit="",norm=None,other=None,legend=False,**kwargs):

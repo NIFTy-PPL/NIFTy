@@ -23,8 +23,9 @@
 
 
 ##initialize the 'found-packages'-dictionary 
-found = {}
 
+
+found = {}
 import numpy as np
 from nifty_about import about
 
@@ -48,8 +49,6 @@ try:
 except(ImportError):
     found['h5py'] = False
     found['h5py_parallel'] = False
-
-   
 
 
 class distributed_data_object(object):
@@ -217,7 +216,7 @@ class distributed_data_object(object):
             return False
         
         ## Case 4: 'other' is something different
-        ## -> make a numpy casting and make a recursion
+        ## -> make a numpy casting and make a recursive call
         else:
             temp_other = np.array(other)
             return self.__eq__(temp_other)
@@ -543,9 +542,21 @@ class distributed_data_object(object):
         return temp_d2o
     
     def is_completely_real(self):
-        local_realiness = np.all(self.isreal())
+        local_realiness = np.all(self.isreal().get_local_data())
         global_realiness = self.distributor._allgather(local_realiness)
         return np.all(global_realiness)
+    
+    def all(self):
+        local_all = np.all(self.get_local_data())
+        global_all = self.distributor._allgather(local_all)
+        return np.all(global_all)
+
+    def any(self):
+        local_any = np.any(self.get_local_data())
+        global_any = self.distributor._allgather(local_any)
+        return np.all(global_any)
+        
+    
     
     def set_local_data(self, data, hermitian=False, copy=False):
         """
@@ -1464,10 +1475,12 @@ class _not_distributor(object):
             return np.array(data).astype(self.dtype, copy=False).\
                     reshape(self.global_shape)
     
-    def disperse_data(self, data, data_update, key, **kwargs):
-        data[key] = np.array(data_update, copy=False).astype(self.dtype)
+    def disperse_data(self, data, to_slices, data_update, from_slices=None, 
+                      **kwargs):
+        data[to_slices] = np.array(data_update[from_slices], 
+                                    copy=False).astype(self.dtype)
                      
-    def collect_data(self, data, slice_objects,  **kwargs):
+    def collect_data(self, data, slice_objects, **kwargs):
         return data[slice_objects]
         
     def consolidate_data(self, data, **kwargs):

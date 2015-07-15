@@ -1162,12 +1162,10 @@ class rg_space(point_space):
                 Weighted array.
         """
         #x = self.cast(x)
-        if isinstance(x, distributed_data_object):
-            is_hermitianQ = x.hermitian
+
         ## weight
         x =  x * self.get_weight(power = power)
-        if isinstance(x, distributed_data_object):        
-            x.hermitian = is_hermitianQ
+
         return x
 
     def get_weight(self, power = 1):
@@ -1452,6 +1450,12 @@ class rg_space(point_space):
         power_spectrum /= rho
         return power_spectrum
         
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def calc_real_Q(self, x):
+        try:
+            return x.is_completely_real()
+        except(AttributeError):
+            return np.all(np.isreal(x))
 
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
