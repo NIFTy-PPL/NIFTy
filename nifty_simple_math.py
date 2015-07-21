@@ -483,5 +483,30 @@ def conjugate(x):
     """        
     return _math_helper(x, np.conjugate)
 
+def direct_dot(x, y):
+    ## the input could be fields. Try to extract the data
+    try:
+        x = x.get_val()
+    except(AttributeError):
+        pass
+    ## try to make a direct vdot
+    try:
+        return x.vdot(y)
+    except(AttributeError):
+        pass
+    
+    try:
+        return y.vdot(x)
+    except(AttributeError):
+        pass        
+
+    ## fallback to numpy 
+    return np.vdot(x, y)    
+    
+    
+        
+        
+        
+        
 
 ##---------------------------------

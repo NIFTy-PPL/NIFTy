@@ -2813,13 +2813,7 @@ class field(object):
                 New field values either as a constant or an arbitrary array.
 
         """
-        '''
-        if(new_val is None):
-            self.val = np.zeros(self.dim(split=True),dtype=self.domain.datatype,order='C')
-        else:
-            self.val = self.domain.enforce_values(new_val,extend=True)
-        '''
-        self.val = self.domain.cast(new_val)
+        self.val = new_val
         return self.val
         
     def get_val(self):
@@ -2913,17 +2907,20 @@ class field(object):
         elif isinstance(x, field):
             ## if x lives in the cospace, transform it an make a
             ## recursive call
-            if self.domain.fourier != x.domain.fourier:
-                return self.dot(x = x.transform())
-            else:
+            try:
+                if self.domain.fourier != x.domain.fourier:
+                    return self.dot(x = x.transform())
+            except(AttributeError):
+                pass
+            
             ## whether the domain matches exactly or not:
             ## extract the data from x and try to dot with this
-                return self.dot(x = x.get_val())
+            return self.dot(x = x.get_val())
 
         ## Case 3: x is something else
         else:
             ## Cast the input in order to cure datatype and shape differences
-            casted_x = self.cast(x)
+            casted_x = self.domain.cast(x)
             ## Compute the dot respecting the fact of discrete/continous spaces             
             if self.domain.discrete == True:
                 return self.domain.calc_dot(self.get_val(), casted_x)

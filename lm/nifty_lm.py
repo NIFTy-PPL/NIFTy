@@ -214,9 +214,9 @@ class lm_space(point_space):
         return self.paradict['mmax']
 
     def shape(self):
-        mmax = self.paradict('mmax')
-        lmax = self.paradict('lmax')
-        return np.array([(mmax+1)*(lmax+1)-(lmax+1)*(mmax//2)], dtype=int)
+        mmax = self.paradict['mmax']
+        lmax = self.paradict['lmax']
+        return np.array([(mmax+1)*(lmax+1)-((lmax+1)*lmax)//2], dtype=int)
 
     def dim(self,split=False):
         """
@@ -653,6 +653,7 @@ class lm_space(point_space):
                 return gl.dotlm(x,y,lmax=self.para[0],mmax=self.para[1])
         else:
             return self._dotlm(x,y)
+
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

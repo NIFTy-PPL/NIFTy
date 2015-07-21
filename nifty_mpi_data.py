@@ -411,7 +411,7 @@ class distributed_data_object(object):
             found_boolean = (key.dtype == np.bool)
         else:
             found = 'other'
-                
+        ## TODO: transfer this into distributor:
         if (found == 'ndarray' or found == 'd2o') and found_boolean == True:
             ## extract the data of local relevance
             local_bool_array = self.distributor.extract_local_data(key)
@@ -1541,7 +1541,12 @@ class dtype_converter:
         self._to_np_dict = dict(to_np_pre_dict)
 
     def dictionize_np(self, x):
-        return frozenset(x.__dict__.items())
+        dic = x.__dict__.items()
+        if x is np.float:
+            dic[24] = 0 
+            dic[29] = 0
+            dic[37] = 0
+        return frozenset(dic)
         
     def dictionize_mpi(self, x):
         return x.name
