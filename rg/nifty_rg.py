@@ -254,6 +254,8 @@ class rg_space(point_space):
                         "argmax" : lambda y: getattr(y, 'argmax')(),
                         "argmax_flat" : lambda y: getattr(y, 'argmax_flat')(),
                         "conjugate" : lambda y: getattr(y, 'conjugate')(),
+                        "sum" : lambda y: getattr(y, 'sum')(),
+                        "prod" : lambda y: getattr(y, 'prod')(),
                         "None" : lambda y: y}
                         
         return translation[op](x, **kwargs)      

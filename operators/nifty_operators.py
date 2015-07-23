@@ -27,9 +27,13 @@ from nifty.nifty_core import space, \
                          nested_space, \
                          field
 from nifty_minimization import conjugate_gradient
-from nifty_probing import trace_probing, \
-                            diagonal_probing
-from nifty_mpi_probing import prober                            
+from nifty_probing import trace_prober,\
+                            inverse_trace_prober,\
+                            diagonal_prober,\
+                            inverse_diagonal_prober
+                            
+import nifty_simple_math                            
+
 
 ##=============================================================================
 
@@ -104,7 +108,7 @@ class operator(object):
             operator class can use. Not used in the base operators.
     """
     def __init__(self, domain, sym=False, uni=False, imp=False, target=None,\
-                para=None):
+                bare = False, para=None):
         """
             Sets the attributes for an operator class instance.
 
@@ -141,6 +145,7 @@ class operator(object):
         ## Cast the symmetric and unitary input        
         self.sym = bool(sym)
         self.uni = bool(uni)
+        self.bare = bool(bare)
 
         ## If no target is supplied, we assume that the operator is square
         ## If the operator is symmetric or unitary, we know that the operator 
@@ -477,8 +482,8 @@ class operator(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def tr(self, domain=None, target=None, random="pm1", ncpu=2, nrun=8,\
-            nper=1, var=False, loop=False, **kwargs):
+    def tr(self, domain=None, codomain=None, random="pm1", nrun=8,
+            varQ=False, **kwargs):
         """
             Computes the trace of the operator
 
@@ -520,21 +525,19 @@ class operator(object):
             --------
             probing : The class used to perform probing operations
         """
-        if domain is None:
-            domain = self.domain
-        return trace_probing(self, 
-                             function=self.times, 
-                             domain=domain,
-                             target=target, 
-                             random=random, 
-                             ncpu=(ncpu,1)[bool(loop)],
-                             nrun=nrun, 
-                             nper=nper, 
-                             var=var, 
-                             **kwargs)(loop=loop)
-
-    def inverse_tr(self, domain=None, target=None, random="pm1", ncpu=2, 
-                   nrun=8, nper=1, var=False, loop=False, **kwargs):
+         
+        return trace_prober(operator = self,
+                            domain = domain,
+                            codomain = codomain,
+                            random = random,
+                            nrun = nrun,
+                            varQ = varQ,
+                            **kwargs
+                            )()
+                            
+                          
+    def inverse_tr(self, domain=None, codomain=None, random="pm1", nrun=8,
+                   varQ=False, **kwargs):
         """
             Computes the trace of the inverse operator
 
@@ -551,18 +554,12 @@ class operator(object):
                 for a random vector with entries drawn from a Gaussian
                 distribution with zero mean and unit variance.
                 (default: "pm1")
-            ncpu : int, *optional*
-                number of used CPUs to use. (default: 2)
             nrun : int, *optional*
                 total number of probes (default: 8)
-            nper : int, *optional*
-                number of tasks performed by one process (default: 1)
-            var : bool, *optional*
+            varQ : bool, *optional*
                 Indicates whether to additionally return the probing variance
                 or not (default: False).
-            loop : bool, *optional*
-                Indicates whether or not to perform a loop i.e., to
-                parallelise (default: False)
+
 
             Returns
             -------
@@ -576,23 +573,19 @@ class operator(object):
             --------
             probing : The class used to perform probing operations
         """
-        if(domain is None):
-            domain = self.target
-        return trace_probing(self, 
-                             function=self.inverse_times, 
-                             domain=domain, 
-                             target=target, 
-                             random=random, 
-                             ncpu=(ncpu,1)[bool(loop)],
-                             nrun=nrun, 
-                             nper=nper, 
-                             var=var, **kwargs)(loop=loop)
+        return inverse_trace_prober(operator = self,
+                            domain = domain,
+                            codomain = codomain,
+                            random = random,
+                            nrun = nrun,
+                            varQ = varQ,
+                            **kwargs
+                            )()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def diag(self, bare=False, domain=None, target=None, random="pm1", ncpu=2,
-             nrun=8, nper=1, var=False, save=False, path="tmp", prefix="",
-             loop=False, **kwargs):
+    def diag(self, domain=None, codomain=None, random="pm1", nrun=8,
+             varQ=False, bare=False, **kwargs):
         """
             Computes the diagonal of the operator via probing.
 
@@ -657,37 +650,33 @@ class operator(object):
             entries; e.g., as variance in case of an covariance operator.
 
         """
-        if(domain is None):
-            domain = self.domain
-        diag = diagonal_probing(self, 
-                                function=self.times, 
-                                domain=domain, 
-                                target=target, 
-                                random=random, 
-                                ncpu=(ncpu,1)[bool(loop)], 
-                                nrun=nrun, 
-                                nper=nper, 
-                                var=var, 
-                                save=save, 
-                                path=path, 
-                                prefix=prefix, 
-                                **kwargs)(loop=loop)
+
+        diag = diagonal_prober(operator = self,
+                                domain = domain,
+                                codomain = codomain,
+                                random = random,
+                                nrun = nrun,
+                                varQ = varQ,
+                                **kwargs
+                                )()
         if diag is None:
-#            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
+            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
+        
+        if domain is None:
+            domain = self.domain
         ## weight if ...
-        elif domain.discrete == False and bare == True:
-            if isinstance(diag, tuple): ## diag == (diag,variance)
-                return (domain.calc_weight(diag[0],power=-1),
-                        domain.calc_weight(diag[1],power=-1))
+        if domain.discrete == False and bare == True:
+            if(isinstance(diag,tuple)): ## diag == (diag,variance)
+                return (diag[0].weight(power=-1),
+                        diag[1].weight(power=-1))
             else:
-                return domain.calc_weight(diag,power=-1)
+                return diag.weight(power=-1)
         else:
             return diag
 
-    def inverse_diag(self, bare=False, domain=None, target=None, random="pm1", 
-                     ncpu=2, nrun=8, nper=1, var=False, save=False, path="tmp", 
-                     prefix="", loop=False, **kwargs):
+    def inverse_diag(self, domain=None, codomain=None, random="pm1", nrun=8,
+                     varQ=False, bare=False, **kwargs):
         """
             Computes the diagonal of the inverse operator via probing.
 
@@ -754,32 +743,31 @@ class operator(object):
         """
         if(domain is None):
             domain = self.target
-        diag = diagonal_probing(self, 
-                                function=self.inverse_times, 
-                                domain=domain, 
-                                target=target, 
-                                random=random, 
-                                ncpu=(ncpu,1)[bool(loop)], 
-                                nrun=nrun, 
-                                nper=nper, 
-                                var=var, 
-                                save=save, 
-                                path=path, 
-                                prefix=prefix, 
-                                **kwargs)(loop=loop)
+        diag = inverse_diagonal_prober(operator = self,
+                                        domain = domain,
+                                        codomain = codomain,
+                                        random = random,
+                                        nrun = nrun,
+                                        varQ = varQ,
+                                        **kwargs
+                                        )()
         if(diag is None):
 #            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
+            
+        if domain is None:
+            domain = self.target
         ## weight if ...
-        elif(not domain.discrete)and(bare):
+        if domain.discrete == False and bare == True:
             if(isinstance(diag,tuple)): ## diag == (diag,variance)
-                return (domain.calc_weight(diag[0],power=-1),
-                        domain.calc_weight(diag[1],power=-1))
+                return (diag[0].weight(power=-1),
+                        diag[1].weight(power=-1))
             else:
-                return domain.calc_weight(diag,power=-1)
+                return diag.weight(power=-1)
         else:
             return diag
 
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def det(self):
@@ -1217,6 +1205,7 @@ class diagonal_operator(operator):
         else:
             self.domain = domain
 
+
         self.target = self.domain
         self.imp = True
         self.set_diag(new_diag = diag)
@@ -1416,7 +1405,7 @@ class diagonal_operator(operator):
         """
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def tr(self,domain=None,**kwargs):
+    def tr(self, varQ=False, **kwargs):
         """
             Computes the trace of the operator
 
@@ -1455,6 +1444,15 @@ class diagonal_operator(operator):
                 of probing case.
 
         """
+        
+        tr = self.domain.unary_operation(self.val, 'sum')
+
+        if varQ == True:
+            return (tr, 1)                                                   
+        else:
+            return tr
+        
+        """
         if(domain is None)or(domain==self.domain):
             if(self.uni): ## identity
                 return (self.domain.datatype(self.domain.dof())).real
@@ -1473,7 +1471,8 @@ class diagonal_operator(operator):
             else:
                 return super(diagonal_operator,self).tr(domain=domain,**kwargs) ## probing
 
-    def inverse_tr(self,domain=None,**kwargs):
+        """
+    def inverse_tr(self, varQ=False, **kwargs):
         """
             Computes the trace of the inverse operator
 
@@ -1512,6 +1511,19 @@ class diagonal_operator(operator):
                 of probing case.
 
         """
+        if (self.get_val() == 0).any():
+            raise AttributeError(about._errors.cstring(
+                "ERROR: singular operator."))
+        inverse_tr = self.domain.unary_operation(
+                        self.domain.binary_operation(self.val, 1, 'rdiv', cast=0), 
+                    'sum')
+                    
+        if varQ == True:
+            return (inverse_tr, 1)                                                   
+        else:
+            return inverse_tr
+        
+        """        
         if(np.any(self.val==0)):
             raise AttributeError(about._errors.cstring("ERROR: singular operator."))
 
@@ -1521,7 +1533,7 @@ class diagonal_operator(operator):
             elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
                 return self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),1/self.val) ## discrete inner product
             else:
-                return np.sum(1/self.val,axis=None,dtype=None,out=None)
+                return np.sum(1./self.val,axis=None,dtype=None,out=None)
         else:
             if(self.uni): ## identity
                 if(not isinstance(domain,space)):
@@ -1532,10 +1544,11 @@ class diagonal_operator(operator):
                 return np.real(domain.datatype(domain.dof()))
             else:
                 return super(diagonal_operator,self).inverse_tr(domain=domain,**kwargs) ## probing
-
+        """
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def diag(self,bare=False,domain=None,**kwargs):
+    def diag(self, bare=False, domain=None, varQ=False, **kwargs):
         """
             Computes the diagonal of the operator.
 
@@ -1596,6 +1609,21 @@ class diagonal_operator(operator):
             entries; e.g., as variance in case of an covariance operator.
 
         """
+                
+        
+        diag = super(diagonal_operator, self).diag(bare=bare, 
+                                                   domain=domain,
+                                                   nrun=1,
+                                                   random='pm1',
+                                                   varQ=False,
+                                                   **kwargs)
+                                                   
+        if varQ == True:
+            return (diag, diag.domain.cast(1))                                                   
+        else:
+            return diag
+        
+        """
         if(domain is None)or(domain==self.domain):
             ## weight if ...
             if(not self.domain.discrete)and(bare):
@@ -1618,7 +1646,8 @@ class diagonal_operator(operator):
             else:
                 return super(diagonal_operator,self).diag(bare=bare,domain=domain,**kwargs) ## probing
 
-    def inverse_diag(self,bare=False,domain=None,**kwargs):
+        """
+    def inverse_diag(self,bare=False,domain=None, varQ=False, **kwargs):
         """
             Computes the diagonal of the inverse operator.
 
@@ -1683,6 +1712,19 @@ class diagonal_operator(operator):
             entries; e.g., as variance in case of an covariance operator.
 
         """
+        inverse_diag = super(diagonal_operator, self).inverse_diag(bare=bare, 
+                                                           domain=domain,
+                                                           nrun=1,
+                                                           random='pm1',
+                                                           varQ=False,
+                                                           **kwargs)
+                                                   
+        if varQ == True:
+            return (inverse_diag, inverse_diag.domain.cast(1))                                                   
+        else:
+            return inverse_diag
+        """                                                   
+        
         if(domain is None)or(domain==self.target):
             ## weight if ...
             if(not self.domain.discrete)and(bare):
@@ -1704,7 +1746,8 @@ class diagonal_operator(operator):
                     return np.real(domain.enforce_values(1,extend=True))
             else:
                 return super(diagonal_operator,self).inverse_diag(bare=bare,domain=domain,**kwargs) ## probing
-
+        """
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def det(self):
@@ -1717,12 +1760,14 @@ class diagonal_operator(operator):
                 The determinant
 
         """
-        if(self.uni): ## identity
-            return 1
-        elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
-            return np.exp(self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val)))
+        if self.uni == True: ## identity
+            return 1.
         else:
-            return np.prod(self.val,axis=None,dtype=None,out=None)
+            return self.domain.unary_operation(self.val, op='prod')
+        #elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
+        #    return np.exp(self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val)))
+        #else:
+        #    return np.prod(self.val,axis=None,dtype=None,out=None)
 
     def inverse_det(self):
         """
@@ -1734,11 +1779,13 @@ class diagonal_operator(operator):
                 The determinant
 
         """
-        if(self.uni): ## identity
-            return 1
+        if self.uni == True: ## identity
+            return 1.
+
         det = self.det()
-        if(det<>0):
-            return 1/det
+        
+        if det != 0:
+            return 1./det
         else:
             raise ValueError(about._errors.cstring("ERROR: singular operator."))
 
@@ -1752,16 +1799,18 @@ class diagonal_operator(operator):
                 The logarithm of the determinant
 
         """
-        if(self.uni): ## identity
+        if self.uni == True: ## identity
             return 0
-        elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
-            return self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val))
+        #elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
+        #    return self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val))
         else:
-            return np.sum(np.log(self.val),axis=None,dtype=None,out=None)
+            return self.domain.unary_operation(
+                                    nifty_simple_math.log(self.val), op='sum')
+            
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_field(self,domain=None,target=None):
+    def get_random_field(self, domain=None, codomain=None):
         """
             Generates a Gaussian random field with variance equal to the
             diagonal.
@@ -1781,20 +1830,23 @@ class diagonal_operator(operator):
                 Random field.
 
         """
-        ## weight if ...
-        if(not self.domain.discrete):
-            diag = self.domain.calc_weight(self.val,power=-1)
-            ## check complexity
-            if(np.all(np.imag(diag)==0)):
-                diag = np.real(diag)
+        if domain is None:
+            domain = self.domain
+          
+        if domain == self.domain:
+            return field(domain = domain,
+                         target = codomain,
+                         random = 'gau',
+                         var = self.diag(bare=True, domain = domain))
         else:
-            diag = self.val
-
-        if(domain is None)or(domain==self.domain):
-            return field(self.domain,val=None,target=target,random="gau",var=self.diag(bare=True,domain=self.domain))
-        else:
-            return field(self.domain,val=None,target=domain,random="gau",var=self.diag(bare=True,domain=self.domain)).transform(target=domain,overwrite=False)
-
+            assert(self.domain.check_codomain(domain))            
+            return field(domain = self.domain,
+                         target = domain,
+                         random = 'gau',
+                         var = self.diag(bare=True, domain = self.domain)
+                         ).transform(target = domain)
+        
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):

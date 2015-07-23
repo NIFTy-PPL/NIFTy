@@ -18,6 +18,7 @@ operators/*
 !operators/nifty_explicit.py
 !operators/nifty_operators.py
 !operators/nifty_probing.py
+!operators/nifty_probing_old.py
 
 
 rg/*

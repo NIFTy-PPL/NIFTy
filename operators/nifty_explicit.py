@@ -54,7 +54,7 @@ from nifty_operators import operator,\
                             diagonal_operator,\
                             identity,\
                             vecvec_operator
-from nifty_probing import probing
+from nifty_probing_old import probing
 
 
 ##-----------------------------------------------------------------------------

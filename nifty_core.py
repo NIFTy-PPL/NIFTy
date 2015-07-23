@@ -912,17 +912,14 @@ class space(object):
         else:
             return mars
 
-    def __eq__(self,x): ## __eq__ : self == x
+    def __eq__(self, x): ## __eq__ : self == x
         if isinstance(x, type(self)):
             return self._identifier() == x._identifier()
         else:
             return False
-
-    def __ne__(self,x): ## __ne__ : self <> x
-        if(isinstance(x,space)):
-            if(not isinstance(x,type(self)))or(np.any(self.para!=x.para))or(self.discrete!=x.discrete)or(np.any(self.vol!=x.vol))or(np.any(self._meta_vars()!=x._meta_vars())): ## data types are ignored
-                return True
-        return False
+    
+    def __ne__(self, x):
+        return not self.__eq__(x)
 
     def __lt__(self,x): ## __lt__ : self < x
         if(isinstance(x,space)):
@@ -1165,6 +1162,8 @@ class point_space(space):
                         "argmax" : _argmax, 
                         "argmax_flat" : np.argmax,
                         "conjugate" : np.conjugate,
+                        "sum" : np.sum,
+                        "prod" : np.prod,
                         "None" : lambda y: y}
 
                 
@@ -2648,7 +2647,7 @@ class field(object):
             The space wherein the operator output lives (default: domain).
 
     """
-    def __init__(self,domain,val=None,target=None,**kwargs):
+    def __init__(self, domain, val=None, target=None, **kwargs):
         """
             Sets the attributes for a field class instance.
 
@@ -2878,6 +2877,7 @@ class field(object):
             
         new_field.set_val(new_val = self.domain.calc_weight(self.get_val(), 
                                                             power = power))
+        return new_field
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
