@@ -456,7 +456,7 @@ class lm_space(point_space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.arguments(self,**kwargs)
+        arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
             return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
@@ -1233,7 +1233,7 @@ class gl_space(point_space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.arguments(self,**kwargs)
+        arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
             x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
@@ -1896,7 +1896,7 @@ class hp_space(point_space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.arguments(self,**kwargs)
+        arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
             x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
@@ -2124,7 +2124,7 @@ class hp_space(point_space):
         if(self.discrete):
             x = self.calc_weight(x,power=-0.5)
         ## power spectrum
-        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,regression=False,datapath=None)
+        return hp.anafast(x,map2=None,nspec=None,lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,iter=kwargs.get("iter",self.niter),alm=False,pol=True,use_weights=False,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

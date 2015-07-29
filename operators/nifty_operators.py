@@ -174,11 +174,11 @@ class operator(object):
 
     @property
     def val(self):
-        return self.__val
+        return self._val
     
     @val.setter
     def val(self, x):
-        self.__val = self.domain.cast(x)
+        self._val = self.domain.cast(x)
         
     
     def set_val(self, new_val):
@@ -1989,7 +1989,7 @@ class power_operator(diagonal_operator):
             The space wherein the operator output lives
 
     """
-    def __init__(self,domain,spec=1,bare=True,pindex=None,**kwargs):
+    def __init__(self, domain, spec=1, bare=True, **kwargs):
         """
             Sets the diagonal operator's standard properties
 
@@ -2034,9 +2034,29 @@ class power_operator(diagonal_operator):
                 (default: 0).
 
         """
-        if(not isinstance(domain,space)):
+        ## Set the domain
+        if isinstance(domain,space) == False:
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
+        ## Set the target 
+        self.target = self.domain
+        ## Set imp        
+        self.imp = True
+        ## Save the kwargs 
+        self.kwargs = kwargs
+        ## Set the diag
+        self.set_power(new_spec = spec, bare = bare, **kwargs)
+        
+        self.sym = True
+
+        ## check whether identity
+        if(np.all(spec==1)):
+            self.uni = True
+        else:
+            self.uni = False
+
+
+        """        
         ## check implicit pindex
         if(pindex is None):
             try:
@@ -2065,20 +2085,21 @@ class power_operator(diagonal_operator):
         else:
             self.val = diag
 
-        self.sym = True
-
-        ## check whether identity
-        if(np.all(spec==1)):
-            self.uni = True
-        else:
-            self.uni = False
-
-        self.imp = True
-        self.target = self.domain
+        """
+    @property
+    def val(self):
+        return self._val
+    
+    ## The domain is used for calculations of the power-spectrum, not for
+    ## actual field values. Therefore the casting of self.val must be switched
+    ## off.
+    @val.setter
+    def val(self, x):
+        self._val = x
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_power(self,newspec,bare=True,pindex=None,**kwargs):
+    def set_power(self, new_spec, bare=True, pindex=None, **kwargs):
         """
             Sets the power spectrum of the diagonal operator
 
@@ -2116,42 +2137,67 @@ class power_operator(diagonal_operator):
                 (default: None).
 
         """
-#        if(bare is None):
-#            about.warnings.cprint("WARNING: bare keyword set to default.")
-#            bare = True
-        ## check implicit pindex
-        if(pindex is None):
-            try:
-                self.domain.set_power_indices(**kwargs)
-            except:
-                raise ValueError(about._errors.cstring("ERROR: invalid domain."))
-            else:
-                pindex = self.domain.power_indices.get("pindex")
-        ## check explicit pindex
-        else:
-            pindex = np.array(pindex,dtype=np.int)
-            if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
-        ## set diagonal
+
+        
+        ## Cast the pontentially given pindex. If no pindex was given, 
+        ## extract it from self.domain using the supplied kwargs.
+        pindex = self._cast_pindex(pindex, **kwargs) 
+        
+
+        ## Cast the new powerspectrum function
+        temp_spec = self.domain.enforce_power(new_spec)
+
+        ## Calculate the diagonal
         try:
-            diag = self.domain.enforce_power(newspec,size=np.max(pindex,axis=None,out=None)+1)[pindex]
-        except(AttributeError):
-            raise ValueError(about._errors.cstring("ERROR: invalid input."))
-        ## weight if ...
-        if(not self.domain.discrete)and(bare):
-            self.val = np.real(self.domain.calc_weight(diag,power=1))
+            diag = pindex.apply_scalar_function(lambda x: temp_spec[x],
+                                              dtype = temp_spec.dtype.type)
+            diag.hermitian = True
+        except(AttributeError): ##TODO: update all pindices to d2o's
+            diag = temp_spec[pindex]
+        
+        ## Weight if necessary
+        if self.domain.discrete == False and bare == True:
+            self.val = self.domain.calc_weight(diag, power=1)
         else:
             self.val = diag
 
         ## check whether identity
-        if(np.all(newspec==1)):
+        if (self.val == 1).all() == True:
             self.uni = True
         else:
             self.uni = False
+            
+        return self.val
+
+    def _cast_pindex(self, pindex = None, **kwargs):
+        ## Update the internal kwargs dict with the given one:
+        temp_kwargs = self.kwargs
+        temp_kwargs.update(kwargs)
+        
+        ## Case 1:  no pindex given
+        if pindex is None:
+            try:
+                pindex = self.domain.power_indices.\
+                                        get_index_dict(temp_kwargs)['pindex']
+            except(AttributeError):
+                ## TODO: update all spaces to use the power_indices class
+                try:
+                    self.domain.set_power_indices(temp_kwargs)
+                except:
+                    raise ValueError(about._errors.cstring(
+                        "ERROR: Domain is not capable of returning a pindex"))                    
+                else:
+                    pindex = self.domain.power_indices.get("pindex")
+                            
+        ## Case 2: explicit pindex given
+        else:
+            ## TODO: Pindex casting could be done here. No must-have. 
+            assert(np.all(pindex.shape == self.domain.shape()))
+        return pindex
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_power(self,bare=True,pundex=None,pindex=None,**kwargs):
+    def get_power(self, bare=True, **kwargs):
         """
             Computes the power spectrum
 
@@ -2192,35 +2238,29 @@ class power_operator(diagonal_operator):
                 (default: 0).
 
         """
-        ## weight if ...
-        if(not self.domain.discrete)and(bare):
-            diag = np.real(self.domain.calc_weight(self.val,power=-1))
+           
+        temp_kwargs = self.kwargs
+        temp_kwargs.update(kwargs)        
+        
+        
+        ## Weight the diagonal values if necessary
+        if self.domain.discrete == False and bare == True:
+            diag = self.domain.calc_weight(self.val, power = -1)
         else:
             diag = self.val
-        ## check implicit pundex
-        if(pundex is None):
-            if(pindex is None):
-                try:
-                    self.domain.set_power_indices(**kwargs)
-                except:
-                    raise ValueError(about._errors.cstring("ERROR: invalid domain."))
-                else:
-                    pundex = self.domain.power_indices.get("pundex")
-            else:
-                pindex = np.array(pindex,dtype=np.int)
-                if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
-                    raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
-                ## quick pundex
-                pundex = np.unique(pindex,return_index=True,return_inverse=False)[1]
-        ## check explicit pundex
-        else:
-            pundex = np.array(pundex,dtype=np.int)
 
-        return diag.flatten(order='C')[pundex]
+        ## Use the calc_power routine of the domain in order to to stay 
+        ## independent of the implementation
+        diag = diag**(0.5)
+        
+        power = self.domain.calc_power(diag, **temp_kwargs)
+        
+        return power 
+        
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_projection_operator(self,pindex=None,**kwargs):
+    def get_projection_operator(self, pindex=None, **kwargs):
         """
             Generates a spectral projection operator
 
@@ -2253,21 +2293,9 @@ class power_operator(diagonal_operator):
                 (default: 0).
 
         """
-        ## check implicit pindex
-        if(pindex is None):
-            try:
-                self.domain.set_power_indices(**kwargs)
-            except:
-                raise ValueError(about._errors.cstring("ERROR: invalid domain."))
-            else:
-                pindex = self.domain.power_indices.get("pindex")
-        ## check explicit pindex
-        else:
-            pindex = np.array(pindex,dtype=np.int)
-            if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
 
-        return projection_operator(self.domain,assign=pindex)
+        pindex = self._cast_pindex(pindex, **kwargs)        
+        return projection_operator(self.domain, assign=pindex)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2366,7 +2394,7 @@ class projection_operator(operator):
             The space wherein the operator output lives
 
     """
-    def __init__(self,domain,assign=None,**kwargs):
+    def __init__(self, domain, assign=None, **kwargs):
         """
             Sets the standard operator properties and `indexing`.
 
@@ -2707,7 +2735,7 @@ class vecvec_operator(operator):
         target : space
             The space wherein the operator output lives.
     """
-    def __init__(self,domain=None,val=1):
+    def __init__(self, domain=None, val=1):
         """
             Sets the standard operator properties and `values`.
 
@@ -2725,20 +2753,21 @@ class vecvec_operator(operator):
             -------
             None
         """
-        if(domain is None)and(isinstance(val,field)):
+        if domain is None and isinstance(val,field)==True:
             domain = val.domain
-        if(not isinstance(domain,space)):
+        if isinstance(domain,space) == False:
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
-        self.val = self.domain.enforce_values(val,extend=True)
+        self.target = self.domain
+        self.val = self.domain.cast(val)
         self.sym = True
         self.uni = False
         self.imp = False
-        self.target = self.domain
+        
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_val(self,newval):
+    def set_val(self, newval):
         """
             Sets the field values of the operator
 
@@ -2753,17 +2782,18 @@ class vecvec_operator(operator):
             -------
             None
         """
-        self.val = self.domain.enforce_values(newval,extend=True)
+        self.val = self.domain.cast(newval)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def _multiply(self,x,**kwargs): ## > applies the operator to a given field
-        x_ = field(self.target,val=None,target=x.target)
-        x_.val = self.val*self.domain.calc_dot(self.val,x.val) ## bypasses self.domain.enforce_values
-        return x_
+    def _multiply(self, x, **kwargs): ## > applies the operator to a given field
+        y = x.copy_empty(domain = self.target)
+        y.set_val(new_val = self.val * self.domain.calc_dot(self.val, x.val))
+        return y
 
     def _inverse_multiply(self,x,**kwargs):
-        raise AttributeError(about._errors.cstring("ERROR: singular operator."))
+        raise AttributeError(about._errors.cstring(
+            "ERROR: singular operator."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2806,19 +2836,22 @@ class vecvec_operator(operator):
                 of probing case.
 
         """
-        if(domain is None)or(domain==self.domain):
-            if(not self.domain.discrete):
-                return self.domain.calc_dot(self.val,self.domain.calc_weight(self.val,power=1))
+        if domain is None or domain == self.domain:
+            if self.domain.discrete == False:
+                return self.domain.calc_dot(self.val, 
+                                    self.domain.calc_weight(self.val,power=1))
             else:
-                return self.domain.calc_dot(self.val,self.val)
+                return self.domain.calc_dot(self.val, self.val)
         else:
-            return super(vecvec_operator,self).tr(domain=domain,**kwargs) ## probing
+            ## probing
+            return super(vecvec_operator,self).tr(domain=domain,**kwargs) 
 
     def inverse_tr(self):
         """
         Inverse is ill-defined for this operator.
         """
-        raise AttributeError(about._errors.cstring("ERROR: singular operator."))
+        raise AttributeError(about._errors.cstring(
+                                                "ERROR: singular operator."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2883,15 +2916,18 @@ class vecvec_operator(operator):
             entries; e.g., as variance in case of an covariance operator.
 
         """
-        if(domain is None)or(domain==self.domain):
-            diag = np.real(self.val*np.conjugate(self.val)) ## bare diagonal
+        if (domain is None) or (domain==self.domain):
+            diag = self.val * self.val.conjugate() ## bare diagonal
             ## weight if ...
-            if(not self.domain.discrete)and(not bare):
-                return self.domain.calc_weight(diag,power=1)
+            if self.domain.discrete == False and bare == False:
+                return self.domain.calc_weight(diag, power=1)
             else:
                 return diag
         else:
-            return super(vecvec_operator,self).diag(bare=bare,domain=domain,**kwargs) ## probing
+            ## probing
+            return super(vecvec_operator,self).diag(bare=bare,
+                                                    domain=domain,
+                                                    **kwargs) 
 
     def inverse_diag(self):
         """
