@@ -33,7 +33,7 @@
 """
 from __future__ import division
 from nifty import *                                              # version 0.8.0
-
+about.warnings.off()
 
 # some signal space; e.g., a two-dimensional regular grid
 x_space = rg_space([128, 128])                                   # define signal space
@@ -61,10 +61,10 @@ d = R(s) + n                                                     # compute data
 j = R.adjoint_times(N.inverse_times(d))                          # define information source
 D = propagator_operator(S=S, N=N, R=R)                           # define information propagator
 
-m = D(j, W=S, tol=1E-3, note=True)                               # reconstruct map
+m = D(j, W=S, tol=1E-1, note=True)                               # reconstruct map
 
-s.plot(title="signal", save = 'plot_s.png')                                           # plot signal
-d_ = field(x_space, val=d.val, target=k_space)
-d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')                # plot data
-m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')    # plot map
+#s.plot(title="signal", save = 'plot_s.png')                                           # plot signal
+#d_ = field(x_space, val=d.val, target=k_space)
+#d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')                # plot data
+#m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')    # plot map
 

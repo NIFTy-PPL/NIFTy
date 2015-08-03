@@ -1611,13 +1611,18 @@ class diagonal_operator(operator):
         """
                 
         
-        diag = super(diagonal_operator, self).diag(bare=bare, 
+        if (domain is None) or (domain == self.domain):
+            if(not self.domain.discrete)and(bare):
+                diag = self.domain.calc_weight(self.val, power=-1)
+            else:
+                diag = self.val
+        else:
+            diag = super(diagonal_operator, self).diag(bare=bare, 
                                                    domain=domain,
                                                    nrun=1,
                                                    random='pm1',
                                                    varQ=False,
-                                                   **kwargs)
-                                                   
+                                                   **kwargs)                          
         if varQ == True:
             return (diag, diag.domain.cast(1))                                                   
         else:
@@ -1712,13 +1717,20 @@ class diagonal_operator(operator):
             entries; e.g., as variance in case of an covariance operator.
 
         """
-        inverse_diag = super(diagonal_operator, self).inverse_diag(bare=bare, 
+        
+        if (domain is None) or (domain == self.domain):
+            inverse_val = 1./self.val
+            if(not self.domain.discrete)and(bare):
+                inverse_diag = self.domain.calc_weight(inverse_val, power=-1)
+            else:
+                inverse_diag = inverse_val
+        else:
+            inverse_diag = super(diagonal_operator, self).inverse_diag(bare=bare, 
                                                            domain=domain,
                                                            nrun=1,
                                                            random='pm1',
                                                            varQ=False,
-                                                           **kwargs)
-                                                   
+                                                           **kwargs)                                        
         if varQ == True:
             return (inverse_diag, inverse_diag.domain.cast(1))                                                   
         else:
@@ -3034,7 +3046,8 @@ class response_operator(operator):
             Whether to consider the arguments as densities or not.
             Mandatory for the correct incorporation of volume weights.
     """
-    def __init__(self,domain,sigma=0,mask=1,assign=None,den=False,target=None):
+    def __init__(self, domain, sigma=0, mask=1, assign=None, den=False, 
+                 target=None):
         """
             Sets the standard properties and `density`, `sigma`, `mask` and `assignment(s)`.
 

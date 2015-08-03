@@ -51,6 +51,7 @@ except(ImportError):
     found['h5py_parallel'] = False
 
 
+
 class distributed_data_object(object):
     """
 
@@ -342,14 +343,22 @@ class distributed_data_object(object):
     def __div__(self, other):
         return self.__builtin_helper__(self.get_local_data().__div__, other)
     
+    def __truediv__(self, other):
+        return self.__div__(other)
+        
     def __rdiv__(self, other):
         return self.__builtin_helper__(self.get_local_data().__rdiv__, other)
+    
+    def __rtruediv__(self, other):
+        return self.__rdiv__(other)
 
     def __idiv__(self, other):
         return self.__builtin_helper__(self.get_local_data().__idiv__, 
                                                other,
                                                inplace = True)
-
+    def __itruediv(self, other):
+        return self.__idiv__(other)
+                                               
     def __floordiv__(self, other):
         return self.__builtin_helper__(self.get_local_data().__floordiv__, 
                                        other)    
@@ -702,6 +711,17 @@ class distributed_data_object(object):
         
         self.distributor.inject(self.data, to_slices, data, from_slices)
         
+    def flatten(self, inplace = False):
+        flat_shape = (np.prod(self.shape),)
+        temp_d2o = self.copy_empty(global_shape = flat_shape)
+        flat_data = self.distributor.flatten(self.data, inplace = inplace)
+        temp_d2o.set_local_data(data = flat_data)
+        if inplace == True:
+            self = temp_d2o
+            return self
+        else:
+            return temp_d2o
+        
         
     def _get_distributor(self, distribution_strategy):
         '''
@@ -714,6 +734,7 @@ class distributed_data_object(object):
         
         distributor_dict={
             'fftw':     _fftw_distributor,
+            'equal':    _equal_distributor,
             'not':      _not_distributor
         }
         if not distributor_dict.has_key(distribution_strategy):
@@ -814,8 +835,8 @@ class distributed_data_object(object):
     
 
    
-class _fftw_distributor(object):
-    def __init__(self, global_data=None, global_shape=None, dtype=None, 
+class _slicing_distributor(object):
+    def __init__(self, slicer, global_data=None, global_shape=None, dtype=None, 
                  comm=MPI.COMM_WORLD, alias=None, path=None):
         
         if alias != None:
@@ -876,9 +897,14 @@ class _fftw_distributor(object):
 
         self.mpi_dtype  = self._my_dtype_converter.to_mpi(self.dtype)
         
-        self._local_size = pyfftw.local_size(self.global_shape)
-        self.local_start = self._local_size[2]
-        self.local_end = self.local_start + self._local_size[1]
+        #self._local_size = pyfftw.local_size(self.global_shape)
+        #self.local_start = self._local_size[2]
+        #self.local_end = self.local_start + self._local_size[1]
+        self.slicer = lambda global_shape: slicer(global_shape, comm = comm)
+        self._local_size = self.slicer(self.global_shape)
+        self.local_start = self._local_size[0]
+        self.local_end = self._local_size[1] 
+        
         self.local_length = self.local_end-self.local_start        
         self.local_shape = (self.local_length,) + tuple(self.global_shape[1:])
         self.local_dim = np.product(self.local_shape)
@@ -1022,36 +1048,112 @@ class _fftw_distributor(object):
             if from_slices == None:
                 update_slice = (slice(o[r], o[r]+l),)
             else:
+                ## Determine the part of the source array, which is relevant
+                ## for the target rank
+                if (from_slices[0].step > 0) or (from_slices[0].step is None):
+                    ## f_relative_start: index of start of source data in 
+                    ## source array
+                    f_lower_end = from_slices[0].start
+                    if f_lower_end is None:
+                        f_lower_end = 0
+                    ## f_start: index of start of specific source data in 
+                    ## source array
+                    f_start = f_lower_end + o[r]
+                    ## f_stop: index of stop of specific source data
+                    f_stop = f_start + l
+                  
+                                        
+                elif from_slices[0].step < 0:
+                    ## f_relative_start: index of start of source data in 
+                    ## source array
+                    f_upper_end = from_slices[0].start
+                    if f_upper_end is None:
+                        f_upper_end = data_update.shape[0] - 1
+                    ## f_start: index of start of specific source data in 
+                    ## source array
+                    f_start = f_upper_end - o[r] 
+                    ## f_stop: index of stop of specific source data
+                    f_stop = f_start - l
                     
-                f_step = from_slices[0].step
-                if f_step == None:
-                    f_step = 1
-                    
-                f_direction = np.sign(f_step)
-
-                f_relative_start = from_slices[0].start
-                if f_relative_start != None:
-                    f_start = f_relative_start + f_direction*o[r]
                 else:
-                    f_start = None
-                    f_relative_start = 0
-                    
-                f_stop = f_relative_start + f_direction*(o[r]+l*np.abs(f_step))
-                if f_stop < 0:
-                    f_stop = None
-
-
-                ## combine the slicing for the first dimension 
-                update_slice = (slice(f_start,
-                                      f_stop,
-                                      f_step),
-                                )
-                ## add the rest of the from_slicing
+                    raise ValueError(about._errors.cstring(\
+                        "ERROR: step size == 0!")) 
+                        
+                update_slice = (slice(f_start, 
+                                          f_stop, 
+                                          from_slices[0].step),)
+            
                 update_slice += from_slices[1:]
-
             data[local_slice] = np.array(data_update[update_slice],\
                                     copy=False).astype(self.dtype)
-            
+                
+#                ## TODO: Fallunterscheidung, ob direction positiv oder negativ!!
+#                if from_slices[0].step > 0:
+#                    f_relative_start = from_slices[0].start
+#                else:
+#                    f_relative_start = from_slices[0].stop + 1
+#
+#                if f_relative_start is None:
+#                    f_relative_start = 0
+#                    
+#                local_start = f_relative_start + o[r]
+#                print ('rank', rank, 
+#                       'f_relative_start', f_relative_start,
+#                       'local_start', local_start,
+#                       'o[r]', o[r])
+#                       
+#                
+#                update_slice = self._backshift_and_decycle(
+#                                        slice_object = from_slices[0],
+#                                        shifted_start = local_start,
+#                                        shifted_stop = local_start+l,
+#                                        global_length = data_update.shape[0])
+#                                        
+#                print ('rank', rank, update_slice)
+#                f_step = from_slices[0].step
+#                if f_step == None:
+#                    f_step = 1
+#                    
+#                f_direction = np.sign(f_step)
+#
+#                f_relative_start = from_slices[0].start
+#
+#                ## Case 1: f_direction is positive
+#                if f_direction > 0:
+#                    if f_relative_start != None:
+#                        f_start = f_relative_start + o[r]
+#                
+#                
+#                
+#                
+#                if f_relative_start != None:
+#                    f_start = f_relative_start + f_direction*o[r]
+#                else:
+#                    f_start = None
+#                    f_relative_start = self.local_start + l - 1
+#                
+#                
+#                f_stop = f_relative_start + f_direction*(o[r]+l*np.abs(f_step))
+#                print (rank, 
+#                'f_start', f_start, 
+#                'offset', self.local_start, 
+#                'f_relative_start', f_relative_start,
+#                'f_stop', f_stop)
+#                if f_stop < 0:
+#                    f_stop = None
+#
+#
+#                ## combine the slicing for the first dimension 
+#                update_slice = (slice(f_start,
+#                                      f_stop,
+#                                      f_step),
+#                                )
+#                ## add the rest of the from_slicing
+#                update_slice += from_slices[1:]
+#
+#            data[local_slice] = np.array(data_update[update_slice],\
+#                                    copy=False).astype(self.dtype)
+#                
         else:
             ## Scatterv the relevant part from the source_rank to the others 
             ## and plug it into data[local_slice]
@@ -1231,8 +1333,11 @@ class _fftw_distributor(object):
                     (global_length-shifted_stop)%step #stepsize compensation
             else:
                 local_start = slice_object.start - shifted_start
-                ## if the local_start is negative, pull it up to zero
-                local_start = 0 if local_start < 0 else local_start                
+                ## if the local_start is negative, immediately return the 
+                ## values for an empty slice
+                if local_start < 0:
+                    return 0, 0
+                                
                 ## if the local_start is greater than the local length, pull
                 ## it down 
                 if local_start > local_length-1:
@@ -1244,11 +1349,11 @@ class _fftw_distributor(object):
                 local_stop = None
             else:
                 local_stop = slice_object.stop - shifted_start
-                ## if local_stop is negative, pull it up to zero
-                local_stop = 0 if local_stop < 0 else local_stop    
+                ## if local_stop is negative, pull it up to None
+                local_stop = None if local_stop < 0 else local_stop    
         ## Note: if start or stop are greater than the array length,
         ## numpy will automatically cut the index value down into the 
-        ## array's range 
+        ## array's range
         return local_start, local_stop        
     
     def inject(self, data, to_slices, data_update, from_slices, comm=None, 
@@ -1285,7 +1390,7 @@ class _fftw_distributor(object):
         try:
             (data_object, matching_dimensions) = \
                 self._reshape_foreign_data(data_object)
-        ## if the shape-casting fails, try to fix things via locall data
+        ## if the shape-casting fails, try to fix things via local data
         ## matching
         except(ValueError):
             ## Check if all the local shapes match the supplied data
@@ -1386,6 +1491,38 @@ class _fftw_distributor(object):
                          root=target_rank)
         return _gathered_data
     
+    def flatten(self, data, inplace = False):
+        ## it can be the case, that the portion af data changes due to
+        ## the flattening. E.g. this is the case if some nodes had no data at
+        ## all, but the higher dimensions are large. 
+    
+        ## Check if the amount of data changes because of the flattening
+        size_now = np.prod(self.local_shape)        
+        (start_then, end_then) = self.slicer((np.prod(self.global_shape),))
+        size_then = end_then - start_then
+        if size_now == size_then:
+            if inplace == True:
+                return data.ravel()
+            else:
+                return data.flatten()
+        else:
+            about.warnings.cprint(
+                    "WARNING: Local datasets on the nodes must be changed "+
+                    "and will be exchanged! "+
+                    "The data will be completely gathered!")
+            if inplace == True:
+                about.warnings.cprint(
+                    "WARNING: Inplace flattening is not possible when "+
+                    "data-exchange is necessary!")
+            
+            ## TODO: Improve this by making something smarter than a gather_all            
+            full_data = self.consolidate_data(data).ravel()
+            ## extract the local portion             
+            new_data = full_data[slice(start_then, end_then)]
+            return new_data
+        print (size_now, size_then)
+        
+        
     if found['h5py']:
         def save_data(self, data, alias, path=None, overwriteQ=True, comm=None):
             if comm == None:
@@ -1442,9 +1579,56 @@ class _fftw_distributor(object):
             raise ImportError(about._errors.cstring("ERROR: h5py was not imported")) 
         
         
-        
-        
 
+def _fftw_slicer(global_shape, comm):
+    local_size = pyfftw.local_size(global_shape, comm = comm)
+    start = local_size[2]
+    end = start + local_size[1]
+    return (start, end)
+
+class _fftw_distributor(_slicing_distributor):
+    def __init__(self, global_data=None, global_shape=None, dtype=None, 
+                 comm=MPI.COMM_WORLD, alias=None, path=None):
+        super(_fftw_distributor, self).__init__(slicer = _fftw_slicer, 
+                                                global_data = global_data,
+                                                global_shape = global_shape,
+                                                dtype = dtype,
+                                                comm = comm,
+                                                alias = alias,
+                                                path = path)
+        
+def _equal_slicer(global_shape, comm=MPI.COMM_WORLD):
+    rank = comm.rank
+    size = comm.size
+    
+
+    global_length = global_shape[0]
+    ## compute the smallest number of rows the node will get
+    local_length = global_length // size
+    ## calculate how many nodes will get an extra row
+    number_of_extras = global_length - local_length * size 
+    
+    ## calculate the individual offset
+    offset = rank*local_length + min(rank, number_of_extras)*1    
+    
+    ## check if local node will get an extra row or not
+    if number_of_extras > rank:
+        ## if yes, increase the local_length by one
+        local_length += 1
+    
+    return (offset, offset+local_length)
+       
+class _equal_distributor(_slicing_distributor):
+    def __init__(self, global_data=None, global_shape=None, dtype=None, 
+                 comm=MPI.COMM_WORLD, alias=None, path=None):
+        super(_equal_distributor, self).__init__(slicer = _equal_slicer, 
+                                                global_data = global_data,
+                                                global_shape = global_shape,
+                                                dtype = dtype,
+                                                comm = comm,
+                                                alias = alias,
+                                                path = path)
+                                                
 class _not_distributor(object):
     def __init__(self, global_data=None, global_shape=None, dtype=None, *args,  **kwargs):
         if dtype != None:        
@@ -1492,7 +1676,13 @@ class _not_distributor(object):
     
     def extract_local_data(self, data_object):
         return data_object.get_full_data()
-        
+    
+    def flatten(self, data, inplace = False):
+        if inplace == False:
+            return data.flatten()
+        else:
+            return data.reshape(data.size)
+            
     def save_data(self, *args, **kwargs):
         raise AttributeError(about._errors.cstring(
                                         "ERROR: save_data not implemented")) 

@@ -774,11 +774,20 @@ class rg_space(point_space):
         ## Case 2: normal distribution with zero-mean and a given standard
         ##         deviation or variance
         elif arg[0] == 'gau':
+            var = arg[3]            
+            if np.isscalar(var) == True or var is None:
+                processed_var = var
+            else:
+                try:
+                    processed_var = sample.distributor.extract_local_data(var)
+                except(AttributeError):
+                    processed_var = var
+                    
             gen = lambda s: random.gau(datatype=self.datatype,
                                        shape = s,
                                        mean = arg[1],
                                        dev = arg[2],
-                                       var = arg[3])
+                                       var = processed_var)
             sample.apply_generator(gen)
             
             if hermitianizeQ == True:
@@ -2255,9 +2264,14 @@ class utilities(object):
         ## flip in every direction
         for i in xrange(dimensions):
             slice_picker = slice_primitive[:]
-            slice_picker[i] = slice(1, None)
+            slice_picker[i] = slice(1, None,None)
             slice_inverter = slice_primitive[:]
             slice_inverter[i] = slice(None, 0, -1)
-            y[slice_picker] = y[slice_inverter]
+
+            try:
+                y.inject(to_slices=slice_picker, data=y, 
+                         from_slices=slice_inverter)
+            except(AttributeError):
+                y[slice_picker] = y[slice_inverter]
         return y
 
