@@ -489,6 +489,10 @@ def direct_dot(x, y):
         x = x.get_val()
     except(AttributeError):
         pass
+    try:
+        y = y.get_val()
+    except(AttributeError):
+        pass
     ## try to make a direct vdot
     try:
         return x.vdot(y)

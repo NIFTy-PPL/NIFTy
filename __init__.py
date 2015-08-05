@@ -29,7 +29,8 @@ from nifty_cmaps import ncmap
 from nifty_core import space,\
                     point_space,\
                     nested_space,\
-                    field 
+                    field
+                    
 from nifty_mpi_data import distributed_data_object
 from nifty_power import *
 from nifty_random import random

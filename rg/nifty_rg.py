@@ -127,8 +127,9 @@ class rg_space(point_space):
     """
     epsilon = 0.0001 ## relative precision for comparisons
 
-    def __init__(self, num, naxes=None, zerocenter=False, hermitian=True,\
-                purelyreal=True, dist=None, fourier=False):
+    def __init__(self, num, naxes=None, zerocenter=False, 
+                 complexity=None, hermitian=True, purelyreal=True, 
+                 dist=None, fourier=False, datamodel='d2o'):
         """
             Sets the attributes for an rg_space class instance.
 
@@ -158,22 +159,32 @@ class rg_space(point_space):
             -------
             None
         """
+        if complexity is None:
+            complexity=2-(bool(hermitian) or bool(purelyreal))-bool(purelyreal)
 
-        complexity = 2-(bool(hermitian) or bool(purelyreal))-bool(purelyreal)
         if np.isscalar(num):
             num = (num,)*np.asscalar(np.array(naxes))
             
-        self.paradict = rg_space_paradict(num=num, complexity=complexity, 
+        self.paradict = rg_space_paradict(num=num, 
+                                          complexity=complexity, 
                                           zerocenter=zerocenter)        
         
         
         naxes = len(self.paradict['num'])
 
-        ## set data type
+        ## set datatype
         if  self.paradict['complexity'] == 0:
             self.datatype = np.float64
         else:
             self.datatype = np.complex128
+        
+        ## set datamodel
+        if datamodel not in ['np', 'd2o']:
+            about.warnings.cprint("WARNING: datamodel set to default.")
+            self.datamodel = 'd2o'
+        else:
+            self.datamodel = datamodel
+
 
         self.discrete = False
 
@@ -205,7 +216,7 @@ class rg_space(point_space):
         ## Initialize the power_indices object which takes care of kindex,
         ## pindex, rho and the pundex for a given set of parameters
         if self.fourier:        
-            self.power_indices = power_indices(shape=self.shape(),
+            self.power_indices = power_indices(shape=self.get_shape(),
                                 dgrid = dist,
                                 zerocentered = self.paradict['zerocenter']
                                 )
@@ -226,44 +237,57 @@ class rg_space(point_space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def apply_scalar_function(self, x, function, inplace=False):
-        return x.apply_scalar_function(function, inplace=inplace)
-
-    
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++      
-    def unary_operation(self, x, op='None', **kwargs):
-        """
-        x must be a distributed_data_object which is compatible with the space!
-        Valid operations are
-        
-        """
-        
-        translation = {"pos" : lambda y: getattr(y, '__pos__')(),
-                        "neg" : lambda y: getattr(y, '__neg__')(),
-                        "abs" : lambda y: getattr(y, '__abs__')(),
-                        "nanmin" : lambda y: getattr(y, 'nanmin')(),
-                        "min" : lambda y: getattr(y, 'amin')(),
-                        "nanmax" : lambda y: getattr(y, 'nanmax')(),
-                        "max" : lambda y: getattr(y, 'amax')(),
-                        "median" : lambda y: getattr(y, 'median')(),
-                        "mean" : lambda y: getattr(y, 'mean')(),
-                        "std" : lambda y: getattr(y, 'std')(),
-                        "var" : lambda y: getattr(y, 'var')(),
-                        "argmin" : lambda y: getattr(y, 'argmin')(),
-                        "argmin_flat" : lambda y: getattr(y, 'argmin_flat')(),
-                        "argmax" : lambda y: getattr(y, 'argmax')(),
-                        "argmax_flat" : lambda y: getattr(y, 'argmax_flat')(),
-                        "conjugate" : lambda y: getattr(y, 'conjugate')(),
-                        "sum" : lambda y: getattr(y, 'sum')(),
-                        "prod" : lambda y: getattr(y, 'prod')(),
-                        "None" : lambda y: y}
-                        
-        return translation[op](x, **kwargs)      
+## TODO: Remove this dead code block 
+## Inherited from point space
+#    def apply_scalar_function(self, x, function, inplace=False):
+#        return x.apply_scalar_function(function, inplace=inplace)
+#
+#    
+#    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++      
+#    def unary_operation(self, x, op='None', **kwargs):
+#        """
+#        x must be a distributed_data_object which is compatible with the space!
+#        Valid operations are
+#        
+#        """
+#        
+#        translation = {"pos" : lambda y: getattr(y, '__pos__')(),
+#                        "neg" : lambda y: getattr(y, '__neg__')(),
+#                        "abs" : lambda y: getattr(y, '__abs__')(),
+#                        "nanmin" : lambda y: getattr(y, 'nanmin')(),
+#                        "min" : lambda y: getattr(y, 'amin')(),
+#                        "nanmax" : lambda y: getattr(y, 'nanmax')(),
+#                        "max" : lambda y: getattr(y, 'amax')(),
+#                        "median" : lambda y: getattr(y, 'median')(),
+#                        "mean" : lambda y: getattr(y, 'mean')(),
+#                        "std" : lambda y: getattr(y, 'std')(),
+#                        "var" : lambda y: getattr(y, 'var')(),
+#                        "argmin" : lambda y: getattr(y, 'argmin')(),
+#                        "argmin_flat" : lambda y: getattr(y, 'argmin_flat')(),
+#                        "argmax" : lambda y: getattr(y, 'argmax')(),
+#                        "argmax_flat" : lambda y: getattr(y, 'argmax_flat')(),
+#                        "conjugate" : lambda y: getattr(y, 'conjugate')(),
+#                        "sum" : lambda y: getattr(y, 'sum')(),
+#                        "prod" : lambda y: getattr(y, 'prod')(),
+#                        "None" : lambda y: y}
+#                        
+#        return translation[op](x, **kwargs)      
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def copy(self):
+        return rg_space(num = self.paradict['num'],
+                        complexity = self.paradict['complexity'],
+                        zerocenter = self.paradict['zerocenter'],
+                        dist = self.vol,
+                        fourier = self.fourier,
+                        datamodel = self.datamodel)
 
-    def naxes(self):
+
+    def num(self):
+        np.prod(self.get_shape())
+        
+    def get_naxes(self):
         """
             Returns the number of axes of the grid.
 
@@ -273,7 +297,7 @@ class rg_space(point_space):
                 Number of axes of the regular grid.
         """
 #        return (np.size(self.para)-1)//2
-        return len(self.shape())
+        return len(self.get_shape())
 
     def zerocenter(self):
         """
@@ -298,10 +322,10 @@ class rg_space(point_space):
         """
         return self.vol
  
-    def shape(self):
+    def get_shape(self):
         return np.array(self.paradict['num'])
 
-    def dim(self, split=False):
+    def get_dim(self, split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
 
@@ -319,9 +343,9 @@ class rg_space(point_space):
         """
         ## dim = product(n)
         if split == True:
-            return self.shape()
+            return self.get_shape()
         else:
-            return np.prod(self.shape())
+            return np.prod(self.get_shape())
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -532,7 +556,16 @@ class rg_space(point_space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def cast(self, x, verbose=False):
+    def cast(self, x, verbose = False):
+        if self.datamodel == 'd2o':
+            return self._cast_to_d2o(x = x, verbose = False)
+        elif self.datamodel == 'np':
+            return self._cast_to_np(x = x, verbose = False)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
+
+    def _cast_to_d2o(self, x, verbose=False):
         """
             Computes valid field values from a given object, trying
             to translate the given data into a valid form. Thereby it is as 
@@ -568,15 +601,15 @@ class rg_space(point_space):
         ## Case 2: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
             ## Check the shape
-            if np.any(x.shape != self.shape()):           
+            if np.any(x.shape != self.get_shape()):           
                 ## Check if at least the number of degrees of freedom is equal
-                if x.dim() == self.dim():
+                if x.dim() == self.get_dim():
                     ## If the number of dof is equal or 1, use np.reshape...
                     about.warnings.cflush(\
                     "WARNING: Trying to reshape the data. This operation is "+\
                     "expensive as it consolidates the full data!\n")
                     temp = x.get_full_data()
-                    temp = np.reshape(temp, self.shape())             
+                    temp = np.reshape(temp, self.get_shape())             
                     ## ... and cast again
                     return self.cast(temp)
               
@@ -607,7 +640,7 @@ class rg_space(point_space):
                     x = temp
             
             elif self.paradict['complexity'] == 1:
-                if x.hermitian == False and about.hermitianize.status:
+                if x.hermitian == False and about.hermitianize.status == True:
                     about.warnings.cflush(\
                     "WARNING: Data gets hermitianized. This operation is "+\
                     "extremely expensive\n")
@@ -620,11 +653,108 @@ class rg_space(point_space):
                 
         ## Case 3: x is something else
         ## Use general d2o casting 
-        x = distributed_data_object(x, global_shape=self.shape(),\
+        x = distributed_data_object(x, global_shape=self.get_shape(),\
             dtype=self.datatype)       
         ## Cast the d2o
         return self.cast(x)
 
+    def _cast_to_np(self, x, verbose = False):
+        """
+            Computes valid field values from a given object, trying
+            to translate the given data into a valid form. Thereby it is as 
+            benevolent as possible. 
+
+            Parameters
+            ----------
+            x : {float, numpy.ndarray, nifty.field}
+                Object to be transformed into an array of valid field values.
+
+            Returns
+            -------
+            x : numpy.ndarray, distributed_data_object
+                Array containing the field values, which are compatible to the
+                space.
+
+            Other parameters
+            ----------------
+            verbose : bool, *optional*
+                Whether the method should raise a warning if information is 
+                lost during casting (default: False).
+        """
+        ## Case 1: x is a field
+        if isinstance(x, field):
+            if verbose:
+                ## Check if the domain matches
+                if(self != x.domain):
+                    about.warnings.cflush(\
+                    "WARNING: Getting data from foreign domain!")
+            ## Extract the data, whatever it is, and cast it again
+            return self.cast(x.val)
+        
+        ## Case 2: x is a distributed_data_object
+        if isinstance(x, distributed_data_object):
+            ## Extract the data
+            temp = x.get_full_data()
+            ## Cast the resulting numpy array again
+            return self.cast(temp)
+        
+        elif isinstance(x, np.ndarray):
+            ## Check the shape
+            if np.any(x.shape != self.get_shape()):           
+                ## Check if at least the number of degrees of freedom is equal
+                if x.size == self.get_dim():
+                    ## If the number of dof is equal or 1, use np.reshape...
+                    temp = x.reshape(self.get_shape())             
+                    ## ... and cast again
+                    return self.cast(temp)
+                elif x.size == 1:
+                    temp = np.empty(shape = self.get_shape(),
+                                    dtype = self.datatype)
+                    temp[:] = x
+                    return self.cast(temp)
+                else:
+                    raise ValueError(about._errors.cstring(\
+                    "ERROR: Data has incompatible shape!"))
+                    
+            ## Check the datatype
+            if x.dtype < self.datatype:
+                about.warnings.cflush(\
+            "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
+                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
+                + ") and will be casted! "\
+                + "Potential loss of precision!\n")
+                ## Fix the datatype...
+                temp = x.astype(self.datatype)
+                ##... and cast again
+                return self.cast(temp)
+            
+            ## Check hermitianity/reality
+            if self.paradict['complexity'] == 0:
+                if not np.all(np.isreal(x)) == True:
+                    about.warnings.cflush(\
+                    "WARNING: Data is not completely real. Imaginary part "+\
+                    "will be discarded!\n")
+                    x = np.real(x)
+            
+            elif self.paradict['complexity'] == 1:
+                if x.hermitian == False and about.hermitianize.status == True:
+                    about.warnings.cflush(\
+                    "WARNING: Data gets hermitianized. This operation is "+\
+                    "rather expensive\n")
+                    #temp = x.copy_empty()            
+                    #temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
+                    #    (False, )*len(x.shape)))
+                    x = utilities.hermitianize(x)
+                
+            return x
+                
+        ## Case 3: x is something else
+        ## Use general numpy casting 
+        else:
+            temp = np.empty(self.get_shape(), dtype = self.datatype)
+            temp[:] = x
+            return temp
+            
     def enforce_values(self,x,extend=True):
         """
             Computes valid field values from a given object, taking care of
@@ -659,7 +789,7 @@ class rg_space(point_space):
         else:
             if(np.size(x)==1):
                 if(extend):
-                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+                    x = self.datatype(x)*np.ones(self.get_dim(split=True),dtype=self.datatype,order='C')
                 else:
                     if(np.isscalar(x)):
                         x = np.array([x],dtype=self.datatype)
@@ -739,12 +869,14 @@ class rg_space(point_space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
+        ## TODO: Without hermitianization the random-methods from pointspace 
+        ## could be used.
         
         ## Parse the keyword arguments
-        arg = random.parse_arguments(self,**kwargs)
+        arg = random.parse_arguments(self, **kwargs)
         
         ## Prepare the empty distributed_data_object
-        sample = distributed_data_object(global_shape=self.shape(), 
+        sample = distributed_data_object(global_shape=self.get_shape(), 
                                          dtype=self.datatype)
 
         ## Should the output be hermitianized?
@@ -887,7 +1019,7 @@ class rg_space(point_space):
                     ## Furthermore, the normalisation in the fft routine 
                     ## must be undone
                     ## TODO: Insert explanation
-                    sqrt_of_dim = np.sqrt(self.dim())
+                    sqrt_of_dim = np.sqrt(self.get_dim())
                     sample /= sqrt_of_dim
                     sample = temp_codomain.calc_weight(sample, power=-1)
 
@@ -1081,7 +1213,7 @@ class rg_space(point_space):
             case it arises from an inverse Fourier transformation.If no 
             `coname` is given, the Fourier conjugate grid is produced.
         """
-        naxes = self.naxes() 
+        naxes = self.get_naxes() 
         ## Parse the cozerocenter input
         if(cozerocenter is None):
             cozerocenter = self.paradict['zerocenter']
@@ -1107,6 +1239,7 @@ class rg_space(point_space):
         purelyreal = (self.paradict['complexity'] == 1)        
         hermitian = (self.paradict['complexity'] < 2)
         dist = 1/(self.paradict['num']*self.vol)        
+        datamodel = self.datamodel
         
         if coname == None:
             fourier = bool(not self.fourier)            
@@ -1122,7 +1255,8 @@ class rg_space(point_space):
                              hermitian = hermitian,
                              purelyreal = purelyreal,
                              dist = dist,
-                             fourier = fourier)                                            
+                             fourier = fourier,
+                             datamodel = datamodel)                                            
         return new_space
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1148,11 +1282,12 @@ class rg_space(point_space):
             mol : {numpy.ndarray, float}
                 Meta volume of the pixels or the complete space.
         """
-        if(total):
-            return self.dim(split=False)*np.prod(self.vol)
+        if total == True:
+            return self.get_dim()*np.prod(self.vol)
         else:
-            mol = np.ones(self.dim(split=True),dtype=self.vol.dtype)
-            return self.calc_weight(mol,power=1)
+            mol = np.ones(self.get_shape(),
+                          dtype=self.vol.dtype)
+            return self.calc_weight(mol, power=1)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1202,7 +1337,15 @@ class rg_space(point_space):
         """
         x = self.cast(x)
         y = self.cast(y)
-        result = x.vdot(y)
+        
+        if self.datamodel == 'np':
+            result = np.vdot(x, y)
+        elif self.datamodel == 'd2o':
+            result = x.vdot(y)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
+
         if np.isreal(result):
             result = np.asscalar(np.real(result))      
         if self.paradict['complexity'] != 2:
@@ -1235,7 +1378,7 @@ class rg_space(point_space):
         """
         x = self.cast(x)
         
-        if(codomain is None):
+        if codomain is None:
             codomain = self.get_codomain()
         
         ## Check if the given codomain is suitable for the transformation
@@ -1249,7 +1392,7 @@ class rg_space(point_space):
         
 #            ## correct for inverse fft
 #            x = self.calc_weight(x, power=1)
-#            x *= self.dim(split=False)
+#            x *= self.get_dim(split=False)
         
         ## Perform the transformation
         Tx = self.fft_machine.transform(val=x, domain=self, codomain=codomain, 
@@ -1333,13 +1476,14 @@ class rg_space(point_space):
         x = self.cast(x)       
          
         ## if x is hermitian it remains hermitian during smoothing
-        remeber_hermitianQ = x.hermitian
+        if self.datamodel == 'd2o':
+            remeber_hermitianQ = x.hermitian
 
         ## Define the Gaussian kernel function 
         gaussian = lambda x: np.exp(-2.*np.pi**2*x**2*sigma**2)
         
         ## Define the variables in the dialect of the legacy smoothing.py 
-        nx = self.shape()
+        nx = self.get_shape()
         dx = 1/nx/self.vol
         ## Multiply the data along each axis with suitable the gaussian kernel
         for i in range(len(nx)):
@@ -1358,7 +1502,9 @@ class rg_space(point_space):
                 gaussian_kernel_vector.reshape(blown_up_shape)
             ## apply the blown-up gaussian_kernel_vector
             x *= gaussian_kernel_vector
-        x.hermitian = remeber_hermitianQ
+
+        if self.datamodel == 'd2o':
+            x.hermitian = remeber_hermitianQ
         
         return x
         
@@ -1441,34 +1587,40 @@ class rg_space(point_space):
         fieldabs = abs(x)**2
         power_spectrum = np.zeros(rho.shape) 
 
-                
-        ## In order to make the summation over identical pindices fast, 
-        ## the pindex and the kindex must have the same distribution strategy
-        if pindex.distribution_strategy == fieldabs.distribution_strategy and\
-            pindex.distributor.comm == fieldabs.distributor.comm:
-            working_field = fieldabs
-        else:
+        if self.datamodel == 'np':
             working_field = pindex.copy_empty(dtype = fieldabs.dtype)
-            working_field.inject((slice(None),), fieldabs, (slice(None,)))
-        
-        local_power_spectrum = np.bincount(pindex.get_local_data().flatten(),
-                        weights = working_field.get_local_data().flatten())        
-        power_spectrum =\
-            pindex.distributor._allgather(local_power_spectrum)
-        power_spectrum = np.sum(power_spectrum, axis = 0)
+            working_field.set_full_data(data = fieldabs)
+            local_power_spectrum = np.bincount(
+                            pindex.get_local_data().flatten(),
+                            weights = working_field.get_local_data().flatten())        
+            power_spectrum =\
+                pindex.distributor._allgather(local_power_spectrum)
+            power_spectrum = np.sum(power_spectrum, axis = 0)
 
+        if self.datamodel == 'd2o':
+            ## In order to make the summation over identical pindices fast, 
+            ## the pindex and the kindex must have the same distribution strategy
+            if pindex.distribution_strategy == fieldabs.distribution_strategy and\
+                pindex.distributor.comm == fieldabs.distributor.comm:
+                working_field = fieldabs
+            else:
+                working_field = pindex.copy_empty(dtype = fieldabs.dtype)
+                working_field.inject((slice(None),), fieldabs, (slice(None,)))
+            
+            local_power_spectrum = np.bincount(pindex.get_local_data().flatten(),
+                            weights = working_field.get_local_data().flatten())        
+            power_spectrum =\
+                pindex.distributor._allgather(local_power_spectrum)
+            power_spectrum = np.sum(power_spectrum, axis = 0)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
+                
         ## Divide out the degeneracy factor        
         power_spectrum /= rho
         return power_spectrum
         
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def calc_real_Q(self, x):
-        try:
-            return x.is_completely_real()
-        except(AttributeError):
-            return np.all(np.isreal(x))
-
-        
+ 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_plot(self,x,title="",vmin=None,vmax=None,power=None,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
@@ -1602,7 +1754,7 @@ class rg_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self.enforce_shape(np.array(x))
+            x = self.cast(x)
 
             if(naxes==1):
                 fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)

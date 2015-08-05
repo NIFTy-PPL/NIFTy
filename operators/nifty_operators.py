@@ -209,7 +209,7 @@ class operator(object):
             nrow : int
                 number of rows (equal to the dimension of the codomain)
         """
-        return self.target.dim(split=False)
+        return self.target.get_dim(split=False)
 
     def ncol(self):
         """
@@ -220,7 +220,7 @@ class operator(object):
             ncol : int
                 number of columns (equal to the dimension of the domain)
         """
-        return self.domain.dim(split=False)
+        return self.domain.get_dim(split=False)
 
     def dim(self, axis=None):
         """
@@ -1455,9 +1455,9 @@ class diagonal_operator(operator):
         """
         if(domain is None)or(domain==self.domain):
             if(self.uni): ## identity
-                return (self.domain.datatype(self.domain.dof())).real
-            elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
-                return self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),self.val) ## discrete inner product
+                return (self.domain.datatype(self.domain.get_dof())).real
+            elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
+                return self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),self.val) ## discrete inner product
             else:
                 return np.sum(self.val,axis=None,dtype=None,out=None)
         else:
@@ -1465,9 +1465,9 @@ class diagonal_operator(operator):
                 if(not isinstance(domain,space)):
                     raise TypeError(about._errors.cstring("ERROR: invalid input."))
                 ## check degrees of freedom
-                if(self.domain.dof()>domain.dof()):
-                    about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.dof())+" / "+str(domain.dof())+" ).")
-                return (domain.datatype(domain.dof())).real
+                if(self.domain.get_dof()>domain.get_dof()):
+                    about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.get_dof())+" / "+str(domain.get_dof())+" ).")
+                return (domain.datatype(domain.get_dof())).real
             else:
                 return super(diagonal_operator,self).tr(domain=domain,**kwargs) ## probing
 
@@ -1529,9 +1529,9 @@ class diagonal_operator(operator):
 
         if(domain is None)or(domain==self.target):
             if(self.uni): ## identity
-                return np.real(self.domain.datatype(self.domain.dof()))
-            elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
-                return self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),1/self.val) ## discrete inner product
+                return np.real(self.domain.datatype(self.domain.get_dof()))
+            elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
+                return self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),1/self.val) ## discrete inner product
             else:
                 return np.sum(1./self.val,axis=None,dtype=None,out=None)
         else:
@@ -1539,9 +1539,9 @@ class diagonal_operator(operator):
                 if(not isinstance(domain,space)):
                     raise TypeError(about._errors.cstring("ERROR: invalid input."))
                 ## check degrees of freedom
-                if(self.domain.dof()>domain.dof()):
-                    about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.dof())+" / "+str(domain.dof())+" ).")
-                return np.real(domain.datatype(domain.dof()))
+                if(self.domain.get_dof()>domain.get_dof()):
+                    about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.get_dof())+" / "+str(domain.get_dof())+" ).")
+                return np.real(domain.datatype(domain.get_dof()))
             else:
                 return super(diagonal_operator,self).inverse_tr(domain=domain,**kwargs) ## probing
         """
@@ -1776,8 +1776,8 @@ class diagonal_operator(operator):
             return 1.
         else:
             return self.domain.unary_operation(self.val, op='prod')
-        #elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
-        #    return np.exp(self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val)))
+        #elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
+        #    return np.exp(self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val)))
         #else:
         #    return np.prod(self.val,axis=None,dtype=None,out=None)
 
@@ -1813,8 +1813,8 @@ class diagonal_operator(operator):
         """
         if self.uni == True: ## identity
             return 0
-        #elif(self.domain.dim(split=False)<self.domain.dof()): ## hidden degrees of freedom
-        #    return self.domain.calc_dot(np.ones(self.domain.dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val))
+        #elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
+        #    return self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val))
         else:
             return self.domain.unary_operation(
                                     nifty_simple_math.log(self.val), op='sum')
@@ -2080,8 +2080,8 @@ class power_operator(diagonal_operator):
         ## check explicit pindex
         else:
             pindex = np.array(pindex,dtype=np.int)
-            if(not np.all(np.array(np.shape(pindex))==self.domain.dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.dim(split=True))+" )."))
+            if(not np.all(np.array(np.shape(pindex))==self.domain.get_dim(split=True))):
+                raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.get_dim(split=True))+" )."))
         ## set diagonal
         try:
             #diag = self.domain.enforce_power(spec,size=np.max(pindex,axis=None,out=None)+1)[pindex]
@@ -2204,7 +2204,7 @@ class power_operator(diagonal_operator):
         ## Case 2: explicit pindex given
         else:
             ## TODO: Pindex casting could be done here. No must-have. 
-            assert(np.all(pindex.shape == self.domain.shape()))
+            assert(np.all(pindex.shape == self.domain.get_shape()))
         return pindex
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2451,7 +2451,7 @@ class projection_operator(operator):
             try:
                 self.domain.set_power_indices(**kwargs)
             except:
-                assign = np.arange(self.domain.dim(split=False),dtype=np.int)
+                assign = np.arange(self.domain.get_dim(split=False),dtype=np.int)
             else:
                 assign = self.domain.power_indices.get("pindex").flatten(order='C')
         else:
@@ -2491,7 +2491,7 @@ class projection_operator(operator):
                 The number of degrees of freedom per projection band.
         """
         rho = np.empty(len(self.ind),dtype=np.int,order='C')
-        if(self.domain.dim(split=False)==self.domain.dof()): ## no hidden degrees of freedom
+        if(self.domain.get_dim(split=False)==self.domain.get_dof()): ## no hidden degrees of freedom
             for ii in xrange(len(self.ind)):
                 rho[ii] = len(self.ind[ii])
         else: ## hidden degrees of freedom
@@ -2526,7 +2526,7 @@ class projection_operator(operator):
             band = int(band)
             if(band>self.bands()-1)or(band<0):
                 raise TypeError(about._errors.cstring("ERROR: invalid band."))
-            Px = np.zeros(self.domain.dim(split=False),dtype=self.domain.datatype,order='C')
+            Px = np.zeros(self.domain.get_dim(split=False),dtype=self.domain.datatype,order='C')
             Px[self.ind[band]] += x.val.flatten(order='C')[self.ind[band]]
             Px = field(self.domain,val=Px,target=x.target)
             return Px
@@ -2538,7 +2538,7 @@ class projection_operator(operator):
                 bandsup = np.array(bandsup,dtype=np.int)
             if(np.any(bandsup>self.bands()-1))or(np.any(bandsup<0)):
                 raise ValueError(about._errors.cstring("ERROR: invalid input."))
-            Px = np.zeros(self.domain.dim(split=False),dtype=self.domain.datatype,order='C')
+            Px = np.zeros(self.domain.get_dim(split=False),dtype=self.domain.datatype,order='C')
             x_ = x.val.flatten(order='C')
             for bb in bandsup:
                 Px[self.ind[bb]] += x_[self.ind[bb]]
@@ -2546,7 +2546,7 @@ class projection_operator(operator):
             return Px
 
         else:
-            Px = np.zeros((len(self.ind),self.domain.dim(split=False)),dtype=self.target.datatype,order='C')
+            Px = np.zeros((len(self.ind),self.domain.get_dim(split=False)),dtype=self.target.datatype,order='C')
             x_ = x.val.flatten(order='C')
             for bb in xrange(self.bands()):
                 Px[bb][self.ind[bb]] += x_[self.ind[bb]]
@@ -2690,7 +2690,7 @@ class projection_operator(operator):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
         x = np.real(x.flatten(order='C'))
-        if(not self.domain.dim(split=False)==self.domain.dof()):
+        if(not self.domain.get_dim(split=False)==self.domain.get_dof()):
             x *= np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
 
         tr = np.empty(self.bands(),dtype=x.dtype,order='C')
@@ -3094,13 +3094,13 @@ class response_operator(operator):
         ## check assignment(s)
         if(assign is None):
             ## 1:1 assignment
-            assignments = self.domain.dim(split=False)
+            assignments = self.domain.get_dim(split=False)
             self.assign = None
-        elif(np.size(self.domain.dim(split=True))==1):
+        elif(np.size(self.domain.get_dim(split=True))==1):
             if(np.isscalar(assign)):
                 ## X:1 assignment
                 assignments = 1
-                if(assign[0]>=self.domain.dim(split=False))or(assign[0]<-self.domain.dim(split=False)):
+                if(assign[0]>=self.domain.get_dim(split=False))or(assign[0]<-self.domain.get_dim(split=False)):
                     raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
                 self.assign = [int(assign)]
             else:
@@ -3108,7 +3108,7 @@ class response_operator(operator):
                 assignments = len(assign)
                 if(np.ndim(assign)!=1):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
-                elif(np.any(assign>=self.domain.dim(split=False)))or(np.any(assign<-self.domain.dim(split=False))):
+                elif(np.any(assign>=self.domain.get_dim(split=False)))or(np.any(assign<-self.domain.get_dim(split=False))):
                     raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
                 if(assignments==len(np.unique(assign,return_index=False,return_inverse=False))):
                     self.assign = assign.tolist()
@@ -3120,12 +3120,12 @@ class response_operator(operator):
             else:
                 assign = np.array(assign,dtype=np.int)
                 assignments = np.size(assign,axis=0)
-                if(np.ndim(assign)!=2)or(np.size(assign,axis=1)!=np.size(self.domain.dim(split=True))):
+                if(np.ndim(assign)!=2)or(np.size(assign,axis=1)!=np.size(self.domain.get_dim(split=True))):
                     raise ValueError(about._errors.cstring("ERROR: invalid input."))
                 for ii in xrange(np.size(assign,axis=1)):
-                    if(np.any(assign[:,ii]>=self.domain.dim(split=True)[ii]))or(np.any(assign[:,ii]<-self.domain.dim(split=True)[ii])):
+                    if(np.any(assign[:,ii]>=self.domain.get_dim(split=True)[ii]))or(np.any(assign[:,ii]<-self.domain.get_dim(split=True)[ii])):
                         raise IndexError(about._errors.cstring("ERROR: invalid bounds."))
-                if(assignments==len(np.unique(np.ravel_multi_index(assign.T,self.domain.dim(split=True),mode="raise",order='C'),return_index=False,return_inverse=False))):
+                if(assignments==len(np.unique(np.ravel_multi_index(assign.T,self.domain.get_dim(split=True),mode="raise",order='C'),return_index=False,return_inverse=False))):
                     self.assign = assign.T.tolist()
                 else:
                     self.assign = assign
@@ -3139,10 +3139,10 @@ class response_operator(operator):
                 raise TypeError(about._errors.cstring("ERROR: invalid input."))
             elif(not target.discrete):
                 raise ValueError(about._errors.cstring("ERROR: continuous codomain.")) ## discrete(!)
-            elif(np.size(target.dim(split=True))!=1):
+            elif(np.size(target.get_dim(split=True))!=1):
                 raise ValueError(about._errors.cstring("ERROR: structured codomain.")) ## unstructured(!)
-            elif(assignments!=target.dim(split=False)):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(assignments)+" <> "+str(target.dim(split=False))+" )."))
+            elif(assignments!=target.get_dim(split=False)):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(assignments)+" <> "+str(target.get_dim(split=False))+" )."))
         self.target = target
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3200,10 +3200,10 @@ class response_operator(operator):
             return field(self.target,val=x_[self.assign.T.tolist()],target=kwargs.get("target",None))
 
     def _adjoint_multiply(self,x,**kwargs): ## > applies the adjoint operator to a given field
-        x_ = np.zeros(self.domain.dim(split=True),dtype=self.domain.datatype,order='C')
+        x_ = np.zeros(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C')
         ## assign (transposed)
         if(self.assign is None):
-            x_ = np.copy(x.val.flatten(order='C'))
+            x_ = x.val.flatten()
         elif(isinstance(self.assign,list)):
             x_[self.assign] += x.val.flatten(order='C')
         else:
@@ -3394,7 +3394,7 @@ class invertible_operator(operator):
                 counter each iteration (default: None).
             reset : integer, *optional*
                 Number of iterations after which to restart; i.e., forget previous
-                conjugated directions (default: sqrt(b.dim())).
+                conjugated directions (default: sqrt(b.get_dim())).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
             x0 : field, *optional*
@@ -3406,7 +3406,7 @@ class invertible_operator(operator):
                 Number of times the tolerance should be undershot before
                 exiting (default: 1).
             limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.dim()).
+                Maximum number of iterations performed (default: 10 * b.get_dim()).
 
         """
         x_,convergence = conjugate_gradient(self.inverse_times,x,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
@@ -3452,7 +3452,7 @@ class invertible_operator(operator):
                 counter each iteration (default: None).
             reset : integer, *optional*
                 Number of iterations after which to restart; i.e., forget previous
-                conjugated directions (default: sqrt(b.dim())).
+                conjugated directions (default: sqrt(b.get_dim())).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
             x0 : field, *optional*
@@ -3464,7 +3464,7 @@ class invertible_operator(operator):
                 Number of times the tolerance should be undershot before
                 exiting (default: 1).
             limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.dim()).
+                Maximum number of iterations performed (default: 10 * b.get_dim()).
 
         """
         x_,convergence = conjugate_gradient(self.times,x,W=W,spam=spam,reset=reset,note=note)(x0=x0,tol=tol,clevel=clevel,limii=limii)
@@ -3714,7 +3714,7 @@ class propagator_operator(operator):
                 counter each iteration (default: None).
             reset : integer, *optional*
                 Number of iterations after which to restart; i.e., forget previous
-                conjugated directions (default: sqrt(b.dim())).
+                conjugated directions (default: sqrt(b.get_dim())).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
             x0 : field, *optional*
@@ -3726,7 +3726,7 @@ class propagator_operator(operator):
                 Number of times the tolerance should be undershot before
                 exiting (default: 1).
             limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.dim()).
+                Maximum number of iterations performed (default: 10 * b.get_dim()).
 
         """
         ## prepare

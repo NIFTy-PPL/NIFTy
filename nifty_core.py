@@ -149,6 +149,8 @@ from nifty_paradict import space_paradict,\
 
 from nifty_about import about
 from nifty_random import random
+from nifty.nifty_mpi_data import distributed_data_object
+
 
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
@@ -214,7 +216,7 @@ class space(object):
             An array of pixel volumes, only one component if the pixels all
             have the same volume.
     """
-    def __init__(self,para=0,datatype=None):
+    def __init__(self, para=0, datatype=None):
         """
             Sets the attributes for a space class instance.
 
@@ -260,7 +262,9 @@ class space(object):
         """        
         return frozenset(dictionary.items())
 
-
+    def copy(self):
+        return space(para = self.para,
+                     datatype = self.datatype) 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def getitem(self, data, key):
@@ -289,16 +293,16 @@ class space(object):
             "ERROR: no generic instance method 'binary_operation'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++            
-    def norm(self, x, q):
+    def get_norm(self, x, q):
         raise NotImplementedError(about._errors.cstring(\
             "ERROR: no generic instance method 'norm'."))
 
-    def shape(self):
+    def get_shape(self):
         raise NotImplementedError(about._errors.cstring(\
             "ERROR: no generic instance method 'shape'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def dim(self,split=False):
+    def get_dim(self,split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
 
@@ -313,11 +317,12 @@ class space(object):
             dim : {int, numpy.ndarray}
                 Dimension(s) of the space.
         """
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'dim'."))
+        raise NotImplementedError(about._errors.cstring(
+                    "ERROR: no generic instance method 'dim'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dof(self):
+    def get_dof(self):
         """
             Computes the number of degrees of freedom of the space.
 
@@ -326,7 +331,8 @@ class space(object):
             dof : int
                 Number of degrees of freedom of the space.
         """
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'dof'."))
+        raise NotImplementedError(about._errors.cstring(
+                    "ERROR: no generic instance method 'dof'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -371,7 +377,8 @@ class space(object):
                 (default: 0).
 
         """
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'enforce_power'."))
+        raise NotImplementedError(about._errors.cstring(
+                    "ERROR: no generic instance method 'enforce_power'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -404,7 +411,8 @@ class space(object):
             get_power_indices
 
         """
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'set_power_indices'."))
+        raise NotImplementedError(about._errors.cstring(
+                    "ERROR: no generic instance method 'set_power_indices'."))
 
     def get_power_indices(self,**kwargs):
         """
@@ -456,7 +464,8 @@ class space(object):
             set_power_indices
 
         """
-        raise NotImplementedError(about._errors.cstring("ERROR: no generic instance method 'get_power_indices'."))
+        raise NotImplementedError(about._errors.cstring(
+                "ERROR: no generic instance method 'get_power_indices'."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     
@@ -1059,7 +1068,7 @@ class point_space(space):
         vol : numpy.ndarray
             Pixel volume of the :py:class:`point_space`, which is always 1.
     """
-    def __init__(self,num,datatype=None):
+    def __init__(self, num, datatype=None, datamodel='d2o'):
         """
             Sets the attributes for a point_space class instance.
 
@@ -1077,15 +1086,30 @@ class point_space(space):
         self.paradict = point_space_paradict(num=num)       
         
         ## check datatype
-        if(datatype is None):
+        if (datatype is None):
             datatype = np.float64
-        elif(datatype not in [np.int8,np.int16,np.int32,np.int64,np.float16,np.float32,np.float64,np.complex64,np.complex128]):
+        elif (datatype not in [np.int8, 
+                              np.int16, 
+                              np.int32,
+                              np.int64,
+                              np.float16,
+                              np.float32,
+                              np.float64,
+                              np.complex64,
+                              np.complex128]):
             about.warnings.cprint("WARNING: data type set to default.")
             datatype = np.float64
         self.datatype = datatype
-
+        
+        if datamodel not in ['np', 'd2o']:
+            about.warnings.cprint("WARNING: datamodel set to default.")
+            self.datamodel = 'd2o'
+        else:
+            self.datamodel = datamodel
+                
+        
         self.discrete = True
-        self.vol = np.real(np.array([1],dtype=self.datatype))
+        self.vol = np.real(np.array([1], dtype=self.datatype))
 
 
     @property
@@ -1096,7 +1120,13 @@ class point_space(space):
     @para.setter
     def para(self, x):
         self.paradict['num'] = x
-        
+     
+     
+    def copy(self):
+        return point_space(num = self.paradict['num'],
+                           datatype = self.datatype,
+                           datamodel = self.datamodel)
+     
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def getitem(self, data, key):
         return data[key]
@@ -1104,21 +1134,29 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def setitem(self, data, update, key):
-        data[key]=update
+        data[key] = update
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def apply_scalar_function(self, x, function, inplace=False):
-        if inplace == False:        
-            try: 
-                return function(x)
-            except:
-                return np.vectorize(function)(x)
+        if self.datamodel == 'np':
+            if inplace == False:        
+                try: 
+                    return function(x)
+                except:
+                    return np.vectorize(function)(x)
+            else:
+                try:
+                    x[:] = function(x)
+                except:
+                    x[:] = np.vectorize(function)(x)
+                return x
+            
+        elif self.datamodel == 'd2o':
+            return x.apply_scalar_function(function, inplace=inplace)
         else:
-            try:
-                x[:] = function(x)
-            except:
-                x[:] = np.vectorize(function)(x)
-            return x
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++          
     
     
@@ -1128,44 +1166,67 @@ class point_space(space):
         Valid operations are
         
         """
-                                
-        def _argmin(z, **kwargs):
-            ind = np.argmin(z, **kwargs)
-            if np.isscalar(ind):
-                ind = np.unravel_index(ind, z.shape, order='C')
-                if(len(ind)==1):
-                    return ind[0]
-            return ind         
+        if self.datamodel == 'np':                                
+            def _argmin(z, **kwargs):
+                ind = np.argmin(z, **kwargs)
+                if np.isscalar(ind):
+                    ind = np.unravel_index(ind, z.shape, order='C')
+                    if(len(ind)==1):
+                        return ind[0]
+                return ind         
+    
+            def _argmax(z, **kwargs):
+                ind = np.argmax(z, **kwargs)
+                if np.isscalar(ind):
+                    ind = np.unravel_index(ind, z.shape, order='C')
+                    if(len(ind)==1):
+                        return ind[0]
+                return ind         
+            
+            
+            translation = {"pos" : lambda y: getattr(y, '__pos__')(),
+                            "neg" : lambda y: getattr(y, '__neg__')(),
+                            "abs" : lambda y: getattr(y, '__abs__')(),
+                            "nanmin" : np.nanmin,  
+                            "min" : np.amin,
+                            "nanmax" : np.nanmax,
+                            "max" : np.amax,
+                            "med" : np.median,
+                            "mean" : np.mean,
+                            "std" : np.std,
+                            "var" : np.var,
+                            "argmin" : _argmin,
+                            "argmin_flat" : np.argmin,
+                            "argmax" : _argmax, 
+                            "argmax_flat" : np.argmax,
+                            "conjugate" : np.conjugate,
+                            "sum" : np.sum,
+                            "prod" : np.prod,
+                            "None" : lambda y: y}
 
-        def _argmax(z, **kwargs):
-            ind = np.argmax(z, **kwargs)
-            if np.isscalar(ind):
-                ind = np.unravel_index(ind, z.shape, order='C')
-                if(len(ind)==1):
-                    return ind[0]
-            return ind         
-        
-        
-        translation = {"pos" : lambda y: getattr(y, '__pos__')(),
+        elif self.datamodel == 'd2o':
+            translation = {"pos" : lambda y: getattr(y, '__pos__')(),
                         "neg" : lambda y: getattr(y, '__neg__')(),
                         "abs" : lambda y: getattr(y, '__abs__')(),
-                        "nanmin" : np.nanmin,  
-                        "min" : np.amin,
-                        "nanmax" : np.nanmax,
-                        "max" : np.amax,
-                        "med" : np.median,
-                        "mean" : np.mean,
-                        "std" : np.std,
-                        "var" : np.var,
-                        "argmin" : _argmin,
-                        "argmin_flat" : np.argmin,
-                        "argmax" : _argmax, 
-                        "argmax_flat" : np.argmax,
-                        "conjugate" : np.conjugate,
-                        "sum" : np.sum,
-                        "prod" : np.prod,
+                        "nanmin" : lambda y: getattr(y, 'nanmin')(),
+                        "min" : lambda y: getattr(y, 'amin')(),
+                        "nanmax" : lambda y: getattr(y, 'nanmax')(),
+                        "max" : lambda y: getattr(y, 'amax')(),
+                        "median" : lambda y: getattr(y, 'median')(),
+                        "mean" : lambda y: getattr(y, 'mean')(),
+                        "std" : lambda y: getattr(y, 'std')(),
+                        "var" : lambda y: getattr(y, 'var')(),
+                        "argmin" : lambda y: getattr(y, 'argmin')(),
+                        "argmin_flat" : lambda y: getattr(y, 'argmin_flat')(),
+                        "argmax" : lambda y: getattr(y, 'argmax')(),
+                        "argmax_flat" : lambda y: getattr(y, 'argmax_flat')(),
+                        "conjugate" : lambda y: getattr(y, 'conjugate')(),
+                        "sum" : lambda y: getattr(y, 'sum')(),
+                        "prod" : lambda y: getattr(y, 'prod')(),
                         "None" : lambda y: y}
-
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
                 
         return translation[op](x, **kwargs)      
 
@@ -1216,7 +1277,7 @@ class point_space(space):
         """
 
         
-        if(q == 2):
+        if q == 2:
             result = self.calc_dot(x,x)
         else:
             y = x**(q-1)        
@@ -1228,7 +1289,7 @@ class point_space(space):
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def num(self):
+    def get_num(self):
         """
             Returns the number of points.
 
@@ -1237,13 +1298,13 @@ class point_space(space):
             num : int
                 Number of points.
         """
-        return self.para[0]
+        return np.prod(self.get_shape())
 
-    def shape(self):
+    def get_shape(self):
         return np.array([self.paradict['num']])
 
         
-    def dim(self,split=False):
+    def get_dim(self, split=False):
         """
             Computes the dimension of the space, i.e.\  the number of points.
 
@@ -1259,16 +1320,18 @@ class point_space(space):
                 Dimension(s) of the space.
         """
         ## dim = num
-        if(split):
-            return self.shape()
+        if split==True:
+            about.warnings.cflush("WARNING: split keyword is  deprecated!"+\
+                                "Please use self.get_shape() in future!")
+            return self.get_shape()
             #return np.array([self.para[0]],dtype=np.int)
         else:
-            return np.prod(self.shape())
+            return np.prod(self.get_shape())
             #return self.para[0]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dof(self):
+    def get_dof(self):
         """
             Computes the number of degrees of freedom of the space, i.e./  the
             number of points for real-valued fields and twice that number for
@@ -1280,10 +1343,10 @@ class point_space(space):
                 Number of degrees of freedom of the space.
         """
         ## dof ~ dim
-        if(issubclass(self.datatype,np.complexfloating)):
-            return 2*self.para[0]
+        if issubclass(self.datatype, np.complexfloating) == True:
+            return self.paradict['num']*2
         else:
-            return self.para[0]
+            return self.paradict['num']
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def get_power_indices(self,**kwargs):
@@ -1336,13 +1399,180 @@ class point_space(space):
             set_power_indices
 
         """
+        ## TODO: Deprecate set_power_indices
         self.set_power_indices(**kwargs)
         return self.power_indices.get("kindex"),\
                 self.power_indices.get("rho"),\
                 self.power_indices.get("pindex"),\
                 self.power_indices.get("pundex")
 
+
+
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+    def cast(self, x, verbose = False):
+        if self.datamodel == 'd2o':
+            return self._cast_to_d2o(x = x, verbose = False)
+        elif self.datamodel == 'np':
+            return self._cast_to_np(x = x, verbose = False)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
+
+    def _cast_to_d2o(self, x, verbose=False):
+        """
+            Computes valid field values from a given object, trying
+            to translate the given data into a valid form. Thereby it is as 
+            benevolent as possible. 
+
+            Parameters
+            ----------
+            x : {float, numpy.ndarray, nifty.field}
+                Object to be transformed into an array of valid field values.
+
+            Returns
+            -------
+            x : numpy.ndarray, distributed_data_object
+                Array containing the field values, which are compatible to the
+                space.
+
+            Other parameters
+            ----------------
+            verbose : bool, *optional*
+                Whether the method should raise a warning if information is 
+                lost during casting (default: False).
+        """
+        ## Case 1: x is a field
+        if isinstance(x, field):
+            if verbose:
+                ## Check if the domain matches
+                if(self != x.domain):
+                    about.warnings.cflush(\
+                    "WARNING: Getting data from foreign domain!")
+            ## Extract the data, whatever it is, and cast it again
+            return self.cast(x.val)
+        
+        ## Case 2: x is a distributed_data_object
+        if isinstance(x, distributed_data_object):
+            ## Check the shape
+            if np.any(x.shape != self.get_shape()):           
+                ## Check if at least the number of degrees of freedom is equal
+                if x.dim() == self.get_dim():
+                    ## If the number of dof is equal or 1, use np.reshape...
+                    about.warnings.cflush(\
+                    "WARNING: Trying to reshape the data. This operation is "+\
+                    "expensive as it consolidates the full data!\n")
+                    temp = x.get_full_data()
+                    temp = np.reshape(temp, self.get_shape())             
+                    ## ... and cast again
+                    return self.cast(temp)
+              
+                else:
+                    raise ValueError(about._errors.cstring(\
+                    "ERROR: Data has incompatible shape!"))
+                    
+            ## Check the datatype
+            if x.dtype < self.datatype:
+                about.warnings.cflush(\
+            "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
+                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
+                + ") and will be casted! "\
+                + "Potential loss of precision!\n")
+                temp = x.copy_empty(dtype=self.datatype)
+                temp.set_local_data(x.get_local_data())
+                temp.hermitian = x.hermitian
+                x = temp
+                
+            return x
+                
+        ## Case 3: x is something else
+        ## Use general d2o casting 
+        x = distributed_data_object(x, global_shape=self.get_shape(),\
+            dtype=self.datatype)       
+        ## Cast the d2o
+        return self.cast(x)
+
+    def _cast_to_np(self, x, verbose = False):
+        """
+            Computes valid field values from a given object, trying
+            to translate the given data into a valid form. Thereby it is as 
+            benevolent as possible. 
+
+            Parameters
+            ----------
+            x : {float, numpy.ndarray, nifty.field}
+                Object to be transformed into an array of valid field values.
+
+            Returns
+            -------
+            x : numpy.ndarray, distributed_data_object
+                Array containing the field values, which are compatible to the
+                space.
+
+            Other parameters
+            ----------------
+            verbose : bool, *optional*
+                Whether the method should raise a warning if information is 
+                lost during casting (default: False).
+        """
+        ## Case 1: x is a field
+        if isinstance(x, field):
+            if verbose:
+                ## Check if the domain matches
+                if(self != x.domain):
+                    about.warnings.cflush(\
+                    "WARNING: Getting data from foreign domain!")
+            ## Extract the data, whatever it is, and cast it again
+            return self.cast(x.val)
+        
+        ## Case 2: x is a distributed_data_object
+        if isinstance(x, distributed_data_object):
+            ## Extract the data
+            temp = x.get_full_data()
+            ## Cast the resulting numpy array again
+            return self.cast(temp)
+        
+        elif isinstance(x, np.ndarray):
+            ## Check the shape
+            if np.any(x.shape != self.get_shape()):           
+                ## Check if at least the number of degrees of freedom is equal
+                if x.size == self.get_dim():
+                    ## If the number of dof is equal or 1, use np.reshape...
+                    temp = x.reshape(self.get_shape())             
+                    ## ... and cast again
+                    return self.cast(temp)
+                elif x.size == 1:
+                    temp = np.empty(shape = self.get_shape(),
+                                    dtype = self.datatype)
+                    temp[:] = x
+                    return self.cast(temp)
+                else:
+                    raise ValueError(about._errors.cstring(\
+                    "ERROR: Data has incompatible shape!"))
+                    
+            ## Check the datatype
+            if x.dtype < self.datatype:
+                about.warnings.cflush(\
+            "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
+                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
+                + ") and will be casted! "\
+                + "Potential loss of precision!\n")
+                ## Fix the datatype...
+                temp = x.astype(self.datatype)
+                ##... and cast again
+                return self.cast(temp)
+            
+            return x
+                
+        ## Case 3: x is something else
+        ## Use general numpy casting 
+        else:
+            temp = np.empty(self.get_shape(), dtype = self.datatype)
+            temp[:] = x
+            return temp
+
 
     def enforce_shape(self,x):
         """
@@ -1359,8 +1589,9 @@ class point_space(space):
             y : numpy.ndarray
                 Correctly shaped array.
         """
-        x = np.array(x)
+        about.warnings.cprint("WARNING: enforce_shape is deprecated!")
 
+        x = np.array(x)
         if(np.size(x)!=self.dim(split=False)):
             raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(x))+" <> "+str(self.dim(split=False))+" )."))
 #        elif(not np.all(np.array(np.shape(x))==self.dim(split=True))):
@@ -1391,6 +1622,9 @@ class point_space(space):
                 Whether a scalar is extented to a constant array or not
                 (default: True).
         """
+        about.warnings.cprint("WARNING: enforce_values is deprecated! "+
+                                "Please use cast() in future!")
+        
         if(isinstance(x,field)):
             if(self==x.domain):
                 if(self.datatype is not x.domain.datatype):
@@ -1417,9 +1651,10 @@ class point_space(space):
 
         return x
 
+    
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_random_values(self,**kwargs):
+    def get_random_values(self, **kwargs):
         """
             Generates random field values according to the specifications given
             by the parameters.
@@ -1477,24 +1712,86 @@ class point_space(space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        arg = random.parse_arguments(self,**kwargs)
 
-        if(arg is None):
-            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+        arg = random.parse_arguments(self, **kwargs)
+        
+        if arg is None:
+            return self.cast(0)
 
-        elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
 
-        elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+        if self.datamodel == 'np':                                
+            if arg[0] == "pm1":
+                x = random.pm1(datatype=self.datatype,
+                               shape=self.get_shape())
+            elif arg[0] == "gau":
+                x = random.gau(datatype=self.datatype,
+                               shape=self.get_shape(),
+                               mean=None,
+                               dev=arg[2],
+                               var=arg[3])
+            elif arg[0] == "uni":
+                x = random.uni(datatype=self.datatype,
+                               shape=self.get_shape(),
+                               vmin=arg[1],
+                               vmax=arg[2])
+            else:
+                raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
+            return x
 
-        elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+        elif self.datamodel == 'd2o':
+            ## Prepare the empty distributed_data_object
+            sample = distributed_data_object(global_shape=self.get_shape(), 
+                                             dtype=self.datatype)
+            
+            ## Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}     
+            if arg[0] == 'pm1':
+                gen = lambda s: random.pm1(datatype=self.datatype,
+                                           shape = s)
+                sample.apply_generator(gen)
 
+            ## Case 2: normal distribution with zero-mean and a given standard
+            ##         deviation or variance                
+            elif arg[0] == 'gau':
+                var = arg[3]            
+                if np.isscalar(var) == True or var is None:
+                    processed_var = var
+                else:
+                    try:
+                        processed_var = sample.distributor.\
+                                                        extract_local_data(var)
+                    except(AttributeError):
+                        processed_var = var
+                        
+                gen = lambda s: random.gau(datatype=self.datatype,
+                                           shape = s,
+                                           mean = arg[1],
+                                           dev = arg[2],
+                                           var = processed_var)
+                sample.apply_generator(gen)
+ 
+            ## Case 3: uniform distribution
+            elif arg[0] == 'gau':
+                var = arg[3]            
+                if np.isscalar(var) == True or var is None:
+                    processed_var = var
+                else:
+                    try:
+                        processed_var = sample.distributor.extract_local_data(var)
+                    except(AttributeError):
+                        processed_var = var
+                        
+                gen = lambda s: random.gau(datatype=self.datatype,
+                                           shape = s,
+                                           mean = arg[1],
+                                           dev = arg[2],
+                                           var = processed_var)
+                sample.apply_generator(gen)
+            return sample
+           
         else:
-            raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
-
-        return x
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
+        
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1512,13 +1809,14 @@ class point_space(space):
             check : bool
                 Whether or not the given codomain is compatible to the space.
         """
-        if(not isinstance(codomain,space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+        if not isinstance(codomain, space):
+            raise TypeError(about._errors.cstring(
+                "ERROR: invalid input. The given input is no nifty space."))
 
-        if(self==codomain):
+        if codomain == self:
             return True
-
-        return False
+        else:            
+            return False
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         
@@ -1527,7 +1825,9 @@ class point_space(space):
             Raises an error since the power spectrum is ill-defined for point
             spaces.
         """
-        raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point spaces."))
+        raise AttributeError(about._errors.cstring(
+            "ERROR: the definition of power spectra is ill-defined for "+
+            "(unstructured) point spaces."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1539,11 +1839,14 @@ class point_space(space):
                 Always. -- The power spectrum is ill-defined for point spaces.
 
         """
-        raise AttributeError(about._errors.cstring("ERROR: power spectra indexing ill-defined."))
+        about.warnings.cflush(\
+   "WARNING: set_power_indices is a deprecated function. Please use self.cast")
+        raise AttributeError(about._errors.cstring(
+            "ERROR: the definition of power spectra indexing is ill-defined."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_codomain(self,**kwargs):
+    def get_codomain(self, **kwargs):
         """
             Generates a compatible codomain to which transformations are
             reasonable, in this case another instance of
@@ -1554,11 +1857,11 @@ class point_space(space):
             codomain : nifty.point_space
                 A compatible codomain.
         """
-        return point_space(self.para[0],datatype=self.datatype) ## == self
+        return self.copy()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def get_meta_volume(self,total=False):
+    def get_meta_volume(self, total=False):
         """
             Calculates the meta volumes.
 
@@ -1584,14 +1887,15 @@ class point_space(space):
             component is one, the total meta volume of the space is the number
             of points.
         """
-        if(total):
-            return self.dim(split=False)
+        if total == True:
+            return self.get_dim()
         else:
-            return np.ones(self.dim(split=True),dtype=self.vol.dtype,order='C')
+            return np.ones(self.get_shape(),
+                           dtype=self.vol.dtype)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def calc_weight(self,x,power=1):
+    def calc_weight(self, x, power=1):
         """
             Weights a given array of field values with the pixel volumes (not
             the meta volumes) to a given power.
@@ -1608,13 +1912,15 @@ class point_space(space):
             y : numpy.ndarray
                 Weighted array.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        #x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        
         ## weight
-        return x*self.get_weight(power = power)
+        return x * self.get_weight(power = power)
         #return x*self.vol**power
 
     def get_weight(self, power = 1):
         return self.vol**power
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_dot(self, x, y):
         """
@@ -1635,44 +1941,22 @@ class point_space(space):
         """
         x = self.cast(x)
         y = self.cast(y)
-        result = np.vdot(x, y)
+        
+        if self.datamodel == 'np':
+            result = np.vdot(x, y)
+        elif self.datamodel == 'd2o':
+            result = x.vdot(y)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel.")) 
+                
         if np.isreal(result):
             result = np.asscalar(np.real(result))            
         return result
 
-    '''
-    def calc_dot(self,x,y):
-        """
-            Computes the discrete inner product of two given arrays of field
-            values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                First array
-            y : numpy.ndarray
-                Second array
-
-            Returns
-            -------
-            dot : scalar
-                Inner product of the two arrays.
-       
-        """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-        y = self.enforce_shape(np.array(y,dtype=self.datatype))
-        ## inner product
-        dot = np.dot(np.conjugate(x),y,out=None)
-        if(np.isreal(dot)):
-            return np.asscalar(np.real(dot))
-        else:
-            return dot
-     
-     '''
-
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def calc_transform(self,x,codomain=None,**kwargs):
+    def calc_transform(self, x, codomain=None, **kwargs):
         """
             Computes the transform of a given array of field values.
 
@@ -1694,17 +1978,9 @@ class point_space(space):
             iter : int, *optional*
                 Number of iterations performed in specific transformations.
         """
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
-        if(codomain is None):
+        x = self.cast(x)
+        if (codomain is None) or (self.check_codomain(codomain) == True):
             return x ## T == id
-
-        ## check codomain
-        assert(self.check_codomain(codomain))
-
-        if self == codomain:
-            return x
-
         else:
             raise ValueError(about._errors.cstring("ERROR: unsupported transformation."))
 
@@ -1716,7 +1992,8 @@ class point_space(space):
             Raises an error since smoothing is ill-defined on an unstructured
             space.
         """
-        raise AttributeError(about._errors.cstring("ERROR: smoothing ill-defined for (unstructured) point space."))
+        raise AttributeError(about._errors.cstring(
+            "ERROR: smoothing ill-defined for (unstructured) point space."))
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1725,12 +2002,17 @@ class point_space(space):
             Raises an error since the power spectrum is ill-defined for point
             spaces.
         """
-        raise AttributeError(about._errors.cstring("ERROR: power spectra ill-defined for (unstructured) point space."))
+        raise AttributeError(about._errors.cstring(
+        "ERROR: power spectra ill-defined for (unstructured) point space."))
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_real_Q(self, x):
-        return np.all(np.isreal(x))
+        try:
+            return x.is_completely_real()
+        except(AttributeError):
+            return np.all(np.isreal(x))
+
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1773,7 +2055,7 @@ class point_space(space):
         if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
-        x = self.enforce_shape(np.array(x,dtype=self.datatype))
+        x = self.cast(x)
 
         fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
         ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
@@ -1875,7 +2157,7 @@ class nested_space(space):
         discrete : bool
             Whether or not the product space is discrete, ``True`` only if all subspaces are discrete.
     """
-    def __init__(self,nest):
+    def __init__(self, nest):
         """
             Sets the attributes for a nested_space class instance.
 
@@ -1943,13 +2225,17 @@ class nested_space(space):
                 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def shape(self):
+    def copy(self):
+        return nested_space(nest = self.nest)
+        
+        
+    def get_shape(self):
         temp = []
         for i in range(self.paradict.ndim):
             temp = np.append(temp, self.paradict[i])
         return temp
         
-    def dim(self,split=False):
+    def get_dim(self,split=False):
         """
             Computes the dimension of the product space.
 
@@ -1967,15 +2253,15 @@ class nested_space(space):
                 Dimension(s) of the space.
         """
         if(split):
-            return self.shape()
+            return self.get_shape()
             #return self.para
         else:
-            return np.prod(self.shape())
+            return np.prod(self.get_shape())
             #return np.prod(self.para,axis=0,dtype=None,out=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dof(self):
+    def get_dof(self):
         """
             Computes the number of degrees of freedom of the product space, as
             the product of the degrees of freedom of each subspace.
@@ -1985,7 +2271,7 @@ class nested_space(space):
             dof : int
                 Number of degrees of freedom of the space.
         """
-        return np.prod([nn.dof() for nn in self.nest],axis=0,dtype=None,out=None)
+        return np.prod([nn.get_dof() for nn in self.nest],axis=0,dtype=None,out=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3563,14 +3849,22 @@ class field(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def __binary_helper__(self, other, op='None'):
-        new_val = self.domain.binary_operation(self.val, other, op=op, cast=0)
+    def __binary_helper__(self, other, op='None'):        
+        try:
+            other_val = other.val
+        except(AttributeError):
+            other_val = other
+        new_val = self.domain.binary_operation(self.val, other_val, op=op, cast=0)
         new_field = self.copy_empty()        
         new_field.val = new_val
         return new_field
     
     def __inplace_binary_helper__(self, other, op='None'):
-        self.val = self.domain.binary_operation(self.val, other, op=op, 
+        try:
+            other_val = other.val
+        except(AttributeError):
+            other_val = other
+        self.val = self.domain.binary_operation(self.val, other_val, op=op, 
                                                 cast=0)
         return self
     

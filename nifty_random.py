@@ -236,7 +236,7 @@ class random(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     @staticmethod
-    def pm1(datatype=np.int,shape=1):
+    def pm1(datatype=np.int, shape=1):
         """
             Generates random field values according to an uniform distribution
             over {+1,-1} or {+1,+i,-1,-i}, respectively.
@@ -266,7 +266,7 @@ class random(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     @staticmethod
-    def gau(datatype=np.float64,shape=1,mean=None,dev=None,var=None):
+    def gau(datatype=np.float64, shape=1, mean=None, dev=None, var=None):
         """
             Generates random field values according to a normal distribution.
 

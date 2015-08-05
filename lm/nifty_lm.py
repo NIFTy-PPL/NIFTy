@@ -128,7 +128,7 @@ class lm_space(point_space):
         vol : numpy.ndarray
             Pixel volume of the :py:class:`lm_space`, which is always 1.
     """
-    def __init__(self,lmax,mmax=None,datatype=None):
+    def __init__(self, lmax, mmax=None, datatype=None):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -186,7 +186,10 @@ class lm_space(point_space):
         self.paradict['lmax'] = x[0]
         self.paradict['mmax'] = x[1]
 
-
+    def copy(self):
+        return lm_space(lmax = self.paradict['lmax'],
+                        mmax = self.paradict['mmax'],
+                        datatype = self.datatype)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -213,12 +216,12 @@ class lm_space(point_space):
         """
         return self.paradict['mmax']
 
-    def shape(self):
+    def get_shape(self):
         mmax = self.paradict['mmax']
         lmax = self.paradict['lmax']
         return np.array([(mmax+1)*(lmax+1)-((lmax+1)*lmax)//2], dtype=int)
 
-    def dim(self,split=False):
+    def get_dim(self, split=False):
         """
             Computes the dimension of the space, i.e.\  the number of spherical
             harmonics components that are stored.
@@ -242,15 +245,15 @@ class lm_space(point_space):
         """
         ## dim = (mmax+1)*(lmax-mmax/2+1)
         if(split):
-            return self.shape()
+            return self.get_shape()
             #return np.array([(self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2],dtype=np.int)
         else:
-            return np.prod(self.shape())
+            return np.prod(self.get_shape())
             #return (self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dof(self):
+    def get_dof(self):
         """
             Computes the number of degrees of freedom of the space, taking into
             account symmetry constraints and complex-valuedness.
@@ -325,7 +328,7 @@ class lm_space(point_space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _getlm(self): ## > compute all (l,m)
-        index = np.arange(self.dim(split=False))
+        index = np.arange(self.get_dim(split=False))
         n = 2*self.para[0]+1
         m = np.ceil((n-np.sqrt(n**2-8*(index-self.para[0])))/2).astype(np.int)
         l = index-self.para[0]*m+m*(m-1)//2
@@ -397,7 +400,7 @@ class lm_space(point_space):
         else:
             if(np.size(x)==1):
                 if(extend):
-                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+                    x = self.datatype(x)*np.ones(self.get_dim(split=True),dtype=self.datatype,order='C')
                 else:
                     if(np.isscalar(x)):
                         x = np.array([x],dtype=self.datatype)
@@ -459,13 +462,13 @@ class lm_space(point_space):
         arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
-            return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+            return np.zeros(self.get_dim(split=True),dtype=self.datatype,order='C')
 
         elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+            x = random.pm1(datatype=self.datatype,shape=self.get_dim(split=True))
 
         elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+            x = random.gau(datatype=self.datatype,shape=self.get_dim(split=True),mean=None,dev=arg[2],var=arg[3])
 
         elif(arg[0]=="syn"):
             lmax = self.para[0] ## lmax
@@ -483,7 +486,7 @@ class lm_space(point_space):
             return x
 
         elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+            x = random.uni(datatype=self.datatype,shape=self.get_dim(split=True),vmin=arg[1],vmax=arg[2])
 
         else:
             raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
@@ -612,9 +615,9 @@ class lm_space(point_space):
             each determine another component with negative :math:`m`.
         """
         if(total):
-            return self.dof()
+            return self.get_dof()
         else:
-            mol = np.ones(self.dim(split=True),dtype=self.vol.dtype,order='C')
+            mol = np.ones(self.get_dim(split=True),dtype=self.vol.dtype,order='C')
             mol[self.para[0]+1:] = 2 ## redundant in (l,m) and (l,-m)
             return mol
 
@@ -1060,6 +1063,10 @@ class gl_space(point_space):
     
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    def copy(self):
+        return gl_space(nlat = self.paradict['nlat'],
+                        nlon = self.paradict['nlon'],
+                        datatype = self.datatype)
     def nlat(self):
         """
             Returns the number of latitudinal bins.
@@ -1082,10 +1089,10 @@ class gl_space(point_space):
         """
         return self.paradict['nlon']
 
-    def shape(self):
+    def get_shape(self):
         return np.array([(self.paradict['nlat']*self.paradict['nlon'])], dtype=np.int)
 
-    def dim(self,split=False):
+    def get_dim(self,split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
 
@@ -1102,15 +1109,15 @@ class gl_space(point_space):
         """
         ## dim = nlat*nlon
         if(split):
-            return self.shape()
+            return self.get_shape()
             #return np.array([self.para[0]*self.para[1]],dtype=np.int)
         else:
-            return np.prod(self.shape())
+            return np.prod(self.get_shape())
             #return self.para[0]*self.para[1]
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dof(self):
+    def get_dof(self):
         """
             Computes the number of degrees of freedom of the space.
 
@@ -1236,13 +1243,13 @@ class gl_space(point_space):
         arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
-            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+            x = np.zeros(self.get_dim(split=True),dtype=self.datatype,order='C')
 
         elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+            x = random.pm1(datatype=self.datatype,shape=self.get_dim(split=True))
 
         elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+            x = random.gau(datatype=self.datatype,shape=self.get_dim(split=True),mean=None,dev=arg[2],var=arg[3])
 
         elif(arg[0]=="syn"):
             lmax = self.para[0]-1 ## nlat-1
@@ -1255,7 +1262,7 @@ class gl_space(point_space):
                 x = self.calc_weight(x,power=0.5)
 
         elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+            x = random.uni(datatype=self.datatype,shape=self.get_dim(split=True),vmin=arg[1],vmax=arg[2])
 
         else:
             raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
@@ -1345,7 +1352,7 @@ class gl_space(point_space):
         if(total):
             return self.datatype(4*pi)
         else:
-            mol = np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+            mol = np.ones(self.get_dim(split=True),dtype=self.datatype,order='C')
             return self.calc_weight(mol,power=1)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1689,7 +1696,7 @@ class hp_space(point_space):
     """
     niter = 0 ## default number of iterations used for transformations
 
-    def __init__(self,nside):
+    def __init__(self, nside):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -1734,6 +1741,9 @@ class hp_space(point_space):
     
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+    def copy(self):
+        return hp_space(nside = self.paradict['nside'])
+        
     def nside(self):
         """
             Returns the resolution parameter.
@@ -1745,10 +1755,10 @@ class hp_space(point_space):
         """
         return self.paradict['nside']
 
-    def shape(self):
+    def get_shape(self):
         return np.array([12*self.paradict['nside']**2], dtype=np.int)
 
-    def dim(self,split=False):
+    def get_dim(self,split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
 
@@ -1765,15 +1775,15 @@ class hp_space(point_space):
         """
         ## dim = 12*nside**2
         if(split):
-            return self.shape()
+            return self.get_shape()
             #return np.array([12*self.para[0]**2],dtype=np.int)
         else:
-            return np.prod(self.shape())
+            return np.prod(self.get_shape())
             #return 12*self.para[0]**2
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dof(self):
+    def get_dof(self):
         """
             Computes the number of degrees of freedom of the space.
 
@@ -1899,13 +1909,13 @@ class hp_space(point_space):
         arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
-            x = np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+            x = np.zeros(self.get_dim(split=True),dtype=self.datatype,order='C')
 
         elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+            x = random.pm1(datatype=self.datatype,shape=self.get_dim(split=True))
 
         elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+            x = random.gau(datatype=self.datatype,shape=self.get_dim(split=True),mean=None,dev=arg[2],var=arg[3])
 
         elif(arg[0]=="syn"):
             lmax = 3*self.para[0]-1 ## 3*nside-1
@@ -1915,7 +1925,7 @@ class hp_space(point_space):
                 x = self.calc_weight(x,power=0.5)
 
         elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+            x = random.uni(datatype=self.datatype,shape=self.get_dim(split=True),vmin=arg[1],vmax=arg[2])
 
         else:
             raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
@@ -2001,7 +2011,7 @@ class hp_space(point_space):
         if(total):
             return self.datatype(4*pi)
         else:
-            mol = np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+            mol = np.ones(self.get_dim(split=True),dtype=self.datatype,order='C')
             return self.calc_weight(mol,power=1)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

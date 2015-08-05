@@ -36,7 +36,7 @@ from nifty import *                                              # version 0.8.0
 about.warnings.off()
 
 # some signal space; e.g., a two-dimensional regular grid
-x_space = rg_space([128, 128])                                   # define signal space
+x_space = rg_space([1280, 1280], datamodel = 'd2o')                                   # define signal space
 #x_space = rg_space(512)
 #x_space = hp_space(32)
 #x_space = gl_space(96)
@@ -55,6 +55,7 @@ d_space = R.target                                               # get data spac
 # some noise variance; e.g., signal-to-noise ratio of 1
 N = diagonal_operator(d_space, diag=s.var(), bare=True)          # define noise covariance
 n = N.get_random_field(domain=d_space)                           # generate noise
+
 
 d = R(s) + n                                                     # compute data
 

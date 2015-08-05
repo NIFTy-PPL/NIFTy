@@ -72,8 +72,8 @@ class fft(object):
 if fft_machine == 'pyfftw':
     ## The instances of plan_and_info store the fftw plan and all 
     ## other information needed in order to perform a mpi-fftw transformation            
-    class _fftw_plan_and_info(fft):
-        def __init__(self,domain,codomain,fft_fftw_context,**kwargs):
+    class _fftw_plan_and_info(object):
+        def __init__(self, domain, codomain, fft_fftw_context, **kwargs):
             self.compute_plan_and_info(domain, codomain, fft_fftw_context, 
                                        **kwargs)
             
@@ -98,8 +98,8 @@ if fft_machine == 'pyfftw':
             self.input_dtype = 'complex128'
             self.output_dtype = 'complex128'
             
-            self.global_input_shape = domain.shape()   
-            self.global_output_shape = codomain.shape()
+            self.global_input_shape = domain.get_shape()   
+            self.global_output_shape = codomain.get_shape()
             self.fftw_local_size = pyfftw.local_size(self.global_input_shape)
 
             self.in_zero_centered_dimensions = domain.paradict['zerocenter']

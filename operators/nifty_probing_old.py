@@ -726,8 +726,8 @@ class trace_probing(probing):
         self.target = target
 
         ## check degrees of freedom
-        if(op.domain.dof()>self.domain.dof()):
-            about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(op.domain.dof())+" / "+str(self.domain.dof())+" ).")
+        if(op.domain.get_dof()>self.domain.get_dof()):
+            about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(op.domain.get_dof())+" / "+str(self.domain.get_dof())+" ).")
 
         if(random not in ["pm1","gau"]):
             raise ValueError(about._errors.cstring("ERROR: unsupported random key '"+str(random)+"'."))
@@ -1120,8 +1120,8 @@ class diagonal_probing(probing):
         self.target = target
 
         ## check degrees of freedom
-        if(self.domain.dof()>op.domain.dof()):
-            about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.dof())+" / "+str(op.domain.dof())+" ).")
+        if(self.domain.get_dof()>op.domain.get_dof()):
+            about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.get_dof())+" / "+str(op.domain.get_dof())+" ).")
 
         if(random not in ["pm1","gau"]):
             raise ValueError(about._errors.cstring("ERROR: unsupported random key '"+str(random)+"'."))
@@ -1284,12 +1284,12 @@ class diagonal_probing(probing):
         seed = np.random.randint(10**8,high=None,size=self.nrun)
         ## define shared objects
         if(issubclass(self.domain.datatype,np.complexfloating)):
-            _sum = (ma('d',np.zeros(self.domain.dim(split=False),dtype=np.float64,order='C'),lock=True),ma('d',np.zeros(self.domain.dim(split=False),dtype=np.float64,order='C'),lock=True)) ## tuple(real,imag)
+            _sum = (ma('d',np.zeros(self.domain.get_dim(split=False),dtype=np.float64,order='C'),lock=True),ma('d',np.zeros(self.domain.get_dim(split=False),dtype=np.float64,order='C'),lock=True)) ## tuple(real,imag)
         else:
-            _sum = ma('d',np.zeros(self.domain.dim(split=False),dtype=np.float64,order='C'),lock=True)
+            _sum = ma('d',np.zeros(self.domain.get_dim(split=False),dtype=np.float64,order='C'),lock=True)
         _num = mv('I',0,lock=True)
         if(self.var):
-            _var = ma('d',np.zeros(self.domain.dim(split=False),dtype=np.float64,order='C'),lock=True)
+            _var = ma('d',np.zeros(self.domain.get_dim(split=False),dtype=np.float64,order='C'),lock=True)
         else:
             _var = None
         ## build pool
@@ -1313,11 +1313,11 @@ class diagonal_probing(probing):
             raise exception ## traceback by looping
         ## evaluate
         if(issubclass(self.domain.datatype,np.complexfloating)):
-            _sum = (np.array(_sum[0][:])+np.array(_sum[1][:])*1j).reshape(self.domain.dim(split=True)) ## comlpex array
+            _sum = (np.array(_sum[0][:])+np.array(_sum[1][:])*1j).reshape(self.domain.get_dim(split=True)) ## comlpex array
         else:
-            _sum = np.array(_sum[:]).reshape(self.domain.dim(split=True))
+            _sum = np.array(_sum[:]).reshape(self.domain.get_dim(split=True))
         if(self.var):
-            _var = np.array(_var[:]).reshape(self.domain.dim(split=True))
+            _var = np.array(_var[:]).reshape(self.domain.get_dim(split=True))
         return self.evaluate(_sum,_num.value,_var)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
