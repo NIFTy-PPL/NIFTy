@@ -631,7 +631,7 @@ class rg_space(point_space):
             
             ## Check hermitianity/reality
             if self.paradict['complexity'] == 0:
-                if x.iscomplex().any() == False:
+                if x.iscomplex().any() == True:
                     about.warnings.cflush(\
                     "WARNING: Data is not completely real. Imaginary part "+\
                     "will be discarded!\n")
@@ -1314,7 +1314,6 @@ class rg_space(point_space):
 
         ## weight
         x =  x * self.get_weight(power = power)
-
         return x
 
     def get_weight(self, power = 1):

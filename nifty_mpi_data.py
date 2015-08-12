@@ -348,7 +348,6 @@ class distributed_data_object(object):
             ## use common datatype for self and other
             new_dtype = np.dtype(np.find_common_type((self.dtype,),
                                                      (temp_data.dtype,))).type
-            print new_dtype                                                        
             temp_d2o = self.copy_empty(
                             dtype = new_dtype)
         temp_d2o.set_local_data(data=temp_data)
