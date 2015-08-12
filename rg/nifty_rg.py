@@ -631,7 +631,7 @@ class rg_space(point_space):
             
             ## Check hermitianity/reality
             if self.paradict['complexity'] == 0:
-                if x.is_completely_real == False:
+                if x.iscomplex().any() == False:
                     about.warnings.cflush(\
                     "WARNING: Data is not completely real. Imaginary part "+\
                     "will be discarded!\n")
@@ -737,10 +737,10 @@ class rg_space(point_space):
                     x = np.real(x)
             
             elif self.paradict['complexity'] == 1:
-                if x.hermitian == False and about.hermitianize.status == True:
+                if about.hermitianize.status == True:
                     about.warnings.cflush(\
                     "WARNING: Data gets hermitianized. This operation is "+\
-                    "rather expensive\n")
+                    "rather expensive.\n")
                     #temp = x.copy_empty()            
                     #temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
                     #    (False, )*len(x.shape)))
@@ -879,9 +879,12 @@ class rg_space(point_space):
         sample = distributed_data_object(global_shape=self.get_shape(), 
                                          dtype=self.datatype)
 
-        ## Should the output be hermitianized?
-        hermitianizeQ = about.hermitianize.status and \
-                        self.paradict['complexity']          
+        ## Should the output be hermitianized? This does not depend on the 
+        ## hermitianize boolean in about, as it would yield in wrong,
+        ## not recoverable results
+
+        #hermitianizeQ = about.hermitianize.status and self.paradict['complexity']          
+        hermitianizeQ = self.paradict['complexity']          
 
         ## Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
         if arg[0] == 'pm1' and hermitianizeQ == False:
@@ -1368,7 +1371,7 @@ class rg_space(point_space):
             x : numpy.ndarray
                 Array to be transformed.
             codomain : nifty.rg_space, *optional*
-                Target space to which the transformation shall map
+                codomain space to which the transformation shall map
                 (default: None).
 
             Returns
@@ -1403,7 +1406,7 @@ class rg_space(point_space):
             Tx = codomain.calc_weight(Tx, power=-1)
 
 
-        ## when the target space is purely real, the result of the 
+        ## when the codomain space is purely real, the result of the 
         ## transformation must be corrected accordingly. Using the casting 
         ## method of codomain is sufficient
         ## TODO: Let .transform  yield the correct datatype
@@ -2385,6 +2388,9 @@ class utilities(object):
         ## make the point inversions
         flipped_x = utilities._hermitianize_inverter(x)
         flipped_x = flipped_x.conjugate()
+        ## check if x was already hermitian        
+        if (x == flipped_x).all():
+            return x
         ## average x and flipped_x. 
         ## Correct the variance by multiplying sqrt(0.5)
         x = (x + flipped_x) * np.sqrt(0.5)
@@ -2404,6 +2410,8 @@ class utilities(object):
             pass
             
         return x
+    
+
     
     @staticmethod
     def _hermitianize_inverter(x):

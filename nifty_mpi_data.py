@@ -31,10 +31,10 @@ from nifty_about import about
 
 try:
     from mpi4py import MPI
-    found[MPI] = True
+    found['MPI'] = True
 except(ImportError): 
     import mpi_dummy as MPI
-    found[MPI] = False
+    found['MPI'] = False
 
 try:
     import pyfftw
@@ -98,7 +98,7 @@ class distributed_data_object(object):
     def __init__(self, global_data = None, global_shape=None, dtype=None, 
                  distribution_strategy='fftw', hermitian=False,
                  alias=None, path=None, comm = MPI.COMM_WORLD, 
-                 *args, **kwargs):
+                 copy = True, *args, **kwargs):
         
         ## a given hdf5 file overwrites the other parameters
         if found['h5py'] == True and alias is not None:
@@ -177,9 +177,7 @@ class distributed_data_object(object):
             self.hermitian = True
         else:
             self.set_full_data(data=global_data, hermitian=hermitian, 
-                           **kwargs)
-
-            self.hermitian = hermitian
+                               copy = copy, **kwargs)
             
     def copy(self, dtype=None, distribution_strategy=None, **kwargs):
         temp_d2o = self.copy_empty(dtype=dtype, 
@@ -189,7 +187,8 @@ class distributed_data_object(object):
             distribution_strategy == self.distribution_strategy:
             temp_d2o.set_local_data(self.get_local_data(), copy=True)
         else:
-            temp_d2o.set_full_data(self.get_full_data())
+            #temp_d2o.set_full_data(self.get_full_data())
+            temp_d2o.inject([slice(None),], self, [slice(None),])
         temp_d2o.hermitian = self.hermitian
         return temp_d2o
     
@@ -245,7 +244,7 @@ class distributed_data_object(object):
         return '<distributed_data_object>\n'+self.data.__repr__()
     
     def __eq__(self, other):
-        result = self.copy_empty(dtype = np.bool)
+        result = self.copy_empty(dtype = np.bool_)
         ## Case 1: 'other' is a scalar
         ## -> make point-wise comparison
         if np.isscalar(other):
@@ -293,12 +292,13 @@ class distributed_data_object(object):
     
     def __pos__(self):
         temp_d2o = self.copy_empty()
-        temp_d2o.set_local_data(data = self.get_local_data())
+        temp_d2o.set_local_data(data = self.get_local_data(), copy = True)
         return temp_d2o
         
     def __neg__(self):
         temp_d2o = self.copy_empty()
-        temp_d2o.set_local_data(data = self.get_local_data().__neg__()) 
+        temp_d2o.set_local_data(data = self.get_local_data().__neg__(),
+                                copy = True) 
         return temp_d2o
     
     def __abs__(self):
@@ -314,7 +314,8 @@ class distributed_data_object(object):
         else:
             new_dtype = self.dtype
         temp_d2o = self.copy_empty(dtype = new_dtype)
-        temp_d2o.set_local_data(data = self.get_local_data().__abs__()) 
+        temp_d2o.set_local_data(data = self.get_local_data().__abs__(),
+                                copy = True) 
         return temp_d2o
             
     def __builtin_helper__(self, operator, other, inplace=False):
@@ -324,7 +325,7 @@ class distributed_data_object(object):
 ##                raise AttributeError(about._errors.cstring(
 ##                    "ERROR: Shapes do not match!")) 
             try:            
-                hermitian_Q = other.hermitian
+                hermitian_Q = (other.hermitian and self.hermitian)
             except(AttributeError):
                 hermitian_Q = False
             ## extract the local data from the 'other' object
@@ -344,7 +345,12 @@ class distributed_data_object(object):
         if inplace == True:
             temp_d2o = self
         else:
-            temp_d2o = self.copy_empty()        
+            ## use common datatype for self and other
+            new_dtype = np.dtype(np.find_common_type((self.dtype,),
+                                                     (temp_data.dtype,))).type
+            print new_dtype                                                        
+            temp_d2o = self.copy_empty(
+                            dtype = new_dtype)
         temp_d2o.set_local_data(data=temp_data)
         temp_d2o.hermitian = hermitian_Q
         return temp_d2o
@@ -404,7 +410,7 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__idiv__, 
                                                other,
                                                inplace = True)
-    def __itruediv(self, other):
+    def __itruediv__(self, other):
         return self.__idiv__(other)
                                                
     def __floordiv__(self, other):
@@ -436,7 +442,7 @@ class distributed_data_object(object):
         return self.__builtin_helper__(self.get_local_data().__rpow__, other)
 
     def __ipow__(self, other):
-        return self.___builtin_helper__(self.get_local_data().__ipow__, 
+        return self.__builtin_helper__(self.get_local_data().__ipow__, 
                                                other,
                                                inplace = True)
    
@@ -447,8 +453,7 @@ class distributed_data_object(object):
         return np.prod(self.shape)
         
     def vdot(self, other):
-        if isinstance(other, distributed_data_object):        
-            other = other.get_local_data()
+        other = self.distributor.extract_local_data(other)
         local_vdot = np.vdot(self.get_local_data(), other)
         local_vdot_list = self.distributor._allgather(local_vdot)
         global_vdot = np.sum(local_vdot_list)
@@ -462,10 +467,10 @@ class distributed_data_object(object):
         ## extraction, and then merge the result in a flat numpy array
         if isinstance(key, np.ndarray):
             found = 'ndarray'
-            found_boolean = (key.dtype.type == np.bool)
+            found_boolean = (key.dtype.type == np.bool_)
         elif isinstance(key, distributed_data_object):
             found = 'd2o'
-            found_boolean = (key.dtype == np.bool)
+            found_boolean = (key.dtype == np.bool_)
         else:
             found = 'other'
         ## TODO: transfer this into distributor:
@@ -531,38 +536,45 @@ class distributed_data_object(object):
     def std(self):
         return np.sqrt(self.var())
         
-    def _argmin_argmax_flat_helper(self, function):
-        local_argmin = function(self.data)
-        local_argmin_value = self.data[np.unravel_index(local_argmin, 
-                                                        self.data.shape)]
-        globalized_local_argmin = self.distributor.globalize_flat_index(local_argmin)                                                       
-        local_argmin_list = self.distributor._allgather((local_argmin_value, 
-                                                         globalized_local_argmin))
-        local_argmin_list = np.array(local_argmin_list, dtype=[('value', int),
-                                                               ('index', int)])    
-        return local_argmin_list
-        
+#    def _argmin_argmax_flat_helper(self, function):
+#        local_argmin = function(self.data)
+#        local_argmin_value = self.data[np.unravel_index(local_argmin, 
+#                                                        self.data.shape)]
+#        globalized_local_argmin = self.distributor.globalize_flat_index(local_argmin)                                                       
+#        local_argmin_list = self.distributor._allgather((local_argmin_value, 
+#                                                         globalized_local_argmin))
+#        local_argmin_list = np.array(local_argmin_list, dtype=[('value', int),
+#                                                               ('index', int)])    
+#        return local_argmin_list
+#        
     def argmin_flat(self):
         local_argmin = np.argmin(self.data)
         local_argmin_value = self.data[np.unravel_index(local_argmin, 
                                                         self.data.shape)]
-        globalized_local_argmin = self.distributor.globalize_flat_index(local_argmin)                                                       
+        globalized_local_argmin = self.distributor.globalize_flat_index(
+                                                                local_argmin)                                                       
         local_argmin_list = self.distributor._allgather((local_argmin_value, 
-                                                         globalized_local_argmin))
-        local_argmin_list = np.array(local_argmin_list, dtype=[('value', int),
-                                                               ('index', int)])    
-        local_argmin_list = np.sort(local_argmin_list, order=['value', 'index'])        
+                                                    globalized_local_argmin))
+        local_argmin_list = np.array(local_argmin_list, dtype=[
+                                        ('value', local_argmin_value.dtype),
+                                        ('index', int)])    
+        local_argmin_list = np.sort(local_argmin_list, 
+                                    order=['value', 'index'])        
         return local_argmin_list[0][1]
     
     def argmax_flat(self):
         local_argmax = np.argmax(self.data)
         local_argmax_value = -self.data[np.unravel_index(local_argmax, 
                                                         self.data.shape)]
-        globalized_local_argmax = self.distributor.globalize_flat_index(local_argmax)                                                       
+        globalized_local_argmax = self.distributor.globalize_flat_index(
+                                                                local_argmax)                                                       
         local_argmax_list = self.distributor._allgather((local_argmax_value, 
-                                                         globalized_local_argmax))
-        local_argmax_list = np.array(local_argmax_list, dtype=[('value', int),
-                                                               ('index', int)])         
+                                                    globalized_local_argmax))
+        local_argmax_list = np.array(local_argmax_list, dtype=[
+                                        ('value', local_argmax_value.dtype),
+                                        ('index', int)]) 
+        local_argmax_list = np.sort(local_argmax_list, 
+                                    order=['value', 'index'])        
         return local_argmax_list[0][1]
         
 
@@ -589,20 +601,16 @@ class distributed_data_object(object):
         return median
         
     def iscomplex(self):
-        temp_d2o = self.copy_empty(dtype=bool)
+        temp_d2o = self.copy_empty(dtype=np.bool_)
         temp_d2o.set_local_data(np.iscomplex(self.data))
         return temp_d2o
     
     def isreal(self):
-        temp_d2o = self.copy_empty(dtype=bool)
+        temp_d2o = self.copy_empty(dtype=np.bool_)
         temp_d2o.set_local_data(np.isreal(self.data))
         return temp_d2o
     
-    def is_completely_real(self):
-        local_realiness = np.all(self.isreal().get_local_data())
-        global_realiness = self.distributor._allgather(local_realiness)
-        return np.all(global_realiness)
-    
+
     def all(self):
         local_all = np.all(self.get_local_data())
         global_all = self.distributor._allgather(local_all)
@@ -611,11 +619,11 @@ class distributed_data_object(object):
     def any(self):
         local_any = np.any(self.get_local_data())
         global_any = self.distributor._allgather(local_any)
-        return np.all(global_any)
+        return np.any(global_any)
         
     
     
-    def set_local_data(self, data, hermitian=False, copy=False):
+    def set_local_data(self, data, hermitian=False, copy=True):
         """
             Stores data directly in the local data attribute. No distribution 
             is done. The shape of the data must fit the local data attributes
@@ -634,7 +642,7 @@ class distributed_data_object(object):
         self.hermitian = hermitian
         self.data = np.array(data, dtype=self.dtype, copy=copy, order='C')
     
-    def set_data(self, data, key, hermitian=False, *args, **kwargs):
+    def set_data(self, data, key, hermitian=False, copy=True, *args, **kwargs):
         """
             Stores the supplied data in the region which is specified by key. 
             The data is distributed according to the distribution strategy. If
@@ -658,10 +666,11 @@ class distributed_data_object(object):
         (slices, sliceified) = self.__sliceify__(key)        
         self.distributor.disperse_data(data=self.data, 
                         to_slices = slices,
-                        data_update = self.__enfold__(data, sliceified), 
+                        data_update = self.__enfold__(data, sliceified),
+                        copy = copy,
                         *args, **kwargs)        
     
-    def set_full_data(self, data, hermitian=False, **kwargs):
+    def set_full_data(self, data, hermitian=False, copy = True, **kwargs):
         """
             Distributes the supplied data to the nodes. The shape of data must 
             match the shape of the distributed_data_object.
@@ -682,7 +691,8 @@ class distributed_data_object(object):
         
         """
         self.hermitian = hermitian
-        self.data = self.distributor.distribute_data(data=data, **kwargs)
+        self.data = self.distributor.distribute_data(data=data, copy = copy, 
+                                                     **kwargs)
     
 
     def get_local_data(self, key=(slice(None),), copy=True):
@@ -886,12 +896,14 @@ class _distributor_factory(object):
                 return_dict['comm'] = kwargs['comm']
         return return_dict
                         
-    def hash_arguments(self, global_shape, dtype, kwargs={}):
+    def hash_arguments(self, global_shape, dtype, distribution_strategy,
+                       kwargs={}):
         kwargs = kwargs.copy()
         if kwargs.has_key('comm'):
             kwargs['comm'] = id(kwargs['comm'])
         kwargs['global_shape'] = global_shape        
         kwargs['dtype'] = self.dictionize_np(dtype)
+        kwargs['distribution_strategy'] = distribution_strategy
         return frozenset(kwargs.items())
 
     def dictionize_np(self, x):
@@ -905,6 +917,10 @@ class _distributor_factory(object):
     def get_distributor(self, distribution_strategy, global_shape, dtype,
                         **kwargs):
         ## check if the distribution strategy is known
+        
+        known_distribution_strategies = ['not', 'equal']
+        if found['pyfftw'] == True and found['MPI'] == True:
+            known_distribution_strategies += ['fftw',]
         if not distribution_strategy in ['not', 'fftw', 'equal']:
             raise TypeError(about._errors.cstring(
                 "ERROR: Unknown distribution strategy supplied."))
@@ -914,6 +930,7 @@ class _distributor_factory(object):
                                           kwargs = kwargs)
         hashed_arguments = self.hash_arguments(global_shape = global_shape,
                                                dtype = dtype,
+                                distribution_strategy = distribution_strategy,
                                                kwargs = parsed_kwargs)
         #print hashed_arguments                                               
         ## check if the distributors has already been produced in the past
@@ -1034,7 +1051,7 @@ class _slicing_distributor(object):
         return gathered_things
     
     def distribute_data(self, data=None, comm = None, alias=None,
-                        path=None, **kwargs):
+                        path=None, copy=True, **kwargs):
         '''
         distribute data checks 
         - whether the data is located on all nodes or only on node 0
@@ -1075,14 +1092,14 @@ class _slicing_distributor(object):
         ## it...
         if np.all(data_available_Q):
             return data[self.local_start:self.local_end].astype(self.dtype,\
-                copy=False)    
+                copy=copy)    
         ## ... but only if node 0 has actually data!
         elif data_available_Q[0] == False:# or np.all(data_available_Q==False):
             return np.empty(self.local_shape, dtype=self.dtype, order='C')
         
         else:
             if data == None:
-                data = np.empty(self.global_shape)            
+                data = np.empty(self.global_shape, dtype = self.dtype)            
             if rank == 0:
                 if np.all(data.shape != self.global_shape):
                     raise TypeError(about._errors.cstring(\
@@ -1096,147 +1113,150 @@ class _slicing_distributor(object):
             return _scattered_data
         return None
     
-    def _disperse_data_primitive(self, data, to_slices, data_update, 
-                                 from_slices, source_rank='all', comm=None):
+    
+
+    
+    
+    def disperse_data(self, data, to_slices, data_update, from_slices=None,
+                      comm=None, copy = True, **kwargs):
         if comm == None:
             comm = self.comm            
-        ## compute the part of the slice which is relevant for the 
-        ## individual node      
-        localized_start, localized_stop = self._backshift_and_decycle(
+        to_slices_list = comm.allgather(to_slices)
+        ## check if all slices are the same. 
+        if all(x == to_slices_list[0] for x in to_slices_list):
+            ## in this case, the _disperse_data_primitive can simply be called 
+            ##with target_rank = 'all'
+            self._disperse_data_primitive(data = data, 
+                                          to_slices = to_slices,
+                                          data_update=data_update,
+                                          from_slices=from_slices, 
+                                          source_rank='all', 
+                                          comm=comm,
+                                          copy = copy)
+        ## if the different nodes got different slices, disperse the data 
+        ## individually
+        else:
+            i = 0        
+            for temp_to_slices in to_slices_list:
+                ## make the collect_data call on all nodes            
+                self._disperse_data_primitive(data=data,
+                                              to_slices=temp_to_slices,
+                                              data_update=data_update,
+                                              from_slices=from_slices,
+                                              source_rank=i, 
+                                              comm=comm,
+                                              copy = copy)
+                i += 1
+                 
+        
+#    def _disperse_data_primitive(self, data, to_slices, data_update, 
+#                        from_slices, source_rank='all', comm=None, copy=True):
+#        ## compute the part of the to_slice which is relevant for the 
+#        ## individual node      
+#        localized_to_start, localized_to_stop = self._backshift_and_decycle(
+#            to_slices[0], self.local_start, self.local_end,\
+#                self.global_shape[0])
+#        local_to_slice = (slice(localized_to_start, localized_to_stop,\
+#                        to_slices[0].step),) + to_slices[1:]
+#                        
+#        ## compute the parameter sets and list for the data splitting
+#        local_slice_shape = data[local_slice].shape        
+#        local_affected_data_length = local_slice_shape[0]
+#        local_affected_data_length_list=np.empty(comm.size, dtype=np.int)        
+#        comm.Allgather(\
+#            [np.array(local_affected_data_length, dtype=np.int), MPI.INT],\
+#            [local_affected_data_length_list, MPI.INT])        
+#        local_affected_data_length_offset_list = np.append([0],\
+#                            np.cumsum(local_affected_data_length_list)[:-1])
+#
+#    
+    
+    def _disperse_data_primitive(self, data, to_slices, data_update, 
+                        from_slices, source_rank='all', comm=None, copy=True):
+        if comm == None:
+            comm = self.comm         
+    
+#        if to_slices[0].step is not None and to_slices[0].step < -1:
+#            raise ValueError(about._errors.cstring(
+#                "ERROR: Negative stepsizes other than -1 are not supported!"))
+
+        ## parse the to_slices object
+        localized_to_start, localized_to_stop=self._backshift_and_decycle(
             to_slices[0], self.local_start, self.local_end,\
                 self.global_shape[0])
-        local_slice = (slice(localized_start, localized_stop,\
-                        to_slices[0].step),) + to_slices[1:]
-        
-        ## compute the parameter sets and list for the data splitting
-        local_slice_shape = data[local_slice].shape        
-        local_affected_data_length = local_slice_shape[0]
-        local_affected_data_length_list=np.empty(comm.size, dtype=np.int)        
-        comm.Allgather(\
-            [np.array(local_affected_data_length, dtype=np.int), MPI.INT],\
-            [local_affected_data_length_list, MPI.INT])        
-        local_affected_data_length_offset_list = np.append([0],\
-                            np.cumsum(local_affected_data_length_list)[:-1])
-        
-        
+        local_to_slice = (slice(localized_to_start, localized_to_stop,\
+                        to_slices[0].step),) + to_slices[1:]   
+        local_to_slice_shape = data[local_to_slice].shape        
+
         if source_rank == 'all':
-            ## only take the relevant part out of data_update and plug it into 
-            ## data[local_slice]
+        
+            
+            ## parse the from_slices object
+            if from_slices == None:
+                from_slices = (slice(None, None, None),) 
+            (from_slices_start, from_slices_stop)=self._backshift_and_decycle(
+                                        slice_object = from_slices[0],
+                                        shifted_start = 0,
+                                        shifted_stop = data_update.shape[0],
+                                        global_length = data_update.shape[0])
+            if from_slices_start == None:
+                raise ValueError(about._errors.cstring(\
+                        "ERROR: _backshift_and_decycle should never return "+\
+                        "None for local_start!"))
+                        
+
+
+            ## parse the step sizes
+            from_step = from_slices[0].step
+            if from_step == None:
+                from_step = 1
+            elif from_step == 0:            
+                raise ValueError(about._errors.cstring(\
+                    "ERROR: from_step size == 0!"))
+
+            to_step = to_slices[0].step
+            if to_step == None:
+                to_step = 1
+            elif to_step == 0:            
+                raise ValueError(about._errors.cstring(\
+                    "ERROR: to_step size == 0!"))
+
+
+            
+            ## Compute the offset of the data the individual node will take.
+            ## The offset is free of stepsizes. It is the offset in terms of 
+            ## the purely transported data. If to_step < 0, the offset will
+            ## be calculated in reverse order
+            order = np.sign(to_step)
+            
+            local_affected_data_length = local_to_slice_shape[0]
+            local_affected_data_length_list=np.empty(comm.size, dtype=np.int)        
+            comm.Allgather(\
+                [np.array(local_affected_data_length, dtype=np.int), MPI.INT],\
+                [local_affected_data_length_list, MPI.INT])        
+            local_affected_data_length_offset_list = np.append([0],\
+                np.cumsum(
+                    local_affected_data_length_list[::order])[:-1])[::order]                         
+  
+            ## construct the locally adapted from_slice object
             r = comm.rank
             o = local_affected_data_length_offset_list
             l = local_affected_data_length
             
-            ## if the from_slices object is not None, i.e. only a part from
-            ## the data source is used, form the update_slice accordingly
-            if from_slices == None:
-                update_slice = (slice(o[r], o[r]+l),)
-            else:
-                ## Determine the part of the source array, which is relevant
-                ## for the target rank
-                if (from_slices[0].step > 0) or (from_slices[0].step is None):
-                    ## f_relative_start: index of start of source data in 
-                    ## source array
-                    f_lower_end = from_slices[0].start
-                    if f_lower_end is None:
-                        f_lower_end = 0
-                    ## f_start: index of start of specific source data in 
-                    ## source array
-                    f_start = f_lower_end + o[r]
-                    ## f_stop: index of stop of specific source data
-                    f_stop = f_start + l
-                  
-                                        
-                elif from_slices[0].step < 0:
-                    ## f_relative_start: index of start of source data in 
-                    ## source array
-                    f_upper_end = from_slices[0].start
-                    if f_upper_end is None:
-                        f_upper_end = data_update.shape[0] - 1
-                    ## f_start: index of start of specific source data in 
-                    ## source array
-                    f_start = f_upper_end - o[r] 
-                    ## f_stop: index of stop of specific source data
-                    f_stop = f_start - l
-                    
-                else:
-                    raise ValueError(about._errors.cstring(\
-                        "ERROR: step size == 0!")) 
-                        
-                update_slice = (slice(f_start, 
-                                          f_stop, 
-                                          from_slices[0].step),)
-            
-                update_slice += from_slices[1:]
-            data[local_slice] = np.array(data_update[update_slice],\
-                                    copy=False).astype(self.dtype)
+            localized_from_start = from_slices_start + from_step * o[r]
+            localized_from_stop = localized_from_start + from_step * l            
+            if localized_from_stop < 0:
+                localized_from_stop = None
                 
-#                ## TODO: Fallunterscheidung, ob direction positiv oder negativ!!
-#                if from_slices[0].step > 0:
-#                    f_relative_start = from_slices[0].start
-#                else:
-#                    f_relative_start = from_slices[0].stop + 1
-#
-#                if f_relative_start is None:
-#                    f_relative_start = 0
-#                    
-#                local_start = f_relative_start + o[r]
-#                print ('rank', rank, 
-#                       'f_relative_start', f_relative_start,
-#                       'local_start', local_start,
-#                       'o[r]', o[r])
-#                       
-#                
-#                update_slice = self._backshift_and_decycle(
-#                                        slice_object = from_slices[0],
-#                                        shifted_start = local_start,
-#                                        shifted_stop = local_start+l,
-#                                        global_length = data_update.shape[0])
-#                                        
-#                print ('rank', rank, update_slice)
-#                f_step = from_slices[0].step
-#                if f_step == None:
-#                    f_step = 1
-#                    
-#                f_direction = np.sign(f_step)
-#
-#                f_relative_start = from_slices[0].start
-#
-#                ## Case 1: f_direction is positive
-#                if f_direction > 0:
-#                    if f_relative_start != None:
-#                        f_start = f_relative_start + o[r]
-#                
-#                
-#                
-#                
-#                if f_relative_start != None:
-#                    f_start = f_relative_start + f_direction*o[r]
-#                else:
-#                    f_start = None
-#                    f_relative_start = self.local_start + l - 1
-#                
-#                
-#                f_stop = f_relative_start + f_direction*(o[r]+l*np.abs(f_step))
-#                print (rank, 
-#                'f_start', f_start, 
-#                'offset', self.local_start, 
-#                'f_relative_start', f_relative_start,
-#                'f_stop', f_stop)
-#                if f_stop < 0:
-#                    f_stop = None
-#
-#
-#                ## combine the slicing for the first dimension 
-#                update_slice = (slice(f_start,
-#                                      f_stop,
-#                                      f_step),
-#                                )
-#                ## add the rest of the from_slicing
-#                update_slice += from_slices[1:]
-#
-#            data[local_slice] = np.array(data_update[update_slice],\
-#                                    copy=False).astype(self.dtype)
-#                
+            localized_from_slice = (slice(localized_from_start, 
+                                  localized_from_stop, 
+                                  from_step),)
+                                          
+            update_slice = localized_from_slice + from_slices[1:]
+            data[local_to_slice] = np.array(data_update[update_slice],\
+                                    copy=copy).astype(self.dtype)
+                
+            
         else:
             ## Scatterv the relevant part from the source_rank to the others 
             ## and plug it into data[local_slice]
@@ -1251,93 +1271,23 @@ class _slicing_distributor(object):
 
             local_affected_data_dim_list = \
                 np.array(local_affected_data_length_list) *\
-                    np.product(local_slice_shape[1:])                    
+                    np.product(local_to_slice_shape[1:])                    
 
             local_affected_data_dim_offset_list = np.append([0],\
                 np.cumsum(local_affected_data_dim_list[::order])[:-1])[::order]
                 
-            local_dispersed_data = np.zeros(local_slice_shape,\
+            local_dispersed_data = np.zeros(local_to_slice_shape,\
                 dtype=self.dtype)
             comm.Scatterv(\
-                [np.array(data_update[from_slices],copy=False).\
+                [np.array(data_update[from_slices], copy=False).\
                                                         astype(self.dtype),\
                     local_affected_data_dim_list,\
                     local_affected_data_dim_offset_list, self.mpi_dtype],
                           [local_dispersed_data, self.mpi_dtype], 
                           root=source_rank)                            
-            data[local_slice] = local_dispersed_data
+            data[local_to_slice] = local_dispersed_data
         return None
         
-    
-    
-    def disperse_data(self, data, to_slices, data_update, from_slices=None,
-                      comm=None, **kwargs):
-        if comm == None:
-            comm = self.comm            
-        to_slices_list = comm.allgather(to_slices)
-        ## check if all slices are the same. 
-        if all(x == to_slices_list[0] for x in to_slices_list):
-            ## in this case, the _disperse_data_primitive can simply be called 
-            ##with target_rank = 'all'
-            self._disperse_data_primitive(data = data, 
-                                          to_slices = to_slices,
-                                          data_update=data_update,
-                                          from_slices=from_slices, 
-                                          source_rank='all', 
-                                          comm=comm)
-        ## if the different nodes got different slices, disperse the data 
-        ## individually
-        else:
-            i = 0        
-            for temp_to_slices in to_slices_list:
-                ## make the collect_data call on all nodes            
-                self._disperse_data_primitive(data=data,
-                                              to_slices=temp_to_slices,
-                                              data_update=data_update,
-                                              from_slices=from_slices,
-                                              source_rank=i, 
-                                              comm=comm)
-                i += 1
-                 
-        
-    def _collect_data_primitive(self, data, slice_objects, target_rank='all', comm=None):
-        if comm == None:
-            comm = self.comm            
-            
-        localized_start, localized_stop = self._backshift_and_decycle(
-            slice_objects[0], self.local_start, self.local_end, self.global_shape[0])
-        local_slice = (slice(localized_start,localized_stop,slice_objects[0].step),)+slice_objects[1:]
-        local_collected_data = np.ascontiguousarray(data[local_slice])
-
-        local_collected_data_length = local_collected_data.shape[0]
-        local_collected_data_length_list=np.empty(comm.size, dtype=np.int)        
-        comm.Allgather([np.array(local_collected_data_length, dtype=np.int), MPI.INT], [local_collected_data_length_list, MPI.INT])        
-             
-        collected_data_length = np.sum(local_collected_data_length_list) 
-        collected_data_shape = (collected_data_length,)+local_collected_data.shape[1:]
-        local_collected_data_dim_list= np.array(local_collected_data_length_list) * np.product(local_collected_data.shape[1:])        
-        
-        ## if the first slice object has a negative step size, the ordering 
-        ## of the Gatherv functions must be reversed         
-        order = slice_objects[0].step
-        if order == None:
-            order = 1
-        else:
-            order = np.sign(order)
-            
-        local_collected_data_dim_offset_list = np.append([0],np.cumsum(local_collected_data_dim_list[::order])[:-1])[::order]
-
-        local_collected_data_dim_offset_list = local_collected_data_dim_offset_list
-        collected_data = np.empty(collected_data_shape, dtype=self.dtype)
-        
-
-        if target_rank == 'all':
-            comm.Allgatherv([local_collected_data, self.mpi_dtype], 
-                         [collected_data, local_collected_data_dim_list, local_collected_data_dim_offset_list, self.mpi_dtype])                
-        else:
-            comm.Gatherv([local_collected_data, self.mpi_dtype], 
-                         [collected_data, local_collected_data_dim_list, local_collected_data_dim_offset_list, self.mpi_dtype], root=target_rank)                            
-        return collected_data
 
     def collect_data(self, data, slice_objects, comm=None, **kwargs):
         if comm == None:
@@ -1347,49 +1297,127 @@ class _slicing_distributor(object):
         if all(x == slice_objects_list[0] for x in slice_objects_list):
             ## in this case, the _collect_data_primitive can simply be called 
             ##with target_rank = 'all'
-            return self._collect_data_primitive(data=data, slice_objects=slice_objects, target_rank='all', comm=comm)
+            return self._collect_data_primitive(data=data, 
+                                                slice_objects=slice_objects, 
+                                                target_rank='all', 
+                                                comm=comm)
         
         ## if the different nodes got different slices, collect the data individually
         i = 0        
         for temp_slices in slice_objects_list:
             ## make the collect_data call on all nodes            
-            temp_data = self._collect_data_primitive(data=data, slice_objects=temp_slices, target_rank=i, comm=comm)
+            temp_data = self._collect_data_primitive(data=data, 
+                                                     slice_objects=temp_slices, 
+                                                     target_rank=i, 
+                                                     comm=comm)
             ## save the result only on the pulling node            
             if comm.rank == i:
                 individual_data = temp_data
             i += 1
         return individual_data
-        
     
-    def _backshift_and_decycle(self, slice_object, shifted_start, shifted_stop, global_length):
-        ## Crop the start value
-        if slice_object.start > global_length-1:
-            slice_object = slice(global_length-1, slice_object.stop,
-                                 slice_object.step)
+    def _collect_data_primitive(self, data, slice_objects, target_rank='all', 
+                                comm=None):
+        if comm == None:
+            comm = self.comm            
+            
+#        if slice_objects[0].step is not None and slice_objects[0].step < -1:
+#            raise ValueError(about._errors.cstring(
+#                "ERROR: Negative stepsizes other than -1 are not supported!"))
+            
+        localized_start, localized_stop = self._backshift_and_decycle(
+                                                        slice_objects[0], 
+                                                        self.local_start, 
+                                                        self.local_end, 
+                                                        self.global_shape[0])
+        local_slice = (slice(localized_start,
+                             localized_stop,
+                             slice_objects[0].step),) + slice_objects[1:]
+            
+        ## This is the bad guy, which makes slicing slower than native numpy
+        local_collected_data = np.ascontiguousarray(data[local_slice])
+
+        local_collected_data_length = local_collected_data.shape[0]
+        local_collected_data_length_list=np.empty(comm.size, dtype=np.int)        
+        comm.Allgather(
+                [np.array(local_collected_data_length, dtype=np.int), MPI.INT], 
+                [local_collected_data_length_list, MPI.INT])        
+             
+        collected_data_length = np.sum(local_collected_data_length_list) 
+        collected_data_shape = (collected_data_length,) + \
+                                                local_collected_data.shape[1:]
+        local_collected_data_dim_list =\
+                            np.array(local_collected_data_length_list) *\
+                            np.product(local_collected_data.shape[1:])        
+        
+        ## if the first slice object has a negative step size, the ordering 
+        ## of the Gatherv functions must be reversed         
+        order = slice_objects[0].step
+        if order == None:
+            order = 1
+        else:
+            order = np.sign(order)
+            
+        local_collected_data_dim_offset_list = np.append([0],
+            np.cumsum(local_collected_data_dim_list[::order])[:-1])[::order]
+
+        local_collected_data_dim_offset_list =\
+                                        local_collected_data_dim_offset_list
+        collected_data = np.empty(collected_data_shape, dtype=self.dtype)
+        
+        if target_rank == 'all':
+            comm.Allgatherv([local_collected_data, self.mpi_dtype], 
+                        [collected_data, local_collected_data_dim_list, 
+                        local_collected_data_dim_offset_list, self.mpi_dtype])                
+        else:
+            comm.Gatherv([local_collected_data, self.mpi_dtype], 
+                            [collected_data, local_collected_data_dim_list, 
+                                 local_collected_data_dim_offset_list, 
+                                 self.mpi_dtype], 
+                            root=target_rank)                            
+        return collected_data        
+    
+    def _backshift_and_decycle(self, slice_object, shifted_start, shifted_stop, 
+                               global_length):
+#        ## Crop the start value
+#        if slice_object.start > global_length-1:
+#            slice_object = slice(global_length-1, slice_object.stop,
+#                                 slice_object.step)
+#        ## Crop the stop value
+#        if slice_object.stop > global_length-1:
+#            slice_object = slice(slice_object.start, None,
+#                                 slice_object.step)
                                  
         ## Reformulate negative indices                                  
         if slice_object.start < 0 and slice_object.start != None:
             temp_start = slice_object.start + global_length
             if temp_start < 0:
-                raise ValueError(about._errors.cstring(\
-                "ERROR: Index is out of bounds!"))
-            slice_object = slice(temp_start, slice_object.stop,\
-            slice_object.step) 
+                temp_start = 0
+                
+#            if temp_start < 0:
+#                raise ValueError(about._errors.cstring(\
+#                "ERROR: Index is out of bounds!"))
+            slice_object = slice(temp_start, slice_object.stop, 
+                                 slice_object.step) 
 
         if slice_object.stop < 0 and slice_object.stop != None:
             temp_stop = slice_object.stop + global_length
             if temp_stop < 0:
-                raise ValueError(about._errors.cstring(\
-                "ERROR: Index is out of bounds!"))
-            slice_object = slice(slice_object.start, temp_stop,\
-            slice_object.step) 
+                temp_stop = None
+#            if temp_stop < 0:
+#                raise ValueError(about._errors.cstring(\
+#                "ERROR: Index is out of bounds!"))
+            slice_object = slice(slice_object.start, temp_stop,
+                                 slice_object.step) 
                 
         ## initialize the step
         if slice_object.step == None:
             step = 1
         else:
             step = slice_object.step
-        
+
+        #compute local_length        
+        local_length = shifted_stop - shifted_start
         if step > 0:
             shift = shifted_start
             ## calculate the start index
@@ -1399,27 +1427,42 @@ class _slicing_distributor(object):
                 local_start = slice_object.start - shift
                 ## if the local_start is negative, pull it up to zero
                 local_start = local_start%step if local_start < 0 else local_start
+            
+            if local_start >= local_length:
+                return (0, 0)
+                
             ## calculate the stop index
             if slice_object.stop == None:
                 local_stop = None
             else:
                 local_stop = slice_object.stop - shift
-                ## if local_stop is negative, pull it up to zero
-                local_stop = 0 if local_stop < 0 else local_stop
-                
+                ## if local_stop is negative, the slice is empty
+                if local_stop < 0:
+                    return (0, 0)
+                if local_stop > local_length:
+                    local_stop = None
+                    
         else: # if step < 0
             step = -step
-            local_length = shifted_stop - shifted_start
             ## calculate the start index. (Here, local_start > local_stop!)
             if slice_object.start == None:
                 local_start = (local_length-1) -\
-                    (global_length-shifted_stop)%step #stepsize compensation
+                    (-(global_length-shifted_stop))%step #stepsize compensation
+                ## if local_start becomes negative here, it means, that the
+                ## step size is bigger than the length of the local slice and 
+                ## that no relevant data is in this slice
+                if local_start < 0:
+                    return (0, 0)
             else:
+                if slice_object.start > global_length - 1:
+                    slice_object = slice(global_length - 1, 
+                                         slice_object.stop,
+                                         slice_object.step)
                 local_start = slice_object.start - shifted_start
                 ## if the local_start is negative, immediately return the 
                 ## values for an empty slice
                 if local_start < 0:
-                    return 0, 0
+                    return (0, 0)
                                 
                 ## if the local_start is greater than the local length, pull
                 ## it down 
@@ -1427,6 +1470,12 @@ class _slicing_distributor(object):
                     overhead = local_start - (local_length-1)
                     overhead = overhead - overhead%(-step)
                     local_start = local_start - overhead
+                    ## if local_start becomes negative here, it means, that the
+                    ## step size is bigger than the length of the local slice and 
+                    ## that no relevant data is in this slice
+                    if local_start < 0:
+                        return (0, 0)
+
             ## calculate the stop index
             if slice_object.stop == None:
                 local_stop = None
@@ -1437,7 +1486,11 @@ class _slicing_distributor(object):
         ## Note: if start or stop are greater than the array length,
         ## numpy will automatically cut the index value down into the 
         ## array's range
-        return local_start, local_stop        
+#        if local_start > local_length:
+#            local_start = local_length 
+#        if local_stop > local_length:
+#            local_stop = local_length
+        return (local_start, local_stop)
     
     def inject(self, data, to_slices, data_update, from_slices, comm=None, 
                **kwargs):
@@ -1603,7 +1656,6 @@ class _slicing_distributor(object):
             ## extract the local portion             
             new_data = full_data[slice(start_then, end_then)]
             return new_data
-        print (size_now, size_then)
         
         
     if found['h5py']:
@@ -1670,27 +1722,7 @@ class _slicing_distributor(object):
             raise ImportError(about._errors.cstring(
                 "ERROR: h5py is not available")) 
         
-        
 
-def _fftw_slicer(global_shape, comm):
-    local_size = pyfftw.local_size(global_shape, comm = comm)
-    start = local_size[2]
-    end = start + local_size[1]
-    return (start, end)
-
-
-
-
-#class _fftw_distributor(_slicing_distributor):
-#    def __init__(self, global_shape=None, dtype=None, 
-#                 comm=MPI.COMM_WORLD, alias=None, path=None):
-#        super(_fftw_distributor, self).__init__(slicer = _fftw_slicer, 
-#                                                global_shape = global_shape,
-#                                                dtype = dtype,
-#                                                comm = comm,
-#                                                alias = alias,
-#                                                path = path)
-#        
 def _equal_slicer(global_shape, comm=MPI.COMM_WORLD):
     rank = comm.rank
     size = comm.size
@@ -1712,16 +1744,18 @@ def _equal_slicer(global_shape, comm=MPI.COMM_WORLD):
     
     return (offset, offset+local_length)
        
-#class _equal_distributor(_slicing_distributor):
-#    def __init__(self, global_shape=None, dtype=None, 
-#                 comm=MPI.COMM_WORLD, alias=None, path=None):
-#        super(_equal_distributor, self).__init__(slicer = _equal_slicer,
-#                                                global_shape = global_shape,
-#                                                dtype = dtype,
-#                                                comm = comm,
-#                                                alias = alias,
-#                                                path = path)
-#                                                
+       
+       
+if found['MPI'] == True and found['pyfftw'] == True:
+    def _fftw_slicer(global_shape, comm=MPI.COMM_WORLD):
+        local_size = pyfftw.local_size(global_shape, comm = comm)
+        start = local_size[2]
+        end = start + local_size[1]
+        return (start, end)
+else:
+    _fftw_slicer = _equal_slicer
+
+                                         
 class _not_distributor(object):
     def __init__(self, global_shape=None, dtype=None, *args,  **kwargs):
         if dtype != None:        
@@ -1736,7 +1770,8 @@ class _not_distributor(object):
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: No shape supplied!")) 
-    
+        self.local_shape = self.global_shape
+        
     def globalize_flat_index(self, index):
         return index
     
@@ -1746,17 +1781,17 @@ class _not_distributor(object):
     def _allgather(self, thing):
         return [thing,]
         
-    def distribute_data(self, data, **kwargs):
+    def distribute_data(self, data, copy = False, **kwargs):
         if data == None:        
-            return np.zeros(self.global_shape, dtype=self.dtype)
+            return np.empty(self.global_shape, dtype=self.dtype)
         else:
-            return np.array(data).astype(self.dtype, copy=False).\
+            return np.array(data).astype(self.dtype, copy=copy).\
                     reshape(self.global_shape)
     
-    def disperse_data(self, data, to_slices, data_update, from_slices=None, 
-                      **kwargs):
+    def disperse_data(self, data, to_slices, data_update, from_slices=None,
+                      copy = True, **kwargs):
         data[to_slices] = np.array(data_update[from_slices], 
-                                    copy=False).astype(self.dtype)
+                                    copy=copy).astype(self.dtype)
                      
     def collect_data(self, data, slice_objects, **kwargs):
         return data[slice_objects]
@@ -1765,7 +1800,7 @@ class _not_distributor(object):
         return data
         
     def inject(self, data, to_slices = (slice(None),), data_update = None, 
-               from_slices = (slice(None),)):
+               from_slices = (slice(None),), **kwargs):
         data[to_slices] = data_update[from_slices]
     
     def extract_local_data(self, data_object):
@@ -1798,7 +1833,7 @@ class dtype_converter:
                     #[, MPI_CHAR],
                     #[, MPI_SIGNED_CHAR],
                     #[, MPI_UNSIGNED_CHAR],
-                    [np.bool, MPI.BYTE],
+                    [np.bool_, MPI.BYTE],
                     [np.int16, MPI.SHORT],
                     [np.uint16, MPI.UNSIGNED_SHORT],
                     [np.uint32, MPI.UNSIGNED_INT],

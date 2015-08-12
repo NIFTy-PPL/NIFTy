@@ -271,7 +271,8 @@ class notification(switch):
                 String augmented with a color code.
 
         """
-        return self.ccode+str(self._get_caller())+':\n'+str(subject)+self._code
+        return self.ccode + str(self._get_caller()) + ':\n' + \
+                str(subject) + self._code + '\n'
 
     def cflush(self,subject):
         """

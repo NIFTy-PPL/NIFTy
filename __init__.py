@@ -22,7 +22,7 @@
 from __future__ import division
 
 import matplotlib as mpl
-mpl.use('Agg')
+#mpl.use('Agg')
 
 from nifty_about import about
 from nifty_cmaps import ncmap

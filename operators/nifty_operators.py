@@ -107,8 +107,9 @@ class operator(object):
             This is a freeform list of parameters that derivatives of the
             operator class can use. Not used in the base operators.
     """
-    def __init__(self, domain, sym=False, uni=False, imp=False, target=None,\
-                bare = False, para=None):
+    def __init__(self, domain, codomain = None, sym=False, uni=False, 
+                 imp=False, target=None, cotarget=None, bare = False, 
+                 para=None):
         """
             Sets the attributes for an operator class instance.
 
@@ -138,10 +139,16 @@ class operator(object):
             None
         """
         ## Check if the domain is realy a space
-        if not isinstance(domain,space):
+        if not isinstance(domain, space):
             raise TypeError(about._errors.cstring(
                 "ERROR: invalid input. domain is not a space."))
         self.domain = domain
+        ## Parse codomain
+        if self.domain.check_codomain(codomain) == True:        
+            self.codomain = codomain
+        else:
+            self.codomain = self.domain.get_codomain()
+            
         ## Cast the symmetric and unitary input        
         self.sym = bool(sym)
         self.uni = bool(uni)
@@ -153,16 +160,26 @@ class operator(object):
 
         if self.sym == True or self.uni == True:
             target = self.domain 
+            cotarget = self.codomain
             if target is not None:
                 about.warnings.cprint("WARNING: Ignoring target.")
         
         elif target is None:
             target = self.domain
+            cotarget = self.codomain
 
-        elif not isinstance(target, space):
+        elif isinstance(target, space):
+            self.target = target    
+            ## Parse cotarget
+            if self.target.check_codomain(cotarget) == True:        
+                self.codomain = codomain
+            else:
+                self.codomain = self.domain.get_codomain()
+        else:        
             raise TypeError(about._errors.cstring(
-            "ERROR: invalid input. Target is not a space."))
-        self.target = target
+                "ERROR: invalid input. Target is not a space."))        
+        
+
 
         if self.domain.discrete and self.target.discrete:
             self.imp = True
@@ -296,30 +313,30 @@ class operator(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def _briefing(self, x, domain, inverse): ## > prepares x for `multiply`
+    def _briefing(self, x, domain, codomain, inverse): ## > prepares x for `multiply`
         ## inspect x
         if not isinstance(x, field):
-            x_ = field(domain, val=x)
+            x_ = field(domain, codomain=codomain, val=x)
         else:
             ## check x.domain
             if domain == x.domain:
                 x_ = x
             ## transform
             else:
-                x_ = x.transform(target=domain)
+                x_ = x.transform(codomain=domain)
         ## weight if ...
         if self.imp == False and domain.discrete == False and inverse == False:
             x_ = x_.weight(power=1)
         return x_
 
-    def _debriefing(self, x, x_, target, inverse): 
+    def _debriefing(self, x, x_, target, cotarget, inverse): 
     ## > evaluates x and x_ after `multiply`
         if x_ is None:
             return None
         else:
             ## inspect x_
             if not isinstance(x_, field):
-                x_ = field(target, val=x_)
+                x_ = field(target, codomain=cotarget, val=x_)
             elif x_.domain != target:
                 raise ValueError(about._errors.cstring(
                     "ERROR: invalid output domain."))
@@ -332,9 +349,9 @@ class operator(object):
                 ## repair if the originally field was living in the codomain 
                 ## of the operators domain
                 if self.domain == self.target != x.domain:
-                    x_ = x_.transform(target=x.domain) 
-                if x_.domain == x.domain and (x_.target is not x.target):
-                    x_.set_target(new_target = x.target) 
+                    x_ = x_.transform(codomain=x.domain) 
+                if x_.domain == x.domain and (x_.codomain != x.codomain):
+                    x_.set_codomain(new_codomain = x.codomain) 
             return x_
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -355,11 +372,12 @@ class operator(object):
                 Mapped field on the target domain of the operator.
         """
         ## prepare
-        x_ = self._briefing(x, self.domain, inverse=False)
+        x_ = self._briefing(x, self.domain, self.codomain, inverse=False)
         ## apply operator
         x_ = self._multiply(x_, **kwargs)
         ## evaluate
-        return self._debriefing(x, x_, self.target, inverse=False)
+        return self._debriefing(x, x_, self.target, self.cotarget, 
+                                inverse=False)
 
     def __call__(self, x, **kwargs):
         return self.times(x, **kwargs)
@@ -388,11 +406,12 @@ class operator(object):
             return self.inverse_times(x, **kwargs)
 
         ## prepare
-        x_ = self._briefing(x, self.target, inverse=False)
+        x_ = self._briefing(x, self.target, self.cotarget, inverse=False)
         ## apply operator
         x_ = self._adjoint_multiply(x_, **kwargs)
         ## evaluate
-        return self._debriefing(x, x_, self.domain, inverse=False)
+        return self._debriefing(x, x_, self.domain, self.codomain, 
+                                inverse=False)
 
     def inverse_times(self, x, **kwargs):
         """
@@ -414,11 +433,12 @@ class operator(object):
             return self.times(x,**kwargs)
 
         ## prepare
-        x_ = self._briefing(x, self.target, inverse=True)
+        x_ = self._briefing(x, self.target, self.cotarget, inverse=True)
         ## apply operator
         x_ = self._inverse_multiply(x_, **kwargs)
         ## evaluate
-        return self._debriefing(x, x_, self.domain, inverse=True)
+        return self._debriefing(x, x_, self.domain, self.codomain, 
+                                inverse=True)
 
     def adjoint_inverse_times(self, x, **kwargs):
         """
@@ -444,11 +464,12 @@ class operator(object):
             return self.times(x, **kwargs)
 
         ## prepare
-        x_ = self._briefing(x, self.domain, inverse=True)
+        x_ = self._briefing(x, self.domain, self.codomain, inverse=True)
         ## apply operator
         x_ = self._adjoint_inverse_multiply(x_, **kwargs)
         ## evaluate
-        return self._debriefing(x, x_, self.target, inverse=True)
+        return self._debriefing(x, x_, self.target, self.cotarget, 
+                                inverse=True)
 
     def inverse_adjoint_times(self, x, **kwargs):
         """
@@ -474,16 +495,18 @@ class operator(object):
             return self.times(x, **kwargs)
 
         ## prepare
-        x_ = self._briefing(x, self.domain, inverse=True)
+        x_ = self._briefing(x, self.domain, self.codomain, inverse=True)
         ## apply operator
         x_ = self._inverse_adjoint_multiply(x_, **kwargs)
         ## evaluate
-        return self._debriefing(x, x_, self.target, inverse=True)
+        return self._debriefing(x, x_, self.target, self.cotarget, 
+                                inverse=True)
 
+
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def tr(self, domain=None, codomain=None, random="pm1", nrun=8,
-            varQ=False, **kwargs):
+                  varQ=False, **kwargs):
         """
             Computes the trace of the operator
 
@@ -537,7 +560,7 @@ class operator(object):
                             
                           
     def inverse_tr(self, domain=None, codomain=None, random="pm1", nrun=8,
-                   varQ=False, **kwargs):
+                          varQ=False, **kwargs):
         """
             Computes the trace of the inverse operator
 
@@ -585,7 +608,7 @@ class operator(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def diag(self, domain=None, codomain=None, random="pm1", nrun=8,
-             varQ=False, bare=False, **kwargs):
+                    varQ=False, bare=False, **kwargs):
         """
             Computes the diagonal of the operator via probing.
 
@@ -664,7 +687,7 @@ class operator(object):
             return None
         
         if domain is None:
-            domain = self.domain
+            domain = diag.domain
         ## weight if ...
         if domain.discrete == False and bare == True:
             if(isinstance(diag,tuple)): ## diag == (diag,variance)
@@ -675,8 +698,8 @@ class operator(object):
         else:
             return diag
 
-    def inverse_diag(self, domain=None, codomain=None, random="pm1", nrun=8,
-                     varQ=False, bare=False, **kwargs):
+    def inverse_diag(self, domain=None, codomain=None, random="pm1", 
+                            nrun=8, varQ=False, bare=False, **kwargs):
         """
             Computes the diagonal of the inverse operator via probing.
 
@@ -756,7 +779,7 @@ class operator(object):
             return None
             
         if domain is None:
-            domain = self.target
+            domain = diag.codomain
         ## weight if ...
         if domain.discrete == False and bare == True:
             if(isinstance(diag,tuple)): ## diag == (diag,variance)
@@ -766,10 +789,8 @@ class operator(object):
                 return diag.weight(power=-1)
         else:
             return diag
-
-        
+       
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def det(self):
         """
             Computes the determinant of the operator.
@@ -823,7 +844,7 @@ class operator(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def hat(self,bare=False,domain=None,target=None,**kwargs):
+    def hat(self, bare=False, domain=None, codomain=None, **kwargs):
         """
             Translates the operator's diagonal into a field
 
@@ -885,14 +906,14 @@ class operator(object):
         """
         if domain is None:
             domain = self.domain
-        diag = self.diag(bare=bare, domain=domain, target=target, 
+        diag = self.diag(bare=bare, domain=domain, codomain=codomain, 
                          var=False, **kwargs)
         if diag is None:
             about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
-        return field(domain, val=diag, target=target)
-
-    def inverse_hat(self,bare=False,domain=None,target=None,**kwargs):
+        return diag 
+        
+    def inverse_hat(self, bare=False, domain=None, codomain=None, **kwargs):
         """
             Translates the inverse operator's diagonal into a field
 
@@ -954,14 +975,14 @@ class operator(object):
         """
         if domain is None:
             domain = self.target
-        diag = self.inverse_diag(bare=bare, domain=domain, target=target, 
+        diag = self.inverse_diag(bare=bare, domain=domain, codomain=codomain, 
                                  var=False, **kwargs)
         if diag is None:
             about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
-        return field(domain, val=diag, target=target)
-
-    def hathat(self,domain=None,**kwargs):
+        return diag 
+        
+    def hathat(self, domain=None, codomain=None, **kwargs):
         """
             Translates the operator's diagonal into a diagonal operator
 
@@ -1018,13 +1039,18 @@ class operator(object):
         """
         if domain is None:
             domain = self.domain
-        diag = self.diag(bare=False, domain=domain, var=False, **kwargs)
+        if codomain is None:
+            codomain = self.codomain
+            
+        diag = self.diag(bare=False, domain=domain, codomain=codomain, 
+                         var=False, **kwargs)
         if diag is None:
             about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
-        return diagonal_operator(domain=domain, diag=diag, bare=False)
+        return diagonal_operator(domain=domain, codomain=codomain,
+                                 diag=diag, bare=False)
 
-    def inverse_hathat(self,domain=None,**kwargs):
+    def inverse_hathat(self, domain=None, codomain=None, **kwargs):
         """
             Translates the inverse operator's diagonal into a diagonal
             operator
@@ -1082,12 +1108,16 @@ class operator(object):
         """
         if domain is None:
             domain = self.target
-        diag = self.inverse_diag(bare=False, domain=domain, 
+        if codomain is None:
+            codomain = self.cotarget
+            
+        diag = self.inverse_diag(bare=False, domain=domain, codomain=codomain,
                                  var=False, **kwargs)
         if diag is None:
             about.warnings.cprint("WARNING: forwarding 'NoneType'.")
             return None
-        return diagonal_operator(domain=domain, diag=diag, bare=False)
+        return diagonal_operator(domain=domain, codomain=codomain, 
+                                 diag=diag, bare=False)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1159,7 +1189,7 @@ class diagonal_operator(operator):
         target : space
             The space wherein the operator output lives
     """
-    def __init__(self, domain=None, diag=1, bare=False):
+    def __init__(self, domain=None, codomain=None, diag=1, bare=False):
         """
             Sets the standard operator properties and `values`.
 
@@ -1205,8 +1235,13 @@ class diagonal_operator(operator):
         else:
             self.domain = domain
 
+        if self.domain.check_codomain(codomain) == True:        
+            self.codomain = codomain
+        else:
+            self.codomain = self.domain.get_codomain()
 
         self.target = self.domain
+        self.cotarget = self.codomain
         self.imp = True
         self.set_diag(new_diag = diag)
 
@@ -1306,7 +1341,7 @@ class diagonal_operator(operator):
 
     def _multiply(self, x, **kwargs): 
     ## > applies the operator to a given field
-        y = x.copy(domain = self.target, target = self.target.get_codomain())
+        y = x.copy(domain = self.target, codomain = self.cotarget)
         y *= self.get_val()
         return y        
         
@@ -1318,7 +1353,7 @@ class diagonal_operator(operator):
 
     def _adjoint_multiply(self, x, **kwargs): 
     ## > applies the adjoint operator to a given field
-        y = x.copy(domain = self.domain, target = self.domain.get_codomain())
+        y = x.copy(domain = self.domain, codomain = self.codomain)
         y *= self.get_val().conjugate()
         return y         
 
@@ -1330,7 +1365,7 @@ class diagonal_operator(operator):
 
     def _inverse_multiply(self, x, pseudo=False, **kwargs): 
     ## > applies the inverse operator to a given field
-        y = x.copy(domain = self.domain, target = self.domain.get_codomain())        
+        y = x.copy(domain = self.domain, codomain = self.codomain)        
         if (self.get_val() == 0).any():
             if pseudo == False:
                 raise AttributeError(about._errors.cstring(
@@ -1360,7 +1395,7 @@ class diagonal_operator(operator):
     
     def _adjoint_inverse_multiply(self, x, pseudo=False, **kwargs): 
     ## > applies the inverse adjoint operator to a given field    
-        y = x.copy(domain = self.target, target = self.target.get_codomain())        
+        y = x.copy(domain = self.target, codomain = self.cotarget)        
         if (self.get_val() == 0).any():
             if pseudo == False:
                 raise AttributeError(about._errors.cstring(
@@ -1515,7 +1550,7 @@ class diagonal_operator(operator):
             raise AttributeError(about._errors.cstring(
                 "ERROR: singular operator."))
         inverse_tr = self.domain.unary_operation(
-                        self.domain.binary_operation(self.val, 1, 'rdiv', cast=0), 
+                     self.domain.binary_operation(self.val, 1, 'rdiv', cast=0), 
                     'sum')
                     
         if varQ == True:
@@ -1548,7 +1583,8 @@ class diagonal_operator(operator):
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def diag(self, bare=False, domain=None, varQ=False, **kwargs):
+    def diag(self, bare=False, domain=None, codomain=None, 
+             varQ=False, **kwargs):
         """
             Computes the diagonal of the operator.
 
@@ -1613,16 +1649,18 @@ class diagonal_operator(operator):
         
         if (domain is None) or (domain == self.domain):
             if(not self.domain.discrete)and(bare):
-                diag = self.domain.calc_weight(self.val, power=-1)
+                diag_val = self.domain.calc_weight(self.val, power=-1)
             else:
-                diag = self.val
+                diag_val = self.val
+            diag = field(self.domain, codomain = self.codomain, val=diag_val)
         else:
             diag = super(diagonal_operator, self).diag(bare=bare, 
-                                                   domain=domain,
-                                                   nrun=1,
-                                                   random='pm1',
-                                                   varQ=False,
-                                                   **kwargs)                          
+                                                       domain = domain,
+                                                       codomain = codomain,
+                                                       nrun=1,
+                                                       random='pm1',
+                                                       varQ=False,
+                                                       **kwargs)                          
         if varQ == True:
             return (diag, diag.domain.cast(1))                                                   
         else:
@@ -1652,7 +1690,8 @@ class diagonal_operator(operator):
                 return super(diagonal_operator,self).diag(bare=bare,domain=domain,**kwargs) ## probing
 
         """
-    def inverse_diag(self,bare=False,domain=None, varQ=False, **kwargs):
+    def inverse_diag(self,bare=False, domain=None, codomain=None,
+                     varQ=False, **kwargs):
         """
             Computes the diagonal of the inverse operator.
 
@@ -1721,16 +1760,19 @@ class diagonal_operator(operator):
         if (domain is None) or (domain == self.domain):
             inverse_val = 1./self.val
             if(not self.domain.discrete)and(bare):
-                inverse_diag = self.domain.calc_weight(inverse_val, power=-1)
+                inverse_diag_val = self.domain.calc_weight(inverse_val, power=-1)
             else:
-                inverse_diag = inverse_val
+                inverse_diag_val = inverse_val
+            inverse_diag = field(self.domain, codomain = self.codomain, 
+                         val=inverse_diag_val)
+
         else:
-            inverse_diag = super(diagonal_operator, self).inverse_diag(bare=bare, 
-                                                           domain=domain,
-                                                           nrun=1,
-                                                           random='pm1',
-                                                           varQ=False,
-                                                           **kwargs)                                        
+            inverse_diag=super(diagonal_operator, self).inverse_diag(bare=bare, 
+                                                               domain=domain,
+                                                               nrun=1,
+                                                               random='pm1',
+                                                               varQ=False,
+                                                               **kwargs)                                        
         if varQ == True:
             return (inverse_diag, inverse_diag.domain.cast(1))                                                   
         else:
@@ -1759,8 +1801,9 @@ class diagonal_operator(operator):
             else:
                 return super(diagonal_operator,self).inverse_diag(bare=bare,domain=domain,**kwargs) ## probing
         """
-        
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 
     def det(self):
         """
@@ -1844,20 +1887,27 @@ class diagonal_operator(operator):
         """
         if domain is None:
             domain = self.domain
-          
-        if domain == self.domain:
-            return field(domain = domain,
-                         target = codomain,
-                         random = 'gau',
-                         var = self.diag(bare=True, domain = domain))
-        else:
-            assert(self.domain.check_codomain(domain))            
-            return field(domain = self.domain,
-                         target = domain,
-                         random = 'gau',
-                         var = self.diag(bare=True, domain = self.domain)
-                         ).transform(target = domain)
         
+        if domain.check_codomain(codomain) == True:        
+            codomain = codomain
+        elif domain.check_codomain(self.codomain) == True:        
+            codomain = self.codomain 
+        else:
+            codomain = domain.get_codomain()
+
+        #if domain == self.domain:
+        return field(domain = domain,
+                     codomain = codomain,
+                     random = 'gau',
+                     var = self.diag(bare=True, domain = domain,
+                                     codomain = codomain).get_val())
+#        else:
+#            return field(domain = domain,
+#                         codomain = codomain,
+#                         random = 'gau',
+#                    var = self.diag(bare=True, domain = domain).get_val()
+#                         ).transform(codomain = domain)
+#        
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1868,7 +1918,7 @@ class diagonal_operator(operator):
 
 ##-----------------------------------------------------------------------------
 
-def identity(domain):
+def identity(domain, codomain=None):
     """
         Returns an identity operator.
 
@@ -1920,7 +1970,7 @@ def identity(domain):
         <nifty.field>
 
     """
-    return diagonal_operator(domain=domain, diag=1, bare=False)
+    return diagonal_operator(domain=domain, codomain=codomain, diag=1, bare=False)
 
 ##-----------------------------------------------------------------------------
 
@@ -2001,7 +2051,7 @@ class power_operator(diagonal_operator):
             The space wherein the operator output lives
 
     """
-    def __init__(self, domain, spec=1, bare=True, **kwargs):
+    def __init__(self, domain, codomain=None, spec=1, bare=True, **kwargs):
         """
             Sets the diagonal operator's standard properties
 
@@ -2047,11 +2097,21 @@ class power_operator(diagonal_operator):
 
         """
         ## Set the domain
-        if isinstance(domain,space) == False:
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+        if isinstance(domain, space) == False:
+            raise TypeError(about._errors.cstring(
+                "ERROR: The given domain is not a nifty space."))
         self.domain = domain
+
+        if self.domain.check_codomain(codomain) == True:        
+            self.codomain = codomain
+        else:
+            self.codomain = self.domain.get_codomain()
+
         ## Set the target 
         self.target = self.domain
+        ## Set the cotarget
+        self.cotarget = self.codomain
+        
         ## Set imp        
         self.imp = True
         ## Save the kwargs 
@@ -2167,6 +2227,12 @@ class power_operator(diagonal_operator):
         except(AttributeError): ##TODO: update all pindices to d2o's
             diag = temp_spec[pindex]
         
+        if self.domain.datamodel == 'np':
+            try:
+                diag = diag.get_full_data()
+            except(AttributeError):
+                pass        
+                        
         ## Weight if necessary
         if self.domain.discrete == False and bare == True:
             self.val = self.domain.calc_weight(diag, power=1)
@@ -2747,7 +2813,7 @@ class vecvec_operator(operator):
         target : space
             The space wherein the operator output lives.
     """
-    def __init__(self, domain=None, val=1):
+    def __init__(self, domain=None, codomain = None, val=1):
         """
             Sets the standard operator properties and `values`.
 
@@ -2770,7 +2836,13 @@ class vecvec_operator(operator):
         if isinstance(domain,space) == False:
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
+        if self.domain.check_codomain(codomain) == True:        
+            self.codomain = codomain
+        else:
+            self.codomain = self.domain.get_codomain()
+        
         self.target = self.domain
+        self.cotarget = self.codomain
         self.val = self.domain.cast(val)
         self.sym = True
         self.uni = False
@@ -2799,7 +2871,7 @@ class vecvec_operator(operator):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self, x, **kwargs): ## > applies the operator to a given field
-        y = x.copy_empty(domain = self.target)
+        y = x.copy_empty(domain = self.target, codomain = self.codomain)
         y.set_val(new_val = self.val * self.domain.calc_dot(self.val, x.val))
         return y
 
@@ -2929,12 +3001,12 @@ class vecvec_operator(operator):
 
         """
         if (domain is None) or (domain==self.domain):
-            diag = self.val * self.val.conjugate() ## bare diagonal
+            diag_val = self.val * self.val.conjugate() ## bare diagonal
             ## weight if ...
             if self.domain.discrete == False and bare == False:
-                return self.domain.calc_weight(diag, power=1)
-            else:
-                return diag
+                diag_val = self.domain.calc_weight(diag_val, power=1)
+            diag = field(self.domain, codomain = self.codomain, val = diag_val)                
+            return diag
         else:
             ## probing
             return super(vecvec_operator,self).diag(bare=bare,
@@ -3046,8 +3118,8 @@ class response_operator(operator):
             Whether to consider the arguments as densities or not.
             Mandatory for the correct incorporation of volume weights.
     """
-    def __init__(self, domain, sigma=0, mask=1, assign=None, den=False, 
-                 target=None):
+    def __init__(self, domain, codomain = None, sigma=0, mask=1, assign=None, 
+                 den=False, target=None, cotarget = None):
         """
             Sets the standard properties and `density`, `sigma`, `mask` and `assignment(s)`.
 
@@ -3078,6 +3150,11 @@ class response_operator(operator):
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
+
+        if self.domain.check_codomain(codomain) == True:        
+            self.codomain = codomain
+        else:
+            self.codomain = self.domain.get_codomain()
 
         self.sym = False
         self.uni = False
@@ -3144,6 +3221,10 @@ class response_operator(operator):
             elif(assignments!=target.get_dim(split=False)):
                 raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(assignments)+" <> "+str(target.get_dim(split=False))+" )."))
         self.target = target
+        if self.target.check_codomain(cotarget) == True:        
+            self.cotarget = cotarget
+        else:
+            self.cotarget = self.target.get_codomain()
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3186,23 +3267,29 @@ class response_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def _multiply(self,x,**kwargs): ## > applies the operator to a given field
+    def _multiply(self, x, **kwargs): ## > applies the operator to a given field
         ## smooth
         x_ = self.domain.calc_smooth(x.val,sigma=self.sigma)
         ## mask
         x_ *= self.mask
         ## assign and return
         if(self.assign is None):
-            return field(self.target,val=x_,target=kwargs.get("target",None))
+            val = x_
         elif(isinstance(self.assign,list)):
-            return field(self.target,val=x_[self.assign],target=kwargs.get("target",None))
+             val=x_[self.assign]
         else:
-            return field(self.target,val=x_[self.assign.T.tolist()],target=kwargs.get("target",None))
+            val=x_[self.assign.T.tolist()]
 
-    def _adjoint_multiply(self,x,**kwargs): ## > applies the adjoint operator to a given field
-        x_ = np.zeros(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C')
+        return field(self.target,
+                     val=val,
+                     codomain = self.cotarget)
+            
+
+    def _adjoint_multiply(self, x, **kwargs): ## > applies the adjoint operator to a given field
+        x_ = np.zeros(self.domain.get_shape(),
+                      dtype=self.domain.datatype)
         ## assign (transposed)
-        if(self.assign is None):
+        if self.assign is None:
             x_ = x.val.flatten()
         elif(isinstance(self.assign,list)):
             x_[self.assign] += x.val.flatten(order='C')
@@ -3214,45 +3301,50 @@ class response_operator(operator):
         ## smooth
         x_ = self.domain.calc_smooth(x_,sigma=self.sigma)
         #return x_
-        return field(self.domain,val=x_,target=kwargs.get("target",None))
+        return field(self.domain,
+                     val=x_,
+                     codomain = self.codomain)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def _briefing(self,x,domain,inverse): ## > prepares x for `multiply`
+    def _briefing(self, x, domain, codomain, inverse): ## > prepares x for `multiply`
         ## inspect x
-        if(not isinstance(x,field)):
-            x_ = field(domain,val=x,target=None)
+        if not isinstance(x,field):
+            x_ = field(domain, codomain, val=x)
         else:
             ## check x.domain
-            if(domain==x.domain):
+            if domain==x.domain:
                 x_ = x
             ## transform
             else:
-                x_ = x.transform(target=domain,overwrite=False)
+                x_ = x.transform(codomain = domain)
         ## weight if ...
-        if(not self.imp)and(not domain.discrete)and(not inverse)and(self.den): ## respect density
-            x_ = x_.weight(power=1,overwrite=False)
+        if self.imp == False and domain.discrete == False and\
+                inverse == False and self.den == True: ## respect density
+            x_ = x_.weight(power=1)
         return x_
 
-    def _debriefing(self,x,x_,target,inverse): ## > evaluates x and x_ after `multiply`
-        if(x_ is None):
+    def _debriefing(self, x, x_, target, cotarget, inverse): ## > evaluates x and x_ after `multiply`
+        if x_ is None:
             return None
         else:
             ## inspect x_
-            if(not isinstance(x_,field)):
-                x_ = field(target,val=x_,target=None)
-            elif(x_.domain!=target):
-                raise ValueError(about._errors.cstring("ERROR: invalid output domain."))
+            if not isinstance(x_,field):
+                x_ = field(target, codomain=cotarget, val=x_)
+            elif x_.domain != target:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: invalid output domain."))
             ## weight if ...
-            if(not self.imp)and(not target.discrete)and(not self.den^inverse): ## respect density
-                x_ = x_.weight(power=-1,overwrite=False)
+            if self.imp == False and target.discrete == False and\
+                    (not self.den^inverse): ## respect density
+                x_ = x_.weight(power=-1)
             ## inspect x
             if(isinstance(x,field)):
                 ## repair ...
-                if(self.domain==self.target!=x.domain):
-                    x_ = x_.transform(target=x.domain,overwrite=False) ## ... domain
-                if(x_.domain==x.domain)and(x_.target!=x.target):
-                    x_.set_target(new_target=x.target) ## ... codomain
+                if self.domain == self.target != x.domain:
+                    x_ = x_.transform(codomain = x.domain) ## ... domain
+                if x_.domain == x.domain and (x_.target != x.target):
+                    x_.set_codomain(new_codomain = x.codomain) ## ... codomain
             return x_
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3324,7 +3416,7 @@ class invertible_operator(operator):
             the operator class can use. Not used in the base operators.
 
     """
-    def __init__(self,domain,uni=False,imp=False,para=None):
+    def __init__(self, domain, codomain, uni=False,imp=False,para=None):
         """
             Sets the standard operator properties.
 
@@ -3347,6 +3439,11 @@ class invertible_operator(operator):
         if(not isinstance(domain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
+        if self.domain.check_codomain(codomain) == True:        
+            self.codomain = codomain
+        else:
+            self.codomain = self.domain.get_codomain()
+            
         self.sym = True
         self.uni = bool(uni)
 
@@ -3356,6 +3453,7 @@ class invertible_operator(operator):
             self.imp = bool(imp)
 
         self.target = self.domain
+        self.cotarget = self.codomain
 
         if(para is not None):
             self.para = para
@@ -3603,11 +3701,13 @@ class propagator_operator(operator):
 
         ## set spaces
         self.domain = space2
+        
         if(self.domain.check_codomain(space1)):
             self.codomain = space1
         else:
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         self.target = self.domain
+        self.cotarget = self.codomain
 
         ## define A1 == S_inverse
         if(isinstance(S,diagonal_operator)):
@@ -3654,29 +3754,33 @@ class propagator_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def _briefing(self,x): ## > prepares x for `multiply`
+    def _briefing(self, x): ## > prepares x for `multiply`
         ## inspect x
-        if(not isinstance(x,field)):
-            return field(self.domain,val=x,target=None),False
+        if not isinstance(x,field):
+            return (field(self.domain, codomain = self.cdomoain, 
+                         val=x), 
+                    False)
         ## check x.domain
-        elif(x.domain==self.domain):
-            return x,False
-        elif(x.domain==self.codomain):
-            return x,True
+        elif x.domain == self.domain:
+            return (x, False)
+        elif x.domain == self.codomain:
+            return (x, True)
         ## transform
         else:
-            return x.transform(target=self.codomain,overwrite=False),True
+            return (x.transform(codomain=self.codomain,
+                               overwrite=False),
+                    True)
 
-    def _debriefing(self,x,x_,in_codomain): ## > evaluates x and x_ after `multiply`
-        if(x_ is None):
+    def _debriefing(self, x, x_, in_codomain): ## > evaluates x and x_ after `multiply`
+        if x_ is None:
             return None
         ## inspect x
-        elif(isinstance(x,field)):
+        elif isinstance(x,field):
             ## repair ...
-            if(in_codomain)and(x.domain!=self.codomain):
-                    x_ = x_.transform(target=x.domain,overwrite=False) ## ... domain
-            if(x_.target!=x.target):
-                x_.set_target(new_target=x.target) ## ... codomain
+            if in_codomain == True and x.domain != self.codomain:
+                    x_ = x_.transform(codomain=x.domain) ## ... domain
+            if x_.target != x.target:
+                x_.set_codomain(new_codomain=x.codomain) ## ... codomain
         return x_
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

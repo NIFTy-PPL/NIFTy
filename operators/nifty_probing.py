@@ -348,8 +348,8 @@ class prober(object):
 
         """
         return field(self.domain,
-                     target=self.codomain,
-                     random=self.random)
+                     codomain = self.codomain,
+                     random = self.random)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

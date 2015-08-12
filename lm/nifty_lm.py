@@ -128,7 +128,7 @@ class lm_space(point_space):
         vol : numpy.ndarray
             Pixel volume of the :py:class:`lm_space`, which is always 1.
     """
-    def __init__(self, lmax, mmax=None, datatype=None):
+    def __init__(self, lmax, mmax=None, datatype=None, datamodel = 'np'):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -519,6 +519,9 @@ class lm_space(point_space):
             Compatible codomains are instances of :py:class:`lm_space`,
             :py:class:`gl_space`, and :py:class:`hp_space`.
         """
+        if codomain is None:
+            return False
+            
         if(not isinstance(codomain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
@@ -669,7 +672,7 @@ class lm_space(point_space):
             x : numpy.ndarray
                 Array to be transformed.
             codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
+                codomain space to which the transformation shall map
                 (default: self).
 
             Returns
@@ -1290,6 +1293,9 @@ class gl_space(point_space):
             Compatible codomains are instances of :py:class:`gl_space` and
             :py:class:`lm_space`.
         """
+        if codomain is None:
+            return False
+            
         if(not isinstance(codomain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
@@ -1398,7 +1404,7 @@ class gl_space(point_space):
             x : numpy.ndarray
                 Array to be transformed.
             codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
+                codomain space to which the transformation shall map
                 (default: self).
 
             Returns
@@ -1953,6 +1959,9 @@ class hp_space(point_space):
             Compatible codomains are instances of :py:class:`hp_space` and
             :py:class:`lm_space`.
         """
+        if codomain is None:
+            return False
+            
         if(not isinstance(codomain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
@@ -2025,7 +2034,7 @@ class hp_space(point_space):
             x : numpy.ndarray
                 Array to be transformed.
             codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
+                codomain space to which the transformation shall map
                 (default: self).
 
             Returns

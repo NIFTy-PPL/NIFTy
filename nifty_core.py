@@ -729,7 +729,7 @@ class space(object):
             x : numpy.ndarray
                 Array to be transformed.
             codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
+                codomain space to which the transformation shall map
                 (default: self).
 
             Returns
@@ -1795,7 +1795,7 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def check_codomain(self,codomain):
+    def check_codomain(self, codomain):
         """
             Checks whether a given codomain is compatible to the space or not.
 
@@ -1809,6 +1809,9 @@ class point_space(space):
             check : bool
                 Whether or not the given codomain is compatible to the space.
         """
+        if codomain is None:
+            return False
+            
         if not isinstance(codomain, space):
             raise TypeError(about._errors.cstring(
                 "ERROR: invalid input. The given input is no nifty space."))
@@ -1965,7 +1968,7 @@ class point_space(space):
             x : numpy.ndarray
                 Array to be transformed.
             codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
+                codomain space to which the transformation shall map
                 (default: self).
 
             Returns
@@ -2008,8 +2011,10 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_real_Q(self, x):
+       
+
         try:
-            return x.is_completely_real()
+            return x.isreal().all()
         except(AttributeError):
             return np.all(np.isreal(x))
 
@@ -2641,7 +2646,7 @@ class nested_space(space):
 
             Other parameters
             ----------------
-            target : nifty.space, *optional*
+            codomain : nifty.space, *optional*
                 Space in which the transform of the output field lives
                 (default: None).
 
@@ -2702,7 +2707,7 @@ class nested_space(space):
             x : numpy.ndarray
                 Array to be transformed.
             codomain : nifty.space, *optional*
-                Target space to which the transformation shall map
+                codomain space to which the transformation shall map
                 (default: self).
 
             Returns
@@ -2870,7 +2875,7 @@ class field(object):
             space defined in domain or to be drawn from a random distribution
             controlled by kwargs.
 
-        target : space, *optional*
+        codomain : space, *optional*
             The space wherein the operator output lives (default: domain).
 
 
@@ -2929,11 +2934,11 @@ class field(object):
             space defined in domain or to be drawn from a random distribution
             controlled by the keyword arguments.
 
-        target : space, *optional*
+        codomain : space, *optional*
             The space wherein the operator output lives (default: domain).
 
     """
-    def __init__(self, domain, val=None, target=None, **kwargs):
+    def __init__(self, domain, val=None, codomain=None, **kwargs):
         """
             Sets the attributes for a field class instance.
 
@@ -2948,7 +2953,7 @@ class field(object):
             space defined in domain or to be drawn from a random distribution
             controlled by the keyword arguments.
 
-        target : space, *optional*
+        codomain : space, *optional*
             The space wherein the operator output lives (default: domain).
 
         Returns
@@ -2961,17 +2966,17 @@ class field(object):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
         ## check codomain
-        if target is None:
-            target = domain.get_codomain()
+        if codomain is None:
+            codomain = domain.get_codomain()
         else:
-            assert(self.domain.check_codomain(target))
-        self.target = target
+            assert(self.domain.check_codomain(codomain))
+        self.codomain = codomain
         
         if val == None:
             if kwargs == {}:
                 self.val = self.domain.cast(0.)
             else:
-                self.val = self.domain.get_random_values(codomain=self.target, 
+                self.val = self.domain.get_random_values(codomain=self.codomain, 
                                                          **kwargs)
         else:
             self.val = val
@@ -2986,18 +2991,18 @@ class field(object):
         self.__val = self.domain.cast(x)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def copy(self, domain=None, target=None):
-        new_field = self.copy_empty(domain=domain, target=target)
+    def copy(self, domain=None, codomain=None):
+        new_field = self.copy_empty(domain=domain, codomain=codomain)
         new_field.val = new_field.domain.cast(self.val.copy())
         return new_field
     
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def copy_empty(self, domain=None, target=None, **kwargs):
+    def copy_empty(self, domain=None, codomain=None, **kwargs):
         if domain == None:
             domain = self.domain
-        if target == None:
-            target = self.target
-        new_field = field(domain=domain, target=target, **kwargs) 
+        if codomain == None:
+            codomain = self.codomain
+        new_field = field(domain=domain, codomain=codomain, **kwargs) 
         return new_field
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3023,7 +3028,7 @@ class field(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def cast_domain(self, newdomain, new_target=None, force=True):
+    def cast_domain(self, newdomain, new_codomain=None, force=True):
         """
             Casts the domain of the field. 
 
@@ -3032,9 +3037,9 @@ class field(object):
             newdomain : space
                 New space wherein the field should live.
 
-            new_target : space, *optional*
+            new_codomain : space, *optional*
                 Space wherein the transform of the field should live.
-                When not given, target will automatically be the codomain
+                When not given, codomain will automatically be the codomain
                 of the newly casted domain (default=None).
 
             force : bool, *optional*
@@ -3075,20 +3080,20 @@ class field(object):
         ## Use the casting of the new domain in order to make the old data fit.
         self.set_val(new_val = self.val)
 
-        ## set the target 
-        if new_target == None:
-            if not self.domain.check_codomain(self.target):
+        ## set the codomain 
+        if new_codomain == None:
+            if not self.domain.check_codomain(self.codomain):
                 if(force):
                     about.infos.cprint("INFO: codomain set to default.")
                 else:
                     about.warnings.cprint("WARNING: codomain set to default.")
-                self.set_target(new_target = self.domain.get_codomain())
+                self.set_codomain(new_codomain = self.domain.get_codomain())
         else:
-            self.set_target(new_target = new_target, force = force)
+            self.set_codomain(new_codomain = new_codomain, force = force)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_val(self, new_val):
+    def set_val(self, new_val = None):
         """
             Resets the field values.
 
@@ -3098,7 +3103,8 @@ class field(object):
                 New field values either as a constant or an arbitrary array.
 
         """
-        self.val = new_val
+        if new_val is not None:
+            self.val = new_val
         return self.val
         
     def get_val(self):
@@ -3107,31 +3113,31 @@ class field(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def set_domain(self, new_domain=None, force=False):
         if new_domain is None:
-            new_domain = self.target.get_codomain()
+            new_domain = self.codomain.get_codomain()
         elif force == False:
-            assert(self.target.check_codomain(new_domain))
+            assert(self.codomain.check_codomain(new_domain))
         self.domain = new_domain
         return self.domain
         
 
-    def set_target(self, new_target=None, force=False):
+    def set_codomain(self, new_codomain=None, force=False):
         """
             Resets the codomain of the field.
 
             Parameters
             ----------
-            new_target : space
+            new_codomain : space
                  The new space wherein the transform of the field should live.
                  (default=None).
 
         """
         ## check codomain
-        if new_target is None:
-            new_target = self.domain.get_codomain()
+        if new_codomain is None:
+            new_codomain = self.domain.get_codomain()
         elif force == False:
-            assert(self.domain.check_codomain(new_target))
-        self.target = new_target
-        return self.target
+            assert(self.domain.check_codomain(new_codomain))
+        self.codomain = new_codomain
+        return self.codomain
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3256,7 +3262,7 @@ class field(object):
 
             Other Parameters
             ----------------
-            target : space, *optional*
+            codomain : space, *optional*
                 space wherein the transform of the output field should live
                 (default: None).
 
@@ -3296,7 +3302,7 @@ class field(object):
                     return self.pseudo_dot(x=x.val,**kwargs)
                 except(TypeError,ValueError):
                     try:
-                        return self.pseudo_dot(x=x.transform(target=x.target,overwrite=False).val,**kwargs)
+                        return self.pseudo_dot(x=x.transform(codomain=x.codomain,overwrite=False).val,**kwargs)
                     except(TypeError,ValueError):
                         raise ValueError(about._errors.cstring("ERROR: incompatible domains."))
         ## pseudo inner product (calc_pseudo_dot handles weights)
@@ -3331,7 +3337,7 @@ class field(object):
 
             Other Parameters
             ----------------
-            target : space, *optional*
+            codomain : space, *optional*
                 space wherein the transform of the output field should live
                 (default: None).
 
@@ -3370,15 +3376,15 @@ class field(object):
         return work_field
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def transform(self, target=None, overwrite=False,  **kwargs):
+    def transform(self, codomain=None, overwrite=False,  **kwargs):
         """
             Computes the transform of the field using the appropriate conjugate
             transformation.
 
             Parameters
             ----------
-            target : space, *optional*
-                Domain of the transform of the field (default:self.target)
+            codomain : space, *optional*
+                Domain of the transform of the field (default:self.codomain)
 
             overwrite : bool, *optional*
                 Whether to overwrite the field or not (default: False).
@@ -3395,22 +3401,22 @@ class field(object):
                 Otherwise, nothing is returned.
 
         """
-        if(target is None):
-            target = self.target
+        if(codomain is None):
+            codomain = self.codomain
         else:
-            assert(self.domain.check_codomain(target))
+            assert(self.domain.check_codomain(codomain))
         
         new_val = self.domain.calc_transform(self.val, 
-                                                  codomain=target,
+                                                  codomain=codomain,
                                                   **kwargs)        
                                                   
         if overwrite == True:
             return_field = self
-            return_field.set_target(new_target = self.domain, force = True)
-            return_field.set_domain(new_domain = target, force = True)
+            return_field.set_codomain(new_codomain = self.domain, force = True)
+            return_field.set_domain(new_domain = codomain, force = True)
         else:
-            return_field = self.copy_empty(domain = self.target, 
-                                           target = self.domain)
+            return_field = self.copy_empty(domain = self.codomain, 
+                                           codomain = self.domain)
         return_field.set_val(new_val = new_val)
         
         return return_field
@@ -3497,7 +3503,7 @@ class field(object):
             about.warnings.cprint("WARNING: codomain was removed from kwargs.")
 
         return self.domain.calc_power(self.get_val(),
-                                      codomain = self.target,
+                                      codomain = self.codomain,
                                       **kwargs)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -3608,7 +3614,7 @@ class field(object):
             about.warnings.cprint("WARNING: codomain was removed from kwargs.")
 
         ## draw/save the plot(s)
-        self.domain.get_plot(self.val, codomain=self.target, **kwargs)
+        self.domain.get_plot(self.val, codomain=self.codomain, **kwargs)
         
         ## restore the pylab interactiveness
         pl.matplotlib.interactive(remember_interactive)
@@ -3626,7 +3632,7 @@ class field(object):
                 "\n- val         = [...]" + \
                 "\n  - min.,max. = " + str(minmax) + \
                 "\n  - mean = " + str(mean) + \
-                "\n- target      = " + repr(self.target)
+                "\n- codomain      = " + repr(self.codomain)
 
 
     def __len__(self):

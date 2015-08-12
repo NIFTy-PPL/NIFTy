@@ -42,6 +42,7 @@ x_space = rg_space([1280, 1280], datamodel = 'd2o')                             
 #x_space = gl_space(96)
 
 k_space = x_space.get_codomain()                                 # get conjugate space
+y_space = point_space(1280*1280, datamodel='d2o')
 
 # some power spectrum
 power = (lambda k: 42 / (k + 1) ** 3)
@@ -49,7 +50,7 @@ power = (lambda k: 42 / (k + 1) ** 3)
 S = power_operator(k_space, spec=power)                          # define signal covariance
 s = S.get_random_field(domain=x_space)                           # generate signal
 
-R = response_operator(x_space, sigma=0.0, mask=1.0, assign=None) # define response
+R = response_operator(x_space, sigma=0.0, mask=1.0, assign=None, target = y_space) # define response
 d_space = R.target                                               # get data space
 
 # some noise variance; e.g., signal-to-noise ratio of 1
@@ -62,10 +63,10 @@ d = R(s) + n                                                     # compute data
 j = R.adjoint_times(N.inverse_times(d))                          # define information source
 D = propagator_operator(S=S, N=N, R=R)                           # define information propagator
 
-m = D(j, W=S, tol=1E-1, note=True)                               # reconstruct map
+m = D(j, W=S, tol=1E-2, note=True)                               # reconstruct map
 
-#s.plot(title="signal", save = 'plot_s.png')                                           # plot signal
-#d_ = field(x_space, val=d.val, target=k_space)
-#d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')                # plot data
-#m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')    # plot map
+s.plot(title="signal", save = 'plot_s.png')                                           # plot signal
+d_ = field(x_space, val=d.val, target=k_space)
+d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')                # plot data
+m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')    # plot map
 

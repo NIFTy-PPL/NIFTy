@@ -83,7 +83,8 @@ class problem(object):
         self.d = self.R(self.s) + n
 
         ## define information source
-        self.j = self.R.adjoint_times(self.N.inverse_times(self.d), target=self.k)
+        #self.j = self.R.adjoint_times(self.N.inverse_times(self.d), target=self.k)
+        self.j = self.R.adjoint_times(self.N.inverse_times(self.d))
         ## define information propagator
         self.D = propagator_operator(S=self.S, N=self.N, R=self.R)
 
