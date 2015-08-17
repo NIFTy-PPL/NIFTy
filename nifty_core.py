@@ -143,6 +143,7 @@
 from __future__ import division
 import numpy as np
 import pylab as pl
+
 from nifty_paradict import space_paradict,\
                             point_space_paradict,\
                             nested_space_paradict
@@ -904,7 +905,7 @@ class space(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __len__(self):
-        return int(self.dim(split=False))
+        return int(self.get_dim(split=False))
 
     ## _identiftier returns an object which contains all information needed 
     ## to uniquely idetnify a space. It returns a (immutable) tuple which therefore
@@ -1088,7 +1089,8 @@ class point_space(space):
         ## check datatype
         if (datatype is None):
             datatype = np.float64
-        elif (datatype not in [np.int8, 
+        elif (datatype not in [np.bool_,
+                              np.int8, 
                               np.int16, 
                               np.int32,
                               np.int64,
@@ -1202,6 +1204,8 @@ class point_space(space):
                             "conjugate" : np.conjugate,
                             "sum" : np.sum,
                             "prod" : np.prod,
+                            "unique" : np.unique,
+                            "copy" : np.copy,
                             "None" : lambda y: y}
 
         elif self.datamodel == 'd2o':
@@ -1223,6 +1227,8 @@ class point_space(space):
                         "conjugate" : lambda y: getattr(y, 'conjugate')(),
                         "sum" : lambda y: getattr(y, 'sum')(),
                         "prod" : lambda y: getattr(y, 'prod')(),
+                        "unique" : lambda y: getattr(y, 'unique')(),
+                        "copy" : lambda y: getattr(y, 'copy')(),
                         "None" : lambda y: y}
         else:
             raise NotImplementedError(about._errors.cstring(
@@ -1248,6 +1254,12 @@ class point_space(space):
                         "pow" : lambda z: getattr(z, '__pow__'),
                         "rpow" : lambda z: getattr(z, '__rpow__'),
                         "ipow" : lambda z: getattr(z, '__ipow__'),
+                        "ne" : lambda z: getattr(z, '__ne__'),
+                        "lt" : lambda z: getattr(z, '__lt__'),
+                        "le" : lambda z: getattr(z, '__le__'),
+                        "eq" : lambda z: getattr(z, '__eq__'),
+                        "ge" : lambda z: getattr(z, '__ge__'),
+                        "gt" : lambda z: getattr(z, '__gt__'),
                         "None" : lambda z: lambda u: u}
         
         if (cast & 1) != 0:
@@ -1412,16 +1424,21 @@ class point_space(space):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-    def cast(self, x, verbose = False):
+    def cast(self, x, dtype = None, verbose = False, **kwargs):
+        if dtype is not None:
+            dtype = np.dtype(dtype).type
+            
         if self.datamodel == 'd2o':
-            return self._cast_to_d2o(x = x, verbose = False)
+            return self._cast_to_d2o(x = x, dtype = dtype, verbose = verbose, 
+                                     **kwargs)
         elif self.datamodel == 'np':
-            return self._cast_to_np(x = x, verbose = False)
+            return self._cast_to_np(x = x, dtype = dtype, verbose = verbose,
+                                    **kwargs)
         else:
             raise NotImplementedError(about._errors.cstring(
                 "ERROR: function is not implemented for given datamodel."))
 
-    def _cast_to_d2o(self, x, verbose=False):
+    def _cast_to_d2o(self, x, dtype=None, verbose=False, **kwargs):
         """
             Computes valid field values from a given object, trying
             to translate the given data into a valid form. Thereby it is as 
@@ -1444,6 +1461,9 @@ class point_space(space):
                 Whether the method should raise a warning if information is 
                 lost during casting (default: False).
         """
+        if dtype is None:
+            dtype = self.datatype
+            
         ## Case 1: x is a field
         if isinstance(x, field):
             if verbose:
@@ -1452,14 +1472,14 @@ class point_space(space):
                     about.warnings.cflush(\
                     "WARNING: Getting data from foreign domain!")
             ## Extract the data, whatever it is, and cast it again
-            return self.cast(x.val)
+            return self.cast(x.val, dtype=dtype)
         
         ## Case 2: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
             ## Check the shape
             if np.any(x.shape != self.get_shape()):           
                 ## Check if at least the number of degrees of freedom is equal
-                if x.dim() == self.get_dim():
+                if x.get_dim() == self.get_dim():
                     ## If the number of dof is equal or 1, use np.reshape...
                     about.warnings.cflush(\
                     "WARNING: Trying to reshape the data. This operation is "+\
@@ -1467,20 +1487,20 @@ class point_space(space):
                     temp = x.get_full_data()
                     temp = np.reshape(temp, self.get_shape())             
                     ## ... and cast again
-                    return self.cast(temp)
+                    return self.cast(temp, dtype=dtype)
               
                 else:
                     raise ValueError(about._errors.cstring(\
                     "ERROR: Data has incompatible shape!"))
                     
             ## Check the datatype
-            if x.dtype < self.datatype:
+            if x.dtype != dtype:
                 about.warnings.cflush(\
             "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
-                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
+                + str(dtype) + " <> foreign: " + str(x.dtype) \
                 + ") and will be casted! "\
                 + "Potential loss of precision!\n")
-                temp = x.copy_empty(dtype=self.datatype)
+                temp = x.copy_empty(dtype=dtype)
                 temp.set_local_data(x.get_local_data())
                 temp.hermitian = x.hermitian
                 x = temp
@@ -1490,11 +1510,11 @@ class point_space(space):
         ## Case 3: x is something else
         ## Use general d2o casting 
         x = distributed_data_object(x, global_shape=self.get_shape(),\
-            dtype=self.datatype)       
+            dtype=dtype)       
         ## Cast the d2o
-        return self.cast(x)
+        return self.cast(x, dtype=dtype)
 
-    def _cast_to_np(self, x, verbose = False):
+    def _cast_to_np(self, x, dtype = None, verbose = False, **kwargs):
         """
             Computes valid field values from a given object, trying
             to translate the given data into a valid form. Thereby it is as 
@@ -1517,6 +1537,9 @@ class point_space(space):
                 Whether the method should raise a warning if information is 
                 lost during casting (default: False).
         """
+        if dtype is None:
+            dtype = self.datatype
+        
         ## Case 1: x is a field
         if isinstance(x, field):
             if verbose:
@@ -1525,14 +1548,14 @@ class point_space(space):
                     about.warnings.cflush(\
                     "WARNING: Getting data from foreign domain!")
             ## Extract the data, whatever it is, and cast it again
-            return self.cast(x.val)
+            return self.cast(x.val, dtype=dtype)
         
         ## Case 2: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
             ## Extract the data
             temp = x.get_full_data()
             ## Cast the resulting numpy array again
-            return self.cast(temp)
+            return self.cast(temp, dtype=dtype)
         
         elif isinstance(x, np.ndarray):
             ## Check the shape
@@ -1542,35 +1565,36 @@ class point_space(space):
                     ## If the number of dof is equal or 1, use np.reshape...
                     temp = x.reshape(self.get_shape())             
                     ## ... and cast again
-                    return self.cast(temp)
+                    return self.cast(temp, dtype=dtype)
                 elif x.size == 1:
                     temp = np.empty(shape = self.get_shape(),
-                                    dtype = self.datatype)
+                                    dtype = dtype)
                     temp[:] = x
-                    return self.cast(temp)
+                    return self.cast(temp, dtype=dtype)
                 else:
                     raise ValueError(about._errors.cstring(\
                     "ERROR: Data has incompatible shape!"))
                     
             ## Check the datatype
-            if x.dtype < self.datatype:
+            if x.dtype != dtype:
                 about.warnings.cflush(\
             "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
-                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
+                + str(dtype) + " <> foreign: " + str(x.dtype) \
                 + ") and will be casted! "\
                 + "Potential loss of precision!\n")
                 ## Fix the datatype...
-                temp = x.astype(self.datatype)
+                temp = x.astype(dtype)
                 ##... and cast again
-                return self.cast(temp)
+                return self.cast(temp, dtype=dtype)
             
             return x
                 
         ## Case 3: x is something else
         ## Use general numpy casting 
         else:
-            temp = np.empty(self.get_shape(), dtype = self.datatype)
-            temp[:] = x
+            temp = np.empty(self.get_shape(), dtype = dtype)
+            if x is not None:            
+                temp[:] = x
             return temp
 
 
@@ -1592,12 +1616,12 @@ class point_space(space):
         about.warnings.cprint("WARNING: enforce_shape is deprecated!")
 
         x = np.array(x)
-        if(np.size(x)!=self.dim(split=False)):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(x))+" <> "+str(self.dim(split=False))+" )."))
-#        elif(not np.all(np.array(np.shape(x))==self.dim(split=True))):
+        if(np.size(x)!=self.get_dim(split=False)):
+            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(x))+" <> "+str(self.get_dim(split=False))+" )."))
+#        elif(not np.all(np.array(np.shape(x))==self.get_dim(split=True))):
 #            about.warnings.cprint("WARNING: reshaping forced.")
 
-        return x.reshape(self.dim(split=True),order='C')
+        return x.reshape(self.get_dim(split=True),order='C')
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -1636,7 +1660,7 @@ class point_space(space):
         else:
             if(np.size(x)==1):
                 if(extend):
-                    x = self.datatype(x)*np.ones(self.dim(split=True),dtype=self.datatype,order='C')
+                    x = self.datatype(x)*np.ones(self.get_dim(split=True),dtype=self.datatype,order='C')
                 else:
                     if(np.isscalar(x)):
                         x = np.array([x],dtype=self.datatype)
@@ -2011,14 +2035,22 @@ class point_space(space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_real_Q(self, x):
-       
-
         try:
             return x.isreal().all()
         except(AttributeError):
             return np.all(np.isreal(x))
 
-
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def calc_bincount(self, x, weights=None, minlength=None):
+        if self.datamodel == 'np':
+            return np.bincount(x, weights=weights, minlength=minlength)
+        elif self.datamodel == 'd2o':
+            return x.bincount(weights=weights, minlength=minlength)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
+            
+        
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_plot(self,x,title="",vmin=None,vmax=None,unit="",norm=None,other=None,legend=False,**kwargs):
@@ -2187,10 +2219,10 @@ class nested_space(space):
             elif(isinstance(nn,nested_space)): ## no 2nd level nesting
                 for nn_ in nn.nest:
                     purenest.append(nn_)
-                    pre_para = pre_para + [nn_.dim(split=True)]
+                    pre_para = pre_para + [nn_.get_dim(split=True)]
             else:
                 purenest.append(nn)
-                pre_para = pre_para + [nn.dim(split=True)]
+                pre_para = pre_para + [nn.get_dim(split=True)]
         if(len(purenest)<2):
             raise ValueError(about._errors.cstring("ERROR: invalid input."))
         self.nest = purenest
@@ -2333,14 +2365,14 @@ class nested_space(space):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
-                    subshape = self.para[:-np.size(self.nest[-1].dim(split=True))]
+                    subshape = self.para[:-np.size(self.nest[-1].get_dim(split=True))]
                     x = np.tensordot(np.ones(subshape,dtype=self.datatype,order='C'),x.val,axes=0)
             elif(isinstance(x.domain,nested_space)):
                 if(self.datatype is not x.domain.datatype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '"+str(np.result_type(self.datatype))+"' <> '"+str(np.result_type(x.domain.datatype))+"' )."))
                 else:
                     if(np.all(self.nest[-len(x.domain.nest):]==x.domain.nest)):
-                        subshape = self.para[:np.sum([np.size(nn.dim(split=True)) for nn in self.nest[:-len(x.domain.nest)]],axis=0,dtype=np.int,out=None)]
+                        subshape = self.para[:np.sum([np.size(nn.get_dim(split=True)) for nn in self.nest[:-len(x.domain.nest)]],axis=0,dtype=np.int,out=None)]
                         x = np.tensordot(np.ones(subshape,dtype=self.datatype,order='C'),x.val,axes=0)
                     else:
                         raise ValueError(about._errors.cstring("ERROR: inequal domains."))
@@ -2360,18 +2392,18 @@ class nested_space(space):
                 if(np.ndim(x)<np.size(self.para)):
                     subshape = np.array([],dtype=np.int)
                     for ii in range(len(self.nest))[::-1]:
-                        subshape = np.append(self.nest[ii].dim(split=True),subshape,axis=None)
+                        subshape = np.append(self.nest[ii].get_dim(split=True),subshape,axis=None)
                         if(np.all(np.array(np.shape(x))==subshape)):
-                            subshape = self.para[:np.sum([np.size(nn.dim(split=True)) for nn in self.nest[:ii]],axis=0,dtype=np.int,out=None)]
+                            subshape = self.para[:np.sum([np.size(nn.get_dim(split=True)) for nn in self.nest[:ii]],axis=0,dtype=np.int,out=None)]
                             x = np.tensordot(np.ones(subshape,dtype=self.datatype,order='C'),x,axes=0)
                             break
                 else:
                     x = self.enforce_shape(x)
 
         if(np.size(x)!=1):
-            subdim = np.prod(self.para[:-np.size(self.nest[-1].dim(split=True))],axis=0,dtype=np.int,out=None)
+            subdim = np.prod(self.para[:-np.size(self.nest[-1].get_dim(split=True))],axis=0,dtype=np.int,out=None)
             ## enforce special properties
-            x = x.reshape([subdim]+self.nest[-1].dim(split=True).tolist(),order='C')
+            x = x.reshape([subdim]+self.nest[-1].get_dim(split=True).tolist(),order='C')
             x = np.array([self.nest[-1].enforce_values(xx,extend=True) for xx in x],dtype=self.datatype).reshape(self.para,order='C')
 
         ## check finiteness
@@ -2418,23 +2450,23 @@ class nested_space(space):
         arg = random.parse_arguments(self,**kwargs)
 
         if(arg is None):
-            return np.zeros(self.dim(split=True),dtype=self.datatype,order='C')
+            return np.zeros(self.get_dim(split=True),dtype=self.datatype,order='C')
 
         elif(arg[0]=="pm1"):
-            x = random.pm1(datatype=self.datatype,shape=self.dim(split=True))
+            x = random.pm1(datatype=self.datatype,shape=self.get_dim(split=True))
 
         elif(arg[0]=="gau"):
-            x = random.gau(datatype=self.datatype,shape=self.dim(split=True),mean=None,dev=arg[2],var=arg[3])
+            x = random.gau(datatype=self.datatype,shape=self.get_dim(split=True),mean=None,dev=arg[2],var=arg[3])
 
         elif(arg[0]=="uni"):
-            x = random.uni(datatype=self.datatype,shape=self.dim(split=True),vmin=arg[1],vmax=arg[2])
+            x = random.uni(datatype=self.datatype,shape=self.get_dim(split=True),vmin=arg[1],vmax=arg[2])
 
         else:
             raise KeyError(about._errors.cstring("ERROR: unsupported random key '"+str(arg[0])+"'."))
 
-        subdim = np.prod(self.para[:-np.size(self.nest[-1].dim(split=True))],axis=0,dtype=np.int,out=None)
+        subdim = np.prod(self.para[:-np.size(self.nest[-1].get_dim(split=True))],axis=0,dtype=np.int,out=None)
         ## enforce special properties
-        x = x.reshape([subdim]+self.nest[-1].dim(split=True).tolist(),order='C')
+        x = x.reshape([subdim]+self.nest[-1].get_dim(split=True).tolist(),order='C')
         x = np.array([self.nest[-1].enforce_values(xx,extend=True) for xx in x],dtype=self.datatype).reshape(self.para,order='C')
 
         return x
@@ -2663,7 +2695,7 @@ class nested_space(space):
         ## analyse (sub)array
         dotspace = None
         subspace = None
-        if(np.size(y)==1)or(np.all(np.array(np.shape(y))==self.nest[-1].dim(split=True))):
+        if(np.size(y)==1)or(np.all(np.array(np.shape(y))==self.nest[-1].get_dim(split=True))):
             dotspace = self.nest[-1]
             if(len(self.nest)==2):
                 subspace = self.nest[0]
@@ -2673,9 +2705,9 @@ class nested_space(space):
             about.warnings.cprint("WARNING: computing (normal) inner product.")
             return self.calc_dot(x,self.enforce_values(y,extend=True))
         else:
-            dotshape = self.nest[-1].dim(split=True)
+            dotshape = self.nest[-1].get_dim(split=True)
             for ii in range(len(self.nest)-1)[::-1]:
-                dotshape = np.append(self.nest[ii].dim(split=True),dotshape,axis=None)
+                dotshape = np.append(self.nest[ii].get_dim(split=True),dotshape,axis=None)
                 if(np.all(np.array(np.shape(y))==dotshape)):
                     dotspace = nested_space(self.nest[ii:])
                     if(ii<2):
@@ -2692,8 +2724,8 @@ class nested_space(space):
         if(not dotspace.discrete):
             y = dotspace.calc_weight(y,power=1)
         ## pseudo inner product(s)
-        x = x.reshape([subspace.dim(split=False)]+dotspace.dim(split=True).tolist(),order='C')
-        pot = np.array([dotspace.calc_dot(xx,y) for xx in x],dtype=subspace.datatype).reshape(subspace.dim(split=True),order='C')
+        x = x.reshape([subspace.get_dim(split=False)]+dotspace.get_dim(split=True).tolist(),order='C')
+        pot = np.array([dotspace.calc_dot(xx,y) for xx in x],dtype=subspace.datatype).reshape(subspace.get_dim(split=True),order='C')
         return field(subspace,val=pot,**kwargs)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -2739,10 +2771,10 @@ class nested_space(space):
         elif(isinstance(codomain,nested_space)):
             if(np.all(codomain.nest[:-1]==self.nest[:-1]))and(coorder is None):
                 ## reshape
-                subdim = np.prod(self.para[:-np.size(self.nest[-1].dim(split=True))],axis=0,dtype=np.int,out=None)
-                x = x.reshape([subdim]+self.nest[-1].dim(split=True).tolist(),order='C')
+                subdim = np.prod(self.para[:-np.size(self.nest[-1].get_dim(split=True))],axis=0,dtype=np.int,out=None)
+                x = x.reshape([subdim]+self.nest[-1].get_dim(split=True).tolist(),order='C')
                 ## transform
-                Tx = np.array([self.nest[-1].calc_transform(xx,codomain=codomain.nest[-1],**kwargs) for xx in x],dtype=codomain.datatype).reshape(codomain.dim(split=True),order='C')
+                Tx = np.array([self.nest[-1].calc_transform(xx,codomain=codomain.nest[-1],**kwargs) for xx in x],dtype=codomain.datatype).reshape(codomain.get_dim(split=True),order='C')
             elif(len(codomain.nest)==len(self.nest)):#and(np.all([nn in self.nest for nn in codomain.nest]))and(np.all([nn in codomain.nest for nn in self.nest])):
                 ## check coorder
                 if(coorder is None):
@@ -2765,7 +2797,7 @@ class nested_space(space):
                 ## compute axes permutation
                 lim = np.zeros((len(self.nest),2),dtype=np.int)
                 for ii in xrange(len(self.nest)):
-                    lim[ii] = np.array([lim[ii-1][1],lim[ii-1][1]+np.size(self.nest[coorder[ii]].dim(split=True))])
+                    lim[ii] = np.array([lim[ii-1][1],lim[ii-1][1]+np.size(self.nest[coorder[ii]].get_dim(split=True))])
                 lim = lim[coorder]
                 reorder = []
                 for ii in xrange(len(self.nest)):
@@ -2823,10 +2855,10 @@ class nested_space(space):
             return x
         else:
             ## reshape
-            subdim = np.prod(self.para[:-np.size(self.nest[-1].dim(split=True))],axis=0,dtype=np.int,out=None)
-            x = x.reshape([subdim]+self.nest[-1].dim(split=True).tolist(),order='C')
+            subdim = np.prod(self.para[:-np.size(self.nest[-1].get_dim(split=True))],axis=0,dtype=np.int,out=None)
+            x = x.reshape([subdim]+self.nest[-1].get_dim(split=True).tolist(),order='C')
             ## smooth
-            return np.array([self.nest[-1].calc_smooth(xx,sigma=sigma,**kwargs) for xx in x],dtype=self.datatype).reshape(self.dim(split=True),order='C')
+            return np.array([self.nest[-1].calc_smooth(xx,sigma=sigma,**kwargs) for xx in x],dtype=self.datatype).reshape(self.get_dim(split=True),order='C')
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2938,7 +2970,7 @@ class field(object):
             The space wherein the operator output lives (default: domain).
 
     """
-    def __init__(self, domain, val=None, codomain=None, idim=0, **kwargs):
+    def __init__(self, domain, val=None, codomain=None, ishape=None, **kwargs):
         """
             Sets the attributes for a field class instance.
 
@@ -2973,9 +3005,26 @@ class field(object):
             assert(self.domain.check_codomain(codomain))
         self.codomain = codomain
 
-        self.idim = np.uint(idim)
+        if ishape is not None:        
+            ishape = tuple(np.array(ishape, dtype = np.uint).flatten())
+        elif val is not None:
+            try:
+                if val.dtype.type == np.object_:
+                    ishape = val.shape
+                else:
+                    ishape = ()
+            except(AttributeError):
+                try:
+                    ishape = val.ishape
+                except(AttributeError):
+                    ishape = ()
+        else:
+            ishape = ()
+        self.ishape = ishape
+                
+            
         
-        if val == None:
+        if val is None:
             if kwargs == {}:
                 val = self._map(lambda: self.domain.cast(0.))
             else:
@@ -2997,110 +3046,176 @@ class field(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _map(self, function, *args):
-        if self.idim == 0:
+        if self.ishape == ():
             return function(*args)
         else:
             if args == ():
-                result = []
-                for i in xrange(self.idim):
-                    result.append(function())
+                result = np.empty(self.ishape, dtype=np.object)
+                for i in xrange(np.prod(self.ishape)):
+                    ii = np.unravel_index(i, self.ishape)
+                    result[ii] = function()
                 return result
             else:
-                return map(function, *args)
+                ## define a helper function in order to clip the get-indices
+                ## to be suitable for the foreign arrays in args.
+                ## This allows you to do operations, like adding to fields 
+                ## with ishape (3,4,3) and (3,4,1)
+                def get_clipped(w, ind):
+                    w_shape = np.array(np.shape(w))
+                    get_tuple = tuple(np.clip(ind, 0, w_shape-1))
+                    return w[get_tuple]
+                result = np.empty_like(args[0])
+                for i in xrange(np.prod(result.shape)):
+                    ii = np.unravel_index(i, result.shape)
+                    result[ii] = function(*map(
+                                            lambda z: get_clipped(z, ii), args)
+                                          )
+                    #result[ii] = function(*map(lambda z: z[ii], args))
+                return result
 
-    def cast(self, x = None):
-        if self.idim == 0:
-            scalarized_x = self._cast_to_scalar_helper(x)
-            return self.domain.cast(scalarized_x)
+    def cast(self, x = None, ishape = None):
+        if ishape is None:
+            ishape = self.ishape
+        casted_x = self._cast_to_ishape(x, ishape=ishape)
+        if ishape == ():
+            return self.domain.cast(casted_x)
         else:
-            vectorized_x = self._cast_to_vector_helper(x)
             return self._map(lambda z: self.domain.cast(z), 
-                             vectorized_x)
+                             casted_x)
+    
+    def _cast_to_ishape(self, x, ishape = None):
+        if ishape is None:
+            ishape = self.ishape
+
+        if isinstance(x, field):
+            x = x.get_val()
+        if ishape == ():
+            casted_x = self._cast_to_scalar_helper(x)
+        else:
+            casted_x = self._cast_to_tensor_helper(x, ishape)
+        return casted_x
+        
     
     def _cast_to_scalar_helper(self, x):
-        ## If x is a list, take the first entry and cast it with self.domain        
-        if isinstance(x, list):
-            if len(x) >= 1:
-                if len(x) > 1:
-                    about.warnings.cprint(
+        ## if x is already a scalar or does fit directly, return it
+        self_shape = tuple(self.domain.get_shape())        
+        x_shape = np.shape(x)        
+        if np.isscalar(x) or x_shape == self_shape:
+            return x
+
+        
+
+        ## check if the given object is a 'container'
+        try:
+            container_Q = (x.dtype.type == np.object_)
+        except(AttributeError):
+            container_Q = False
+            
+        if container_Q == True:
+            ## extract the first element. This works on 0-d ndarrays, too.         
+            result = x[(0,)*len(x_shape)]
+            return result
+    
+        ## if x is no container-type, it could be that the needed shape 
+        ## for self.domain is encapsulated in x
+        if x_shape[len(x_shape)-len(self_shape):] == self_shape:
+            if x_shape[:len(x_shape)-len(self_shape)] != (1,):
+                about.warnings.cprint(
                             "WARNING: discarding all internal dimensions "+\
                             "except for the first one.")
-                return x[0]
-            ## If the given list is empty, cast None.
-            elif len(x) == 0:
-                return None
-        ## x is an encapsulated data object of right shape
-        elif np.shape(x) == (1,) + tuple(self.domain.get_shape()):
-            return x[0]
+            result = x
+            for i in xrange(len(x_shape)-len(self_shape)):
+                result = result[0]
+            return result
+        
         ## In all other cases, cast x directly 
-        else:
-            return x
+        return x
+
+
+    def _cast_to_tensor_helper(self, x, ishape = None):
+        if ishape is None:
+            ishape = self.ishape
         
         
-    def _cast_to_vector_helper(self, x):
-        ## Check if x is a list of proper length 
+        ## Check if x is a container of proper length 
         ## containing something which will then checked by the domain-space
-        if isinstance(x, list):
-            if len(x) == self.idim:
+        
+        x_shape = np.shape(x) 
+        self_shape =  tuple(self.domain.get_shape())
+        try:
+            container_Q = (x.dtype.type == np.object_)
+        except(AttributeError):
+            container_Q = False 
+            
+        if container_Q == True:
+            if x_shape == ishape:
                 return x
+            elif x_shape == ishape[:len(x_shape)]:
+                return x.reshape(x_shape + 
+                                (1,)*(len(ishape)-len(x_shape)))
                 
         ## Slow track: x could be a pure ndarray
-        x_shape = np.shape(x)
-        ## Case 1: The overall shape is already the right one
-        if x_shape == (self.idim,) + tuple(self.domain.get_shape()):
-            ## Iterate over the outermost dimension and cast the inner spaces
-            result = []
-            for i in xrange(self.idim):
-                try:
-                    result.append(x[i].copy())                
-                except(AttributeError):
-                    result.append(np.copy(x[i]))
-        
-        ## Case 2: The overall shape does not match directly. 
-        ## Check if the input has shape (1, self.domain.shape)
-        elif x_shape == (1,) + tuple(self.domain.get_shape()):
-            ## Expand the first entry
-            result = []
-            for i in xrange(self.idim):
-                try:
-                    result.append(x[0].copy())                
-                except(AttributeError):
-                    result.append(np.copy(x[0]))
 
-        ## Case 3: fallback: try to cast x with self.domain 
-        else:
-            #Expand as is 
-            result = []
-            for i in xrange(self.idim):
+        ## Case 1 and 2: 
+        ## 1: There are cases where np.shape will only find the container
+        ## although it was no np.object array; e.g. for [a,1].
+        ## 2: The overall shape is already the right one
+        if x_shape == ishape or x_shape == (ishape + self_shape):
+            ## Iterate over the outermost dimension and cast the inner spaces
+            result = np.empty(ishape, dtype = np.object)
+            for i in xrange(np.prod(ishape)):
+                ii = np.unravel_index(i, ishape)
                 try:
-                    result.append(x.copy())                
-                except(AttributeError):
-                    result.append(x)
+                    result[ii] = x[ii]                 
+                except(TypeError):
+                    extracted = x
+                    for j in xrange(len(ii)):                    
+                        extracted = extracted[ii[j]]
+                    result[ii] = extracted 
+        
+        ## Case 3: The overall shape does not match directly. 
+        ## Check if the input has shape (1, self.domain.shape)
+        elif x_shape == ((1,) + self_shape):            ## Iterate over the outermost dimension and cast the inner spaces
+            result = np.empty(ishape, dtype = np.object)
+            for i in xrange(np.prod(ishape)):
+                ii = np.unravel_index(i, ishape)
+                result[ii] = x[0]                 
+        
+        ## Case 4: fallback: try to cast x with self.domain 
+        else:            ## Iterate over the outermost dimension and cast the inner spaces
+            result = np.empty(ishape, dtype = np.object)
+            for i in xrange(np.prod(ishape)):
+                ii = np.unravel_index(i, ishape)
+                result[ii] = x
+        
         return result
 
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def copy(self, domain=None, codomain=None):
+        copied_val = self._map(
+            lambda z: self.domain.unary_operation(z, op='copy'),
+            self.get_val())
         new_field = self.copy_empty(domain=domain, codomain=codomain)
-        new_field.val = new_field.cast(self.val.copy())
+        new_field.set_val(new_val = copied_val)
         return new_field
     
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def copy_empty(self, domain=None, codomain=None, idim=None, **kwargs):
+    def copy_empty(self, domain=None, codomain=None, ishape=None, **kwargs):
         if domain == None:
             domain = self.domain
         if codomain == None:
             codomain = self.codomain
-        if idim == None:
-            idim = self.idim
-        new_field = field(domain=domain, codomain=codomain, idim=idim, 
+        if ishape == None:
+            ishape = self.ishape
+        new_field = field(domain=domain, codomain=codomain, ishape=ishape, 
                           **kwargs) 
         return new_field
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dim(self, split=False):
+    def get_dim(self, split=False):
         """
             Computes the (array) dimension of the underlying space.
 
@@ -3117,10 +3232,13 @@ class field(object):
                 Dimension of space.
 
         """
-        return self.domain.dim(split=split)
+        return self.domain.get_dim(split=split)
 
-    def get_idim(self):
-        return self.idim
+    def get_shape(self):
+        return self.domain.get_shape()
+        
+    def get_ishape(self):
+        return self.ishape
         
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3158,19 +3276,19 @@ class field(object):
                 "' and '" + str(np.result_type(self.domain.datatype)) +
                 "'."))
         ## Check if the total dimensions match
-        elif newdomain.dim() != self.domain.dim():
+        elif newdomain.get_dim() != self.domain.get_dim():
             raise ValueError(about._errors.cstring(
-            "ERROR: dimension mismatch ( " + str(newdomain.dim()) + 
-            " <> " + str(self.domain.dim()) + " )."))
+            "ERROR: dimension mismatch ( " + str(newdomain.get_dim()) + 
+            " <> " + str(self.domain.get_dim()) + " )."))
 
         if force == True:
             self.set_domain(new_domain = newdomain, force = True)
         else:
-            if not np.all(newdomain.dim(split=True) == \
-                    self.domain.dim(split=True)):
+            if not np.all(newdomain.get_dim(split=True) == \
+                    self.domain.get_dim(split=True)):
                 raise ValueError(about._errors.cstring(
-                "ERROR: shape mismatch ( " + str(newdomain.dim(split=True)) + 
-                " <> " + str(self.domain.dim(split=True)) + " )."))
+                "ERROR: shape mismatch ( " + str(newdomain.get_dim(split=True)) + 
+                " <> " + str(self.domain.get_dim(split=True)) + " )."))
             else:
                 self.domain = newdomain
         ## Use the casting of the new domain in order to make the old data fit.
@@ -3189,7 +3307,7 @@ class field(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_val(self, new_val = None):
+    def set_val(self, new_val = None, copy = False):
         """
             Resets the field values.
 
@@ -3200,7 +3318,13 @@ class field(object):
 
         """
         if new_val is not None:
-            self.val = new_val
+            if copy == True:
+                try:
+                    self.val = new_val.copy()
+                except(AttributeError):
+                    self.val = np.copy(new_val)
+            else:
+                self.val = new_val
         return self.val
         
     def get_val(self):
@@ -3273,7 +3397,7 @@ class field(object):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dot(self, x=None):
+    def dot(self, x=None, axis=None, bare=False):
         """
             Computes the inner product of the field with a given object
             implying the correct volume factor needed to reflect the
@@ -3292,7 +3416,7 @@ class field(object):
 
         """
         ## Case 1: x equals None        
-        if x == None:
+        if x is None:
             return None
 
         ## Case 2: x is a field         
@@ -3301,21 +3425,20 @@ class field(object):
             ## recursive call
             try:
                 if self.domain.fourier != x.domain.fourier:
-                    return self.dot(x = x.transform())
+                    return self.dot(x = x.transform(), axis=axis)
             except(AttributeError):
                 pass
             
             ## whether the domain matches exactly or not:
             ## extract the data from x and try to dot with this
-            return self.dot(x = x.get_val())
+            return self.dot(x = x.get_val(), axis=axis)
 
         ## Case 3: x is something else
         else:
             ## Cast the input in order to cure datatype and shape differences
-            casted_x = self.cast(x)
+            casted_x = self._cast_to_ishape(x)
             ## Compute the dot respecting the fact of discrete/continous spaces             
-            
-            if self.domain.discrete == True:
+            if self.domain.discrete == True or bare==True:
                 result = self._map(
                     lambda z1, z2: self.domain.calc_dot(z1, z2),
                     self.get_val(), 
@@ -3323,9 +3446,11 @@ class field(object):
             else:
                 result = self._map(
                     lambda z1, z2: self.domain.calc_dot(
-                                z1, self.domain.calc_weight(z2, power = 1)),
+                                self.domain.calc_weight(z1, power = 1),
+                                z2),
                     self.get_val(), casted_x)
-            return np.prod(result)
+            
+            return np.sum(result, axis=axis)
   
     def norm(self, q=0.5):
         """
@@ -3348,10 +3473,63 @@ class field(object):
             return self.dot(x = self**(q-1))**(1/q)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    ## TODO: rework the nested space semantics in order to become compatible 
-    ## with the usual space interface
 
-    def pseudo_dot(self,x=1,**kwargs):
+    def outer_dot(self, x=1, axis=None):
+
+        ## Use the fact that self.val is a numpy array of dtype np.object
+        ## -> The shape casting, etc... can be done by numpy
+        ## If ishape == (), self.val will be multiplied with x directly.
+        if self.ishape == ():
+            return self*x
+        new_val = np.sum(self.get_val() * x, axis=axis)
+        ## if axis != None, the contraction was not overarching        
+        if np.dtype(new_val.dtype).type == np.object_:        
+            new_field = self.copy_empty(ishape = new_val.shape)
+        else:
+            new_field = self.copy_empty(ishape = ())
+        new_field.set_val(new_val = new_val)
+        return new_field
+    
+            
+      
+#            ## x must be a scalar or an array/list of shape self.ishape
+#            if np.isscalar(x) == True:
+#                x = np.empty(self.ishape, dtype=np.object)
+#                x[...] = x
+#            else:
+#                
+#                x = np.array(x)
+#                if np.all(np.array(np.shape(x)) == 1):
+#                    temp = np.empty(self.idim, dtype=np.object)
+#                    temp[...] = x.flatten()[0]
+#                    x = temp
+#                elif np.shape(x) == self.idim:
+#                    temp = np.empty(self.idim, dtype=np.object)
+#                    for i in xrange(np.prod(self.idim)):
+#                        ii = np.unravel_index(i, self.idim)
+#                        temp[ii] = x[ii]
+#                    x = temp
+          
+                                        
+#        else:
+#            x = list(np.array(x).flatten())
+#            if len(x) == 1:
+#                x = x*self.ishape
+#            elif len(x) != self.ishape:
+#                raise ValueError(about._errors.cstring(
+#                    "ERROR: x must be a scalar or a list of length " +\
+#                    str(self.ishape)))
+#        old_val = self.get_val()
+#        new_val = old_val[0] * x[0]
+#        for i in xrange(1, self.ishape):
+#            new_val += old_val[i] * x[i]
+#        new_field = self.copy_empty(ishape = 0)
+#        new_field.set_val(new_val = new_val)
+#        return new_field
+#        
+
+
+    def pseudo_dot_old(self,x=1,**kwargs):
         """
             Computes the pseudo inner product of the field with a given object
             implying the correct volume factor needed to reflect the
@@ -3400,7 +3578,7 @@ class field(object):
             return self.dot(x=x)
         ## strip field (calc_pseudo_dot handles subspace)
         if(isinstance(x,field)):
-            if(np.size(x.dim(split=True))>np.size(self.dim(split=True))): ## switch
+            if(np.size(x.get_dim(split=True))>np.size(self.get_dim(split=True))): ## switch
                 return x.pseudo_dot(x=self,**kwargs)
             else:
                 try:
@@ -3417,19 +3595,63 @@ class field(object):
             else:
                 x = np.array(x,dtype=self.domain.datatype)
 
-            if(np.size(x)>self.dim(split=False)):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(x))+" <> "+str(self.dim(split=False))+" )."))
-            elif(np.size(x)==self.dim(split=False)):
+            if(np.size(x)>self.get_dim(split=False)):
+                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( "+str(np.size(x))+" <> "+str(self.get_dim(split=False))+" )."))
+            elif(np.size(x)==self.get_dim(split=False)):
                 about.warnings.cprint("WARNING: computing (normal) inner product.")
                 return self.dot(x=x)
             else:
                 return self.domain.calc_pseudo_dot(self.val,x,**kwargs)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    ## TODO: rework the nested space semantics in order to become compatible 
-    ## with the usual space interface
+    
+    def tensor_product(self, x=None):
+        if x is None:
+            return self
+        elif np.isscalar(x) == True:
+            return self * x
+        else:   
+            if self.ishape == ():
+                temp_val = self.get_val()
+                old_val = np.empty((1,), dtype=np.object)
+                old_val[0] = temp_val
+            else:
+                old_val = self.get_val()
 
-    def tensor_dot(self,x=None,**kwargs):
+            new_val = np.tensordot(old_val, x, axes=0)
+
+            if self.ishape == ():
+                new_val = new_val[0]                
+            new_field = self.copy_empty(ishape = new_val.shape)
+            new_field.set_val(new_val = new_val)
+            
+            return new_field
+            
+        
+#            
+#        if np.isscalar(x) == True:
+#            return self * x
+#
+#                    
+#        if isinstance(x, list) == True or\
+#           isinstance(x, tuple) == True or\
+#           isinstance(x, np.ndarray) == True:        
+#            x = list(np.array(x).flatten())
+#
+#            old_val = self.get_val()
+#            new_val = []
+#            for i in xrange(len(x)):
+#                if self.ishape == 0:
+#                    new_val.append(old_val * x[i])
+#                else:
+#                    for j in xrange(self.ishape):
+#                        new_val.append(old_val[j] * x[i])
+#            new_field = self.copy_empty(ishape = self.ishape*len(x))
+#            new_field.set_val(new_val = new_val)
+#            return new_field
+        
+    
+    def tensor_dot_old(self,x=None,**kwargs):
         """
             Computes the tensor product of a field defined on a arbitrary domain
             with a given object defined on another arbitrary domain.
@@ -3477,7 +3699,9 @@ class field(object):
         else:
             work_field = self.copy_empty()
             
-        new_val = self._map(lambda z: z.conjugate(), self.get_val())
+        new_val = self._map(
+                    lambda z: self.domain.unary_operation(z, 'conjugate'), 
+                    self.get_val())
         work_field.set_val(new_val = new_val)
         
         return work_field
@@ -3633,7 +3857,7 @@ class field(object):
         return diagonal_operator(domain = self.domain,
                                  diag = self.get_val(),
                                  bare = False,
-                                 idim = self.idim)
+                                 ishape = self.ishape)
 
     def inverse_hat(self):
         """
@@ -3655,7 +3879,7 @@ class field(object):
             return diagonal_operator(domain = self.domain,
                                      diag = (1/self).get_val(),
                                      bare = False,
-                                     idim = self.idim)
+                                     ishape = self.ishape)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -3748,36 +3972,60 @@ class field(object):
                 "\n  - min.,max. = " + str(minmax) + \
                 "\n  - mean = " + str(mean) + \
                 "\n- codomain      = " + repr(self.codomain) + \
-                "\n- idim          = " + str(self.idim)
+                "\n- ishape          = " + str(self.ishape)
 
     def __len__(self):
-        return int(self.dim(split=True)[0])
+        return int(self.get_dim(split=True)[0])
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __getitem__(self, key):
         if np.isscalar(key) == True or isinstance(key, slice):
             key = (key, )
-        if self.idim == 0:
+        if self.ishape == ():
             return self.domain.getitem(self.get_val(), key)
         else:
-            gotten = self.get_val()[key[0]]
-            if len(key) > 1:
-                gotten = self._map(lambda z: self.domain.getitem(z, key[1:]),
-                                   gotten)
+            gotten = self.get_val()[key[:len(self.ishape)]]
+            try:
+                is_data_container = (gotten.dtype.type == np.object_)
+            except(AttributeError):
+                is_data_container = False
+            
+            if len(key) > len(self.ishape):            
+                if is_data_container == True:                
+                    gotten = self._map(lambda z: self.domain.getitem(z, 
+                                                    key[len(self.ishape):]),
+                                       gotten)
+                else:
+                    gotten = self.domain.getitem(gotten, 
+                                                 key[len(self.ishape):])
             return gotten         
 
     def __setitem__(self, key, value):
         if np.isscalar(key) or isinstance(key, slice):
             key = (key, )
-        if self.idim == 0:
+        if self.ishape == ():
             return self.domain.setitem(self.get_val(), value, key)
         else:
-            gotten = self.get_val()[key[0]]
-            if len(key) > 1:
-                gotten = self._map(
-                    lambda z1, z2: self.domain.setitem(z1, key[1:], z2),
-                                   gotten, value)
+            if len(key) > len(self.ishape):            
+                gotten = self.get_val()[key[:len(self.ishape)]]
+                try:
+                    is_data_container = (gotten.dtype.type == np.object_)
+                except(AttributeError):
+                    is_data_container = False
+                    
+                if is_data_container == True:                                
+                    gotten = self._map(
+                            lambda z1, z2: self.domain.setitem(z1, z2,
+                                            key[len(self.ishape):]),
+                            gotten, value)
+                else:
+                    gotten = self.domain.setitem(gotten, value,
+                                                 key[len(self.ishape):])
+            else:
+                dummy = np.empty(self.ishape)
+                gotten = self.val.__setitem__(key, self.cast(value, 
+                                          ishape=np.shape(dummy[key])))
             return gotten
     
 
@@ -4006,19 +4254,19 @@ class field(object):
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    ## TODO: Rework to new structure!
 
     def _binary_helper(self, other, op='None', inplace = False):        
+        ## the other object could be a field/operator. Try to extract its data.
         try:
             other_val = other.get_val()
         except(AttributeError):
             other_val = other
         
         ## bring other_val into the right shape
-        if self.idim == 0:
+        if self.ishape == ():
             other_val = self._cast_to_scalar_helper(other_val)
         else:
-            other_val = self._cast_to_vector_helper(other_val)
+            other_val = self._cast_to_tensor_helper(other_val)
         
         new_val = self._map(
             lambda z1, z2: self.domain.binary_operation(z1, z2, op=op, cast=0),
@@ -4070,6 +4318,28 @@ class field(object):
     def __ipow__(self, other):
         return self._binary_helper(other, op='ipow', inplace = True)    
     
+    def __lt__(self, other):
+        return self._binary_helper(other, op='lt')
+    def __le__(self, other):
+        return self._binary_helper(other, op='le')    
+
+    def __ne__(self, other):
+        if other is None:
+            return True
+        else:             
+            return self._binary_helper(other, op='ne')
+    
+    def __eq__(self, other):
+        if other is None:
+            return False
+        else:             
+            return self._binary_helper(other, op='eq')
+            
+    def __ge__(self, other):
+        return self._binary_helper(other, op='ge')
+    def __gt__(self, other):
+        return self._binary_helper(other, op='gt')
+
 
 
 ##=============================================================================

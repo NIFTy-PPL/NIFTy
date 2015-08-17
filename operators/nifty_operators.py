@@ -188,14 +188,14 @@ class operator(object):
 
         self.para = para
 
-
-    @property
-    def val(self):
-        return self._val
-    
-    @val.setter
-    def val(self, x):
-        self._val = self.domain.cast(x)
+#
+#    @property
+#    def val(self):
+#        return self._val
+#    
+#    @val.setter
+#    def val(self, x):
+#        self._val = self.domain.cast(x)
         
     
     def set_val(self, new_val):
@@ -208,7 +208,7 @@ class operator(object):
                 New field values either as a constant or an arbitrary array.
 
         """
-        self.val = new_val
+        self.val = self.domain.cast(new_val)
         return self.val
         
     def get_val(self):
@@ -1648,11 +1648,11 @@ class diagonal_operator(operator):
                 
         
         if (domain is None) or (domain == self.domain):
-            if(not self.domain.discrete)and(bare):
+            if self.domain.discrete == False and bare == True:
                 diag_val = self.domain.calc_weight(self.val, power=-1)
             else:
                 diag_val = self.val
-            diag = field(self.domain, codomain = self.codomain, val=diag_val)
+            diag = field(self.domain, codomain = self.codomain, val = diag_val)
         else:
             diag = super(diagonal_operator, self).diag(bare=bare, 
                                                        domain = domain,
@@ -1759,8 +1759,9 @@ class diagonal_operator(operator):
         
         if (domain is None) or (domain == self.domain):
             inverse_val = 1./self.val
-            if(not self.domain.discrete)and(bare):
-                inverse_diag_val = self.domain.calc_weight(inverse_val, power=-1)
+            if self.domain.discrete == False and bare == True:
+                inverse_diag_val = self.domain.calc_weight(inverse_val, 
+                                                           power=-1)
             else:
                 inverse_diag_val = inverse_val
             inverse_diag = field(self.domain, codomain = self.codomain, 
@@ -2385,8 +2386,407 @@ class power_operator(diagonal_operator):
 
 
 ##-----------------------------------------------------------------------------
-
 class projection_operator(operator):
+    """
+        ..                                     __                       __     __
+        ..                                   /__/                     /  /_  /__/
+        ..      ______    _____   ______     __   _______   _______  /   _/  __   ______    __ ___
+        ..    /   _   | /   __/ /   _   |  /  / /   __  / /   ____/ /  /   /  / /   _   | /   _   |
+        ..   /  /_/  / /  /    /  /_/  /  /  / /  /____/ /  /____  /  /_  /  / /  /_/  / /  / /  /
+        ..  /   ____/ /__/     \______/  /  /  \______/  \______/  \___/ /__/  \______/ /__/ /__/  operator class
+        .. /__/                        /___/
+
+        NIFTY subclass for projection operators
+
+        Parameters
+        ----------
+        domain : space
+            The space wherein valid arguments live.
+        assign : ndarray, *optional*
+            Assignments of domain items to projection bands. An array
+            of integers, negative integers are associated with the
+            nullspace of the projection. (default: None)
+
+        Other Parameters
+        ----------------
+        log : bool, *optional*
+            Flag specifying if the spectral binning is performed on logarithmic
+            scale or not; if set, the number of used bins is set
+            automatically (if not given otherwise); by default no binning
+            is done (default: None).
+        nbin : integer, *optional*
+            Number of used spectral bins; if given `log` is set to ``False``;
+            integers below the minimum of 3 induce an automatic setting;
+            by default no binning is done (default: None).
+        binbounds : {list, array}, *optional*
+            User specific inner boundaries of the bins, which are preferred
+            over the above parameters; by default no binning is done
+            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            Lower limit of the uniform distribution if ``random == "uni"``
+            (default: 0).
+
+        Notes
+        -----
+        The application of the projection operator features a ``band`` keyword
+        specifying a single projection band (see examples), a ``bandsup``
+        keyword specifying which projection bands to sum up, and a ``split``
+        keyword.
+
+        Examples
+        --------
+        >>> space = point_space(3)
+        >>> P = projection_operator(space, assign=[0, 1, 0])
+        >>> P.bands()
+        2
+        >>> P([1, 2, 3], band=0) # equal to P.times(field(space,val=[1, 2, 3]))
+        <nifty.field>
+        >>> P([1, 2, 3], band=0).domain
+        <nifty.point_space>
+        >>> P([1, 2, 3], band=0).val # projection on band 0 (items 0 and 2)
+        array([ 1.,  0.,  3.])
+        >>> P([1, 2, 3], band=1).val # projection on band 1 (item 1)
+        array([ 0.,  2.,  0.])
+        >>> P([1, 2, 3])
+        <nifty.field>
+        >>> P([1, 2, 3]).domain
+        <nifty.nested_space>
+        >>> P([1, 2, 3]).val # projection on all bands
+        array([[ 1.,  0.,  3.],
+               [ 0.,  2.,  0.]])
+
+        Attributes
+        ----------
+        domain : space
+            The space wherein valid arguments live.
+        ind : ndarray
+            Assignments of domain items to projection bands.
+        sym : bool
+            Indicates whether the operator is self-adjoint or not
+        uni : bool
+            Indicates whether the operator is unitary or not
+        imp : bool
+            Indicates whether the incorporation of volume weights in
+            multiplications is already implemented in the `multiply`
+            instance methods or not
+        target : space
+            The space wherein the operator output lives
+
+    """
+    def __init__(self, domain, assign, codomain=None, **kwargs):
+        """
+            Sets the standard operator properties and `indexing`.
+
+            Parameters
+            ----------
+            domain : space
+                The space wherein valid arguments live.
+            assign : ndarray, *optional*
+                Assignments of domain items to projection bands. An array
+                of integers, negative integers are associated with the
+                nullspace of the projection. (default: None)
+
+            Returns
+            -------
+            None
+
+            Other Parameters
+            ----------------
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+
+        """
+        ## Check the domain
+        if(not isinstance(domain,space)):
+            raise TypeError(about._errors.cstring(
+                "ERROR: The supplied domain is not a nifty space instance."))
+        self.domain = domain
+        ## Parse codomain
+        if self.domain.check_codomain(codomain) == True:        
+            self.codomain = codomain
+        else:
+            self.codomain = self.domain.get_codomain()
+        
+        self.target = self.domain
+        self.cotarget = self.codomain
+
+        ## Cast the assignment
+        self.assign = self.domain.cast(assign, dtype=np.int_, 
+                                       ignore_complexity=True)
+                
+        ## build indexing
+        self.ind = self.domain.unary_operation(self.assign, op='unique')
+
+        self.sym = True
+        self.uni = False
+        self.imp = True
+
+
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def bands(self):
+        about.warnings.cprint(
+            "WARNING: projection_operator.bands() is deprecated. " +
+            "Use get_band_num() instead.")
+        return self.get_band_num()
+        
+    def get_band_num(self):
+        """
+            Computes the number of projection bands
+
+            Returns
+            -------
+            bands : int
+                The number of projection bands
+        """
+        return len(self.ind)
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def rho(self):
+        """
+            Computes the number of degrees of freedom per projection band.
+
+            Returns
+            -------
+            rho : ndarray
+                The number of degrees of freedom per projection band.
+        """
+        ## Check if the space has some meta-degrees of freedom         
+        if self.domain.get_dim() == self.domain.get_dof():
+            ## If not, compute the degeneracy factor directly
+            rho = self.domain.calc_bincount(self.assign)
+        else:
+            meta_mask = self.domain.calc_weight(
+                            self.domain.get_meta_volume(total=False),
+                            power = -1)
+            rho = self.domain.calc_bincount(self.assign, 
+                                            weights = meta_mask)
+        return rho 
+#        
+#        
+#        rho = np.empty(len(self.ind),dtype=np.int,order='C')
+#        if(self.domain.get_dim(split=False)==self.domain.get_dof()): ## no hidden degrees of freedom
+#            for ii in xrange(len(self.ind)):
+#                rho[ii] = len(self.ind[ii])
+#        else: ## hidden degrees of freedom
+#            mof = np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
+#            for ii in xrange(len(self.ind)):
+#                rho[ii] = np.sum(mof[self.ind[ii]],axis=None,dtype=np.int,out=None)
+#        return rho
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def _multiply(self, x, bands=None, bandsum=None, **kwargs):
+        """
+            Applies the operator to a given field.
+
+            Parameters
+            ----------
+            x : field
+                Valid input field.
+            band : int, *optional*
+                Projection band whereon to project (default: None).
+            bandsup: {integer, list/array of integers}, *optional*
+                List of projection bands whereon to project and which to sum
+                up. The `band` keyword is prefered over `bandsup`
+                (default: None).
+
+            Returns
+            -------
+            Px : field
+                projected field(!)
+        """
+        if bands is not None:
+            ## cast the band
+            if np.isscalar(bands) == True:
+                bands_was_scalar = True
+            else:
+                bands_was_scalar = False
+            bands = np.array(bands, dtype=np.int).flatten()
+            
+            ## check for consistency 
+            if np.any(bands > self.get_band_num()-1) or np.any(bands < 0):
+                raise TypeError(about._errors.cstring("ERROR: Invalid bands."))
+          
+            if bands_was_scalar == True:
+                new_field = x * (self.assign == bands[0])
+            else:
+                ## build up the projection results
+                ## prepare the projector-carrier
+                carrier = np.empty((len(bands),), dtype=np.object_)
+                for i in xrange(len(bands)):
+                    current_band = bands[i]
+                    projector = (self.assign == current_band)
+                    carrier[i] = projector
+                ## Use the carrier and tensor dot to do the projection
+                new_field = x.tensor_product(carrier)
+            return new_field
+        
+        
+        elif bandsum is not None:
+            if np.isscalar(bandsum):
+                bandsum = np.arange(int(bandsum)+1)
+            else:
+                bandsum = np.array(bandsum, dtype = np.int_).flatten()
+
+            ## check for consistency 
+            if np.any(bandsum > self.get_band_num()-1) or np.any(bandsum < 0):
+                raise TypeError(about._errors.cstring(
+                                                    "ERROR: Invalid bandsum."))
+            new_field = x.copy_empty()
+            ## Initialize the projector array, completely
+            projector_sum = (self.assign != self.assign)
+            for i in xrange(len(bandsum)):
+                current_band = bandsum[i]
+                projector = self.domain.binary_operation(self.assign,
+                                                         current_band,
+                                                         'eq')
+                projector_sum += projector
+            new_field = x * projector_sum
+            return new_field
+                
+        else:
+            return self._multiply(x, bands = self.ind)
+            
+    def _inverse_multiply(self,x,**kwargs):
+        raise AttributeError(about._errors.cstring("ERROR: singular operator.")) ## pseudo unitary
+
+
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def pseudo_tr(self, x, axis=(), **kwargs):
+        """
+            Computes the pseudo trace of a given object for all projection bands
+
+            Parameters
+            ----------
+            x : {field, operator}
+                The object whose pseudo-trace is to be computed. If the input is
+                a field, the pseudo trace equals the trace of
+                the projection operator mutliplied by a vector-vector operator
+                corresponding to the input field. This is also equal to the
+                pseudo inner product of the field with projected field itself.
+                If the input is a operator, the pseudo trace equals the trace of
+                the projection operator multiplied by the input operator.
+            random : string, *optional*
+                Specifies the pseudo random number generator. Valid
+                options are "pm1" for a random vector of +/-1, or "gau"
+                for a random vector with entries drawn from a Gaussian
+                distribution with zero mean and unit variance.
+                (default: "pm1")
+            ncpu : int, *optional*
+                number of used CPUs to use. (default: 2)
+            nrun : int, *optional*
+                total number of probes (default: 8)
+            nper : int, *optional*
+                number of tasks performed by one process (default: 1)
+            save : bool, *optional*
+                whether all individual probing results are saved or not
+                (default: False)
+            path : string, *optional*
+                path wherein the results are saved (default: "tmp")
+            prefix : string, *optional*
+                prefix for all saved files (default: "")
+            loop : bool, *optional*
+                Indicates whether or not to perform a loop i.e., to
+                parallelise (default: False)
+
+            Returns
+            -------
+            tr : float
+                Pseudo trace for all projection bands
+        """
+        ## Parse the input  
+        ## Case 1: x is a field
+        ## -> Compute the diagonal of the corresponding vecvec-operator: 
+        ## x * x^dagger
+        if isinstance(x, field) == True: 
+            ## check if field is in the same signal/harmonic space as the 
+            ## domain of the projection operator
+            if self.domain != x.domain:
+                x = x.transform(codomain = self.domain)
+            vecvec = vecvec_operator(val = x)
+            return self.pseudo_tr(x = vecvec, axis=axis, **kwargs)
+
+        ## Case 2: x is not an operator
+        elif isinstance(x, operator) == False:
+            raise TypeError(about._errors.cstring(
+                "ERROR: x must be a field or an operator."))
+      
+        ## Case 3: x is an operator 
+        ## -> take the diagonal
+        working_field = x.diag()        
+        
+        ## Check for hidden degrees of freedom and compensate the trace 
+        ## accordingly
+        if self.domain.get_dim() != self.domain.get_dof():
+            working_field *= self.domain.calc_weight(
+                                self.domain.get_meta_volume(total=False),
+                                power = -1)
+        ## prepare the result object                                
+        big_shape = working_field.ishape + (len(self.ind),)
+        projection_result = np.empty(big_shape, dtype = np.object_)
+        for i in xrange(len(self.ind)):
+            temp_projected = self(working_field, bands = self.ind[i])
+            temp_dotted = temp_projected.dot(1, axis=(), bare=True)
+            projection_result[(slice(None),)*len(working_field.ishape) + (i,)]\
+                = temp_dotted
+        projection_result = np.sum(projection_result, axis=axis)
+        return projection_result
+
+#        if(isinstance(x,operator)):
+#            ## compute non-bare diagonal of the operator x
+#            x = x.diag(bare=False,domain=self.domain,target=x.domain,var=False,**kwargs)
+#            if(x is None):
+#                raise TypeError(about._error.cstring("ERROR: 'NoneType' encountered."))
+#
+#        elif(isinstance(x,field)):
+#            ## check domain
+#            if(self.domain==x.domain):
+#                x = x.val
+#            else:
+#                x = x.transform(target=self.domain,overwrite=False).val
+#            ## compute non-bare diagonal of the vector-vector operator corresponding to the field x
+#            x = x*np.conjugate(x)
+#            ## weight
+#            if(not self.domain.discrete):
+#                x = self.domain.calc_weight(x,power=1)
+#
+#        
+#
+#        x = np.real(x.flatten(order='C'))
+#        if(not self.domain.get_dim(split=False)==self.domain.get_dof()):
+#            x *= np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
+#
+#        tr = np.empty(self.bands(),dtype=x.dtype,order='C')
+#        for bb in xrange(self.bands()):
+#            tr[bb] = np.sum(x[self.ind[bb]],axis=None,dtype=None,out=None)
+#        return tr
+
+    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def __repr__(self):
+        return "<nifty_core.projection_operator>"
+
+##-----------------------------------------------------------------------------
+
+
+class projection_operator_old(operator):
     """
         ..                                     __                       __     __
         ..                                   /__/                     /  /_  /__/
@@ -2831,11 +3231,16 @@ class vecvec_operator(operator):
             -------
             None
         """
-        if domain is None and isinstance(val,field)==True:
-            domain = val.domain
-        if isinstance(domain,space) == False:
+        if isinstance(val, field) == True:
+            if domain is None:
+                domain = val.domain
+            if codomain is None:
+                codomain = val.codomain
+                
+        if isinstance(domain, space) == False:
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
+        
         if self.domain.check_codomain(codomain) == True:        
             self.codomain = codomain
         else:
@@ -2843,15 +3248,18 @@ class vecvec_operator(operator):
         
         self.target = self.domain
         self.cotarget = self.codomain
-        self.val = self.domain.cast(val)
+        self.val = field(domain = self.domain,
+                         codomain = self.codomain,
+                         val = val)  
+#        self.val = self.domain.cast(val)
         self.sym = True
         self.uni = False
-        self.imp = False
+        self.imp = True
         
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def set_val(self, newval):
+    def set_val(self, new_val, copy=False):
         """
             Sets the field values of the operator
 
@@ -2866,13 +3274,17 @@ class vecvec_operator(operator):
             -------
             None
         """
-        self.val = self.domain.cast(newval)
+        self.val = self.val.set_val(new_val = new_val, copy=copy)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self, x, **kwargs): ## > applies the operator to a given field
-        y = x.copy_empty(domain = self.target, codomain = self.codomain)
-        y.set_val(new_val = self.val * self.domain.calc_dot(self.val, x.val))
+        y = x.copy_empty(domain = self.target, codomain = self.cotarget)
+        y.set_val(new_val = self.val, copy = True)
+        y *= self.val.dot(x, axis=())
+#        
+#        y.set_val(new_val = self.val.get_val() * 
+#                            self.domain.calc_dot(self.val.get_val(), x.val))
         return y
 
     def _inverse_multiply(self,x,**kwargs):
@@ -2881,7 +3293,7 @@ class vecvec_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def tr(self,domain=None,**kwargs):
+    def tr(self, domain=None, axis=None, **kwargs):
         """
             Computes the trace of the operator
 
@@ -2921,11 +3333,12 @@ class vecvec_operator(operator):
 
         """
         if domain is None or domain == self.domain:
-            if self.domain.discrete == False:
-                return self.domain.calc_dot(self.val, 
-                                    self.domain.calc_weight(self.val,power=1))
-            else:
-                return self.domain.calc_dot(self.val, self.val)
+            return self.val.dot(self.val, axis=axis)
+#            if self.domain.discrete == False:
+#                return self.domain.calc_dot(self.val, 
+#                                    self.domain.calc_weight(self.val,power=1))
+#            else:
+#                return self.domain.calc_dot(self.val, self.val)
         else:
             ## probing
             return super(vecvec_operator,self).tr(domain=domain,**kwargs) 
@@ -2939,7 +3352,7 @@ class vecvec_operator(operator):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def diag(self,bare=False,domain=None,**kwargs):
+    def diag(self, bare=False, domain=None, **kwargs):
         """
             Computes the diagonal of the operator.
 
@@ -3004,9 +3417,11 @@ class vecvec_operator(operator):
             diag_val = self.val * self.val.conjugate() ## bare diagonal
             ## weight if ...
             if self.domain.discrete == False and bare == False:
-                diag_val = self.domain.calc_weight(diag_val, power=1)
-            diag = field(self.domain, codomain = self.codomain, val = diag_val)                
-            return diag
+                diag_val = diag_val.weight(power = 1, overwrite=True)
+#                diag_val = self.domain.calc_weight(diag_val, power=1)
+            return diag_val
+#            diag = field(self.domain, codomain = self.codomain, val = diag_val)                
+#            return diag
         else:
             ## probing
             return super(vecvec_operator,self).diag(bare=bare,

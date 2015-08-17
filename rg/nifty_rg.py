@@ -349,7 +349,7 @@ class rg_space(point_space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def dof(self):
+    def get_dof(self):
         """
             Computes the number of degrees of freedom of the space, i.e.\  the
             number of grid points multiplied with one or two, depending on
@@ -556,16 +556,8 @@ class rg_space(point_space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def cast(self, x, verbose = False):
-        if self.datamodel == 'd2o':
-            return self._cast_to_d2o(x = x, verbose = False)
-        elif self.datamodel == 'np':
-            return self._cast_to_np(x = x, verbose = False)
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
-
-    def _cast_to_d2o(self, x, verbose=False):
+    def _cast_to_d2o(self, x, dtype = None, ignore_complexity = False,
+                     verbose=False, **kwargs):
         """
             Computes valid field values from a given object, trying
             to translate the given data into a valid form. Thereby it is as 
@@ -588,6 +580,8 @@ class rg_space(point_space):
                 Whether the method should raise a warning if information is 
                 lost during casting (default: False).
         """
+        if dtype is None:
+            dtype = self.datatype
         ## Case 1: x is a field
         if isinstance(x, field):
             if verbose:
@@ -596,14 +590,14 @@ class rg_space(point_space):
                     about.warnings.cflush(\
                     "WARNING: Getting data from foreign domain!")
             ## Extract the data, whatever it is, and cast it again
-            return self.cast(x.val)
+            return self.cast(x.val, dtype=dtype)
         
         ## Case 2: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
             ## Check the shape
             if np.any(x.shape != self.get_shape()):           
                 ## Check if at least the number of degrees of freedom is equal
-                if x.dim() == self.get_dim():
+                if x.get_dim() == self.get_dim():
                     ## If the number of dof is equal or 1, use np.reshape...
                     about.warnings.cflush(\
                     "WARNING: Trying to reshape the data. This operation is "+\
@@ -611,54 +605,57 @@ class rg_space(point_space):
                     temp = x.get_full_data()
                     temp = np.reshape(temp, self.get_shape())             
                     ## ... and cast again
-                    return self.cast(temp)
+                    return self.cast(temp, dtype=dtype)
               
                 else:
                     raise ValueError(about._errors.cstring(\
                     "ERROR: Data has incompatible shape!"))
                     
             ## Check the datatype
-            if x.dtype < self.datatype:
-                about.warnings.cflush(\
+            if np.dtype(x.dtype) != np.dtype(dtype):
+                if np.dtype(x.dtype) > np.dtype(dtype):
+                    about.warnings.cflush(\
             "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
-                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
-                + ") and will be casted! "\
-                + "Potential loss of precision!\n")
-                temp = x.copy_empty(dtype=self.datatype)
+                        + str(dtype) + " <> foreign: " + str(x.dtype) \
+                        + ") and will be casted! "\
+                        + "Potential loss of precision!\n")
+                temp = x.copy_empty(dtype=dtype)
                 temp.set_local_data(x.get_local_data())
                 temp.hermitian = x.hermitian
                 x = temp
             
-            ## Check hermitianity/reality
-            if self.paradict['complexity'] == 0:
-                if x.iscomplex().any() == True:
-                    about.warnings.cflush(\
-                    "WARNING: Data is not completely real. Imaginary part "+\
-                    "will be discarded!\n")
-                    temp = x.copy_empty()            
-                    temp.set_local_data(np.real(x.get_local_data()))
-                    x = temp
-            
-            elif self.paradict['complexity'] == 1:
-                if x.hermitian == False and about.hermitianize.status == True:
-                    about.warnings.cflush(\
-                    "WARNING: Data gets hermitianized. This operation is "+\
-                    "extremely expensive\n")
-                    #temp = x.copy_empty()            
-                    #temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
-                    #    (False, )*len(x.shape)))
-                    x = utilities.hermitianize(x)
+            if ignore_complexity == False:
+                ## Check hermitianity/reality
+                if self.paradict['complexity'] == 0:
+                    if x.iscomplex().any() == True:
+                        about.warnings.cflush(\
+                        "WARNING: Data is not completely real. Imaginary part "+\
+                        "will be discarded!\n")
+                        temp = x.copy_empty()            
+                        temp.set_local_data(np.real(x.get_local_data()))
+                        x = temp
                 
+                elif self.paradict['complexity'] == 1:
+                    if x.hermitian == False and about.hermitianize.status == True:
+                        about.warnings.cflush(\
+                        "WARNING: Data gets hermitianized. This operation is "+\
+                        "extremely expensive\n")
+                        #temp = x.copy_empty()            
+                        #temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
+                        #    (False, )*len(x.shape)))
+                        x = utilities.hermitianize(x)
+                    
             return x
                 
         ## Case 3: x is something else
         ## Use general d2o casting 
         x = distributed_data_object(x, global_shape=self.get_shape(),\
-            dtype=self.datatype)       
+            dtype=dtype)       
         ## Cast the d2o
-        return self.cast(x)
+        return self.cast(x, dtype=dtype)
 
-    def _cast_to_np(self, x, verbose = False):
+    def _cast_to_np(self, x, dtype = None, ignore_complexity = False, 
+                    verbose = False, **kwargs):
         """
             Computes valid field values from a given object, trying
             to translate the given data into a valid form. Thereby it is as 
@@ -681,6 +678,8 @@ class rg_space(point_space):
                 Whether the method should raise a warning if information is 
                 lost during casting (default: False).
         """
+        if dtype is None:
+            dtype = self.datatype
         ## Case 1: x is a field
         if isinstance(x, field):
             if verbose:
@@ -689,14 +688,14 @@ class rg_space(point_space):
                     about.warnings.cflush(\
                     "WARNING: Getting data from foreign domain!")
             ## Extract the data, whatever it is, and cast it again
-            return self.cast(x.val)
+            return self.cast(x.val, dtype=dtype)
         
         ## Case 2: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
             ## Extract the data
             temp = x.get_full_data()
             ## Cast the resulting numpy array again
-            return self.cast(temp)
+            return self.cast(temp, dtype=dtype)
         
         elif isinstance(x, np.ndarray):
             ## Check the shape
@@ -706,52 +705,53 @@ class rg_space(point_space):
                     ## If the number of dof is equal or 1, use np.reshape...
                     temp = x.reshape(self.get_shape())             
                     ## ... and cast again
-                    return self.cast(temp)
+                    return self.cast(temp, dtype=dtype)
                 elif x.size == 1:
                     temp = np.empty(shape = self.get_shape(),
-                                    dtype = self.datatype)
+                                    dtype = dtype)
                     temp[:] = x
-                    return self.cast(temp)
+                    return self.cast(temp, dtype=dtype)
                 else:
                     raise ValueError(about._errors.cstring(\
                     "ERROR: Data has incompatible shape!"))
                     
             ## Check the datatype
-            if x.dtype < self.datatype:
+            if x.dtype != dtype:
                 about.warnings.cflush(\
             "WARNING: Datatypes are uneqal/of conflicting precision (own: "\
-                + str(self.datatype) + " <> foreign: " + str(x.dtype) \
+                + str(dtype) + " <> foreign: " + str(x.dtype) \
                 + ") and will be casted! "\
                 + "Potential loss of precision!\n")
                 ## Fix the datatype...
-                temp = x.astype(self.datatype)
+                temp = x.astype(dtype)
                 ##... and cast again
-                return self.cast(temp)
+                return self.cast(temp, dtype=dtype)
             
-            ## Check hermitianity/reality
-            if self.paradict['complexity'] == 0:
-                if not np.all(np.isreal(x)) == True:
-                    about.warnings.cflush(\
-                    "WARNING: Data is not completely real. Imaginary part "+\
-                    "will be discarded!\n")
-                    x = np.real(x)
-            
-            elif self.paradict['complexity'] == 1:
-                if about.hermitianize.status == True:
-                    about.warnings.cflush(\
-                    "WARNING: Data gets hermitianized. This operation is "+\
-                    "rather expensive.\n")
-                    #temp = x.copy_empty()            
-                    #temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
-                    #    (False, )*len(x.shape)))
-                    x = utilities.hermitianize(x)
+            if ignore_complexity == False:
+                ## Check hermitianity/reality
+                if self.paradict['complexity'] == 0:
+                    if not np.all(np.isreal(x)) == True:
+                        about.warnings.cflush(\
+                        "WARNING: Data is not completely real. Imaginary part "+\
+                        "will be discarded!\n")
+                        x = np.real(x)
+                
+                elif self.paradict['complexity'] == 1:
+                    if about.hermitianize.status == True:
+                        about.warnings.cflush(\
+                        "WARNING: Data gets hermitianized. This operation is "+\
+                        "rather expensive.\n")
+                        #temp = x.copy_empty()            
+                        #temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(), 
+                        #    (False, )*len(x.shape)))
+                        x = utilities.hermitianize(x)
                 
             return x
                 
         ## Case 3: x is something else
         ## Use general numpy casting 
         else:
-            temp = np.empty(self.get_shape(), dtype = self.datatype)
+            temp = np.empty(self.get_shape(), dtype = dtype)
             temp[:] = x
             return temp
             
@@ -1513,7 +1513,7 @@ class rg_space(point_space):
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def calc_power(self,x,**kwargs):
+    def calc_power(self, x, **kwargs):
         """
             Computes the power of an array of field values.
 
@@ -1559,7 +1559,7 @@ class rg_space(point_space):
         ## If self is a position space, delegate calc_power to its codomain.
         if self.fourier == False:
             try:
-                codomain = kwargs.get('codomain')
+                codomain = kwargs['codomain']
             except(KeyError):
                 codomain = self.get_codomain()
                 
@@ -1589,6 +1589,7 @@ class rg_space(point_space):
         fieldabs = abs(x)**2
         power_spectrum = np.zeros(rho.shape) 
 
+        ## TODO: Rework to real numpy-ness        
         if self.datamodel == 'np':
             working_field = pindex.copy_empty(dtype = fieldabs.dtype)
             working_field.set_full_data(data = fieldabs)
@@ -1598,8 +1599,9 @@ class rg_space(point_space):
             power_spectrum =\
                 pindex.distributor._allgather(local_power_spectrum)
             power_spectrum = np.sum(power_spectrum, axis = 0)
-
-        if self.datamodel == 'd2o':
+        
+        ## TODO: Use d2o.bincount in order to simplify this
+        elif self.datamodel == 'd2o':
             ## In order to make the summation over identical pindices fast, 
             ## the pindex and the kindex must have the same distribution strategy
             if pindex.distribution_strategy == fieldabs.distribution_strategy and\
@@ -1610,10 +1612,12 @@ class rg_space(point_space):
                 working_field.inject((slice(None),), fieldabs, (slice(None,)))
             
             local_power_spectrum = np.bincount(pindex.get_local_data().flatten(),
-                            weights = working_field.get_local_data().flatten())        
+                            weights = working_field.get_local_data().flatten(),
+                            minlength = len(rho))        
             power_spectrum =\
                 pindex.distributor._allgather(local_power_spectrum)
             power_spectrum = np.sum(power_spectrum, axis = 0)
+            
         else:
             raise NotImplementedError(about._errors.cstring(
                 "ERROR: function is not implemented for given datamodel."))
@@ -2201,6 +2205,7 @@ class power_indices(object):
         ## store the local pindex data in the global_pindex d2o
         global_pindex.set_local_data(local_pindex)
         
+        ## TODO: Use the universal capabilities of bincount in oder to speed this up!
         #######
         # rho #        
         #######

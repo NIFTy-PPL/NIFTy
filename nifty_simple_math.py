@@ -508,7 +508,46 @@ def direct_dot(x, y):
     return np.vdot(x, y)    
     
     
-        
+def convert_nested_list_to_object_array(x):
+    ## if x is a nested_list full of ndarrays all having the same size,
+    ## np.shape returns the shape of the ndarrays, too, i.e. too many 
+    ## dimensions
+    possible_shape = np.shape(x)
+    ## Check if possible_shape goes too deep.
+    dimension_counter = 0    
+    current_extract = x
+    for i in xrange(len(possible_shape)):
+        if isinstance(current_extract, list) == False and\
+            isinstance(current_extract, tuple) == False:
+            break
+        current_extract = current_extract[0]
+        dimension_counter += 1
+    real_shape = possible_shape[:dimension_counter]
+    ## if the numpy array was not encapsulated at all, return x directly    
+    if real_shape == ():
+        return x
+    ## Prepare the carrier-object    
+    carrier = np.empty(real_shape, dtype = np.object)
+    for i in xrange(np.prod(real_shape)):
+        ii = np.unravel_index(i, real_shape)
+        try:        
+            carrier[ii] = x[ii]
+        except(TypeError):
+            extracted = x
+            for j in xrange(len(ii)):                    
+                extracted = extracted[ii[j]]
+            carrier[ii] = extracted     
+    return carrier
+            
+    
+    
+    
+    
+    
+    
+    
+    
+    
         
         
         

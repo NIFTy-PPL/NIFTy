@@ -132,7 +132,7 @@ class distributed_data_object(object):
                     except(AttributeError):
                         dtype = np.array(global_data).dtype.type
             else:
-                dtype = dtype
+                dtype = np.dtype(dtype).type
             
             ## an explicitly given global_shape argument is only used if 
             ## 1. no global_data was supplied, or 
@@ -171,7 +171,7 @@ class distributed_data_object(object):
             
         ## If the input data was a scalar, set the whole array to this value
         elif global_data != None and np.isscalar(global_data):
-            temp = np.empty(self.distributor.local_shape)
+            temp = np.empty(self.distributor.local_shape, dtype = self.dtype)
             temp.fill(global_data)
             self.set_local_data(temp)
             self.hermitian = True
@@ -243,12 +243,14 @@ class distributed_data_object(object):
     def __repr__(self):
         return '<distributed_data_object>\n'+self.data.__repr__()
     
-    def __eq__(self, other):
+    
+    def _compare_helper(self, other, op):
         result = self.copy_empty(dtype = np.bool_)
         ## Case 1: 'other' is a scalar
         ## -> make point-wise comparison
         if np.isscalar(other):
-            result.set_local_data(self.get_local_data(copy = False) == other)
+            result.set_local_data(
+                    getattr(self.get_local_data(copy = False), op)(other))
             return result        
 
         ## Case 2: 'other' is a numpy array or a distributed_data_object
@@ -256,7 +258,8 @@ class distributed_data_object(object):
         elif isinstance(other, np.ndarray) or\
         isinstance(other, distributed_data_object):
             temp_data = self.distributor.extract_local_data(other)
-            result.set_local_data(self.get_local_data(copy=False) == temp_data)
+            result.set_local_data(
+                getattr(self.get_local_data(copy=False), op)(temp_data))
             return result
         
         ## Case 3: 'other' is None
@@ -267,11 +270,27 @@ class distributed_data_object(object):
         ## -> make a numpy casting and make a recursive call
         else:
             temp_other = np.array(other)
-            return self.__eq__(temp_other)
-            
-            
+            return getattr(self, op)(temp_other)
         
-    
+
+    def __ne__(self, other):
+        return self._compare_helper(other, '__ne__')
+        
+    def __lt__(self, other):
+        return self._compare_helper(other, '__lt__')
+            
+    def __le__(self, other):
+        return self._compare_helper(other, '__le__')
+
+    def __eq__(self, other):
+
+        return self._compare_helper(other, '__eq__')
+    def __ge__(self, other):
+        return self._compare_helper(other, '__ge__')
+
+    def __gt__(self, other):
+        return self._compare_helper(other, '__gt__')
+
     def equal(self, other):
         if other is None:
             return False
@@ -448,7 +467,7 @@ class distributed_data_object(object):
     def __len__(self):
         return self.shape[0]
     
-    def dim(self):
+    def get_dim(self):
         return np.prod(self.shape)
         
     def vdot(self, other):
@@ -620,7 +639,34 @@ class distributed_data_object(object):
         global_any = self.distributor._allgather(local_any)
         return np.any(global_any)
         
-    
+    def unique(self):
+        local_unique = np.unique(self.get_local_data())
+        global_unique = self.distributor._allgather(local_unique)
+        global_unique = np.concatenate(global_unique)
+        return np.unique(global_unique)
+        
+    def bincount(self, weights = None, minlength = None):
+        if np.dtype(self.dtype).type not in [np.int8, np.int16, np.int32, 
+                np.int64, np.uint8, np.uint16, np.uint32, np.uint64]:
+            raise TypeError(about._errors.cstring(
+                "ERROR: Distributed-data-object must be of integer datatype!"))                                                
+                
+        minlength = max(self.amax()+1, minlength)
+        
+        if weights is not None:
+            local_weights = self.distributor.extract_local_data(weights).\
+                                                                    flatten()
+        else:
+            local_weights = None
+            
+        local_counts = np.bincount(self.get_local_data().flatten(),
+                                  weights = local_weights,
+                                  minlength = minlength)
+        list_of_counts = self.distributor._allgather(local_counts)
+        print list_of_counts 
+        counts = np.sum(list_of_counts, axis = 0)
+        return counts
+                              
     
     def set_local_data(self, data, hermitian=False, copy=True):
         """

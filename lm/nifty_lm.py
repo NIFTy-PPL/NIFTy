@@ -170,7 +170,14 @@ class lm_space(point_space):
             about.warnings.cprint("WARNING: data type set to default.")
             datatype = np.complex128
         self.datatype = datatype
-
+        
+        ## set datamodel
+        if datamodel not in ['np']:
+            about.warnings.cprint("WARNING: datamodel set to default.")
+            self.datamodel = 'np'
+        else:
+            self.datamodel = datamodel        
+        
         self.discrete = True
         self.vol = np.real(np.array([1],dtype=self.datatype))
 
@@ -1008,7 +1015,7 @@ class gl_space(point_space):
         vol : numpy.ndarray
             An array containing the pixel sizes.
     """
-    def __init__(self,nlat,nlon=None,datatype=None):
+    def __init__(self, nlat, nlon=None, datatype=None, datamodel='np'):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -1047,6 +1054,13 @@ class gl_space(point_space):
             about.warnings.cprint("WARNING: data type set to default.")
             datatype = np.float64
         self.datatype = datatype
+        
+        ## set datamodel
+        if datamodel not in ['np']:
+            about.warnings.cprint("WARNING: datamodel set to default.")
+            self.datamodel = 'np'
+        else:
+            self.datamodel = datamodel     
 
         self.discrete = False
         self.vol = gl.vol(self.paradict['nlat'],nlon=self.paradict['nlon']).astype(self.datatype)
@@ -1702,7 +1716,7 @@ class hp_space(point_space):
     """
     niter = 0 ## default number of iterations used for transformations
 
-    def __init__(self, nside):
+    def __init__(self, nside, datamodel = 'np'):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -1731,6 +1745,14 @@ class hp_space(point_space):
         self.paradict = hp_space_paradict(nside=nside)        
 
         self.datatype = np.float64
+        
+        ## set datamodel
+        if datamodel not in ['np']:
+            about.warnings.cprint("WARNING: datamodel set to default.")
+            self.datamodel = 'np'
+        else:
+            self.datamodel = datamodel     
+            
         self.discrete = False
         self.vol = np.array([4*pi/(12*self.paradict['nside']**2)],dtype=self.datatype)
 
