@@ -152,6 +152,7 @@ from nifty_about import about
 from nifty_random import random
 from nifty.nifty_mpi_data import distributed_data_object
 
+import nifty.nifty_utilities as utilities 
 
 
 pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
@@ -3046,32 +3047,7 @@ class field(object):
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _map(self, function, *args):
-        if self.ishape == ():
-            return function(*args)
-        else:
-            if args == ():
-                result = np.empty(self.ishape, dtype=np.object)
-                for i in xrange(np.prod(self.ishape)):
-                    ii = np.unravel_index(i, self.ishape)
-                    result[ii] = function()
-                return result
-            else:
-                ## define a helper function in order to clip the get-indices
-                ## to be suitable for the foreign arrays in args.
-                ## This allows you to do operations, like adding to fields 
-                ## with ishape (3,4,3) and (3,4,1)
-                def get_clipped(w, ind):
-                    w_shape = np.array(np.shape(w))
-                    get_tuple = tuple(np.clip(ind, 0, w_shape-1))
-                    return w[get_tuple]
-                result = np.empty_like(args[0])
-                for i in xrange(np.prod(result.shape)):
-                    ii = np.unravel_index(i, result.shape)
-                    result[ii] = function(*map(
-                                            lambda z: get_clipped(z, ii), args)
-                                          )
-                    #result[ii] = function(*map(lambda z: z[ii], args))
-                return result
+        return utilities.field_map(self.ishape, function, *args)
 
     def cast(self, x = None, ishape = None):
         if ishape is None:

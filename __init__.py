@@ -35,6 +35,7 @@ from nifty_mpi_data import distributed_data_object
 from nifty_power import *
 from nifty_random import random
 from nifty_simple_math import *
+from nifty_utilities import *
 
 from nifty_paradict import space_paradict,\
                             point_space_paradict,\

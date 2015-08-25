@@ -24,31 +24,31 @@
 
 
 
-##initialize the 'found-packages'-dictionary 
-found = {}
+##initialize the 'FOUND-packages'-dictionary 
+FOUND = {}
 import numpy as np
 from nifty_about import about
 
 try:
     from mpi4py import MPI
-    found['MPI'] = True
+    FOUND['MPI'] = True
 except(ImportError): 
     import mpi_dummy as MPI
-    found['MPI'] = False
+    FOUND['MPI'] = False
 
 try:
     import pyfftw
-    found['pyfftw'] = True
+    FOUND['pyfftw'] = True
 except(ImportError):       
-    found['pyfftw'] = False
+    FOUND['pyfftw'] = False
 
 try:
     import h5py
-    found['h5py'] = True
-    found['h5py_parallel'] = h5py.get_config().mpi
+    FOUND['h5py'] = True
+    FOUND['h5py_parallel'] = h5py.get_config().mpi
 except(ImportError):
-    found['h5py'] = False
-    found['h5py_parallel'] = False
+    FOUND['h5py'] = False
+    FOUND['h5py_parallel'] = False
 
 
 class distributed_data_object(object):
@@ -96,63 +96,87 @@ class distributed_data_object(object):
         
     """
     def __init__(self, global_data = None, global_shape=None, dtype=None, 
+                 local_data=None, local_shape=None,
                  distribution_strategy='fftw', hermitian=False,
                  alias=None, path=None, comm = MPI.COMM_WORLD, 
                  copy = True, *args, **kwargs):
+#        
+#        ## a given hdf5 file overwrites the other parameters
+#        if FOUND['h5py'] == True and alias is not None:
+#            ## set file path            
+#            file_path = path if (path is not None) else alias 
+#            ## open hdf5 file
+#            if FOUND['h5py_parallel'] == True and FOUND['MPI'] == True:
+#                f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
+#            else:
+#                f= h5py.File(file_path, 'r')        
+#            ## open alias in file
+#            dset = f[alias] 
+#            ## set shape 
+#            global_shape = dset.shape
+#            ## set dtype
+#            dtype = dset.dtype.type
+
+#        ## if no hdf5 path was given, extract global_shape and dtype from 
+#        ## the remaining arguments
+#        else:        
+#            ## an explicitly given dtype overwrites the one from global_data
+#            if dtype is None:
+#                if global_data is None and local_data is None:
+#                    raise ValueError(about._errors.cstring(
+#            "ERROR: Neither global_data nor local_data nor dtype supplied!"))      
+#                elif global_data is not None:
+#                    try:
+#                        dtype = global_data.dtype.type
+#                    except(AttributeError):
+#                        try:
+#                            dtype = global_data.dtype
+#                        except(AttributeError):
+#                            dtype = np.array(global_data).dtype.type
+#                elif local_data is not None:
+#                    try:
+#                        dtype = local_data.dtype.type
+#                    except(AttributeError):
+#                        try:
+#                            dtype = local_data.dtype
+#                        except(AttributeError):
+#                            dtype = np.array(local_data).dtype.type
+#            else:
+#                dtype = np.dtype(dtype).type
+#            
+#            ## an explicitly given global_shape argument is only used if 
+#            ## 1. no global_data was supplied, or 
+#            ## 2. global_data is a scalar/list of dimension 0.
+#            
+#            if global_data is not None and np.isscalar(global_data) == False:
+#                global_shape = global_data.shape
+#            elif global_shape is not None:
+#                global_shape = tuple(global_shape)
+#                
+#            if local_data is not None
+#            
+##            if global_shape is None:
+##                if global_data is None or np.isscalar(global_data):
+##                    raise ValueError(about._errors.cstring(
+##    "ERROR: Neither non-0-dimensional global_data nor global_shape supplied!"))      
+##                global_shape = global_data.shape
+##            else:
+##                if global_data is None or np.isscalar(global_data):
+##                    global_shape = tuple(global_shape)
+##                else:
+##                    global_shape = global_data.shape
         
-        ## a given hdf5 file overwrites the other parameters
-        if found['h5py'] == True and alias is not None:
-            ## set file path            
-            file_path = path if (path is not None) else alias 
-            ## open hdf5 file
-            if found['h5py_parallel'] == True and found['MPI'] == True:
-                f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
-            else:
-                f= h5py.File(file_path, 'r')        
-            ## open alias in file
-            dset = f[alias] 
-            ## set shape 
-            global_shape = dset.shape
-            ## set dtype
-            dtype = dset.dtype.type
-
-        ## if no hdf5 path was given, extract global_shape and dtype from 
-        ## the remaining arguments
-        else:        
-            ## an explicitly given dtype overwrites the one from global_data
-            if dtype is None:
-                if global_data is None:
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: Neither global_data nor dtype supplied!"))      
-                try:
-                    dtype = global_data.dtype.type
-                except(AttributeError):
-                    try:
-                        dtype = global_data.dtype
-                    except(AttributeError):
-                        dtype = np.array(global_data).dtype.type
-            else:
-                dtype = np.dtype(dtype).type
-            
-            ## an explicitly given global_shape argument is only used if 
-            ## 1. no global_data was supplied, or 
-            ## 2. global_data is a scalar/list of dimension 0.
-            if global_shape is None:
-                if global_data is None or np.isscalar(global_data):
-                    raise ValueError(about._errors.cstring(
-    "ERROR: Neither non-0-dimensional global_data nor global_shape supplied!"))      
-                global_shape = global_data.shape
-            else:
-                if global_data is None or np.isscalar(global_data):
-                    global_shape = tuple(global_shape)
-                else:
-                    global_shape = global_data.shape
-
-
+        ## TODO: allow init with empty shape
         self.distributor = distributor_factory.get_distributor(
                                 distribution_strategy = distribution_strategy,
+                                global_data = global_data,                                
                                 global_shape = global_shape,
+                                local_data = local_data,
+                                local_shape = local_shape,
+                                alias = alias,
+                                path = path,
                                 dtype = dtype,
+                                comm = comm,
                                 **kwargs)
                                 
         self.distribution_strategy = distribution_strategy
@@ -162,23 +186,29 @@ class distributed_data_object(object):
         self.init_args = args 
         self.init_kwargs = kwargs
 
-
-        ## If a hdf5 path was given, load the data
-        if found['h5py'] == True and alias is not None:
-            self.load(alias = alias, path = path)
-            ## close the file handle
-            f.close()
-            
-        ## If the input data was a scalar, set the whole array to this value
-        elif global_data != None and np.isscalar(global_data):
-            temp = np.empty(self.distributor.local_shape, dtype = self.dtype)
-            temp.fill(global_data)
-            self.set_local_data(temp)
-            self.hermitian = True
-        else:
-            self.set_full_data(data=global_data, hermitian=hermitian, 
-                               copy = copy, **kwargs)
-            
+        (self.data, self.hermitian) = self.distributor.initialize_data(
+                                                     global_data = global_data,
+                                                     local_data = local_data,
+                                                     alias = alias,
+                                                     path = alias,
+                                                     hermitian = hermitian,
+                                                     copy = copy)
+#        ## If a hdf5 path was given, load the data
+#        if FOUND['h5py'] == True and alias is not None:
+#            self.load(alias = alias, path = path)
+#            ## close the file handle
+#            f.close()
+#            
+#        ## If the input data was a scalar, set the whole array to this value
+#        elif global_data is not None and np.isscalar(global_data):
+#            temp = np.empty(self.distributor.local_shape, dtype = self.dtype)
+#            temp.fill(global_data)
+#            self.set_local_data(temp)
+#            self.hermitian = True
+#        else:
+#            self.set_full_data(data=global_data, hermitian=hermitian, 
+#                               copy = copy, **kwargs)
+#            
     def copy(self, dtype=None, distribution_strategy=None, **kwargs):
         temp_d2o = self.copy_empty(dtype=dtype, 
                                    distribution_strategy=distribution_strategy, 
@@ -188,7 +218,7 @@ class distributed_data_object(object):
             temp_d2o.set_local_data(self.get_local_data(), copy=True)
         else:
             #temp_d2o.set_full_data(self.get_full_data())
-            temp_d2o.inject([slice(None),], self, [slice(None),])
+            temp_d2o.inject((slice(None),), self, (slice(None),))
         temp_d2o.hermitian = self.hermitian
         return temp_d2o
     
@@ -480,28 +510,30 @@ class distributed_data_object(object):
 
     
     def __getitem__(self, key):
-        ## Case 1: key is a boolean array.
-        ## -> take the local data portion from key, use this for data 
-        ## extraction, and then merge the result in a flat numpy array
-        if isinstance(key, np.ndarray):
-            found = 'ndarray'
-            found_boolean = (key.dtype.type == np.bool_)
-        elif isinstance(key, distributed_data_object):
-            found = 'd2o'
-            found_boolean = (key.dtype == np.bool_)
-        else:
-            found = 'other'
-        ## TODO: transfer this into distributor:
-        if (found == 'ndarray' or found == 'd2o') and found_boolean == True:
-            ## extract the data of local relevance
-            local_bool_array = self.distributor.extract_local_data(key)
-            local_results = self.get_local_data(copy=False)[local_bool_array]
-            global_results = self.distributor._allgather(local_results)
-            global_results = np.concatenate(global_results)
-            return global_results            
-            
-        else:
-            return self.get_data(key)
+        return self.get_data(key)
+        
+#        ## Case 1: key is a boolean array.
+#        ## -> take the local data portion from key, use this for data 
+#        ## extraction, and then merge the result in a flat numpy array
+#        if isinstance(key, np.ndarray):
+#            found = 'ndarray'
+#            found_boolean = (key.dtype.type == np.bool_)
+#        elif isinstance(key, distributed_data_object):
+#            found = 'd2o'
+#            found_boolean = (key.dtype == np.bool_)
+#        else:
+#            found = 'other'
+#        ## TODO: transfer this into distributor:
+#        if (found == 'ndarray' or found == 'd2o') and found_boolean == True:
+#            ## extract the data of local relevance
+#            local_bool_array = self.distributor.extract_local_data(key)
+#            local_results = self.get_local_data(copy=False)[local_bool_array]
+#            global_results = self.distributor._allgather(local_results)
+#            global_results = np.concatenate(global_results)
+#            return global_results            
+#            
+#        else:
+#            return self.get_data(key)
     
     def __setitem__(self, key, data):
         self.set_data(data, key)
@@ -663,7 +695,6 @@ class distributed_data_object(object):
                                   weights = local_weights,
                                   minlength = minlength)
         list_of_counts = self.distributor._allgather(local_counts)
-        print list_of_counts 
         counts = np.sum(list_of_counts, axis = 0)
         return counts
                               
@@ -687,7 +718,7 @@ class distributed_data_object(object):
         self.hermitian = hermitian
         self.data = np.array(data, dtype=self.dtype, copy=copy, order='C')
     
-    def set_data(self, data, key, hermitian=False, copy=True, *args, **kwargs):
+    def set_data(self, data, key, hermitian=False, copy=True, **kwargs):
         """
             Stores the supplied data in the region which is specified by key. 
             The data is distributed according to the distribution strategy. If
@@ -708,12 +739,18 @@ class distributed_data_object(object):
         
         """
         self.hermitian = hermitian
-        (slices, sliceified) = self.__sliceify__(key)        
-        self.distributor.disperse_data(data=self.data, 
-                        to_slices = slices,
-                        data_update = self.__enfold__(data, sliceified),
-                        copy = copy,
-                        *args, **kwargs)        
+        self.distributor.disperse_data(data = self.data,
+                                       to_key = key,
+                                       data_update = data,
+                                       copy = copy,
+                                       **kwargs)
+#                                       
+#        (slices, sliceified) = self.__sliceify__(key)        
+#        self.distributor.disperse_data(data=self.data, 
+#                        to_slices = slices,
+#                        data_update = self.__enfold__(data, sliceified),
+#                        copy = copy,
+#                        *args, **kwargs)        
     
     def set_full_data(self, data, hermitian=False, copy = True, **kwargs):
         """
@@ -738,7 +775,6 @@ class distributed_data_object(object):
         self.hermitian = hermitian
         self.data = self.distributor.distribute_data(data=data, copy = copy, 
                                                      **kwargs)
-    
 
     def get_local_data(self, key=(slice(None),), copy=True):
         """
@@ -779,9 +815,10 @@ class distributed_data_object(object):
             global_data[key] : numpy.ndarray
         
         """
-        (slices, sliceified) = self.__sliceify__(key)
-        result = self.distributor.collect_data(self.data, slices, **kwargs)        
-        return self.__defold__(result, sliceified)
+        return self.distributor.collect_data(self.data, key, **kwargs)
+#        (slices, sliceified) = self.__sliceify__(key)
+#        result = self.distributor.collect_data(self.data, slices, **kwargs)        
+#        return self.__defold__(result, sliceified)
         
     
     
@@ -864,90 +901,137 @@ class distributed_data_object(object):
         """
         self.data = self.distributor.load_data(alias, path)
            
-    def __sliceify__(self, inp):
-        sliceified = []
-        result = []
-        if isinstance(inp, tuple):
-            x = inp
-        elif isinstance(inp, list):
-            x = tuple(inp)
-        else:
-            x = (inp, )
-        
-        for i in range(len(x)):
-            if isinstance(x[i], slice):
-                result += [x[i], ]
-                sliceified += [False, ]
-            else:
-                result += [slice(x[i], x[i]+1), ]
-                sliceified += [True, ]
-    
-        return (tuple(result), sliceified)
-                
-                
-    def __enfold__(self, in_data, sliceified):
-        data = np.array(in_data, copy=False)    
-        temp_shape = ()
-        j=0
-        for i in sliceified:
-            if i == True:
-                temp_shape += (1,)
-                try:
-                    if data.shape[j] == 1:
-                        j +=1
-                except(IndexError):
-                    pass
-            else:
-                try:
-                    temp_shape += (data.shape[j],)
-                except(IndexError):
-                    temp_shape += (1,)
-                j += 1
-        ## take into account that the sliceified tuple may be too short, because 
-        ## of a non-exaustive list of slices
-        for i in range(len(data.shape)-j):
-            temp_shape += (data.shape[j],)
-            j += 1
-        
-        return data.reshape(temp_shape)
-    
-    def __defold__(self, data, sliceified):
-        temp_slice = ()
-        for i in sliceified:
-            if i == True:
-                temp_slice += (0,)
-            else:
-                temp_slice += (slice(None),)
-        return data[temp_slice]
 
     
 class _distributor_factory(object):
-    '''
-        Comments:
-          - The distributor's get_data and set_data functions MUST be 
-            supplied with a tuple of slice objects. In case that there was 
-            a direct integer involved, the unfolding will be done by the
-            helper functions __sliceify__, __enfold__ and __defold__.
-    '''
     def __init__(self):
         self.distributor_store = {}
     
-    def parse_kwargs(self, strategy = None, kwargs = {}):
+#    def parse_kwargs(self, strategy = None, kwargs = {}):
+#        return_dict = {}
+#        if strategy == 'not':
+#            pass
+#        ## These strategies use MPI and therefore accept a MPI.comm object
+#        if strategy == 'fftw' or strategy == 'equal' or strategy == 'freeform':
+#            if kwargs.has_key('comm'):
+#                return_dict['comm'] = kwargs['comm']
+#
+#        return return_dict
+    
+    def parse_kwargs(self, distribution_strategy, 
+                   global_data = None, global_shape = None,
+                   local_data = None, local_shape = None,
+                   alias = None, path = None,
+                   dtype = None, comm = None, **kwargs):
+
         return_dict = {}
-        if strategy == 'not':
-            pass
-        if strategy == 'fftw' or strategy == 'equal':
-            if kwargs.has_key('comm'):
-                return_dict['comm'] = kwargs['comm']
+
+        ## Check for an hdf5 file and open it if given
+        if FOUND['h5py'] == True and alias is not None:
+            ## set file path            
+            file_path = path if (path is not None) else alias 
+            ## open hdf5 file
+            if FOUND['h5py_parallel'] == True and FOUND['MPI'] == True:
+                f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
+            else:
+                f = h5py.File(file_path, 'r')   
+            ## open alias in file
+            dset = f[alias] 
+        else:
+            dset = None
+
+
+        ## Parse the MPI communicator        
+        if distribution_strategy in ['equal', 'fftw', 'freeform']:
+            if comm is None:
+                raise ValueError(about._errors.cstring(
+            "ERROR: The distributor needs a MPI communicator object comm!"))
+            else:
+                return_dict['comm'] = comm
+        
+        ## Parse the datatype
+        if distribution_strategy in ['not', 'equal', 'fftw'] and \
+            (dset is not None):
+            dtype = dset.dtype.type
+        
+        elif distribution_strategy in ['not', 'equal', 'fftw', 'freeform']: 
+            if dtype is None:
+                if global_data is None and local_data is None:
+                    raise ValueError(about._errors.cstring(
+            "ERROR: Neither global_data nor local_data nor dtype supplied!"))      
+                elif global_data is not None:
+                    try:
+                        dtype = global_data.dtype.type
+                    except(AttributeError):
+                        try:
+                            dtype = global_data.dtype
+                        except(AttributeError):
+                            dtype = np.array(global_data).dtype.type
+                elif local_data is not None:
+                    try:
+                        dtype = local_data.dtype.type
+                    except(AttributeError):
+                        try:
+                            dtype = local_data.dtype
+                        except(AttributeError):
+                            dtype = np.array(local_data).dtype.type
+            else:
+                dtype = np.dtype(dtype).type                
+        return_dict['dtype'] = dtype
+
+        ## Parse the shape
+        ## Case 1: global-type slicer
+        if distribution_strategy in ['not', 'equal', 'fftw']:       
+            if dset is not None:
+                global_shape = dset.shape
+            elif global_data is not None and np.isscalar(global_data) == False:
+                global_shape = global_data.shape
+            elif global_shape is not None:
+                global_shape = tuple(global_shape)
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: Neither non-0-dimensional global_data nor " +
+                    "global_shape nor hdf5 file supplied!"))      
+            if global_shape == ():
+                raise ValueError(about._errors.cstring(
+                    "ERROR: global_shape == () is not valid shape!"))
+            if np.any(np.array(global_shape) == 0):
+                raise ValueError(about._errors.cstring(
+                    "ERROR: Dimension of size 0 occurred!"))
+            
+            return_dict['global_shape'] = global_shape
+
+        ## Case 2: local-type slicer
+        elif distribution_strategy in ['freeform']:        
+            if local_data is not None and np.isscalar(local_data) == False:
+                local_shape = local_data.shape
+            elif local_shape is not None:
+                local_shape = tuple(local_shape)
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: Neither non-0-dimensional local_data nor " +
+                    "local_shape supplied!"))      
+            return_dict['local_shape'] = local_shape
+
+            
+        ## close the file-handle
+        if dset is not None:
+            f.close()
+
         return return_dict
-                        
-    def hash_arguments(self, global_shape, dtype, distribution_strategy,
-                       kwargs={}):
+            
+            
+    def hash_arguments(self, distribution_strategy, **kwargs):
         kwargs = kwargs.copy()
         if kwargs.has_key('comm'):
             kwargs['comm'] = id(kwargs['comm'])
-        kwargs['global_shape'] = global_shape        
-        kwargs['dtype'] = self.dictionize_np(dtype)
+        
+        if kwargs.has_key('global_shape'):
+            kwargs['global_shape'] = kwargs['global_shape']
+        if kwargs.has_key('local_shape'):
+            kwargs['local_shape'] = kwargs['local_shape']
+            
+        kwargs['dtype'] = self.dictionize_np(kwargs['dtype'])
         kwargs['distribution_strategy'] = distribution_strategy
         return frozenset(kwargs.items())
 
@@ -959,70 +1043,72 @@ class _distributor_factory(object):
             dic[37] = 0
         return frozenset(dic)            
             
-    def get_distributor(self, distribution_strategy, global_shape, dtype,
-                        **kwargs):
+    def get_distributor(self, distribution_strategy, **kwargs):
         ## check if the distribution strategy is known
         
-        known_distribution_strategies = ['not', 'equal']
-        if found['pyfftw'] == True and found['MPI'] == True:
+        known_distribution_strategies = ['not', 'equal', 'freeform']
+        if FOUND['pyfftw'] == True:
             known_distribution_strategies += ['fftw',]
-        if not distribution_strategy in ['not', 'fftw', 'equal']:
+        if not distribution_strategy in known_distribution_strategies:
             raise TypeError(about._errors.cstring(
                 "ERROR: Unknown distribution strategy supplied."))
                 
         ## parse the kwargs
-        parsed_kwargs = self.parse_kwargs(strategy = distribution_strategy,
-                                          kwargs = kwargs)
-        hashed_arguments = self.hash_arguments(global_shape = global_shape,
-                                               dtype = dtype,
-                                distribution_strategy = distribution_strategy,
-                                               kwargs = parsed_kwargs)
+        parsed_kwargs = self.parse_kwargs(
+                                distribution_strategy = distribution_strategy, 
+                                **kwargs)
+                                
+        hashed_kwargs = self.hash_arguments(distribution_strategy,
+                                            **parsed_kwargs)
         #print hashed_arguments                                               
         ## check if the distributors has already been produced in the past
-        if self.distributor_store.has_key(hashed_arguments):
-            return self.distributor_store[hashed_arguments]
+        if self.distributor_store.has_key(hashed_kwargs):
+            return self.distributor_store[hashed_kwargs]
         else:                                              
             ## produce new distributor
             if distribution_strategy == 'not':
-                produced_distributor = _not_distributor(
-                                                    global_shape = global_shape,
-                                                    dtype = dtype)
+                produced_distributor = _not_distributor(**parsed_kwargs)
+            
             elif distribution_strategy == 'equal':
                 produced_distributor = _slicing_distributor(
-                                                    slicer = _equal_slicer,
-                                                    global_shape = global_shape,
-                                                    dtype = dtype,
-                                                    **parsed_kwargs)
+                                                slicer = _equal_slicer,
+                                                name = distribution_strategy,
+                                                **parsed_kwargs)
+                                                
             elif distribution_strategy == 'fftw':
                 produced_distributor = _slicing_distributor(
-                                                    slicer = _fftw_slicer,
-                                                    global_shape = global_shape,
-                                                    dtype = dtype,
-                                                    **parsed_kwargs)                                                
-            self.distributor_store[hashed_arguments] = produced_distributor                                             
-            return self.distributor_store[hashed_arguments]
+                                                slicer = _fftw_slicer,
+                                                name = distribution_strategy,
+                                                **parsed_kwargs)    
+            elif distribution_strategy == 'freeform':
+                produced_distributor = _slicing_distributor(
+                                                slicer = _freeform_slicer,
+                                                name = distribution_strategy,
+                                                **parsed_kwargs)             
+                                                    
+            self.distributor_store[hashed_kwargs] = produced_distributor                                             
+            return self.distributor_store[hashed_kwargs]
             
             
 distributor_factory = _distributor_factory()
         
 class _slicing_distributor(object):
-    
-
-    def __init__(self, slicer, global_shape=None, dtype=None, 
-                 comm=MPI.COMM_WORLD):
+    def __init__(self, slicer, name, dtype, comm, **remaining_parsed_kwargs):
         
-        if comm.rank == 0:        
-            if global_shape is None:
-                raise TypeError(about._errors.cstring(
-                    "ERROR: No shape supplied!"))
-            else:
-                self.global_shape = global_shape      
-        else:
-            self.global_shape = None
-            
-        self.global_shape = comm.bcast(self.global_shape, root = 0)
-        self.global_shape = tuple(self.global_shape)
+#        if comm.rank == 0:        
+#            if global_shape is None:
+#                raise TypeError(about._errors.cstring(
+#                    "ERROR: No shape supplied!"))
+#            else:
+#                self.global_shape = global_shape      
+#        else:
+#            self.global_shape = None
+#            
+#        self.global_shape = comm.bcast(self.global_shape, root = 0)
+#        self.global_shape = tuple(self.global_shape)
         
+        self.comm = comm
+        self.distribution_strategy = name
         if comm.rank == 0:        
                 if dtype is None:        
                     raise TypeError(about._errors.cstring(
@@ -1045,10 +1131,11 @@ class _slicing_distributor(object):
         #self._local_size = pyfftw.local_size(self.global_shape)
         #self.local_start = self._local_size[2]
         #self.local_end = self.local_start + self._local_size[1]
-        self.slicer = lambda global_shape: slicer(global_shape, comm = comm)
-        self._local_size = self.slicer(self.global_shape)
+        self.slicer = slicer 
+        self._local_size = self.slicer(comm = comm, **remaining_parsed_kwargs)
         self.local_start = self._local_size[0]
         self.local_end = self._local_size[1] 
+        self.global_shape = self._local_size[2]
         
         self.local_length = self.local_end-self.local_start        
         self.local_shape = (self.local_length,) + tuple(self.global_shape[1:])
@@ -1067,7 +1154,35 @@ class _slicing_distributor(object):
         comm.Allgather([np.array((self.local_slice,),dtype=np.int), MPI.INT],\
             [self.all_local_slices, MPI.INT])
         
-        self.comm = comm
+    def initialize_data(self, global_data, local_data, alias, path, hermitian, 
+                        copy, **kwargs):
+        if FOUND['h5py'] == True and alias is not None:
+            local_data = self.load_data(alias = alias, path = path)
+            return (local_data, hermitian)
+            
+        if self.distribution_strategy in ['equal', 'fftw']:    
+            if np.isscalar(global_data):
+                local_data = np.empty(self.local_shape, dtype = self.dtype)
+                local_data.fill(global_data)            
+                hermitian = True
+            else:
+                local_data = self.distribute_data(data = global_data,
+                                                  copy = copy)
+        elif self.distribution_strategy in ['freeform']:
+            if np.isscalar(local_data):
+                local_data = np.empty(self.local_shape, dtype = self.dtype)
+                local_data.fill(global_data)            
+                hermitian = True
+            elif local_data is None:
+                local_data = np.empty(self.local_shape, dtype = self.dtype)
+                hermitian = False
+            else:
+                local_data = np.array(local_data).astype(
+                               self.dtype, copy=copy).reshape(self.local_shape)
+        else:
+            raise TypeError(about._errors.cstring(
+                                        "ERROR: Unknown istribution strategy"))
+        return (local_data, hermitian)        
         
     def globalize_flat_index(self, index):
         return int(index)+self.local_dim_offset
@@ -1111,10 +1226,10 @@ class _slicing_distributor(object):
         comm.Allgather([local_data_available_Q, MPI.INT], 
                        [data_available_Q, MPI.INT])        
         
-        if data_available_Q[0]==False and found['h5py']:
+        if data_available_Q[0]==False and FOUND['h5py']:
             try: 
                 file_path = path if path != None else alias 
-                if found['h5py_parallel']:
+                if FOUND['h5py_parallel']:
                     f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
                 else:
                     f= h5py.File(file_path, 'r')        
@@ -1160,10 +1275,23 @@ class _slicing_distributor(object):
     
     
 
-    
-    
-    def disperse_data(self, data, to_slices, data_update, from_slices=None,
-                      comm=None, copy = True, **kwargs):
+    def disperse_data(self, data, to_key, data_update, from_key=None, 
+                      comm=None, copy=True, **kwargs):
+                          
+        return self.disperse_data_from_slices(data = data, 
+                                              to_slices = to_key,
+                                              data_update = data_update,
+                                              from_slices = from_key,
+                                              comm = comm,
+                                              copy = copy, 
+                                              **kwargs)
+                                              
+    def disperse_data_from_slices(self, data, to_slices, data_update, 
+                                  from_slices=None, comm=None, copy = True, 
+                                  **kwargs):
+        (to_slices, sliceified) = self._sliceify(to_slices)      
+        data_update = self._enfold(data_update, sliceified)
+
         if comm == None:
             comm = self.comm            
         to_slices_list = comm.allgather(to_slices)
@@ -1171,7 +1299,7 @@ class _slicing_distributor(object):
         if all(x == to_slices_list[0] for x in to_slices_list):
             ## in this case, the _disperse_data_primitive can simply be called 
             ##with target_rank = 'all'
-            self._disperse_data_primitive(data = data, 
+            self._disperse_data_from_slices_primitive(data = data, 
                                           to_slices = to_slices,
                                           data_update=data_update,
                                           from_slices=from_slices, 
@@ -1184,7 +1312,7 @@ class _slicing_distributor(object):
             i = 0        
             for temp_to_slices in to_slices_list:
                 ## make the collect_data call on all nodes            
-                self._disperse_data_primitive(data=data,
+                self._disperse_data_from_slices_primitive(data=data,
                                               to_slices=temp_to_slices,
                                               data_update=data_update,
                                               from_slices=from_slices,
@@ -1216,8 +1344,9 @@ class _slicing_distributor(object):
 #
 #    
     
-    def _disperse_data_primitive(self, data, to_slices, data_update, 
-                        from_slices, source_rank='all', comm=None, copy=True):
+    def _disperse_data_from_slices_primitive(self, data, to_slices, 
+                        data_update, from_slices, source_rank='all', comm=None, 
+                        copy=True):
         if comm == None:
             comm = self.comm         
     
@@ -1334,37 +1463,164 @@ class _slicing_distributor(object):
         return None
         
 
-    def collect_data(self, data, slice_objects, comm=None, **kwargs):
-        if comm == None:
-            comm = self.comm                    
+    def collect_data(self, data, key, **kwargs):
+#        return self.collect_data_from_slices(data = data, 
+#                                        slice_objects = key,
+#                                        **kwargs)
+                                
+        ## collect_data supports three types of keys
+        ## Case 1: key is a slicing/index tuple        
+        ## Case 2: key is a boolean-array of the same shape as self
+        ## Case 3: key is a list of shape (n,), where n is 
+        ##         0<n<len(self.shape). The entries of the list must be a
+        ##         scalar/list/tuple/ndarray. If not scalar the length must be 
+        ##         the same for all of the lists. This is essentially 
+        ##         numpy advanced indexing in one dimension, only.                   
+        
+        ## TODO: die Unterscheidung tuple und liste ist nicht hinreichend.
+        ## TODO: -> wenn es sich um ein tuple handelt, das etwas anderes als 
+        ## TODO: skalare und slices enthält wird advanced indexing aktiviert.
+        ## Check which case we got:            
+        if isinstance(key, tuple) or isinstance(key,slice) or np.isscalar(key):
+            found = 'tuple'        
+        elif isinstance(key, np.ndarray):
+            found = 'ndarray'
+            found_boolean = (key.dtype.type == np.bool_)
+        elif isinstance(key, distributed_data_object):
+            found = 'd2o'
+            found_boolean = (key.dtype == np.bool_)
+        elif isinstance(key, list):
+            found = 'list'
+        
+        ## Case 1: key is a tuple. Hence, the basic indexing/slicing machinery
+        ## will be used         
+        if found == 'tuple':
+            return self.collect_data_from_slices(data = data, 
+                                                 slice_objects = key,
+                                                 **kwargs)    
+        ## Case 2: key is an array
+        elif (found == 'ndarray' or found == 'd2o'):
+            ## Case 2.1: The array is boolean. 
+            if found_boolean == True:
+                return self.collect_data_from_bool(data = data,
+                                                   boolean_key = key,
+                                                   **kwargs)
+            ## Case 2.2: The array is not boolean. As only 1-dimensional 
+            ## advanced slicing is supported, make the input-array flat. 
+            else:
+                if len(key.shape) != 1:
+                    raise ValueError(about._errors.cstring(
+                        "WARNING: Only one-dimensional advanced indexing " +
+                        "is supported"))
+                ## Make a recursive call in order to trigger the 'list'-section
+                return self.collect_data(data = data, key = [key], **kwargs)
+                
+        ## Case 3 : key is an list. This list is interpreted as one-dimensional
+        ## advanced indexing list. Therefore
+        elif found == 'list':
+            return self.collect_data_from_list(data = data,
+                                                list_key = key,
+                                                **kwargs)
+                                                
+    def collect_data_from_list(self, data, list_key, **kwargs):
+        ## Empty d2o's are not supported yet
+        if list_key == []:
+            raise ValueError(about._errors.cstring(
+                "ERROR: key == [] is an unsupported key!")) 
+
+        ## Check if the key list is properly formatted:
+        ## Case 1: Flat list full of scalars
+        if np.all(map(np.isscalar, list_key)):
+            ## The scalars are interpreted as the indices of the first 
+            ## dimension. 
+            ## Decycle and shift the indices to the local slice
+            local_list_key = self._advandced_index_decycler(list_key)
+            ## Extract from the local data
+            local_result = data[local_list_key]
+        ## Case 2: Nested list: 
+        ## The length of the list must be smaller or equal the number of 
+        ## dimensions of the d2o.
+        elif len(list_key) <= len(self.global_shape):
+            ## apply the index decycler to every element in the list
+            local_list_key = map(self._advandced_index_decycler, list_key)
+            ## Extract from the local data
+            local_result = data[local_list_key]
+        else:            
+            raise ValueError(about._errors.cstring(
+                "ERROR: too many indices!"))
+        global_result = distributed_data_object(local_data = local_result,
+                                        distribution_strategy = 'freeform')
+        return global_result
+                
+    def _advandced_index_decycler(self, from_list_key):
+        global_length = self.global_shape[0]
+        local_length = self.local_length 
+        shift = self.local_start
+        
+        ## Check if from_list_key is a scalar
+        if np.isscalar(from_list_key):
+            list_key = np.array([from_list_key,])
+            remember_was_scalar = True
+        else:
+            list_key = np.array(from_list_key, dtype = np.int_)
+            remember_was_scalar = False
+            
+        ## decycle negative indices 
+        list_key[list_key < 0] += global_length
+        ## if there are still negative indices, or indices greater than 
+        ## global_length the indices are ill-choosen
+        if np.any(list_key < 0) or np.any(list_key >= global_length):
+            raise ValueError(about._errors.cstring(
+                                                "ERROR: Index out of bounds!"))
+        ## shift the indices according to shift
+        local_list_key = list_key - shift
+        ## discard all entries where the indices are negative or lorger than 
+        ## local_length 
+        local_list_key = local_list_key[local_list_key >= 0]
+        local_list_key = local_list_key[local_list_key < local_length]
+        if remember_was_scalar == True and local_list_key.shape != (0,):
+            return local_list_key[0]
+        else:
+            return local_list_key
+                                           
+    def collect_data_from_bool(self, data, boolean_key, **kwargs):
+        local_boolean_key = self.extract_local_data(boolean_key)
+        local_result = data[local_boolean_key]
+        global_result = distributed_data_object(local_data = local_result,
+                                        distribution_strategy = 'freeform')
+        return global_result
+        
+    def collect_data_from_slices(self, data, slice_objects, **kwargs):
+        
+        (slice_objects, sliceified) = self._sliceify(slice_objects)
+        comm = self.comm                    
         slice_objects_list = comm.allgather(slice_objects)
         ## check if all slices are the same. 
         if all(x == slice_objects_list[0] for x in slice_objects_list):
             ## in this case, the _collect_data_primitive can simply be called 
             ##with target_rank = 'all'
-            return self._collect_data_primitive(data=data, 
+            result = self._collect_data_from_slices_primitive(data=data, 
                                                 slice_objects=slice_objects, 
-                                                target_rank='all', 
-                                                comm=comm)
-        
+                                                target_rank='all')        
         ## if the different nodes got different slices, collect the data individually
-        i = 0        
-        for temp_slices in slice_objects_list:
-            ## make the collect_data call on all nodes            
-            temp_data = self._collect_data_primitive(data=data, 
-                                                     slice_objects=temp_slices, 
-                                                     target_rank=i, 
-                                                     comm=comm)
-            ## save the result only on the pulling node            
-            if comm.rank == i:
-                individual_data = temp_data
-            i += 1
-        return individual_data
-    
-    def _collect_data_primitive(self, data, slice_objects, target_rank='all', 
-                                comm=None):
-        if comm == None:
-            comm = self.comm            
+        else:        
+            i = 0        
+            for temp_slices in slice_objects_list:
+                ## make the collect_data call on all nodes            
+                temp_data = self._collect_data_from_slices_primitive(data=data, 
+                                                         slice_objects=temp_slices, 
+                                                         target_rank=i)
+                ## save the result only on the pulling node            
+                if comm.rank == i:
+                    individual_data = temp_data
+                i += 1
+            result = individual_data
+        
+        return self._defold(result, sliceified)
+        
+    def _collect_data_from_slices_primitive(self, data, slice_objects, 
+                                            target_rank='all'):
+        comm = self.comm            
             
 #        if slice_objects[0].step is not None and slice_objects[0].step < -1:
 #            raise ValueError(about._errors.cstring(
@@ -1555,9 +1811,9 @@ class _slicing_distributor(object):
         to_slices = tuple(to_slices)
         from_slices = tuple(from_slices)
         self.disperse_data(data = data, 
-                           to_slices = to_slices,
+                           to_key = to_slices,
                            data_update = data_update,
-                           from_slices = from_slices,
+                           from_key = from_slices,
                            comm=comm,
                            **kwargs)
 
@@ -1585,8 +1841,7 @@ class _slicing_distributor(object):
                 allgathered_data = self._allgather(data_object)
                 allgathered_data = np.concatenate(allgathered_data)
                 if allgathered_data.shape != self.global_shape:
-                    raise ValueError(
-                            about._errors.cstring(
+                    raise ValueError(about._errors.cstring(
             "ERROR: supplied shapes do neither match globally nor locally"))
                 return self.extract_local_data(allgathered_data)
             
@@ -1702,8 +1957,64 @@ class _slicing_distributor(object):
             new_data = full_data[slice(start_then, end_then)]
             return new_data
         
+    def _sliceify(self, inp):
+        sliceified = []
+        result = []
+        if isinstance(inp, tuple):
+            x = inp
+        elif isinstance(inp, list):
+            x = tuple(inp)
+        else:
+            x = (inp, )
         
-    if found['h5py']:
+        for i in range(len(x)):
+            if isinstance(x[i], slice):
+                result += [x[i], ]
+                sliceified += [False, ]
+            else:
+                result += [slice(x[i], x[i]+1), ]
+                sliceified += [True, ]
+    
+        return (tuple(result), sliceified)
+                
+                
+    def _enfold(self, in_data, sliceified):
+        data = np.array(in_data, copy=False)    
+        temp_shape = ()
+        j=0
+        for i in sliceified:
+            if i == True:
+                temp_shape += (1,)
+                try:
+                    if data.shape[j] == 1:
+                        j +=1
+                except(IndexError):
+                    pass
+            else:
+                try:
+                    temp_shape += (data.shape[j],)
+                except(IndexError):
+                    temp_shape += (1,)
+                j += 1
+        ## take into account that the sliceified tuple may be too short, because 
+        ## of a non-exaustive list of slices
+        for i in range(len(data.shape)-j):
+            temp_shape += (data.shape[j],)
+            j += 1
+        
+        return data.reshape(temp_shape)
+    
+    def _defold(self, data, sliceified):
+        temp_slice = ()
+        for i in sliceified:
+            if i == True:
+                temp_slice += (0,)
+            else:
+                temp_slice += (slice(None),)
+        return data[temp_slice]
+
+        
+    if FOUND['h5py']:
         def save_data(self, data, alias, path=None, overwriteQ=True, comm=None):
             if comm == None:
                 comm = self.comm            
@@ -1711,7 +2022,7 @@ class _slicing_distributor(object):
             use_path = alias if path==None else path
             
             ## create the file-handle
-            if found['h5py_parallel']:
+            if FOUND['h5py_parallel']:
                 f = h5py.File(use_path, 'a', driver='mpio', comm=comm)
             else:
                 f= h5py.File(use_path, 'a')
@@ -1737,12 +2048,11 @@ class _slicing_distributor(object):
                 comm = self.comm            
             ## parse the path
             file_path = path if (path is not None) else alias 
-
             ## create the file-handle
-            if found['h5py_parallel']:
+            if FOUND['h5py_parallel']:
                 f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
             else:
-                f= h5py.File(file_path, 'r')        
+                f = h5py.File(file_path, 'r')        
             dset = f[alias]        
             ## check shape
             if dset.shape != self.global_shape:
@@ -1768,7 +2078,7 @@ class _slicing_distributor(object):
                 "ERROR: h5py is not available")) 
         
 
-def _equal_slicer(global_shape, comm=MPI.COMM_WORLD):
+def _equal_slicer(comm, global_shape):
     rank = comm.rank
     size = comm.size
     
@@ -1787,18 +2097,39 @@ def _equal_slicer(global_shape, comm=MPI.COMM_WORLD):
         ## if yes, increase the local_length by one
         local_length += 1
     
-    return (offset, offset+local_length)
+    return (offset, offset+local_length, global_shape)
        
        
-       
-if found['MPI'] == True and found['pyfftw'] == True:
-    def _fftw_slicer(global_shape, comm=MPI.COMM_WORLD):
+def _freeform_slicer(comm, local_shape):
+    rank = comm.rank
+    ## Check that all but the first dimensions of local_shape are the same
+    local_sub_shape = local_shape[1:]
+    local_sub_shape_list = comm.allgather(local_sub_shape)
+    
+    cleared_set = set(local_sub_shape_list)
+    cleared_set.discard(())
+    if len(cleared_set) > 1:
+        raise ValueError(about._errors.cstring("ERROR: All but the first "+
+            "dimensions of local_shape must be the same!"))
+    if local_shape == ():
+        first_shape_index = 0
+    else:
+        first_shape_index = local_shape[0] 
+    first_shape_index_list = comm.allgather(first_shape_index)
+    first_shape_index_cumsum = (0,) + tuple(np.cumsum(first_shape_index_list))
+    local_offset = first_shape_index_cumsum[rank]
+    global_shape = (first_shape_index_cumsum[rank+1],) + local_shape[1:] 
+    return (local_offset, local_offset+first_shape_index, global_shape)
+    
+    
+if FOUND['pyfftw'] == True:
+    def _fftw_slicer(comm, global_shape):
+        if FOUND['MPI'] == False:
+            comm = None
         local_size = pyfftw.local_size(global_shape, comm = comm)
         start = local_size[2]
         end = start + local_size[1]
-        return (start, end)
-else:
-    _fftw_slicer = _equal_slicer
+        return (start, end, global_shape)
 
                                          
 class _not_distributor(object):
@@ -1816,7 +2147,21 @@ class _not_distributor(object):
             raise ValueError(about._errors.cstring(
                 "ERROR: No shape supplied!")) 
         self.local_shape = self.global_shape
+        self.distribution_strategy = 'not'
         
+    def initialize_data(self, global_data, alias, path, hermitian, copy,
+                        **kwargs):
+        if FOUND['h5py'] == True and alias is not None:
+            local_data = self.load_data(alias = alias, path = path)
+        elif np.isscalar(global_data):
+            local_data = np.empty(self.local_shape, dtype = self.dtype)
+            local_data.fill(global_data)            
+            hermitian = True
+        else:
+            local_data = self.distribute_data(data = global_data,
+                                              copy = copy)
+        return (local_data, hermitian)
+
     def globalize_flat_index(self, index):
         return index
     
@@ -1827,15 +2172,15 @@ class _not_distributor(object):
         return [thing,]
         
     def distribute_data(self, data, copy = False, **kwargs):
-        if data == None:        
+        if data is None:        
             return np.empty(self.global_shape, dtype=self.dtype)
         else:
             return np.array(data).astype(self.dtype, copy=copy).\
                     reshape(self.global_shape)
     
-    def disperse_data(self, data, to_slices, data_update, from_slices=None,
+    def disperse_data(self, data, to_key, data_update, from_key=None,
                       copy = True, **kwargs):
-        data[to_slices] = np.array(data_update[from_slices], 
+        data[to_key] = np.array(data_update[from_key], 
                                     copy=copy).astype(self.dtype)
                      
     def collect_data(self, data, slice_objects, **kwargs):
@@ -1849,7 +2194,7 @@ class _not_distributor(object):
         data[to_slices] = data_update[from_slices]
     
     def extract_local_data(self, data_object):
-        return data_object.get_full_data()
+        return data_object[:]
     
     def flatten(self, data, inplace = False):
         if inplace == False:

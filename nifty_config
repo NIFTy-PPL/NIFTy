@@ -1,15 +1,15 @@
 ## nifty configuration
 ##
 ## errors colour code
-0
+31
 ## warnings
 1
 ## warnings colour code
-0
+33;1
 ## infos
 0
 ## infos colour code
-0
+32
 ## multiprocessing
 1
 ## hermitianize

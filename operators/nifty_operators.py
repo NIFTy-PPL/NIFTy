@@ -31,7 +31,7 @@ from nifty_probing import trace_prober,\
                             inverse_trace_prober,\
                             diagonal_prober,\
                             inverse_diagonal_prober
-                            
+import nifty.nifty_utilities as utilities                            
 import nifty_simple_math                            
 
 
@@ -2159,17 +2159,26 @@ class power_operator(diagonal_operator):
             self.val = diag
 
         """
-    @property
-    def val(self):
-        return self._val
+
     
     ## The domain is used for calculations of the power-spectrum, not for
     ## actual field values. Therefore the casting of self.val must be switched
     ## off.
-    @val.setter
-    def val(self, x):
-        self._val = x
+    def set_val(self, new_val):
+        """
+            Resets the field values.
 
+            Parameters
+            ----------
+            new_val : {scalar, ndarray}
+                New field values either as a constant or an arbitrary array.
+
+        """
+        self.val = new_val
+        return self.val
+        
+    def get_val(self):
+        return self.val
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def set_power(self, new_spec, bare=True, pindex=None, **kwargs):
@@ -2374,7 +2383,9 @@ class power_operator(diagonal_operator):
         """
 
         pindex = self._cast_pindex(pindex, **kwargs)        
-        return projection_operator(self.domain, assign=pindex)
+        return projection_operator(self.domain, 
+                                   codomain = self.codomain,
+                                   assign=pindex)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -2668,7 +2679,7 @@ class projection_operator(operator):
 
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+    #@profile
     def pseudo_tr(self, x, axis=(), **kwargs):
         """
             Computes the pseudo trace of a given object for all projection bands
@@ -2739,13 +2750,16 @@ class projection_operator(operator):
                                 self.domain.get_meta_volume(total=False),
                                 power = -1)
         ## prepare the result object                                
-        big_shape = working_field.ishape + (len(self.ind),)
-        projection_result = np.empty(big_shape, dtype = np.object_)
-        for i in xrange(len(self.ind)):
-            temp_projected = self(working_field, bands = self.ind[i])
-            temp_dotted = temp_projected.dot(1, axis=(), bare=True)
-            projection_result[(slice(None),)*len(working_field.ishape) + (i,)]\
-                = temp_dotted
+        #big_shape = working_field.ishape + (len(self.ind),)
+#        working_data = working_field.get_val()
+        #projection_result = np.empty(big_shape,
+        #                             dtype = working_field.domain.datatype)
+        
+        projection_result = utilities.field_map(
+            working_field.ishape,            
+            lambda z: self.domain.calc_bincount(self.assign, weights = z),
+            working_field.get_val())
+
         projection_result = np.sum(projection_result, axis=axis)
         return projection_result
 

@@ -170,7 +170,9 @@ class notification(switch):
 
     """
     _code = "\033[0m" ## "\033[39;49m"
-
+    _ccode_red = "\033[31;1m"
+    _ccode_yellow = "\033[33;1m"
+    _ccode_green = "\033[32;1m"
     def __init__(self,default=True,ccode="\033[0m"):
         """
             Initializes the notification and sets `status` and `ccode`
@@ -387,9 +389,12 @@ class _about(object): ## nifty support class for global settings
         self._version = str(__version__)
 
         ## switches and notifications
-        self._errors = notification(default=True,ccode=notification._code)
-        self.warnings = notification(default=True,ccode=notification._code)
-        self.infos =  notification(default=False,ccode=notification._code)
+        self._errors = notification(default=True, 
+                                    ccode=notification._code)
+        self.warnings = notification(default=True, 
+                                     ccode=notification._code)
+        self.infos =  notification(default=False,
+                                   ccode=notification._code)
         self.multiprocessing = switch(default=True)
         self.hermitianize = switch(default=True)
         self.lm2gl = switch(default=True)

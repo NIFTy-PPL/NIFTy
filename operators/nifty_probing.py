@@ -24,7 +24,7 @@ from __future__ import division
 from nifty.nifty_about import about
 from nifty.nifty_core import space, \
                          field 
-from nifty.nifty_simple_math import direct_dot
+from nifty.nifty_utilities import direct_dot
 
 
 ##=============================================================================

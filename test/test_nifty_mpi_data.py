@@ -19,9 +19,9 @@ except(ImportError):
     found['h5py'] = False
 
 
-all_datatypes = [np.bool_, np.int16, np.uint16, np.uint32, np.int32, np.int, 
-              np.int64, np.uint64, np.int64, np.uint64, np.float32, np.float, 
-              np.float64, np.float128, np.complex64, np.complex, np.complex128]
+all_datatypes = [np.bool_, np.int16, np.uint16, np.uint32, np.int32, np.int_, 
+              np.int64, np.uint64, np.int64, np.uint64, np.float32, np.float_, 
+              np.float64, np.float128, np.complex64, np.complex_, np.complex128]
 all_distribution_strategies = ['not', 'equal', 'fftw']
 
 binary_non_inplace_operators = ['__add__', '__radd__', '__sub__', '__rsub__', 
@@ -110,7 +110,7 @@ class Test_Initialization(unittest.TestCase):
     @parameterized.expand(itertools.product([
          [1, (13,7), np.float64, (13,7), np.float64],
          [np.array([1]), (13,7), np.float64, (1,), np.float64],
-         [np.array([[1.,2.],[3.,4.]]), (13,7), np.int, (2,2), np.int],
+         [np.array([[1.,2.],[3.,4.]]), (13,7), np.int_, (2,2), np.int_],
     ], ['not', 'equal', 'fftw']), 
         testcase_func_name=custom_name_func)    
     def test_special_init_cases(self, 
@@ -298,7 +298,7 @@ def scalar_only_square(x):
 class Test_copy_and_copy_empty(unittest.TestCase):
     @parameterized.expand([
             ((8,7), None, None),
-            (None, np.float, None),
+            (None, np.float_, None),
             (None, None, 'not')
         ], testcase_func_name=custom_name_func)
     def test_copy_empty(self, 
@@ -322,7 +322,7 @@ class Test_copy_and_copy_empty(unittest.TestCase):
             assert_equal(p.distribution_strategy, new_distribution_strategy)
 
     @parameterized.expand([
-            (np.float, None),
+            (np.float_, None),
             (None, 'not')
         ], testcase_func_name=custom_name_func)    
     def test_copy(self,
