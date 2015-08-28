@@ -1,28 +1,60 @@
 # -*- coding: utf-8 -*-
 
-from numpy.testing import assert_equal, assert_raises
+from numpy.testing import assert_equal, assert_array_equal, assert_raises
 from nose_parameterized import parameterized
 import unittest
+from time import sleep
 
 import itertools
-
 import os
+import imp
 import numpy as np
 import nifty
-from nifty.nifty_mpi_data import distributed_data_object
+from nifty.nifty_mpi_data import distributed_data_object, d2o_librarian
 
-found = {}
+FOUND = {}
 try:
-    import h5py
-    found['h5py'] = True
+    imp.find_module('h5py')
+    FOUND['h5py'] = True
 except(ImportError):
-    found['h5py'] = False
+    FOUND['h5py'] = False
 
+try:
+    from mpi4py import MPI
+    FOUND['MPI'] = True
+except(ImportError): 
+    import mpi_dummy as MPI
+    FOUND['MPI'] = False
+    
+###############################################################################
 
-all_datatypes = [np.bool_, np.int16, np.uint16, np.uint32, np.int32, np.int_, 
-              np.int64, np.uint64, np.int64, np.uint64, np.float32, np.float_, 
-              np.float64, np.float128, np.complex64, np.complex_, np.complex128]
-all_distribution_strategies = ['not', 'equal', 'fftw']
+comm = MPI.COMM_WORLD
+rank = comm.rank
+size = comm.size
+
+###############################################################################
+
+np.random.seed(123)
+
+###############################################################################    
+
+#all_datatypes = [np.bool_, np.int16, np.uint16, np.uint32, np.int32, np.int_, 
+#             np.int, np.int64, np.uint64, np.float32, np.float_, np.float, 
+#             np.float64, np.float128, np.complex64, np.complex_, 
+#             np.complex, np.complex128]
+all_datatypes = [np.dtype('bool'), np.dtype('int16'), np.dtype('uint16'), 
+                np.dtype('uint32'), np.dtype('int32'), np.dtype('int'), 
+                np.dtype('int64'), np.dtype('uint'), np.dtype('uint64'), 
+                np.dtype('float32'), np.dtype('float64'), np.dtype('float128'), 
+                np.dtype('complex64'), np.dtype('complex128')] 
+             
+###############################################################################              
+
+all_distribution_strategies = ['not', 'equal', 'fftw', 'freeform']
+global_distribution_strategies = ['not', 'equal', 'fftw']
+local_distribution_strategies = ['freeform']
+
+###############################################################################
 
 binary_non_inplace_operators = ['__add__', '__radd__', '__sub__', '__rsub__', 
                                 '__div__', '__truediv__', '__rdiv__', 
@@ -32,23 +64,34 @@ binary_non_inplace_operators = ['__add__', '__radd__', '__sub__', '__rsub__',
 binary_inplace_operators = ['__iadd__', '__isub__', '__idiv__', '__itruediv__',
                             '__ifloordiv__', '__imul__', '__ipow__'] 
 
+###############################################################################
+
 hdf5_test_paths = [#('hdf5_init_test.hdf5', None),
     ('hdf5_init_test.hdf5', os.path.join(os.path.dirname(nifty.__file__),
                                    'test/hdf5_init_test.hdf5')),
         ('hdf5_init_test.hdf5', os.path.join(os.path.dirname(nifty.__file__),
                                 'test//hdf5_test_folder/hdf5_init_test.hdf5'))]
+
+###############################################################################
  
 def custom_name_func(testcase_func, param_num, param):
     return "%s_%s" %(
         testcase_func.__name__,
         parameterized.to_safe_name("_".join(str(x) for x in param.args)),
     )
-                               
-class Test_Initialization(unittest.TestCase):
+
+
+###############################################################################
+###############################################################################
+
+                             
+class Test_Globaltype_Initialization(unittest.TestCase):
+
+###############################################################################    
     @parameterized.expand(
     itertools.product([(1,), (7,), (78,11), (256,256)],
                       all_datatypes,
-                      all_distribution_strategies,
+                      global_distribution_strategies,
                       [True, False]), 
                         testcase_func_name=custom_name_func)
     def test_successful_init_via_global_shape_and_dtype(self,
@@ -57,9 +100,9 @@ class Test_Initialization(unittest.TestCase):
                                                         distribution_strategy,
                                                         hermitian):
         obj = distributed_data_object(global_shape = global_shape, 
-                                      dtype = dtype,
+                                dtype = dtype,
                                 distribution_strategy = distribution_strategy,
-                                      hermitian = hermitian)        
+                                hermitian = hermitian)        
                                 
         assert_equal(obj.dtype, dtype)
         assert_equal(obj.shape, global_shape)
@@ -67,37 +110,19 @@ class Test_Initialization(unittest.TestCase):
         assert_equal(obj.hermitian, hermitian)
         assert_equal(obj.data.dtype, np.dtype(dtype))
     
-    
-    @parameterized.expand([
-            (None, None, None),
-            (None, (8,8), None),
-            (None, None, np.int),
-            (1, None, None)
-    ], 
-    testcase_func_name=custom_name_func)   
-    def test_failed_init_on_unsufficient_parameters(self, 
-                                             global_data, 
-                                             global_shape,
-                                             dtype):
-        assert_raises(ValueError,
-                      lambda: distributed_data_object(
-                                              global_data = global_data,
-                                              global_shape = global_shape,
-                                              dtype = dtype))
+                                              
+###############################################################################
                                               
     @parameterized.expand(
-    itertools.product([(1,),(7,),(77,11),(256,256)],
-                       [np.bool, np.int16, np.uint16, np.uint32, np.int32, 
-                        np.int, np.int64, np.uint64, np.int64, np.uint64, 
-                        np.float32, np.float, np.float64, np.float128, 
-                        np.complex64, np.complex, np.complex128],
-                        ['not', 'equal', 'fftw']), 
-                        testcase_func_name=custom_name_func)
-    
+    itertools.product([(1,), (7,), (77,11), (256,256)],
+                       all_datatypes,
+                       global_distribution_strategies), 
+                       testcase_func_name=custom_name_func)
     def test_successful_init_via_global_data(self, 
                                              global_shape,
                                              dtype,
                                              distribution_strategy):
+        
         a = (np.random.rand(*global_shape)*100-50).astype(dtype)
         obj = distributed_data_object(global_data = a, 
                             distribution_strategy = distribution_strategy)
@@ -106,12 +131,40 @@ class Test_Initialization(unittest.TestCase):
         assert_equal(obj.distribution_strategy, distribution_strategy)
         assert_equal(obj.data.dtype, np.dtype(dtype))
 
+###############################################################################
+
+    @parameterized.expand(
+    itertools.product([(1,), (7,), (77,11), (256,256)],
+                       ['tuple', 'list'],
+                       all_datatypes,
+                       global_distribution_strategies), 
+                       testcase_func_name=custom_name_func)
+    def test_successful_init_via_tuple_and_list(self, 
+                                       global_shape,
+                                       global_data_type,
+                                       dtype,
+                                       distribution_strategy):
+        
+        a = (np.random.rand(*global_shape)*100-50).astype(dtype)
+        if global_data_type == 'list':
+            a = a.tolist()
+        elif global_data_type == 'tuple':
+            a = tuple(a.tolist())
+            
+        obj = distributed_data_object(global_data = a, 
+                            distribution_strategy = distribution_strategy)
+        assert_equal(obj.shape, global_shape)
+        assert_equal(obj.distribution_strategy, distribution_strategy)
+
+
+
+###############################################################################
     
     @parameterized.expand(itertools.product([
          [1, (13,7), np.float64, (13,7), np.float64],
          [np.array([1]), (13,7), np.float64, (1,), np.float64],
-         [np.array([[1.,2.],[3.,4.]]), (13,7), np.int_, (2,2), np.int_],
-    ], ['not', 'equal', 'fftw']), 
+         [np.array([[1.,2.],[3.,4.]]), (13,7), np.int_, (2,2), np.int_]
+    ], global_distribution_strategies), 
         testcase_func_name=custom_name_func)    
     def test_special_init_cases(self, 
                                 (global_data, 
@@ -127,17 +180,249 @@ class Test_Initialization(unittest.TestCase):
         assert_equal(obj.shape, expected_shape)
         assert_equal(obj.dtype, expected_dtype)
                                               
+###############################################################################
                                               
-    if found['h5py'] == True:
+    if FOUND['h5py'] == True:
         @parameterized.expand(itertools.product(hdf5_test_paths,
-                                                all_distribution_strategies), 
+                                            global_distribution_strategies), 
                                         testcase_func_name=custom_name_func)
         def test_hdf5_init(self, (alias, path), distribution_strategies):
-            obj = distributed_data_object(alias = alias,
+            obj = distributed_data_object(global_data = 1.,
+                                          global_shape = (12,6),
+                                          alias = alias,
                                           path = path)
             assert_equal(obj.dtype, np.complex128)
             assert_equal(obj.shape, (13,7))
+
+###############################################################################
+    
+    @parameterized.expand(
+        itertools.product(
+            [(None, None, None, None, None),
+            (None, (8,8), None, None, None),
+            (None, None, np.int_, None, None),
+            (1, None, None, None, None),
+            (None, None, None, np.array([1,2,3]), (3,)),
+            (None, (3*size,), None, np.array([1,2,3]), None),
+            (None, None, np.int_, None, (3,)),],
+            global_distribution_strategies), 
+    testcase_func_name=custom_name_func)   
+    def test_failed_init_on_unsufficient_parameters(self, 
+                (global_data, global_shape, dtype, local_data, local_shape), 
+                distribution_strategy):
+        assert_raises(ValueError,
+                      lambda: distributed_data_object(
+                              global_data = global_data,
+                              global_shape = global_shape,
+                              dtype = dtype,
+                              local_data = local_data,
+                              local_shape = local_shape,
+                              distribution_strategy = distribution_strategy))
+
+###############################################################################
+
+    @parameterized.expand(
+    itertools.product([(0,), (1,0), (0,1), (25,0,10), (0,0)],
+                        global_distribution_strategies),
+                        testcase_func_name=custom_name_func)
+    def test_init_with_zero_type_shape(self, global_shape, 
+                                       distribution_strategy):
+        obj = distributed_data_object(global_shape = global_shape,
+                                dtype = np.int,
+                                distribution_strategy = distribution_strategy)
+        assert_equal(obj.shape, global_shape)                                
+
+
             
+###############################################################################
+###############################################################################
+                             
+class Test_Localtype_Initialization(unittest.TestCase):
+
+###############################################################################    
+    @parameterized.expand(
+    itertools.product([(1,), (7,), (78,11), (256,256)],
+                      [False, True],
+                      all_datatypes,
+                      local_distribution_strategies,
+                      [True, False]), 
+                        testcase_func_name=custom_name_func)
+    def test_successful_init_via_local_shape_and_dtype(self,
+                                                        local_shape, 
+                                                        different_shapes,
+                                                        dtype,
+                                                        distribution_strategy,
+                                                        hermitian):
+
+        if different_shapes == True:                                                 
+            expected_global_shape = np.array(local_shape)
+            expected_global_shape[0] *= size*(size-1)/2
+            expected_global_shape = tuple(expected_global_shape)            
+            local_shape = list(local_shape)
+            local_shape[0] *= rank
+            local_shape = tuple(local_shape)
+        else:
+            expected_global_shape = np.array(local_shape)
+            expected_global_shape[0] *= size
+            expected_global_shape = tuple(expected_global_shape)
+
+        obj = distributed_data_object(local_shape = local_shape, 
+                                dtype = dtype,
+                                distribution_strategy = distribution_strategy,
+                                hermitian = hermitian)        
+
+        assert_equal(obj.dtype, dtype)
+        assert_equal(obj.shape, expected_global_shape)
+        assert_equal(obj.distribution_strategy, distribution_strategy)
+        assert_equal(obj.hermitian, hermitian)
+        assert_equal(obj.data.dtype, np.dtype(dtype))
+    
+                                              
+###############################################################################
+                                              
+    @parameterized.expand(
+    itertools.product([(1,), (7,), (77,11), (256,256)],
+                       [False, True],
+                       all_datatypes,
+                       local_distribution_strategies), 
+                       testcase_func_name=custom_name_func)
+    def test_successful_init_via_local_data(self, 
+                                             local_shape,
+                                             different_shapes,
+                                             dtype,
+                                             distribution_strategy):
+        if different_shapes == True:                                                 
+            expected_global_shape = np.array(local_shape)
+            expected_global_shape[0] *= size*(size-1)/2
+            expected_global_shape = tuple(expected_global_shape)
+            local_shape = list(local_shape)
+            local_shape[0] *= rank
+            local_shape = tuple(local_shape)
+        else:
+            expected_global_shape = np.array(local_shape)
+            expected_global_shape[0] *= size
+            expected_global_shape = tuple(expected_global_shape)
+            
+        a = (np.random.rand(*local_shape)*100-50).astype(dtype)
+        obj = distributed_data_object(local_data = a, 
+                            distribution_strategy = distribution_strategy)
+                            
+        assert_equal(obj.dtype, np.dtype(dtype))
+        assert_equal(obj.shape, expected_global_shape)
+        assert_equal(obj.distribution_strategy, distribution_strategy)
+        assert_equal(obj.data.dtype, np.dtype(dtype))
+
+###############################################################################
+
+    @parameterized.expand(
+    itertools.product([(1,)],#, (7,), (77,11), (256,256)],
+                       ['tuple', 'list'],
+                       all_datatypes,
+                       local_distribution_strategies), 
+                       testcase_func_name=custom_name_func)
+    def test_successful_init_via_tuple_and_list(self, 
+                                       local_shape,
+                                       local_data_type,
+                                       dtype,
+                                       distribution_strategy):
+        
+        a = (np.random.rand(*local_shape)*100).astype(dtype)
+        if local_data_type == 'list':
+            a = a.tolist()
+        elif local_data_type == 'tuple':
+            a = tuple(a.tolist())
+        sleep(0.01)
+        obj = distributed_data_object(local_data = a, 
+                            distribution_strategy = distribution_strategy)
+
+        expected_global_shape = np.array(local_shape)
+        expected_global_shape[0] *= size
+        expected_global_shape = tuple(expected_global_shape)
+
+        assert_equal(obj.shape, expected_global_shape)
+        assert_equal(obj.distribution_strategy, distribution_strategy)
+
+
+
+###############################################################################
+    
+    @parameterized.expand(itertools.product([
+         [1, (13,7), np.float64, (13*size,7), np.float64],
+         [np.array([1]), (13,7), np.float64, (1*size,), np.float64],
+         [np.array([[1.,2.],[3.,4.]]), (13,7), np.int, (2*size,2), np.int]
+    ], local_distribution_strategies), 
+        testcase_func_name=custom_name_func)    
+    def test_special_init_cases(self, 
+                                (local_data, 
+                                local_shape, 
+                                dtype,
+                                expected_shape,
+                                expected_dtype),
+                                distribution_strategy):
+        obj = distributed_data_object(local_data = local_data,
+                              local_shape = local_shape,
+                              dtype = dtype,
+                              distribution_strategy = distribution_strategy) 
+                              
+        assert_equal(obj.shape, expected_shape)
+        assert_equal(obj.dtype, expected_dtype)
+                                              
+################################################################################
+#                                              
+#    if FOUND['h5py'] == True:
+#        @parameterized.expand(itertools.product(hdf5_test_paths,
+#                                            global_distribution_strategies), 
+#                                        testcase_func_name=custom_name_func)
+#        def test_hdf5_init(self, (alias, path), distribution_strategies):
+#            obj = distributed_data_object(global_data = 1.,
+#                                          global_shape = (12,6),
+#                                          alias = alias,
+#                                          path = path)
+#            assert_equal(obj.dtype, np.complex128)
+#            assert_equal(obj.shape, (13,7))
+#
+################################################################################
+#    
+#    @parameterized.expand(
+#        itertools.product(
+#            [(None, None, None, None, None),
+#            (None, (8,8), None, None, None),
+#            (None, None, np.int_, None, None),
+#            (1, None, None, None, None),
+#            (None, None, None, np.array([1,2,3]), (3,)),
+#            (None, (3*size,), None, np.array([1,2,3]), None),
+#            (None, None, np.int_, None, (3,)),],
+#            global_distribution_strategies), 
+#    testcase_func_name=custom_name_func)   
+#    def test_failed_init_on_unsufficient_parameters(self, 
+#                (global_data, global_shape, dtype, local_data, local_shape), 
+#                distribution_strategy):
+#        assert_raises(ValueError,
+#                      lambda: distributed_data_object(
+#                              global_data = global_data,
+#                              global_shape = global_shape,
+#                              dtype = dtype,
+#                              local_data = local_data,
+#                              local_shape = local_shape,
+#                              distribution_strategy = distribution_strategy))
+#
+################################################################################
+#
+#    @parameterized.expand(
+#    itertools.product([(0,), (1,0), (0,1), (25,0,10), (0,0)],
+#                        global_distribution_strategies),
+#                        testcase_func_name=custom_name_func)
+#    def test_init_with_zero_type_shape(self, global_shape, 
+#                                       distribution_strategy):
+#        obj = distributed_data_object(global_shape = global_shape,
+#                                dtype = np.int,
+#                                distribution_strategy = distribution_strategy)
+#        assert_equal(obj.shape, global_shape)                                
+#
+
+            
+###############################################################################
+###############################################################################
                                               
 class Test_set_get_full_and_local_data(unittest.TestCase):
     @parameterized.expand(
@@ -155,7 +440,7 @@ class Test_set_get_full_and_local_data(unittest.TestCase):
                                 distribution_strategy = distribution_strategy)
         assert_equal(obj.get_full_data(), a)
 
-    if found['h5py']:  
+    if FOUND['h5py']:  
         @parameterized.expand(hdf5_test_paths)
         def test_loading_hdf5_file(self, alias, path):
             a = np.arange(13*7).reshape((13,7)).astype(np.float)
@@ -199,14 +484,18 @@ class Test_set_get_full_and_local_data(unittest.TestCase):
         b = obj.get_local_data()
         c = (np.random.random(b.shape)*100).astype(np.dtype(dtype))
         obj.set_local_data(data = c)                                                     
-        assert_equal(obj.get_local_data(), c)        
+        assert_equal(obj.get_local_data(), c)
+
                                               
+###############################################################################
+###############################################################################
                                               
 class Test_slicing_get_set_data(unittest.TestCase):
     @parameterized.expand(
-    itertools.product([(4,4),(20,21), (77,11), (256,256)],
+    itertools.product(
+                      [(4,4),(20,21), (77,11), (256,256)],
                       all_datatypes,
-                      all_distribution_strategies,
+                      all_distribution_strategies, 
                       [slice(None, None, None), 
                        slice(5, 18),
                        slice(5, 18, 4),
@@ -245,7 +534,8 @@ class Test_slicing_get_set_data(unittest.TestCase):
                                                         reshape(global_shape)
         obj = distributed_data_object(global_data = a, 
                                 distribution_strategy = distribution_strategy)
-        assert_equal(obj[slice_tuple], a[slice_tuple])                        
+        
+        assert_array_equal(obj[slice_tuple].get_full_data(), a[slice_tuple])                                      
         
         b = 100*np.copy(a)
         obj[slice_tuple] = b[slice_tuple]
@@ -253,6 +543,8 @@ class Test_slicing_get_set_data(unittest.TestCase):
         
         assert_equal(obj.get_full_data(), a)
     
+###############################################################################
+###############################################################################
     
     
 class Test_inject(unittest.TestCase):    
@@ -284,7 +576,7 @@ class Test_inject(unittest.TestCase):
                    data = p,
                    from_slices = slice_tuple_2)
         a[slice_tuple_1] = b[slice_tuple_2]                   
-        assert_equal(obj, a)
+        assert_equal(obj.get_full_data(), a)
         
             
 
@@ -293,7 +585,9 @@ def scalar_only_square(x):
         return x*x
     else:
         raise ValueError
-            
+###############################################################################
+###############################################################################
+           
     
 class Test_copy_and_copy_empty(unittest.TestCase):
     @parameterized.expand([
@@ -388,7 +682,8 @@ class Test_copy_and_copy_empty(unittest.TestCase):
         assert_equal(obj.get_full_data(), np.ones(shape=temp_shape))        
         assert_equal(obj.dtype, desired_dtype)
         
-    
+###############################################################################
+###############################################################################
     
     
 class Test_unary_and_binary_operations(unittest.TestCase):
@@ -460,7 +755,7 @@ class Test_unary_and_binary_operations(unittest.TestCase):
         temp_shape = (8,8)
         a = np.arange(np.prod(temp_shape)).reshape(temp_shape)
         obj = distributed_data_object(a)
-        assert_equal(obj+1j, a+1j)
+        assert_equal((obj+1j).get_full_data(), a+1j)
         
     @parameterized.expand(binary_non_inplace_operators, 
                           testcase_func_name=custom_name_func)    
@@ -516,7 +811,10 @@ class Test_unary_and_binary_operations(unittest.TestCase):
         assert_equal(obj.equal(p), True)        
         assert_equal(obj.equal(p+1), False)        
         assert_equal(obj.equal(None), False)
-        
+
+###############################################################################
+###############################################################################
+      
 class Test_contractions(unittest.TestCase):
     def test_vdot(self):
         temp_shape = (8,8)
@@ -570,7 +868,6 @@ class Test_contractions(unittest.TestCase):
                      np.all(np.isreal(a)))
         assert_equal(obj.isreal().any(), 
                      np.any(np.isreal(a)))
-      
         
 ## Todo: Assert that data is copied, when copy flag is set        
 ## Todo: Assert that set, get and injection work, if there is different data

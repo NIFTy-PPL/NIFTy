@@ -31,7 +31,7 @@ from nifty_core import space,\
                     nested_space,\
                     field
                     
-from nifty_mpi_data import distributed_data_object
+from nifty_mpi_data import distributed_data_object, d2o_librarian
 from nifty_power import *
 from nifty_random import random
 from nifty_simple_math import *
