@@ -24,7 +24,7 @@ class _COMM_WORLD():
     def Get_size(self):
         return self.size
     
-    def _scattergather_helper(self, sendbuf, recvbuf=None):
+    def _scattergather_helper(self, sendbuf, recvbuf=None, **kwargs):
         sendbuf = self._unwrapper(sendbuf)
         recvbuf = self._unwrapper(recvbuf)
         if recvbuf != None:        
@@ -68,13 +68,16 @@ class _COMM_WORLD():
         return self._scattergather_helper(*args, **kwargs)
     
     def Allreduce(self, sendbuf, recvbuf, op, **kwargs):
-        recvbuf[None] = op(sendbuf)
+        recvbuf[:] = op(sendbuf)
         return recvbuf
         
     def allreduce(self, sendbuf, recvbuf, op, **kwargs):
-        recvbuf[None] = op(sendbuf)
+        recvbuf[:] = op(sendbuf)
         return recvbuf
-    
+
+    def sendrecv(self, sendobj, **kwargs):
+        return sendobj
+        
     def _unwrapper(self, x):
         if isinstance(x, list):
             return x[0]

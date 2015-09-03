@@ -2539,7 +2539,7 @@ class projection_operator(operator):
                 
         ## build indexing
         self.ind = self.domain.unary_operation(self.assign, op='unique')
-
+        
         self.sym = True
         self.uni = False
         self.imp = True

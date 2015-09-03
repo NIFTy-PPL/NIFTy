@@ -33,7 +33,7 @@
 """
 from __future__ import division
 from nifty import *                                              # version 0.8.0
-about.warnings.off()
+about.warnings.on()
 
 # some signal space; e.g., a two-dimensional regular grid
 x_space = rg_space([1280, 1280], datamodel = 'd2o')                                   # define signal space
