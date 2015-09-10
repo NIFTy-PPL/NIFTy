@@ -45,7 +45,7 @@ from __future__ import division
 from scipy.interpolate import interp1d as ip ## FIXME: conflicts with sphinx's autodoc
 import numpy as np
 
-from nifty_about import about
+from keepers import about
 from nifty_core import space,                                                \
                        field
 from operators import projection_operator

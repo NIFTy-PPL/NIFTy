@@ -38,7 +38,7 @@ import numpy as np
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
-from nifty.nifty_about import about
+from nifty.keepers import about
 from nifty.nifty_core import pi,                                             \
                   space,                                                     \
                   point_space,                                               \
@@ -47,7 +47,7 @@ from nifty.nifty_paradict import lm_space_paradict,\
                             gl_space_paradict,\
                             hp_space_paradict
 from nifty.nifty_random import random
-                            
+
 #import libsharp_wrapper_gl as gl
 try:
     import libsharp_wrapper_gl as gl
@@ -156,11 +156,11 @@ class lm_space(point_space):
                 If input `nside` is invaild.
 
         """
-        
+
         ## check imports
         if(not _gl_available)and(not _hp_available):
             raise ImportError(about._errors.cstring("ERROR: neither libsharp_wrapper_gl nor healpy available."))
-        
+
         self.paradict = lm_space_paradict(lmax=lmax, mmax=mmax)
 
         ## check data type
@@ -170,24 +170,25 @@ class lm_space(point_space):
             about.warnings.cprint("WARNING: data type set to default.")
             datatype = np.complex128
         self.datatype = datatype
-        
+
         ## set datamodel
         if datamodel not in ['np']:
             about.warnings.cprint("WARNING: datamodel set to default.")
             self.datamodel = 'np'
         else:
-            self.datamodel = datamodel        
-        
+            self.datamodel = datamodel
+
         self.discrete = True
+        self.harmonic = True
         self.vol = np.real(np.array([1],dtype=self.datatype))
 
     @property
     def para(self):
-        temp = np.array([self.paradict['lmax'], 
+        temp = np.array([self.paradict['lmax'],
                          self.paradict['mmax']], dtype=int)
         return temp
-        
-    
+
+
     @para.setter
     def para(self, x):
         self.paradict['lmax'] = x[0]
@@ -528,9 +529,12 @@ class lm_space(point_space):
         """
         if codomain is None:
             return False
-            
+
         if(not isinstance(codomain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
+
+        if self.datamodel is not codomain.datamodel:
+            return False
 
         if(self==codomain):
             return True
@@ -1043,9 +1047,9 @@ class gl_space(point_space):
         ## check imports
         if(not _gl_available):
             raise ImportError(about._errors.cstring("ERROR: libsharp_wrapper_gl not available."))
-        
 
-        self.paradict = gl_space_paradict(nlat=nlat, nlon=nlon)        
+
+        self.paradict = gl_space_paradict(nlat=nlat, nlon=nlon)
 
         ## check data type
         if(datatype is None):
@@ -1054,30 +1058,31 @@ class gl_space(point_space):
             about.warnings.cprint("WARNING: data type set to default.")
             datatype = np.float64
         self.datatype = datatype
-        
+
         ## set datamodel
         if datamodel not in ['np']:
             about.warnings.cprint("WARNING: datamodel set to default.")
             self.datamodel = 'np'
         else:
-            self.datamodel = datamodel     
+            self.datamodel = datamodel
 
         self.discrete = False
+        self.harmonic = False
         self.vol = gl.vol(self.paradict['nlat'],nlon=self.paradict['nlon']).astype(self.datatype)
 
 
     @property
     def para(self):
-        temp = np.array([self.paradict['nlat'], 
+        temp = np.array([self.paradict['nlat'],
                          self.paradict['nlon']], dtype=int)
         return temp
-        
-    
+
+
     @para.setter
     def para(self, x):
         self.paradict['nlat'] = x[0]
         self.paradict['nlon'] = x[1]
-    
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def copy(self):
@@ -1309,9 +1314,12 @@ class gl_space(point_space):
         """
         if codomain is None:
             return False
-            
+
         if(not isinstance(codomain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
+
+        if self.datamodel is not codomain.datamodel:
+            return False
 
         if(self==codomain):
             return True
@@ -1741,37 +1749,38 @@ class hp_space(point_space):
         ## check imports
         if(not _hp_available):
             raise ImportError(about._errors.cstring("ERROR: healpy not available."))
-        ## check parameters        
-        self.paradict = hp_space_paradict(nside=nside)        
+        ## check parameters
+        self.paradict = hp_space_paradict(nside=nside)
 
         self.datatype = np.float64
-        
+
         ## set datamodel
         if datamodel not in ['np']:
             about.warnings.cprint("WARNING: datamodel set to default.")
             self.datamodel = 'np'
         else:
-            self.datamodel = datamodel     
-            
+            self.datamodel = datamodel
+
         self.discrete = False
+        self.harmonic = False
         self.vol = np.array([4*pi/(12*self.paradict['nside']**2)],dtype=self.datatype)
 
     @property
     def para(self):
         temp = np.array([self.paradict['nside']], dtype=int)
         return temp
-        
-    
+
+
     @para.setter
     def para(self, x):
         self.paradict['nside'] = x[0]
-        
-    
+
+
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def copy(self):
         return hp_space(nside = self.paradict['nside'])
-        
+
     def nside(self):
         """
             Returns the resolution parameter.
@@ -1983,9 +1992,12 @@ class hp_space(point_space):
         """
         if codomain is None:
             return False
-            
+
         if(not isinstance(codomain,space)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
+
+        if self.datamodel is not codomain.datamodel:
+            return False
 
         if(self==codomain):
             return True

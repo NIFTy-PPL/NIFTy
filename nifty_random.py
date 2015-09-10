@@ -20,7 +20,7 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-from nifty_about import about
+from keepers import about
 from nifty_mpi_data import distributed_data_object
 
 ##-----------------------------------------------------------------------------
@@ -121,7 +121,7 @@ class random(object):
             return [key]
 
         elif key == "gau":
-            """            
+            """
             if("mean" in kwargs):
                 mean = domain.enforce_values(kwargs.get("mean"),extend=False)
             else:
@@ -142,14 +142,14 @@ class random(object):
 
         elif key == "syn":
             pindex = kwargs.get('pindex', None)
-            kindex = kwargs.get('kindex', None)                        
+            kindex = kwargs.get('kindex', None)
             size = kwargs.get('size', None)
             log = kwargs.get('log', False)
             nbin = kwargs.get('nbin', None)
             binbounds = kwargs.get('binbounds', None)
             spec = kwargs.get('spec', 1)
             codomain = kwargs.get('codomain', None)
-            
+
             ## check which domain should be taken for powerindexing
             if domain.check_codomain(codomain) == True and\
                 codomain.fourier == True:
@@ -157,25 +157,25 @@ class random(object):
             elif domain.fourier == True:
                 fourier_domain = domain
             else:
-                fourier_domain = domain.get_codomain()            
-            
+                fourier_domain = domain.get_codomain()
+
             ## building kpack
             if pindex != None and kindex != None:
-                pindex = distributed_data_object(pindex, 
+                pindex = distributed_data_object(pindex,
                                                  distribution_strategy='fftw')
                 kpack = [pindex, kindex]
             else:
                 kpack = None
-            
+
             ## simply put size and kindex into enforce_power
             ## if one or both are None, enforce power will fix that
             spec = fourier_domain.enforce_power(spec, size=size, kindex=kindex)
-            
 
-                
-            return [key, spec, kpack, fourier_domain, log, nbin, binbounds]        
-            
-                
+
+
+            return [key, spec, kpack, fourier_domain, log, nbin, binbounds]
+
+
             '''
             ## explicit power indices
             if ("pindex" in kwargs) and ("kindex" in kwargs):

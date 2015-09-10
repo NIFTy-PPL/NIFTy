@@ -1239,6 +1239,50 @@ class Test_unary_and_binary_operations(unittest.TestCase):
 
 ###############################################################################
 
+    @parameterized.expand(all_distribution_strategies)
+    def test_is_real_is_complex(self, distribution_strategy):
+        if distribution_strategy in local_distribution_strategies:
+            stored_distribution_strategy = distribution_strategy
+            distribution_strategy = 'equal'
+        else:
+            stored_distribution_strategy = None
+
+        global_shape = (8, 7)
+        a = np.arange(np.prod(global_shape)).reshape(global_shape)
+        a = a + ((-1)**a + 1) * 1j
+        obj = distributed_data_object(
+                                a, distribution_strategy=distribution_strategy)
+
+        if stored_distribution_strategy is not None:
+            (b, p) = generate_data(
+                            global_shape,
+                            np.dtype('complex'),
+                            distribution_strategy=stored_distribution_strategy)
+            p.inject((slice(None),), a, (slice(None),))
+            obj = p
+
+        assert_equal(obj.isreal().get_full_data(), np.isreal(a))
+        assert_equal(obj.iscomplex().get_full_data(), np.iscomplex(a))
+
+###############################################################################
+
+    @parameterized.expand(all_distribution_strategies)
+    def test_is_nan_inf(self, distribution_strategy):
+        global_shape = (8, 8)
+        dtype = np.dtype('float')
+        (a, obj) = generate_data(global_shape, dtype, distribution_strategy)
+        a[0, 0] = np.nan
+        a[0, 1] = np.inf
+        obj[0, 0] = np.nan
+        obj[0, 1] = np.inf
+
+        assert_equal(obj.isnan().get_full_data(), np.isnan(a))
+        assert_equal(obj.isinf().get_full_data(), np.isinf(a))
+        assert_equal(obj.isfinite().get_full_data(), np.isfinite(a))
+        assert_equal(obj.nan_to_num().get_full_data(), np.nan_to_num(a))
+
+###############################################################################
+
     @parameterized.expand(
         itertools.product(binary_non_inplace_operators,
                           all_distribution_strategies,
@@ -1426,8 +1470,8 @@ class Test_contractions(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(['amin', 'nanmin', 'amax', 'nanmax', 'sum',
-                           'prod', 'mean', 'var', 'std', 'median'],
+        itertools.product(['min', 'amin', 'nanmin', 'max', 'amax', 'nanmax',
+                           'sum', 'prod', 'mean', 'var', 'std', 'median'],
                           all_datatypes,
                           all_distribution_strategies),
         testcase_func_name=custom_name_func)
@@ -1460,33 +1504,6 @@ class Test_contractions(unittest.TestCase):
         assert_equal(obj.argmax_nonflat(),
                      np.unravel_index(np.argmax(a), global_shape))
 
-###############################################################################
-
-    @parameterized.expand(all_distribution_strategies)
-    def test_is_real_is_complex(self, distribution_strategy):
-
-        if distribution_strategy in local_distribution_strategies:
-            stored_distribution_strategy = distribution_strategy
-            distribution_strategy = 'equal'
-        else:
-            stored_distribution_strategy = None
-
-        global_shape = (8, 7)
-        a = np.arange(np.prod(global_shape)).reshape(global_shape)
-        a = a + ((-1)**a + 1) * 1j
-        obj = distributed_data_object(
-                                a, distribution_strategy=distribution_strategy)
-
-        if stored_distribution_strategy is not None:
-            (b, p) = generate_data(
-                            global_shape,
-                            np.dtype('complex'),
-                            distribution_strategy=stored_distribution_strategy)
-            p.inject((slice(None),), a, (slice(None),))
-            obj = p
-
-        assert_equal(obj.isreal().get_full_data(), np.isreal(a))
-        assert_equal(obj.iscomplex().get_full_data(), np.iscomplex(a))
 
 ###############################################################################
 
@@ -1618,6 +1635,17 @@ class Test_special_methods(unittest.TestCase):
 
         assert_equal(map(lambda z: z.get_full_data(), p.where()), np.where(b))
 
+###############################################################################
+
+    @parameterized.expand(all_distribution_strategies,
+                          testcase_func_name=custom_name_func)
+    def test_real_imag(self, distribution_strategy):
+        global_shape = (8, 8)
+        dtype = np.dtype('complex')
+        (a, obj) = generate_data(global_shape, dtype,
+                                 distribution_strategy)
+        assert_equal(obj.real.get_full_data(), a.real)
+        assert_equal(obj.imag.get_full_data(), a.imag)
 
 ###############################################################################
 ###############################################################################

@@ -47,7 +47,7 @@ from multiprocessing import Pool as mp
 from multiprocessing import Value as mv
 from multiprocessing import Array as ma
 
-from nifty.nifty_about import about
+from nifty.keepers import about
 from nifty.nifty_core import space,                                              \
                            field
 from nifty_operators import operator,\

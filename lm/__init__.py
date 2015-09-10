@@ -20,7 +20,7 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty.nifty_about import about
+from nifty.keepers import about
 
 from distutils.version import LooseVersion as lv
 
@@ -50,8 +50,8 @@ else:
                 "ERROR: installed healpy version is older than 1.8.1!"))
     except(ImportError):
         from nifty_lm import lm_space, gl_space ## import lm & gl
-    else:        
-        from nifty_lm import lm_space, gl_space, hp_space ##import all 
+    else:
+        from nifty_lm import lm_space, gl_space, hp_space ##import all
 
 from nifty.lm.nifty_power_conversion_lm import power_backward_conversion_lm,\
                                             power_forward_conversion_lm

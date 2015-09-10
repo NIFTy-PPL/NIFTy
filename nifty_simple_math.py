@@ -23,7 +23,7 @@
 ##-----------------------------------------------------------------------------
 import numpy as np
 #from nifty.nifty_core import field
-from nifty_about import about
+from keepers import about
 
 
 def _math_helper(x, function):
@@ -59,7 +59,7 @@ def cos(x):
         array([ 0.54030231,  0.54030231])
     """
     return _math_helper(x, np.cos)
-    
+
 def sin(x):
     """
         Returns the sine of a given object.
@@ -88,7 +88,7 @@ def sin(x):
 
     """
     return _math_helper(x, np.sin)
-    
+
 def cosh(x):
     """
         Returns the hyperbolic cosine of a given object.
@@ -480,11 +480,11 @@ def conjugate(x):
         -------
         conjx : {ndarray,field}
             The complex conjugated object.
-    """        
+    """
     return _math_helper(x, np.conjugate)
 
 
-        
-        
+
+
 
 ##---------------------------------

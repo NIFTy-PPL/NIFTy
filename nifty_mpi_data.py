@@ -22,39 +22,49 @@
 
 
 import numpy as np
-from nifty_about import about
 from weakref import WeakValueDictionary as weakdict
 
-# initialize the 'FOUND-packages'-dictionary
-FOUND = {}
-try:
-    from mpi4py import MPI
-    FOUND['MPI'] = True
-except(ImportError):
-    import mpi_dummy as MPI
-    FOUND['MPI'] = False
+from keepers import about,\
+                    global_configuration as gc,\
+                    global_dependency_injector as gdi
 
-try:
-    import pyfftw
-    FOUND['pyfftw'] = True
-except(ImportError):
-    FOUND['pyfftw'] = False
-
-try:
-    import h5py
-    FOUND['h5py'] = True
-    FOUND['h5py_parallel'] = h5py.get_config().mpi
-except(ImportError):
-    FOUND['h5py'] = False
-    FOUND['h5py_parallel'] = False
+MPI = gdi[gc['mpi_module']]
+h5py = gdi.get('h5py')
+pyfftw = gdi.get('pyfftw')
 
 
-ALL_DISTRIBUTION_STRATEGIES = ['not', 'equal', 'fftw', 'freeform']
-GLOBAL_DISTRIBUTION_STRATEGIES = ['not', 'equal', 'fftw']
-LOCAL_DISTRIBUTION_STRATEGIES = ['freeform']
-HDF5_DISTRIBUTION_STRATEGIES = ['equal', 'fftw']
+## initialize the 'FOUND-packages'-dictionary
+#FOUND = {}
+#try:
+#    from mpi4py import MPI
+#    FOUND['MPI'] = True
+#except(ImportError):
+#    import mpi_dummy as MPI
+#    FOUND['MPI'] = False
+#
+#try:
+#    import pyfftw
+#    FOUND['pyfftw'] = True
+#except(ImportError):
+#    FOUND['pyfftw'] = False
+#
+#try:
+#    import h5py
+#    FOUND['h5py'] = True
+#    FOUND['h5py_parallel'] = h5py.get_config().mpi
+#except(ImportError):
+#    FOUND['h5py'] = False
+#    FOUND['h5py_parallel'] = False
 
-COMM = MPI.COMM_WORLD
+_maybe_fftw = ['fftw'] if ('pyfftw' in gdi) else []
+STRATEGIES = {
+                'all': ['not', 'equal', 'freeform'] + _maybe_fftw,
+                'global': ['not', 'equal'] + _maybe_fftw,
+                'local': ['freeform'],
+                'slicing': ['equal', 'freeform'] + _maybe_fftw,
+                'not': ['not'],
+                'hdf5': ['equal'] + _maybe_fftw,
+             }
 
 
 class distributed_data_object(object):
@@ -145,6 +155,24 @@ class distributed_data_object(object):
             copy=copy)
         self.index = d2o_librarian.register(self)
 
+    @property
+    def real(self):
+        new_data = self.get_local_data().real
+        new_dtype = new_data.dtype
+        new_d2o = self.copy_empty(dtype=new_dtype)
+        new_d2o.set_local_data(data=new_data,
+                               hermitian=self.hermitian)
+        return new_d2o
+
+    @property
+    def imag(self):
+        new_data = self.get_local_data().imag
+        new_dtype = new_data.dtype
+        new_d2o = self.copy_empty(dtype=new_dtype)
+        new_d2o.set_local_data(data=new_data,
+                               hermitian=self.hermitian)
+        return new_d2o
+
     def copy(self, dtype=None, distribution_strategy=None, **kwargs):
         temp_d2o = self.copy_empty(dtype=dtype,
                                    distribution_strategy=distribution_strategy,
@@ -160,7 +188,7 @@ class distributed_data_object(object):
     def copy_empty(self, global_shape=None, local_shape=None, dtype=None,
                    distribution_strategy=None, **kwargs):
         if self.distribution_strategy == 'not' and \
-                distribution_strategy in LOCAL_DISTRIBUTION_STRATEGIES and \
+                distribution_strategy in STRATEGIES['local'] and \
                 local_shape is None:
             result = self.copy_empty(global_shape=global_shape,
                                      local_shape=local_shape,
@@ -480,11 +508,17 @@ class distributed_data_object(object):
             result = function(work_list, axis=0)
             return result
 
+    def min(self, **kwargs):
+        return self.amin(**kwargs)
+
     def amin(self, **kwargs):
         return self._contraction_helper(np.amin, **kwargs)
 
     def nanmin(self, **kwargs):
         return self._contraction_helper(np.nanmin, **kwargs)
+
+    def max(self, **kwargs):
+        return self.amax(**kwargs)
 
     def amax(self, **kwargs):
         return self._contraction_helper(np.amax, **kwargs)
@@ -601,14 +635,29 @@ class distributed_data_object(object):
         median = np.median(self.get_full_data())
         return median
 
-    def iscomplex(self):
+    def _is_helper(self, function):
         temp_d2o = self.copy_empty(dtype=np.dtype('bool'))
-        temp_d2o.set_local_data(np.iscomplex(self.data))
+        temp_d2o.set_local_data(function(self.data))
         return temp_d2o
 
+    def iscomplex(self):
+        return self._is_helper(np.iscomplex)
+
     def isreal(self):
-        temp_d2o = self.copy_empty(dtype=np.dtype('bool'))
-        temp_d2o.set_local_data(np.isreal(self.data))
+        return self._is_helper(np.isreal)
+
+    def isnan(self):
+        return self._is_helper(np.isnan)
+
+    def isinf(self):
+        return self._is_helper(np.isinf)
+
+    def isfinite(self):
+        return self._is_helper(np.isfinite)
+
+    def nan_to_num(self):
+        temp_d2o = self.copy_empty()
+        temp_d2o.set_local_data(np.nan_to_num(self.data))
         return temp_d2o
 
     def all(self):
@@ -903,11 +952,11 @@ class _distributor_factory(object):
                 "all nodes!"))
 
         # Check for an hdf5 file and open it if given
-        if FOUND['h5py'] and alias is not None:
+        if 'h5py' in gdi and alias is not None:
             # set file path
             file_path = path if (path is not None) else alias
             # open hdf5 file
-            if FOUND['h5py_parallel'] and FOUND['MPI']:
+            if h5py.get_config().mpi and gc['mpi_module'] == 'MPI':
                 f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
             else:
                 f = h5py.File(file_path, 'r')
@@ -1051,11 +1100,7 @@ class _distributor_factory(object):
 
     def get_distributor(self, distribution_strategy, comm, **kwargs):
         # check if the distribution strategy is known
-
-        known_distribution_strategies = ['not', 'equal', 'freeform']
-        if FOUND['pyfftw']:
-            known_distribution_strategies += ['fftw', ]
-        if distribution_strategy not in known_distribution_strategies:
+        if distribution_strategy not in STRATEGIES['all']:
             raise TypeError(about._errors.cstring(
                 "ERROR: Unknown distribution strategy supplied."))
 
@@ -1121,6 +1166,8 @@ def _infer_key_type(key):
         found_boolean = (key.dtype == np.bool_)
     elif isinstance(key, list):
         found = 'indexinglist'
+    else:
+        raise ValueError(about._errors.cstring("ERROR: Unknown keytype!"))
     return (found, found_boolean)
 
 
@@ -1298,7 +1345,7 @@ class _slicing_distributor(distributor):
 
     def initialize_data(self, global_data, local_data, alias, path, hermitian,
                         copy, **kwargs):
-        if FOUND['h5py'] and alias is not None:
+        if 'h5py' in gdi and alias is not None:
             local_data = self.load_data(alias=alias, path=path)
             return (local_data, hermitian)
 
@@ -1365,7 +1412,7 @@ class _slicing_distributor(distributor):
 
         comm = self.comm
 
-        if FOUND['h5py'] and alias is not None:
+        if 'h5py' in gdi and alias is not None:
             data = self.load_data(alias=alias, path=path)
 
         local_data_available_Q = (data is not None)
@@ -2291,10 +2338,11 @@ class _slicing_distributor(distributor):
             else:
                 return local_data.reshape(temp_local_shape)
 
-    if FOUND['h5py']:
+    if 'h5py' in gdi:
         def save_data(self, data, alias, path=None, overwriteQ=True):
             comm = self.comm
-            if comm.size > 1 and FOUND['h5py_parallel'] == False:
+            h5py_parallel = h5py.get_config().mpi
+            if comm.size > 1 and not h5py_parallel:
                 raise RuntimeError("ERROR: Programm is run with MPI " +
                                    "size > 1 but non-parallel version of " +
                                    "h5py is loaded.")
@@ -2303,7 +2351,7 @@ class _slicing_distributor(distributor):
             use_path = alias if path is None else path
 
             # create the file-handle
-            if FOUND['h5py_parallel'] and FOUND['MPI']:
+            if h5py_parallel and gc['mpi_module'] == 'MPI':
                 f = h5py.File(use_path, 'a', driver='mpio', comm=comm)
             else:
                 f = h5py.File(use_path, 'a')
@@ -2334,7 +2382,7 @@ class _slicing_distributor(distributor):
             # parse the path
             file_path = path if (path is not None) else alias
             # create the file-handle
-            if FOUND['h5py_parallel'] and FOUND['MPI']:
+            if h5py.get_config().mpi and gc['mpi_module'] == 'MPI':
                 f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
             else:
                 f = h5py.File(file_path, 'r')
@@ -2411,9 +2459,9 @@ def _freeform_slicer(comm, local_shape):
     return (local_offset, local_offset + first_shape_index, global_shape)
 
 
-if FOUND['pyfftw']:
+if 'pyfftw' in gdi:
     def _fftw_slicer(comm, global_shape):
-        if FOUND['MPI'] == False:
+        if gc['mpi_module'] != 'MPI':
             comm = None
         # pyfftw.local_size crashes if any of the entries of global_shape
         working_shape = np.array(global_shape)
@@ -2466,7 +2514,7 @@ class _not_distributor(distributor):
 
     def distribute_data(self, data, alias=None, path=None, copy=True,
                         **kwargs):
-        if FOUND['h5py'] and alias is not None:
+        if 'h5py' in gdi and alias is not None:
             data = self.load_data(alias=alias, path=path)
 
         if data is None:
@@ -2539,11 +2587,11 @@ class _not_distributor(distributor):
                            local_where)
         return global_where
 
-    if FOUND['h5py']:
+    if 'h5py' in gdi:
         def save_data(self, data, alias, path=None, overwriteQ=True):
             comm = self.comm
-
-            if comm.size > 1 and FOUND['h5py_parallel'] == False:
+            h5py_parallel = h5py.get_config().mpi
+            if comm.size > 1 and not h5py_parallel:
                 raise RuntimeError("ERROR: Programm is run with MPI " +
                                    "size > 1 but non-parallel version of " +
                                    "h5py is loaded.")
@@ -2552,7 +2600,7 @@ class _not_distributor(distributor):
             use_path = alias if path is None else path
 
             # create the file-handle
-            if FOUND['h5py_parallel'] and FOUND['MPI']:
+            if h5py_parallel and gc['mpi_module'] == 'MPI':
                 f = h5py.File(use_path, 'a', driver='mpio', comm=comm)
             else:
                 f = h5py.File(use_path, 'a')
@@ -2583,7 +2631,7 @@ class _not_distributor(distributor):
             # parse the path
             file_path = path if (path is not None) else alias
             # create the file-handle
-            if FOUND['h5py_parallel'] and FOUND['MPI']:
+            if h5py.get_config().mpi and gc['mpi_module'] == 'MPI':
                 f = h5py.File(file_path, 'r', driver='mpio', comm=comm)
             else:
                 f = h5py.File(file_path, 'r')

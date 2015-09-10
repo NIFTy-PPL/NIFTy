@@ -21,7 +21,7 @@
 
 from __future__ import division
 import numpy as np
-from nifty.nifty_about import about
+from nifty.keepers import about
 from nifty.nifty_core import space, \
     point_space, \
     nested_space, \
@@ -203,8 +203,6 @@ class operator(object):
     def get_val(self):
         return self.val
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def nrow(self):
         """
             Computes the number of rows.
@@ -253,8 +251,6 @@ class operator(object):
             raise ValueError(about._errors.cstring(
                 "ERROR: invalid input axis."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def set_para(self, newpara):
         """
             Sets the parameters and creates the `para` property if it does
@@ -271,8 +267,6 @@ class operator(object):
 
         """
         self.para = newpara
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self, x, **kwargs):
         # > applies the operator to a given field
@@ -299,50 +293,48 @@ class operator(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'inverse_adjoint_multiply'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def _briefing(self, x, domain, codomain, inverse):
         # inspect x
         if not isinstance(x, field):
-            x_ = field(domain, codomain=codomain, val=x)
+            y = field(domain, codomain=codomain, val=x)
         else:
             # check x.domain
-            if domain == x.domain:
-                x_ = x
-            # transform
+            if x.domain == domain:
+                y = x
             else:
-                x_ = x.transform(codomain=domain)
-        # weight if ...
-        if self.imp is False and domain.discrete is False and inverse is False:
-            x_ = x_.weight(power=1)
-        return x_
+                if x.domain.harmonic != domain.harmonic:
+                    y = x.transform(codomain=domain)
+                else:
+                    y = x.copy(domain=domain, codomain=codomain)
 
-    def _debriefing(self, x, x_, target, cotarget, inverse):
-        # > evaluates x and x_ after `multiply`
-        if x_ is None:
+        # weight if ...
+        if (not self.imp) and (not domain.discrete) and (not inverse):
+            y = y.weight(power=1)
+        return y
+
+    def _debriefing(self, x, y, target, cotarget, inverse):
+        # > evaluates x and y after `multiply`
+        if y is None:
             return None
         else:
-            # inspect x_
-            if not isinstance(x_, field):
-                x_ = field(target, codomain=cotarget, val=x_)
-            elif x_.domain != target:
+            # inspect y
+            if not isinstance(y, field):
+                y = field(target, codomain=cotarget, val=y)
+            elif y.domain != target:
                 raise ValueError(about._errors.cstring(
                     "ERROR: invalid output domain."))
             # weight if ...
-            if self.imp is False and target.discrete is False and\
-                    inverse is True:
-                x_ = x_.weight(power=-1)
+            if (not self.imp) and (not target.discrete) and inverse:
+                y = y.weight(power=-1)
             # inspect x
             if isinstance(x, field):
                 # repair if the originally field was living in the codomain
                 # of the operators domain
-                if self.domain == self.target != x.domain:
-                    x_ = x_.transform(codomain=x.domain)
-                if x_.domain == x.domain and (x_.codomain != x.codomain):
-                    x_.set_codomain(new_codomain=x.codomain)
-            return x_
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                if self.domain == self.target == x.codomain:
+                    y = y.transform(codomain=x.domain)
+                if x.domain == y.domain and (x.codomain != y.codomain):
+                    y.set_codomain(new_codomain=x.codomain)
+            return y
 
     def times(self, x, **kwargs):
         """
@@ -360,11 +352,11 @@ class operator(object):
                 Mapped field on the target domain of the operator.
         """
         # prepare
-        x_ = self._briefing(x, self.domain, self.codomain, inverse=False)
+        y = self._briefing(x, self.domain, self.codomain, inverse=False)
         # apply operator
-        x_ = self._multiply(x_, **kwargs)
+        y = self._multiply(y, **kwargs)
         # evaluate
-        return self._debriefing(x, x_, self.target, self.cotarget,
+        return self._debriefing(x, y, self.target, self.cotarget,
                                 inverse=False)
 
     def __call__(self, x, **kwargs):
@@ -387,18 +379,18 @@ class operator(object):
 
         """
         # check whether self-adjoint
-        if self.sym == True:
+        if self.sym:
             return self.times(x, **kwargs)
         # check whether unitary
-        if self.uni == True:
+        if self.uni:
             return self.inverse_times(x, **kwargs)
 
         # prepare
-        x_ = self._briefing(x, self.target, self.cotarget, inverse=False)
+        y = self._briefing(x, self.target, self.cotarget, inverse=False)
         # apply operator
-        x_ = self._adjoint_multiply(x_, **kwargs)
+        y = self._adjoint_multiply(y, **kwargs)
         # evaluate
-        return self._debriefing(x, x_, self.domain, self.codomain,
+        return self._debriefing(x, y, self.domain, self.codomain,
                                 inverse=False)
 
     def inverse_times(self, x, **kwargs):
@@ -417,15 +409,15 @@ class operator(object):
                 Mapped field on the target space of the operator.
         """
         # check whether self-inverse
-        if self.sym == True and self.uni == True:
+        if self.sym and self.uni:
             return self.times(x, **kwargs)
 
         # prepare
-        x_ = self._briefing(x, self.target, self.cotarget, inverse=True)
+        y = self._briefing(x, self.target, self.cotarget, inverse=True)
         # apply operator
-        x_ = self._inverse_multiply(x_, **kwargs)
+        y = self._inverse_multiply(y, **kwargs)
         # evaluate
-        return self._debriefing(x, x_, self.domain, self.codomain,
+        return self._debriefing(x, y, self.domain, self.codomain,
                                 inverse=True)
 
     def adjoint_inverse_times(self, x, **kwargs):
@@ -445,18 +437,18 @@ class operator(object):
 
         """
         # check whether self-adjoint
-        if self.sym == True:
+        if self.sym:
             return self.inverse_times(x, **kwargs)
         # check whether unitary
-        if self.uni == True:
+        if self.uni:
             return self.times(x, **kwargs)
 
         # prepare
-        x_ = self._briefing(x, self.domain, self.codomain, inverse=True)
+        y = self._briefing(x, self.domain, self.codomain, inverse=True)
         # apply operator
-        x_ = self._adjoint_inverse_multiply(x_, **kwargs)
+        y = self._adjoint_inverse_multiply(y, **kwargs)
         # evaluate
-        return self._debriefing(x, x_, self.target, self.cotarget,
+        return self._debriefing(x, y, self.target, self.cotarget,
                                 inverse=True)
 
     def inverse_adjoint_times(self, x, **kwargs):
@@ -476,21 +468,20 @@ class operator(object):
 
         """
         # check whether self-adjoint
-        if self.sym == True:
+        if self.sym:
             return self.inverse_times(x, **kwargs)
         # check whether unitary
-        if self.uni == True:
+        if self.uni:
             return self.times(x, **kwargs)
 
         # prepare
-        x_ = self._briefing(x, self.domain, self.codomain, inverse=True)
+        y = self._briefing(x, self.domain, self.codomain, inverse=True)
         # apply operator
-        x_ = self._inverse_adjoint_multiply(x_, **kwargs)
+        y = self._inverse_adjoint_multiply(y, **kwargs)
         # evaluate
-        return self._debriefing(x, x_, self.target, self.cotarget,
+        return self._debriefing(x, y, self.target, self.cotarget,
                                 inverse=True)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def tr(self, domain=None, codomain=None, random="pm1", nrun=8,
            varQ=False, **kwargs):
         """
@@ -590,8 +581,6 @@ class operator(object):
                                     **kwargs
                                     )()
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def diag(self, domain=None, codomain=None, random="pm1", nrun=8,
              varQ=False, bare=False, **kwargs):
         """
@@ -674,7 +663,7 @@ class operator(object):
         if domain is None:
             domain = diag.domain
         # weight if ...
-        if domain.discrete == False and bare == True:
+        if (not domain.discrete) and bare:
             if(isinstance(diag, tuple)):  # diag == (diag,variance)
                 return (diag[0].weight(power=-1),
                         diag[1].weight(power=-1))
@@ -760,13 +749,13 @@ class operator(object):
                                        **kwargs
                                        )()
         if(diag is None):
-            #            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
+            about.infos.cprint("INFO: forwarding 'NoneType'.")
             return None
 
         if domain is None:
             domain = diag.codomain
         # weight if ...
-        if domain.discrete == False and bare == True:
+        if not domain.discrete and bare:
             if(isinstance(diag, tuple)):  # diag == (diag,variance)
                 return (diag[0].weight(power=-1),
                         diag[1].weight(power=-1))
@@ -775,7 +764,6 @@ class operator(object):
         else:
             return diag
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def det(self):
         """
             Computes the determinant of the operator.
@@ -804,7 +792,8 @@ class operator(object):
 
     def log_det(self):
         """
-            Computes the logarithm of the determinant of the operator (if applicable).
+            Computes the logarithm of the determinant of the operator
+            (if applicable).
 
             Returns
             -------
@@ -817,7 +806,8 @@ class operator(object):
 
     def tr_log(self):
         """
-            Computes the trace of the logarithm of the operator (if applicable).
+            Computes the trace of the logarithm of the operator
+            (if applicable).
 
             Returns
             -------
@@ -826,8 +816,6 @@ class operator(object):
 
         """
         return self.log_det()
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def hat(self, bare=False, domain=None, codomain=None, **kwargs):
         """
@@ -891,10 +879,13 @@ class operator(object):
         """
         if domain is None:
             domain = self.domain
+        if codomain is None:
+            codomain = self.codomain
+
         diag = self.diag(bare=bare, domain=domain, codomain=codomain,
                          var=False, **kwargs)
         if diag is None:
-            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
+            about.infos.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return diag
 
@@ -960,10 +951,12 @@ class operator(object):
         """
         if domain is None:
             domain = self.target
+        if codomain is None:
+            codomain = self.cotarget
         diag = self.inverse_diag(bare=bare, domain=domain, codomain=codomain,
                                  var=False, **kwargs)
         if diag is None:
-            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
+            about.infos.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return diag
 
@@ -1030,7 +1023,7 @@ class operator(object):
         diag = self.diag(bare=False, domain=domain, codomain=codomain,
                          var=False, **kwargs)
         if diag is None:
-            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
+            about.infos.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return diagonal_operator(domain=domain, codomain=codomain,
                                  diag=diag, bare=False)
@@ -1099,20 +1092,16 @@ class operator(object):
         diag = self.inverse_diag(bare=False, domain=domain, codomain=codomain,
                                  var=False, **kwargs)
         if diag is None:
-            about.warnings.cprint("WARNING: forwarding 'NoneType'.")
+            about.infos.cprint("WARNING: forwarding 'NoneType'.")
             return None
         return diagonal_operator(domain=domain, codomain=codomain,
                                  diag=diag, bare=False)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def __repr__(self):
         return "<nifty_core.operator>"
 
 # =============================================================================
 
-
-# -----------------------------------------------------------------------------
 
 class diagonal_operator(operator):
     """
@@ -1215,12 +1204,13 @@ class diagonal_operator(operator):
                 self.domain = diag.domain
             except(AttributeError):
                 raise TypeError(about._errors.cstring(
-                    "ERROR: Explicit or implicit (via diag) domain inupt needed!"))
+                    "ERROR: Explicit or implicit, i.e. via diag domain " +
+                    "inupt needed!"))
 
         else:
             self.domain = domain
 
-        if self.domain.check_codomain(codomain) == True:
+        if self.domain.check_codomain(codomain):
             self.codomain = codomain
         else:
             self.codomain = self.domain.get_codomain()
@@ -1229,37 +1219,6 @@ class diagonal_operator(operator):
         self.cotarget = self.codomain
         self.imp = True
         self.set_diag(new_diag=diag)
-
-        """
-        if(domain is None)and(isinstance(diag,field)):
-            domain = diag.domain
-        if(not isinstance(domain,space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        self.domain = domain
-
-        diag = self.domain.enforce_values(diag,extend=True)
-        ## weight if ...
-        if(not self.domain.discrete)and(bare):
-            diag = self.domain.calc_weight(diag,power=1)
-        ## check complexity
-        if(np.all(np.imag(diag)==0)):
-            self.val = np.real(diag)
-            self.sym = True
-        else:
-            self.val = diag
-#            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
-            self.sym = False
-
-        ## check whether identity
-        if(np.all(diag==1)):
-            self.uni = True
-        else:
-            self.uni = False
-
-        self.imp = True ## correctly implemented for efficiency
-        self.target = self.domain
-        """
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def set_diag(self, new_diag, bare=False):
         """
@@ -1286,7 +1245,7 @@ class diagonal_operator(operator):
         self.val = self.domain.cast(new_diag)
 
         # Weight if necessary
-        if self.domain.discrete == False and bare == True:
+        if not self.domain.discrete and bare:
             self.val = self.domain.calc_weight(self.val, power=1)
 
         # Check complexity attributes
@@ -1301,89 +1260,51 @@ class diagonal_operator(operator):
         else:
             self.uni = False
 
-        """
-        newdiag = self.domain.enforce_values(newdiag, extend=True)
-        ## weight if ...
-        if(not self.domain.discrete)and(bare):
-            newdiag = self.domain.calc_weight(newdiag,power=1)
-        ## check complexity
-        if(np.all(np.imag(newdiag)==0)):
-            self.val = np.real(newdiag)
-            self.sym = True
-        else:
-            self.val = newdiag
-#            about.infos.cprint("INFO: non-self-adjoint complex diagonal operator.")
-            self.sym = False
-
-        ## check whether identity
-        if(np.all(newdiag==1)):
-            self.uni = True
-        else:
-            self.uni = False
-        """
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def _multiply(self, x, **kwargs):
-        # > applies the operator to a given field
+        # applies the operator to a given field
         y = x.copy(domain=self.target, codomain=self.cotarget)
         y *= self.get_val()
         return y
 
-        """
-        x_ = field(self.target,val=None,target=x.target)
-        x_.val = x.val*self.val ## bypasses self.domain.enforce_values
-        return x_
-        """
-
     def _adjoint_multiply(self, x, **kwargs):
-        # > applies the adjoint operator to a given field
+        # applies the adjoint operator to a given field
         y = x.copy(domain=self.domain, codomain=self.codomain)
         y *= self.get_val().conjugate()
         return y
 
-        """
-        x_ = field(self.domain,val=None,target=x.target)
-        x_.val = x.val*np.conjugate(self.val) ## bypasses self.domain.enforce_values
-        return x_
-        """
-
     def _inverse_multiply(self, x, pseudo=False, **kwargs):
-        # > applies the inverse operator to a given field
+        # applies the inverse operator to a given field
         y = x.copy(domain=self.domain, codomain=self.codomain)
         if (self.get_val() == 0).any():
-            if pseudo == False:
+            if not pseudo:
                 raise AttributeError(about._errors.cstring(
                     "ERROR: singular operator."))
             else:
+#                raise NotImplementedError(
+#                    "ERROR: function not yet implemented!")
                 y /= self.get_val()
-                y[y == np.nan] = 0
-                y[y == np.inf] = 0
+                # TODO: implement this
+                # the following code does not work. np.isnan is needed,
+                # but on a level of fields
+#                y[y == np.nan] = 0
+#                y[y == np.inf] = 0
         else:
             y /= self.get_val()
         return y
-
-        """
-        if (np.any(self.val==0)):
-            if(pseudo):
-                x_ = field(self.domain,val=None,target=x.target)
-                x_.val = np.ma.filled(x.val/np.ma.masked_where(self.val==0,self.val,copy=False),fill_value=0) ## bypasses self.domain.enforce_values
-                return x_
-            else:
-                raise AttributeError(about._errors.cstring("ERROR: singular operator."))
-        else:
-            x_ = field(self.domain,val=None,target=x.target)
-            x_.val = x.val/self.val ## bypasses self.domain.enforce_values
-            return x_
-        """
 
     def _adjoint_inverse_multiply(self, x, pseudo=False, **kwargs):
         # > applies the inverse adjoint operator to a given field
         y = x.copy(domain=self.target, codomain=self.cotarget)
         if (self.get_val() == 0).any():
-            if pseudo == False:
+            if not pseudo:
                 raise AttributeError(about._errors.cstring(
                     "ERROR: singular operator."))
             else:
+                raise NotImplementedError(
+                    "ERROR: function not yet implemented!")
+                # TODO: implement this
+                # the following code does not work. np.isnan is needed,
+                # but on a level of fields
                 y /= self.get_val().conjugate()
                 y[y == np.nan] = 0
                 y[y == np.inf] = 0
@@ -1391,38 +1312,9 @@ class diagonal_operator(operator):
             y /= self.get_val().conjugate()
         return y
 
-        """
-        if(np.any(self.val==0)):
-            if(pseudo):
-                x_ = field(self.domain,val=None,target=x.target)
-                x_.val = np.ma.filled(x.val/np.ma.masked_where(self.val==0,np.conjugate(self.val),copy=False),fill_value=0) ## bypasses self.domain.enforce_values
-                return x_
-            else:
-                raise AttributeError(about._errors.cstring("ERROR: singular operator."))
-        else:
-            x_ = field(self.target,val=None,target=x.target)
-            x_.val = x.val/np.conjugate(self.val) ## bypasses self.domain.enforce_values
-            return x_
-        """
-
     def _inverse_adjoint_multiply(self, x, pseudo=False, **kwargs):
         # > applies the adjoint inverse operator to a given field
         return self._adjoint_inverse_multiply(x, pseudo=pseudo, **kwargs)
-        """
-        if(np.any(self.val==0)):
-            if(pseudo):
-                x_ = field(self.domain,val=None,target=x.target)
-                x_.val = np.ma.filled(x.val/np.conjugate(np.ma.masked_where(self.val==0,self.val,copy=False)),fill_value=0) ## bypasses self.domain.enforce_values
-                return x_
-            else:
-                raise AttributeError(about._errors.cstring("ERROR: singular operator."))
-
-        else:
-            x_ = field(self.target,val=None,target=x.target)
-            x_.val = x.val*np.conjugate(1/self.val) ## bypasses self.domain.enforce_values
-            return x_
-        """
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def tr(self, varQ=False, **kwargs):
         """
@@ -1466,31 +1358,10 @@ class diagonal_operator(operator):
 
         tr = self.domain.unary_operation(self.val, 'sum')
 
-        if varQ == True:
+        if varQ:
             return (tr, 1)
         else:
             return tr
-
-        """
-        if(domain is None)or(domain==self.domain):
-            if(self.uni): ## identity
-                return (self.domain.datatype(self.domain.get_dof())).real
-            elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
-                return self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),self.val) ## discrete inner product
-            else:
-                return np.sum(self.val,axis=None,dtype=None,out=None)
-        else:
-            if(self.uni): ## identity
-                if(not isinstance(domain,space)):
-                    raise TypeError(about._errors.cstring("ERROR: invalid input."))
-                ## check degrees of freedom
-                if(self.domain.get_dof()>domain.get_dof()):
-                    about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.get_dof())+" / "+str(domain.get_dof())+" ).")
-                return (domain.datatype(domain.get_dof())).real
-            else:
-                return super(diagonal_operator,self).tr(domain=domain,**kwargs) ## probing
-
-        """
 
     def inverse_tr(self, varQ=False, **kwargs):
         """
@@ -1538,35 +1409,10 @@ class diagonal_operator(operator):
             self.domain.binary_operation(self.val, 1, 'rdiv', cast=0),
             'sum')
 
-        if varQ == True:
+        if varQ:
             return (inverse_tr, 1)
         else:
             return inverse_tr
-
-        """
-        if(np.any(self.val==0)):
-            raise AttributeError(about._errors.cstring("ERROR: singular operator."))
-
-        if(domain is None)or(domain==self.target):
-            if(self.uni): ## identity
-                return np.real(self.domain.datatype(self.domain.get_dof()))
-            elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
-                return self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),1/self.val) ## discrete inner product
-            else:
-                return np.sum(1./self.val,axis=None,dtype=None,out=None)
-        else:
-            if(self.uni): ## identity
-                if(not isinstance(domain,space)):
-                    raise TypeError(about._errors.cstring("ERROR: invalid input."))
-                ## check degrees of freedom
-                if(self.domain.get_dof()>domain.get_dof()):
-                    about.infos.cprint("INFO: variant numbers of degrees of freedom ( "+str(self.domain.get_dof())+" / "+str(domain.get_dof())+" ).")
-                return np.real(domain.datatype(domain.get_dof()))
-            else:
-                return super(diagonal_operator,self).inverse_tr(domain=domain,**kwargs) ## probing
-        """
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def diag(self, bare=False, domain=None, codomain=None,
              varQ=False, **kwargs):
@@ -1632,7 +1478,7 @@ class diagonal_operator(operator):
         """
 
         if (domain is None) or (domain == self.domain):
-            if self.domain.discrete == False and bare == True:
+            if not self.domain.discrete and bare:
                 diag_val = self.domain.calc_weight(self.val, power=-1)
             else:
                 diag_val = self.val
@@ -1645,35 +1491,10 @@ class diagonal_operator(operator):
                                                        random='pm1',
                                                        varQ=False,
                                                        **kwargs)
-        if varQ == True:
+        if varQ:
             return (diag, diag.domain.cast(1))
         else:
             return diag
-
-        """
-        if(domain is None)or(domain==self.domain):
-            ## weight if ...
-            if(not self.domain.discrete)and(bare):
-                diag = self.domain.calc_weight(self.val,power=-1)
-                ## check complexity
-                if(np.all(np.imag(diag)==0)):
-                    diag = np.real(diag)
-                return diag
-            else:
-                return self.val
-        else:
-            if(self.uni): ## identity
-                if(not isinstance(domain,space)):
-                    raise TypeError(about._errors.cstring("ERROR: invalid input."))
-                ## weight if ...
-                if(not domain.discrete)and(bare):
-                    return np.real(domain.calc_weight(domain.enforce_values(1,extend=True),power=-1))
-                else:
-                    return np.real(domain.enforce_values(1,extend=True))
-            else:
-                return super(diagonal_operator,self).diag(bare=bare,domain=domain,**kwargs) ## probing
-
-        """
 
     def inverse_diag(self, bare=False, domain=None, codomain=None,
                      varQ=False, **kwargs):
@@ -1744,7 +1565,7 @@ class diagonal_operator(operator):
 
         if (domain is None) or (domain == self.domain):
             inverse_val = 1. / self.val
-            if self.domain.discrete == False and bare == True:
+            if not self.domain.discrete and bare:
                 inverse_diag_val = self.domain.calc_weight(inverse_val,
                                                            power=-1)
             else:
@@ -1753,41 +1574,17 @@ class diagonal_operator(operator):
                                  val=inverse_diag_val)
 
         else:
-            inverse_diag = super(diagonal_operator, self).inverse_diag(bare=bare,
-                                                                       domain=domain,
-                                                                       nrun=1,
-                                                                       random='pm1',
-                                                                       varQ=False,
-                                                                       **kwargs)
-        if varQ == True:
+            inverse_diag = super(diagonal_operator,
+                                 self).inverse_diag(bare=bare,
+                                                    domain=domain,
+                                                    nrun=1,
+                                                    random='pm1',
+                                                    varQ=False,
+                                                    **kwargs)
+        if varQ:
             return (inverse_diag, inverse_diag.domain.cast(1))
         else:
             return inverse_diag
-        """
-
-        if(domain is None)or(domain==self.target):
-            ## weight if ...
-            if(not self.domain.discrete)and(bare):
-                diag = self.domain.calc_weight(1/self.val,power=-1)
-                ## check complexity
-                if(np.all(np.imag(diag)==0)):
-                    diag = np.real(diag)
-                return diag
-            else:
-                return 1/self.val
-        else:
-            if(self.uni): ## identity
-                if(not isinstance(domain,space)):
-                    raise TypeError(about._errors.cstring("ERROR: invalid input."))
-                ## weight if ...
-                if(not domain.discrete)and(bare):
-                    return np.real(domain.calc_weight(domain.enforce_values(1,extend=True),power=-1))
-                else:
-                    return np.real(domain.enforce_values(1,extend=True))
-            else:
-                return super(diagonal_operator,self).inverse_diag(bare=bare,domain=domain,**kwargs) ## probing
-        """
-     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def det(self):
         """
@@ -1799,14 +1596,10 @@ class diagonal_operator(operator):
                 The determinant
 
         """
-        if self.uni == True:  # identity
+        if self.uni:  # identity
             return 1.
         else:
             return self.domain.unary_operation(self.val, op='prod')
-        # elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
-        #    return np.exp(self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val)))
-        # else:
-        #    return np.prod(self.val,axis=None,dtype=None,out=None)
 
     def inverse_det(self):
         """
@@ -1818,7 +1611,7 @@ class diagonal_operator(operator):
                 The determinant
 
         """
-        if self.uni == True:  # identity
+        if self.uni:  # identity
             return 1.
 
         det = self.det()
@@ -1839,16 +1632,11 @@ class diagonal_operator(operator):
                 The logarithm of the determinant
 
         """
-        if self.uni == True:  # identity
+        if self.uni:  # identity
             return 0
-        # elif(self.domain.get_dim(split=False)<self.domain.get_dof()): ## hidden degrees of freedom
-        # return
-        # self.domain.calc_dot(np.ones(self.domain.get_dim(split=True),dtype=self.domain.datatype,order='C'),np.log(self.val))
         else:
             return self.domain.unary_operation(
                 nifty_simple_math.log(self.val), op='sum')
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_random_field(self, domain=None, codomain=None):
         """
@@ -1870,38 +1658,30 @@ class diagonal_operator(operator):
                 Random field.
 
         """
+        temp_field = field(domain=self.domain,
+                           codomain=self.codomain,
+                           random='gau',
+                           var=self.diag(bare=True).get_val())
+        if domain.harmonic != self.domain.harmonic:
+            temp_field = temp_field.transform()
+
         if domain is None:
             domain = self.domain
-
-        if domain.check_codomain(codomain) == True:
+        if domain.check_codomain(codomain):
             codomain = codomain
-        elif domain.check_codomain(self.codomain) == True:
+        elif domain.check_codomain(self.codomain):
             codomain = self.codomain
         else:
             codomain = domain.get_codomain()
 
-        # if domain == self.domain:
-        return field(domain=domain,
-                     codomain=codomain,
-                     random='gau',
-                     var=self.diag(bare=True, domain=domain,
-                                   codomain=codomain).get_val())
-#        else:
-#            return field(domain = domain,
-#                         codomain = codomain,
-#                         random = 'gau',
-#                    var = self.diag(bare=True, domain = domain).get_val()
-#                         ).transform(codomain = domain)
-#
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        if self.domain == domain and self.codomain == codomain:
+            return temp_field
+        else:
+            return temp_field.copy(domain=domain,
+                                   codomain=codomain)
 
     def __repr__(self):
         return "<nifty_core.diagonal_operator>"
-
-# -----------------------------------------------------------------------------
-
-# -----------------------------------------------------------------------------
 
 
 def identity(domain, codomain=None):
@@ -1956,11 +1736,10 @@ def identity(domain, codomain=None):
         <nifty.field>
 
     """
-    return diagonal_operator(domain=domain, codomain=codomain, diag=1, bare=False)
-
-# -----------------------------------------------------------------------------
-
-# -----------------------------------------------------------------------------
+    return diagonal_operator(domain=domain,
+                             codomain=codomain,
+                             diag=1,
+                             bare=False)
 
 
 class power_operator(diagonal_operator):
@@ -1971,7 +1750,8 @@ class power_operator(diagonal_operator):
         ..  /   ____/  \______/   |__/\__/  \______/ /__/     operator class
         .. /__/
 
-        NIFTY subclass for (signal-covariance-type) diagonal operators containing a power spectrum
+        NIFTY subclass for (signal-covariance-type) diagonal operators
+        containing a power spectrum
 
         Parameters
         ----------
@@ -2005,7 +1785,8 @@ class power_operator(diagonal_operator):
         binbounds : {list, array}, *optional*
             User specific inner boundaries of the bins, which are preferred
             over the above parameters; by default no binning is done
-            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            (default: None).            vmin : {scalar, list, ndarray, field},
+            *optional*
             Lower limit of the uniform distribution if ``random == "uni"``
             (default: 0).
 
@@ -2068,29 +1849,32 @@ class power_operator(diagonal_operator):
             Other Parameters
             ----------------
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+                vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
 
         """
         # Set the domain
-        if isinstance(domain, space) == False:
+        if not isinstance(domain, space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given domain is not a nifty space."))
         self.domain = domain
 
-        if self.domain.check_codomain(codomain) == True:
+        if self.domain.check_codomain(codomain):
             self.codomain = codomain
         else:
             self.codomain = self.domain.get_codomain()
@@ -2115,37 +1899,6 @@ class power_operator(diagonal_operator):
         else:
             self.uni = False
 
-        """
-        ## check implicit pindex
-        if(pindex is None):
-            try:
-                self.domain.set_power_indices(**kwargs)
-            except:
-                raise ValueError(about._errors.cstring("ERROR: invalid input."))
-            else:
-                pindex = self.domain.power_indices.get("pindex")
-        ## check explicit pindex
-        else:
-            pindex = np.array(pindex,dtype=np.int)
-            if(not np.all(np.array(np.shape(pindex))==self.domain.get_dim(split=True))):
-                raise ValueError(about._errors.cstring("ERROR: shape mismatch ( "+str(np.array(np.shape(pindex)))+" <> "+str(self.domain.get_dim(split=True))+" )."))
-        ## set diagonal
-        try:
-            #diag = self.domain.enforce_power(spec,size=np.max(pindex,axis=None,out=None)+1)[pindex]
-            temp_spec = self.domain.enforce_power(
-                            spec,size=np.max(pindex,axis=None,out=None)+1)
-            diag = pindex.apply_scalar_function(lambda x: temp_spec[x],
-                                              dtype = temp_spec.dtype.type)
-        except(AttributeError):
-            raise ValueError(about._errors.cstring("ERROR: invalid input."))
-        ## weight if ...
-        if(not self.domain.discrete)and(bare):
-            self.val = np.real(self.domain.calc_weight(diag,power=1))
-        else:
-            self.val = diag
-
-        """
-
     # The domain is used for calculations of the power-spectrum, not for
     # actual field values. Therefore the casting of self.val must be switched
     # off.
@@ -2164,7 +1917,6 @@ class power_operator(diagonal_operator):
 
     def get_val(self):
         return self.val
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def set_power(self, new_spec, bare=True, pindex=None, **kwargs):
         """
@@ -2190,12 +1942,14 @@ class power_operator(diagonal_operator):
             Other Parameters
             ----------------
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
@@ -2227,7 +1981,7 @@ class power_operator(diagonal_operator):
                 pass
 
         # Weight if necessary
-        if self.domain.discrete == False and bare == True:
+        if not self.domain.discrete and bare:
             self.val = self.domain.calc_weight(diag, power=1)
         else:
             self.val = diag
@@ -2266,8 +2020,6 @@ class power_operator(diagonal_operator):
             assert(np.all(pindex.shape == self.domain.get_shape()))
         return pindex
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def get_power(self, bare=True, **kwargs):
         """
             Computes the power spectrum
@@ -2293,18 +2045,21 @@ class power_operator(diagonal_operator):
             Other Parameters
             ----------------
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+                vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
 
@@ -2314,7 +2069,7 @@ class power_operator(diagonal_operator):
         temp_kwargs.update(kwargs)
 
         # Weight the diagonal values if necessary
-        if self.domain.discrete == False and bare == True:
+        if not self.domain.discrete and bare:
             diag = self.domain.calc_weight(self.val, power=-1)
         else:
             diag = self.val
@@ -2326,8 +2081,6 @@ class power_operator(diagonal_operator):
         power = self.domain.calc_power(diag, **temp_kwargs)
 
         return power
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_projection_operator(self, pindex=None, **kwargs):
         """
@@ -2346,18 +2099,21 @@ class power_operator(diagonal_operator):
             Other Parameters
             ----------------
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+                vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
 
@@ -2368,15 +2124,10 @@ class power_operator(diagonal_operator):
                                    codomain=self.codomain,
                                    assign=pindex)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_core.power_operator>"
 
-# -----------------------------------------------------------------------------
 
-
-# -----------------------------------------------------------------------------
 class projection_operator(operator):
     """
         ..                                     __                       __     __
@@ -2412,7 +2163,8 @@ class projection_operator(operator):
         binbounds : {list, array}, *optional*
             User specific inner boundaries of the bins, which are preferred
             over the above parameters; by default no binning is done
-            (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+            (default: None).
+            vmin : {scalar, list, ndarray, field}, *optional*
             Lower limit of the uniform distribution if ``random == "uni"``
             (default: 0).
 
@@ -2464,7 +2216,7 @@ class projection_operator(operator):
 
     """
 
-    def __init__(self, domain, assign, codomain=None, **kwargs):
+    def __init__(self, domain, assign=None, codomain=None, **kwargs):
         """
             Sets the standard operator properties and `indexing`.
 
@@ -2484,29 +2236,32 @@ class projection_operator(operator):
             Other Parameters
             ----------------
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+                vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
 
         """
         # Check the domain
-        if(not isinstance(domain, space)):
+        if not isinstance(domain, space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The supplied domain is not a nifty space instance."))
         self.domain = domain
         # Parse codomain
-        if self.domain.check_codomain(codomain) == True:
+        if self.domain.check_codomain(codomain):
             self.codomain = codomain
         else:
             self.codomain = self.domain.get_codomain()
@@ -2515,6 +2270,12 @@ class projection_operator(operator):
         self.cotarget = self.codomain
 
         # Cast the assignment
+        if assign is None:
+            try:
+                self.domain.power_indices['pindex']
+            except AttributeError:
+                assign = np.arange(self.domain.get_dim(), dtype=np.int)
+
         self.assign = self.domain.cast(assign, dtype=np.dtype('int'),
                                        ignore_complexity=True)
 
@@ -2524,8 +2285,6 @@ class projection_operator(operator):
         self.sym = True
         self.uni = False
         self.imp = True
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def bands(self):
         about.warnings.cprint(
@@ -2543,8 +2302,6 @@ class projection_operator(operator):
                 The number of projection bands
         """
         return len(self.ind)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def rho(self):
         """
@@ -2566,19 +2323,6 @@ class projection_operator(operator):
             rho = self.domain.calc_bincount(self.assign,
                                             weights=meta_mask)
         return rho
-#
-#
-#        rho = np.empty(len(self.ind),dtype=np.int,order='C')
-#        if(self.domain.get_dim(split=False)==self.domain.get_dof()): ## no hidden degrees of freedom
-#            for ii in xrange(len(self.ind)):
-#                rho[ii] = len(self.ind[ii])
-#        else: ## hidden degrees of freedom
-#            mof = np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
-#            for ii in xrange(len(self.ind)):
-#                rho[ii] = np.sum(mof[self.ind[ii]],axis=None,dtype=np.int,out=None)
-#        return rho
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self, x, bands=None, bandsum=None, **kwargs):
         """
@@ -2600,9 +2344,10 @@ class projection_operator(operator):
             Px : field
                 projected field(!)
         """
+
         if bands is not None:
             # cast the band
-            if np.isscalar(bands) == True:
+            if np.isscalar(bands):
                 bands_was_scalar = True
             else:
                 bands_was_scalar = False
@@ -2612,7 +2357,7 @@ class projection_operator(operator):
             if np.any(bands > self.get_band_num() - 1) or np.any(bands < 0):
                 raise TypeError(about._errors.cstring("ERROR: Invalid bands."))
 
-            if bands_was_scalar == True:
+            if bands_was_scalar:
                 new_field = x * (self.assign == bands[0])
             else:
                 # build up the projection results
@@ -2633,7 +2378,8 @@ class projection_operator(operator):
                 bandsum = np.array(bandsum, dtype=np.int_).flatten()
 
             # check for consistency
-            if np.any(bandsum > self.get_band_num() - 1) or np.any(bandsum < 0):
+            if np.any(bandsum > self.get_band_num() - 1) or \
+               np.any(bandsum < 0):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Invalid bandsum."))
             new_field = x.copy_empty()
@@ -2653,23 +2399,24 @@ class projection_operator(operator):
 
     def _inverse_multiply(self, x, **kwargs):
         raise AttributeError(about._errors.cstring(
-            "ERROR: singular operator."))  # pseudo unitary
+            "ERROR: singular operator."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    #@profile
     def pseudo_tr(self, x, axis=(), **kwargs):
         """
-            Computes the pseudo trace of a given object for all projection bands
+            Computes the pseudo trace of a given object for all projection
+            bands
 
             Parameters
             ----------
             x : {field, operator}
-                The object whose pseudo-trace is to be computed. If the input is
+                The object whose pseudo-trace is to be computed. If the input
+                is
                 a field, the pseudo trace equals the trace of
                 the projection operator mutliplied by a vector-vector operator
                 corresponding to the input field. This is also equal to the
                 pseudo inner product of the field with projected field itself.
-                If the input is a operator, the pseudo trace equals the trace of
+                If the input is a operator, the pseudo trace equals the trace
+                of
                 the projection operator multiplied by the input operator.
             random : string, *optional*
                 Specifies the pseudo random number generator. Valid
@@ -2702,8 +2449,8 @@ class projection_operator(operator):
         # Parse the input
         # Case 1: x is a field
         # -> Compute the diagonal of the corresponding vecvec-operator:
-        ## x * x^dagger
-        if isinstance(x, field) == True:
+        # x * x^dagger
+        if isinstance(x, field):
             # check if field is in the same signal/harmonic space as the
             # domain of the projection operator
             if self.domain != x.domain:
@@ -2727,11 +2474,6 @@ class projection_operator(operator):
                 self.domain.get_meta_volume(total=False),
                 power=-1)
         # prepare the result object
-        #big_shape = working_field.ishape + (len(self.ind),)
-#        working_data = working_field.get_val()
-        # projection_result = np.empty(big_shape,
-        #                             dtype = working_field.domain.datatype)
-
         projection_result = utilities.field_map(
             working_field.ishape,
             lambda z: self.domain.calc_bincount(self.assign, weights=z),
@@ -2740,41 +2482,8 @@ class projection_operator(operator):
         projection_result = np.sum(projection_result, axis=axis)
         return projection_result
 
-#        if(isinstance(x,operator)):
-#            ## compute non-bare diagonal of the operator x
-#            x = x.diag(bare=False,domain=self.domain,target=x.domain,var=False,**kwargs)
-#            if(x is None):
-#                raise TypeError(about._error.cstring("ERROR: 'NoneType' encountered."))
-#
-#        elif(isinstance(x,field)):
-#            ## check domain
-#            if(self.domain==x.domain):
-#                x = x.val
-#            else:
-#                x = x.transform(target=self.domain,overwrite=False).val
-#            ## compute non-bare diagonal of the vector-vector operator corresponding to the field x
-#            x = x*np.conjugate(x)
-#            ## weight
-#            if(not self.domain.discrete):
-#                x = self.domain.calc_weight(x,power=1)
-#
-#
-#
-#        x = np.real(x.flatten(order='C'))
-#        if(not self.domain.get_dim(split=False)==self.domain.get_dof()):
-#            x *= np.round(np.real(self.domain.calc_weight(self.domain.get_meta_volume(total=False),power=-1).flatten(order='C')),decimals=0,out=None).astype(np.int) ## meta degrees of freedom
-#
-#        tr = np.empty(self.bands(),dtype=x.dtype,order='C')
-#        for bb in xrange(self.bands()):
-#            tr[bb] = np.sum(x[self.ind[bb]],axis=None,dtype=None,out=None)
-#        return tr
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_core.projection_operator>"
-
-# -----------------------------------------------------------------------------
 
 
 class projection_operator_old(operator):
@@ -2929,8 +2638,6 @@ class projection_operator_old(operator):
         self.target = nested_space(
             [point_space(len(self.ind), datatype=self.domain.datatype), self.domain])
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def bands(self):
         """
             Computes the number of projection bands
@@ -2941,8 +2648,6 @@ class projection_operator_old(operator):
                 The number of projection bands
         """
         return len(self.ind)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def rho(self):
         """
@@ -2964,8 +2669,6 @@ class projection_operator_old(operator):
                 rho[ii] = np.sum(mof[self.ind[ii]], axis=None,
                                  dtype=np.int, out=None)
         return rho
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _multiply(self, x, band=None, bandsup=None, **kwargs):
         """
@@ -3027,8 +2730,6 @@ class projection_operator_old(operator):
         raise AttributeError(about._errors.cstring(
             "ERROR: singular operator."))  # pseudo unitary
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def _debriefing(self, x, x_, target, inverse):  # > evaluates x and x_ after `multiply`
         if(x_ is None):
             return None
@@ -3054,8 +2755,6 @@ class projection_operator_old(operator):
                     if(x_.target != x.target):
                         x_.set_target(new_target=x.target)  # ... codomain
             return x_
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def times(self, x, **kwargs):
         """
@@ -3097,8 +2796,6 @@ class projection_operator_old(operator):
             return y, x - y
         else:
             return y
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def pseudo_tr(self, x, **kwargs):
         """
@@ -3176,15 +2873,9 @@ class projection_operator_old(operator):
             tr[bb] = np.sum(x[self.ind[bb]], axis=None, dtype=None, out=None)
         return tr
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_core.projection_operator>"
 
-# -----------------------------------------------------------------------------
-
-
-# -----------------------------------------------------------------------------
 
 class vecvec_operator(operator):
     """
@@ -3193,7 +2884,8 @@ class vecvec_operator(operator):
         ..  __   __   _______   _______  __   __   _______   _______ /__    __/
         .. |  |/  / /   __  / /   ____/ |  |/  / /   __  / /   ____/   /__/
         .. |     / /  /____/ /  /____   |     / /  /____/ /  /____
-        .. |____/  \______/  \______/   |____/  \______/  \______/            operator class
+        .. |____/  \______/  \______/   |____/  \______/  \______/
+        .. operator class
 
         NIFTY subclass for vector-vector operators
 
@@ -3203,7 +2895,8 @@ class vecvec_operator(operator):
             The space wherein valid arguments live. If none is given, the
             space of the field given in val is used. (default: None)
         val : {scalar, ndarray, field}, *optional*
-            The field from which to construct the operator. For a scalar, a constant
+            The field from which to construct the operator. For a scalar,
+            a constant
             field is defined having the value provided. If no domain
             is given, val must be a field. (default: 1)
 
@@ -3235,7 +2928,8 @@ class vecvec_operator(operator):
                 The space wherein valid arguments live. If none is given, the
                 space of the field given in val is used. (default: None)
             val : {scalar, ndarray, field}, *optional*
-                The field from which to construct the operator. For a scalar, a constant
+                The field from which to construct the operator. For a scalar,
+                a constant
                 field is defined having the value provided. If no domain
                 is given, val must be a field. (default: 1)
 
@@ -3243,17 +2937,17 @@ class vecvec_operator(operator):
             -------
             None
         """
-        if isinstance(val, field) == True:
+        if isinstance(val, field):
             if domain is None:
                 domain = val.domain
             if codomain is None:
                 codomain = val.codomain
 
-        if isinstance(domain, space) == False:
+        if not isinstance(domain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
 
-        if self.domain.check_codomain(codomain) == True:
+        if self.domain.check_codomain(codomain):
             self.codomain = codomain
         else:
             self.codomain = self.domain.get_codomain()
@@ -3263,12 +2957,10 @@ class vecvec_operator(operator):
         self.val = field(domain=self.domain,
                          codomain=self.codomain,
                          val=val)
-#        self.val = self.domain.cast(val)
+
         self.sym = True
         self.uni = False
         self.imp = True
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def set_val(self, new_val, copy=False):
         """
@@ -3287,22 +2979,15 @@ class vecvec_operator(operator):
         """
         self.val = self.val.set_val(new_val=new_val, copy=copy)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def _multiply(self, x, **kwargs):  # > applies the operator to a given field
+    def _multiply(self, x, **kwargs):
         y = x.copy_empty(domain=self.target, codomain=self.cotarget)
         y.set_val(new_val=self.val, copy=True)
         y *= self.val.dot(x, axis=())
-#
-#        y.set_val(new_val = self.val.get_val() *
-#                            self.domain.calc_dot(self.val.get_val(), x.val))
         return y
 
     def _inverse_multiply(self, x, **kwargs):
         raise AttributeError(about._errors.cstring(
             "ERROR: singular operator."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def tr(self, domain=None, axis=None, **kwargs):
         """
@@ -3345,13 +3030,7 @@ class vecvec_operator(operator):
         """
         if domain is None or domain == self.domain:
             return self.val.dot(self.val, axis=axis)
-#            if self.domain.discrete == False:
-#                return self.domain.calc_dot(self.val,
-#                                    self.domain.calc_weight(self.val,power=1))
-#            else:
-#                return self.domain.calc_dot(self.val, self.val)
         else:
-            # probing
             return super(vecvec_operator, self).tr(domain=domain, **kwargs)
 
     def inverse_tr(self):
@@ -3360,8 +3039,6 @@ class vecvec_operator(operator):
         """
         raise AttributeError(about._errors.cstring(
             "ERROR: singular operator."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def diag(self, bare=False, domain=None, **kwargs):
         """
@@ -3424,17 +3101,13 @@ class vecvec_operator(operator):
             entries; e.g., as variance in case of an covariance operator.
 
         """
-        if (domain is None) or (domain == self.domain):
+        if domain is None or (domain == self.domain):
             diag_val = self.val * self.val.conjugate()  # bare diagonal
             # weight if ...
-            if self.domain.discrete == False and bare == False:
+            if not self.domain.discrete and not bare:
                 diag_val = diag_val.weight(power=1, overwrite=True)
-#                diag_val = self.domain.calc_weight(diag_val, power=1)
             return diag_val
-#            diag = field(self.domain, codomain = self.codomain, val = diag_val)
-#            return diag
         else:
-            # probing
             return super(vecvec_operator, self).diag(bare=bare,
                                                      domain=domain,
                                                      **kwargs)
@@ -3446,8 +3119,6 @@ class vecvec_operator(operator):
         """
         raise AttributeError(about._errors.cstring(
             "ERROR: singular operator."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def det(self):
         """
@@ -3471,21 +3142,16 @@ class vecvec_operator(operator):
 
     def log_det(self):
         """
-            Logarithm of the determinant is ill-defined for this singular operator.
+            Logarithm of the determinant is ill-defined for this singular
+            operator.
 
         """
         raise AttributeError(about._errors.cstring(
-            "ERROR: singular operator."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                "ERROR: singular operator."))
 
     def __repr__(self):
         return "<nifty_core.vecvec_operator>"
 
-# -----------------------------------------------------------------------------
-
-
-# -----------------------------------------------------------------------------
 
 class response_operator(operator):
     """
@@ -3550,7 +3216,8 @@ class response_operator(operator):
     def __init__(self, domain, codomain=None, sigma=0, mask=1, assign=None,
                  den=False, target=None, cotarget=None):
         """
-            Sets the standard properties and `density`, `sigma`, `mask` and `assignment(s)`.
+            Sets the standard properties and `density`, `sigma`, `mask` and
+            `assignment(s)`.
 
             Parameters
             ----------
@@ -3576,11 +3243,11 @@ class response_operator(operator):
             -------
             None
         """
-        if(not isinstance(domain, space)):
+        if not isinstance(domain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
 
-        if self.domain.check_codomain(codomain) == True:
+        if self.domain.check_codomain(codomain):
             self.codomain = codomain
         else:
             self.codomain = self.domain.get_codomain()
@@ -3590,83 +3257,78 @@ class response_operator(operator):
         self.imp = False
         self.den = bool(den)
 
-        self.mask = self.domain.enforce_values(mask, extend=False)
+        # self.mask = self.domain.enforce_values(mask, extend=False)
+        self.set_mask(new_mask=mask)
 
         # check sigma
-        if(sigma < 0):
+        self.sigma = np.float(sigma)
+        if sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        self.sigma = sigma
 
         # check assignment(s)
-        if(assign is None):
-            # 1:1 assignment
-            assignments = self.domain.get_dim(split=False)
+        if assign is None:
+            assignments = self.domain.get_dim()
             self.assign = None
-        elif(np.size(self.domain.get_dim(split=True)) == 1):
-            if(np.isscalar(assign)):
-                # X:1 assignment
-                assignments = 1
-                if(assign[0] >= self.domain.get_dim(split=False))or(assign[0] < -self.domain.get_dim(split=False)):
-                    raise IndexError(about._errors.cstring(
-                        "ERROR: invalid bounds."))
-                self.assign = [int(assign)]
-            else:
-                assign = np.array(assign, dtype=np.int)
-                assignments = len(assign)
-                if(np.ndim(assign) != 1):
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: invalid input."))
-                elif(np.any(assign >= self.domain.get_dim(split=False)))or(np.any(assign < -self.domain.get_dim(split=False))):
-                    raise IndexError(about._errors.cstring(
-                        "ERROR: invalid bounds."))
-                if(assignments == len(np.unique(assign, return_index=False, return_inverse=False))):
-                    self.assign = assign.tolist()
+        elif isinstance(assign, list):
+            # check that the advanced indexing entries are either scalar
+            # or all have the same size
+            shape_list = map(np.shape, assign)
+            shape_list.remove(())
+            if len(self.domain.get_shape()) == 1:
+                if len(shape_list) == 0:
+                    assignments = len(assign)
+                elif len(shape_list) == 1:
+                    assignments = len(assign[0])
                 else:
-                    self.assign = assign
+                    raise ValueError(about._errors.cstring(
+                        "ERROR: Wrong number of indices!"))
+            else:
+                if len(assign) != len(self.domain.get_shape()):
+                    raise ValueError(about._errors.cstring(
+                        "ERROR: Wrong number of indices!"))
+                elif shape_list == []:
+                    raise ValueError(about._errors.cstring(
+                        "ERROR: Purely scalar entries in the assign list " +
+                        "are only valid for one-dimensional fields!"))
+                elif not all([x == shape_list[0] for x in shape_list]):
+                    raise ValueError(about._errors.cstring(
+                        "ERROR: Non-scalar entries of assign list all must " +
+                        "have the same shape!"))
+                else:
+                    assignments = np.prod(shape_list[0])
+            self.assign = assign
         else:
-            if(np.isscalar(assign)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: invalid input."))
-            else:
-                assign = np.array(assign, dtype=np.int)
-                assignments = np.size(assign, axis=0)
-                if(np.ndim(assign) != 2)or(np.size(assign, axis=1) != np.size(self.domain.get_dim(split=True))):
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: invalid input."))
-                for ii in xrange(np.size(assign, axis=1)):
-                    if(np.any(assign[:, ii] >= self.domain.get_dim(split=True)[ii]))or(np.any(assign[:, ii] < -self.domain.get_dim(split=True)[ii])):
-                        raise IndexError(about._errors.cstring(
-                            "ERROR: invalid bounds."))
-                if(assignments == len(np.unique(np.ravel_multi_index(assign.T, self.domain.get_dim(split=True), mode="raise", order='C'), return_index=False, return_inverse=False))):
-                    self.assign = assign.T.tolist()
-                else:
-                    self.assign = assign
+            raise ValueError(about._errors.cstring(
+                "ERROR: assign must be None or list of arrays!"))
 
-        if(target is None):
+        if target is None:
             # set target
-            target = point_space(assignments, datatype=self.domain.datatype)
+            target = point_space(assignments,
+                                 datatype=self.domain.datatype,
+                                 datamodel=self.domain.datamodel)
         else:
             # check target
-            if(not isinstance(target, space)):
-                raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            elif(not target.discrete):
+            if not isinstance(target, space):
+                raise TypeError(about._errors.cstring(
+                    "ERROR: Given target is not a nifty space"))
+            elif not target.discrete:
                 raise ValueError(about._errors.cstring(
-                    "ERROR: continuous codomain."))  # discrete(!)
-            elif(np.size(target.get_dim(split=True)) != 1):
+                    "ERROR: Given target must be a discrete space!"))
+            elif len(target.get_shape()) > 1:
                 raise ValueError(about._errors.cstring(
-                    "ERROR: structured codomain."))  # unstructured(!)
-            elif(assignments != target.get_dim(split=False)):
-                raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( " + str(
-                    assignments) + " <> " + str(target.get_dim(split=False)) + " )."))
+                    "ERROR: Given target must be a one-dimensional space."))
+            elif assignments != target.get_dim():
+                raise ValueError(about._errors.cstring(
+                    "ERROR: dimension mismatch ( " +
+                    str(assignments) + " <> " +
+                    str(target.get_dim(split=False)) + " )."))
         self.target = target
-        if self.target.check_codomain(cotarget) == True:
+        if self.target.check_codomain(cotarget):
             self.cotarget = cotarget
         else:
             self.cotarget = self.target.get_codomain()
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_sigma(self, newsigma):
+    def set_sigma(self, new_sigma):
         """
             Sets the standard deviation of the response operator, indicating
             the amount of convolution.
@@ -3682,13 +3344,11 @@ class response_operator(operator):
             None
         """
         # check sigma
-        if(newsigma < 0):
+        if new_sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        self.sigma = newsigma
+        self.sigma = np.float(new_sigma)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_mask(self, newmask):
+    def set_mask(self, new_mask):
         """
             Sets the masking values of the response operator
 
@@ -3701,100 +3361,89 @@ class response_operator(operator):
             -------
             None
         """
-        self.mask = self.domain.enforce_values(newmask, extend=False)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def _multiply(self, x, **kwargs):  # > applies the operator to a given field
-        # smooth
-        x_ = self.domain.calc_smooth(x.val, sigma=self.sigma)
-#        print (x_,)
-        # mask
-        x_ *= self.mask
-#        print (x_,)
-        # assign and return
-        if(self.assign is None):
-            val = x_
-        elif(isinstance(self.assign, list)):
-            val = x_[self.assign]
+        if np.isscalar(new_mask):
+            self.mask = np.bool(new_mask)
         else:
-            val = x_[self.assign.T.tolist()]
-#        print (val,)
-        val = val.flatten()
+            self.mask = self.domain.cast(new_mask, dtype=np.dtype('bool'),
+                                         ignore_complexity=True)
+
+    def _multiply(self, x, **kwargs):
+        # smooth
+        y = self.domain.calc_smooth(x.val, sigma=self.sigma)
+        # mask
+        y *= self.mask
+        # assign and return
+        if self.assign is not None:
+            val = y[self.assign]
+        else:
+            try:
+                val = y.flatten(inplace=True)
+            except TypeError:
+                val = y.flatten()
         return field(self.target,
                      val=val,
                      codomain=self.cotarget)
 
-    # > applies the adjoint operator to a given field
     def _adjoint_multiply(self, x, **kwargs):
-        x_ = np.zeros(self.domain.get_shape(),
-                      dtype=self.domain.datatype)
-        ## assign (transposed)
+        y = self.domain.cast(0)
         if self.assign is None:
-            x_ = x.val.flatten()
-        elif(isinstance(self.assign, list)):
-            x_[self.assign] += x.val.flatten(order='C')
+            y[y == y] = x.val
         else:
-            for ii in xrange(np.size(self.assign, axis=0)):
-                x_[np.array([self.assign[ii]]).T.tolist()] += x[ii]
-        # mask
-        x_ *= self.mask
-        # smooth
-        x_ = self.domain.calc_smooth(x_, sigma=self.sigma)
-        # return x_
+            y[self.assign] = x.val
+
+        y *= self.mask
+        y = self.domain.calc_smooth(y, sigma=self.sigma)
         return field(self.domain,
-                     val=x_,
+                     val=y,
                      codomain=self.codomain)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def _briefing(self, x, domain, codomain, inverse):  # > prepares x for `multiply`
+    def _briefing(self, x, domain, codomain, inverse):
         # inspect x
         if not isinstance(x, field):
-            x_ = field(domain, codomain, val=x)
+            y = field(domain, codomain=codomain, val=x)
         else:
             # check x.domain
-            if domain == x.domain:
-                x_ = x
-            # transform
+            if x.domain == domain:
+                y = x
             else:
-                x_ = x.transform(codomain=domain)
-        # weight if ...
-        if self.imp == False and domain.discrete == False and\
-                inverse == False and self.den == True:  # respect density
-            x_ = x_.weight(power=1)
-        return x_
+                if x.domain.harmonic != domain.harmonic:
+                    y = x.transform(codomain=domain)
+                else:
+                    y = x.copy(domain=domain, codomain=codomain)
 
-    # > evaluates x and x_ after `multiply`
-    def _debriefing(self, x, x_, target, cotarget, inverse):
-        if x_ is None:
+        # weight if ...
+        if (not self.imp) and (not domain.discrete) and (not inverse) and \
+                self.den:
+            y = y.weight(power=1)
+        return y
+
+    def _debriefing(self, x, y, target, cotarget, inverse):
+        # > evaluates x and y after `multiply`
+        if y is None:
             return None
         else:
-            # inspect x_
-            if not isinstance(x_, field):
-                x_ = field(target, codomain=cotarget, val=x_)
-            elif x_.domain != target:
+            # inspect y
+            if not isinstance(y, field):
+                y = field(target, codomain=cotarget, val=y)
+            elif y.domain != target:
                 raise ValueError(about._errors.cstring(
                     "ERROR: invalid output domain."))
             # weight if ...
-            if self.imp == False and target.discrete == False and\
-                    (not self.den ^ inverse):  # respect density
-                x_ = x_.weight(power=-1)
+            if (not self.imp) and (not target.discrete) and \
+                    (not self.den ^ inverse):
+                y = y.weight(power=-1)
             # inspect x
-            if(isinstance(x, field)):
-                # repair ...
-                if self.domain == self.target != x.domain:
-                    x_ = x_.transform(codomain=x.domain)  # ... domain
-                if x_.domain == x.domain and (x_.target != x.target):
-                    x_.set_codomain(new_codomain=x.codomain)  # ... codomain
-            return x_
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if isinstance(x, field):
+                # repair if the originally field was living in the codomain
+                # of the operators domain
+                if self.domain == self.target == x.codomain:
+                    y = y.transform(codomain=x.domain)
+                if x.domain == y.domain and (x.codomain != y.codomain):
+                    y.set_codomain(new_codomain=x.codomain)
+            return y
 
     def __repr__(self):
         return "<nifty_core.response_operator>"
-
-# -----------------------------------------------------------------------------
 
 
 class invertible_operator(operator):
@@ -3878,10 +3527,10 @@ class invertible_operator(operator):
                 the operator class can use (default: None).
 
         """
-        if(not isinstance(domain, space)):
+        if not isinstance(domain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
-        if self.domain.check_codomain(codomain) == True:
+        if self.domain.check_codomain(codomain):
             self.codomain = codomain
         else:
             self.codomain = self.domain.get_codomain()
@@ -3897,12 +3546,12 @@ class invertible_operator(operator):
         self.target = self.domain
         self.cotarget = self.codomain
 
-        if(para is not None):
+        if para is not None:
             self.para = para
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def _multiply(self, x, force=False, W=None, spam=None, reset=None, note=False, x0=None, tol=1E-4, clevel=1, limii=None, **kwargs):
+    def _multiply(self, x, force=False, W=None, spam=None, reset=None,
+                  note=False, x0=None, tol=1E-4, clevel=1, limii=None,
+                  **kwargs):
         """
             Applies the invertible operator to a given field by invoking a
             conjugate gradient.
@@ -3927,13 +3576,15 @@ class invertible_operator(operator):
             Other Parameters
             ----------------
             W : {operator, function}, *optional*
-                Operator `W` that is a preconditioner on `A` and is applicable to a
+                Operator `W` that is a preconditioner on `A` and is applicable
+                to a
                 field (default: None).
             spam : function, *optional*
                 Callback function which is given the current `x` and iteration
                 counter each iteration (default: None).
             reset : integer, *optional*
-                Number of iterations after which to restart; i.e., forget previous
+                Number of iterations after which to restart; i.e., forget
+                previous
                 conjugated directions (default: sqrt(b.get_dim())).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
@@ -3946,22 +3597,32 @@ class invertible_operator(operator):
                 Number of times the tolerance should be undershot before
                 exiting (default: 1).
             limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.get_dim()).
+                Maximum number of iterations performed
+                (default: 10 * b.get_dim()).
 
         """
-        x_, convergence = conjugate_gradient(self.inverse_times, x, W=W, spam=spam, reset=reset, note=note)(
-            x0=x0, tol=tol, clevel=clevel, limii=limii)
+        x_, convergence = conjugate_gradient(self.inverse_times,
+                                             x,
+                                             W=W,
+                                             spam=spam,
+                                             reset=reset,
+                                             note=note)(x0=x0,
+                                                        tol=tol,
+                                                        clevel=clevel,
+                                                        limii=limii)
         # check convergence
-        if(not convergence):
-            if(not force)or(x_ is None):
+        if not convergence:
+            if not force or x_ is None:
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
         # weight if ...
-        if(not self.imp):  # continiuos domain/target
+        if not self.imp:  # continiuos domain/target
             x_.weight(power=-1, overwrite=True)
         return x_
 
-    def _inverse_multiply(self, x, force=False, W=None, spam=None, reset=None, note=False, x0=None, tol=1E-4, clevel=1, limii=None, **kwargs):
+    def _inverse_multiply(self, x, force=False, W=None, spam=None, reset=None,
+                          note=False, x0=None, tol=1E-4, clevel=1, limii=None,
+                          **kwargs):
         """
             Applies the inverse of the invertible operator to a given field by
             invoking a conjugate gradient.
@@ -3986,13 +3647,15 @@ class invertible_operator(operator):
             Other Parameters
             ----------------
             W : {operator, function}, *optional*
-                Operator `W` that is a preconditioner on `A` and is applicable to a
+                Operator `W` that is a preconditioner on `A` and is applicable
+                to a
                 field (default: None).
             spam : function, *optional*
                 Callback function which is given the current `x` and iteration
                 counter each iteration (default: None).
             reset : integer, *optional*
-                Number of iterations after which to restart; i.e., forget previous
+                Number of iterations after which to restart; i.e., forget
+                previous
                 conjugated directions (default: sqrt(b.get_dim())).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
@@ -4005,29 +3668,31 @@ class invertible_operator(operator):
                 Number of times the tolerance should be undershot before
                 exiting (default: 1).
             limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.get_dim()).
+                Maximum number of iterations performed
+                (default: 10 * b.get_dim()).
 
         """
-        x_, convergence = conjugate_gradient(self.times, x, W=W, spam=spam, reset=reset, note=note)(
-            x0=x0, tol=tol, clevel=clevel, limii=limii)
+        x_, convergence = conjugate_gradient(self.times,
+                                             x,
+                                             W=W,
+                                             spam=spam,
+                                             reset=reset,
+                                             note=note)(x0=x0,
+                                                        tol=tol,
+                                                        clevel=clevel,
+                                                        limii=limii)
         # check convergence
-        if(not convergence):
-            if(not force)or(x_ is None):
+        if not convergence:
+            if not force or x_ is None:
                 return None
             about.warnings.cprint("WARNING: conjugate gradient failed.")
         # weight if ...
-        if(not self.imp):  # continiuos domain/target
+        if not self.imp:  # continiuos domain/target
             x_.weight(power=1, overwrite=True)
         return x_
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_tools.invertible_operator>"
-
-# -----------------------------------------------------------------------------
-
-# -----------------------------------------------------------------------------
 
 
 class propagator_operator(operator):
@@ -4160,6 +3825,7 @@ class propagator_operator(operator):
         self.cotarget = self.codomain
 
         # define A1 == S_inverse
+        self.S = S
         if(isinstance(S, diagonal_operator)):
             self._A1 = S._inverse_multiply  # S.imp == True
         else:
@@ -4186,8 +3852,6 @@ class propagator_operator(operator):
         self.uni = False
         self.imp = True
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     # applies > R_adjoint N_inverse R assuming N is diagonal
     def _standard_M_times_1(self, x, **kwargs):
         # N.imp = True
@@ -4196,7 +3860,6 @@ class propagator_operator(operator):
     def _standard_M_times_2(self, x, **kwargs):  # applies > R_adjoint N_inverse R
         return self.RN[0].adjoint_times(self.RN[1].inverse_times(self.RN[0].times(x)))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     # > applies A1 + A2 in self.codomain
     def _inverse_multiply_1(self, x, **kwargs):
         return self._A1(x, pseudo=True) + self._A2(x.transform(self.domain)).transform(self.codomain)
@@ -4204,21 +3867,19 @@ class propagator_operator(operator):
     def _inverse_multiply_2(self, x, **kwargs):  # > applies A1 + A2 in self.domain
         transformed_x = x.transform(self.codomain)
         aed_x = self._A1(transformed_x, pseudo=True)
-        print (vars(aed_x),)
+        #print (vars(aed_x),)
         transformed_aed = aed_x.transform(self.domain)
-        print (vars(transformed_aed),)
+        #print (vars(transformed_aed),)
         temp_to_add = self._A2(x)
         added = transformed_aed + temp_to_add
         return added
         # return
         # self._A1(x.transform(self.codomain),pseudo=True).transform(self.domain)+self._A2(x)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def _briefing(self, x):  # > prepares x for `multiply`
         # inspect x
         if not isinstance(x, field):
-            return (field(self.domain, codomain=self.cdomoain,
+            return (field(self.domain, codomain=self.codomain,
                           val=x),
                     False)
         # check x.domain
@@ -4240,11 +3901,9 @@ class propagator_operator(operator):
             # repair ...
             if in_codomain == True and x.domain != self.codomain:
                 x_ = x_.transform(codomain=x.domain)  # ... domain
-            if x_.target != x.target:
+            if x_.codomain != x.codomain:
                 x_.set_codomain(new_codomain=x.codomain)  # ... codomain
         return x_
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def times(self, x, force=False, W=None, spam=None, reset=None, note=False, x0=None, tol=1E-4, clevel=1, limii=None, **kwargs):
         """
@@ -4294,6 +3953,8 @@ class propagator_operator(operator):
                 Maximum number of iterations performed (default: 10 * b.get_dim()).
 
         """
+        if W is None:
+            W = self.S
         # prepare
         x_, in_codomain = self._briefing(x)
         # apply operator
@@ -4336,9 +3997,5 @@ class propagator_operator(operator):
         # evaluate
         return self._debriefing(x, x_, in_codomain)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_tools.propagator_operator>"
-
-# -----------------------------------------------------------------------------

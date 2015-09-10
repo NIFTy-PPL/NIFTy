@@ -21,7 +21,7 @@
 
 #from nifty import *
 import numpy as np
-from nifty.nifty_about import about
+from nifty.keepers import about
 from nifty.nifty_core import field                                          
 #from nifty.nifty_simple_math import sqrt,exp,log                                          
 #from nifty.operators import power_operator            

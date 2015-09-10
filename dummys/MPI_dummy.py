@@ -4,12 +4,12 @@ import numpy as np
 
 def MIN():
     return np.min
-    
+
 def MAX():
     return np.max
-    
+
 def SUM():
-    return np.sum    
+    return np.sum
 
 
 
@@ -17,41 +17,41 @@ class _COMM_WORLD():
     def __init__(self):
         self.rank = 0
         self.size = 1
-    
+
     def Get_rank(self):
         return self.rank
-    
+
     def Get_size(self):
         return self.size
-    
+
     def _scattergather_helper(self, sendbuf, recvbuf=None, **kwargs):
         sendbuf = self._unwrapper(sendbuf)
         recvbuf = self._unwrapper(recvbuf)
-        if recvbuf != None:        
+        if recvbuf != None:
             recvbuf[:] = sendbuf
             return recvbuf
         else:
             recvbuf = np.copy(sendbuf)
             return recvbuf
-    
+
     def bcast(self, sendbuf, *args, **kwargs):
         return sendbuf
-    
+
     def Bcast(self, sendbuf, *args, **kwargs):
         return sendbuf
-    
+
     def scatter(self, sendbuf, *args, **kwargs):
         return sendbuf[0]
-        
+
     def Scatter(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
-    
+
     def Scatterv(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
 
     def gather(self, sendbuf, *args, **kwargs):
         return [sendbuf,]
-    
+
     def Gather(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
 
@@ -60,30 +60,30 @@ class _COMM_WORLD():
 
     def allgather(self, sendbuf, *args, **kwargs):
         return [sendbuf,]
-        
+
     def Allgather(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
-    
+
     def Allgatherv(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
-    
+
     def Allreduce(self, sendbuf, recvbuf, op, **kwargs):
         recvbuf[:] = op(sendbuf)
         return recvbuf
-        
+
     def allreduce(self, sendbuf, recvbuf, op, **kwargs):
         recvbuf[:] = op(sendbuf)
         return recvbuf
 
     def sendrecv(self, sendobj, **kwargs):
         return sendobj
-        
+
     def _unwrapper(self, x):
         if isinstance(x, list):
             return x[0]
         else:
             return x
-    
+
     def Barrier(self):
         pass
 
@@ -91,7 +91,7 @@ class _datatype():
     def __init__(self, name):
         self.name = str(name)
 
-BYTE = _datatype('MPI_BYTE')        
+BYTE = _datatype('MPI_BYTE')
 SHORT = _datatype('MPI_SHORT')
 UNSIGNED_SHORT = _datatype("MPI_UNSIGNED_SHORT")
 UNSIGNED_INT = _datatype("MPI_UNSIGNED_INT")
@@ -106,17 +106,16 @@ LONG_DOUBLE = _datatype("MPI_LONG_DOUBLE")
 COMPLEX = _datatype("MPI_COMPLEX")
 DOUBLE_COMPLEX = _datatype("MPI_DOUBLE_COMPLEX")
 
-        
+
 COMM_WORLD = _COMM_WORLD()
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+
+
+
+
+

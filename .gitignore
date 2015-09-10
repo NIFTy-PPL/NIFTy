@@ -20,14 +20,17 @@ operators/*
 !operators/nifty_probing.py
 !operators/nifty_probing_old.py
 
+dummys/*
+!dummys/__init__.py
+!dummys/gfft_dummy.py
+!dummys/MPI_dummy.py
+
 
 rg/*
 !rg/__init__.py
-!rg/fft_rg.py
+!rg/nifty_fft.py
 !rg/nifty_rg.py
 !rg/nifty_power_conversion_rg.py
-!rg/gfft_rg.py
-!rg/powerspectrum.py
 
 lm/*
 !lm/__init__.py

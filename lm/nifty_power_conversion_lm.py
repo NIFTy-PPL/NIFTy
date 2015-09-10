@@ -21,8 +21,8 @@
 
 #from nifty import *
 import numpy as np
-from nifty.nifty_about import about
-from nifty.nifty_core import pi, field                                             
+from nifty.keepers import about
+from nifty.nifty_core import pi, field
 from nifty.nifty_simple_math import sqrt, exp, log
 
 

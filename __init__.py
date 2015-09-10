@@ -22,15 +22,22 @@
 from __future__ import division
 
 import matplotlib as mpl
-#mpl.use('Agg')
+mpl.use('Agg')
 
-from nifty_about import about
+import dummys
+
+from keepers import about,\
+                  global_dependency_injector,\
+                  global_configuration
+
+
+
 from nifty_cmaps import ncmap
 from nifty_core import space,\
                     point_space,\
                     nested_space,\
                     field
-                    
+
 from nifty_mpi_data import distributed_data_object, d2o_librarian
 from nifty_power import *
 from nifty_random import random
@@ -64,13 +71,13 @@ try:
         from nifty_paradict import gl_space_paradict
     except(ImportError):
         pass
-    
+
     try:
         from lm import hp_space
         from nifty_paradict import hp_space_paradict
     except(ImportError):
         pass
-    
+
 except(ImportError):
     pass
 

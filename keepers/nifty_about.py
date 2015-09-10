@@ -326,6 +326,8 @@ class notification(switch):
 
 ##-----------------------------------------------------------------------------
 
+
+
 class _about(object): ## nifty support class for global settings
     """
         NIFTY support class for global settings.
@@ -389,9 +391,9 @@ class _about(object): ## nifty support class for global settings
         self._version = str(__version__)
 
         ## switches and notifications
-        self._errors = notification(default=True, 
+        self._errors = notification(default=True,
                                     ccode=notification._code)
-        self.warnings = notification(default=True, 
+        self.warnings = notification(default=True,
                                      ccode=notification._code)
         self.infos =  notification(default=False,
                                    ccode=notification._code)
@@ -486,7 +488,7 @@ class _about(object): ## nifty support class for global settings
 
 ## set global instance
 about = _about()
-about.load_config(force=False)
-about.infos.cprint("INFO: "+about.__repr__())
+#about.load_config(force=False)
+#about.infos.cprint("INFO: "+about.__repr__())
 
 

@@ -21,9 +21,9 @@
 
 from __future__ import division
 
-from nifty.nifty_about import about
+from nifty.keepers import about
 from nifty.nifty_core import space, \
-                         field 
+                         field
 from nifty.nifty_utilities import direct_dot
 
 
@@ -126,7 +126,7 @@ class prober(object):
             Keyword arguments passed to `function` in each call.
 
     """
-    def __init__(self, operator=None, function=None, domain=None, 
+    def __init__(self, operator=None, function=None, domain=None,
                  codomain=None, random="pm1", nrun=8, varQ=False, **kwargs):
         """
         initializes a probing instance
@@ -177,8 +177,8 @@ class prober(object):
             zeroth entry and the variance in the first entry. (default: False)
 
         """
-        ## Case 1: no operator given. Check function and domain for general 
-        ## sanity 
+        ## Case 1: no operator given. Check function and domain for general
+        ## sanity
         if operator is None:
             ## check whether the given function callable
             if function is None or hasattr(function, "__call__") == False:
@@ -188,45 +188,45 @@ class prober(object):
             if domain is None or isinstance(domain, space) == False:
                 raise ValueError(about._errors.cstring(
                 "ERROR: invalid input: given domain is not a nifty space"))
-        
+
         ## Case 2: An operator is given. Take domain and function from that
-        ## if not given explicitly 
+        ## if not given explicitly
         else:
-            
-            ## Case 2.1 extract function 
+
+            ## Case 2.1 extract function
             ## explicit function overrides operator function
             if function is None or hasattr(function,"__call__") == False:
                 try:
-                    function = operator.times 
+                    function = operator.times
                 except(AttributeError):
                     raise ValueError(about._errors.cstring(
    "ERROR: no explicit function given and given operator has no times method!"))
-            ## check whether the given function is correctly bound to the 
-            ## operator                     
+            ## check whether the given function is correctly bound to the
+            ## operator
             if operator != function.im_self:
                     raise ValueError(about._errors.cstring(
    "ERROR: the given function is not a bound function of the operator!"))
-           
+
 
 
             ## Case 2.2 extract domain
             if domain is None or isinstance(domain, space):
-                 if (function in [operator.inverse_times, 
+                 if (function in [operator.inverse_times,
                                   operator.adjoint_times]):
                      try:
                          domain = operator.target
                      except(AttributeError):
                          raise ValueError(about._errors.cstring(
    "ERROR: no explicit domain given and given operator has no target!"))
-                        
+
                  else:
                      try:
                          domain = operator.domain
                      except(AttributeError):
                          raise ValueError(about._errors.cstring(
    "ERROR: no explicit domain given and given operator has no domain!"))
-   
-        self.function = function               
+
+        self.function = function
         self.domain = domain
 
         ## Check the given target
@@ -234,16 +234,16 @@ class prober(object):
             codomain = self.domain.get_codomain()
         else:
             assert(self.domain.check_codomain(codomain))
-        
+
         self.codomain = codomain
 
         if(random not in ["pm1","gau"]):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported random key '"+str(random)+"'."))
         self.random = random
-        
+
         ## Parse the remaining arguments
-        self.nrun = int(nrun) 
+        self.nrun = int(nrun)
         self.varQ = bool(varQ)
         self.kwargs = kwargs
 
@@ -373,7 +373,7 @@ class prober(object):
         """
         f = self.function(probe, **self.kwargs)
         return f
-        
+
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -412,7 +412,7 @@ class prober(object):
         else:
             about.infos.cflush("\n")
 
-        
+
         if self.varQ == True:
             if num == 1:
                 about.warnings.cprint(
@@ -443,15 +443,16 @@ class prober(object):
         sum_of_probes = 0
         sum_of_squares = 0
         num = 0
-        
+
         for ii in xrange(self.nrun):
+            print ('running probe ', ii)
             temp_probe = self.generate_probe()
             temp_result = self.evaluate_probe(probe = temp_probe)
-            
+
             if temp_result is not None:
                 sum_of_probes += temp_result
-                if self.varQ:                
-                    sum_of_squares += ((temp_result).conjugate())*temp_result 
+                if self.varQ:
+                    sum_of_squares += ((temp_result).conjugate())*temp_result
                 num += 1
                 self.print_progress(num)
         about.infos.cflush(" done.")
@@ -502,67 +503,66 @@ class _specialized_prober(object):
         else:
             about.warnings.cprint(
                 "WARNING: Dropped the supplied function keyword-argument!")
-       
+
         if domain is None and inverseQ == False:
             kwargs.update({'domain': operator.domain})
         elif domain is None and inverseQ == True:
             kwargs.update({'domain': operator.target})
         else:
             kwargs.update({'domain': domain})
-        self.operator = operator            
-        
+        self.operator = operator
+
         self.prober = prober(function = self._probing_function,
                              **kwargs)
-    
+
     def _probing_function(self, probe):
         return None
-        
+
     def __call__(self, *args, **kwargs):
         return self.prober(*args, **kwargs)
-        
-               
+
+
     def __getattr__(self, attr):
         return getattr(self.prober, attr)
-    
-        
-        
+
+
+
 
 
 class trace_prober(_specialized_prober):
-    def __init__(self, operator, **kwargs):                
-        super(trace_prober, self).__init__(operator = operator, 
-                                           inverseQ=False, 
+    def __init__(self, operator, **kwargs):
+        super(trace_prober, self).__init__(operator = operator,
+                                           inverseQ=False,
                                            **kwargs)
     def _probing_function(self, probe):
         return direct_dot(probe.conjugate(), self.operator.times(probe))
 
 class inverse_trace_prober(_specialized_prober):
-    def __init__(self, operator, **kwargs):                
+    def __init__(self, operator, **kwargs):
         super(inverse_trace_prober, self).__init__(operator = operator,
-                                                   inverseQ=True, 
+                                                   inverseQ=True,
                                                    **kwargs)
     def _probing_function(self, probe):
-        return direct_dot(probe.conjugate(), 
+        return direct_dot(probe.conjugate(),
                           self.operator.inverse_times(probe))
 
 class diagonal_prober(_specialized_prober):
-    def __init__(self, **kwargs):                
-        super(diagonal_prober, self).__init__(inverseQ = False, 
+    def __init__(self, **kwargs):
+        super(diagonal_prober, self).__init__(inverseQ = False,
                                               **kwargs)
     def _probing_function(self, probe):
         return probe.conjugate()*self.operator.times(probe)
-        
+
 class inverse_diagonal_prober(_specialized_prober):
-    def __init__(self, operator, **kwargs):                
-        super(inverse_diagonal_prober, self).__init__(operator = operator, 
-                                                      inverseQ=True, 
+    def __init__(self, operator, **kwargs):
+        super(inverse_diagonal_prober, self).__init__(operator = operator,
+                                                      inverseQ=True,
                                                       **kwargs)
     def _probing_function(self, probe):
         return probe.conjugate()*self.operator.inverse_times(probe)
-        
 
-        
-        
-        
-        
-        
+
+
+
+
+

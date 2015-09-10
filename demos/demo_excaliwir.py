@@ -55,7 +55,7 @@ class problem(object):
         self.z = x_space
         ## set conjugate space
         self.k = self.z.get_codomain()
-        self.k.set_power_indices(**kwargs)
+        #self.k.set_power_indices(**kwargs)
 
         ## set some power spectrum
         self.power = (lambda k: 42 / (k + 1) ** 3)
@@ -156,17 +156,24 @@ class problem(object):
         while(iterating):
 
             ## reconstruct map
-            self.m = self.D(self.j, W=self.S, tol=1E-3, note=False)
+            self.m = self.D(self.j, W=self.S, tol=1E-3, note=True)
             if(self.m is None):
                 break
-
+            print 'Reconstructed m'
             ## reconstruct power spectrum
             tr_B1 = self.Sk.pseudo_tr(self.m) ## == Sk(m).pseudo_dot(m)
+            print 'Calculated trace B1'
+            print ('tr_b1', tr_B1)
             tr_B2 = self.Sk.pseudo_tr(self.D, loop=True)
-
-            numerator = 2 * q + tr_B1 + abs(delta) * tr_B2 ## non-bare(!)
+            print 'Calculated trace B2'
+            print ('tr_B2', tr_B2)
+            numerator = 2 * q + tr_B1 +  tr_B2 * abs(delta)  ## non-bare(!)
             power = numerator / denominator
-
+            print ('numerator', numerator)
+            print ('denominator', denominator)
+            print ('power', power)
+            print 'Calculated power'
+            power = np.clip(power, 0.1, np.max(power))
             ## check convergence
             dtau = log(power / self.S.get_power(), base=self.S.get_power())
             iterating = (np.max(np.abs(dtau)) > 2E-2)
@@ -200,36 +207,39 @@ class problem(object):
 ##=============================================================================
 
 ##-----------------------------------------------------------------------------
-
+#
 if(__name__=="__main__"):
-#    pl.close("all")
-
-    ## define signal space
-    x_space = rg_space(128)
-
-    ## setup problem
-    p = problem(x_space, log=True)
-    ## solve problem given some power spectrum
-    p.solve()
-    ## solve problem
-    p.solve_critical()
-
-    p.plot()
-
-    ## retrieve objects
-    k_space = p.k
-    power = p.power
-    S = p.S
-    Sk = p.Sk
-    s = p.s
-    R = p.R
-    d_space = p.R.target
-    N = p.N
-    Nj = p.Nj
-    d = p.d
-    j = p.j
-    D = p.D
-    m = p.m
+    x = rg_space((128,))
+    p = problem(x, log = False)
+    about.warnings.off()
+##    pl.close("all")
+#
+#    ## define signal space
+#    x_space = rg_space(128)
+#
+#    ## setup problem
+#    p = problem(x_space, log=True)
+#    ## solve problem given some power spectrum
+#    p.solve()
+#    ## solve problem
+#    p.solve_critical()
+#
+#    p.plot()
+#
+#    ## retrieve objects
+#    k_space = p.k
+#    power = p.power
+#    S = p.S
+#    Sk = p.Sk
+#    s = p.s
+#    R = p.R
+#    d_space = p.R.target
+#    N = p.N
+#    Nj = p.Nj
+#    d = p.d
+#    j = p.j
+#    D = p.D
+#    m = p.m
 
 ##-----------------------------------------------------------------------------
 
