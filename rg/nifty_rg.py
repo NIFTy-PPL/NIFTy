@@ -41,8 +41,8 @@ from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
 
 from nifty.keepers import about,\
-                          global_dependency_injector,\
-                          global_configuration
+                          global_dependency_injector as gdi,\
+                          global_configuration as gc
 from nifty.nifty_core import point_space,\
                              field
 from nifty.nifty_random import random
@@ -54,7 +54,7 @@ import nifty.nifty_utilities as utilities
 
 import nifty_fft
 
-MPI = global_dependency_injector[global_configuration['mpi_module']]
+MPI = gdi[gc['mpi_module']]
 
 RG_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
@@ -134,7 +134,8 @@ class rg_space(point_space):
 
     def __init__(self, num, naxes=None, zerocenter=False,
                  complexity=None, hermitian=True, purelyreal=True,
-                 dist=None, fourier=False, datamodel='fftw'):
+                 dist=None, fourier=False, datamodel='fftw',
+                 fft_module=None):
         """
             Sets the attributes for an rg_space class instance.
 
@@ -187,7 +188,7 @@ class rg_space(point_space):
         if datamodel not in ['np'] + RG_DISTRIBUTION_STRATEGIES:
             about.warnings.cprint("WARNING: datamodel set to default.")
             self.datamodel = \
-                global_configuration['default_distribution_strategy']
+                gc['default_distribution_strategy']
         else:
             self.datamodel = datamodel
 
@@ -215,9 +216,12 @@ class rg_space(point_space):
         # TODO: Deprecate self.fourier
         self.fourier = bool(fourier)
         self.harmonic = self.fourier
+
         # Initializes the fast-fourier-transform machine, which will be used
         # to transform the space
-        self.fft_machine = nifty_fft.fft_factory()
+        if not gc.validQ('fft_module', fft_module):
+            fft_module = gc['fft_module']
+        self.fft_machine = nifty_fft.fft_factory(fft_module)
 
         # Initialize the power_indices object which takes care of kindex,
         # pindex, rho and the pundex for a given set of parameters
@@ -228,7 +232,6 @@ class rg_space(point_space):
                                     zerocentered=self.paradict['zerocenter'],
                                     comm=MPI.COMM_WORLD, # TODO: insert output from about.configuration
                                     datamodel=self.datamodel)
-
 
     @property
     def para(self):
@@ -517,204 +520,232 @@ class rg_space(point_space):
         return None
 
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def _cast_to_d2o(self, x, dtype=None, ignore_complexity=False,
-                     verbose=False, **kwargs):
-        """
-            Computes valid field values from a given object, trying
-            to translate the given data into a valid form. Thereby it is as
-            benevolent as possible.
 
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
+    def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
+        casted_x = super(rg_space, self)._cast_to_d2o(x=x,
+                                                      dtype=dtype,
+                                                      **kwargs)
+        if hermitianize and self.paradict['complexity'] == 1 and \
+           not casted_x.hermitian:
+            about.warnings.cflush(
+                 "WARNING: Data gets hermitianized. This operation is " +
+                 "extremely expensive\n")
+            casted_x = utilities.hermitianize(casted_x)
 
-            Returns
-            -------
-            x : numpy.ndarray, distributed_data_object
-                Array containing the field values, which are compatible to the
-                space.
+        return casted_x
 
-            Other parameters
-            ----------------
-            verbose : bool, *optional*
-                Whether the method should raise a warning if information is
-                lost during casting (default: False).
-        """
-        if dtype is None:
-            dtype = self.datatype
-        # Case 1: x is a field
-        if isinstance(x, field):
-            if verbose:
-                # Check if the domain matches
-                if(self != x.domain):
-                    about.warnings.cflush(
-                        "WARNING: Getting data from foreign domain!")
-            # Extract the data, whatever it is, and cast it again
-            return self.cast(x.val, dtype=dtype)
+#    def _cast_to_d2o(self, x, dtype=None, ignore_complexity=False,
+#                     verbose=False, **kwargs):
+#        """
+#            Computes valid field values from a given object, trying
+#            to translate the given data into a valid form. Thereby it is as
+#            benevolent as possible.
+#
+#            Parameters
+#            ----------
+#            x : {float, numpy.ndarray, nifty.field}
+#                Object to be transformed into an array of valid field values.
+#
+#            Returns
+#            -------
+#            x : numpy.ndarray, distributed_data_object
+#                Array containing the field values, which are compatible to the
+#                space.
+#
+#            Other parameters
+#            ----------------
+#            verbose : bool, *optional*
+#                Whether the method should raise a warning if information is
+#                lost during casting (default: False).
+#        """
+#        if dtype is None:
+#            dtype = self.datatype
+#        # Case 1: x is a field
+#        if isinstance(x, field):
+#            if verbose:
+#                # Check if the domain matches
+#                if(self != x.domain):
+#                    about.warnings.cflush(
+#                        "WARNING: Getting data from foreign domain!")
+#            # Extract the data, whatever it is, and cast it again
+#            return self.cast(x.val, dtype=dtype)
+#
+#        # Case 2: x is a distributed_data_object
+#        if isinstance(x, distributed_data_object):
+#            # Check the shape
+#            if np.any(x.shape != self.get_shape()):
+#                # Check if at least the number of degrees of freedom is equal
+#                if x.get_dim() == self.get_dim():
+#                    # If the number of dof is equal or 1, use np.reshape...
+#                    about.warnings.cflush(
+#                        "WARNING: Trying to reshape the data. This operation is " +
+#                        "expensive as it consolidates the full data!\n")
+#                    temp = x.get_full_data()
+#                    temp = np.reshape(temp, self.get_shape())
+#                    # ... and cast again
+#                    return self.cast(temp, dtype=dtype)
+#
+#                else:
+#                    raise ValueError(about._errors.cstring(
+#                        "ERROR: Data has incompatible shape!"))
+#
+#            # Check the datatype
+#            if np.dtype(x.dtype) != np.dtype(dtype):
+#                if np.dtype(x.dtype) > np.dtype(dtype):
+#                    about.warnings.cflush(
+#                        "WARNING: Datatypes are uneqal/of conflicting precision (own: "
+#                        + str(dtype) + " <> foreign: " + str(x.dtype)
+#                        + ") and will be casted! "
+#                        + "Potential loss of precision!\n")
+#                temp = x.copy_empty(dtype=dtype)
+#                temp.set_local_data(x.get_local_data())
+#                temp.hermitian = x.hermitian
+#                x = temp
+#
+#            if not ignore_complexity:
+#                # Check hermitianity/reality
+#                if self.paradict['complexity'] == 0:
+#                    if x.iscomplex().any() == True:
+#                        about.warnings.cflush(
+#                            "WARNING: Data is not completely real. Imaginary part " +
+#                            "will be discarded!\n")
+#                        temp = x.copy_empty()
+#                        temp.set_local_data(np.real(x.get_local_data()))
+#                        x = temp
+#
+#                elif self.paradict['complexity'] == 1:
+#                    if x.hermitian == False and about.hermitianize.status == True:
+#                        about.warnings.cflush(
+#                            "WARNING: Data gets hermitianized. This operation is " +
+#                            "extremely expensive\n")
+#                        #temp = x.copy_empty()
+#                        # temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(),
+#                        #    (False, )*len(x.shape)))
+#                        x = utilities.hermitianize(x)
+#
+#            return x
+#
+#        # Case 3: x is something else
+#        # Use general d2o casting
+#        x = distributed_data_object(x, global_shape=self.get_shape(),
+#                                    dtype=dtype)
+#        # Cast the d2o
+#        return self.cast(x, dtype=dtype)
 
-        # Case 2: x is a distributed_data_object
-        if isinstance(x, distributed_data_object):
-            # Check the shape
-            if np.any(x.shape != self.get_shape()):
-                # Check if at least the number of degrees of freedom is equal
-                if x.get_dim() == self.get_dim():
-                    # If the number of dof is equal or 1, use np.reshape...
-                    about.warnings.cflush(
-                        "WARNING: Trying to reshape the data. This operation is " +
-                        "expensive as it consolidates the full data!\n")
-                    temp = x.get_full_data()
-                    temp = np.reshape(temp, self.get_shape())
-                    # ... and cast again
-                    return self.cast(temp, dtype=dtype)
 
-                else:
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: Data has incompatible shape!"))
+    def _cast_to_np(self, x, dtype=None, hermitianize=True, **kwargs):
+        casted_x = super(rg_space, self)._cast_to_np(x=x,
+                                                      dtype=dtype,
+                                                      **kwargs)
+        if hermitianize and self.paradict['complexity'] == 1 and \
+           not casted_x.hermitian:
+            about.warnings.cflush(
+                 "WARNING: Data gets hermitianized. This operation is " +
+                 "extremely expensive\n")
+            casted_x = utilities.hermitianize(casted_x)
 
-            # Check the datatype
-            if np.dtype(x.dtype) != np.dtype(dtype):
-                if np.dtype(x.dtype) > np.dtype(dtype):
-                    about.warnings.cflush(
-                        "WARNING: Datatypes are uneqal/of conflicting precision (own: "
-                        + str(dtype) + " <> foreign: " + str(x.dtype)
-                        + ") and will be casted! "
-                        + "Potential loss of precision!\n")
-                temp = x.copy_empty(dtype=dtype)
-                temp.set_local_data(x.get_local_data())
-                temp.hermitian = x.hermitian
-                x = temp
+        return casted_x
 
-            if ignore_complexity == False:
-                # Check hermitianity/reality
-                if self.paradict['complexity'] == 0:
-                    if x.iscomplex().any() == True:
-                        about.warnings.cflush(
-                            "WARNING: Data is not completely real. Imaginary part " +
-                            "will be discarded!\n")
-                        temp = x.copy_empty()
-                        temp.set_local_data(np.real(x.get_local_data()))
-                        x = temp
-
-                elif self.paradict['complexity'] == 1:
-                    if x.hermitian == False and about.hermitianize.status == True:
-                        about.warnings.cflush(
-                            "WARNING: Data gets hermitianized. This operation is " +
-                            "extremely expensive\n")
-                        #temp = x.copy_empty()
-                        # temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(),
-                        #    (False, )*len(x.shape)))
-                        x = utilities.hermitianize(x)
-
-            return x
-
-        # Case 3: x is something else
-        # Use general d2o casting
-        x = distributed_data_object(x, global_shape=self.get_shape(),
-                                    dtype=dtype)
-        # Cast the d2o
-        return self.cast(x, dtype=dtype)
-
-    def _cast_to_np(self, x, dtype=None, ignore_complexity=False,
-                    verbose=False, **kwargs):
-        """
-            Computes valid field values from a given object, trying
-            to translate the given data into a valid form. Thereby it is as
-            benevolent as possible.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray, distributed_data_object
-                Array containing the field values, which are compatible to the
-                space.
-
-            Other parameters
-            ----------------
-            verbose : bool, *optional*
-                Whether the method should raise a warning if information is
-                lost during casting (default: False).
-        """
-        if dtype is None:
-            dtype = self.datatype
-        # Case 1: x is a field
-        if isinstance(x, field):
-            if verbose:
-                # Check if the domain matches
-                if(self != x.domain):
-                    about.warnings.cflush(
-                        "WARNING: Getting data from foreign domain!")
-            # Extract the data, whatever it is, and cast it again
-            return self.cast(x.val, dtype=dtype)
-
-        # Case 2: x is a distributed_data_object
-        if isinstance(x, distributed_data_object):
-            # Extract the data
-            temp = x.get_full_data()
-            # Cast the resulting numpy array again
-            return self.cast(temp, dtype=dtype)
-
-        elif isinstance(x, np.ndarray):
-            # Check the shape
-            if np.any(x.shape != self.get_shape()):
-                # Check if at least the number of degrees of freedom is equal
-                if x.size == self.get_dim():
-                    # If the number of dof is equal or 1, use np.reshape...
-                    temp = x.reshape(self.get_shape())
-                    # ... and cast again
-                    return self.cast(temp, dtype=dtype)
-                elif x.size == 1:
-                    temp = np.empty(shape=self.get_shape(),
-                                    dtype=dtype)
-                    temp[:] = x
-                    return self.cast(temp, dtype=dtype)
-                else:
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: Data has incompatible shape!"))
-
-            # Check the datatype
-            if x.dtype != dtype:
-                about.warnings.cflush(
-                    "WARNING: Datatypes are uneqal/of conflicting precision (own: "
-                    + str(dtype) + " <> foreign: " + str(x.dtype)
-                    + ") and will be casted! "
-                    + "Potential loss of precision!\n")
-                # Fix the datatype...
-                temp = x.astype(dtype)
-                # ... and cast again
-                return self.cast(temp, dtype=dtype)
-
-            if ignore_complexity == False:
-                # Check hermitianity/reality
-                if self.paradict['complexity'] == 0:
-                    if not np.all(np.isreal(x)) == True:
-                        about.warnings.cflush(
-                            "WARNING: Data is not completely real. Imaginary part " +
-                            "will be discarded!\n")
-                        x = np.real(x)
-
-                elif self.paradict['complexity'] == 1:
-                    if about.hermitianize.status == True:
-                        about.warnings.cflush(
-                            "WARNING: Data gets hermitianized. This operation is " +
-                            "rather expensive.\n")
-                        #temp = x.copy_empty()
-                        # temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(),
-                        #    (False, )*len(x.shape)))
-                        x = utilities.hermitianize(x)
-
-            return x
-
-        # Case 3: x is something else
-        # Use general numpy casting
-        else:
-            temp = np.empty(self.get_shape(), dtype=dtype)
-            temp[:] = x
-            return temp
+#    def _cast_to_np(self, x, dtype=None, ignore_complexity=False,
+#                    verbose=False, **kwargs):
+#        """
+#            Computes valid field values from a given object, trying
+#            to translate the given data into a valid form. Thereby it is as
+#            benevolent as possible.
+#
+#            Parameters
+#            ----------
+#            x : {float, numpy.ndarray, nifty.field}
+#                Object to be transformed into an array of valid field values.
+#
+#            Returns
+#            -------
+#            x : numpy.ndarray, distributed_data_object
+#                Array containing the field values, which are compatible to the
+#                space.
+#
+#            Other parameters
+#            ----------------
+#            verbose : bool, *optional*
+#                Whether the method should raise a warning if information is
+#                lost during casting (default: False).
+#        """
+#        if dtype is None:
+#            dtype = self.datatype
+#        # Case 1: x is a field
+#        if isinstance(x, field):
+#            if verbose:
+#                # Check if the domain matches
+#                if(self != x.domain):
+#                    about.warnings.cflush(
+#                        "WARNING: Getting data from foreign domain!")
+#            # Extract the data, whatever it is, and cast it again
+#            return self.cast(x.val, dtype=dtype)
+#
+#        # Case 2: x is a distributed_data_object
+#        if isinstance(x, distributed_data_object):
+#            # Extract the data
+#            temp = x.get_full_data()
+#            # Cast the resulting numpy array again
+#            return self.cast(temp, dtype=dtype)
+#
+#        elif isinstance(x, np.ndarray):
+#            # Check the shape
+#            if np.any(x.shape != self.get_shape()):
+#                # Check if at least the number of degrees of freedom is equal
+#                if x.size == self.get_dim():
+#                    # If the number of dof is equal or 1, use np.reshape...
+#                    temp = x.reshape(self.get_shape())
+#                    # ... and cast again
+#                    return self.cast(temp, dtype=dtype)
+#                elif x.size == 1:
+#                    temp = np.empty(shape=self.get_shape(),
+#                                    dtype=dtype)
+#                    temp[:] = x
+#                    return self.cast(temp, dtype=dtype)
+#                else:
+#                    raise ValueError(about._errors.cstring(
+#                        "ERROR: Data has incompatible shape!"))
+#
+#            # Check the datatype
+#            if x.dtype != dtype:
+#                about.warnings.cflush(
+#                    "WARNING: Datatypes are uneqal/of conflicting precision (own: "
+#                    + str(dtype) + " <> foreign: " + str(x.dtype)
+#                    + ") and will be casted! "
+#                    + "Potential loss of precision!\n")
+#                # Fix the datatype...
+#                temp = x.astype(dtype)
+#                # ... and cast again
+#                return self.cast(temp, dtype=dtype)
+#
+#            if ignore_complexity == False:
+#                # Check hermitianity/reality
+#                if self.paradict['complexity'] == 0:
+#                    if not np.all(np.isreal(x)) == True:
+#                        about.warnings.cflush(
+#                            "WARNING: Data is not completely real. Imaginary part " +
+#                            "will be discarded!\n")
+#                        x = np.real(x)
+#
+#                elif self.paradict['complexity'] == 1:
+#                    if about.hermitianize.status == True:
+#                        about.warnings.cflush(
+#                            "WARNING: Data gets hermitianized. This operation is " +
+#                            "rather expensive.\n")
+#                        #temp = x.copy_empty()
+#                        # temp.set_full_data(gp.nhermitianize_fast(x.get_full_data(),
+#                        #    (False, )*len(x.shape)))
+#                        x = utilities.hermitianize(x)
+#
+#            return x
+#
+#        # Case 3: x is something else
+#        # Use general numpy casting
+#        else:
+#            temp = np.empty(self.get_shape(), dtype=dtype)
+#            temp[:] = x
+#            return temp
 
     def enforce_values(self, x, extend=True):
         """

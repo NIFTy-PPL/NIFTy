@@ -2003,11 +2003,11 @@ class power_operator(diagonal_operator):
         if pindex is None:
             try:
                 pindex = self.domain.power_indices.\
-                    get_index_dict(temp_kwargs)['pindex']
+                    get_index_dict(**temp_kwargs)['pindex']
             except(AttributeError):
                 # TODO: update all spaces to use the power_indices class
                 try:
-                    self.domain.set_power_indices(temp_kwargs)
+                    self.domain.set_power_indices(**temp_kwargs)
                 except:
                     raise ValueError(about._errors.cstring(
                         "ERROR: Domain is not capable of returning a pindex"))
@@ -2277,7 +2277,7 @@ class projection_operator(operator):
                 assign = np.arange(self.domain.get_dim(), dtype=np.int)
 
         self.assign = self.domain.cast(assign, dtype=np.dtype('int'),
-                                       ignore_complexity=True)
+                                       hermitianize=False)
 
         # build indexing
         self.ind = self.domain.unary_operation(self.assign, op='unique')
@@ -3365,7 +3365,7 @@ class response_operator(operator):
             self.mask = np.bool(new_mask)
         else:
             self.mask = self.domain.cast(new_mask, dtype=np.dtype('bool'),
-                                         ignore_complexity=True)
+                                         hermitianize=False)
 
     def _multiply(self, x, **kwargs):
         # smooth

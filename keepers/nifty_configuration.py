@@ -103,6 +103,9 @@ class configuration(object):
         for key, item in self.variable_dict.items():
             item.set_value(None)
 
+    def validQ(self, name, value):
+        return self.variable_dict[name].checker(value)
+
     def save(self, path=None, path_section=None):
         if path is None:
             if self.path is None:

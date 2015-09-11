@@ -2668,33 +2668,6 @@ class _dtype_converter(object):
     """
 
     def __init__(self):
-        #        pre_dict = [
-        #                    #[, MPI_CHAR],
-        #                    #[, MPI_SIGNED_CHAR],
-        #                    #[, MPI_UNSIGNED_CHAR],
-        #                    [np.bool_, MPI.BYTE],
-        #                    [np.int16, MPI.SHORT],
-        #                    [np.uint16, MPI.UNSIGNED_SHORT],
-        #                    [np.uint32, MPI.UNSIGNED_INT],
-        #                    [np.int32, MPI.INT],
-        #                    [np.int, MPI.LONG],
-        #                    [np.int_, MPI.LONG],
-        #                    [np.int64, MPI.LONG],
-        #                    [np.long, MPI.LONG],
-        #                    [np.longlong, MPI.LONG_LONG],
-        #                    [np.uint64, MPI.UNSIGNED_LONG],
-        #                    [np.ulonglong, MPI.UNSIGNED_LONG_LONG],
-        #                    [np.int64, MPI.LONG_LONG],
-        #                    [np.uint64, MPI.UNSIGNED_LONG_LONG],
-        #                    [np.float32, MPI.FLOAT],
-        #                    [np.float, MPI.DOUBLE],
-        #                    [np.float_, MPI.DOUBLE],
-        #                    [np.float64, MPI.DOUBLE],
-        #                    [np.float128, MPI.LONG_DOUBLE],
-        #                    [np.complex64, MPI.COMPLEX],
-        #                    [np.complex, MPI.DOUBLE_COMPLEX],
-        #                    [np.complex_, MPI.DOUBLE_COMPLEX],
-        #                    [np.complex128, MPI.DOUBLE_COMPLEX]]
         pre_dict = [
             # [, MPI_CHAR],
             # [, MPI_SIGNED_CHAR],

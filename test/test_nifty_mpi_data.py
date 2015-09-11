@@ -6,7 +6,6 @@ from numpy.testing import assert_equal,\
 
 from nose_parameterized import parameterized
 import unittest
-from time import sleep
 
 import itertools
 import os
@@ -15,7 +14,8 @@ import warnings
 import tempfile
 
 import nifty
-from nifty.nifty_mpi_data import distributed_data_object
+from nifty.nifty_mpi_data import distributed_data_object,\
+                                 STRATEGIES
 
 FOUND = {}
 try:
@@ -59,10 +59,10 @@ all_datatypes = [np.dtype('bool'), np.dtype('int16'), np.dtype('uint16'),
 
 ###############################################################################
 
-all_distribution_strategies = ['not', 'equal', 'fftw', 'freeform']
-global_distribution_strategies = ['not', 'equal', 'fftw']
-local_distribution_strategies = ['freeform']
-hdf5_distribution_strategies = ['equal', 'fftw']
+all_distribution_strategies = STRATEGIES['all']
+global_distribution_strategies = STRATEGIES['global']
+local_distribution_strategies = STRATEGIES['local']
+hdf5_distribution_strategies = STRATEGIES['hdf5']
 
 ###############################################################################
 
@@ -338,8 +338,6 @@ class Test_Globaltype_Initialization(unittest.TestCase):
 
 
 ###############################################################################
-
-###############################################################################
 ###############################################################################
 
 class Test_Localtype_Initialization(unittest.TestCase):
@@ -422,7 +420,7 @@ class Test_Localtype_Initialization(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product([(1,)],  # , (7,), (77,11), (256,256)],
+        itertools.product([(1,), (7,), (77, 11)],
                           ['tuple', 'list'],
                           all_datatypes,
                           local_distribution_strategies),
@@ -438,7 +436,6 @@ class Test_Localtype_Initialization(unittest.TestCase):
             a = a.tolist()
         elif local_data_type == 'tuple':
             a = tuple(a.tolist())
-        sleep(0.01)
         obj = distributed_data_object(
                                 local_data=a,
                                 distribution_strategy=distribution_strategy)

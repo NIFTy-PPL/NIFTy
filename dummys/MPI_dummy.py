@@ -2,15 +2,18 @@
 
 import numpy as np
 
-def MIN():
-    return np.min
+#def MIN():
+#    return np.min
+#
+#def MAX():
+#    return np.max
+#
+#def SUM():
+#    return np.sum
 
-def MAX():
-    return np.max
-
-def SUM():
-    return np.sum
-
+MIN = np.min
+MAX = np.max
+SUM = np.sum
 
 
 class _COMM_WORLD():
@@ -27,7 +30,7 @@ class _COMM_WORLD():
     def _scattergather_helper(self, sendbuf, recvbuf=None, **kwargs):
         sendbuf = self._unwrapper(sendbuf)
         recvbuf = self._unwrapper(recvbuf)
-        if recvbuf != None:
+        if recvbuf is not None:
             recvbuf[:] = sendbuf
             return recvbuf
         else:
@@ -50,7 +53,7 @@ class _COMM_WORLD():
         return self._scattergather_helper(*args, **kwargs)
 
     def gather(self, sendbuf, *args, **kwargs):
-        return [sendbuf,]
+        return [sendbuf]
 
     def Gather(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
@@ -59,7 +62,7 @@ class _COMM_WORLD():
         return self._scattergather_helper(*args, **kwargs)
 
     def allgather(self, sendbuf, *args, **kwargs):
-        return [sendbuf,]
+        return [sendbuf]
 
     def Allgather(self, *args, **kwargs):
         return self._scattergather_helper(*args, **kwargs)
@@ -87,6 +90,7 @@ class _COMM_WORLD():
     def Barrier(self):
         pass
 
+
 class _datatype():
     def __init__(self, name):
         self.name = str(name)
@@ -108,14 +112,3 @@ DOUBLE_COMPLEX = _datatype("MPI_DOUBLE_COMPLEX")
 
 
 COMM_WORLD = _COMM_WORLD()
-
-
-
-
-
-
-
-
-
-
-

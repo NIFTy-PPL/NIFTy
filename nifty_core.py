@@ -1087,7 +1087,7 @@ class point_space(space):
             Pixel volume of the :py:class:`point_space`, which is always 1.
     """
 
-    def __init__(self, num, datatype=None, datamodel='fftw'):
+    def __init__(self, num, datatype=np.dtype('float'), datamodel='fftw'):
         """
             Sets the attributes for a point_space class instance.
 
@@ -1104,25 +1104,25 @@ class point_space(space):
         """
         self.paradict = point_space_paradict(num=num)
 
-        # check datatype
-        if (datatype is None):
-            datatype = np.float64
-        elif (datatype not in [np.bool_,
-                               np.int8,
-                               np.int16,
-                               np.int32,
-                               np.int64,
-                               np.float16,
-                               np.float32,
-                               np.float64,
-                               np.complex64,
-                               np.complex128]):
-            about.warnings.cprint("WARNING: data type set to default.")
-            datatype = np.float64
-        self.datatype = datatype
+        # parse datatype
+        dtype = np.dtype(datatype)
+        if dtype not in [np.dtype('bool'),
+                         np.dtype('int8'),
+                         np.dtype('int16'),
+                         np.dtype('int32'),
+                         np.dtype('int64'),
+                         np.dtype('float16'),
+                         np.dtype('float32'),
+                         np.dtype('float64'),
+                         np.dtype('complex64'),
+                         np.dtype('complex128')]:
+            raise ValueError(about._errors.cstring(
+                             "WARNING: incompatible datatype: " + str(dtype)))
+        self.dtype = dtype
+        self.datatype = dtype.type
 
         if datamodel not in ['np'] + POINT_DISTRIBUTION_STRATEGIES:
-            about.warnings.cprint("WARNING: datamodel set to default.")
+            about._errors.cstring("WARNING: datamodel set to default.")
             self.datamodel = \
                 global_configuration['default_distribution_strategy']
         else:
@@ -1139,7 +1139,7 @@ class point_space(space):
 
     @para.setter
     def para(self, x):
-        self.paradict['num'] = x
+        self.paradict['num'] = x[0]
 
     def copy(self):
         return point_space(num=self.paradict['num'],
@@ -1442,21 +1442,34 @@ class point_space(space):
 
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def cast(self, x, dtype=None, verbose=False, **kwargs):
+    def cast(self, x, dtype=None, **kwargs):
         if dtype is not None:
             dtype = np.dtype(dtype).type
 
+        # If x is a field, extract the data and do a recursive call
+        if isinstance(x, field):
+            # Check if the domain matches
+            if self != x.domain:
+                about.warnings.cflush(
+                    "WARNING: Getting data from foreign domain!")
+            # Extract the data, whatever it is, and cast it again
+            return self.cast(x.val,
+                             dtype=dtype,
+                             **kwargs)
+
         if self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            return self._cast_to_d2o(x=x, dtype=dtype, verbose=verbose,
+            return self._cast_to_d2o(x=x,
+                                     dtype=dtype,
                                      **kwargs)
         elif self.datamodel == 'np':
-            return self._cast_to_np(x=x, dtype=dtype, verbose=verbose,
+            return self._cast_to_np(x=x,
+                                    dtype=dtype,
                                     **kwargs)
         else:
             raise NotImplementedError(about._errors.cstring(
                 "ERROR: function is not implemented for given datamodel."))
 
-    def _cast_to_d2o(self, x, dtype=None, verbose=False, **kwargs):
+    def _cast_to_d2o(self, x, dtype=None, **kwargs):
         """
             Computes valid field values from a given object, trying
             to translate the given data into a valid form. Thereby it is as
@@ -1482,30 +1495,25 @@ class point_space(space):
         if dtype is None:
             dtype = self.datatype
 
-        # Case 1: x is a field
-        if isinstance(x, field):
-            if verbose:
-                # Check if the domain matches
-                if(self != x.domain):
-                    about.warnings.cflush(
-                        "WARNING: Getting data from foreign domain!")
-            # Extract the data, whatever it is, and cast it again
-            return self.cast(x.val, dtype=dtype)
-
-        # Case 2: x is a distributed_data_object
+        # Case 1: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
+            to_copy = False
+
             # Check the shape
             if np.any(x.shape != self.get_shape()):
                 # Check if at least the number of degrees of freedom is equal
                 if x.get_dim() == self.get_dim():
                     # If the number of dof is equal or 1, use np.reshape...
                     about.warnings.cflush(
-                        "WARNING: Trying to reshape the data. This operation is " +
-                        "expensive as it consolidates the full data!\n")
+                        "WARNING: Trying to reshape the data. This " +
+                        "operation is expensive as it consolidates the " +
+                        "full data!\n")
                     temp = x.get_full_data()
                     temp = np.reshape(temp, self.get_shape())
                     # ... and cast again
-                    return self.cast(temp, dtype=dtype)
+                    return self._cast_to_d2o(temp,
+                                             dtype=dtype,
+                                             **kwargs)
 
                 else:
                     raise ValueError(about._errors.cstring(
@@ -1514,25 +1522,35 @@ class point_space(space):
             # Check the datatype
             if x.dtype != dtype:
                 about.warnings.cflush(
-                    "WARNING: Datatypes are uneqal/of conflicting precision (own: "
-                    + str(dtype) + " <> foreign: " + str(x.dtype)
-                    + ") and will be casted! "
-                    + "Potential loss of precision!\n")
-                temp = x.copy_empty(dtype=dtype)
+                    "WARNING: Datatypes are uneqal/of conflicting precision " +
+                    "(own: " + str(dtype) + " <> foreign: " + str(x.dtype) +
+                    ") and will be casted! Potential loss of precision!\n")
+                to_copy = True
+
+            # Check the distribution_strategy
+            if x.distribution_strategy != self.datamodel:
+                to_copy = True
+
+            if to_copy:
+                temp = x.copy_empty(dtype=dtype,
+                                    distribution_strategy=self.datamodel)
                 temp.set_local_data(x.get_local_data())
                 temp.hermitian = x.hermitian
                 x = temp
 
             return x
 
-        # Case 3: x is something else
+        # Case 2: x is something else
         # Use general d2o casting
-        x = distributed_data_object(x, global_shape=self.get_shape(),
-                                    dtype=dtype)
-        # Cast the d2o
-        return self.cast(x, dtype=dtype)
+        else:
+            x = distributed_data_object(x,
+                                        global_shape=self.get_shape(),
+                                        dtype=dtype,
+                                        distribution_strategy=self.datamodel)
+            # Cast the d2o
+            return self.cast(x, dtype=dtype)
 
-    def _cast_to_np(self, x, dtype=None, verbose=False, **kwargs):
+    def _cast_to_np(self, x, dtype=None, **kwargs):
         """
             Computes valid field values from a given object, trying
             to translate the given data into a valid form. Thereby it is as
@@ -1558,23 +1576,16 @@ class point_space(space):
         if dtype is None:
             dtype = self.datatype
 
-        # Case 1: x is a field
-        if isinstance(x, field):
-            if verbose:
-                # Check if the domain matches
-                if(self != x.domain):
-                    about.warnings.cflush(
-                        "WARNING: Getting data from foreign domain!")
-            # Extract the data, whatever it is, and cast it again
-            return self.cast(x.val, dtype=dtype)
-
-        # Case 2: x is a distributed_data_object
+        # Case 1: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
             # Extract the data
             temp = x.get_full_data()
             # Cast the resulting numpy array again
-            return self.cast(temp, dtype=dtype)
+            return self._cast_to_np(temp,
+                                    dtype=dtype,
+                                    **kwargs)
 
+        # Case 2: x is a distributed_data_object
         elif isinstance(x, np.ndarray):
             # Check the shape
             if np.any(x.shape != self.get_shape()):
@@ -1583,12 +1594,16 @@ class point_space(space):
                     # If the number of dof is equal or 1, use np.reshape...
                     temp = x.reshape(self.get_shape())
                     # ... and cast again
-                    return self.cast(temp, dtype=dtype)
+                    return self._cast_to_np(temp,
+                                            dtype=dtype,
+                                            **kwargs)
                 elif x.size == 1:
                     temp = np.empty(shape=self.get_shape(),
                                     dtype=dtype)
                     temp[:] = x
-                    return self.cast(temp, dtype=dtype)
+                    return self._cast_to_np(temp,
+                                            dtype=dtype,
+                                            **kwargs)
                 else:
                     raise ValueError(about._errors.cstring(
                         "ERROR: Data has incompatible shape!"))
@@ -1596,14 +1611,15 @@ class point_space(space):
             # Check the datatype
             if x.dtype != dtype:
                 about.warnings.cflush(
-                    "WARNING: Datatypes are uneqal/of conflicting precision (own: "
-                    + str(dtype) + " <> foreign: " + str(x.dtype)
-                    + ") and will be casted! "
-                    + "Potential loss of precision!\n")
+                    "WARNING: Datatypes are uneqal/of conflicting precision " +
+                    " (own: " + str(dtype) + " <> foreign: " + str(x.dtype) +
+                    ") and will be casted! Potential loss of precision!\n")
                 # Fix the datatype...
                 temp = x.astype(dtype)
                 # ... and cast again
-                return self.cast(temp, dtype=dtype)
+                return self._cast_to_np(temp,
+                                        dtype=dtype,
+                                        **kwargs)
 
             return x
 
@@ -1613,7 +1629,7 @@ class point_space(space):
             temp = np.empty(self.get_shape(), dtype=dtype)
             if x is not None:
                 temp[:] = x
-            return temp
+            return self._cast_to_np(temp)
 
     def enforce_shape(self, x):
         """

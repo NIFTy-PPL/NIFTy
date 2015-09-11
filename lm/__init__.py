@@ -20,10 +20,10 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty.keepers import about
+from nifty.keepers import about,\
+                          global_dependency_injector as gdi
 
 from distutils.version import LooseVersion as lv
-
 
 try:
     import libsharp_wrapper_gl as gl
