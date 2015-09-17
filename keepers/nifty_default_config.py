@@ -6,6 +6,9 @@ from nifty_dependency_injector import dependency_injector
 from nifty_configuration import variable,\
                                 configuration
 
+
+
+
 global_dependency_injector = dependency_injector(
                                    ['h5py',
                                     ('mpi4py.MPI', 'MPI'),
@@ -23,12 +26,12 @@ variable_fft_module = variable('fft_module',
 variable_lm2gl = variable('lm2gl',
                           [True, False],
                           lambda z: z is True or z is False,
-                          'boolean')
+                          genus = 'boolean')
 
 variable_verbosity = variable('verbosity',
                               [1],
                               lambda z: z == abs(int(z)),
-                              'int')
+                              genus = 'int')
 
 variable_mpi_module = variable('mpi_module',
                                ['MPI', 'MPI_dummy'],
@@ -49,3 +52,12 @@ global_configuration = configuration(
                       variable_default_distribution_strategy
                       ],
                      path=os.path.expanduser('~') + "/.nifty/global_config")
+
+
+variable_default_comm = variable(
+                     'default_comm',
+                     ['COMM_WORLD'],
+                     lambda z: hasattr(global_dependency_injector[
+                                       global_configuration['mpi_module']], z))
+
+global_configuration.register(variable_default_comm)

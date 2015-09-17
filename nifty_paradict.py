@@ -56,7 +56,7 @@ class point_space_paradict(space_paradict):
 
 class rg_space_paradict(space_paradict):
 
-    def __init__(self, num, complexity=2, zerocenter=False):
+    def __init__(self, num, complexity, zerocenter):
         self.ndim = len(np.array(num).flatten())
         space_paradict.__init__(
             self, num=num, complexity=complexity, zerocenter=zerocenter)
@@ -100,7 +100,7 @@ class nested_space_paradict(space_paradict):
 
 class lm_space_paradict(space_paradict):
 
-    def __init__(self, lmax, mmax=None):
+    def __init__(self, lmax, mmax):
         space_paradict.__init__(self, lmax=lmax)
         if mmax is None:
             mmax = -1
@@ -145,7 +145,7 @@ class lm_space_paradict(space_paradict):
 
 class gl_space_paradict(space_paradict):
 
-    def __init__(self, nlat, nlon=None):
+    def __init__(self, nlat, nlon):
         space_paradict.__init__(self, nlat=nlat)
         if nlon is None:
             nlon = -1

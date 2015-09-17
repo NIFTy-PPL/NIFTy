@@ -35,7 +35,6 @@ from keepers import about,\
 from nifty_cmaps import ncmap
 from nifty_core import space,\
                     point_space,\
-                    nested_space,\
                     field
 
 from nifty_mpi_data import distributed_data_object, d2o_librarian

@@ -32,30 +32,6 @@ MPI = gdi[gc['mpi_module']]
 h5py = gdi.get('h5py')
 pyfftw = gdi.get('pyfftw')
 
-
-## initialize the 'FOUND-packages'-dictionary
-#FOUND = {}
-#try:
-#    from mpi4py import MPI
-#    FOUND['MPI'] = True
-#except(ImportError):
-#    import mpi_dummy as MPI
-#    FOUND['MPI'] = False
-#
-#try:
-#    import pyfftw
-#    FOUND['pyfftw'] = True
-#except(ImportError):
-#    FOUND['pyfftw'] = False
-#
-#try:
-#    import h5py
-#    FOUND['h5py'] = True
-#    FOUND['h5py_parallel'] = h5py.get_config().mpi
-#except(ImportError):
-#    FOUND['h5py'] = False
-#    FOUND['h5py_parallel'] = False
-
 _maybe_fftw = ['fftw'] if ('pyfftw' in gdi) else []
 STRATEGIES = {
                 'all': ['not', 'equal', 'freeform'] + _maybe_fftw,
@@ -687,7 +663,7 @@ class distributed_data_object(object):
 
         if weights is not None:
             local_weights = self.distributor.extract_local_data(weights).\
-                flatten()
+                                flatten()
         else:
             local_weights = None
 

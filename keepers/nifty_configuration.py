@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import ConfigParser
+import pprint
+
 
 class variable(object):
     def __init__(self, name, default_value_list, checker, genus='str'):
@@ -47,7 +49,7 @@ class variable(object):
         return self.name
 
     def __repr__(self):
-        return "<nifty variable '" + str(self.name) + "': " + \
+        return "<" + str(self.name) + "': " + \
                str(self.get_value()) + ">"
 
 
@@ -161,7 +163,9 @@ class configuration(object):
             item.set_value(temp_value)
 
     def __repr__(self):
-        return "<nifty configuration> \n" + self.variable_dict.__repr__()
+        return_string = ("<nifty configuration> \n" +
+                         pprint.pformat(self.variable_dict))
+        return return_string
 
 
 

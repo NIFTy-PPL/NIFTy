@@ -145,23 +145,24 @@ import numpy as np
 import pylab as pl
 
 from nifty_paradict import space_paradict,\
-    point_space_paradict,\
-    nested_space_paradict
+    point_space_paradict
 
 from keepers import about,\
-                    global_configuration
+    global_configuration as gc,\
+    global_dependency_injector as gdi
+
 from nifty_random import random
 from nifty.nifty_mpi_data import distributed_data_object,\
-                                 STRATEGIES as DISTRIBUTION_STRATEGIES
+    STRATEGIES as DISTRIBUTION_STRATEGIES
 
 import nifty.nifty_utilities as utilities
 
 POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
-pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
+#pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
 
 
-# =============================================================================
+
 
 class space(object):
     """
@@ -179,12 +180,10 @@ class space(object):
 
         Parameters
         ----------
-        para : {single object, list of objects}, *optional*
-            This is a freeform list of parameters that derivatives of the space
-            class can use (default: 0).
-        datatype : numpy.dtype, *optional*
+        dtype : numpy.dtype, *optional*
             Data type of the field values for a field defined on this space
             (default: numpy.float64).
+        datamodel :
 
         See Also
         --------
@@ -209,8 +208,9 @@ class space(object):
         Attributes
         ----------
         para : {single object, list of objects}
-            This is a freeform list of parameters that derivatives of the space class can use.
-        datatype : numpy.dtype
+            This is a freeform list of parameters that derivatives of the space
+            class can use.
+        dtype : numpy.dtype
             Data type of the field values for a field defined on this space.
         discrete : bool
             Whether the space is inherently discrete (true) or a discretization
@@ -220,37 +220,27 @@ class space(object):
             have the same volume.
     """
 
-    def __init__(self, para=0, datatype=None):
+    def __init__(self, dtype=np.dtype('float'), datamodel='np'):
         """
             Sets the attributes for a space class instance.
 
             Parameters
             ----------
-            para : {single object, list of objects}, *optional*
-                This is a freeform list of parameters that derivatives of the
-                space class can use (default: 0).
-            datatype : numpy.dtype, *optional*
+            dtype : numpy.dtype, *optional*
                 Data type of the field values for a field defined on this space
                 (default: numpy.float64).
+            datamodel :
 
             Returns
             -------
             None
         """
-        self.paradict = space_paradict(default=para)
-
-        # check data type
-        if(datatype is None):
-            datatype = np.float64
-        elif(datatype not in [np.int8, np.int16, np.int32, np.int64, np.float16, np.float32, np.float64, np.complex64, np.complex128]):
-            about.warnings.cprint("WARNING: data type set to default.")
-            datatype = np.float64
-        self.datatype = datatype
-
-        self.discrete = True
-        self.harmonic = False
-        self.vol = np.real(np.array([1], dtype=self.datatype))
-
+        self.paradict = space_paradict()
+#        self.datamodel = str(datamodel)
+#        self.dtype = np.dtype(dtype)
+#        self.discrete = False
+#        self.harmonic = False
+#        self.distances = np.real(np.array([1], dtype=self.dtype))
 
     @property
     def para(self):
@@ -260,44 +250,50 @@ class space(object):
     def para(self, x):
         self.paradict['default'] = x
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def _freeze_config(self, dictionary):
+    def _identifier(self):
         """
-            a helper function which forms a hashable identifying object from
-            a dictionary which can be used as key of a dict
+        _identiftier returns an object which contains all information needed
+        to uniquely idetnify a space. It returns a (immutable) tuple which
+        therefore can be compared.
         """
-        return frozenset(dictionary.items())
+        return tuple(sorted(vars(self).items()))
+
+    def __eq__(self, x):
+        if isinstance(x, type(self)):
+            return self._identifier() == x._identifier()
+        else:
+            return False
+
+    def __ne__(self, x):
+        return not self.__eq__(x)
+
+    def __len__(self):
+        return int(self.get_dim(split=False))
 
     def copy(self):
         return space(para=self.para,
-                     datatype=self.datatype)
+                     dtype=self.dtype)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def getitem(self, data, key):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'getitem'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def setitem(self, data, key):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'getitem'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def apply_scalar_function(self, x, function, inplace=False):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'apply_scalar_function'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def unary_operation(self, x, op=None):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'unary_operation'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def binary_operation(self, x, y, op=None):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'binary_operation'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def get_norm(self, x, q):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'norm'."))
@@ -306,7 +302,6 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'shape'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def get_dim(self, split=False):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
@@ -325,8 +320,6 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dim'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def get_dof(self):
         """
             Computes the number of degrees of freedom of the space.
@@ -339,8 +332,56 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dof'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def get_meta_volume(self, total=False):
+        """
+            Calculates the meta volumes.
 
+            The meta volumes are the volumes associated with each component of
+            a field, taking into account field components that are not
+            explicitly included in the array of field values but are determined
+            by symmetry conditions.
+
+            Parameters
+            ----------
+            total : bool, *optional*
+                Whether to return the total meta volume of the space or the
+                individual ones of each field component (default: False).
+
+            Returns
+            -------
+            mol : {numpy.ndarray, float}
+                Meta volume of the field components or the complete space.
+        """
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: no generic instance method 'get_meta_volume'."))
+
+    def cast(self, x, verbose=False):
+        """
+            Computes valid field values from a given object, trying
+            to translate the given data into a valid form. Thereby it is as
+            benevolent as possible.
+
+            Parameters
+            ----------
+            x : {float, numpy.ndarray, nifty.field}
+                Object to be transformed into an array of valid field values.
+
+            Returns
+            -------
+            x : numpy.ndarray, distributed_data_object
+                Array containing the field values, which are compatible to the
+                space.
+
+            Other parameters
+            ----------------
+            verbose : bool, *optional*
+                Whether the method should raise a warning if information is
+                lost during casting (default: False).
+        """
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: no generic instance method 'cast'."))
+
+    # TODO: Move enforce power into power_indices class
     def enforce_power(self, spec, **kwargs):
         """
             Provides a valid power spectrum array from a given object.
@@ -366,249 +407,27 @@ class space(object):
             codomain : nifty.space, *optional*
                 A compatible codomain for power indexing (default: None).
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+            vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
 
         """
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'enforce_power'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_power_indices(self, **kwargs):
-        """
-            Sets the (un)indexing objects for spectral indexing internally.
-
-            Parameters
-            ----------
-            log : bool
-                Flag specifying if the binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer
-                Number of used bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).
-
-            Returns
-            -------
-            None
-
-            See Also
-            --------
-            get_power_indices
-
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'set_power_indices'."))
-
-    def get_power_indices(self, **kwargs):
-        """
-            Provides the (un)indexing objects for spectral indexing.
-
-            Provides one-dimensional arrays containing the scales of the
-            spectral bands and the numbers of modes per scale, and an array
-            giving for each component of a field the corresponding index of a
-            power spectrum as well as an Unindexing array.
-
-            Parameters
-            ----------
-            log : bool
-                Flag specifying if the binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer
-                Number of used bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).
-
-            Returns
-            -------
-            kindex : numpy.ndarray
-                Scale of each spectral band.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode.
-            pundex : numpy.ndarray
-                Unindexing array undoing power spectrum indexing.
-
-            Notes
-            -----
-            The ``kindex`` and ``rho`` are each one-dimensional arrays.
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            Indexing with the unindexing array undoes the indexing with the
-            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
-
-            See Also
-            --------
-            set_power_indices
-
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'get_power_indices'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def cast(self, x, verbose=False):
-        """
-            Computes valid field values from a given object, trying
-            to translate the given data into a valid form. Thereby it is as
-            benevolent as possible.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray, distributed_data_object
-                Array containing the field values, which are compatible to the
-                space.
-
-            Other parameters
-            ----------------
-            verbose : bool, *optional*
-                Whether the method should raise a warning if information is
-                lost during casting (default: False).
-        """
-        return self.enforce_values(x, extend=True)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_shape(self, x):
-        """
-            Shapes an array of valid field values correctly, according to the
-            specifications of the space instance.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values to be put into shape.
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Correctly shaped array.
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'enforce_shape'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_values(self, x, extend=True):
-        """
-            Computes valid field values from a given object, according to the
-            constraints from the space instance.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Array containing the valid field values.
-
-            Other parameters
-            ----------------
-            extend : bool, *optional*
-                Whether a scalar is extented to a constant array or not
-                (default: True).
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'enforce_values'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_random_values(self, **kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            pindex : numpy.ndarray, *optional*
-                Indexing array giving the power spectrum index of each band
-                (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale of each band (default: None).
-            codomain : nifty.space, *optional*
-                A compatible codomain with power indices (default: None).
-            log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}, *optional*
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'get_random_values'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def check_codomain(self, codomain):
         """
@@ -626,8 +445,6 @@ class space(object):
         """
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'check_codomain'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_codomain(self, **kwargs):
         """
@@ -655,32 +472,70 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'get_codomain'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_meta_volume(self, total=False):
+    def get_random_values(self, **kwargs):
         """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
+            Generates random field values according to the specifications given
+            by the parameters.
 
             Returns
             -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
+            x : numpy.ndarray
+                Valid field values.
+
+            Other parameters
+            ----------------
+            random : string, *optional*
+                Specifies the probability distribution from which the random
+                numbers are to be drawn.
+                Supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given
+                    standard deviation or variance)
+                - "syn" (synthesizes from a given power spectrum)
+                - "uni" (uniform distribution over [vmin,vmax[)
+
+                (default: None).
+            dev : float, *optional*
+                Standard deviation (default: 1).
+            var : float, *optional*
+                Variance, overriding `dev` if both are specified
+                (default: 1).
+            spec : {scalar, list, numpy.ndarray, nifty.field, function},
+                    *optional*
+                Power spectrum (default: 1).
+            pindex : numpy.ndarray, *optional*
+                Indexing array giving the power spectrum index of each band
+                (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain with power indices (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on
+                logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
+            vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+            vmin : float, *optional*
+                Lower limit for a uniform distribution (default: 0).
+            vmax : float, *optional*
+                Upper limit for a uniform distribution (default: 1).
         """
         raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'get_meta_volume'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            "ERROR: no generic instance method 'get_random_values'."))
 
     def calc_weight(self, x, power=1):
         """
@@ -706,8 +561,6 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'get_weight'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def calc_dot(self, x, y):
         """
             Computes the discrete inner product of two given arrays of field
@@ -727,8 +580,6 @@ class space(object):
         """
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dot'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def calc_transform(self, x, codomain=None, **kwargs):
         """
@@ -755,8 +606,6 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'calc_transform'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
             Smoothes an array of field values by convolution with a Gaussian
@@ -782,8 +631,6 @@ class space(object):
         """
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'calc_smooth'."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def calc_power(self, x, **kwargs):
         """
@@ -813,18 +660,21 @@ class space(object):
             codomain : nifty.space, *optional*
                 A compatible codomain for power indexing (default: None).
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+            vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
 
@@ -832,7 +682,13 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'calc_power'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    def calc_real_Q(self, x):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: no generic instance method 'calc_real_Q'."))
+
+    def calc_bincount(self, x, weights=None, minlength=None):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: no generic instance method 'calc_bincount'."))
 
     def get_plot(self, x, **kwargs):
         """
@@ -886,18 +742,21 @@ class space(object):
             codomain : nifty.space, *optional*
                 A compatible codomain for power indexing (default: None).
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+            vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
             iter : int, *optional*
@@ -907,150 +766,13 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'get_plot'."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_core.space>"
 
     def __str__(self):
-        return "nifty_core.space instance\n- para     = " + str(self.para) + "\n- datatype = numpy." + str(np.result_type(self.datatype))
+        return "nifty_core.space instance\n- para     = " + str(self.para) + \
+            "\n- dtype = " + str(self.dtype.type)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def __len__(self):
-        return int(self.get_dim(split=False))
-
-    # _identiftier returns an object which contains all information needed
-    # to uniquely idetnify a space. It returns a (immutable) tuple which therefore
-    # can be compored.
-    def _identifier(self):
-        return tuple(sorted(vars(self).items()))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def _meta_vars(self):  # > captures all nonstandard properties
-        mars = np.array([ii[1] for ii in vars(self).iteritems() if ii[0] not in [
-                        "para", "datatype", "discrete", "vol", "power_indices"]], dtype=np.object)
-        if(np.size(mars) == 0):
-            return None
-        else:
-            return mars
-
-    def __eq__(self, x):  # __eq__ : self == x
-        if isinstance(x, type(self)):
-            return self._identifier() == x._identifier()
-        else:
-            return False
-
-    def __ne__(self, x):
-        return not self.__eq__(x)
-
-    def __lt__(self, x):  # __lt__ : self < x
-        if(isinstance(x, space)):
-            if(not isinstance(x, type(self)))or(np.size(self.para) != np.size(x.para))or(np.size(self.vol) != np.size(x.vol)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: incomparable spaces."))
-            elif(self.discrete == x.discrete):  # data types are ignored
-                for ii in xrange(np.size(self.para)):
-                    if(self.para[ii] < x.para[ii]):
-                        return True
-                    elif(self.para[ii] > x.para[ii]):
-                        return False
-                for ii in xrange(np.size(self.vol)):
-                    if(self.vol[ii] < x.vol[ii]):
-                        return True
-                    elif(self.vol[ii] > x.vol[ii]):
-                        return False
-                s_mars = self._meta_vars()
-                x_mars = x._meta_vars()
-                for ii in xrange(np.size(s_mars)):
-                    if(np.all(s_mars[ii] < x_mars[ii])):
-                        return True
-                    elif(np.any(s_mars[ii] > x_mars[ii])):
-                        break
-        return False
-
-    def __le__(self, x):  # __le__ : self <= x
-        if(isinstance(x, space)):
-            if(not isinstance(x, type(self)))or(np.size(self.para) != np.size(x.para))or(np.size(self.vol) != np.size(x.vol)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: incomparable spaces."))
-            elif(self.discrete == x.discrete):  # data types are ignored
-                for ii in xrange(np.size(self.para)):
-                    if(self.para[ii] < x.para[ii]):
-                        return True
-                    if(self.para[ii] > x.para[ii]):
-                        return False
-                for ii in xrange(np.size(self.vol)):
-                    if(self.vol[ii] < x.vol[ii]):
-                        return True
-                    if(self.vol[ii] > x.vol[ii]):
-                        return False
-                s_mars = self._meta_vars()
-                x_mars = x._meta_vars()
-                for ii in xrange(np.size(s_mars)):
-                    if(np.all(s_mars[ii] < x_mars[ii])):
-                        return True
-                    elif(np.any(s_mars[ii] > x_mars[ii])):
-                        return False
-                return True
-        return False
-
-    def __gt__(self, x):  # __gt__ : self > x
-        if(isinstance(x, space)):
-            if(not isinstance(x, type(self)))or(np.size(self.para) != np.size(x.para))or(np.size(self.vol) != np.size(x.vol)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: incomparable spaces."))
-            elif(self.discrete == x.discrete):  # data types are ignored
-                for ii in xrange(np.size(self.para)):
-                    if(self.para[ii] > x.para[ii]):
-                        return True
-                    elif(self.para[ii] < x.para[ii]):
-                        break
-                for ii in xrange(np.size(self.vol)):
-                    if(self.vol[ii] > x.vol[ii]):
-                        return True
-                    elif(self.vol[ii] < x.vol[ii]):
-                        break
-                s_mars = self._meta_vars()
-                x_mars = x._meta_vars()
-                for ii in xrange(np.size(s_mars)):
-                    if(np.all(s_mars[ii] > x_mars[ii])):
-                        return True
-                    elif(np.any(s_mars[ii] < x_mars[ii])):
-                        break
-        return False
-
-    def __ge__(self, x):  # __ge__ : self >= x
-        if(isinstance(x, space)):
-            if(not isinstance(x, type(self)))or(np.size(self.para) != np.size(x.para))or(np.size(self.vol) != np.size(x.vol)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: incomparable spaces."))
-            elif(self.discrete == x.discrete):  # data types are ignored
-                for ii in xrange(np.size(self.para)):
-                    if(self.para[ii] > x.para[ii]):
-                        return True
-                    if(self.para[ii] < x.para[ii]):
-                        return False
-                for ii in xrange(np.size(self.vol)):
-                    if(self.vol[ii] > x.vol[ii]):
-                        return True
-                    if(self.vol[ii] < x.vol[ii]):
-                        return False
-                s_mars = self._meta_vars()
-                x_mars = x._meta_vars()
-                for ii in xrange(np.size(s_mars)):
-                    if(np.all(s_mars[ii] > x_mars[ii])):
-                        return True
-                    elif(np.any(s_mars[ii] < x_mars[ii])):
-                        return False
-                return True
-        return False
-
-# =============================================================================
-
-
-# -----------------------------------------------------------------------------
 
 class point_space(space):
     """
@@ -1071,14 +793,14 @@ class point_space(space):
         ----------
         num : int
             Number of points.
-        datatype : numpy.dtype, *optional*
+        dtype : numpy.dtype, *optional*
             Data type of the field values (default: None).
 
         Attributes
         ----------
         para : numpy.ndarray
             Array containing the number of points.
-        datatype : numpy.dtype
+        dtype : numpy.dtype
             Data type of the field values.
         discrete : bool
             Parameter captioning the fact that a :py:class:`point_space` is
@@ -1087,7 +809,8 @@ class point_space(space):
             Pixel volume of the :py:class:`point_space`, which is always 1.
     """
 
-    def __init__(self, num, datatype=np.dtype('float'), datamodel='fftw'):
+    def __init__(self, num, dtype=np.dtype('float'), datamodel='fftw',
+                 comm=gc['default_comm']):
         """
             Sets the attributes for a point_space class instance.
 
@@ -1095,7 +818,7 @@ class point_space(space):
             ----------
             num : int
                 Number of points.
-            datatype : numpy.dtype, *optional*
+            dtype : numpy.dtype, *optional*
                 Data type of the field values (default: numpy.float64).
 
             Returns
@@ -1104,8 +827,8 @@ class point_space(space):
         """
         self.paradict = point_space_paradict(num=num)
 
-        # parse datatype
-        dtype = np.dtype(datatype)
+        # parse dtype
+        dtype = np.dtype(dtype)
         if dtype not in [np.dtype('bool'),
                          np.dtype('int8'),
                          np.dtype('int16'),
@@ -1117,20 +840,20 @@ class point_space(space):
                          np.dtype('complex64'),
                          np.dtype('complex128')]:
             raise ValueError(about._errors.cstring(
-                             "WARNING: incompatible datatype: " + str(dtype)))
+                             "WARNING: incompatible dtype: " + str(dtype)))
         self.dtype = dtype
-        self.datatype = dtype.type
 
         if datamodel not in ['np'] + POINT_DISTRIBUTION_STRATEGIES:
             about._errors.cstring("WARNING: datamodel set to default.")
             self.datamodel = \
-                global_configuration['default_distribution_strategy']
+                gc['default_distribution_strategy']
         else:
             self.datamodel = datamodel
 
+        self.comm = self._parse_comm(comm)
         self.discrete = True
         self.harmonic = False
-        self.vol = np.real(np.array([1], dtype=self.datatype))
+        self.distances = (np.float(1),)
 
     @property
     def para(self):
@@ -1141,23 +864,48 @@ class point_space(space):
     def para(self, x):
         self.paradict['num'] = x[0]
 
+    def _identifier(self):
+        # Extract the identifying parts from the vars(self) dict.
+        temp = [(ii[0],
+                 ((lambda x: x[1].__hash__() if x[0] == 'comm' else x)(ii)))
+                for ii in vars(self).iteritems()
+                ]
+        # Return the sorted identifiers as a tuple.
+        return tuple(sorted(temp))
+
+    def _parse_comm(self, comm):
+        # check if comm is a string -> the name of comm is given
+        # -> Extract it from the mpi_module
+        if isinstance(comm, str):
+            if gc.validQ('default_comm', comm):
+                result_comm = getattr(gdi[gc['mpi_module']], comm)
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: The given communicator-name is not supported."))
+        # check if the given comm object is an instance of default Intracomm
+        else:
+            if isinstance(comm, gdi[gc['mpi_module']].Intracomm):
+                result_comm = comm
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: The given comm object is not an instance of the " +
+                    "default-MPI-module's Intracomm Class."))
+        return result_comm
+
     def copy(self):
         return point_space(num=self.paradict['num'],
-                           datatype=self.datatype,
+                           dtype=self.dtype,
                            datamodel=self.datamodel)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def getitem(self, data, key):
         return data[key]
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def setitem(self, data, update, key):
         data[key] = update
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def apply_scalar_function(self, x, function, inplace=False):
         if self.datamodel == 'np':
-            if inplace == False:
+            if not inplace:
                 try:
                     return function(x)
                 except:
@@ -1174,8 +922,6 @@ class point_space(space):
         else:
             raise NotImplementedError(about._errors.cstring(
                 "ERROR: function is not implemented for given datamodel."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def unary_operation(self, x, op='None', **kwargs):
         """
@@ -1262,7 +1008,6 @@ class point_space(space):
 
         return translation[op](x, **kwargs)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def binary_operation(self, x, y, op='None', cast=0):
 
         translation = {"add": lambda z: getattr(z, '__add__'),
@@ -1295,8 +1040,7 @@ class point_space(space):
 
         return translation[op](x)(y)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def norm(self, x, q=2):
+    def get_norm(self, x, q=2):
         """
             Computes the Lq-norm of field values.
 
@@ -1313,7 +1057,6 @@ class point_space(space):
                 The Lq-norm of the field values.
 
         """
-
         if q == 2:
             result = self.calc_dot(x, x)
         else:
@@ -1323,20 +1066,8 @@ class point_space(space):
         result = result**(1. / q)
         return result
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def get_num(self):
-        """
-            Returns the number of points.
-
-            Returns
-            -------
-            num : int
-                Number of points.
-        """
-        return np.prod(self.get_shape())
-
     def get_shape(self):
-        return np.array([self.paradict['num']])
+        return (self.paradict['num'],)
 
     def get_dim(self, split=False):
         """
@@ -1353,19 +1084,12 @@ class point_space(space):
             dim : {int, numpy.ndarray}
                 Dimension(s) of the space.
         """
-        ## dim = num
-        if split == True:
-            about.warnings.cflush("WARNING: split keyword is  deprecated!" +
-                                  "Please use self.get_shape() in future!")
+        if split:
             return self.get_shape()
-            # return np.array([self.para[0]],dtype=np.int)
         else:
             return np.prod(self.get_shape())
-            # return self.para[0]
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_dof(self):
+    def get_dof(self, split=False):
         """
             Computes the number of degrees of freedom of the space, i.e./  the
             number of points for real-valued fields and twice that number for
@@ -1376,75 +1100,48 @@ class point_space(space):
             dof : int
                 Number of degrees of freedom of the space.
         """
-        # dof ~ dim
-        if issubclass(self.datatype, np.complexfloating) == True:
-            return self.paradict['num'] * 2
+        pre_dof = self.get_dim(split=split)
+        if issubclass(self.dtype.type, np.complexfloating):
+            return pre_dof * 2
         else:
-            return self.paradict['num']
+            return pre_dof
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def get_power_indices(self, **kwargs):
+    def get_vol(self, split=False):
+        if split:
+            return self.distances
+        else:
+            return np.prod(self.distances)
+
+    def get_meta_volume(self, split=False):
         """
-            Provides the (un)indexing objects for spectral indexing.
+            Calculates the meta volumes.
 
-            Provides one-dimensional arrays containing the scales of the
-            spectral bands and the numbers of modes per scale, and an array
-            giving for each component of a field the corresponding index of a
-            power spectrum as well as an Unindexing array.
+            The meta volumes are the volumes associated with each component of
+            a field, taking into account field components that are not
+            explicitly included in the array of field values but are determined
+            by symmetry conditions. In the case of an :py:class:`rg_space`, the
+            meta volumes are simply the pixel volumes.
 
             Parameters
             ----------
-            log : bool
-                Flag specifying if the binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer
-                Number of used bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).
+            total : bool, *optional*
+                Whether to return the total meta volume of the space or the
+                individual ones of each pixel (default: False).
 
             Returns
             -------
-            kindex : numpy.ndarray
-                Scale of each spectral band.
-            rho : numpy.ndarray
-                Number of modes per scale represented in the discretization.
-            pindex : numpy.ndarray
-                Indexing array giving the power spectrum index for each
-                represented mode.
-            pundex : numpy.ndarray
-                Unindexing array undoing power spectrum indexing.
-
-            Notes
-            -----
-            The ``kindex`` and ``rho`` are each one-dimensional arrays.
-            The indexing array is of the same shape as a field living in this
-            space and contains the indices of the associated bands.
-            Indexing with the unindexing array undoes the indexing with the
-            indexing array; i.e., ``power == power[pindex].flatten()[pundex]``.
-
-            See Also
-            --------
-            set_power_indices
-
+            mol : {numpy.ndarray, float}
+                Meta volume of the pixels or the complete space.
         """
-        # TODO: Deprecate set_power_indices
-        self.set_power_indices(**kwargs)
-        return self.power_indices.get("kindex"),\
-            self.power_indices.get("rho"),\
-            self.power_indices.get("pindex"),\
-            self.power_indices.get("pundex")
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        if not split:
+            return self.get_dim() * self.get_vol()
+        else:
+            mol = self.cast(1, dtype=np.dtype('float'))
+            return self.calc_weight(mol, power=1)
 
     def cast(self, x, dtype=None, **kwargs):
         if dtype is not None:
-            dtype = np.dtype(dtype).type
+            dtype = np.dtype(dtype)
 
         # If x is a field, extract the data and do a recursive call
         if isinstance(x, field):
@@ -1493,14 +1190,14 @@ class point_space(space):
                 lost during casting (default: False).
         """
         if dtype is None:
-            dtype = self.datatype
+            dtype = self.dtype
 
         # Case 1: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
             to_copy = False
 
             # Check the shape
-            if np.any(x.shape != self.get_shape()):
+            if np.any(np.array(x.shape) != np.array(self.get_shape())):
                 # Check if at least the number of degrees of freedom is equal
                 if x.get_dim() == self.get_dim():
                     # If the number of dof is equal or 1, use np.reshape...
@@ -1519,7 +1216,7 @@ class point_space(space):
                     raise ValueError(about._errors.cstring(
                         "ERROR: Data has incompatible shape!"))
 
-            # Check the datatype
+            # Check the dtype
             if x.dtype != dtype:
                 about.warnings.cflush(
                     "WARNING: Datatypes are uneqal/of conflicting precision " +
@@ -1574,7 +1271,7 @@ class point_space(space):
                 lost during casting (default: False).
         """
         if dtype is None:
-            dtype = self.datatype
+            dtype = self.dtype
 
         # Case 1: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
@@ -1588,7 +1285,7 @@ class point_space(space):
         # Case 2: x is a distributed_data_object
         elif isinstance(x, np.ndarray):
             # Check the shape
-            if np.any(x.shape != self.get_shape()):
+            if np.any(np.array(x.shape) != np.array(self.get_shape())):
                 # Check if at least the number of degrees of freedom is equal
                 if x.size == self.get_dim():
                     # If the number of dof is equal or 1, use np.reshape...
@@ -1608,7 +1305,7 @@ class point_space(space):
                     raise ValueError(about._errors.cstring(
                         "ERROR: Data has incompatible shape!"))
 
-            # Check the datatype
+            # Check the dtype
             if x.dtype != dtype:
                 about.warnings.cflush(
                     "WARNING: Datatypes are uneqal/of conflicting precision " +
@@ -1629,231 +1326,88 @@ class point_space(space):
             temp = np.empty(self.get_shape(), dtype=dtype)
             if x is not None:
                 temp[:] = x
-            return self._cast_to_np(temp)
+            return self._cast_to_np(temp, dtype=dtype)
 
-    def enforce_shape(self, x):
+    def enforce_power(self, spec, **kwargs):
         """
-            Shapes an array of valid field values correctly, according to the
-            specifications of the space instance.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values to be put into shape.
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Correctly shaped array.
+            Raises an error since the power spectrum is ill-defined for point
+            spaces.
         """
-        about.warnings.cprint("WARNING: enforce_shape is deprecated!")
+        raise AttributeError(about._errors.cstring(
+            "ERROR: the definition of power spectra is ill-defined for " +
+            "(unstructured) point spaces."))
 
-        x = np.array(x)
-        if(np.size(x) != self.get_dim(split=False)):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( " +
-                                                   str(np.size(x)) + " <> " + str(self.get_dim(split=False)) + " )."))
-#        elif(not np.all(np.array(np.shape(x))==self.get_dim(split=True))):
-#            about.warnings.cprint("WARNING: reshaping forced.")
+    def _enforce_power_helper(self, spec, size, kindex):
+        # Now it's about to extract a powerspectrum from spec
+        # First of all just extract a numpy array. The shape is cared about
+        # later.
 
-        return x.reshape(self.get_dim(split=True), order='C')
+        # Case 1: spec is a function
+        if callable(spec):
+            # Try to plug in the kindex array in the function directly
+            try:
+                spec = np.array(spec(kindex), dtype=self.dtype)
+            except:
+                # Second try: Use a vectorized version of the function.
+                # This is slower, but better than nothing
+                try:
+                    spec = np.array(np.vectorize(spec)(kindex),
+                                    dtype=self.dtype)
+                except:
+                    raise TypeError(about._errors.cstring(
+                        "ERROR: invalid power spectra function."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Case 2: spec is a field:
+        elif isinstance(spec, field):
+            try:
+                spec = spec.val.get_full_data()
+            except AttributeError:
+                spec = spec.val
+            spec = spec.astype(self.dtype).flatten()
 
-    def enforce_values(self, x, extend=True):
-        """
-            Computes valid field values from a given object, according to the
-            constraints from the space instance.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Array containing the valid field values.
-
-            Other parameters
-            ----------------
-            extend : bool, *optional*
-                Whether a scalar is extented to a constant array or not
-                (default: True).
-        """
-        about.warnings.cprint("WARNING: enforce_values is deprecated! " +
-                              "Please use cast() in future!")
-
-        if(isinstance(x, field)):
-            if(self == x.domain):
-                if(self.datatype is not x.domain.datatype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '" + str(
-                        np.result_type(self.datatype)) + "' <> '" + str(np.result_type(x.domain.datatype)) + "' )."))
-                else:
-                    x = np.copy(x.val)
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: inequal domains."))
+        # Case 3: spec is a scalar or something else:
         else:
-            if(np.size(x) == 1):
-                if(extend):
-                    x = self.datatype(
-                        x) * np.ones(self.get_dim(split=True), dtype=self.datatype, order='C')
-                else:
-                    if(np.isscalar(x)):
-                        x = np.array([x], dtype=self.datatype)
-                    else:
-                        x = np.array(x, dtype=self.datatype)
-            else:
-                x = self.enforce_shape(np.array(x, dtype=self.datatype))
+            spec = np.array(spec, dtype=self.dtype).flatten()
+
+        # Make some sanity checks
+        # Drop imaginary part
+        temp_spec = np.real(spec)
+        try:
+            np.testing.assert_allclose(spec, temp_spec)
+        except(AssertionError):
+            about.warnings.cprint("WARNING: Dropping imaginary part.")
+        spec = temp_spec
 
         # check finiteness
-        if(not np.all(np.isfinite(x))):
+        if not np.all(np.isfinite(spec)):
             about.warnings.cprint("WARNING: infinite value(s).")
 
-        return x
+        # check positivity (excluding null)
+        if np.any(spec < 0):
+            raise ValueError(about._errors.cstring(
+                "ERROR: nonpositive value(s)."))
+        if np.any(spec == 0):
+            about.warnings.cprint("WARNING: nonpositive value(s).")
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        # Set the size parameter
+        if size is None:
+            size = len(kindex)
 
-    def get_random_values(self, **kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters.
+        # Fix the size of the spectrum
+        # If spec is singlevalued, expand it
+        if np.size(spec) == 1:
+            spec = spec * np.ones(size, dtype=spec.dtype)
+        # If the size does not fit at all, throw an exception
+        elif np.size(spec) < size:
+            raise ValueError(about._errors.cstring("ERROR: size mismatch ( " +
+                                                   str(np.size(spec)) + " < " +
+                                                   str(size) + " )."))
+        elif np.size(spec) > size:
+            about.warnings.cprint("WARNING: power spectrum cut to size ( == " +
+                                  str(size) + " ).")
+            spec = spec[:size]
 
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.ndarray, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            pindex : numpy.ndarray, *optional*
-                Indexing array giving the power spectrum index of each band
-                (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale of each band (default: None).
-            codomain : nifty.space, *optional*
-                A compatible codomain with power indices (default: None).
-            log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}, *optional*
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-
-        arg = random.parse_arguments(self, **kwargs)
-
-        if arg is None:
-            return self.cast(0)
-
-        if self.datamodel == 'np':
-            if arg[0] == "pm1":
-                x = random.pm1(datatype=self.datatype,
-                               shape=self.get_shape())
-            elif arg[0] == "gau":
-                x = random.gau(datatype=self.datatype,
-                               shape=self.get_shape(),
-                               mean=None,
-                               dev=arg[2],
-                               var=arg[3])
-            elif arg[0] == "uni":
-                x = random.uni(datatype=self.datatype,
-                               shape=self.get_shape(),
-                               vmin=arg[1],
-                               vmax=arg[2])
-            else:
-                raise KeyError(about._errors.cstring(
-                    "ERROR: unsupported random key '" + str(arg[0]) + "'."))
-            return x
-
-        elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            # Prepare the empty distributed_data_object
-            sample = distributed_data_object(global_shape=self.get_shape(),
-                                             dtype=self.datatype)
-
-            # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
-            if arg[0] == 'pm1':
-                gen = lambda s: random.pm1(datatype=self.datatype,
-                                           shape=s)
-                sample.apply_generator(gen)
-
-            # Case 2: normal distribution with zero-mean and a given standard
-            ##         deviation or variance
-            elif arg[0] == 'gau':
-                var = arg[3]
-                if np.isscalar(var) == True or var is None:
-                    processed_var = var
-                else:
-                    try:
-                        processed_var = sample.distributor.\
-                            extract_local_data(var)
-                    except(AttributeError):
-                        processed_var = var
-
-                gen = lambda s: random.gau(datatype=self.datatype,
-                                           shape=s,
-                                           mean=arg[1],
-                                           dev=arg[2],
-                                           var=processed_var)
-                sample.apply_generator(gen)
-
-            # Case 3: uniform distribution
-            elif arg[0] == 'gau':
-                var = arg[3]
-                if np.isscalar(var) == True or var is None:
-                    processed_var = var
-                else:
-                    try:
-                        processed_var = sample.distributor.extract_local_data(
-                            var)
-                    except(AttributeError):
-                        processed_var = var
-
-                gen = lambda s: random.gau(datatype=self.datatype,
-                                           shape=s,
-                                           mean=arg[1],
-                                           dev=arg[2],
-                                           var=processed_var)
-                sample.apply_generator(gen)
-            return sample
-
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        return spec
 
     def check_codomain(self, codomain):
         """
@@ -1881,34 +1435,6 @@ class point_space(space):
         else:
             return False
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_power(self, spec, **kwargs):
-        """
-            Raises an error since the power spectrum is ill-defined for point
-            spaces.
-        """
-        raise AttributeError(about._errors.cstring(
-            "ERROR: the definition of power spectra is ill-defined for " +
-            "(unstructured) point spaces."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_power_indices(self, **kwargs):
-        """
-            Raises
-            ------
-            AttributeError
-                Always. -- The power spectrum is ill-defined for point spaces.
-
-        """
-        about.warnings.cflush(
-            "WARNING: set_power_indices is a deprecated function. Please use self.cast")
-        raise AttributeError(about._errors.cstring(
-            "ERROR: the definition of power spectra indexing is ill-defined."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def get_codomain(self, **kwargs):
         """
             Generates a compatible codomain to which transformations are
@@ -1922,41 +1448,146 @@ class point_space(space):
         """
         return self.copy()
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_meta_volume(self, total=False):
+    def get_random_values(self, **kwargs):
         """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
+            Generates random field values according to the specifications given
+            by the parameters.
 
             Returns
             -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
+            x : numpy.ndarray
+                Valid field values.
 
-            Notes
-            -----
-            Since point spaces are unstructured, the meta volume of each
-            component is one, the total meta volume of the space is the number
-            of points.
+            Other parameters
+            ----------------
+            random : string, *optional*
+                Specifies the probability distribution from which the random
+                numbers are to be drawn.
+                Supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given
+                standard
+                    deviation or variance)
+                - "syn" (synthesizes from a given power spectrum)
+                - "uni" (uniform distribution over [vmin,vmax[)
+
+                (default: None).
+            dev : float, *optional*
+                Standard deviation (default: 1).
+            var : float, *optional*
+                Variance, overriding `dev` if both are specified
+                (default: 1).
+            spec : {scalar, list, numpy.ndarray, nifty.field, function},
+            *optional*
+                Power spectrum (default: 1).
+            pindex : numpy.ndarray, *optional*
+                Indexing array giving the power spectrum index of each band
+                (default: None).
+            kindex : numpy.ndarray, *optional*
+                Scale of each band (default: None).
+            codomain : nifty.space, *optional*
+                A compatible codomain with power indices (default: None).
+            log : bool, *optional*
+                Flag specifying if the spectral binning is performed on
+                logarithmic
+                scale or not; if set, the number of used bins is set
+                automatically (if not given otherwise); by default no binning
+                is done (default: None).
+            nbin : integer, *optional*
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
+                integers below the minimum of 3 induce an automatic setting;
+                by default no binning is done (default: None).
+            binbounds : {list, array}, *optional*
+                User specific inner boundaries of the bins, which are preferred
+                over the above parameters; by default no binning is done
+                (default: None).
+                vmin : {scalar, list, ndarray, field}, *optional*
+                Lower limit of the uniform distribution if ``random == "uni"``
+                (default: 0).
+            vmin : float, *optional*
+                Lower limit for a uniform distribution (default: 0).
+            vmax : float, *optional*
+                Upper limit for a uniform distribution (default: 1).
         """
-        if total == True:
-            return self.get_dim()
-        else:
-            return np.ones(self.get_shape(),
-                           dtype=self.vol.dtype)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        arg = random.parse_arguments(self, **kwargs)
+
+        if arg is None:
+            return self.cast(0)
+
+        if self.datamodel == 'np':
+            if arg[0] == "pm1":
+                x = random.pm1(dtype=self.dtype,
+                               shape=self.get_shape())
+            elif arg[0] == "gau":
+                x = random.gau(dtype=self.dtype,
+                               shape=self.get_shape(),
+                               mean=None,
+                               dev=arg[2],
+                               var=arg[3])
+            elif arg[0] == "uni":
+                x = random.uni(dtype=self.dtype,
+                               shape=self.get_shape(),
+                               vmin=arg[1],
+                               vmax=arg[2])
+            else:
+                raise KeyError(about._errors.cstring(
+                    "ERROR: unsupported random key '" + str(arg[0]) + "'."))
+            return x
+
+        elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
+            # Prepare the empty distributed_data_object
+            sample = distributed_data_object(global_shape=self.get_shape(),
+                                             dtype=self.dtype)
+
+            # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
+            if arg[0] == 'pm1':
+                sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
+                                                            shape=s))
+
+            # Case 2: normal distribution with zero-mean and a given standard
+            #         deviation or variance
+            elif arg[0] == 'gau':
+                var = arg[3]
+                if np.isscalar(var) == True or var is None:
+                    processed_var = var
+                else:
+                    try:
+                        processed_var = sample.distributor.\
+                            extract_local_data(var)
+                    except(AttributeError):
+                        processed_var = var
+
+                sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
+                                                            shape=s,
+                                                            mean=arg[1],
+                                                            dev=arg[2],
+                                                            var=processed_var))
+
+            # Case 3: uniform distribution
+            elif arg[0] == 'gau':
+                var = arg[3]
+                if np.isscalar(var) == True or var is None:
+                    processed_var = var
+                else:
+                    try:
+                        processed_var = sample.distributor.extract_local_data(
+                            var)
+                    except(AttributeError):
+                        processed_var = var
+
+                sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
+                                                            shape=s,
+                                                            mean=arg[1],
+                                                            dev=arg[2],
+                                                            var=processed_var))
+            return sample
+
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: function is not implemented for given datamodel."))
 
     def calc_weight(self, x, power=1):
         """
@@ -1975,16 +1606,12 @@ class point_space(space):
             y : numpy.ndarray
                 Weighted array.
         """
-        #x = self.enforce_shape(np.array(x,dtype=self.datatype))
-
         # weight
         return x * self.get_weight(power=power)
-        # return x*self.vol**power
 
-    def get_weight(self, power=1):
-        return self.vol**power
+    def get_weight(self, power=1, split=False):
+        return np.prod(np.array(self.distances)**np.array(power))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_dot(self, x, y):
         """
             Computes the discrete inner product of two given arrays of field
@@ -2017,8 +1644,6 @@ class point_space(space):
             result = np.asscalar(np.real(result))
         return result
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def calc_transform(self, x, codomain=None, **kwargs):
         """
             Computes the transform of a given array of field values.
@@ -2042,13 +1667,11 @@ class point_space(space):
                 Number of iterations performed in specific transformations.
         """
         x = self.cast(x)
-        if (codomain is None) or (self.check_codomain(codomain) == True):
-            return x  # T == id
+        if codomain is None or self.check_codomain(codomain):
+            return x
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def calc_smooth(self, x, **kwargs):
         """
@@ -2057,8 +1680,6 @@ class point_space(space):
         """
         raise AttributeError(about._errors.cstring(
             "ERROR: smoothing ill-defined for (unstructured) point space."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def calc_power(self, x, **kwargs):
         """
@@ -2069,14 +1690,12 @@ class point_space(space):
             "ERROR: power spectra ill-defined for (unstructured) " +
             "point space."))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_real_Q(self, x):
         try:
             return x.isreal().all()
         except(AttributeError):
             return np.all(np.isreal(x))
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def calc_bincount(self, x, weights=None, minlength=None):
         if self.datamodel == 'np':
             if issubclass(np.dtype(weights).type, np.complexfloating):
@@ -2099,8 +1718,6 @@ class point_space(space):
         else:
             raise NotImplementedError(about._errors.cstring(
                 "ERROR: function is not implemented for given datamodel."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_plot(self, x, title="", vmin=None, vmax=None, unit=None,
                  norm=None, other=None, legend=False, save=None, **kwargs):
@@ -2153,13 +1770,13 @@ class point_space(space):
                         FigureClass=pl.Figure)
 
         ax0 = fig.add_axes([0.12, 0.12, 0.82, 0.76])
-        xaxes = np.arange(self.para[0], dtype=np.int)
+        xaxes = np.arange(self.para[0], dtype=np.dtype('int'))
 
         if(norm == "log")and(vmin <= 0):
             raise ValueError(about._errors.cstring(
                 "ERROR: nonpositive value(s)."))
 
-        if issubclass(self.datatype, np.complexfloating):
+        if issubclass(self.dtype.type, np.complexfloating):
             if vmin is None:
                 vmin = min(x.real.min(), x.imag.min(), abs(x).min())
             if vmax is None:
@@ -2177,7 +1794,7 @@ class point_space(space):
         if(norm == "log"):
             ax0.set_yscale('log')
 
-        if issubclass(self.datatype, np.complexfloating):
+        if issubclass(self.dtype.type, np.complexfloating):
             ax0.scatter(xaxes, self.unary_operation(x, op='abs'),
                         color=[0.0, 0.5, 0.0], marker='o',
                         label="graph (absolute)", facecolor="none", zorder=1)
@@ -2197,10 +1814,11 @@ class point_space(space):
                 other = (other, )
             imax = max(1, len(other) - 1)
             for ii in xrange(len(other)):
-                ax0.scatter(xaxes, self.datatype(other[ii]),
-                            color=[max(0.0, 1.0 - (2*ii/imax)**2),
-                                   0.5 * ((2*ii - imax)/imax)**2,
-                                   max(0.0, 1.0 - (2*(ii - imax)/imax)**2)],
+                ax0.scatter(xaxes, self.dtype(other[ii]),
+                            color=[max(0.0, 1.0 - (2 * ii / imax)**2),
+                                   0.5 * ((2 * ii - imax) / imax)**2,
+                                   max(0.0, 1.0 -
+                                       (2 * (ii - imax) / imax)**2)],
                             marker='o', label="'other' graph " + str(ii),
                             zorder=-ii)
 
@@ -2222,788 +1840,15 @@ class point_space(space):
         else:
             fig.canvas.draw()
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_core.point_space>"
 
     def __str__(self):
         result = "nifty_core.point_space instance\n- num      = " + \
-                 str(self.para[0]) + "\n- datatype = numpy." + \
-                 str(np.dtype(self.datatype))
+                 str(self.para[0]) + "\n- dtype = numpy." + \
+                 str(np.dtype(self.dtype))
         return result
 
-
-# -----------------------------------------------------------------------------
-class nested_space(space):
-    """
-        ..                                      __                    __
-        ..                                    /  /_                 /  /
-        ..      __ ___    _______   _______  /   _/  _______   ____/  /
-        ..    /   _   | /   __  / /  _____/ /  /   /   __  / /   _   /
-        ..   /  / /  / /  /____/ /_____  / /  /_  /  /____/ /  /_/  /
-        ..  /__/ /__/  \______/ /_______/  \___/  \______/  \______|  space class
-
-        NIFTY subclass for product spaces
-
-        Parameters
-        ----------
-        nest : list
-            A list of space instances that are to be combined into a product
-            space.
-
-        Notes
-        -----
-        Note that the order of the spaces is important for some of the methods.
-
-        Attributes
-        ----------
-        nest : list
-            List of the space instances that are combined into the product space, any instances of the :py:class:`nested_space` class itself are further unraveled.
-        para : numpy.ndarray
-            One-dimensional array containing the dimensions of all the space instances (split up into their axes when applicable) that are contained in the nested space.
-        datatype : numpy.dtype
-            Data type of the field values, inherited from the innermost space, i.e. that last entry in the `nest` list.
-        discrete : bool
-            Whether or not the product space is discrete, ``True`` only if all subspaces are discrete.
-    """
-
-    def __init__(self, nest):
-        """
-            Sets the attributes for a nested_space class instance.
-
-            Parameters
-            ----------
-            nest : list
-                A list of space instances that are to be combined into a product
-                space.
-
-            Returns
-            -------
-            None
-        """
-        if(not isinstance(nest, list)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        # check nest
-        purenest = []
-        pre_para = []
-        for nn in nest:
-            if(not isinstance(nn, space)):
-                raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            elif(isinstance(nn, nested_space)):  # no 2nd level nesting
-                for nn_ in nn.nest:
-                    purenest.append(nn_)
-                    pre_para = pre_para + [nn_.get_dim(split=True)]
-            else:
-                purenest.append(nn)
-                pre_para = pre_para + [nn.get_dim(split=True)]
-        if(len(purenest) < 2):
-            raise ValueError(about._errors.cstring("ERROR: invalid input."))
-        self.nest = purenest
-
-        self.paradict = nested_space_paradict(ndim=len(pre_para))
-        for i in range(len(pre_para)):
-            self.paradict[i] = pre_para[i]
-
-        # check data type
-        for nn in self.nest[:-1]:
-            # may conflict permutability
-            if(nn.datatype != self.nest[-1].datatype):
-                about.infos.cprint("INFO: ambiguous data type.")
-                break
-        self.datatype = self.nest[-1].datatype
-
-        self.discrete = np.prod(
-            [nn.discrete for nn in self.nest], axis=0, dtype=np.bool, out=None)
-        self.vol = np.prod([nn.get_meta_volume(
-            total=True) for nn in self.nest], axis=0, dtype=None, out=None)  # total volume
-
-    @property
-    def para(self):
-        temp = []
-        for i in range(self.paradict.ndim):
-            temp = np.append(temp, self.paradict[i])
-        return temp
-
-    @para.setter
-    def para(self, x):
-        dict_iter = 0
-        x_iter = 0
-        while dict_iter < self.paradict.ndim:
-            temp = x[x_iter:x_iter + len(self.paradict[dict_iter])]
-            self.paradict[dict_iter] = temp
-            x_iter = x_iter + len(self.paradict[dict_iter])
-            dict_iter += 1
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def copy(self):
-        return nested_space(nest=self.nest)
-
-    def get_shape(self):
-        temp = []
-        for i in range(self.paradict.ndim):
-            temp = np.append(temp, self.paradict[i])
-        return temp
-
-    def get_dim(self, split=False):
-        """
-            Computes the dimension of the product space.
-
-            Parameters
-            ----------
-            split : bool, *optional*
-                Whether to return the dimension split up into the dimensions of
-                each subspace, each one of these split up into the number of
-                pixels along each axis when applicable, or not
-                (default: False).
-
-            Returns
-            -------
-            dim : {int, numpy.ndarray}
-                Dimension(s) of the space.
-        """
-        if(split):
-            return self.get_shape()
-            # return self.para
-        else:
-            return np.prod(self.get_shape())
-            # return np.prod(self.para,axis=0,dtype=None,out=None)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_dof(self):
-        """
-            Computes the number of degrees of freedom of the product space, as
-            the product of the degrees of freedom of each subspace.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-        """
-        return np.prod([nn.get_dof() for nn in self.nest], axis=0, dtype=None, out=None)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_power(self, spec, **kwargs):
-        """
-            Raises an error since there is no canonical definition for the
-            power spectrum on a generic product space.
-        """
-        raise AttributeError(about._errors.cstring(
-            "ERROR: power spectra ill-defined."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def set_power_indices(self, **kwargs):
-        """
-            Raises
-            ------
-            AttributeError
-                Always. -- There is no canonical definition for the power
-                spectrum on a generic product space.
-        """
-        raise AttributeError(about._errors.cstring(
-            "ERROR: power spectra indexing ill-defined."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def enforce_values(self, x, extend=True):
-        """
-            Computes valid field values from a given object, according to the
-            constraints from the space instances that make up the product
-            space.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Array containing the valid field values.
-
-            Other parameters
-            ----------------
-            extend : bool, *optional*
-                Whether a scalar is extented to a constant array or not
-                (default: True).
-        """
-        if(isinstance(x, field)):
-            if(self == x.domain):
-                if(self.datatype is not x.domain.datatype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '" + str(
-                        np.result_type(self.datatype)) + "' <> '" + str(np.result_type(x.domain.datatype)) + "' )."))
-                else:
-                    x = np.copy(x.val)
-            elif(self.nest[-1] == x.domain):
-                if(self.datatype is not x.domain.datatype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '" + str(
-                        np.result_type(self.datatype)) + "' <> '" + str(np.result_type(x.domain.datatype)) + "' )."))
-                else:
-                    subshape = self.para[
-                        :-np.size(self.nest[-1].get_dim(split=True))]
-                    x = np.tensordot(
-                        np.ones(subshape, dtype=self.datatype, order='C'), x.val, axes=0)
-            elif(isinstance(x.domain, nested_space)):
-                if(self.datatype is not x.domain.datatype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '" + str(
-                        np.result_type(self.datatype)) + "' <> '" + str(np.result_type(x.domain.datatype)) + "' )."))
-                else:
-                    if(np.all(self.nest[-len(x.domain.nest):] == x.domain.nest)):
-                        subshape = self.para[:np.sum([np.size(nn.get_dim(split=True)) for nn in self.nest[
-                                                     :-len(x.domain.nest)]], axis=0, dtype=np.int, out=None)]
-                        x = np.tensordot(
-                            np.ones(subshape, dtype=self.datatype, order='C'), x.val, axes=0)
-                    else:
-                        raise ValueError(about._errors.cstring(
-                            "ERROR: inequal domains."))
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: inequal domains."))
-        else:
-            if(np.size(x) == 1):
-                if(extend):
-                    x = self.datatype(x) * np.ones(self.para,
-                                                   dtype=self.datatype, order='C')
-                else:
-                    if(np.isscalar(x)):
-                        x = np.array([x], dtype=self.datatype)
-                    else:
-                        x = np.array(x, dtype=self.datatype)
-            else:
-                x = np.array(x, dtype=self.datatype)
-                if(np.ndim(x) < np.size(self.para)):
-                    subshape = np.array([], dtype=np.int)
-                    for ii in range(len(self.nest))[::-1]:
-                        subshape = np.append(self.nest[ii].get_dim(
-                            split=True), subshape, axis=None)
-                        if(np.all(np.array(np.shape(x)) == subshape)):
-                            subshape = self.para[:np.sum([np.size(nn.get_dim(split=True)) for nn in self.nest[
-                                                         :ii]], axis=0, dtype=np.int, out=None)]
-                            x = np.tensordot(
-                                np.ones(subshape, dtype=self.datatype, order='C'), x, axes=0)
-                            break
-                else:
-                    x = self.enforce_shape(x)
-
-        if(np.size(x) != 1):
-            subdim = np.prod(self.para[
-                             :-np.size(self.nest[-1].get_dim(split=True))], axis=0, dtype=np.int, out=None)
-            # enforce special properties
-            x = x.reshape(
-                [subdim] + self.nest[-1].get_dim(split=True).tolist(), order='C')
-            x = np.array([self.nest[-1].enforce_values(xx, extend=True)
-                          for xx in x], dtype=self.datatype).reshape(self.para, order='C')
-
-        # check finiteness
-        if(not np.all(np.isfinite(x))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-
-        return x
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_random_values(self, **kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        arg = random.parse_arguments(self, **kwargs)
-
-        if(arg is None):
-            return np.zeros(self.get_dim(split=True), dtype=self.datatype, order='C')
-
-        elif(arg[0] == "pm1"):
-            x = random.pm1(datatype=self.datatype,
-                           shape=self.get_dim(split=True))
-
-        elif(arg[0] == "gau"):
-            x = random.gau(datatype=self.datatype, shape=self.get_dim(
-                split=True), mean=None, dev=arg[2], var=arg[3])
-
-        elif(arg[0] == "uni"):
-            x = random.uni(datatype=self.datatype, shape=self.get_dim(
-                split=True), vmin=arg[1], vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
-
-        subdim = np.prod(self.para[
-                         :-np.size(self.nest[-1].get_dim(split=True))], axis=0, dtype=np.int, out=None)
-        # enforce special properties
-        x = x.reshape(
-            [subdim] + self.nest[-1].get_dim(split=True).tolist(), order='C')
-        x = np.array([self.nest[-1].enforce_values(xx, extend=True)
-                      for xx in x], dtype=self.datatype).reshape(self.para, order='C')
-
-        return x
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_codomain(self, conest=None, coorder=None, **kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable.
-
-            Parameters
-            ----------
-            conest : list, *optional*
-                List of nested spaces of the codomain (default: None).
-            coorder : list, *optional*
-                Permutation of the list of nested spaces (default: None).
-
-            Returns
-            -------
-            codomain : nifty.nested_space
-                A compatible codomain.
-
-            Notes
-            -----
-            By default, the codomain of the innermost subspace (i.e. the last
-            entry of the `nest` list) is generated and the outer subspaces are
-            left unchanged. If `conest` is given, this nested space is checked
-            for compatibility and returned as codomain. If `conest` is not
-            given but `coorder` is, the codomain is a reordered version of the
-            original :py:class:`nested_space` instance.
-        """
-        if(conest is None):
-            if(coorder is None):
-                return nested_space(self.nest[:-1] + [self.nest[-1].get_codomain(**kwargs)])
-            else:
-                # check coorder
-                coorder = np.array(coorder, dtype=np.int).reshape(
-                    len(self.nest), order='C')
-                if(np.any(np.sort(coorder, axis=0, kind="quicksort", order=None) != np.arange(len(self.nest)))):
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: invalid input."))
-                # check data type
-                if(self.nest[np.argmax(coorder, axis=0)] != self.datatype):
-                    about.warnings.cprint("WARNING: ambiguous data type.")
-                # list
-                return nested_space(np.array(self.nest)[coorder].tolist())
-
-        else:
-            codomain = nested_space(conest)
-            if(self.check_codomain(codomain)):
-                return codomain
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: unsupported or incompatible input."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def check_codomain(self, codomain):
-        """
-            Checks whether a given codomain is compatible to the space or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-
-            Notes
-            -----
-            Only instances of the :py:class:`nested_space` class can be valid
-            codomains.
-        """
-        if(not isinstance(codomain, space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        if(self == codomain):
-            return True
-
-        elif(isinstance(codomain, nested_space)):
-            # nest'[:-1]==nest[:-1]
-            if(np.all(codomain.nest[:-1] == self.nest[:-1])):
-                return self.nest[-1].check_codomain(codomain.nest[-1])
-            # len(nest')==len(nest)
-            elif(len(codomain.nest) == len(self.nest)):
-                # check permutability
-                unpaired = range(len(self.nest))
-                ambiguous = False
-                for ii in xrange(len(self.nest)):
-                    for jj in xrange(len(self.nest)):
-                        if(codomain.nest[ii] == self.nest[jj]):
-                            if(jj in unpaired):
-                                unpaired.remove(jj)
-                                break
-                            else:
-                                ambiguous = True
-                if(len(unpaired) != 0):
-                    return False
-                elif(ambiguous):
-                    about.infos.cprint("INFO: ambiguous permutation.")
-                return True
-
-        return False
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def get_meta_volume(self, total=False):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
-        """
-        if(total):
-            # product
-            # == np.prod([nn.get_meta_volume(total=True) for nn in self.nest],axis=0,dtype=None,out=None)
-            return self.vol
-        else:
-            mol = self.nest[0].get_meta_volume(total=False)
-            # tensor product
-            for nn in self.nest[1:]:
-                mol = np.tensordot(
-                    mol, nn.get_meta_volume(total=False), axes=0)
-            return mol
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_weight(self, x, power=1):
-        """
-            Weights a given array of field values with the pixel volumes (not
-            the meta volumes) to a given power.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be weighted.
-            power : float, *optional*
-                Power of the pixel volumes to be used (default: 1).
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Weighted array.
-        """
-        x = self.enforce_shape(np.array(x, dtype=self.datatype))
-        # weight
-        return x * self.get_weight(power=power)
-
-    def get_weight(self, power=1):
-        return self.get_meta_volume(total=False)**power
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_dot(self, x, y):
-        """
-            Computes the discrete inner product of two given arrays of field
-            values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                First array
-            y : numpy.ndarray
-                Second array
-
-            Returns
-            -------
-            dot : scalar
-                Inner product of the two arrays.
-        """
-        x = self.enforce_shape(np.array(x, dtype=self.datatype))
-        y = self.enforce_shape(np.array(y, dtype=self.datatype))
-        # inner product
-        dot = np.sum(np.conjugate(x) * y, axis=None, dtype=None, out=None)
-        if(np.isreal(dot)):
-            return np.asscalar(np.real(dot))
-        else:
-            return dot
-
-    def calc_pseudo_dot(self, x, y, **kwargs):
-        """
-            Computes the (correctly weighted) inner product in the innermost
-            subspace (i.e.\  the last one in the `nest` list).
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values for a field on the product space.
-            y : numpy.ndarray
-                Array of field values for a field on the innermost subspace.
-
-            Returns
-            -------
-            pot : numpy.ndarray
-                Array containing the field values of the outcome of the pseudo
-                inner product.
-
-            Other parameters
-            ----------------
-            codomain : nifty.space, *optional*
-                Space in which the transform of the output field lives
-                (default: None).
-
-            Notes
-            -----
-            The outcome of the pseudo inner product calculation is a field
-            defined on a nested space that misses the innermost subspace.
-            Instead of a field on the innermost subspace, a field on the
-            complete nested space can be provided as `y`, in which case the
-            regular inner product is calculated and the output is a scalar.
-        """
-        x = self.enforce_shape(np.array(x, dtype=self.datatype))
-
-        # analyse (sub)array
-        dotspace = None
-        subspace = None
-        if(np.size(y) == 1)or(np.all(np.array(np.shape(y)) == self.nest[-1].get_dim(split=True))):
-            dotspace = self.nest[-1]
-            if(len(self.nest) == 2):
-                subspace = self.nest[0]
-            else:
-                subspace = nested_space(self.nest[:-1])
-        elif(np.all(np.array(np.shape(y)) == self.para)):
-            about.warnings.cprint("WARNING: computing (normal) inner product.")
-            return self.calc_dot(x, self.enforce_values(y, extend=True))
-        else:
-            dotshape = self.nest[-1].get_dim(split=True)
-            for ii in range(len(self.nest) - 1)[::-1]:
-                dotshape = np.append(self.nest[ii].get_dim(
-                    split=True), dotshape, axis=None)
-                if(np.all(np.array(np.shape(y)) == dotshape)):
-                    dotspace = nested_space(self.nest[ii:])
-                    if(ii < 2):
-                        subspace = self.nest[0]
-                    else:
-                        subspace = nested_space(self.nest[:ii])
-                    break
-
-        if(dotspace is None):
-            raise ValueError(about._errors.cstring("ERROR: invalid input."))
-        y = dotspace.enforce_values(y, extend=True)
-
-        # weight if ...
-        if(not dotspace.discrete):
-            y = dotspace.calc_weight(y, power=1)
-        # pseudo inner product(s)
-        x = x.reshape([subspace.get_dim(split=False)] +
-                      dotspace.get_dim(split=True).tolist(), order='C')
-        pot = np.array([dotspace.calc_dot(xx, y) for xx in x], dtype=subspace.datatype).reshape(
-            subspace.get_dim(split=True), order='C')
-        return field(subspace, val=pot, **kwargs)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_transform(self, x, codomain=None, coorder=None, **kwargs):
-        """
-            Computes the transform of a given array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be transformed.
-            codomain : nifty.space, *optional*
-                codomain space to which the transformation shall map
-                (default: self).
-
-            Returns
-            -------
-            Tx : numpy.ndarray
-                Transformed array
-
-            Other parameters
-            ----------------
-            coorder : list, *optional*
-                Permutation of the subspaces.
-
-            Notes
-            -----
-            Possible transformations are reorderings of the subspaces or any
-            transformations acting on a single subspace.2
-        """
-        x = self.enforce_shape(np.array(x, dtype=self.datatype))
-
-        if(codomain is None):
-            return x  # T == id
-
-        # check codomain
-        assert(self.check_codomain(codomain))
-
-        if(self == codomain)and(coorder is None):
-            return x  # T == id
-
-        elif(isinstance(codomain, nested_space)):
-            if(np.all(codomain.nest[:-1] == self.nest[:-1]))and(coorder is None):
-                # reshape
-                subdim = np.prod(self.para[
-                                 :-np.size(self.nest[-1].get_dim(split=True))], axis=0, dtype=np.int, out=None)
-                x = x.reshape(
-                    [subdim] + self.nest[-1].get_dim(split=True).tolist(), order='C')
-                # transform
-                Tx = np.array([self.nest[-1].calc_transform(xx, codomain=codomain.nest[-1], **kwargs)
-                               for xx in x], dtype=codomain.datatype).reshape(codomain.get_dim(split=True), order='C')
-            # and(np.all([nn in self.nest for nn in
-            # codomain.nest]))and(np.all([nn in codomain.nest for nn in
-            # self.nest])):
-            elif(len(codomain.nest) == len(self.nest)):
-                # check coorder
-                if(coorder is None):
-                    coorder = -np.ones(len(self.nest), dtype=np.int, order='C')
-                    for ii in xrange(len(self.nest)):
-                        for jj in xrange(len(self.nest)):
-                            if(codomain.nest[ii] == self.nest[jj]):
-                                if(ii not in coorder):
-                                    coorder[jj] = ii
-                                    break
-                    if(np.any(coorder == -1)):
-                        raise ValueError(about._errors.cstring(
-                            "ERROR: unsupported transformation."))
-                else:
-                    coorder = np.array(coorder, dtype=np.int).reshape(
-                        len(self.nest), order='C')
-                    if(np.any(np.sort(coorder, axis=0, kind="quicksort", order=None) != np.arange(len(self.nest)))):
-                        raise ValueError(about._errors.cstring(
-                            "ERROR: invalid input."))
-                    for ii in xrange(len(self.nest)):
-                        if(codomain.nest[coorder[ii]] != self.nest[ii]):
-                            raise ValueError(about._errors.cstring(
-                                "ERROR: invalid input."))
-                # compute axes permutation
-                lim = np.zeros((len(self.nest), 2), dtype=np.int)
-                for ii in xrange(len(self.nest)):
-                    lim[ii] = np.array(
-                        [lim[ii - 1][1], lim[ii - 1][1] + np.size(self.nest[coorder[ii]].get_dim(split=True))])
-                lim = lim[coorder]
-                reorder = []
-                for ii in xrange(len(self.nest)):
-                    reorder += range(lim[ii][0], lim[ii][1])
-                # permute
-                Tx = np.copy(x)
-                for ii in xrange(len(reorder)):
-                    while(reorder[ii] != ii):
-                        Tx = np.swapaxes(Tx, ii, reorder[ii])
-                        ii_ = reorder[reorder[ii]]
-                        reorder[reorder[ii]] = reorder[ii]
-                        reorder[ii] = ii_
-                # check data type
-                if(codomain.datatype != self.datatype):
-                    about.warnings.cprint("WARNING: ambiguous data type.")
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: unsupported transformation."))
-
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: unsupported transformation."))
-
-        return Tx.astype(codomain.datatype)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_smooth(self, x, sigma=0, **kwargs):
-        """
-            Smoothes an array of field values by convolution with a Gaussian
-            kernel, acting on the innermost subspace only (i.e.\  on the last
-            entry of the `nest` list).
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values to be smoothed.
-            sigma : float, *optional*
-                Standard deviation of the Gaussian kernel, specified in units
-                of length in position space of the innermost subspace; for
-                testing: a sigma of -1 will be reset to a reasonable value
-                (default: 0).
-
-            Returns
-            -------
-            Gx : numpy.ndarray
-                Smoothed array.
-
-            Other parameters
-            ----------------
-            iter : int, *optional*
-                Number of iterations (default: 0).
-        """
-        x = self.enforce_shape(np.array(x, dtype=self.datatype))
-        # check sigma
-        if(sigma == 0):
-            return x
-        else:
-            # reshape
-            subdim = np.prod(self.para[
-                             :-np.size(self.nest[-1].get_dim(split=True))], axis=0, dtype=np.int, out=None)
-            x = x.reshape(
-                [subdim] + self.nest[-1].get_dim(split=True).tolist(), order='C')
-            # smooth
-            return np.array([self.nest[-1].calc_smooth(xx, sigma=sigma, **kwargs) for xx in x], dtype=self.datatype).reshape(self.get_dim(split=True), order='C')
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def calc_power(self, x, **kwargs):
-        """
-            Raises an error since there is no canonical definition for the
-            power spectrum on a generic product space.
-        """
-        raise AttributeError(about._errors.cstring(
-            "ERROR: power spectra ill-defined."))
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-    def __repr__(self):
-        return "<nifty_core.nested_space>"
-
-    def __str__(self):
-        return "nifty_core.nested_space instance\n- nest = " + str(self.nest)
-
-# -----------------------------------------------------------------------------
-
-
-# =============================================================================
 
 class field(object):
     """
@@ -3160,8 +2005,6 @@ class field(object):
     def val(self, x):
         self.__val = self.cast(x)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def _map(self, function, *args):
         return utilities.field_map(self.ishape, function, *args)
 
@@ -3189,7 +2032,7 @@ class field(object):
 
     def _cast_to_scalar_helper(self, x):
         # if x is already a scalar or does fit directly, return it
-        self_shape = tuple(self.domain.get_shape())
+        self_shape = self.domain.get_shape()
         x_shape = np.shape(x)
         if np.isscalar(x) or x_shape == self_shape:
             return x
@@ -3200,7 +2043,7 @@ class field(object):
         except(AttributeError):
             container_Q = False
 
-        if container_Q == True:
+        if container_Q:
             # extract the first element. This works on 0-d ndarrays, too.
             result = x[(0,) * len(x_shape)]
             return result
@@ -3228,13 +2071,13 @@ class field(object):
         # containing something which will then checked by the domain-space
 
         x_shape = np.shape(x)
-        self_shape = tuple(self.domain.get_shape())
+        self_shape = self.domain.get_shape()
         try:
             container_Q = (x.dtype.type == np.object_)
         except(AttributeError):
             container_Q = False
 
-        if container_Q == True:
+        if container_Q:
             if x_shape == ishape:
                 return x
             elif x_shape == ishape[:len(x_shape)]:
@@ -3278,7 +2121,6 @@ class field(object):
 
         return result
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def copy(self, domain=None, codomain=None):
         copied_val = self._map(
             lambda z: self.domain.unary_operation(z, op='copy'),
@@ -3287,7 +2129,6 @@ class field(object):
         new_field.set_val(new_val=copied_val)
         return new_field
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def copy_empty(self, domain=None, codomain=None, ishape=None, **kwargs):
         if domain == None:
             domain = self.domain
@@ -3298,8 +2139,6 @@ class field(object):
         new_field = field(domain=domain, codomain=codomain, ishape=ishape,
                           **kwargs)
         return new_field
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def get_dim(self, split=False):
         """
@@ -3325,8 +2164,6 @@ class field(object):
 
     def get_ishape(self):
         return self.ishape
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def cast_domain(self, newdomain, new_codomain=None, force=True):
         """
@@ -3354,12 +2191,12 @@ class field(object):
         # Check if the newdomain is a space
         if not isinstance(newdomain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        # Check if the datatypes match
-        elif newdomain.datatype != self.domain.datatype:
+        # Check if the dtypes match
+        elif newdomain.dtype != self.domain.dtype:
             raise TypeError(about._errors.cstring(
                 "ERROR: inequal data types '" +
-                str(np.result_type(newdomain.datatype)) +
-                "' and '" + str(np.result_type(self.domain.datatype)) +
+                str(np.result_type(newdomain.dtype)) +
+                "' and '" + str(np.result_type(self.domain.dtype)) +
                 "'."))
         # Check if the total dimensions match
         elif newdomain.get_dim() != self.domain.get_dim():
@@ -3391,8 +2228,6 @@ class field(object):
         else:
             self.set_codomain(new_codomain=new_codomain, force=force)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def set_val(self, new_val=None, copy=False):
         """
             Resets the field values.
@@ -3415,8 +2250,6 @@ class field(object):
 
     def get_val(self):
         return self.val
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def set_domain(self, new_domain=None, force=False):
         if new_domain is None:
@@ -3444,8 +2277,6 @@ class field(object):
             assert(self.domain.check_codomain(new_codomain))
         self.codomain = new_codomain
         return self.codomain
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def weight(self, power=1, overwrite=False):
         """
@@ -3480,8 +2311,6 @@ class field(object):
         new_field.set_val(new_val=new_val)
         return new_field
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def dot(self, x=None, axis=None, bare=False):
         """
             Computes the inner product of the field with a given object
@@ -3509,7 +2338,7 @@ class field(object):
             # if x lives in the cospace, transform it an make a
             # recursive call
             try:
-                if self.domain.fourier != x.domain.fourier:
+                if self.domain.harmonic != x.domain.harmonic:
                     return self.dot(x=x.transform(), axis=axis)
             except(AttributeError):
                 pass
@@ -3520,7 +2349,7 @@ class field(object):
 
         # Case 3: x is something else
         else:
-            # Cast the input in order to cure datatype and shape differences
+            # Cast the input in order to cure dtype and shape differences
             casted_x = self._cast_to_ishape(x)
             # Compute the dot respecting the fact of discrete/continous spaces
             if self.domain.discrete == True or bare == True:
@@ -3556,8 +2385,6 @@ class field(object):
             return (self.dot(x=self))**(1 / 2)
         else:
             return self.dot(x=self**(q - 1))**(1 / q)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def outer_dot(self, x=1, axis=None):
 
@@ -3675,9 +2502,9 @@ class field(object):
         # pseudo inner product (calc_pseudo_dot handles weights)
         else:
             if(np.isscalar(x)):
-                x = np.array([x], dtype=self.domain.datatype)
+                x = np.array([x], dtype=self.domain.dtype)
             else:
-                x = np.array(x, dtype=self.domain.datatype)
+                x = np.array(x, dtype=self.domain.dtype)
 
             if(np.size(x) > self.get_dim(split=False)):
                 raise ValueError(about._errors.cstring(
@@ -3688,8 +2515,6 @@ class field(object):
                 return self.dot(x=x)
             else:
                 return self.domain.calc_pseudo_dot(self.val, x, **kwargs)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def tensor_product(self, x=None):
         if x is None:
@@ -3736,38 +2561,6 @@ class field(object):
 #            new_field.set_val(new_val = new_val)
 #            return new_field
 
-    def tensor_dot_old(self, x=None, **kwargs):
-        """
-            Computes the tensor product of a field defined on a arbitrary domain
-            with a given object defined on another arbitrary domain.
-
-            Parameters
-            ----------
-            x : {scalar, ndarray, field}, *optional*
-                The object with which the inner product is computed
-                (default=None).
-
-            Other Parameters
-            ----------------
-            codomain : space, *optional*
-                space wherein the transform of the output field should live
-                (default: None).
-
-            Returns
-            -------
-            tot : field
-                The result of the tensor product, a field defined over a nested
-                space.
-
-        """
-        if(x is None):
-            return self
-        elif(isinstance(x, field)):
-            return field(nested_space([self.domain, x.domain]), val=np.tensordot(self.val, x.val, axes=0), **kwargs)
-        else:
-            return field(nested_space([self.domain, self.domain]), val=np.tensordot(self.val, self.domain.enforce_values(x, extend=True), axes=0), **kwargs)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def conjugate(self, inplace=False):
         """
@@ -3779,7 +2572,7 @@ class field(object):
                 The complex conjugated field.
 
         """
-        if inplace == True:
+        if inplace:
             work_field = self
         else:
             work_field = self.copy_empty()
@@ -3790,7 +2583,6 @@ class field(object):
         work_field.set_val(new_val=new_val)
 
         return work_field
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def transform(self, codomain=None, overwrite=False,  **kwargs):
         """
@@ -3837,7 +2629,6 @@ class field(object):
         return_field.set_val(new_val=new_val)
 
         return return_field
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def smooth(self, sigma=0, overwrite=False, **kwargs):
         """
@@ -3875,8 +2666,6 @@ class field(object):
 
         new_field.set_val(new_val=new_val)
         return new_field
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def power(self, **kwargs):
         """
@@ -3927,7 +2716,6 @@ class field(object):
             self.get_val())
 
         return power_spectrum
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def hat(self):
         """
@@ -3966,8 +2754,6 @@ class field(object):
                                      diag=(1 / self).get_val(),
                                      bare=False,
                                      ishape=self.ishape)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def plot(self, **kwargs):
         """
@@ -4044,8 +2830,6 @@ class field(object):
         # restore the pylab interactiveness
         pl.matplotlib.interactive(remember_interactive)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     def __repr__(self):
         return "<nifty_core.field>"
 
@@ -4062,8 +2846,6 @@ class field(object):
 
     def __len__(self):
         return int(self.get_dim(split=True)[0])
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     # TODO: Add functionality for boolean indexing.
 
@@ -4117,7 +2899,6 @@ class field(object):
                                                              ishape=np.shape(dummy[key])))
             return gotten
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     def apply_scalar_function(self, function, inplace=False):
         if inplace == True:
             working_field = self
@@ -4130,8 +2911,6 @@ class field(object):
 
         working_field.set_val(data_object)
         return working_field
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _unary_helper(self, x, op, **kwargs):
         result = self._map(
@@ -4186,8 +2965,6 @@ class field(object):
 
     def nanmax(self, **kwargs):
         return self._unary_helper(self.get_val(), op='nanmax', **kwargs)
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def med(self, **kwargs):
         """
@@ -4256,7 +3033,6 @@ class field(object):
         """
         return self._unary_helper(self.get_val(), op='var',
                                   **kwargs)
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def argmin(self, split=True, **kwargs):
         """
@@ -4316,8 +3092,6 @@ class field(object):
             return self._unary_helper(self.get_val(), op='argmax_flat',
                                       **kwargs)
 
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
     # TODO: Implement the full range of unary and binary operotions
 
     def __pos__(self):
@@ -4337,8 +3111,6 @@ class field(object):
         new_val = self._unary_helper(self.get_val(), op='abs')
         new_field.set_val(new_val=new_val)
         return new_field
-
-    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def _binary_helper(self, other, op='None', inplace=False):
         # the other object could be a field/operator. Try to extract its data.
@@ -4434,4 +3206,4 @@ class field(object):
         return self._binary_helper(other, op='gt')
 
 
-# =============================================================================
+

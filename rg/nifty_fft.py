@@ -116,8 +116,7 @@ class _fftw_plan_and_info(object):
 
         self.global_input_shape = domain.get_shape()
         self.global_output_shape = codomain.get_shape()
-        self.fftw_local_size = pyfftw.local_size(
-            self.global_input_shape)
+        self.fftw_local_size = pyfftw.local_size(self.global_input_shape)
 
         self.in_zero_centered_dimensions = domain.paradict['zerocenter']
         self.out_zero_centered_dimensions = codomain.paradict['zerocenter']
@@ -126,7 +125,7 @@ class _fftw_plan_and_info(object):
                                                self.global_input_shape[1:])
         self.offsetQ = self.fftw_local_size[2] % 2
 
-        if codomain.fourier:
+        if codomain.harmonic:
             self.direction = 'FFTW_FORWARD'
         else:
             self.direction = 'FFTW_BACKWARD'
@@ -323,9 +322,9 @@ class fft_fftw(fft):
         # Prepare the input data
         # Case 1: val is a distributed_data_object
         if isinstance(val, distributed_data_object):
-            return_val = val.copy_empty(global_shape=tuple(
-                current_plan_and_info.global_output_shape),
-                dtype=np.complex128)
+            return_val = val.copy_empty(
+                        global_shape=current_plan_and_info.global_output_shape,
+                        dtype=np.complex128)
             # If the distribution strategy of the d2o is fftw, extract
             # the data directly
             if val.distribution_strategy == 'fftw':
@@ -374,8 +373,7 @@ class fft_fftw(fft):
         # will produce a NameError
         except(NameError):
             return_val = distributed_data_object(
-                global_shape=tuple(
-                    current_plan_and_info.global_output_shape),
+                global_shape=current_plan_and_info.global_output_shape,
                 dtype=np.complex128,
                 distribution_strategy='fftw')
             return_val.set_local_data(data=result)
@@ -423,8 +421,8 @@ class fft_gfft(fft):
             result : np.ndarray
                 Fourier-transformed pendant of the input field.
         """
-        naxes = (np.size(domain.para) - 1) // 2
-        if(codomain.fourier):
+        naxes = len(domain.get_shape())
+        if codomain.harmonic:
             ftmachine = "fft"
         else:
             ftmachine = "ifft"
@@ -435,7 +433,7 @@ class fft_gfft(fft):
         else:
             temp = val
         # transform and return
-        if(domain.datatype == np.float64):
+        if(domain.dtype == np.float64):
             temp = self.fft_machine.gfft(
                                      temp.astype(np.complex128),
                                      in_ax=[],

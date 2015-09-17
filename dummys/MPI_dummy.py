@@ -16,7 +16,11 @@ MAX = np.max
 SUM = np.sum
 
 
-class _COMM_WORLD():
+class Comm(object):
+    pass
+
+
+class Intracomm(Comm):
     def __init__(self):
         self.rank = 0
         self.size = 1
@@ -111,4 +115,4 @@ COMPLEX = _datatype("MPI_COMPLEX")
 DOUBLE_COMPLEX = _datatype("MPI_DOUBLE_COMPLEX")
 
 
-COMM_WORLD = _COMM_WORLD()
+COMM_WORLD = Intracomm()
