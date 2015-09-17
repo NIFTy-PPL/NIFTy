@@ -1551,7 +1551,7 @@ class point_space(space):
             #         deviation or variance
             elif arg[0] == 'gau':
                 var = arg[3]
-                if np.isscalar(var) == True or var is None:
+                if np.isscalar(var) or var is None:
                     processed_var = var
                 else:
                     try:

@@ -101,7 +101,7 @@ def run(projection=False, power=False):
     z_space = rg_space([768, 384], dist=[1/360, 1/180])
     m5 = m1.transform(y_space)
     m5.cast_domain(z_space)
-    m5.set_val(np.roll(m5.val[::-1, ::-1], y_space.nlon()//2, axis=1)) # rearrange value array
+    m5.set_val(np.roll(m5.val[::-1, ::-1], y_space.paradict['nlon']//2, axis=1)) # rearrange value array
     m5.plot(title=r"$m$ on a regular 2D grid", **nicely)
 
     if(power):

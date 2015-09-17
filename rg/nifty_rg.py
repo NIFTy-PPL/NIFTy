@@ -360,10 +360,12 @@ class rg_space(point_space):
             return False
 
         if not isinstance(codomain, rg_space):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            raise TypeError(about._errors.cstring(
+                "ERROR: The given codomain must be a nifty rg_space."))
 
         if self.datamodel is not codomain.datamodel:
             return False
+
         # check number of number and size of axes
         if not np.all(np.array(self.paradict['num']) ==
                       np.array(codomain.paradict['num'])):
@@ -413,7 +415,7 @@ class rg_space(point_space):
 
         return True
 
-    def get_codomain(self, coname=None, cozerocenter=None, **kwargs):
+    def get_codomain(self, cozerocenter=None, **kwargs):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  either a shifted grid or a Fourier conjugate
@@ -466,16 +468,7 @@ class rg_space(point_space):
         datamodel = self.datamodel
 
         complexity = {0: 1, 1: 0, 2: 2}[self.paradict['complexity']]
-
-        if coname is None:
-            harmonic = bool(not self.harmonic)
-        elif coname[0] == 'f':
-            harmonic = True
-        elif coname[0] == 'i':
-            harmonic = False
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Unknown coname keyword"))
+        harmonic = bool(not self.harmonic)
 
         new_space = rg_space(num,
                              zerocenter=cozerocenter,
@@ -869,17 +862,13 @@ class rg_space(point_space):
             codomain = self.get_codomain()
 
         # Check if the given codomain is suitable for the transformation
-        if (not isinstance(codomain, rg_space)) or \
-                (not self.check_codomain(codomain)):
+        if not self.check_codomain(codomain):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
+
         if codomain.harmonic:
             # correct for forward fft
             x = self.calc_weight(x, power=1)
-
-#            ## correct for inverse fft
-#            x = self.calc_weight(x, power=1)
-#            x *= self.get_dim(split=False)
 
         # Perform the transformation
         Tx = self.fft_machine.transform(val=x, domain=self, codomain=codomain,

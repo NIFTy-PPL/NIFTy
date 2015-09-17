@@ -35,7 +35,6 @@ from __future__ import division
 
 import os
 import numpy as np
-from numpy import pi
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
@@ -123,7 +122,7 @@ class lm_space(point_space):
     """
 
     def __init__(self, lmax, mmax=None, dtype=np.dtype('complex128'),
-                 datamodel='np'):
+                 datamodel='np', comm=gc['default_comm']):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -176,6 +175,7 @@ class lm_space(point_space):
         self.discrete = True
         self.harmonic = True
         self.distances = (np.float(1),)
+        self.comm = self._parse_comm(comm)
 
         self.power_indices = lm_power_indices(
                     lmax=self.paradict['lmax'],
@@ -200,92 +200,10 @@ class lm_space(point_space):
                         mmax=self.paradict['mmax'],
                         dtype=self.dtype)
 
-#    def _enforce_shape(self, x):
-#        """
-#            Shapes an array of valid field values correctly, according to the
-#            specifications of the space instance.
-#
-#            Parameters
-#            ----------
-#            x : numpy.ndarray
-#                Array containing the field values to be put into shape.
-#
-#            Returns
-#            -------
-#            y : numpy.ndarray
-#                Correctly shaped array.
-#        """
-#        about.warnings.cprint("WARNING: enforce_shape is deprecated!")
-#
-#        x = np.array(x)
-#        if(np.size(x) != self.get_dim(split=False)):
-#            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( " +
-#                                                   str(np.size(x)) + " <> " + str(self.get_dim(split=False)) + " )."))
-#        elif(not np.all(np.array(np.shape(x))==self.get_dim(split=True))):
-#            about.warnings.cprint("WARNING: reshaping forced.")
-#
-#        return x.reshape(self.get_dim(split=True), order='C')
-
-#    def lmax(self):
-#        """
-#            Returns the maximum quantum number :math:`\ell`.
-#
-#            Returns
-#            -------
-#            lmax : int
-#                Maximum quantum number :math:`\ell`.
-#        """
-#        return self.paradict['lmax']
-#
-#    def mmax(self):
-#        """
-#            Returns the maximum quantum number :math:`m`.
-#
-#            Returns
-#            -------
-#            mmax : int
-#                Maximum quantum number :math:`m`.
-#
-#        """
-#        return self.paradict['mmax']
-
     def get_shape(self):
         mmax = self.paradict['mmax']
         lmax = self.paradict['lmax']
         return (np.int((mmax + 1) * (lmax + 1) - ((lmax + 1) * lmax) // 2),)
-
-# -> inherited
-#    def get_dim(self, split=False):
-#        """
-#            Computes the dimension of the space, i.e.\  the number of spherical
-#            harmonics components that are stored.
-#
-#            Parameters
-#            ----------
-#            split : bool, *optional*
-#                Whether to return the dimension as an array with one component
-#                or as a scalar (default: False).
-#
-#            Returns
-#            -------
-#            dim : {int, numpy.ndarray}
-#                Number of spherical harmonics components.
-#
-#            Notes
-#            -----
-#            Due to the symmetry assumption, only the components with
-#            non-negative :math:`m` are stored and only these components are
-#            counted here.
-#        """
-#        # dim = (mmax+1)*(lmax-mmax/2+1)
-#        if(split):
-#            return self.get_shape()
-#            # return
-#            # np.array([(self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2],dtype=np.int)
-#        else:
-#            return np.prod(self.get_shape())
-#            # return
-#            # (self.para[0]+1)*(self.para[1]+1)-(self.para[1]+1)*self.para[1]//2
 
     def get_dof(self, split=False):
         """
@@ -344,159 +262,29 @@ class lm_space(point_space):
             mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
             return mol
 
+    def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
+        raise NotImplementedError
+
+    def _cast_to_np(self, x, dtype=None, hermitianize=True, **kwargs):
+        casted_x = super(lm_space, self)._cast_to_np(x=x,
+                                                     dtype=dtype,
+                                                     **kwargs)
+        complexity_mask = np.iscomplex(casted_x[:self.paradict['lmax']+1])
+        if np.any(complexity_mask):
+            about.warnings.cprint("WARNING: Taking only the real parts for " +
+                                  "all complex entries where lmax==0")
+            casted_x[complexity_mask] = np.abs(casted_x[complexity_mask])
+        return casted_x
+
     # TODO: Extend to binning/log
-    def enforce_power(self, spec):
-        size = self.paradict['lmax'] + 1
-        kindex = np.arange(size, dtype=np.array(self.distances).dtype)
+    def enforce_power(self, spec, size=None, kindex=None):
+        if kindex is None:
+            kindex_size = self.paradict['lmax'] + 1
+            kindex = np.arange(kindex_size,
+                               dtype=np.array(self.distances).dtype)
         return self._enforce_power_helper(spec=spec,
                                           size=size,
                                           kindex=kindex)
-
-    def _getlm(self):  # > compute all (l,m)
-        index = np.arange(self.get_dim())
-        n = 2 * self.paradict['lmax'] + 1
-        m = np.ceil(
-            (n - np.sqrt(n**2 - 8 * (index - self.paradict['lmax']))) / 2
-                    ).astype(np.int)
-        l = index - self.paradict['lmax'] * m + m * (m - 1) // 2
-        return l, m
-
-    def _enforce_values(self, x, extend=True):
-        """
-            Computes valid field values from a given object, taking into
-            account data types, size, and hermitian symmetry.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Array containing the valid field values.
-
-            Other parameters
-            ----------------
-            extend : bool, *optional*
-                Whether a scalar is extented to a constant array or not
-                (default: True).
-        """
-        if(isinstance(x, field)):
-            if(self == x.domain):
-                if(self.dtype is not x.domain.dtype):
-                    raise TypeError(about._errors.cstring("ERROR: inequal data types ( '" + str(
-                        np.result_type(self.dtype)) + "' <> '" + str(np.result_type(x.domain.dtype)) + "' )."))
-                else:
-                    x = np.copy(x.val)
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: inequal domains."))
-        else:
-            if(np.size(x) == 1):
-                if(extend):
-                    x = self.dtype(
-                        x) * np.ones(self.get_dim(split=True), dtype=self.dtype, order='C')
-                else:
-                    if(np.isscalar(x)):
-                        x = np.array([x], dtype=self.dtype)
-                    else:
-                        x = np.array(x, dtype=self.dtype)
-            else:
-                x = self._enforce_shape(np.array(x, dtype=self.dtype))
-
-        if(np.size(x) != 1)and(np.any(x.imag[:self.para[0] + 1] != 0)):
-            about.warnings.cprint("WARNING: forbidden values reset.")
-            x.real[:self.para[0] + 1] = np.absolute(x[:self.para[0] + 1]) * (np.sign(x.real[:self.para[0] + 1]) + (
-                np.sign(x.real[:self.para[0] + 1]) == 0) * np.sign(x.imag[:self.para[0] + 1])).astype(np.int)
-            x.imag[:self.para[0] + 1] = 0  # x.imag[l,m==0] = 0
-
-        # check finiteness
-        if(not np.all(np.isfinite(x))):
-            about.warnings.cprint("WARNING: infinite value(s).")
-
-        return x
-
-    def get_random_values(self, **kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters, taking into account complex-valuedness and
-            hermitian symmetry.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        arg = random.parse_arguments(self, **kwargs)
-
-        if(arg is None):
-            return np.zeros(self.get_dim(split=True), dtype=self.dtype, order='C')
-
-        elif(arg[0] == "pm1"):
-            x = random.pm1(dtype=self.dtype, shape=self.get_dim(split=True))
-
-        elif(arg[0] == "gau"):
-            x = random.gau(dtype=self.dtype, shape=self.get_dim(
-                split=True), mean=None, dev=arg[2], var=arg[3])
-
-        elif(arg[0] == "syn"):
-            lmax = self.para[0]  # lmax
-            if(self.dtype == np.dtype('complex64')):
-                if 'libsharp_wrapper_gl' in gdi:  # default
-                    x = gl.synalm_f(arg[1], lmax=lmax, mmax=lmax)
-                else:
-                    x = hp.synalm(arg[1].astype(np.complex128), lmax=lmax, mmax=lmax).astype(
-                        np.complex64)  # FIXME: `verbose` kwarg
-            else:
-                if 'healpy' in gdi:  # default
-                    # FIXME: `verbose` kwarg
-                    x = hp.synalm(arg[1], lmax=lmax, mmax=lmax)
-                else:
-                    x = gl.synalm(arg[1], lmax=lmax, mmax=lmax)
-
-            return x
-
-        elif(arg[0] == "uni"):
-            x = random.uni(dtype=self.dtype, shape=self.get_dim(
-                split=True), vmin=arg[1], vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
-
-        if(np.any(x.imag[:self.para[0] + 1] != 0)):
-            x.real[:self.para[0] + 1] = np.absolute(x[:self.para[0] + 1]) * (np.sign(x.real[:self.para[0] + 1]) + (
-                np.sign(x.real[:self.para[0] + 1]) == 0) * np.sign(x.imag[:self.para[0] + 1])).astype(np.int)
-            x.imag[:self.para[0] + 1] = 0  # x.imag[l,m==0] = 0
-
-        return x
 
     def check_codomain(self, codomain):
         """
@@ -521,29 +309,28 @@ class lm_space(point_space):
         if codomain is None:
             return False
 
-        if(not isinstance(codomain, space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+        if not isinstance(codomain, space):
+            raise TypeError(about._errors.cstring(
+                "ERROR: The given codomain must be a nifty lm_space."))
 
         if self.datamodel is not codomain.datamodel:
             return False
 
-        if(self == codomain):
-            return True
-
-        elif(isinstance(codomain, gl_space)):
-            # lmax==mmax                         nlat==lmax+1
+        elif isinstance(codomain, gl_space):
+            # lmax==mmax
+            # nlat==lmax+1
             # nlon==2*lmax+1
-            if(self.para[0] == self.para[1])and(codomain.para[0] == self.para[0] + 1)and(codomain.para[1] == 2 * self.para[0] + 1):
+            if ((self.paradict['lmax'] == self.paradict['mmax']) and
+                    (codomain.paradict['nlat'] == self.paradict['lmax']+1) and
+                    (codomain.paradict['nlon'] == 2*self.paradict['lmax']+1)):
                 return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
 
-        elif(isinstance(codomain, hp_space)):
-            # lmax==mmax                        3*nside-1==lmax
-            if(self.para[0] == self.para[1])and(3 * codomain.para[0] - 1 == self.para[0]):
+        elif isinstance(codomain, hp_space):
+            # lmax==mmax
+            # 3*nside-1==lmax
+            if ((self.paradict['lmax'] == self.paradict['mmax']) and
+                    (3*codomain.paradict['nside']-1 == self.paradict['lmax'])):
                 return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
 
         return False
 
@@ -573,36 +360,111 @@ class lm_space(point_space):
             .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
                    High-Resolution Discretization and Fast Analysis of Data
                    Distributed on the Sphere", *ApJ* 622..759G.
-            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013,
+                   "Libsharp - spherical
                    harmonic transforms revisited";
                    `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         """
-        if(coname == "gl")or(coname is None)and(about.lm2gl.status):  # order matters
-            if(self.dtype == np.dtype('complex64')):
-                # nlat,nlon = lmax+1,2*lmax+1
-                return gl_space(self.para[0] + 1, nlon=2 * self.para[0] + 1, dtype=np.float32)
+        if coname == 'gl' or (coname is None and gc['lm2gl']):
+            if self.dtype == np.dtype('complex64'):
+                new_dtype = np.float32
+            elif self.dtype == np.dtype('complex128'):
+                new_dtype = np.float64
             else:
-                # nlat,nlon = lmax+1,2*lmax+1
-                return gl_space(self.para[0] + 1, nlon=2 * self.para[0] + 1, dtype=np.float64)
-
-        elif(coname == "hp")or(coname is None)and(not about.lm2gl.status):
-            return hp_space((self.para[0] + 1) // 3)  # nside = (lmax+1)/3
-
+                raise NotImplementedError
+            nlat = self.paradict['lmax'] + 1
+            nlon = self.paradict['lmax'] * 2 + 1
+            return gl_space(nlat=nlat, nlon=nlon, dtype=new_dtype)
+        elif coname == 'hp' or (coname is None and not gc['lm2gl']):
+            nside = (self.paradict['lmax']+1) // 3
+            return hp_space(nside=nside)
         else:
             raise ValueError(about._errors.cstring(
-                "ERROR: unsupported or incompatible space '" + coname + "'."))
+                "ERROR: unsupported or incompatible codomain '"+coname+"'."))
 
+    def get_random_values(self, **kwargs):
+        """
+            Generates random field values according to the specifications given
+            by the parameters, taking into account complex-valuedness and
+            hermitian symmetry.
 
+            Returns
+            -------
+            x : numpy.ndarray
+                Valid field values.
 
-    def _dotlm(self, x, y):  # > compute inner product
-        dot = np.sum(x.real[:self.para[0] + 1] *
-                     y.real[:self.para[0] + 1], axis=None, dtype=None, out=None)
-        dot += 2 * np.sum(x.real[self.para[0] + 1:] *
-                          y.real[:self.para[0] + 1:], axis=None, dtype=None, out=None)
-        dot += 2 * np.sum(x.imag[self.para[0] + 1:] *
-                          y.imag[:self.para[0] + 1:], axis=None, dtype=None, out=None)
-        return dot
+            Other parameters
+            ----------------
+            random : string, *optional*
+                Specifies the probability distribution from which the random
+                numbers are to be drawn.
+                Supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+                - "gau" (normal distribution with zero-mean and a given
+                    standard
+                    deviation or variance)
+                - "syn" (synthesizes from a given power spectrum)
+                - "uni" (uniform distribution over [vmin,vmax[)
+
+                (default: None).
+            dev : float, *optional*
+                Standard deviation (default: 1).
+            var : float, *optional*
+                Variance, overriding `dev` if both are specified
+                (default: 1).
+            spec : {scalar, list, numpy.array, nifty.field, function},
+                *optional*
+                Power spectrum (default: 1).
+            vmin : float, *optional*
+                Lower limit for a uniform distribution (default: 0).
+            vmax : float, *optional*
+                Upper limit for a uniform distribution (default: 1).
+        """
+        arg = random.parse_arguments(self, **kwargs)
+
+        if arg is None:
+            return np.zeros(self.get_shape(), dtype=self.dtype)
+
+        elif arg[0] == "pm1":
+            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+            return self.cast(x)
+
+        elif arg[0] == "gau":
+            x = random.gau(dtype=self.dtype,
+                           shape=self.get_shape(),
+                           mean=arg[1],
+                           dev=arg[2],
+                           var=arg[3])
+            return self.cast(x)
+
+        elif arg[0] == "syn":
+            lmax = self.paradict['lmax']
+            mmax = self.paradict['mmax']
+            if self.dtype == np.dtype('complex64'):
+                if 'libsharp_wrapper_gl' in gdi:
+                    x = gl.synalm_f(arg[1], lmax=lmax, mmax=mmax)
+                else:
+                    x = hp.synalm(arg[1].astype(np.complex128),
+                                  lmax=lmax, mmax=mmax).astype(np.complex64)
+            else:
+                if 'healpy' in gdi:
+                    x = hp.synalm(arg[1], lmax=lmax, mmax=mmax)
+                else:
+                    x = gl.synalm(arg[1], lmax=lmax, mmax=mmax)
+            return x
+
+        elif arg[0] == "uni":
+            x = random.uni(dtype=self.dtype,
+                           shape=self.get_shape(),
+                           vmin=arg[1],
+                           vmax=arg[2])
+            return self.cast(x)
+
+        else:
+            raise KeyError(about._errors.cstring(
+                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
 
     def calc_dot(self, x, y):
         """
@@ -621,16 +483,25 @@ class lm_space(point_space):
             dot : scalar
                 Inner product of the two arrays.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
-        y = self._enforce_shape(np.array(y, dtype=self.dtype))
-        # inner product
-        if 'libsharp_wrapper_gl' in gdi:  # default
-            if(self.dtype == np.dtype('complex64')):
-                return gl.dotlm_f(x, y, lmax=self.para[0], mmax=self.para[1])
+        x = self.cast(x)
+        y = self.cast(y)
+
+        if 'libsharp_wrapper_gl' in gdi:
+            lmax = self.paradict['lmax']
+            mmax = self.paradict['mmax']
+            if self.dtype == np.dtype('complex64'):
+                return gl.dotlm_f(x, y, lmax=lmax, mmax=mmax)
             else:
-                return gl.dotlm(x, y, lmax=self.para[0], mmax=self.para[1])
+                return gl.dotlm(x, y, lmax=lmax, mmax=mmax)
         else:
             return self._dotlm(x, y)
+
+    def _dotlm(self, x, y):
+        lmax = self.paradict['lmax']
+        dot = np.sum(x.real[:lmax + 1] * y.real[:lmax + 1])
+        dot += 2 * np.sum(x.real[lmax + 1:] * y.real[lmax + 1:])
+        dot += 2 * np.sum(x.imag[lmax + 1:] * y.imag[lmax + 1:])
+        return dot
 
     def calc_transform(self, x, codomain=None, **kwargs):
         """
@@ -649,34 +520,43 @@ class lm_space(point_space):
             Tx : numpy.ndarray
                 Transformed array
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
 
-        if(codomain is None):
-            return x  # T == id
+        if codomain is None:
+            codomain = self.get_codomain()
 
-        # check codomain
-        self.check_codomain(codomain)  # a bit pointless
+        # Check if the given codomain is suitable for the transformation
+        if not self.check_codomain(codomain):
+            raise ValueError(about._errors.cstring(
+                "ERROR: unsupported codomain."))
 
-        if(self == codomain):
-            return x  # T == id
+        if isinstance(codomain, gl_space):
+            nlat = codomain.paradict['nlat']
+            nlon = codomain.paradict['nlon']
+            lmax = self.paradict['lmax']
+            mmax = self.paradict['mmax']
 
-        elif(isinstance(codomain, gl_space)):
             # transform
-            if(self.dtype == np.dtype('complex64')):
-                Tx = gl.alm2map_f(x, nlat=codomain.para[0], nlon=codomain.para[
-                                  1], lmax=self.para[0], mmax=self.para[1], cl=False)
+            if self.dtype == np.dtype('complex64'):
+                Tx = gl.alm2map_f(x, nlat=nlat, nlon=nlon,
+                                  lmax=lmax, mmax=mmax, cl=False)
             else:
-                Tx = gl.alm2map(x, nlat=codomain.para[0], nlon=codomain.para[
-                                1], lmax=self.para[0], mmax=self.para[1], cl=False)
-            # weight if discrete
-            if(codomain.discrete):
+                Tx = gl.alm2map(x, nlat=nlat, nlon=nlon,
+                                lmax=lmax, mmax=mmax, cl=False)
+            # re-weight if discrete
+            if codomain.discrete:
                 Tx = codomain.calc_weight(Tx, power=0.5)
 
-        elif(isinstance(codomain, hp_space)):
+        elif isinstance(codomain, hp_space):
+            nside = codomain.paradict['nside']
+            lmax = self.paradict['lmax']
+            mmax = self.paradict['mmax']
+
             # transform
-            Tx = hp.alm2map(x.astype(np.complex128), codomain.para[0], lmax=self.para[0], mmax=self.para[
-                            1], pixwin=False, fwhm=0.0, sigma=None, invert=False, pol=True, inplace=False)  # FIXME: `verbose` kwarg
-            # weight if discrete
+            Tx = hp.alm2map(x.astype(np.complex128), nside, lmax=lmax,
+                            mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
+                            invert=False, pol=True, inplace=False)
+            # re-weight if discrete
             if(codomain.discrete):
                 Tx = codomain.calc_weight(Tx, power=0.5)
 
@@ -705,22 +585,23 @@ class lm_space(point_space):
             Gx : numpy.ndarray
                 Smoothed array.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
         # check sigma
-        if(sigma == 0):
+        if sigma == 0:
             return x
-        elif(sigma == -1):
+        elif sigma == -1:
             about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = 4.5 / (self.para[0] + 1)  # sqrt(2)*pi/(lmax+1)
-        elif(sigma < 0):
+            sigma = np.sqrt(2) * np.pi / (self.paradict['lmax'] + 1)
+        elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        # smooth
-        if 'healpy' in gdi:  # default
-            # no overwrite
-            return hp.smoothalm(x, fwhm=0.0, sigma=sigma, invert=False, pol=True, mmax=self.para[1], verbose=False, inplace=False)
+        if 'healpy' in gdi:
+            return hp.smoothalm(x, fwhm=0.0, sigma=sigma, invert=False,
+                                pol=True, mmax=self.paradict['mmax'],
+                                verbose=False, inplace=False)
         else:
-            # no overwrite
-            return gl.smoothalm(x, lmax=self.para[0], mmax=self.para[1], fwhm=0.0, sigma=sigma, overwrite=False)
+            return gl.smoothalm(x, lmax=self.paradict['lmax'],
+                                mmax=self.paradict['mmax'],
+                                fwhm=0.0, sigma=sigma, overwrite=False)
 
     def calc_power(self, x, **kwargs):
         """
@@ -737,20 +618,28 @@ class lm_space(point_space):
             spec : numpy.ndarray
                 Power contained in the input array.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
-        # power spectrum
-        if(self.dtype == np.dtype('complex64')):
-            if 'libsharp_wrapper_gl' in gdi:  # default
-                return gl.anaalm_f(x, lmax=self.para[0], mmax=self.para[1])
-            else:
-                return hp.alm2cl(x.astype(np.complex128), alms2=None, lmax=self.para[0], mmax=self.para[1], lmax_out=self.para[0], nspec=None).astype(np.float32)
-        else:
-            if 'healpy' in gdi:  # default
-                return hp.alm2cl(x, alms2=None, lmax=self.para[0], mmax=self.para[1], lmax_out=self.para[0], nspec=None)
-            else:
-                return gl.anaalm(x, lmax=self.para[0], mmax=self.para[1])
+        x = self.cast(x)
+        lmax = self.paradict['lmax']
+        mmax = self.paradict['mmax']
 
-    def get_plot(self, x, title="", vmin=None, vmax=None, power=True, norm=None, cmap=None, cbar=True, other=None, legend=False, mono=True, **kwargs):
+        # power spectrum
+        if self.dtype == np.dtype('complex64'):
+            if 'libsharp_wrapper_gl' in gdi:
+                return gl.anaalm_f(x, lmax=lmax, mmax=mmax)
+            else:
+                return hp.alm2cl(x.astype(np.complex128), alms2=None,
+                                 lmax=lmax, mmax=mmax, lmax_out=lmax,
+                                 nspec=None).astype(np.float32)
+        else:
+            if 'healpy' in gdi:
+                return hp.alm2cl(x, alms2=None, lmax=lmax, mmax=mmax,
+                                 lmax_out=lmax, nspec=None)
+            else:
+                return gl.anaalm(x, lmax=lmax, mmax=mmax)
+
+    def get_plot(self, x, title="", vmin=None, vmax=None, power=True,
+                 norm=None, cmap=None, cbar=True, other=None, legend=False,
+                 mono=True, **kwargs):
         """
             Creates a plot of field values according to the specifications
             given by the parameters.
@@ -934,12 +823,20 @@ class lm_space(point_space):
         return "<nifty_lm.lm_space>"
 
     def __str__(self):
-        return "nifty_lm.lm_space instance\n- lmax     = " + str(self.para[0]) + "\n- mmax     = " + str(self.para[1]) + "\n- dtype = numpy." + str(np.result_type(self.dtype))
+        return ("nifty_lm.lm_space instance\n- lmax     = " +
+                str(self.paradict['lmax']) +
+                "\n- mmax     = " + str(self.paradict['mmax']) +
+                "\n- dtype    = " + str(self.dtype))
 
-# -----------------------------------------------------------------------------
+    def getlm(self):  # > compute all (l,m)
+        index = np.arange(self.get_dim())
+        n = 2 * self.paradict['lmax'] + 1
+        m = np.ceil(
+            (n - np.sqrt(n**2 - 8 * (index - self.paradict['lmax']))) / 2
+                    ).astype(np.int)
+        l = index - self.paradict['lmax'] * m + m * (m - 1) // 2
+        return l, m
 
-
-# -----------------------------------------------------------------------------
 
 class gl_space(point_space):
     """
@@ -995,7 +892,7 @@ class gl_space(point_space):
     """
 
     def __init__(self, nlat, nlon=None, dtype=np.dtype('float'),
-                 datamodel='np'):
+                 datamodel='np', comm=gc['default_comm']):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -1046,6 +943,7 @@ class gl_space(point_space):
         self.distances = tuple(gl.vol(self.paradict['nlat'],
                                       nlon=self.paradict['nlon']
                                       ).astype(np.float))
+        self.comm = self._parse_comm(comm)
 
     @property
     def para(self):
@@ -1058,85 +956,13 @@ class gl_space(point_space):
         self.paradict['nlat'] = x[0]
         self.paradict['nlon'] = x[1]
 
-    def _enforce_shape(self, x):
-        """
-            Shapes an array of valid field values correctly, according to the
-            specifications of the space instance.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values to be put into shape.
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Correctly shaped array.
-        """
-        about.warnings.cprint("WARNING: enforce_shape is deprecated!")
-
-        x = np.array(x)
-        if(np.size(x) != self.get_dim(split=False)):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( " +
-                                                   str(np.size(x)) + " <> " + str(self.get_dim(split=False)) + " )."))
-#        elif(not np.all(np.array(np.shape(x))==self.get_dim(split=True))):
-#            about.warnings.cprint("WARNING: reshaping forced.")
-
-        return x.reshape(self.get_dim(split=True), order='C')
-
     def copy(self):
         return gl_space(nlat=self.paradict['nlat'],
                         nlon=self.paradict['nlon'],
                         dtype=self.dtype)
 
-    def nlat(self):
-        """
-            Returns the number of latitudinal bins.
-
-            Returns
-            -------
-            nlat : int
-                Number of latitudinal bins, or rings.
-        """
-        return self.paradict['nlat']
-
-    def nlon(self):
-        """
-            Returns the number of longitudinal bins.
-
-            Returns
-            -------
-            nlon : int
-                Number of longitudinal bins.
-        """
-        return self.paradict['nlon']
-
     def get_shape(self):
         return (np.int((self.paradict['nlat'] * self.paradict['nlon'])),)
-
-# -> inherited
-#    def get_dim(self, split=False):
-#        """
-#            Computes the dimension of the space, i.e.\  the number of pixels.
-#
-#            Parameters
-#            ----------
-#            split : bool, *optional*
-#                Whether to return the dimension as an array with one component
-#                or as a scalar (default: False).
-#
-#            Returns
-#            -------
-#            dim : {int, numpy.ndarray}
-#                Dimension of the space.
-#        """
-#        # dim = nlat*nlon
-#        if(split):
-#            return self.get_shape()
-#            # return np.array([self.para[0]*self.para[1]],dtype=np.int)
-#        else:
-#            return np.prod(self.get_shape())
-#            # return self.para[0]*self.para[1]
 
     def get_dof(self, split=False):
         """
@@ -1155,13 +981,106 @@ class gl_space(point_space):
         # dof = dim
         return self.get_dim(split=split)
 
+    def get_meta_volume(self, split=False):
+        """
+            Calculates the meta volumes.
+
+            The meta volumes are the volumes associated with each component of
+            a field, taking into account field components that are not
+            explicitly included in the array of field values but are determined
+            by symmetry conditions.
+
+            Parameters
+            ----------
+            total : bool, *optional*
+                Whether to return the total meta volume of the space or the
+                individual ones of each field component (default: False).
+
+            Returns
+            -------
+            mol : {numpy.ndarray, float}
+                Meta volume of the field components or the complete space.
+
+            Notes
+            -----
+            For Gauss-Legendre pixelizations, the meta volumes are the pixel
+            sizes.
+        """
+        if not split:
+            return np.float(4 * np.pi)
+        else:
+            mol = self.cast(1, dtype=np.float)
+            return self.calc_weight(mol, power=1)
+
     # TODO: Extend to binning/log
-    def enforce_power(self, spec):
-        size = self.paradict['nlat']
-        kindex = np.arange(size, dtype=np.array(self.distances).dtype)
+    def enforce_power(self, spec, size=None, kindex=None):
+        if kindex is None:
+            kindex_size = self.paradict['nlat']
+            kindex = np.arange(kindex_size,
+                               dtype=np.array(self.distances).dtype)
         return self._enforce_power_helper(spec=spec,
                                           size=size,
                                           kindex=kindex)
+
+    def check_codomain(self, codomain):
+        """
+            Checks whether a given codomain is compatible to the space or not.
+
+            Parameters
+            ----------
+            codomain : nifty.space
+                Space to be checked for compatibility.
+
+            Returns
+            -------
+            check : bool
+                Whether or not the given codomain is compatible to the space.
+
+            Notes
+            -----
+            Compatible codomains are instances of :py:class:`gl_space` and
+            :py:class:`lm_space`.
+        """
+        if not isinstance(codomain, space):
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+
+        if codomain is None:
+            return False
+
+        if self.datamodel is not codomain.datamodel:
+            return False
+
+        if isinstance(codomain, lm_space):
+            nlat = self.paradict['nlat']
+            nlon = self.paradict['nlon']
+            lmax = codomain.paradict['lmax']
+            mmax = codomain.paradict['mmax']
+            # nlon==2*lat-1
+            # lmax==nlat-1
+            # lmax==mmax
+            if (nlon == 2*nlat-1) and (lmax == nlat-1) and (lmax == mmax):
+                return True
+
+        return False
+
+    def get_codomain(self, **kwargs):
+        """
+            Generates a compatible codomain to which transformations are
+            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+
+            Returns
+            -------
+            codomain : nifty.lm_space
+                A compatible codomain.
+        """
+        nlat = self.paradict['nlat']
+        lmax = nlat-1
+        mmax = nlat-1
+        # lmax,mmax = nlat-1,nlat-1
+        if self.dtype == np.dtype('float32'):
+            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex64)
+        else:
+            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex128)
 
     def get_random_values(self, **kwargs):
         """
@@ -1204,125 +1123,42 @@ class gl_space(point_space):
         arg = random.parse_arguments(self, **kwargs)
 
         if(arg is None):
-            x = np.zeros(self.get_dim(split=True), dtype=self.dtype, order='C')
+            x = np.zeros(self.get_shape(), dtype=self.dtype)
 
         elif(arg[0] == "pm1"):
-            x = random.pm1(dtype=self.dtype, shape=self.get_dim(split=True))
+            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
 
         elif(arg[0] == "gau"):
-            x = random.gau(dtype=self.dtype, shape=self.get_dim(
-                split=True), mean=None, dev=arg[2], var=arg[3])
+            x = random.gau(dtype=self.dtype,
+                           shape=self.get_shape(),
+                           mean=arg[1], dev=arg[2], var=arg[3])
 
         elif(arg[0] == "syn"):
-            lmax = self.para[0] - 1  # nlat-1
-            if(self.dtype == np.dtype('float32')):
-                x = gl.synfast_f(arg[1], nlat=self.para[0], nlon=self.para[
-                                 1], lmax=lmax, mmax=lmax, alm=False)
+            nlat = self.paradict['nlat']
+            nlon = self.paradict['nlon']
+            lmax = nlat - 1
+            if self.dtype == np.dtype('float32'):
+                x = gl.synfast_f(arg[1],
+                                 nlat=nlat, nlon=nlon,
+                                 lmax=lmax, mmax=lmax, alm=False)
             else:
-                x = gl.synfast(arg[1], nlat=self.para[0], nlon=self.para[
-                               1], lmax=lmax, mmax=lmax, alm=False)
+                x = gl.synfast(arg[1],
+                               nlat=nlat, nlon=nlon,
+                               lmax=lmax, mmax=lmax, alm=False)
             # weight if discrete
-            if(self.discrete):
+            if self.discrete:
                 x = self.calc_weight(x, power=0.5)
 
         elif(arg[0] == "uni"):
-            x = random.uni(dtype=self.dtype, shape=self.get_dim(
-                split=True), vmin=arg[1], vmax=arg[2])
+            x = random.uni(dtype=self.dtype,
+                           shape=self.get_shape(),
+                           vmin=arg[1], vmax=arg[2])
 
         else:
             raise KeyError(about._errors.cstring(
                 "ERROR: unsupported random key '" + str(arg[0]) + "'."))
 
         return x
-
-    def check_codomain(self, codomain):
-        """
-            Checks whether a given codomain is compatible to the space or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-
-            Notes
-            -----
-            Compatible codomains are instances of :py:class:`gl_space` and
-            :py:class:`lm_space`.
-        """
-        if codomain is None:
-            return False
-
-        if(not isinstance(codomain, space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        if self.datamodel is not codomain.datamodel:
-            return False
-
-        if(self == codomain):
-            return True
-
-        if(isinstance(codomain, lm_space)):
-            # nlon==2*lat-1                          lmax==nlat-1
-            # lmax==mmax
-            if(self.para[1] == 2 * self.para[0] - 1)and(codomain.para[0] == self.para[0] - 1)and(codomain.para[0] == codomain.para[1]):
-                return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
-
-        return False
-
-    def get_codomain(self, **kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
-
-            Returns
-            -------
-            codomain : nifty.lm_space
-                A compatible codomain.
-        """
-        if(self.dtype == np.dtype('float32')):
-            # lmax,mmax = nlat-1,nlat-1
-            return lm_space(self.para[0] - 1, mmax=self.para[0] - 1, dtype=np.complex64)
-        else:
-            # lmax,mmax = nlat-1,nlat-1
-            return lm_space(self.para[0] - 1, mmax=self.para[0] - 1, dtype=np.complex128)
-
-    def get_meta_volume(self, split=False):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
-
-            Notes
-            -----
-            For Gauss-Legendre pixelizations, the meta volumes are the pixel
-            sizes.
-        """
-        if not split:
-            return np.float(4 * pi)
-        else:
-            mol = self.cast(1, dtype=np.float)
-            return self.calc_weight(mol, power=1)
 
     def calc_weight(self, x, power=1):
         """
@@ -1340,15 +1176,25 @@ class gl_space(point_space):
             y : numpy.ndarray
                 Weighted array.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
         # weight
-        if(self.dtype == np.dtype('float32')):
-            return gl.weight_f(x, np.array(self.distances), p=np.float32(power), nlat=self.para[0], nlon=self.para[1], overwrite=False)
+        nlat = self.paradict['nlat']
+        nlon = self.paradict['nlon']
+        if self.dtype == np.dtype('float32'):
+            return gl.weight_f(x,
+                               np.array(self.distances),
+                               p=np.float32(power),
+                               nlat=nlat, nlon=nlon,
+                               overwrite=False)
         else:
-            return gl.weight(x, np.array(self.distances), p=np.float64(power), nlat=self.para[0], nlon=self.para[1], overwrite=False)
+            return gl.weight(x,
+                             np.array(self.distances),
+                             p=np.float32(power),
+                             nlat=nlat, nlon=nlon,
+                             overwrite=False)
 
     def get_weight(self, power=1):
-        # TODO: Check if this function is compatible to the rest of the nifty code
+        # TODO: Check if this function is compatible to the rest of nifty
         # TODO: Can this be done more efficiently?
         dummy = self.dtype(1)
         weighted_dummy = self.calc_weight(dummy, power=power)
@@ -1376,29 +1222,31 @@ class gl_space(point_space):
             Only instances of the :py:class:`lm_space` or :py:class:`gl_space`
             classes are allowed as `codomain`.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
 
-        if(codomain is None):
-            return x  # T == id
+        # Check if the given codomain is suitable for the transformation
+        if not self.check_codomain(codomain):
+            raise ValueError(about._errors.cstring(
+                "ERROR: unsupported codomain."))
 
-        # check codomain
-        self.check_codomain(codomain)  # a bit pointless
-
-        if(self == codomain):
-            return x  # T == id
-
-        if(isinstance(codomain, lm_space)):
+        if isinstance(codomain, lm_space):
             # weight if discrete
-            if(self.discrete):
+            if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            if(self.dtype == np.dtype('float32')):
-                Tx = gl.map2alm_f(x, nlat=self.para[0], nlon=self.para[
-                                  1], lmax=codomain.para[0], mmax=codomain.para[1])
-            else:
-                Tx = gl.map2alm(x, nlat=self.para[0], nlon=self.para[
-                                1], lmax=codomain.para[0], mmax=codomain.para[1])
+            nlat = self.paradict['nlat']
+            nlon = self.paradict['nlon']
+            lmax = codomain.paradict['lmax']
+            mmax = codomain.paradict['mmax']
 
+            if self.dtype == np.dtype('float32'):
+                Tx = gl.map2alm_f(x,
+                                  nlat=nlat, nlon=nlon,
+                                  lmax=lmax, mmax=mmax)
+            else:
+                Tx = gl.map2alm(x,
+                                nlat=nlat, nlon=nlon,
+                                lmax=lmax, mmax=mmax)
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
@@ -1424,17 +1272,21 @@ class gl_space(point_space):
             Gx : numpy.ndarray
                 Smoothed array.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
         # check sigma
-        if(sigma == 0):
+        if sigma == 0:
             return x
-        elif(sigma == -1):
+        elif sigma == -1:
             about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = 4.5 / self.para[0]  # sqrt(2)*pi/(lmax+1)
-        elif(sigma < 0):
+            sigma = np.sqrt(2) * np.pi / self.paradict['nlat']
+        elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
-        return gl.smoothmap(x, nlat=self.para[0], nlon=self.para[1], lmax=self.para[0] - 1, mmax=self.para[0] - 1, fwhm=0.0, sigma=sigma)
+        nlat = self.paradict['nlat']
+        return gl.smoothmap(x,
+                            nlat=nlat, nlon=self.paradict['nlon'],
+                            lmax=nlat - 1, mmax=nlat - 1,
+                            fwhm=0.0, sigma=sigma)
 
     def calc_power(self, x, **kwargs):
         """
@@ -1451,17 +1303,29 @@ class gl_space(point_space):
             spec : numpy.ndarray
                 Power contained in the input array.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
         # weight if discrete
-        if(self.discrete):
+        if self.discrete:
             x = self.calc_weight(x, power=-0.5)
-        # power spectrum
-        if(self.dtype == np.dtype('float32')):
-            return gl.anafast_f(x, nlat=self.para[0], nlon=self.para[1], lmax=self.para[0] - 1, mmax=self.para[0] - 1, alm=False)
+        # calculate the power spectrum
+        nlat = self.paradict['nlat']
+        nlon = self.paradict['nlon']
+        lmax = nlat - 1
+        mmax = nlat - 1
+        if self.dtype == np.dtype('float32'):
+            return gl.anafast_f(x,
+                                nlat=nlat, nlon=nlon,
+                                lmax=lmax, mmax=mmax,
+                                alm=False)
         else:
-            return gl.anafast(x, nlat=self.para[0], nlon=self.para[1], lmax=self.para[0] - 1, mmax=self.para[0] - 1, alm=False)
+            return gl.anafast(x,
+                              nlat=nlat, nlon=nlon,
+                              lmax=lmax, mmax=mmax,
+                              alm=False)
 
-    def get_plot(self, x, title="", vmin=None, vmax=None, power=False, unit="", norm=None, cmap=None, cbar=True, other=None, legend=False, mono=True, **kwargs):
+    def get_plot(self, x, title="", vmin=None, vmax=None, power=False,
+                 unit="", norm=None, cmap=None, cbar=True, other=None,
+                 legend=False, mono=True, **kwargs):
         """
             Creates a plot of field values according to the specifications
             given by the parameters.
@@ -1572,8 +1436,8 @@ class gl_space(point_space):
             ax0 = fig.add_axes([0.02, 0.05, 0.96, 0.9])
 
             lon, lat = gl.bounds(self.para[0], nlon=self.para[1])
-            lon = (lon - pi) * 180 / pi
-            lat = (lat - pi / 2) * 180 / pi
+            lon = (lon - np.pi) * 180 / np.pi
+            lat = (lat - np.pi / 2) * 180 / np.pi
             if(norm == "log"):
                 n_ = ln(vmin=vmin, vmax=vmax)
             else:
@@ -1612,10 +1476,10 @@ class gl_space(point_space):
     def __str__(self):
         return "nifty_lm.gl_space instance\n- nlat     = " + str(self.para[0]) + "\n- nlon     = " + str(self.para[1]) + "\n- dtype = numpy." + str(np.result_type(self.dtype))
 
-# -----------------------------------------------------------------------------
 
 
-# -----------------------------------------------------------------------------
+
+
 
 class hp_space(point_space):
     """
@@ -1666,9 +1530,8 @@ class hp_space(point_space):
         vol : numpy.ndarray
             An array with one element containing the pixel size.
     """
-    niter = 0  # default number of iterations used for transformations
 
-    def __init__(self, nside, datamodel='np'):
+    def __init__(self, nside, datamodel='np', comm=gc['default_comm']):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -1694,6 +1557,7 @@ class hp_space(point_space):
         if 'healpy' not in gdi:
             raise ImportError(about._errors.cstring(
                 "ERROR: healpy not available."))
+
         # check parameters
         self.paradict = hp_space_paradict(nside=nside)
 
@@ -1708,7 +1572,8 @@ class hp_space(point_space):
 
         self.discrete = False
         self.harmonic = False
-        self.distances = (np.float(4 * pi / (12 * self.paradict['nside']**2)),)
+        self.distances = (np.float(4*np.pi / (12*self.paradict['nside']**2)),)
+        self.comm = self._parse_comm(comm)
 
     @property
     def para(self):
@@ -1719,70 +1584,11 @@ class hp_space(point_space):
     def para(self, x):
         self.paradict['nside'] = x[0]
 
-    def _enforce_shape(self, x):
-        """
-            Shapes an array of valid field values correctly, according to the
-            specifications of the space instance.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values to be put into shape.
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Correctly shaped array.
-        """
-        about.warnings.cprint("WARNING: enforce_shape is deprecated!")
-
-        x = np.array(x)
-        if(np.size(x) != self.get_dim(split=False)):
-            raise ValueError(about._errors.cstring("ERROR: dimension mismatch ( " +
-                                                   str(np.size(x)) + " <> " + str(self.get_dim(split=False)) + " )."))
-#        elif(not np.all(np.array(np.shape(x))==self.get_dim(split=True))):
-#            about.warnings.cprint("WARNING: reshaping forced.")
-
-        return x.reshape(self.get_dim(split=True), order='C')
-
     def copy(self):
         return hp_space(nside=self.paradict['nside'])
 
-    def nside(self):
-        """
-            Returns the resolution parameter.
-
-            Returns
-            -------
-            nside : int
-                HEALPix resolution parameter.
-        """
-        return self.paradict['nside']
-
     def get_shape(self):
         return (np.int(12 * self.paradict['nside']**2),)
-
-    def get_dim(self, split=False):
-        """
-            Computes the dimension of the space, i.e.\  the number of pixels.
-
-            Parameters
-            ----------
-            split : bool, *optional*
-                Whether to return the dimension as an array with one component
-                or as a scalar (default: False).
-
-            Returns
-            -------
-            dim : {int, numpy.ndarray}
-                Dimension of the space.
-        """
-        if split:
-            return self.get_shape()
-            # return np.array([12*self.para[0]**2],dtype=np.int)
-        else:
-            return np.prod(self.get_shape())
-            # return 12*self.para[0]**2
 
     def get_dof(self, split=False):
         """
@@ -1800,134 +1606,6 @@ class hp_space(point_space):
         """
         # dof = dim
         return self.get_dim(split=split)
-
-    # TODO: Extend to binning/log
-    def enforce_power(self, spec):
-        size = self.paradict['nside'] * 3
-        kindex = np.arange(size, dtype=np.array(self.distances).dtype)
-        return self._enforce_power_helper(spec=spec,
-                                          size=size,
-                                          kindex=kindex)
-
-    def get_random_values(self, **kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1}
-                - "gau" (normal distribution with zero-mean and a given standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
-                Power spectrum (default: 1).
-            codomain : nifty.lm_space, *optional*
-                A compatible codomain for power indexing (default: None).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-        arg = random.parse_arguments(self, **kwargs)
-
-        if(arg is None):
-            x = np.zeros(self.get_dim(split=True), dtype=self.dtype, order='C')
-
-        elif(arg[0] == "pm1"):
-            x = random.pm1(dtype=self.dtype, shape=self.get_dim(split=True))
-
-        elif(arg[0] == "gau"):
-            x = random.gau(dtype=self.dtype, shape=self.get_dim(
-                split=True), mean=None, dev=arg[2], var=arg[3])
-
-        elif(arg[0] == "syn"):
-            lmax = 3 * self.para[0] - 1  # 3*nside-1
-            x = hp.synfast(arg[1], self.para[0], lmax=lmax, mmax=lmax, alm=False,
-                           pol=True, pixwin=False, fwhm=0.0, sigma=None)  # FIXME: `verbose` kwarg
-            # weight if discrete
-            if(self.discrete):
-                x = self.calc_weight(x, power=0.5)
-
-        elif(arg[0] == "uni"):
-            x = random.uni(dtype=self.dtype, shape=self.get_dim(
-                split=True), vmin=arg[1], vmax=arg[2])
-
-        else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
-
-        return x
-
-    def check_codomain(self, codomain):
-        """
-            Checks whether a given codomain is compatible to the space or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-
-            Notes
-            -----
-            Compatible codomains are instances of :py:class:`hp_space` and
-            :py:class:`lm_space`.
-        """
-        if codomain is None:
-            return False
-
-        if(not isinstance(codomain, space)):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
-        if self.datamodel is not codomain.datamodel:
-            return False
-
-        if(self == codomain):
-            return True
-
-        if(isinstance(codomain, lm_space)):
-            # 3*nside-1==lmax                             lmax==mmax
-            if(3 * self.para[0] - 1 == codomain.para[0])and(codomain.para[0] == codomain.para[1]):
-                return True
-            else:
-                about.warnings.cprint("WARNING: unrecommended codomain.")
-
-        return False
-
-    def get_codomain(self, **kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
-
-            Returns
-            -------
-            codomain : nifty.lm_space
-                A compatible codomain.
-        """
-        return lm_space(3 * self.para[0] - 1, mmax=3 * self.para[0] - 1, dtype=np.complex128)  # lmax,mmax = 3*nside-1,3*nside-1
 
     def get_meta_volume(self, split=False):
         """
@@ -1954,12 +1632,146 @@ class hp_space(point_space):
             For HEALpix discretizations, the meta volumes are the pixel sizes.
         """
         if not split:
-            return np.float(4 * pi)
+            return np.float(4 * np.pi)
         else:
             mol = self.cast(1, dtype=np.float)
             return self.calc_weight(mol, power=1)
 
-    def calc_transform(self, x, codomain=None, **kwargs):
+    # TODO: Extend to binning/log
+    def enforce_power(self, spec, size=None, kindex=None):
+        if kindex is None:
+            kindex_size = self.paradict['nside'] * 3
+            kindex = np.arange(kindex_size,
+                               dtype=np.array(self.distances).dtype)
+        return self._enforce_power_helper(spec=spec,
+                                          size=size,
+                                          kindex=kindex)
+
+    def check_codomain(self, codomain):
+        """
+            Checks whether a given codomain is compatible to the space or not.
+
+            Parameters
+            ----------
+            codomain : nifty.space
+                Space to be checked for compatibility.
+
+            Returns
+            -------
+            check : bool
+                Whether or not the given codomain is compatible to the space.
+
+            Notes
+            -----
+            Compatible codomains are instances of :py:class:`hp_space` and
+            :py:class:`lm_space`.
+        """
+        if not isinstance(codomain, space):
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+
+        if codomain is None:
+            return False
+
+        if self.datamodel is not codomain.datamodel:
+            return False
+
+        if isinstance(codomain, lm_space):
+            nside = self.paradict['nside']
+            lmax = codomain.paradict['lmax']
+            mmax = codomain.paradict['mmax']
+            # 3*nside-1==lmax
+            # lmax==mmax
+            if (3*nside-1 == lmax) and (lmax == mmax):
+                return True
+
+        return False
+
+    def get_codomain(self, **kwargs):
+        """
+            Generates a compatible codomain to which transformations are
+            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+
+            Returns
+            -------
+            codomain : nifty.lm_space
+                A compatible codomain.
+        """
+        lmax = 3*self.paradict['nside'] - 1
+        mmax = lmax
+        return lm_space(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
+
+    def get_random_values(self, **kwargs):
+        """
+            Generates random field values according to the specifications given
+            by the parameters.
+
+            Returns
+            -------
+            x : numpy.ndarray
+                Valid field values.
+
+            Other parameters
+            ----------------
+            random : string, *optional*
+                Specifies the probability distribution from which the random
+                numbers are to be drawn.
+                Supported distributions are:
+
+                - "pm1" (uniform distribution over {+1,-1}
+                - "gau" (normal distribution with zero-mean and a given
+                    standard
+                    deviation or variance)
+                - "syn" (synthesizes from a given power spectrum)
+                - "uni" (uniform distribution over [vmin,vmax[)
+
+                (default: None).
+            dev : float, *optional*
+                Standard deviation (default: 1).
+            var : float, *optional*
+                Variance, overriding `dev` if both are specified
+                (default: 1).
+            spec : {scalar, list, numpy.array, nifty.field, function},
+                *optional*
+                Power spectrum (default: 1).
+            codomain : nifty.lm_space, *optional*
+                A compatible codomain for power indexing (default: None).
+            vmin : float, *optional*
+                Lower limit for a uniform distribution (default: 0).
+            vmax : float, *optional*
+                Upper limit for a uniform distribution (default: 1).
+        """
+        arg = random.parse_arguments(self, **kwargs)
+
+        if arg is None:
+            x = np.zeros(self.get_shape(), dtype=self.dtype)
+
+        elif arg[0] == "pm1":
+            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+
+        elif arg[0] == "gau":
+            x = random.gau(dtype=self.dtype, shape=self.get_shape(),
+                           mean=arg[1], dev=arg[2], var=arg[3])
+
+        elif arg[0] == "syn":
+            nside = self.paradict['nside']
+            lmax = 3*nside-1
+            x = hp.synfast(arg[1], nside, lmax=lmax, mmax=lmax, alm=False,
+                           pol=True, pixwin=False, fwhm=0.0, sigma=None)
+            # weight if discrete
+            if self.discrete:
+                x = self.calc_weight(x, power=0.5)
+
+        elif arg[0] == "uni":
+            x = random.uni(dtype=self.dtype, shape=self.get_shape(),
+                           vmin=arg[1], vmax=arg[2])
+
+        else:
+            raise KeyError(about._errors.cstring(
+                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
+
+        return x
+
+    def calc_transform(self, x, codomain=None, niter=0, **kwargs):
         """
             Computes the transform of a given array of field values.
 
@@ -1987,24 +1799,23 @@ class hp_space(point_space):
             Only instances of the :py:class:`lm_space` or :py:class:`hp_space`
             classes are allowed as `codomain`.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
 
-        if(codomain is None):
-            return x  # T == id
+        # Check if the given codomain is suitable for the transformation
+        if not self.check_codomain(codomain):
+            raise ValueError(about._errors.cstring(
+                "ERROR: unsupported codomain."))
 
-        # check codomain
-        self.check_codomain(codomain)  # a bit pointless
-
-        if(self == codomain):
-            return x  # T == id
-
-        if(isinstance(codomain, lm_space)):
+        if isinstance(codomain, lm_space):
             # weight if discrete
-            if(self.discrete):
+            if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            Tx = hp.map2alm(x.astype(np.float64), lmax=codomain.para[0], mmax=codomain.para[
-                            1], iter=kwargs.get("iter", self.niter), pol=True, use_weights=False, datapath=None)
+            Tx = hp.map2alm(x.astype(np.float64, copy=False),
+                            lmax=codomain.paradict['lmax'],
+                            mmax=codomain.paradict['mmax'],
+                            iter=niter, pol=True, use_weights=False,
+                            datapath=None)
 
         else:
             raise ValueError(about._errors.cstring(
@@ -2012,7 +1823,7 @@ class hp_space(point_space):
 
         return Tx.astype(codomain.dtype)
 
-    def calc_smooth(self, x, sigma=0, **kwargs):
+    def calc_smooth(self, x, sigma=0, niter=0, **kwargs):
         """
             Smoothes an array of field values by convolution with a Gaussian
             kernel.
@@ -2037,19 +1848,26 @@ class hp_space(point_space):
                 Number of iterations performed in the HEALPix basis
                 transformation.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        nside = self.paradict['nside']
+
+        x = self.cast(x)
         # check sigma
-        if(sigma == 0):
+        if sigma == 0:
             return x
-        elif(sigma == -1):
+        elif sigma == -1:
             about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = 1.5 / self.para[0]  # sqrt(2)*pi/(lmax+1)
-        elif(sigma < 0):
+            # sqrt(2)*pi/(lmax+1)
+            sigma = np.sqrt(2) * np.pi / (3. * nside)
+        elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
-        return hp.smoothing(x, fwhm=0.0, sigma=sigma, invert=False, pol=True, iter=kwargs.get("iter", self.niter), lmax=3 * self.para[0] - 1, mmax=3 * self.para[0] - 1, use_weights=False, datapath=None)
+            lmax = 3*nside-1
+            mmax = lmax
+        return hp.smoothing(x, fwhm=0.0, sigma=sigma, invert=False, pol=True,
+                            iter=niter, lmax=lmax, mmax=mmax,
+                            use_weights=False, datapath=None)
 
-    def calc_power(self, x, **kwargs):
+    def calc_power(self, x, niter=0, **kwargs):
         """
             Computes the power of an array of field values.
 
@@ -2070,14 +1888,22 @@ class hp_space(point_space):
                 Number of iterations performed in the HEALPix basis
                 transformation.
         """
-        x = self._enforce_shape(np.array(x, dtype=self.dtype))
+        x = self.cast(x)
         # weight if discrete
-        if(self.discrete):
+        if self.discrete:
             x = self.calc_weight(x, power=-0.5)
-        # power spectrum
-        return hp.anafast(x, map2=None, nspec=None, lmax=3 * self.para[0] - 1, mmax=3 * self.para[0] - 1, iter=kwargs.get("iter", self.niter), alm=False, pol=True, use_weights=False, datapath=None)
 
-    def get_plot(self, x, title="", vmin=None, vmax=None, power=False, unit="", norm=None, cmap=None, cbar=True, other=None, legend=False, mono=True, **kwargs):
+        nside = self.paradict['nside']
+        lmax = 3*nside-1
+        mmax = lmax
+        # power spectrum
+        return hp.anafast(x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
+                          iter=niter, alm=False, pol=True, use_weights=False,
+                          datapath=None)
+
+    def get_plot(self, x, title="", vmin=None, vmax=None, power=False, unit="",
+                 norm=None, cmap=None, cbar=True, other=None, legend=False,
+                 mono=True, **kwargs):
         """
             Creates a plot of field values according to the specifications
             given by the parameters.
@@ -2205,4 +2031,4 @@ class hp_space(point_space):
     def __str__(self):
         return "nifty_lm.hp_space instance\n- nside = " + str(self.para[0])
 
-# -----------------------------------------------------------------------------
+
