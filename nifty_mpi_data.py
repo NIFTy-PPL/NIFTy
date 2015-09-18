@@ -466,6 +466,9 @@ class distributed_data_object(object):
         self.set_data(data, key)
 
     def _contraction_helper(self, function, **kwargs):
+        if self.shape == (0,):
+            raise ValueError("ERROR: Zero-size array to reduction operation " +
+                             "which has no identity")
         if np.prod(self.data.shape) == 0:
             local = 0
             include = False
@@ -503,12 +506,18 @@ class distributed_data_object(object):
         return self._contraction_helper(np.nanmax, **kwargs)
 
     def sum(self, **kwargs):
+        if self.shape == (0,):
+            return self.dtype.type(0)
         return self._contraction_helper(np.sum, **kwargs)
 
     def prod(self, **kwargs):
+        if self.shape == (0,):
+            return self.dtype.type(1)
         return self._contraction_helper(np.prod, **kwargs)
 
     def mean(self, power=1):
+        if self.shape == (0,):
+            return np.mean(np.array([], dtype=self.dtype))
         # compute the local means and the weights for the mean-mean.
         if np.prod(self.data.shape) == 0:
             local_mean = 0
@@ -540,14 +549,23 @@ class distributed_data_object(object):
             return global_mean
 
     def var(self):
+        if self.shape == (0,):
+            return np.var(np.array([], dtype=self.dtype))
         mean_of_the_square = self.mean(power=2)
         square_of_the_mean = self.mean()**2
         return mean_of_the_square - square_of_the_mean
 
     def std(self):
+        if self.shape == (0,):
+            return np.std(np.array([], dtype=self.dtype))
+        if self.shape == (0,):
+            return np.nan
         return np.sqrt(self.var())
 
     def argmin(self):
+        if self.shape == (0,):
+            raise ValueError(
+                "ERROR: attempt to get argmin of an empty object")
         if np.prod(self.data.shape) == 0:
             local_argmin = np.nan
             local_argmin_value = np.nan
@@ -570,6 +588,9 @@ class distributed_data_object(object):
         return np.int(local_argmin_list[0][1])
 
     def argmax(self):
+        if self.shape == (0,):
+            raise ValueError(
+                "ERROR: attempt to get argmax of an empty object")
         if np.prod(self.data.shape) == 0:
             local_argmax = np.nan
             local_argmax_value = np.nan
