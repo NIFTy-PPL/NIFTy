@@ -122,13 +122,14 @@ class random(object):
             return None
 
         if key == "pm1":
-            return [key]
+            return {'random': key}
 
         elif key == "gau":
             mean = kwargs.get('mean', None)
-            dev = kwargs.get('dev', None)
-            var = kwargs.get('var', None)
-            return [key, mean, dev, var]
+            std = kwargs.get('std', None)
+            return {'random': key,
+                    'mean': mean,
+                    'std': std}
 
         elif key == "syn":
             pindex = kwargs.get('pindex', None)
@@ -162,12 +163,20 @@ class random(object):
                                                  size=size,
                                                  kindex=kindex)
 
-            return [key, spec, kpack, harmonic_domain, log, nbin, binbounds]
+            return {'random': key,
+                    'spec': spec,
+                    'kpack': kpack,
+                    'harmonic_domain': harmonic_domain,
+                    'log': log,
+                    'nbin': nbin,
+                    'binbounds': binbounds}
 
         elif key == "uni":
-            vmin = domain.dtype(kwargs.get('vmin', 0))
-            vmax = domain.dtype(kwargs.get('vmax', 1))
-            return [key, vmin, vmax]
+            vmin = domain.dtype.type(kwargs.get('vmin', 0))
+            vmax = domain.dtype.type(kwargs.get('vmax', 1))
+            return {'random': key,
+                    'vmin': vmin,
+                    'vmax': vmax}
 
         else:
             raise KeyError(about._errors.cstring(
@@ -196,7 +205,7 @@ class random(object):
         """
         size = np.prod(shape, axis=0, dtype=np.dtype('int'), out=None)
 
-        if(issubclass(dtype.type, np.complexfloating)):
+        if issubclass(dtype.type, np.complexfloating):
             x = np.array([1 + 0j, 0 + 1j, -1 + 0j, 0 - 1j],
                          dtype=dtype)[np.random.randint(4,
                                                         high=None,
@@ -204,12 +213,12 @@ class random(object):
         else:
             x = 2 * np.random.randint(2, high=None, size=size) - 1
 
-        return x.astype(dtype).reshape(shape, order='C')
+        return x.astype(dtype).reshape(shape)
 
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     @staticmethod
-    def gau(dtype=np.dtype('float64'), shape=1, mean=None, dev=None, var=None):
+    def gau(dtype=np.dtype('float64'), shape=(1,), mean=None, std=None):
         """
             Generates random field values according to a normal distribution.
 
@@ -239,44 +248,36 @@ class random(object):
                 `shape`.
 
         """
-        size = np.prod(shape, axis=0, dtype=np.dtype('int'), out=None)
+        size = np.prod(shape)
 
-        if(issubclass(dtype.type, np.complexfloating)):
-            x = np.empty(size, dtype=dtype, order='C')
+        if issubclass(dtype.type, np.complexfloating):
+            x = np.empty(size, dtype=dtype)
             x.real = np.random.normal(loc=0, scale=np.sqrt(0.5), size=size)
             x.imag = np.random.normal(loc=0, scale=np.sqrt(0.5), size=size)
         else:
             x = np.random.normal(loc=0, scale=1, size=size)
 
-        if(var is not None):
-            if(np.size(var) == 1):
-                x *= np.sqrt(np.abs(var))
-            elif(np.size(var) == size):
-                x *= np.sqrt(np.absolute(var).flatten(order='C'))
+        if std is not None:
+            if np.size(std) == 1:
+                x *= np.abs(std)
+            elif np.size(std) == size:
+                x *= np.absolute(std).flatten()
             else:
                 raise ValueError(about._errors.cstring(
-                    "ERROR: dimension mismatch ( " + str(np.size(var)) +
+                    "ERROR: dimension mismatch ( " + str(np.size(std)) +
                     " <> " + str(size) + " )."))
-        elif(dev is not None):
-            if(np.size(dev) == 1):
-                x *= np.abs(dev)
-            elif(np.size(dev) == size):
-                x *= np.absolute(dev).flatten(order='C')
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: dimension mismatch ( " + str(np.size(dev)) +
-                    " <> " + str(size) + " )."))
-        if(mean is not None):
-            if(np.size(mean) == 1):
+
+        if mean is not None:
+            if np.size(mean) == 1:
                 x += mean
-            elif(np.size(mean) == size):
+            elif np.size(mean) == size:
                 x += np.array(mean).flatten(order='C')
             else:
                 raise ValueError(about._errors.cstring(
                     "ERROR: dimension mismatch ( " + str(np.size(mean)) +
                     " <> " + str(size) + " )."))
 
-        return x.astype(dtype).reshape(shape, order='C')
+        return x.astype(dtype).reshape(shape)
 
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 

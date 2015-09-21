@@ -255,8 +255,8 @@ class rg_space(point_space):
         casted_x = super(rg_space, self)._cast_to_d2o(x=x,
                                                       dtype=dtype,
                                                       **kwargs)
-        if hermitianize and self.paradict['complexity'] == 1 and \
-           not casted_x.hermitian:
+        if x is not None and hermitianize and \
+           self.paradict['complexity'] == 1 and not casted_x.hermitian:
             about.warnings.cflush(
                  "WARNING: Data gets hermitianized. This operation is " +
                  "extremely expensive\n")
@@ -268,7 +268,7 @@ class rg_space(point_space):
         casted_x = super(rg_space, self)._cast_to_np(x=x,
                                                      dtype=dtype,
                                                      **kwargs)
-        if hermitianize and self.paradict['complexity'] == 1:
+        if x is not None and hermitianize and self.paradict['complexity'] == 1:
             about.warnings.cflush(
                  "WARNING: Data gets hermitianized. This operation is " +
                  "extremely expensive\n")
@@ -539,98 +539,76 @@ class rg_space(point_space):
             vmax : float, *optional*
                 Upper limit for a uniform distribution (default: 1).
         """
-        # TODO: Without hermitianization the random-methods from pointspace
-        # could be used.
-
         # Parse the keyword arguments
         arg = random.parse_arguments(self, **kwargs)
 
-        # Prepare the empty distributed_data_object
-        sample = distributed_data_object(global_shape=self.get_shape(),
-                                         dtype=self.dtype)
-
-        # Should the output be hermitianized? This does not depend on the
-        # hermitianize boolean in about, as it would yield in wrong,
-        # not recoverable results
-
-        hermitianizeQ = self.paradict['complexity']
+        # Should the output be hermitianized?
+        hermitianizeQ = (self.paradict['complexity'] == 1)
 
         # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
-        if arg[0] == 'pm1' and not hermitianizeQ:
-            sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
-                                                        shape=s))
+        if arg['random'] == 'pm1' and not hermitianizeQ:
+            sample = super(rg_space, self).get_random_values(**arg)
 
-        elif arg[0] == 'pm1' and hermitianizeQ:
+        elif arg['random'] == 'pm1' and hermitianizeQ:
             sample = self.get_random_values(random='uni', vmin=-1, vmax=1)
-            local_data = sample.get_local_data()
+
             if issubclass(sample.dtype.type, np.complexfloating):
-                temp_data = local_data.copy()
-                local_data[temp_data.real >= 0.5] = 1
-                local_data[(temp_data.real >= 0) * (temp_data.real < 0.5)] = -1
-                local_data[(temp_data.real < 0) * (temp_data.imag >= 0)] = 1j
-                local_data[(temp_data.real < 0) * (temp_data.imag < 0)] = -1j
+                temp_data = sample.copy()
+                sample[temp_data.real >= 0.5] = 1
+                sample[(temp_data.real >= 0) * (temp_data.real < 0.5)] = -1
+                sample[(temp_data.real < 0) * (temp_data.imag >= 0)] = 1j
+                sample[(temp_data.real < 0) * (temp_data.imag < 0)] = -1j
             else:
-                local_data[local_data >= 0] = 1
-                local_data[local_data < 0] = -1
-            sample.set_local_data(local_data)
+                sample[sample >= 0] = 1
+                sample[sample < 0] = -1
 
         # Case 2: normal distribution with zero-mean and a given standard
         #         deviation or variance
-        elif arg[0] == 'gau':
-            var = arg[3]
-            if np.isscalar(var) == True or var is None:
-                processed_var = var
-            else:
-                try:
-                    processed_var = sample.distributor.extract_local_data(var)
-                except(AttributeError):
-                    processed_var = var
-
-            sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
-                                                        shape=s,
-                                                        mean=arg[1],
-                                                        dev=arg[2],
-                                                        var=processed_var))
+        elif arg['random'] == 'gau':
+            sample = super(rg_space, self).get_random_values(**arg)
 
             if hermitianizeQ:
                 sample = utilities.hermitianize(sample)
 
         # Case 3: uniform distribution
-        elif arg[0] == "uni" and not hermitianizeQ:
-            sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
-                                                        shape=s,
-                                                        vmin=arg[1],
-                                                        vmax=arg[2]))
+        elif arg['random'] == "uni" and not hermitianizeQ:
+            sample = super(rg_space, self).get_random_values(**arg)
 
-        elif arg[0] == "uni" and hermitianizeQ:
+        elif arg['random'] == "uni" and hermitianizeQ:
             # For a hermitian uniform sample, generate a gaussian one
             # and then convert it to a uniform one
             sample = self.get_random_values(random='gau')
             # Use the cummulative of the gaussian, the error function in order
             # to transform it to a uniform distribution.
             if issubclass(sample.dtype.type, np.complexfloating):
-                def temp_func(x):
+                def temp_erf(x):
                     return erf(x.real) + 1j * erf(x.imag)
             else:
-                def temp_func(x):
+                def temp_erf(x):
                     return erf(x / np.sqrt(2))
-            sample.apply_scalar_function(function=temp_func,
-                                         inplace=True)
+
+            if self.datamodel == 'np':
+                sample = temp_erf(sample)
+            elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
+                sample.apply_scalar_function(function=temp_erf, inplace=True)
+            else:
+                raise NotImplementedError(about._errors.cstring(
+                    "ERROR: function is not implemented for given datamodel."))
 
             # Shift and stretch the uniform distribution into the given limits
             # sample = (sample + 1)/2 * (vmax-vmin) + vmin
-            vmin = arg[1]
-            vmax = arg[2]
+            vmin = arg['vmin']
+            vmax = arg['vmax']
             sample *= (vmax - vmin) / 2.
             sample += 1 / 2. * (vmax + vmin)
 
-        elif(arg[0] == "syn"):
-            spec = arg[1]
-            kpack = arg[2]
-            harmonic_domain = arg[3]
-            log = arg[4]
-            nbin = arg[5]
-            binbounds = arg[6]
+        elif(arg['random'] == "syn"):
+            spec = arg['spec']
+            kpack = arg['kpack']
+            harmonic_domain = arg['harmonic_domain']
+            log = arg['log']
+            nbin = arg['nbin']
+            binbounds = arg['binbounds']
             # Check whether there is a kpack available or not.
             # kpack is only used for computing kdict and extracting kindex
             # If not, take kdict and kindex from the fourier_domain
@@ -656,14 +634,9 @@ class rg_space(point_space):
                 # -> simply generate a random field in fourier space and
                 # weight the entries accordingly to the powerspectrum
                 if self.paradict['complexity'] == 0:
-                    # set up the sample object. Overwrite the default from
-                    # above to be sure, that the distribution strategy matches
-                    # with the one from kdict
-                    sample = kdict.copy_empty(dtype=self.dtype)
-                    # set up and apply the random number generator
-                    sample.apply_generator(lambda s: np.random.normal(
-                                                       loc=0, scale=1, size=s))
-
+                    sample = self.get_random_values(random='gau',
+                                                    mean=0,
+                                                    std=1)
                 # subcase 2: self is hermitian but probably complex
                 # -> generate a real field (in position space) and transform
                 # it to harmonic space -> field in harmonic space is
@@ -671,14 +644,9 @@ class rg_space(point_space):
                 # powerspectrum.
                 elif self.paradict['complexity'] == 1:
                     temp_codomain = self.get_codomain()
-                    # set up the sample object. Overwrite the default from
-                    # above to be sure, that the distribution strategy matches
-                    # with the one from kdict
-                    sample = kdict.copy_empty(
-                        dtype=temp_codomain.dtype)
-                    # set up and apply the random number generator
-                    sample.apply_generator(lambda s: np.random.normal(
-                                                       loc=0, scale=1, size=s))
+                    sample = temp_codomain.get_random_values(random='gau',
+                                                             mean=0,
+                                                             std=1)
 
                     # In order to get the normalisation right, the sqrt
                     # of self.dim must be divided out.
@@ -695,37 +663,34 @@ class rg_space(point_space):
 
                     # ensure that the kdict and the harmonic_sample have the
                     # same distribution strategy
-                    assert(kdict.distribution_strategy ==
-                           sample.distribution_strategy)
+                    try:
+                        assert(kdict.distribution_strategy ==
+                               sample.distribution_strategy)
+                    except AttributeError:
+                        pass
 
                 # subcase 3: self is fully complex
                 # -> generate a complex random field in harmonic space and
                 # weight the modes accordingly to the powerspectrum
                 elif self.paradict['complexity'] == 2:
-                    # set up the sample object. Overwrite the default from
-                    # above to be sure, that the distribution strategy matches
-                    # with the one from kdict
-                    sample = kdict.copy_empty(dtype=self.dtype)
-
-                    # set up the random number generator
-                    def temp_gen(s):
-                        result = (np.random.normal(loc=0,
-                                                   scale=1 / np.sqrt(2),
-                                                   size=s) +
-                                  np.random.normal(loc=0,
-                                                   scale=1 / np.sqrt(2),
-                                                   size=s) * 1.j)
-                        return result
-                    # apply the random number generator
-                    sample.apply_generator(temp_gen)
-
+                    sample = self.get_random_values(random='gau',
+                                                    mean=0,
+                                                    std=1)
                 # apply the powerspectrum renormalization
-                # therefore extract the local data from kdict
-                local_kdict = kdict.get_local_data()
-                rescaler = np.sqrt(
-                    spec[np.searchsorted(kindex, local_kdict)])
-                sample.apply_scalar_function(lambda x: x * rescaler,
-                                             inplace=True)
+                if self.datamodel == 'np':
+                    rescaler = np.sqrt(spec[np.searchsorted(kindex, kdict)])
+                    sample *= rescaler
+                elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
+                    # extract the local data from kdict
+                    local_kdict = kdict.get_local_data()
+                    rescaler = np.sqrt(
+                        spec[np.searchsorted(kindex, local_kdict)])
+                    sample.apply_scalar_function(lambda x: x * rescaler,
+                                                 inplace=True)
+                else:
+                    raise NotImplementedError(about._errors.cstring(
+                        "ERROR: function is not implemented for given " +
+                        "datamodel."))
             # Case 2: self is a position space
             else:
                 # get a suitable codomain
@@ -754,27 +719,27 @@ class rg_space(point_space):
 
                 # Get a hermitian/real/complex sample in harmonic space from
                 # the codomain
-                sample = temp_codomain.get_random_values(
-                    random='syn',
-                    pindex=kpack[0],
-                    kindex=kpack[1],
-                    spec=spec,
-                    codomain=self,
-                    log=log,
-                    nbin=nbin,
-                    binbounds=binbounds
-                )
+                sample = temp_codomain.get_random_values(random='syn',
+                                                         pindex=kpack[0],
+                                                         kindex=kpack[1],
+                                                         spec=spec,
+                                                         codomain=self,
+                                                         log=log,
+                                                         nbin=nbin,
+                                                         binbounds=binbounds)
 
                 # Perform a fourier transform
-                sample = temp_codomain.calc_transform(sample,
-                                                      codomain=self)
+                sample = temp_codomain.calc_transform(sample, codomain=self)
 
             if self.paradict['complexity'] == 1:
-                sample.hermitian = True
+                try:
+                    sample.hermitian = True
+                except AttributeError:
+                    pass
 
         else:
             raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
+                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
 
         return sample
 

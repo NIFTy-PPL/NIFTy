@@ -1455,10 +1455,10 @@ class Test_contractions(unittest.TestCase):
     @parameterized.expand(
         itertools.product([np.dtype('int'), np.dtype('float'),
                            np.dtype('complex')],
+                          [(0,), (4, 4)],
                           all_distribution_strategies),
         testcase_func_name=custom_name_func)
-    def test_vdot(self, dtype, distribution_strategy):
-        global_shape = (4, 4)
+    def test_vdot(self, dtype, global_shape, distribution_strategy):
         (a, obj) = generate_data(global_shape, dtype,
                                  distribution_strategy)
         assert_equal(obj.vdot(2 * obj), np.vdot(a, 2 * a))
@@ -1467,20 +1467,34 @@ class Test_contractions(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(['min', 'amin', 'nanmin', 'max', 'amax', 'nanmax',
-                           'sum', 'prod', 'mean', 'var', 'std', 'median'],
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'median'],
                           all_datatypes,
+                          [(0,), (6, 6)],
                           all_distribution_strategies),
         testcase_func_name=custom_name_func)
-    def test_compatible_contractions(self, function, dtype,
-                                     distribution_strategy):
-        global_shape = (6, 6)
+    def test_compatible_contractions_with_zeros(self, function, dtype,
+                                                global_shape,
+                                                distribution_strategy):
         (a, obj) = generate_data(global_shape, dtype,
                                  distribution_strategy,
                                  strictly_positive=True)
-        # assert_almost_equal(
-        #    (getattr(obj, function)()-getattr(np, function)(a))/\
-        #    (1+getattr(np, function)(a)), 0, decimal = 4)
+        assert_almost_equal(getattr(obj, function)(), getattr(np, function)(a),
+                            decimal=4)
+
+###############################################################################
+
+    @parameterized.expand(
+        itertools.product(['min', 'amin', 'nanmin', 'max', 'amax', 'nanmax'],
+                          all_datatypes,
+                          [(6, 6)],
+                          all_distribution_strategies),
+        testcase_func_name=custom_name_func)
+    def test_compatible_contractions_without_zeros(self, function, dtype,
+                                                   global_shape,
+                                                   distribution_strategy):
+        (a, obj) = generate_data(global_shape, dtype,
+                                 distribution_strategy,
+                                 strictly_positive=True)
         assert_almost_equal(getattr(obj, function)(), getattr(np, function)(a),
                             decimal=4)
 

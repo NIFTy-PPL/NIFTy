@@ -159,10 +159,6 @@ import nifty.nifty_utilities as utilities
 
 POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
-#pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679
-
-
-
 
 class space(object):
     """
@@ -220,7 +216,7 @@ class space(object):
             have the same volume.
     """
 
-    def __init__(self, dtype=np.dtype('float'), datamodel='np'):
+    def __init__(self):
         """
             Sets the attributes for a space class instance.
 
@@ -236,11 +232,6 @@ class space(object):
             None
         """
         self.paradict = space_paradict()
-#        self.datamodel = str(datamodel)
-#        self.dtype = np.dtype(dtype)
-#        self.discrete = False
-#        self.harmonic = False
-#        self.distances = np.real(np.array([1], dtype=self.dtype))
 
     @property
     def para(self):
@@ -830,11 +821,9 @@ class point_space(space):
         # parse dtype
         dtype = np.dtype(dtype)
         if dtype not in [np.dtype('bool'),
-                         np.dtype('int8'),
                          np.dtype('int16'),
                          np.dtype('int32'),
                          np.dtype('int64'),
-                         np.dtype('float16'),
                          np.dtype('float32'),
                          np.dtype('float64'),
                          np.dtype('complex64'),
@@ -946,62 +935,68 @@ class point_space(space):
                         return ind[0]
                 return ind
 
-            translation = {"pos": lambda y: getattr(y, '__pos__')(),
-                           "neg": lambda y: getattr(y, '__neg__')(),
-                           "abs": lambda y: getattr(y, '__abs__')(),
-                           "real": lambda y: getattr(y, 'real'),
-                           "imag": lambda y: getattr(y, 'imag'),
-                           "nanmin": np.nanmin,
-                           "amin": np.amin,
-                           "nanmax": np.nanmax,
-                           "amax": np.amax,
-                           "med": np.median,
-                           "mean": np.mean,
-                           "std": np.std,
-                           "var": np.var,
-                           "argmin": _argmin,
-                           "argmin_flat": np.argmin,
-                           "argmax": _argmax,
-                           "argmax_flat": np.argmax,
-                           "conjugate": np.conjugate,
-                           "sum": np.sum,
-                           "prod": np.prod,
-                           "unique": np.unique,
-                           "copy": np.copy,
-                           "isnan": np.isnan,
-                           "isinf": np.isinf,
-                           "isfinite": np.isfinite,
-                           "nan_to_num": np.nan_to_num,
-                           "None": lambda y: y}
+            translation = {'pos': lambda y: getattr(y, '__pos__')(),
+                           'neg': lambda y: getattr(y, '__neg__')(),
+                           'abs': lambda y: getattr(y, '__abs__')(),
+                           'real': lambda y: getattr(y, 'real'),
+                           'imag': lambda y: getattr(y, 'imag'),
+                           'nanmin': np.nanmin,
+                           'amin': np.amin,
+                           'nanmax': np.nanmax,
+                           'amax': np.amax,
+                           'median': np.median,
+                           'mean': np.mean,
+                           'std': np.std,
+                           'var': np.var,
+                           'argmin': _argmin,
+                           'argmin_flat': np.argmin,
+                           'argmax': _argmax,
+                           'argmax_flat': np.argmax,
+                           'conjugate': np.conjugate,
+                           'sum': np.sum,
+                           'prod': np.prod,
+                           'unique': np.unique,
+                           'copy': np.copy,
+                           'copy_empty': np.empty_like,
+                           'isnan': np.isnan,
+                           'isinf': np.isinf,
+                           'isfinite': np.isfinite,
+                           'nan_to_num': np.nan_to_num,
+                           'all': np.all,
+                           'any': np.any,
+                           'None': lambda y: y}
 
         elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            translation = {"pos": lambda y: getattr(y, '__pos__')(),
-                           "neg": lambda y: getattr(y, '__neg__')(),
-                           "abs": lambda y: getattr(y, '__abs__')(),
-                           "real": lambda y: getattr(y, 'real'),
-                           "imag": lambda y: getattr(y, 'imag'),
-                           "nanmin": lambda y: getattr(y, 'nanmin')(),
-                           "amin": lambda y: getattr(y, 'amin')(),
-                           "nanmax": lambda y: getattr(y, 'nanmax')(),
-                           "amax": lambda y: getattr(y, 'amax')(),
-                           "median": lambda y: getattr(y, 'median')(),
-                           "mean": lambda y: getattr(y, 'mean')(),
-                           "std": lambda y: getattr(y, 'std')(),
-                           "var": lambda y: getattr(y, 'var')(),
-                           "argmin": lambda y: getattr(y, 'argmin_nonflat')(),
-                           "argmin_flat": lambda y: getattr(y, 'argmin')(),
-                           "argmax": lambda y: getattr(y, 'argmax_nonflat')(),
-                           "argmax_flat": lambda y: getattr(y, 'argmax')(),
-                           "conjugate": lambda y: getattr(y, 'conjugate')(),
-                           "sum": lambda y: getattr(y, 'sum')(),
-                           "prod": lambda y: getattr(y, 'prod')(),
-                           "unique": lambda y: getattr(y, 'unique')(),
-                           "copy": lambda y: getattr(y, 'copy')(),
-                           "isnan": lambda y: getattr(y, 'isnan')(),
-                           "isinf": lambda y: getattr(y, 'isinf')(),
-                           "isfinite": lambda y: getattr(y, 'isfinite')(),
-                           "nan_to_num": lambda y: getattr(y, 'nan_to_num')(),
-                           "None": lambda y: y}
+            translation = {'pos': lambda y: getattr(y, '__pos__')(),
+                           'neg': lambda y: getattr(y, '__neg__')(),
+                           'abs': lambda y: getattr(y, '__abs__')(),
+                           'real': lambda y: getattr(y, 'real'),
+                           'imag': lambda y: getattr(y, 'imag'),
+                           'nanmin': lambda y: getattr(y, 'nanmin')(),
+                           'amin': lambda y: getattr(y, 'amin')(),
+                           'nanmax': lambda y: getattr(y, 'nanmax')(),
+                           'amax': lambda y: getattr(y, 'amax')(),
+                           'median': lambda y: getattr(y, 'median')(),
+                           'mean': lambda y: getattr(y, 'mean')(),
+                           'std': lambda y: getattr(y, 'std')(),
+                           'var': lambda y: getattr(y, 'var')(),
+                           'argmin': lambda y: getattr(y, 'argmin_nonflat')(),
+                           'argmin_flat': lambda y: getattr(y, 'argmin')(),
+                           'argmax': lambda y: getattr(y, 'argmax_nonflat')(),
+                           'argmax_flat': lambda y: getattr(y, 'argmax')(),
+                           'conjugate': lambda y: getattr(y, 'conjugate')(),
+                           'sum': lambda y: getattr(y, 'sum')(),
+                           'prod': lambda y: getattr(y, 'prod')(),
+                           'unique': lambda y: getattr(y, 'unique')(),
+                           'copy': lambda y: getattr(y, 'copy')(),
+                           'copy_empty': lambda y: getattr(y, 'copy_empty')(),
+                           'isnan': lambda y: getattr(y, 'isnan')(),
+                           'isinf': lambda y: getattr(y, 'isinf')(),
+                           'isfinite': lambda y: getattr(y, 'isfinite')(),
+                           'nan_to_num': lambda y: getattr(y, 'nan_to_num')(),
+                           'all': lambda y: getattr(y, 'all')(),
+                           'any': lambda y: getattr(y, 'any')(),
+                           'None': lambda y: y}
         else:
             raise NotImplementedError(about._errors.cstring(
                 "ERROR: function is not implemented for given datamodel."))
@@ -1010,28 +1005,28 @@ class point_space(space):
 
     def binary_operation(self, x, y, op='None', cast=0):
 
-        translation = {"add": lambda z: getattr(z, '__add__'),
-                       "radd": lambda z: getattr(z, '__radd__'),
-                       "iadd": lambda z: getattr(z, '__iadd__'),
-                       "sub": lambda z: getattr(z, '__sub__'),
-                       "rsub": lambda z: getattr(z, '__rsub__'),
-                       "isub": lambda z: getattr(z, '__isub__'),
-                       "mul": lambda z: getattr(z, '__mul__'),
-                       "rmul": lambda z: getattr(z, '__rmul__'),
-                       "imul": lambda z: getattr(z, '__imul__'),
-                       "div": lambda z: getattr(z, '__div__'),
-                       "rdiv": lambda z: getattr(z, '__rdiv__'),
-                       "idiv": lambda z: getattr(z, '__idiv__'),
-                       "pow": lambda z: getattr(z, '__pow__'),
-                       "rpow": lambda z: getattr(z, '__rpow__'),
-                       "ipow": lambda z: getattr(z, '__ipow__'),
-                       "ne": lambda z: getattr(z, '__ne__'),
-                       "lt": lambda z: getattr(z, '__lt__'),
-                       "le": lambda z: getattr(z, '__le__'),
-                       "eq": lambda z: getattr(z, '__eq__'),
-                       "ge": lambda z: getattr(z, '__ge__'),
-                       "gt": lambda z: getattr(z, '__gt__'),
-                       "None": lambda z: lambda u: u}
+        translation = {'add': lambda z: getattr(z, '__add__'),
+                       'radd': lambda z: getattr(z, '__radd__'),
+                       'iadd': lambda z: getattr(z, '__iadd__'),
+                       'sub': lambda z: getattr(z, '__sub__'),
+                       'rsub': lambda z: getattr(z, '__rsub__'),
+                       'isub': lambda z: getattr(z, '__isub__'),
+                       'mul': lambda z: getattr(z, '__mul__'),
+                       'rmul': lambda z: getattr(z, '__rmul__'),
+                       'imul': lambda z: getattr(z, '__imul__'),
+                       'div': lambda z: getattr(z, '__div__'),
+                       'rdiv': lambda z: getattr(z, '__rdiv__'),
+                       'idiv': lambda z: getattr(z, '__idiv__'),
+                       'pow': lambda z: getattr(z, '__pow__'),
+                       'rpow': lambda z: getattr(z, '__rpow__'),
+                       'ipow': lambda z: getattr(z, '__ipow__'),
+                       'ne': lambda z: getattr(z, '__ne__'),
+                       'lt': lambda z: getattr(z, '__lt__'),
+                       'le': lambda z: getattr(z, '__le__'),
+                       'eq': lambda z: getattr(z, '__eq__'),
+                       'ge': lambda z: getattr(z, '__ge__'),
+                       'gt': lambda z: getattr(z, '__gt__'),
+                       'None': lambda z: lambda u: u}
 
         if (cast & 1) != 0:
             x = self.cast(x)
@@ -1069,7 +1064,7 @@ class point_space(space):
     def get_shape(self):
         return (self.paradict['num'],)
 
-    def get_dim(self, split=False):
+    def get_dim(self):
         """
             Computes the dimension of the space, i.e.\  the number of points.
 
@@ -1084,10 +1079,7 @@ class point_space(space):
             dim : {int, numpy.ndarray}
                 Dimension(s) of the space.
         """
-        if split:
-            return self.get_shape()
-        else:
-            return np.prod(self.get_shape())
+        return np.prod(self.get_shape())
 
     def get_dof(self, split=False):
         """
@@ -1100,11 +1092,15 @@ class point_space(space):
             dof : int
                 Number of degrees of freedom of the space.
         """
-        pre_dof = self.get_dim(split=split)
-        if issubclass(self.dtype.type, np.complexfloating):
-            return pre_dof * 2
+        if split:
+            dof = self.get_shape()
+            if issubclass(self.dtype.type, np.complexfloating):
+                dof = tuple(np.array(dof)*2)
         else:
-            return pre_dof
+            dof = self.get_dim()
+            if issubclass(self.dtype.type, np.complexfloating):
+                dof = dof * 2
+        return dof
 
     def get_vol(self, split=False):
         if split:
@@ -1139,7 +1135,7 @@ class point_space(space):
             mol = self.cast(1, dtype=np.dtype('float'))
             return self.calc_weight(mol, power=1)
 
-    def cast(self, x, dtype=None, **kwargs):
+    def cast(self, x=None, dtype=None, **kwargs):
         if dtype is not None:
             dtype = np.dtype(dtype)
 
@@ -1231,7 +1227,7 @@ class point_space(space):
             if to_copy:
                 temp = x.copy_empty(dtype=dtype,
                                     distribution_strategy=self.datamodel)
-                temp.set_local_data(x.get_local_data())
+                temp.inject((slice(None),), x, (slice(None),))
                 temp.hermitian = x.hermitian
                 x = temp
 
@@ -1518,23 +1514,23 @@ class point_space(space):
             return self.cast(0)
 
         if self.datamodel == 'np':
-            if arg[0] == "pm1":
+            if arg['random'] == "pm1":
                 x = random.pm1(dtype=self.dtype,
                                shape=self.get_shape())
-            elif arg[0] == "gau":
+            elif arg['random'] == "gau":
                 x = random.gau(dtype=self.dtype,
                                shape=self.get_shape(),
-                               mean=None,
-                               dev=arg[2],
-                               var=arg[3])
-            elif arg[0] == "uni":
+                               mean=arg['mean'],
+                               std=arg['std'])
+            elif arg['random'] == "uni":
                 x = random.uni(dtype=self.dtype,
                                shape=self.get_shape(),
-                               vmin=arg[1],
-                               vmax=arg[2])
+                               vmin=arg['vmin'],
+                               vmax=arg['vmax'])
             else:
                 raise KeyError(about._errors.cstring(
-                    "ERROR: unsupported random key '" + str(arg[0]) + "'."))
+                    "ERROR: unsupported random key '" +
+                    str(arg['random']) + "'."))
             return x
 
         elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
@@ -1543,46 +1539,34 @@ class point_space(space):
                                              dtype=self.dtype)
 
             # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
-            if arg[0] == 'pm1':
+            if arg['random'] == 'pm1':
                 sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
                                                             shape=s))
 
             # Case 2: normal distribution with zero-mean and a given standard
             #         deviation or variance
-            elif arg[0] == 'gau':
-                var = arg[3]
-                if np.isscalar(var) or var is None:
-                    processed_var = var
+            elif arg['random'] == 'gau':
+                std = arg['std']
+                if np.isscalar(std) or std is None:
+                    processed_std = std
                 else:
                     try:
-                        processed_var = sample.distributor.\
-                            extract_local_data(var)
+                        processed_std = sample.distributor.\
+                                                        extract_local_data(std)
                     except(AttributeError):
-                        processed_var = var
+                        processed_std = std
 
                 sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
                                                             shape=s,
-                                                            mean=arg[1],
-                                                            dev=arg[2],
-                                                            var=processed_var))
+                                                            mean=arg['mean'],
+                                                            std=processed_std))
 
             # Case 3: uniform distribution
-            elif arg[0] == 'gau':
-                var = arg[3]
-                if np.isscalar(var) == True or var is None:
-                    processed_var = var
-                else:
-                    try:
-                        processed_var = sample.distributor.extract_local_data(
-                            var)
-                    except(AttributeError):
-                        processed_var = var
-
-                sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
+            elif arg['random'] == 'uni':
+                sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
                                                             shape=s,
-                                                            mean=arg[1],
-                                                            dev=arg[2],
-                                                            var=processed_var))
+                                                            vmin=arg['vmin'],
+                                                            vmax=arg['vmax']))
             return sample
 
         else:
@@ -2966,7 +2950,7 @@ class field(object):
     def nanmax(self, **kwargs):
         return self._unary_helper(self.get_val(), op='nanmax', **kwargs)
 
-    def med(self, **kwargs):
+    def median(self, **kwargs):
         """
             Returns the median of the field values.
 

@@ -60,6 +60,8 @@ if gl is None and gc['lm2gl']:
     gc['lm2gl'] = False
 
 LM_DISTRIBUTION_STRATEGIES = []
+GL_DISTRIBUTION_STRATEGIES = []
+HP_DISTRIBUTION_STRATEGIES = []
 
 
 class lm_space(point_space):
@@ -194,6 +196,17 @@ class lm_space(point_space):
     def para(self, x):
         self.paradict['lmax'] = x[0]
         self.paradict['mmax'] = x[1]
+
+    def _identifier(self):
+        # Extract the identifying parts from the vars(self) dict.
+        temp = [(ii[0],
+                 ((lambda x: tuple(x) if
+                  isinstance(x, np.ndarray) else x)(ii[1])))
+                for ii in vars(self).iteritems()
+                if ii[0] not in ['power_indices', 'comm']]
+        temp.append(('comm', self.comm.__hash__()))
+        # Return the sorted identifiers as a tuple.
+        return tuple(sorted(temp))
 
     def copy(self):
         return lm_space(lmax=self.paradict['lmax'],
@@ -891,7 +904,7 @@ class gl_space(point_space):
             An array containing the pixel sizes.
     """
 
-    def __init__(self, nlat, nlon=None, dtype=np.dtype('float'),
+    def __init__(self, nlat, nlon=None, dtype=np.dtype('float64'),
                  datamodel='np', comm=gc['default_comm']):
         """
             Sets the attributes for a gl_space class instance.
@@ -978,8 +991,10 @@ class gl_space(point_space):
             Since the :py:class:`gl_space` class only supports real-valued
             fields, the number of degrees of freedom is the number of pixels.
         """
-        # dof = dim
-        return self.get_dim(split=split)
+        if split:
+            return self.get_shape()
+        else:
+            return self.get_dim()
 
     def get_meta_volume(self, split=False):
         """
@@ -1100,7 +1115,8 @@ class gl_space(point_space):
                 Supported distributions are:
 
                 - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given standard
+                - "gau" (normal distribution with zero-mean and a given
+                standard
                     deviation or variance)
                 - "syn" (synthesizes from a given power spectrum)
                 - "uni" (uniform distribution over [vmin,vmax[)
@@ -1111,7 +1127,8 @@ class gl_space(point_space):
             var : float, *optional*
                 Variance, overriding `dev` if both are specified
                 (default: 1).
-            spec : {scalar, list, numpy.array, nifty.field, function}, *optional*
+            spec : {scalar, list, numpy.array, nifty.field, function},
+            *optional*
                 Power spectrum (default: 1).
             codomain : nifty.lm_space, *optional*
                 A compatible codomain for power indexing (default: None).
@@ -1477,10 +1494,6 @@ class gl_space(point_space):
         return "nifty_lm.gl_space instance\n- nlat     = " + str(self.para[0]) + "\n- nlon     = " + str(self.para[1]) + "\n- dtype = numpy." + str(np.result_type(self.dtype))
 
 
-
-
-
-
 class hp_space(point_space):
     """
         ..        __
@@ -1604,8 +1617,10 @@ class hp_space(point_space):
             Since the :py:class:`hp_space` class only supports real-valued
             fields, the number of degrees of freedom is the number of pixels.
         """
-        # dof = dim
-        return self.get_dim(split=split)
+        if split:
+            return self.get_shape()
+        else:
+            return self.get_dim()
 
     def get_meta_volume(self, split=False):
         """
