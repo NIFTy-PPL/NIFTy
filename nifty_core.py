@@ -884,7 +884,8 @@ class point_space(space):
     def copy(self):
         return point_space(num=self.paradict['num'],
                            dtype=self.dtype,
-                           datamodel=self.datamodel)
+                           datamodel=self.datamodel,
+                           comm=self.comm)
 
     def getitem(self, data, key):
         return data[key]
@@ -1337,18 +1338,18 @@ class point_space(space):
         # Now it's about to extract a powerspectrum from spec
         # First of all just extract a numpy array. The shape is cared about
         # later.
-
+        dtype = np.dtype('float')
         # Case 1: spec is a function
         if callable(spec):
             # Try to plug in the kindex array in the function directly
             try:
-                spec = np.array(spec(kindex), dtype=self.dtype)
+                spec = np.array(spec(kindex), dtype=dtype)
             except:
                 # Second try: Use a vectorized version of the function.
                 # This is slower, but better than nothing
                 try:
                     spec = np.array(np.vectorize(spec)(kindex),
-                                    dtype=self.dtype)
+                                    dtype=dtype)
                 except:
                     raise TypeError(about._errors.cstring(
                         "ERROR: invalid power spectra function."))
@@ -1359,21 +1360,13 @@ class point_space(space):
                 spec = spec.val.get_full_data()
             except AttributeError:
                 spec = spec.val
-            spec = spec.astype(self.dtype).flatten()
+            spec = spec.astype(dtype).flatten()
 
         # Case 3: spec is a scalar or something else:
         else:
-            spec = np.array(spec, dtype=self.dtype).flatten()
+            spec = np.array(spec, dtype=dtype).flatten()
 
         # Make some sanity checks
-        # Drop imaginary part
-        temp_spec = np.real(spec)
-        try:
-            np.testing.assert_allclose(spec, temp_spec)
-        except(AssertionError):
-            about.warnings.cprint("WARNING: Dropping imaginary part.")
-        spec = temp_spec
-
         # check finiteness
         if not np.all(np.isfinite(spec)):
             about.warnings.cprint("WARNING: infinite value(s).")
@@ -1535,8 +1528,10 @@ class point_space(space):
 
         elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
             # Prepare the empty distributed_data_object
-            sample = distributed_data_object(global_shape=self.get_shape(),
-                                             dtype=self.dtype)
+            sample = distributed_data_object(
+                                        global_shape=self.get_shape(),
+                                        dtype=self.dtype,
+                                        distribution_strategy=self.datamodel)
 
             # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
             if arg['random'] == 'pm1':
@@ -1594,7 +1589,11 @@ class point_space(space):
         return x * self.get_weight(power=power)
 
     def get_weight(self, power=1, split=False):
-        return np.prod(np.array(self.distances)**np.array(power))
+        splitted_weight = tuple(np.array(self.distances)**np.array(power))
+        if not split:
+            return np.prod(splitted_weight)
+        else:
+            return splitted_weight
 
     def calc_dot(self, x, y):
         """
@@ -1650,12 +1649,9 @@ class point_space(space):
             iter : int, *optional*
                 Number of iterations performed in specific transformations.
         """
-        x = self.cast(x)
-        if codomain is None or self.check_codomain(codomain):
-            return x
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: unsupported transformation."))
+        raise AttributeError(about._errors.cstring(
+            "ERROR: fourier-transformation is ill-defined for " +
+            "(unstructured) point space."))
 
     def calc_smooth(self, x, **kwargs):
         """
@@ -1677,21 +1673,27 @@ class point_space(space):
     def calc_real_Q(self, x):
         try:
             return x.isreal().all()
-        except(AttributeError):
+        except AttributeError:
             return np.all(np.isreal(x))
 
     def calc_bincount(self, x, weights=None, minlength=None):
+        try:
+            complex_weights_Q = issubclass(weights.dtype.type,
+                                           np.complexfloating)
+        except AttributeError:
+            complex_weights_Q = False
+
         if self.datamodel == 'np':
-            if issubclass(np.dtype(weights).type, np.complexfloating):
-                real_bincount = np.bincount(x, weights=weights.real,
-                                            minlength=minlength)
-                imag_bincount = np.bincount(x, weights=weights.imag,
-                                            minlength=minlength)
-                return real_bincount + imag_bincount
+            if complex_weights_Q:
+                    real_bincount = np.bincount(x, weights=weights.real,
+                                                minlength=minlength)
+                    imag_bincount = np.bincount(x, weights=weights.imag,
+                                                minlength=minlength)
+                    return real_bincount + imag_bincount
             else:
                 return np.bincount(x, weights=weights, minlength=minlength)
         elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            if issubclass(np.dtype(weights).type, np.complexfloating):
+            if complex_weights_Q:
                 real_bincount = x.bincount(weights=weights.real,
                                            minlength=minlength)
                 imag_bincount = x.bincount(weights=weights.imag,

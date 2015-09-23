@@ -33,8 +33,9 @@
 """
 from __future__ import division
 
-import os
+import itertools
 import numpy as np
+import os
 from scipy.special import erf
 import pylab as pl
 from matplotlib.colors import LogNorm as ln
@@ -120,7 +121,7 @@ class rg_space(point_space):
     """
     epsilon = 0.0001  # relative precision for comparisons
 
-    def __init__(self, num, zerocenter=False, complexity=0, dist=None,
+    def __init__(self, shape, zerocenter=False, complexity=0, distances=None,
                  harmonic=False, datamodel='fftw', fft_module='pyfftw',
                  comm=gc['default_comm']):
         """
@@ -153,7 +154,7 @@ class rg_space(point_space):
             None
         """
 
-        self.paradict = rg_space_paradict(num=num,
+        self.paradict = rg_space_paradict(shape=shape,
                                           complexity=complexity,
                                           zerocenter=zerocenter)
         # set dtype
@@ -171,24 +172,24 @@ class rg_space(point_space):
             self.datamodel = datamodel
 
         # set volume/distances
-        naxes = len(self.paradict['num'])
-        if dist is None:
-            dist = 1 / np.array(self.paradict['num'], dtype=np.float)
-        elif np.isscalar(dist):
-            dist = np.ones(naxes, dtype=np.float) * dist
+        naxes = len(self.paradict['shape'])
+        if distances is None:
+            distances = 1 / np.array(self.paradict['shape'], dtype=np.float)
+        elif np.isscalar(distances):
+            distances = np.ones(naxes, dtype=np.float) * distances
         else:
-            dist = np.array(dist, dtype=np.float)
-            if np.size(dist) == 1:
-                dist = dist * np.ones(naxes, dtype=np.float)
-            if np.size(dist) != naxes:
+            distances = np.array(distances, dtype=np.float)
+            if np.size(distances) == 1:
+                distances = distances * np.ones(naxes, dtype=np.float)
+            if np.size(distances) != naxes:
                 raise ValueError(about._errors.cstring(
-                    "ERROR: size mismatch ( " + str(np.size(dist)) + " <> " +
-                    str(naxes) + " )."))
-        if np.any(dist <= 0):
+                    "ERROR: size mismatch ( " + str(np.size(distances)) +
+                    " <> " + str(naxes) + " )."))
+        if np.any(distances <= 0):
             raise ValueError(about._errors.cstring(
                 "ERROR: nonpositive distance(s)."))
 
-        self.distances = tuple(dist)
+        self.distances = tuple(distances)
         self.harmonic = bool(harmonic)
         self.discrete = False
 
@@ -197,6 +198,7 @@ class rg_space(point_space):
         # Initializes the fast-fourier-transform machine, which will be used
         # to transform the space
         if not gc.validQ('fft_module', fft_module):
+            about.warnings.cprint("WARNING: fft_module set to default.")
             fft_module = gc['fft_module']
         self.fft_machine = nifty_fft.fft_factory(fft_module)
 
@@ -205,7 +207,7 @@ class rg_space(point_space):
         if self.harmonic:
             self.power_indices = rg_power_indices(
                     shape=self.get_shape(),
-                    dgrid=dist,
+                    dgrid=distances,
                     zerocentered=self.paradict['zerocenter'],
                     comm=self.comm,
                     datamodel=self.datamodel,
@@ -213,14 +215,14 @@ class rg_space(point_space):
 
     @property
     def para(self):
-        temp = np.array(self.paradict['num'] +
+        temp = np.array(self.paradict['shape'] +
                         [self.paradict['complexity']] +
                         self.paradict['zerocenter'], dtype=int)
         return temp
 
     @para.setter
     def para(self, x):
-        self.paradict['num'] = x[:(np.size(x) - 1) // 2]
+        self.paradict['shape'] = x[:(np.size(x) - 1) // 2]
         self.paradict['zerocenter'] = x[(np.size(x) + 1) // 2:]
         self.paradict['complexity'] = x[(np.size(x) - 1) // 2]
 
@@ -241,15 +243,16 @@ class rg_space(point_space):
         return tuple(sorted(temp))
 
     def copy(self):
-        return rg_space(num=self.paradict['num'],
+        return rg_space(shape=self.paradict['shape'],
                         complexity=self.paradict['complexity'],
                         zerocenter=self.paradict['zerocenter'],
-                        dist=self.distances,
+                        distances=self.distances,
                         harmonic=self.harmonic,
-                        datamodel=self.datamodel)
+                        datamodel=self.datamodel,
+                        comm=self.comm)
 
     def get_shape(self):
-        return tuple(self.paradict['num'])
+        return tuple(self.paradict['shape'])
 
     def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
         casted_x = super(rg_space, self)._cast_to_d2o(x=x,
@@ -366,9 +369,12 @@ class rg_space(point_space):
         if self.datamodel is not codomain.datamodel:
             return False
 
+        if self.comm is not codomain.comm:
+            return False
+
         # check number of number and size of axes
-        if not np.all(np.array(self.paradict['num']) ==
-                      np.array(codomain.paradict['num'])):
+        if not np.all(np.array(self.paradict['shape']) ==
+                      np.array(codomain.paradict['shape'])):
             return False
 
         # check harmonic flag
@@ -408,7 +414,7 @@ class rg_space(point_space):
 
         # Check if the distances match, i.e. dist'=1/(num*dist)
         if not np.all(
-                np.absolute(np.array(self.paradict['num']) *
+                np.absolute(np.array(self.paradict['shape']) *
                             np.array(self.distances) *
                             np.array(codomain.distances) - 1) < self.epsilon):
             return False
@@ -463,19 +469,21 @@ class rg_space(point_space):
                     str(np.size(cozerocenter)) + " <> " + str(naxes) + " )."))
 
         # Set up the initialization variables
-        num = self.paradict['num']
-        dist = 1 / (np.array(self.paradict['num']) * np.array(self.distances))
+        shape = self.paradict['shape']
+        distances = 1 / (np.array(self.paradict['shape']) *
+                         np.array(self.distances))
         datamodel = self.datamodel
-
+        comm = self.comm
         complexity = {0: 1, 1: 0, 2: 2}[self.paradict['complexity']]
         harmonic = bool(not self.harmonic)
 
-        new_space = rg_space(num,
+        new_space = rg_space(shape,
                              zerocenter=cozerocenter,
                              complexity=complexity,
-                             dist=dist,
+                             distances=distances,
                              harmonic=harmonic,
-                             datamodel=datamodel)
+                             datamodel=datamodel,
+                             comm=comm)
         return new_space
 
     def get_random_values(self, **kwargs):
@@ -558,6 +566,21 @@ class rg_space(point_space):
                 sample[(temp_data.real >= 0) * (temp_data.real < 0.5)] = -1
                 sample[(temp_data.real < 0) * (temp_data.imag >= 0)] = 1j
                 sample[(temp_data.real < 0) * (temp_data.imag < 0)] = -1j
+                # Set the mirroring invariant points to real values
+                product_list = []
+                for s in self.get_shape():
+                    # if the particular dimension has even length, set
+                    # also the middle of the array to a real value
+                    if s % 2 == 0:
+                        product_list += [[0, s/2]]
+                    else:
+                        product_list += [[0]]
+
+                for i in itertools.product(*product_list):
+                    sample[i] = {1: 1,
+                                 -1: -1,
+                                 1j: 1,
+                                 -1j: -1}[sample[i]]
             else:
                 sample[sample >= 0] = 1
                 sample[sample < 0] = -1
@@ -676,6 +699,7 @@ class rg_space(point_space):
                     sample = self.get_random_values(random='gau',
                                                     mean=0,
                                                     std=1)
+
                 # apply the powerspectrum renormalization
                 if self.datamodel == 'np':
                     rescaler = np.sqrt(spec[np.searchsorted(kindex, kdict)])
@@ -683,8 +707,11 @@ class rg_space(point_space):
                 elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
                     # extract the local data from kdict
                     local_kdict = kdict.get_local_data()
+                    print ('local_kdict', local_kdict)
                     rescaler = np.sqrt(
                         spec[np.searchsorted(kindex, local_kdict)])
+                    print ('rescaler', rescaler)
+                    print ('sample', sample.distribution_strategy)
                     sample.apply_scalar_function(lambda x: x * rescaler,
                                                  inplace=True)
                 else:
@@ -884,29 +911,19 @@ class rg_space(point_space):
         # if a codomain was given...
         if codomain is not None:
             # ...check if it was suitable
-            if not isinstance(codomain, rg_space):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: codomain is not a rg_space instance!"))
-            if not self.harmonic and not codomain.harmonic:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: fourier_domain is not a fourier space!"))
             if not self.check_codomain(codomain):
                 raise ValueError(about._errors.cstring(
-                    "ERROR: fourier_codomain is not a valid codomain!"))
-        elif not self.harmonic:
+                    "ERROR: the given codomain is not a compatible!"))
+        else:
             codomain = self.get_codomain()
 
-        # Case1:
-        # If self is a position-space, fourier transform the input and
-        # call calc_smooth of the fourier codomain
-        if not self.harmonic:
-            x = self.calc_transform(x, codomain=codomain)
-            x = codomain.calc_smooth(x, sigma)
-            x = codomain.calc_transform(x, codomain=self)
-            return x
+        x = self.calc_transform(x, codomain=codomain)
+        x = codomain._calc_smooth_helper(x, sigma)
+        x = codomain.calc_transform(x, codomain=self)
+        return x
 
-        # Case 2:
-        # if self is fourier multiply the gaussian kernel, etc...
+    def _calc_smooth_helper(self, x, sigma):
+        # multiply the gaussian kernel, etc...
 
         # Cast the input
         x = self.cast(x)
@@ -939,8 +956,10 @@ class rg_space(point_space):
             # apply the blown-up gaussian_kernel_vector
             x = x*gaussian_kernel_vector
 
-        if self.datamodel in RG_DISTRIBUTION_STRATEGIES:
+        try:
             x.hermitian = remeber_hermitianQ
+        except AttributeError:
+            pass
 
         return x
 
@@ -1658,10 +1677,10 @@ class rg_space(point_space):
 
     def __str__(self):
         naxes = (np.size(self.para) - 1) // 2
-        num = self.para[:naxes].tolist()
+        shape = self.para[:naxes]
         zerocenter = self.para[-naxes:].astype(np.bool).tolist()
         dist = self.distances.tolist()
-        return "nifty_rg.rg_space instance\n- num        = " + str(num) + \
+        return "nifty_rg.rg_space instance\n- shape        = " + str(shape) + \
             "\n- naxes      = " + str(naxes) + \
             "\n- hermitian  = " + str(bool(self.para[naxes] == 1)) + \
             "\n- purelyreal = " + str(bool(not self.para[naxes])) + \

@@ -121,6 +121,10 @@ class _fftw_plan_and_info(object):
         self.in_zero_centered_dimensions = domain.paradict['zerocenter']
         self.out_zero_centered_dimensions = codomain.paradict['zerocenter']
 
+        self.overall_sign = (-1)**np.sum(
+                                np.array(self.in_zero_centered_dimensions) *
+                                np.array(self.out_zero_centered_dimensions))
+
         self.local_node_dimensions = np.append((self.fftw_local_size[1],),
                                                self.global_input_shape[1:])
         self.offsetQ = self.fftw_local_size[2] % 2
@@ -330,7 +334,8 @@ class fft_fftw(fft):
             if val.distribution_strategy == 'fftw':
                 local_val = val.get_local_data()
             else:
-                local_val = val.get_data(slice(local_start, local_end))
+                local_val = val.get_data(slice(local_start, local_end),
+                                         local_keys=True).get_local_data()
         # Case 2: val is a numpy array carrying the full data
         else:
             local_val = val[slice(local_start, local_end)]
@@ -344,16 +349,13 @@ class fft_fftw(fft):
             p.input_array[:] = local_val
         # execute the plan
         p()
-        result = p.output_array * current_plan_and_info.\
-            get_domain_centering_mask()
 
-        """
-        ## renorm the result according to the convention of gfft
-        if current_plan_and_info.direction == 'FFTW_FORWARD':
-            result = result/float(result.size)
+        if p.has_output:
+            result = p.output_array * current_plan_and_info.\
+                get_domain_centering_mask()
         else:
-            result *= float(result.size)
-        """
+            result = local_val
+            assert(result.shape[0] == 0)
 
         # build the return object according to the input val
         # TODO: Check if comm is the same, too!
@@ -362,7 +364,8 @@ class fft_fftw(fft):
                 return_val.set_local_data(data=result)
             else:
                 return_val.set_data(data=result,
-                                    key=slice(local_start, local_end))
+                                    to_key=slice(local_start, local_end),
+                                    local_keys=True)
 
             # If the values living in domain are purely real, the
             # result of the fft is hermitian
@@ -378,6 +381,11 @@ class fft_fftw(fft):
                 distribution_strategy='fftw')
             return_val.set_local_data(data=result)
             return_val = return_val.get_full_data()
+
+        # The +-1 magic has a caveat: if a dimension was zero-centered
+        # in the harmonic as well as in position space, the result gets
+        # a global minus. The following multiplitcation compensates that.
+        return_val *= current_plan_and_info.overall_sign
 
         return return_val
 
@@ -431,6 +439,7 @@ class fft_gfft(fft):
             d2oQ = True
             temp = val.get_full_data()
         else:
+            d2oQ = False
             temp = val
         # transform and return
         if(domain.dtype == np.float64):

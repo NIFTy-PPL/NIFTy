@@ -3,7 +3,6 @@
 import imp
 import sys
 
-
 class dependency_injector(object):
     def __init__(self, modules=[]):
         self.registry = {}
@@ -35,16 +34,28 @@ class dependency_injector(object):
             self.registry[key_name] = loaded_module
         except KeyError:
             try:
-                fp, pathname, description = imp.find_module(module_name)
-                loaded_module = \
-                    imp.load_module(module_name, fp, pathname, description)
+                loaded_module = recursive_import(module_name)
+#                print module_name
+#                fp, pathname, description = imp.find_module(module_name)
+#                print pathname
+#                loaded_module = \
+#                    imp.load_module(module_name, fp, pathname, description)
+#                    
+#                print loaded_module
                 self.registry[key_name] = loaded_module
             except ImportError:
                 pass
-            finally:
-                # Since we may exit via an exception, close fp explicitly.
-                try:
-                    fp.close()
-                except (UnboundLocalError, AttributeError):
-                    pass
+#            finally:
+#                # Since we may exit via an exception, close fp explicitly.
+#                try:
+#                    fp.close()
+#                except (UnboundLocalError, AttributeError):
+#                    pass
 
+
+def recursive_import(name):
+    m = __import__(name)
+    for n in name.split(".")[1:]:
+        m = getattr(m, n)
+    return m
+    

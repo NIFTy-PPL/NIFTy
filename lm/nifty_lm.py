@@ -326,6 +326,9 @@ class lm_space(point_space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty lm_space."))
 
+        if self.comm is not codomain.comm:
+            return False
+
         if self.datamodel is not codomain.datamodel:
             return False
 
@@ -388,10 +391,16 @@ class lm_space(point_space):
                 raise NotImplementedError
             nlat = self.paradict['lmax'] + 1
             nlon = self.paradict['lmax'] * 2 + 1
-            return gl_space(nlat=nlat, nlon=nlon, dtype=new_dtype)
+            return gl_space(nlat=nlat, nlon=nlon, dtype=new_dtype,
+                            datamodel=self.datamodel,
+                            comm=self.comm)
+
         elif coname == 'hp' or (coname is None and not gc['lm2gl']):
             nside = (self.paradict['lmax']+1) // 3
-            return hp_space(nside=nside)
+            return hp_space(nside=nside,
+                            datamodel=self.datamodel,
+                            comm=self.comm)
+
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported or incompatible codomain '"+coname+"'."))
@@ -1065,6 +1074,9 @@ class gl_space(point_space):
         if self.datamodel is not codomain.datamodel:
             return False
 
+        if self.comm is not codomain.comm:
+            return False
+
         if isinstance(codomain, lm_space):
             nlat = self.paradict['nlat']
             nlon = self.paradict['nlon']
@@ -1093,9 +1105,13 @@ class gl_space(point_space):
         mmax = nlat-1
         # lmax,mmax = nlat-1,nlat-1
         if self.dtype == np.dtype('float32'):
-            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex64)
+            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex64,
+                            datamodel=self.datamodel,
+                            comm=self.comm)
         else:
-            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex128)
+            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex128,
+                            datamodel=self.datamodel,
+                            comm=self.comm)
 
     def get_random_values(self, **kwargs):
         """
@@ -1690,6 +1706,9 @@ class hp_space(point_space):
         if self.datamodel is not codomain.datamodel:
             return False
 
+        if self.comm is not codomain.comm:
+            return False
+
         if isinstance(codomain, lm_space):
             nside = self.paradict['nside']
             lmax = codomain.paradict['lmax']
@@ -1713,7 +1732,9 @@ class hp_space(point_space):
         """
         lmax = 3*self.paradict['nside'] - 1
         mmax = lmax
-        return lm_space(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
+        return lm_space(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'),
+                        datamodel=self.datamodel,
+                        comm=self.comm)
 
     def get_random_values(self, **kwargs):
         """

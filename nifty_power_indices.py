@@ -236,7 +236,8 @@ class power_indices(object):
     def _compute_kdict_from_pindex_kindex(self, pindex, kindex):
         if isinstance(pindex, distributed_data_object):
             tempindex = pindex.copy(dtype=kindex.dtype)
-            result = tempindex.apply_scalar_function(lambda x: kindex[x])
+            result = tempindex.apply_scalar_function(
+                                lambda x: kindex[x.astype(np.dtype('int'))])
         else:
             result = kindex[pindex].astype(dtype=kindex.dtype)
         return result
@@ -266,30 +267,44 @@ class power_indices(object):
         _compute_indices function as it is needed in _bin_power_indices,
         too.
         """
-        ##########
-        # pundex #
-        ##########
-        # Prepare the local data
-        local_pindex = global_pindex.get_local_data()
-        # Compute the local pundices for the local pindices
-        (temp_uniqued_pindex, local_temp_pundex) = np.unique(local_pindex,
-                                                             return_index=True)
-        # Shift the local pundices by the nodes' local_dim_offset
-        local_temp_pundex += global_pindex.distributor.local_dim_offset
+        if self.datamodel in DISTRIBUTION_STRATEGIES['slicing']:
+            ##########
+            # pundex #
+            ##########
+            # Prepare the local data
+            local_pindex = global_pindex.get_local_data()
+            # Compute the local pundices for the local pindices
+            (temp_uniqued_pindex, local_temp_pundex) = np.unique(
+                                                            local_pindex,
+                                                            return_index=True)
+            # Shift the local pundices by the nodes' local_dim_offset
+            local_temp_pundex += global_pindex.distributor.local_dim_offset
 
-        # Prepare the pundex arrays used for the Allreduce operation
-        # pundex has the same length as the kindex array
-        local_pundex = np.zeros(shape=global_kindex.shape, dtype=np.int)
-        # Set the default value higher than the maximal possible pundex value
-        # so that MPI.MIN can sort out the default
-        local_pundex += np.prod(global_pindex.shape) + 1
-        # Set the default value higher than the length
-        global_pundex = np.empty_like(local_pundex)
-        # Store the individual pundices in the local_pundex array
-        local_pundex[temp_uniqued_pindex] = local_temp_pundex
-        # Use Allreduce to find the first occurences/smallest pundices
-        self.comm.Allreduce(local_pundex, global_pundex, op=MPI.MIN)
-        return global_pundex
+            # Prepare the pundex arrays used for the Allreduce operation
+            # pundex has the same length as the kindex array
+            local_pundex = np.zeros(shape=global_kindex.shape, dtype=np.int)
+            # Set the default value higher than the maximal possible pundex
+            # value so that MPI.MIN can sort out the default
+            local_pundex += np.prod(global_pindex.shape) + 1
+            # Set the default value higher than the length
+            global_pundex = np.empty_like(local_pundex)
+            # Store the individual pundices in the local_pundex array
+            local_pundex[temp_uniqued_pindex] = local_temp_pundex
+            # Use Allreduce to find the first occurences/smallest pundices
+            self.comm.Allreduce(local_pundex, global_pundex, op=MPI.MIN)
+            return global_pundex
+
+        elif self.datamodel in DISTRIBUTION_STRATEGIES['not']:
+            ##########
+            # pundex #
+            ##########
+            pundex = np.unique(global_pindex.get_local_data(),
+                               return_index=True)[1]
+            return pundex
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: _compute_pundex_d2o for given datamodel not " +
+                "implemented."))
 
     def _compute_indices_np(self, nkdict):
         """

@@ -56,24 +56,30 @@ class point_space_paradict(space_paradict):
 
 class rg_space_paradict(space_paradict):
 
-    def __init__(self, num, complexity, zerocenter):
-        self.ndim = len(np.array(num).flatten())
+    def __init__(self, shape, complexity, zerocenter):
+        self.ndim = len(np.array(shape).flatten())
         space_paradict.__init__(
-            self, num=num, complexity=complexity, zerocenter=zerocenter)
+            self, shape=shape, complexity=complexity, zerocenter=zerocenter)
 
     def __setitem__(self, key, arg):
-        if key not in ['num', 'complexity', 'zerocenter']:
+        if key not in ['shape', 'complexity', 'zerocenter']:
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported rg_space parameter"))
 
-        if key == 'num':
-            temp = list(np.array(arg, dtype=int).flatten())
+        if key == 'shape':
+            temp = np.array(arg, dtype=np.int).flatten()
+            if np.any(temp < 0):
+                raise ValueError("ERROR: negative number in shape.")
+            temp = list(temp)
             if len(temp) != self.ndim:
                 raise ValueError(about._errors.cstring(
                     "ERROR: Number of dimensions does not match the init " +
                     "value."))
         elif key == 'complexity':
             temp = int(arg)
+            if temp not in [0, 1, 2]:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: Unsupported complexity parameter: " + str(temp)))
         elif key == 'zerocenter':
             temp = np.empty(self.ndim, dtype=bool)
             temp[:] = arg
@@ -112,8 +118,8 @@ class lm_space_paradict(space_paradict):
                 "ERROR: Unsupported rg_space parameter"))
 
         if key == 'lmax':
-            temp = int(arg)
-            if(temp < 1):
+            temp = np.int(arg)
+            if temp < 1:
                 raise ValueError(about._errors.cstring(
                     "ERROR: lmax: nonpositive number."))
             # exception lmax == 2 (nside == 1)

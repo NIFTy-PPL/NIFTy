@@ -151,8 +151,7 @@ class random(object):
 
             # building kpack
             if pindex is not None and kindex is not None:
-                pindex = distributed_data_object(pindex,
-                                                 distribution_strategy='fftw')
+                pindex = domain.cast(pindex, dtype=np.dtype('int'))
                 kpack = [pindex, kindex]
             else:
                 kpack = None
@@ -317,7 +316,7 @@ class random(object):
             x.imag = (vmax - vmin) * np.random.random(size=size) + vmin
         elif(dtype in [np.dtype('int8'), np.dtype('int16'), np.dtype('int32'),
                        np.dtype('int64')]):
-            x = np.random.randint(
+            x = np.random.random_integers(
                 min(vmin, vmax), high=max(vmin, vmax), size=size)
         else:
             x = (vmax - vmin) * np.random.random(size=size) + vmin

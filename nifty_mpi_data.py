@@ -210,6 +210,8 @@ class distributed_data_object(object):
             try:
                 temp.data[:] = function(self.data)
             except:
+                about.warnings.cprint(
+                    "WARNING: Trying to use np.vectorize!")
                 temp.data[:] = np.vectorize(function)(self.data)
         else:
             # Noting to do here. The value-empty array
@@ -456,7 +458,8 @@ class distributed_data_object(object):
         other = self.distributor.extract_local_data(other)
         local_vdot = np.vdot(self.get_local_data(), other)
         local_vdot_list = self.distributor._allgather(local_vdot)
-        global_vdot = np.sum(local_vdot_list)
+        global_vdot = np.result_type(self.dtype,
+                                     other.dtype).type(np.sum(local_vdot_list))
         return global_vdot
 
     def __getitem__(self, key):
@@ -551,8 +554,13 @@ class distributed_data_object(object):
     def var(self):
         if self.shape == (0,):
             return np.var(np.array([], dtype=self.dtype))
-        mean_of_the_square = self.mean(power=2)
-        square_of_the_mean = self.mean()**2
+
+        if issubclass(self.dtype.type, np.complexfloating):
+            mean_of_the_square = abs(self**2).mean()
+            square_of_the_mean = abs(self.mean())**2
+        else:
+            mean_of_the_square = self.mean(power=2)
+            square_of_the_mean = self.mean()**2
         return mean_of_the_square - square_of_the_mean
 
     def std(self):
@@ -1242,7 +1250,7 @@ class distributor(object):
 
             # gather the local from_keys. It is the same procedure as above
             if from_found != 'd2o':
-                from_key_list = comm.allgather(to_key)
+                from_key_list = comm.allgather(from_key)
             else:
                 from_index_list = comm.allgather(from_key.index)
                 from_key_list = map(lambda z: d2o_librarian[z],
@@ -1265,9 +1273,9 @@ class distributor(object):
                     if comm.rank == i:
                         temp_shape = np.shape(data_update)
                         try:
-                            temp_dtype = np.dtype(data_update).type
+                            temp_dtype = np.dtype(data_update.dtype)
                         except(TypeError):
-                            temp_dtype = np.array(data_update).dtype.type
+                            temp_dtype = np.array(data_update).dtype
                     else:
                         temp_shape = None
                         temp_dtype = None
@@ -1437,7 +1445,6 @@ class _slicing_distributor(distributor):
     def _disperse_data_primitive(self, data, to_key, data_update, from_key,
                                  copy, to_found, to_found_boolean, from_found,
                                  from_found_boolean, **kwargs):
-
         if np.isscalar(data_update):
             from_key = None
 
@@ -1459,6 +1466,7 @@ class _slicing_distributor(distributor):
                     prepared_data_update = data_update[from_key]
                 else:
                     prepared_data_update = data_update
+
                 return self.disperse_data_to_slices(
                                             data=data,
                                             to_slices=to_key,
@@ -1567,7 +1575,6 @@ class _slicing_distributor(distributor):
 
     def disperse_data_to_slices(self, data, to_slices,
                                 data_update, from_slices=None, copy=True):
-
         comm = self.comm
         (to_slices, sliceified) = self._sliceify(to_slices)
 

@@ -6,9 +6,6 @@ from nifty_dependency_injector import dependency_injector
 from nifty_configuration import variable,\
                                 configuration
 
-
-
-
 global_dependency_injector = dependency_injector(
                                    ['h5py',
                                     ('mpi4py.MPI', 'MPI'),
@@ -18,6 +15,7 @@ global_dependency_injector = dependency_injector(
                                     ('nifty.dummys.gfft_dummy', 'gfft_dummy'),
                                     'healpy',
                                     'libsharp_wrapper_gl'])
+
 
 variable_fft_module = variable('fft_module',
                                ['pyfftw', 'gfft', 'gfft_fallback'],
@@ -61,3 +59,5 @@ variable_default_comm = variable(
                                        global_configuration['mpi_module']], z))
 
 global_configuration.register(variable_default_comm)
+
+
