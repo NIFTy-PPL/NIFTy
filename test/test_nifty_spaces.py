@@ -22,16 +22,16 @@ from nifty.nifty_paradict import space_paradict
 from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES
 
 from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES,\
-    gc as RG_GC
+                              gc as RG_GC
 from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
-    GL_DISTRIBUTION_STRATEGIES,\
-    HP_DISTRIBUTION_STRATEGIES
+                              GL_DISTRIBUTION_STRATEGIES,\
+                              HP_DISTRIBUTION_STRATEGIES
 from nifty.nifty_power_indices import power_indices
 from nifty.nifty_utilities import _hermitianize_inverter as \
-    hermitianize_inverter
+                                                        hermitianize_inverter
+
 
 ###############################################################################
-
 
 def custom_name_func(testcase_func, param_num, param):
     return "%s_%s" % (
@@ -169,9 +169,9 @@ def check_almost_equality(space, data1, data2, integers=7):
 def flip(space, data):
     return space.unary_operation(hermitianize_inverter(data), 'conjugate')
 
-###############################################################################
-###############################################################################
 
+###############################################################################
+###############################################################################
 
 class Test_Common_Space_Features(unittest.TestCase):
 
@@ -195,7 +195,6 @@ class Test_Common_Space_Features(unittest.TestCase):
         assert(callable(s.apply_scalar_function))
         assert(callable(s.unary_operation))
         assert(callable(s.binary_operation))
-        assert(callable(s.get_norm))
         assert(callable(s.get_shape))
         assert(callable(s.get_dim))
         assert(callable(s.get_dof))
@@ -207,6 +206,7 @@ class Test_Common_Space_Features(unittest.TestCase):
         assert(callable(s.get_random_values))
         assert(callable(s.calc_weight))
         assert(callable(s.get_weight))
+        assert(callable(s.calc_norm))
         assert(callable(s.calc_dot))
         assert(callable(s.calc_transform))
         assert(callable(s.calc_smooth))
@@ -345,18 +345,6 @@ class Test_Point_Space(unittest.TestCase):
         d2 = d[::-1]
         s.binary_operation(d, d2, op)
         # TODO: Implement value verification
-
-###############################################################################
-
-    @parameterized.expand(
-        itertools.product(DATAMODELS['point_space']),
-        testcase_func_name=custom_name_func)
-    def test_get_norm(self, datamodel):
-        num = 10
-        s = point_space(num, datamodel=datamodel)
-        d = s.cast(np.arange(num))
-        assert_almost_equal(s.get_norm(d), 16.881943016134134)
-        assert_almost_equal(s.get_norm(d, q=3), 12.651489979526238)
 
 ###############################################################################
 
@@ -598,6 +586,18 @@ class Test_Point_Space(unittest.TestCase):
         else:
             assert_equal(s.calc_dot(1, 1), num)
             assert_equal(s.calc_dot(np.arange(num), 1), num * (num - 1.) / 2.)
+
+###############################################################################
+
+    @parameterized.expand(
+        itertools.product(DATAMODELS['point_space']),
+        testcase_func_name=custom_name_func)
+    def test_calc_norm(self, datamodel):
+        num = 10
+        s = point_space(num, datamodel=datamodel)
+        d = s.cast(np.arange(num))
+        assert_almost_equal(s.calc_norm(d), 16.881943016134134)
+        assert_almost_equal(s.calc_norm(d, q=3), 12.651489979526238)
 
 ###############################################################################
 

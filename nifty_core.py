@@ -285,10 +285,6 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'binary_operation'."))
 
-    def get_norm(self, x, q):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'norm'."))
-
     def get_shape(self):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'shape'."))
@@ -322,29 +318,6 @@ class space(object):
         """
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dof'."))
-
-    def get_meta_volume(self, total=False):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'get_meta_volume'."))
 
     def cast(self, x, verbose=False):
         """
@@ -551,6 +524,10 @@ class space(object):
     def get_weight(self, power=1):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'get_weight'."))
+
+    def calc_norm(self, x, q):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: no generic instance method 'norm'."))
 
     def calc_dot(self, x, y):
         """
@@ -1036,32 +1013,6 @@ class point_space(space):
 
         return translation[op](x)(y)
 
-    def get_norm(self, x, q=2):
-        """
-            Computes the Lq-norm of field values.
-
-            Parameters
-            ----------
-            x : np.ndarray
-                The data array
-            q : scalar
-                Parameter q of the Lq-norm (default: 2).
-
-            Returns
-            -------
-            norm : scalar
-                The Lq-norm of the field values.
-
-        """
-        if q == 2:
-            result = self.calc_dot(x, x)
-        else:
-            y = x**(q - 1)
-            result = self.calc_dot(x, y)
-
-        result = result**(1. / q)
-        return result
-
     def get_shape(self):
         return (self.paradict['num'],)
 
@@ -1215,10 +1166,12 @@ class point_space(space):
 
             # Check the dtype
             if x.dtype != dtype:
-                about.warnings.cflush(
-                    "WARNING: Datatypes are uneqal/of conflicting precision " +
-                    "(own: " + str(dtype) + " <> foreign: " + str(x.dtype) +
-                    ") and will be casted! Potential loss of precision!\n")
+                if x.dtype > dtype:
+                    about.warnings.cflush(
+                        "WARNING: Datatypes are of conflicting precision " +
+                        "(own: " + str(dtype) + " <> foreign: " +
+                        str(x.dtype) + ") and will be casted! Potential " +
+                        "loss of precision!\n")
                 to_copy = True
 
             # Check the distribution_strategy
@@ -1304,10 +1257,12 @@ class point_space(space):
 
             # Check the dtype
             if x.dtype != dtype:
-                about.warnings.cflush(
-                    "WARNING: Datatypes are uneqal/of conflicting precision " +
-                    " (own: " + str(dtype) + " <> foreign: " + str(x.dtype) +
-                    ") and will be casted! Potential loss of precision!\n")
+                if x.dtype > dtype:
+                    about.warnings.cflush(
+                        "WARNING: Datatypes are of conflicting precision " +
+                        " (own: " + str(dtype) + " <> foreign: " +
+                        str(x.dtype) + ") and will be casted! Potential " +
+                        "loss of precision!\n")
                 # Fix the datatype...
                 temp = x.astype(dtype)
                 # ... and cast again
@@ -1594,6 +1549,32 @@ class point_space(space):
             return np.prod(splitted_weight)
         else:
             return splitted_weight
+
+    def calc_norm(self, x, q=2):
+        """
+            Computes the Lq-norm of field values.
+
+            Parameters
+            ----------
+            x : np.ndarray
+                The data array
+            q : scalar
+                Parameter q of the Lq-norm (default: 2).
+
+            Returns
+            -------
+            norm : scalar
+                The Lq-norm of the field values.
+
+        """
+        if q == 2:
+            result = self.calc_dot(x, x)
+        else:
+            y = x**(q - 1)
+            result = self.calc_dot(x, y)
+
+        result = result**(1. / q)
+        return result
 
     def calc_dot(self, x, y):
         """
@@ -1953,8 +1934,9 @@ class field(object):
         # check codomain
         if codomain is None:
             codomain = domain.get_codomain()
-        else:
-            assert(self.domain.check_codomain(codomain))
+        elif not self.domain.check_codomain(codomain):
+            raise ValueError(about._errors.cstring(
+                "ERROR: The given codomain is not compatible to the domain."))
         self.codomain = codomain
 
         if ishape is not None:
@@ -1983,13 +1965,139 @@ class field(object):
                     **kwargs))
         self.set_val(new_val=val)
 
-    @property
-    def val(self):
-        return self.__val
+    def __len__(self):
+        return int(self.get_dim(split=True)[0])
 
-    @val.setter
-    def val(self, x):
-        self.__val = self.cast(x)
+    def apply_scalar_function(self, function, inplace=False):
+        if inplace:
+            working_field = self
+        else:
+            working_field = self.copy_empty()
+
+        data_object = self._map(
+            lambda z: self.domain.apply_scalar_function(z, function, inplace),
+            self.get_val())
+
+        working_field.set_val(data_object)
+        return working_field
+
+    def copy(self, domain=None, codomain=None):
+        copied_val = self._map(
+            lambda z: self.domain.unary_operation(z, op='copy'),
+            self.get_val())
+        new_field = self.copy_empty(domain=domain, codomain=codomain)
+        new_field.set_val(new_val=copied_val)
+        return new_field
+
+    def copy_empty(self, domain=None, codomain=None, ishape=None, **kwargs):
+        if domain is None:
+            domain = self.domain
+        if codomain is None:
+            codomain = self.codomain
+        if ishape is None:
+            ishape = self.ishape
+        new_field = field(domain=domain, codomain=codomain, ishape=ishape,
+                          **kwargs)
+        return new_field
+
+    def set_val(self, new_val=None, copy=False):
+        """
+            Resets the field values.
+
+            Parameters
+            ----------
+            new_val : {scalar, ndarray}
+                New field values either as a constant or an arbitrary array.
+
+        """
+        if new_val is not None:
+            if copy:
+                new_val = self.domain.unary_operation(new_val, 'copy')
+            self.val = self.domain.cast(new_val)
+        return self.val
+
+    def get_val(self):
+        return self.val
+
+    # TODO: Add functionality for boolean indexing.
+
+    def __getitem__(self, key):
+        if np.isscalar(key) == True or isinstance(key, slice):
+            key = (key, )
+        if self.ishape == ():
+            return self.domain.getitem(self.get_val(), key)
+        else:
+            gotten = self.get_val()[key[:len(self.ishape)]]
+            try:
+                is_data_container = (gotten.dtype.type == np.object_)
+            except(AttributeError):
+                is_data_container = False
+
+            if len(key) > len(self.ishape):
+                if is_data_container:
+                    gotten = self._map(
+                        lambda z: self.domain.getitem(
+                                                    z, key[len(self.ishape):]),
+                        gotten)
+                else:
+                    gotten = self.domain.getitem(gotten,
+                                                 key[len(self.ishape):])
+            return gotten
+
+    def __setitem__(self, key, value):
+        if np.isscalar(key) or isinstance(key, slice):
+            key = (key, )
+        if self.ishape == ():
+            return self.domain.setitem(self.get_val(), value, key)
+        else:
+            if len(key) > len(self.ishape):
+                gotten = self.get_val()[key[:len(self.ishape)]]
+                try:
+                    is_data_container = (gotten.dtype.type == np.object_)
+                except(AttributeError):
+                    is_data_container = False
+
+                if is_data_container:
+                    gotten = self._map(
+                        lambda z1, z2: self.domain.setitem(
+                                               z1, z2, key[len(self.ishape):]),
+                        gotten, value)
+                else:
+                    gotten = self.domain.setitem(gotten, value,
+                                                 key[len(self.ishape):])
+            else:
+                dummy = np.empty(self.ishape)
+                gotten = self.val.__setitem__(key, self.cast(
+                                           value, ishape=np.shape(dummy[key])))
+            return gotten
+
+    def get_shape(self):
+        return self.domain.get_shape()
+
+    def get_dim(self, split=False):
+        """
+            Computes the (array) dimension of the underlying space.
+
+            Parameters
+            ----------
+            split : bool
+                Sets the output to be either split up per axis or
+                in form of total number of field entries in all
+                dimensions (default=False)
+
+            Returns
+            -------
+            dim : {scalar, ndarray}
+                Dimension of space.
+
+        """
+        return self.domain.get_dim(split=split)
+
+    def get_dof(self, split=False):
+        return self.domain.get_dof(split=split)
+
+    def get_ishape(self):
+        return self.ishape
 
     def _map(self, function, *args):
         return utilities.field_map(self.ishape, function, *args)
@@ -2107,140 +2215,21 @@ class field(object):
 
         return result
 
-    def copy(self, domain=None, codomain=None):
-        copied_val = self._map(
-            lambda z: self.domain.unary_operation(z, op='copy'),
-            self.get_val())
-        new_field = self.copy_empty(domain=domain, codomain=codomain)
-        new_field.set_val(new_val=copied_val)
-        return new_field
-
-    def copy_empty(self, domain=None, codomain=None, ishape=None, **kwargs):
-        if domain == None:
-            domain = self.domain
-        if codomain == None:
-            codomain = self.codomain
-        if ishape == None:
-            ishape = self.ishape
-        new_field = field(domain=domain, codomain=codomain, ishape=ishape,
-                          **kwargs)
-        return new_field
-
-    def get_dim(self, split=False):
-        """
-            Computes the (array) dimension of the underlying space.
-
-            Parameters
-            ----------
-            split : bool
-                Sets the output to be either split up per axis or
-                in form of total number of field entries in all
-                dimensions (default=False)
-
-            Returns
-            -------
-            dim : {scalar, ndarray}
-                Dimension of space.
-
-        """
-        return self.domain.get_dim(split=split)
-
-    def get_shape(self):
-        return self.domain.get_shape()
-
-    def get_ishape(self):
-        return self.ishape
-
-    def cast_domain(self, newdomain, new_codomain=None, force=True):
-        """
-            Casts the domain of the field.
-
-            Parameters
-            ----------
-            newdomain : space
-                New space wherein the field should live.
-
-            new_codomain : space, *optional*
-                Space wherein the transform of the field should live.
-                When not given, codomain will automatically be the codomain
-                of the newly casted domain (default=None).
-
-            force : bool, *optional*
-                Whether to force reshaping of the field if necessary or not
-                (default=True)
-
-            Returns
-            -------
-            Nothing
-
-        """
-        # Check if the newdomain is a space
-        if not isinstance(newdomain, space):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-        # Check if the dtypes match
-        elif newdomain.dtype != self.domain.dtype:
-            raise TypeError(about._errors.cstring(
-                "ERROR: inequal data types '" +
-                str(np.result_type(newdomain.dtype)) +
-                "' and '" + str(np.result_type(self.domain.dtype)) +
-                "'."))
-        # Check if the total dimensions match
-        elif newdomain.get_dim() != self.domain.get_dim():
-            raise ValueError(about._errors.cstring(
-                "ERROR: dimension mismatch ( " + str(newdomain.get_dim()) +
-                " <> " + str(self.domain.get_dim()) + " )."))
-
-        if force == True:
-            self.set_domain(new_domain=newdomain, force=True)
-        else:
-            if not np.all(newdomain.get_dim(split=True) ==
-                          self.domain.get_dim(split=True)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: shape mismatch ( " + str(newdomain.get_dim(split=True)) +
-                    " <> " + str(self.domain.get_dim(split=True)) + " )."))
-            else:
-                self.domain = newdomain
-        # Use the casting of the new domain in order to make the old data fit.
-        self.set_val(new_val=self.val)
-
-        # set the codomain
-        if new_codomain == None:
-            if not self.domain.check_codomain(self.codomain):
-                if(force):
-                    about.infos.cprint("INFO: codomain set to default.")
-                else:
-                    about.warnings.cprint("WARNING: codomain set to default.")
-                self.set_codomain(new_codomain=self.domain.get_codomain())
-        else:
-            self.set_codomain(new_codomain=new_codomain, force=force)
-
-    def set_val(self, new_val=None, copy=False):
-        """
-            Resets the field values.
-
-            Parameters
-            ----------
-            new_val : {scalar, ndarray}
-                New field values either as a constant or an arbitrary array.
-
-        """
-        if new_val is not None:
-            if copy == True:
-                try:
-                    self.val = new_val.copy()
-                except(AttributeError):
-                    self.val = np.copy(new_val)
-            else:
-                self.val = new_val
-        return self.val
-
-    def get_val(self):
-        return self.val
-
     def set_domain(self, new_domain=None, force=False):
+        """
+            Resets the codomain of the field.
+
+            Parameters
+            ----------
+            new_codomain : space
+                 The new space wherein the transform of the field should live.
+                 (default=None).
+
+        """
+        # check codomain
         if new_domain is None:
             new_domain = self.codomain.get_codomain()
-        elif force == False:
+        elif not force:
             assert(self.codomain.check_codomain(new_domain))
         self.domain = new_domain
         return self.domain
@@ -2259,7 +2248,7 @@ class field(object):
         # check codomain
         if new_codomain is None:
             new_codomain = self.domain.get_codomain()
-        elif force == False:
+        elif not force:
             assert(self.domain.check_codomain(new_codomain))
         self.codomain = new_codomain
         return self.codomain
@@ -2285,17 +2274,36 @@ class field(object):
                 Otherwise, nothing is returned.
 
         """
-        if overwrite == True:
+        if overwrite:
             new_field = self
         else:
             new_field = self.copy_empty()
 
-        new_val = self._map(
-            lambda y: self.domain.calc_weight(y, power=power),
-            self.get_val())
+        new_val = self._map(lambda y: self.domain.calc_weight(y, power=power),
+                            self.get_val())
 
         new_field.set_val(new_val=new_val)
         return new_field
+
+    def norm(self, q=0.5):
+        """
+            Computes the Lq-norm of the field values.
+
+            Parameters
+            ----------
+            q : scalar
+                Parameter q of the Lq-norm (default: 2).
+
+            Returns
+            -------
+            norm : scalar
+                The Lq-norm of the field values.
+
+        """
+        if q == 0.5:
+            return (self.dot(x=self))**(1 / 2)
+        else:
+            return self.dot(x=self**(q - 1))**(1 / q)
 
     def dot(self, x=None, axis=None, bare=False):
         """
@@ -2338,7 +2346,7 @@ class field(object):
             # Cast the input in order to cure dtype and shape differences
             casted_x = self._cast_to_ishape(x)
             # Compute the dot respecting the fact of discrete/continous spaces
-            if self.domain.discrete == True or bare == True:
+            if self.domain.discrete or bare:
                 result = self._map(
                     lambda z1, z2: self.domain.calc_dot(z1, z2),
                     self.get_val(),
@@ -2351,26 +2359,6 @@ class field(object):
                     self.get_val(), casted_x)
 
             return np.sum(result, axis=axis)
-
-    def norm(self, q=0.5):
-        """
-            Computes the Lq-norm of the field values.
-
-            Parameters
-            ----------
-            q : scalar
-                Parameter q of the Lq-norm (default: 2).
-
-            Returns
-            -------
-            norm : scalar
-                The Lq-norm of the field values.
-
-        """
-        if q == 0.5:
-            return (self.dot(x=self))**(1 / 2)
-        else:
-            return self.dot(x=self**(q - 1))**(1 / q)
 
     def outer_dot(self, x=1, axis=None):
 
@@ -2387,120 +2375,6 @@ class field(object):
             new_field = self.copy_empty(ishape=())
         new_field.set_val(new_val=new_val)
         return new_field
-
-
-#            ## x must be a scalar or an array/list of shape self.ishape
-#            if np.isscalar(x) == True:
-#                x = np.empty(self.ishape, dtype=np.object)
-#                x[...] = x
-#            else:
-#
-#                x = np.array(x)
-#                if np.all(np.array(np.shape(x)) == 1):
-#                    temp = np.empty(self.idim, dtype=np.object)
-#                    temp[...] = x.flatten()[0]
-#                    x = temp
-#                elif np.shape(x) == self.idim:
-#                    temp = np.empty(self.idim, dtype=np.object)
-#                    for i in xrange(np.prod(self.idim)):
-#                        ii = np.unravel_index(i, self.idim)
-#                        temp[ii] = x[ii]
-#                    x = temp
-
-
-#        else:
-#            x = list(np.array(x).flatten())
-#            if len(x) == 1:
-#                x = x*self.ishape
-#            elif len(x) != self.ishape:
-#                raise ValueError(about._errors.cstring(
-#                    "ERROR: x must be a scalar or a list of length " +\
-#                    str(self.ishape)))
-#        old_val = self.get_val()
-#        new_val = old_val[0] * x[0]
-#        for i in xrange(1, self.ishape):
-#            new_val += old_val[i] * x[i]
-#        new_field = self.copy_empty(ishape = 0)
-#        new_field.set_val(new_val = new_val)
-#        return new_field
-#
-
-    def pseudo_dot_old(self, x=1, **kwargs):
-        """
-            Computes the pseudo inner product of the field with a given object
-            implying the correct volume factor needed to reflect the
-            discretization of the continuous fields. This method specifically
-            handles the inner products of fields defined over a
-            :py:class:`nested_space`.
-
-            Parameters
-            ----------
-            x : {scalar, ndarray, field}, *optional*
-                The object with which the inner product is computed
-                (default=None).
-
-            Other Parameters
-            ----------------
-            codomain : space, *optional*
-                space wherein the transform of the output field should live
-                (default: None).
-
-            Returns
-            -------
-            pot : ndarray
-                The result of the pseudo inner product.
-
-            Examples
-            --------
-            Pseudo inner product of a field defined over a nested space with
-            a simple field defined over a rg_space.
-
-            >>> from nifty import *
-            >>> space = rg_space(2)
-            >>> nspace = nested_space([space,space])
-            >>> nval = array([[1,2],[3,4]])
-            >>> nfield = nifty.field(domain = nspace, val = nval)
-            >>> val = array([1,1])
-            >>> nfield.pseudo_dot(x=val).val
-            array([ 1.5,  3.5])
-
-        """
-        # check attribute
-        if(not hasattr(self.domain, "calc_pseudo_dot")):
-            if(isinstance(x, field)):
-                if(hasattr(x.domain, "calc_pseudo_dot")):
-                    return x.pseudo_dot(x=self, **kwargs)
-            about.warnings.cprint("WARNING: computing (normal) inner product.")
-            return self.dot(x=x)
-        # strip field (calc_pseudo_dot handles subspace)
-        if(isinstance(x, field)):
-            if(np.size(x.get_dim(split=True)) > np.size(self.get_dim(split=True))):  # switch
-                return x.pseudo_dot(x=self, **kwargs)
-            else:
-                try:
-                    return self.pseudo_dot(x=x.val, **kwargs)
-                except(TypeError, ValueError):
-                    try:
-                        return self.pseudo_dot(x=x.transform(codomain=x.codomain, overwrite=False).val, **kwargs)
-                    except(TypeError, ValueError):
-                        raise ValueError(about._errors.cstring(
-                            "ERROR: incompatible domains."))
-        # pseudo inner product (calc_pseudo_dot handles weights)
-        else:
-            if(np.isscalar(x)):
-                x = np.array([x], dtype=self.domain.dtype)
-            else:
-                x = np.array(x, dtype=self.domain.dtype)
-
-            if(np.size(x) > self.get_dim(split=False)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: dimension mismatch ( " + str(np.size(x)) + " <> " + str(self.get_dim(split=False)) + " )."))
-            elif(np.size(x) == self.get_dim(split=False)):
-                about.warnings.cprint(
-                    "WARNING: computing (normal) inner product.")
-                return self.dot(x=x)
-            else:
-                return self.domain.calc_pseudo_dot(self.val, x, **kwargs)
 
     def tensor_product(self, x=None):
         if x is None:
@@ -2523,30 +2397,6 @@ class field(object):
             new_field.set_val(new_val=new_val)
 
             return new_field
-
-
-#
-#        if np.isscalar(x) == True:
-#            return self * x
-#
-#
-#        if isinstance(x, list) == True or\
-#           isinstance(x, tuple) == True or\
-#           isinstance(x, np.ndarray) == True:
-#            x = list(np.array(x).flatten())
-#
-#            old_val = self.get_val()
-#            new_val = []
-#            for i in xrange(len(x)):
-#                if self.ishape == 0:
-#                    new_val.append(old_val * x[i])
-#                else:
-#                    for j in xrange(self.ishape):
-#                        new_val.append(old_val[j] * x[i])
-#            new_field = self.copy_empty(ishape = self.ishape*len(x))
-#            new_field.set_val(new_val = new_val)
-#            return new_field
-
 
     def conjugate(self, inplace=False):
         """
@@ -2605,7 +2455,7 @@ class field(object):
                 z, codomain=codomain, **kwargs),
             self.get_val())
 
-        if overwrite == True:
+        if overwrite:
             return_field = self
             return_field.set_codomain(new_codomain=self.domain, force=True)
             return_field.set_domain(new_domain=codomain, force=True)
@@ -2641,7 +2491,7 @@ class field(object):
                 Otherwise, nothing is returned.
 
         """
-        if overwrite == True:
+        if overwrite:
             new_field = self
         else:
             new_field = self.copy_empty()
@@ -2669,20 +2519,20 @@ class field(object):
                 Number of degrees of freedom per irreducible band
                 (default=None).
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
+                (default: None).
             iter : scalar
                 Number of iterations (default: 0)
 
@@ -2731,7 +2581,7 @@ class field(object):
         """
         any_zero_Q = self._map(lambda z: (z == 0).any(), self.get_val())
         any_zero_Q = np.any(any_zero_Q)
-        if any_zero_Q == True:
+        if any_zero_Q:
             raise AttributeError(
                 about._errors.cstring("ERROR: singular operator."))
         else:
@@ -2780,20 +2630,20 @@ class field(object):
             kindex : scalar
                 The spectral index per irreducible band (default=None).
             log : bool, *optional*
-                Flag specifying if the spectral binning is performed on logarithmic
+                Flag specifying if the spectral binning is performed on
+                logarithmic
                 scale or not; if set, the number of used bins is set
                 automatically (if not given otherwise); by default no binning
                 is done (default: None).
             nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to ``False``;
+                Number of used spectral bins; if given `log` is set to
+                ``False``;
                 integers below the minimum of 3 induce an automatic setting;
                 by default no binning is done (default: None).
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
+                (default: None).
 
             Notes
             -----
@@ -2829,74 +2679,6 @@ class field(object):
             "\n  - mean = " + str(mean) + \
             "\n- codomain      = " + repr(self.codomain) + \
             "\n- ishape          = " + str(self.ishape)
-
-    def __len__(self):
-        return int(self.get_dim(split=True)[0])
-
-    # TODO: Add functionality for boolean indexing.
-
-    def __getitem__(self, key):
-        if np.isscalar(key) == True or isinstance(key, slice):
-            key = (key, )
-        if self.ishape == ():
-            return self.domain.getitem(self.get_val(), key)
-        else:
-            gotten = self.get_val()[key[:len(self.ishape)]]
-            try:
-                is_data_container = (gotten.dtype.type == np.object_)
-            except(AttributeError):
-                is_data_container = False
-
-            if len(key) > len(self.ishape):
-                if is_data_container:
-                    gotten = self._map(
-                        lambda z: self.domain.getitem(z,
-                                                      key[len(self.ishape):]),
-                        gotten)
-                else:
-                    gotten = self.domain.getitem(gotten,
-                                                 key[len(self.ishape):])
-            return gotten
-
-    def __setitem__(self, key, value):
-        if np.isscalar(key) or isinstance(key, slice):
-            key = (key, )
-        if self.ishape == ():
-            return self.domain.setitem(self.get_val(), value, key)
-        else:
-            if len(key) > len(self.ishape):
-                gotten = self.get_val()[key[:len(self.ishape)]]
-                try:
-                    is_data_container = (gotten.dtype.type == np.object_)
-                except(AttributeError):
-                    is_data_container = False
-
-                if is_data_container == True:
-                    gotten = self._map(
-                        lambda z1, z2: self.domain.setitem(z1, z2,
-                                                           key[len(self.ishape):]),
-                        gotten, value)
-                else:
-                    gotten = self.domain.setitem(gotten, value,
-                                                 key[len(self.ishape):])
-            else:
-                dummy = np.empty(self.ishape)
-                gotten = self.val.__setitem__(key, self.cast(value,
-                                                             ishape=np.shape(dummy[key])))
-            return gotten
-
-    def apply_scalar_function(self, function, inplace=False):
-        if inplace == True:
-            working_field = self
-        else:
-            working_field = self.copy_empty()
-
-        data_object = self._map(
-            lambda z: self.domain.apply_scalar_function(z, function, inplace),
-            self.get_val())
-
-        working_field.set_val(data_object)
-        return working_field
 
     def _unary_helper(self, x, op, **kwargs):
         result = self._map(
@@ -3042,7 +2824,7 @@ class field(object):
             np.argmax, np.argmin
 
         """
-        if split == True:
+        if split:
             return self._unary_helper(self.get_val(), op='argmin',
                                       **kwargs)
         else:
@@ -3190,6 +2972,3 @@ class field(object):
 
     def __gt__(self, other):
         return self._binary_helper(other, op='gt')
-
-
-

@@ -743,15 +743,33 @@ class Test_slicing_get_set_data(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(all_distribution_strategies)
+    @parameterized.expand(all_distribution_strategies,
+                          testcase_func_name=custom_name_func)
     def test_get_single_value_from_d2o(self, distribution_strategy):
         (a, obj) = generate_data((4,), np.dtype('float'),
                                  distribution_strategy)
         assert_equal(obj[0], a[0])
 
-###############################################################################
+
 ###############################################################################
 
+    @parameterized.expand(
+        itertools.product(all_distribution_strategies,
+                          all_distribution_strategies),
+        testcase_func_name=custom_name_func)
+    def test_single_row_from_d2o(self, distribution_strategy1,
+                                 distribution_strategy2):
+        (a, obj) = generate_data((8, 8), np.dtype('float'),
+                                 distribution_strategy1)
+        (b, p) = generate_data((8,), np.dtype('float'),
+                               distribution_strategy2)
+        a[4] = b
+        obj[4] = p
+        assert_equal(obj.get_full_data(), a)
+
+
+###############################################################################
+###############################################################################
 
 class Test_boolean_get_set_data(unittest.TestCase):
 

@@ -1294,6 +1294,7 @@ class distributor(object):
                         distribution_strategy='freeform',
                         comm=self.comm)
                 # disperse the data one after another
+                print ('i', i, temp_data_update)
                 self._disperse_data_primitive(
                                       data=data,
                                       to_key=to_key_list[i],
@@ -2241,40 +2242,50 @@ class _slicing_distributor(distributor):
             # in case of leading scalars, indenify the node with data
             # and broadcast the shape to the others
             if sliceified[0]:
-                local_has_data = (np.prod(
-                    np.shape(in_data.get_local_data())
-                ) != 0)
-                local_has_data_list = np.array(self.comm.allgather(
-                    local_has_data))
-                nodes_with_data = np.where(local_has_data_list == True)[0]
-                if np.shape(nodes_with_data)[0] > 1:
-                    raise ValueError(
-                        "ERROR: scalar index on first dimension, but more " +
-                        "than one node has data!")
-                elif np.shape(nodes_with_data)[0] == 1:
-                    node_with_data = nodes_with_data[0]
-                else:
-                    node_with_data = -1
+                # Case 1: The in_data d2o has more than one dimension
+                if len(in_data.shape) > 1:
+                    local_has_data = (np.prod(
+                                        np.shape(
+                                            in_data.get_local_data())) != 0)
+                    local_has_data_list = np.array(
+                                           self.comm.allgather(local_has_data))
+                    nodes_with_data = np.where(local_has_data_list)[0]
+                    if np.shape(nodes_with_data)[0] > 1:
+                        raise ValueError(
+                            "ERROR: scalar index on first dimension, but " +
+                            " more than one node has data!")
+                    elif np.shape(nodes_with_data)[0] == 1:
+                        node_with_data = nodes_with_data[0]
+                    else:
+                        node_with_data = -1
 
-                if node_with_data == -1:
-                    broadcasted_shape = (0,) * len(temp_local_shape)
-                else:
-                    broadcasted_shape = self.comm.bcast(temp_local_shape,
+                    if node_with_data == -1:
+                        broadcasted_shape = (0,) * len(temp_local_shape)
+                    else:
+                        broadcasted_shape = self.comm.bcast(
+                                                        temp_local_shape,
                                                         root=node_with_data)
-                if self.comm.rank != node_with_data:
-                    temp_local_shape = np.array(broadcasted_shape)
-                    temp_local_shape[0] = 0
-                    temp_local_shape = tuple(temp_local_shape)
+                    if self.comm.rank != node_with_data:
+                        temp_local_shape = np.array(broadcasted_shape)
+                        temp_local_shape[0] = 0
+                        temp_local_shape = tuple(temp_local_shape)
+                # Case 2: The in_data d2o is only onedimensional
+                else:
+                    # The data contained in the d2o must be stored on one
+                    # single node at the end. Hence it is ok to consolidate
+                    # the data and to make a recursive call.
+                    temp_data = in_data.get_full_data()
+                    return self._enfold(temp_data, sliceified)
 
-            if in_data.distribution_strategy != 'freeform':
+            if in_data.distribution_strategy in STRATEGIES['global']:
                 new_data = in_data.copy_empty(global_shape=temp_global_shape)
                 new_data.set_local_data(local_data, copy=False)
-            else:
+            elif in_data.distribution_strategy in STRATEGIES['local']:
                 reshaped_data = local_data.reshape(temp_local_shape)
                 new_data = distributed_data_object(
-                                           local_data=reshaped_data,
-                                           distribution_strategy='freeform',
-                                           comm=self.comm)
+                           local_data=reshaped_data,
+                           distribution_strategy=in_data.distribution_strategy,
+                           comm=self.comm)
             return new_data
         else:
             return local_data.reshape(temp_local_shape)
