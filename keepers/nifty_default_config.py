@@ -23,13 +23,28 @@ variable_fft_module = variable('fft_module',
 
 variable_lm2gl = variable('lm2gl',
                           [True, False],
-                          lambda z: z is True or z is False,
-                          genus = 'boolean')
+                          lambda z: isinstance(z, bool),
+                          genus='boolean')
+
+variable_use_healpy = variable(
+                          'use_healpy',
+                          [True, False],
+                          lambda z: (('healpy' in global_dependency_injector)
+                                     if z else True) and isinstance(z, bool),
+                          genus='boolean')
+
+variable_use_libsharp = variable('use_libsharp',
+                                 [True, False],
+                                 lambda z: (('libsharp_wrapper_gl' in
+                                             global_dependency_injector)
+                                            if z else True) and
+                                            isinstance(z, bool),
+                                 genus='boolean')
 
 variable_verbosity = variable('verbosity',
                               [1],
                               lambda z: z == abs(int(z)),
-                              genus = 'int')
+                              genus='int')
 
 variable_mpi_module = variable('mpi_module',
                                ['MPI', 'MPI_dummy'],
@@ -45,6 +60,8 @@ variable_default_distribution_strategy = variable(
 global_configuration = configuration(
                      [variable_fft_module,
                       variable_lm2gl,
+                      variable_use_healpy,
+                      variable_use_libsharp,
                       variable_verbosity,
                       variable_mpi_module,
                       variable_default_distribution_strategy
@@ -60,4 +77,7 @@ variable_default_comm = variable(
 
 global_configuration.register(variable_default_comm)
 
-
+try:
+    global_configuration.load()
+except:
+    pass

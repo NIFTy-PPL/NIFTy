@@ -329,7 +329,9 @@ class operator(object):
             if isinstance(x, field):
                 # repair if the originally field was living in the codomain
                 # of the operators domain
-                if self.domain == self.target == x.codomain:
+                if self.domain == self.target and\
+                        x.codomain == self.domain and\
+                        x.codomain != x.domain:
                     y = y.transform(codomain=x.domain)
                 if x.domain == y.domain and (x.codomain != y.codomain):
                     y.set_codomain(new_codomain=x.codomain)
@@ -1660,10 +1662,8 @@ class diagonal_operator(operator):
         temp_field = field(domain=self.domain,
                            codomain=self.codomain,
                            random='gau',
-                           var=self.diag(bare=True).get_val())
-        if domain.harmonic != self.domain.harmonic:
-            temp_field = temp_field.transform()
-
+                           std=nifty_simple_math.sqrt(
+                                   self.diag(bare=True).get_val()))
         if domain is None:
             domain = self.domain
         if domain.check_codomain(codomain):
@@ -1672,6 +1672,9 @@ class diagonal_operator(operator):
             codomain = self.codomain
         else:
             codomain = domain.get_codomain()
+
+        if domain.harmonic != self.domain.harmonic:
+            temp_field = temp_field.transform(codomain=domain)
 
         if self.domain == domain and self.codomain == codomain:
             return temp_field
@@ -2982,10 +2985,10 @@ class response_operator(operator):
                      codomain=self.cotarget)
 
     def _adjoint_multiply(self, x, **kwargs):
-        y = self.domain.cast(0)
         if self.assign is None:
-            y[y == y] = x.val
+            y = self.domain.cast(x.val)
         else:
+            y = self.domain.cast(0)
             y[self.assign] = x.val
 
         y *= self.mask
@@ -3502,7 +3505,7 @@ class propagator_operator(operator):
                 x_.set_codomain(new_codomain=x.codomain)  # ... codomain
         return x_
 
-    def times(self, x, force=False, W=None, spam=None, reset=None, note=False, x0=None, tol=1E-4, clevel=1, limii=None, **kwargs):
+    def times(self, x, W=None, spam=None, reset=None, note=False, x0=None, tol=1E-4, clevel=1, limii=None, **kwargs):
         """
             Applies the propagator to a given object by invoking a
             conjugate gradient.
@@ -3562,9 +3565,7 @@ class propagator_operator(operator):
         x_, convergence = conjugate_gradient(A, x_, W=W, spam=spam, reset=reset, note=note)(
             x0=x0, tol=tol, clevel=clevel, limii=limii)
         # evaluate
-        if(not convergence):
-            if(not force):
-                return None
+        if not convergence:
             about.warnings.cprint("WARNING: conjugate gradient failed.")
         return self._debriefing(x, x_, in_codomain)
 

@@ -281,6 +281,9 @@ class distributed_data_object(object):
     def __gt__(self, other):
         return self._compare_helper(other, '__gt__')
 
+    def __iter__(self):
+        return self.distributor.get_iter(self)
+
     def equal(self, other):
         if other is None:
             return False
@@ -2427,6 +2430,8 @@ class _slicing_distributor(distributor):
             raise ImportError(about._errors.cstring(
                 "ERROR: h5py is not available"))
 
+    def get_iter(self, d2o):
+        return d2o_slicing_iter(d2o)
 
 def _equal_slicer(comm, global_shape):
     rank = comm.rank
@@ -2675,6 +2680,9 @@ class _not_distributor(distributor):
             raise ImportError(about._errors.cstring(
                 "ERROR: h5py is not available"))
 
+    def get_iter(self, d2o):
+        return d2o_not_iter(d2o)
+
 
 class _dtype_converter(object):
     """
@@ -2754,3 +2762,93 @@ class _d2o_librarian(object):
         return self.library[key]
 
 d2o_librarian = _d2o_librarian()
+
+
+class d2o_iter(object):
+    def __init__(self, d2o):
+        self.d2o = d2o
+        self.i = 0
+        self.n = np.prod(self.d2o.shape)
+        self.initialize_current_local_data()
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.n == 0:
+            raise StopIteration()
+
+        self.update_current_local_data()
+        if self.i < self.n:
+            i = self.i
+            self.i += 1
+            return self.current_local_data[i]
+        else:
+            raise StopIteration()
+
+    def update_current_local_data(self):
+        raise NotImplementedError
+
+
+class d2o_not_iter(d2o_iter):
+    def initialize_current_local_data(self):
+        self.current_local_data = self.d2o.data.flatten()
+
+    def update_current_local_data(self):
+        pass
+
+
+class d2o_slicing_iter(d2o_iter):
+    def __init__(self, d2o):
+        self.d2o = d2o
+        self.i = 0
+        self.n = np.prod(self.d2o.shape)
+        self.local_dim_offset_list = \
+            self.d2o.distributor.all_local_slices[:, 4]
+        self.active_node = None
+
+        self.initialize_current_local_data()
+
+    def initialize_current_local_data(self):
+        self.update_current_local_data()
+
+    def update_current_local_data(self):
+        new_active_node = np.searchsorted(self.local_dim_offset_list,
+                                          self.i,
+                                          side='right')-1
+        # new_active_node = min(new_active_node, self.d2o.comm.size-1)
+        if self.active_node != new_active_node:
+            self.active_node = new_active_node
+
+            self.current_local_data = self.d2o.comm.bcast(
+                                        self.d2o.data.flatten(),
+                                        root=self.active_node)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

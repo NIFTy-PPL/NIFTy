@@ -12,9 +12,6 @@ import numpy as np
 from nifty import space,\
     point_space,\
     rg_space,\
-    lm_space,\
-    hp_space,\
-    gl_space,\
     field,\
     distributed_data_object
 
@@ -29,6 +26,27 @@ from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
 from nifty.nifty_power_indices import power_indices
 from nifty.nifty_utilities import _hermitianize_inverter as \
                                                         hermitianize_inverter
+
+available = []
+try:
+    from nifty import  lm_space
+except ImportError:
+    pass
+else:
+    available += ['lm_space']
+try:
+    from nifty import  gl_space
+except ImportError:
+    pass
+else:
+    available += ['gl_space']
+try:
+    from nifty import  hp_space
+except ImportError:
+    pass
+else:
+    available += ['hp_space']
+
 
 
 ###############################################################################
@@ -77,11 +95,22 @@ for name in ['gfft', 'gfft_dummy', 'pyfftw']:
 
 ###############################################################################
 
-all_spaces = ['space', 'point_space', 'rg_space', 'lm_space', 'hp_space',
-              'gl_space']
+all_spaces = ['space', 'point_space', 'rg_space']
+if 'lm_space' in available:
+    all_spaces += ['lm_space']
+if 'gl_space' in available:
+    all_spaces += ['gl_space']
+if 'hp_space' in available:
+    all_spaces += ['hp_space']
 
-point_like_spaces = ['point_space', 'rg_space', 'lm_space', 'hp_space',
-                     'gl_space']
+
+point_like_spaces = ['point_space', 'rg_space']
+if 'lm_space' in available:
+    point_like_spaces += ['lm_space']
+if 'gl_space' in available:
+    point_like_spaces += ['gl_space']
+if 'hp_space' in available:
+    point_like_spaces += ['hp_space']
 
 ###############################################################################
 
@@ -138,10 +167,14 @@ def generate_space(name):
     space_dict = {'space': space(),
                   'point_space': point_space(10),
                   'rg_space': rg_space((8, 8)),
-                  'lm_space': lm_space(mmax=11, lmax=11),
-                  'hp_space': hp_space(8),
-                  'gl_space': gl_space(nlat=10, nlon=19),
                   }
+    if 'lm_space' in available:
+        space_dict['lm_space'] = lm_space(mmax=11, lmax=11)
+    if 'hp_space' in available:
+        space_dict['hp_space'] = hp_space(8)
+    if 'gl_space' in available:
+        space_dict['gl_space'] = gl_space(nlat=10, nlon=19)
+
     return space_dict[name]
 
 
@@ -198,7 +231,6 @@ class Test_Common_Space_Features(unittest.TestCase):
         assert(callable(s.get_shape))
         assert(callable(s.get_dim))
         assert(callable(s.get_dof))
-        assert(callable(s.get_meta_volume))
         assert(callable(s.cast))
         assert(callable(s.enforce_power))
         assert(callable(s.check_codomain))
@@ -216,6 +248,9 @@ class Test_Common_Space_Features(unittest.TestCase):
         assert(callable(s.get_plot))
         assert(callable(s.__repr__))
         assert(callable(s.__str__))
+
+        assert(s.check_codomain(None) == False)
+        assert(isinstance(repr(s), str))
 
 
 ###############################################################################
@@ -703,7 +738,7 @@ class Test_RG_Space(unittest.TestCase):
         testcase_func_name=custom_name_func)
     def test_enforce_power(self, datamodel):
         shape = (6, 6)
-        x = rg_space(shape)
+        x = rg_space(shape, datamodel=datamodel)
 
         assert_equal(x.enforce_power(2),
                      np.array([2., 2., 2., 2., 2., 2., 2., 2., 2., 2.]))
@@ -936,3 +971,318 @@ class Test_RG_Space(unittest.TestCase):
                                       0., 0., 9.51902961, 0.,
                                       0., 8.125, 0., 0.,
                                       0., 0., 0.]))
+
+
+###############################################################################
+###############################################################################
+
+class Test_Lm_Space(unittest.TestCase):
+
+    @parameterized.expand(
+        itertools.product([1, 17],
+                          [None, 12, 17],
+                          all_lm_datatypes,
+                          DATAMODELS['lm_space']),
+        testcase_func_name=custom_name_func)
+    def test_successfull_init(self, lmax, mmax, dtype, datamodel):
+        l = lm_space(lmax, mmax=mmax, dtype=dtype, datamodel=datamodel)
+        assert_equal(l.paradict['lmax'], lmax)
+        if mmax is None or mmax > lmax:
+            assert_equal(l.paradict['mmax'], lmax)
+        else:
+            assert_equal(l.paradict['mmax'], mmax)
+        assert_equal(l.dtype, dtype)
+        assert_equal(l.datamodel, datamodel)
+        assert_equal(l.discrete, True)
+        assert_equal(l.harmonic, True)
+        assert_equal(l.distances, (np.float(1),))
+
+###############################################################################
+
+    def test_para(self):
+        lmax = 17
+        mmax = 12
+        l = lm_space(lmax, mmax=mmax)
+        assert_equal(l.para, np.array([lmax, mmax]))
+
+        new_para = np.array([9, 12])
+        l.para = new_para
+        assert_equal(l.para, np.array([9, 9]))
+
+    def test_get_shape_dof_meta_volume(self):
+        lmax = 17
+        mmax = 12
+        l = lm_space(lmax, mmax=mmax)
+
+        assert_equal(l.get_shape(), (156,))
+        assert_equal(l.get_dof(), 294)
+        assert_equal(l.get_dof(split=True), (294,))
+        assert_equal(l.get_meta_volume(), 294.)
+        assert_equal(l.get_meta_volume(split=True),
+                     l.cast(np.concatenate([np.ones(18), np.ones(138)*2])))
+
+    def test_cast(self):
+        lmax = 17
+        mmax = 12
+        l = lm_space(lmax, mmax=mmax)
+
+        casted = l.cast(1+1j)
+        real_part = casted[:18]
+        assert(real_part,  l.unary_operation(real_part, 'real'))
+
+###############################################################################
+
+    @parameterized.expand(
+        DATAMODELS['lm_space'],
+        testcase_func_name=custom_name_func)
+    def test_enforce_power(self, datamodel):
+        lmax = 17
+        mmax = 12
+        l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
+
+        assert_equal(l.enforce_power(2),
+                     np.ones(18)*2)
+        assert_almost_equal(
+            l.enforce_power(lambda x: 42 / (1 + x)**5),
+            np.array([  4.20000000e+01,   1.31250000e+00,   1.72839506e-01,
+         4.10156250e-02,   1.34400000e-02,   5.40123457e-03,
+         2.49895877e-03,   1.28173828e-03,   7.11273688e-04,
+         4.20000000e-04,   2.60786956e-04,   1.68788580e-04,
+         1.13118211e-04,   7.80924615e-05,   5.53086420e-05,
+         4.00543213e-05,   2.95804437e-05,   2.22273027e-05]))
+
+##############################################################################
+
+    @parameterized.expand(DATAMODELS['lm_space'],
+                          testcase_func_name=custom_name_func)
+    def test_get_check_codomain(self, datamodel):
+        lmax = 23
+        mmax = 23
+        l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
+
+        y = l.get_codomain()
+        assert(l.check_codomain(y))
+        assert(y.check_codomain(l))
+
+        if 'hp_space' in available:
+            y = l.get_codomain('hp')
+            assert(l.check_codomain(y))
+            assert(y.check_codomain(l))
+        if 'gl_space' in available:
+            y = l.get_codomain('gl')
+            assert(l.check_codomain(y))
+            assert(y.check_codomain(l))
+
+
+###############################################################################
+#
+#    @parameterized.expand(
+#        itertools.product([True], #[True, False],
+#                          ['pyfftw']),
+#                          #DATAMODELS['rg_space']),
+#        testcase_func_name=custom_name_func)
+#    def test_get_random_values(self, harmonic, datamodel):
+#        x = rg_space((4, 4), complexity=1, harmonic=harmonic,
+#                     datamodel=datamodel)
+#
+#        # pm1
+#        data = x.get_random_values(random='pm1')
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
+#
+#        # gau
+#        data = x.get_random_values(random='gau', mean=4 + 3j, std=2)
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
+#
+#        # uni
+#        data = x.get_random_values(random='uni', vmin=-2, vmax=4)
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
+#
+#        # syn
+#        data = x.get_random_values(random='syn',
+#                                   spec=lambda x: 42 / (1 + x)**3)
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
+#
+################################################################################
+#
+#    @parameterized.expand(
+#        DATAMODELS['rg_space'],
+#        testcase_func_name=custom_name_func)
+#    def test_calc_dot(self, datamodel):
+#        shape = (8, 8)
+#        a = np.arange(np.prod(shape)).reshape(shape)
+#        x = rg_space(shape)
+#        assert_equal(x.calc_dot(a, a), 85344)
+#        assert_equal(x.calc_dot(a, 1), 2016)
+#        assert_equal(x.calc_dot(1, a), 2016)
+#
+################################################################################
+#
+#    @parameterized.expand(
+#        itertools.product([0, 1],
+#                          DATAMODELS['rg_space']),
+#        testcase_func_name=custom_name_func)
+#    def test_calc_transform_general(self, complexity, datamodel):
+#        data = fft_test_data.copy()
+#        shape = data.shape
+#
+#        x = rg_space(shape, complexity=complexity, datamodel=datamodel)
+#        data = fft_test_data.copy()
+#        data = x.cast(data)
+#        check_equality(x, data, x.calc_transform(x.calc_transform(data)))
+#
+################################################################################
+#
+#    @parameterized.expand(
+#        itertools.product(fft_modules,
+#                          DATAMODELS['rg_space']),
+#        testcase_func_name=custom_name_func)
+#    def test_calc_transform_explicit(self, fft_module, datamodel):
+#        data = fft_test_data.copy()
+#        shape = data.shape
+#
+#        x = rg_space(shape, complexity=2, zerocenter=False,
+#                     fft_module=fft_module, datamodel=datamodel)
+#        casted_data = x.cast(data)
+#        assert(check_almost_equality(x, x.calc_transform(casted_data),
+#                                     np.array([[0.50541615 + 0.50558267j, -0.01458536 - 0.01646137j,
+#                                                0.01649006 + 0.01990988j, 0.04668049 - 0.03351745j,
+#                                                -0.04382765 - 0.06455639j, -0.05978564 + 0.01334044j],
+#                                               [-0.05347464 + 0.04233343j, -0.05167177 + 0.00643947j,
+#                                                -0.01995970 - 0.01168872j, 0.10653817 + 0.03885947j,
+#                                                -0.03298075 - 0.00374715j, 0.00622585 - 0.01037453j],
+#                                               [-0.01128964 - 0.02424692j, -0.03347793 - 0.0358814j,
+#                                                -0.03924164 - 0.01978305j, 0.03821242 - 0.00435542j,
+#                                                0.07533170 + 0.14590143j, -0.01493027 - 0.02664675j],
+#                                               [0.02238926 + 0.06140625j, -0.06211313 + 0.03317753j,
+#                                                0.01519073 + 0.02842563j, 0.00517758 + 0.08601604j,
+#                                                -0.02246912 - 0.01942764j, -0.06627311 - 0.08763801j],
+#                                               [-0.02492378 - 0.06097411j, 0.06365649 - 0.09346585j,
+#                                                0.05031486 + 0.00858656j, -0.00881969 + 0.01842357j,
+#                                                -0.01972641 - 0.00994365j, 0.05289453 - 0.06822038j],
+#                                               [-0.01865586 - 0.08640926j, 0.03414096 - 0.02605602j,
+#                                                -0.09492552 + 0.01306734j, 0.09355730 + 0.07553701j,
+#                                                -0.02395259 - 0.02185743j, -0.03107832 - 0.04714527j]])))
+#
+#        x = rg_space(shape, complexity=2, zerocenter=True,
+#                     fft_module=fft_module, datamodel=datamodel)
+#        casted_data = x.cast(data)
+#        assert(check_almost_equality(x, x.calc_transform(casted_data),
+#                                     np.array([[0.00517758 + 0.08601604j, 0.02246912 + 0.01942764j,
+#                                                -0.06627311 - 0.08763801j, -0.02238926 - 0.06140625j,
+#                                                -0.06211313 + 0.03317753j, -0.01519073 - 0.02842563j],
+#                                               [0.00881969 - 0.01842357j, -0.01972641 - 0.00994365j,
+#                                                -0.05289453 + 0.06822038j, -0.02492378 - 0.06097411j,
+#                                                -0.06365649 + 0.09346585j, 0.05031486 + 0.00858656j],
+#                                               [0.09355730 + 0.07553701j, 0.02395259 + 0.02185743j,
+#                                                -0.03107832 - 0.04714527j, 0.01865586 + 0.08640926j,
+#                                                0.03414096 - 0.02605602j, 0.09492552 - 0.01306734j],
+#                                               [-0.04668049 + 0.03351745j, -0.04382765 - 0.06455639j,
+#                                                0.05978564 - 0.01334044j, 0.50541615 + 0.50558267j,
+#                                                0.01458536 + 0.01646137j, 0.01649006 + 0.01990988j],
+#                                               [0.10653817 + 0.03885947j, 0.03298075 + 0.00374715j,
+#                                                0.00622585 - 0.01037453j, 0.05347464 - 0.04233343j,
+#                                                -0.05167177 + 0.00643947j, 0.01995970 + 0.01168872j],
+#                                               [-0.03821242 + 0.00435542j, 0.07533170 + 0.14590143j,
+#                                                0.01493027 + 0.02664675j, -0.01128964 - 0.02424692j,
+#                                                0.03347793 + 0.0358814j, -0.03924164 - 0.01978305j]])))
+#
+#        x = rg_space(shape, complexity=2, zerocenter=[True, False],
+#                     fft_module=fft_module, datamodel=datamodel)
+#        casted_data = x.cast(data)
+#        assert(check_almost_equality(x, x.calc_transform(casted_data),
+#                                     np.array([[-0.02238926 - 0.06140625j, 0.06211313 - 0.03317753j,
+#                                                -0.01519073 - 0.02842563j, -0.00517758 - 0.08601604j,
+#                                                0.02246912 + 0.01942764j, 0.06627311 + 0.08763801j],
+#                                               [-0.02492378 - 0.06097411j, 0.06365649 - 0.09346585j,
+#                                                0.05031486 + 0.00858656j, -0.00881969 + 0.01842357j,
+#                                                -0.01972641 - 0.00994365j, 0.05289453 - 0.06822038j],
+#                                               [0.01865586 + 0.08640926j, -0.03414096 + 0.02605602j,
+#                                                0.09492552 - 0.01306734j, -0.09355730 - 0.07553701j,
+#                                                0.02395259 + 0.02185743j, 0.03107832 + 0.04714527j],
+#                                               [0.50541615 + 0.50558267j, -0.01458536 - 0.01646137j,
+#                                                0.01649006 + 0.01990988j, 0.04668049 - 0.03351745j,
+#                                                -0.04382765 - 0.06455639j, -0.05978564 + 0.01334044j],
+#                                               [0.05347464 - 0.04233343j, 0.05167177 - 0.00643947j,
+#                                                0.01995970 + 0.01168872j, -0.10653817 - 0.03885947j,
+#                                                0.03298075 + 0.00374715j, -0.00622585 + 0.01037453j],
+#                                               [-0.01128964 - 0.02424692j, -0.03347793 - 0.0358814j,
+#                                                -0.03924164 - 0.01978305j, 0.03821242 - 0.00435542j,
+#                                                0.07533170 + 0.14590143j, -0.01493027 - 0.02664675j]])))
+#
+#        x = rg_space(shape, complexity=2, zerocenter=[True, False],
+#                     fft_module=fft_module, datamodel=datamodel)
+#        y = rg_space(shape, complexity=2, zerocenter=[False, True],
+#                     distances=[1, 1], harmonic=True,
+#                     fft_module=fft_module, datamodel=datamodel)
+#        casted_data = x.cast(data)
+#        assert(check_almost_equality(x, x.calc_transform(casted_data,
+#                                                         codomain=y),
+#                                     np.array([[0.04668049 - 0.03351745j, -0.04382765 - 0.06455639j,
+#                                                -0.05978564 + 0.01334044j, 0.50541615 + 0.50558267j,
+#                                                -0.01458536 - 0.01646137j, 0.01649006 + 0.01990988j],
+#                                               [-0.10653817 - 0.03885947j, 0.03298075 + 0.00374715j,
+#                                                -0.00622585 + 0.01037453j, 0.05347464 - 0.04233343j,
+#                                                0.05167177 - 0.00643947j, 0.01995970 + 0.01168872j],
+#                                               [0.03821242 - 0.00435542j, 0.07533170 + 0.14590143j,
+#                                                -0.01493027 - 0.02664675j, -0.01128964 - 0.02424692j,
+#                                                -0.03347793 - 0.0358814j, -0.03924164 - 0.01978305j],
+#                                               [-0.00517758 - 0.08601604j, 0.02246912 + 0.01942764j,
+#                                                0.06627311 + 0.08763801j, -0.02238926 - 0.06140625j,
+#                                                0.06211313 - 0.03317753j, -0.01519073 - 0.02842563j],
+#                                               [-0.00881969 + 0.01842357j, -0.01972641 - 0.00994365j,
+#                                                0.05289453 - 0.06822038j, -0.02492378 - 0.06097411j,
+#                                                0.06365649 - 0.09346585j, 0.05031486 + 0.00858656j],
+#                                               [-0.09355730 - 0.07553701j, 0.02395259 + 0.02185743j,
+#                                                0.03107832 + 0.04714527j, 0.01865586 + 0.08640926j,
+#                                                -0.03414096 + 0.02605602j, 0.09492552 - 0.01306734j]])))
+#
+################################################################################
+#
+#    @parameterized.expand(DATAMODELS['rg_space'],
+#                          testcase_func_name=custom_name_func)
+#    def test_calc_smooth(self, datamodel):
+#        sigma = 0.01
+#        shape = (8, 8)
+#        a = np.arange(np.prod(shape)).reshape(shape)
+#        x = rg_space(shape)
+#        casted_a = x.cast(a)
+#        assert(check_almost_equality(x, x.calc_smooth(casted_a, sigma=sigma),
+#                                     np.array([[0.3869063,   1.33370382,   2.34906384,   3.3400879,
+#                                                4.34774552,   5.33876958,   6.3541296,   7.30092712],
+#                                               [7.96128648,   8.90808401,   9.92344403,  10.91446809,
+#                                                11.9221257,  12.91314976,  13.92850978,  14.87530731],
+#                                               [16.08416664,  17.03096417,  18.04632419,  19.03734824,
+#                                                20.04500586,  21.03602992,  22.05138994,  22.99818747],
+#                                               [24.01235911,  24.95915664,  25.97451666,  26.96554072,
+#                                                27.97319833,  28.96422239,  29.97958241,  30.92637994],
+#                                               [32.07362006,  33.02041759,  34.03577761,  35.02680167,
+#                                                36.03445928,  37.02548334,  38.04084336,  38.98764089],
+#                                               [40.00181253,  40.94861006,  41.96397008,  42.95499414,
+#                                                43.96265176,  44.95367581,  45.96903583,  46.91583336],
+#                                               [48.12469269,  49.07149022,  50.08685024,  51.0778743,
+#                                                52.08553191,  53.07655597,  54.09191599,  55.03871352],
+#                                               [55.69907288,  56.6458704,  57.66123042,  58.65225448,
+#                                                59.6599121,  60.65093616,  61.66629618,  62.6130937]])))
+#
+################################################################################
+#
+#    @parameterized.expand(DATAMODELS['rg_space'],
+#                          testcase_func_name=custom_name_func)
+#    def test_calc_power(self, datamodel):
+#        shape = (8, 8)
+#        a = np.arange(np.prod(shape)).reshape(shape)
+#        x = rg_space(shape)
+#        assert_almost_equal(x.calc_power(a),
+#                            np.array([992.25, 55.48097039, 0., 16.25,
+#                                      0., 0., 9.51902961, 0.,
+#                                      0., 8.125, 0., 0.,
+#                                      0., 0., 0.]))
+#
+
+
+print all_spaces
+print generate_space('rg_space')

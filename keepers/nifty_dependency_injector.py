@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import imp
 import sys
 
 class dependency_injector(object):
@@ -40,7 +39,7 @@ class dependency_injector(object):
 #                print pathname
 #                loaded_module = \
 #                    imp.load_module(module_name, fp, pathname, description)
-#                    
+#
 #                print loaded_module
                 self.registry[key_name] = loaded_module
             except ImportError:
@@ -52,10 +51,15 @@ class dependency_injector(object):
 #                except (UnboundLocalError, AttributeError):
 #                    pass
 
+    def unregister(self, module_name):
+        try:
+            del self.registry['module_name']
+        except KeyError:
+            pass
 
 def recursive_import(name):
     m = __import__(name)
     for n in name.split(".")[1:]:
         m = getattr(m, n)
     return m
-    
+

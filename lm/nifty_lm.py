@@ -55,10 +55,6 @@ from nifty.nifty_random import random
 gl = gdi['libsharp_wrapper_gl']
 hp = gdi['healpy']
 
-if gl is None and gc['lm2gl']:
-    about.warnings.cprint("WARNING: global setting 'about.lm2gl' corrected.")
-    gc['lm2gl'] = False
-
 LM_DISTRIBUTION_STRATEGIES = []
 GL_DISTRIBUTION_STRATEGIES = []
 HP_DISTRIBUTION_STRATEGIES = []
@@ -154,9 +150,9 @@ class lm_space(point_space):
         """
 
         # check imports
-        if 'libsharp_wrapper_gl' not in gdi and 'healpy' not in gdi:
+        if not gc['use_libsharp'] and not gc['use_healpy']:
             raise ImportError(about._errors.cstring(
-                "ERROR: neither libsharp_wrapper_gl nor healpy available."))
+                "ERROR: neither libsharp_wrapper_gl nor healpy activated."))
 
         self.paradict = lm_space_paradict(lmax=lmax, mmax=mmax)
 
@@ -214,9 +210,9 @@ class lm_space(point_space):
                         dtype=self.dtype)
 
     def get_shape(self):
-        mmax = self.paradict['mmax']
         lmax = self.paradict['lmax']
-        return (np.int((mmax + 1) * (lmax + 1) - ((lmax + 1) * lmax) // 2),)
+        mmax = self.paradict['mmax']
+        return (np.int((mmax + 1) * (lmax + 1) - ((mmax + 1) * mmax) // 2),)
 
     def get_dof(self, split=False):
         """
@@ -234,8 +230,8 @@ class lm_space(point_space):
             symmetry, which is assumed for the spherical harmonics components.
         """
         # dof = 2*dim-(lmax+1) = (lmax+1)*(2*mmax+1)*(mmax+1)*mmax
-        mmax = self.paradict['lmax']
         lmax = self.paradict['lmax']
+        mmax = self.paradict['mmax']
         dof = np.int((lmax + 1) * (2 * mmax + 1) - (mmax + 1) * mmax)
         if split:
             return (dof, )
@@ -284,7 +280,7 @@ class lm_space(point_space):
                                                      **kwargs)
         complexity_mask = np.iscomplex(casted_x[:self.paradict['lmax']+1])
         if np.any(complexity_mask):
-            about.warnings.cprint("WARNING: Taking only the real parts for " +
+            about.warnings.cprint("WARNING: Taking the absolute values for " +
                                   "all complex entries where lmax==0")
             casted_x[complexity_mask] = np.abs(casted_x[complexity_mask])
         return casted_x
@@ -449,44 +445,43 @@ class lm_space(point_space):
         if arg is None:
             return np.zeros(self.get_shape(), dtype=self.dtype)
 
-        elif arg[0] == "pm1":
+        elif arg['random'] == "pm1":
             x = random.pm1(dtype=self.dtype, shape=self.get_shape())
             return self.cast(x)
 
-        elif arg[0] == "gau":
+        elif arg['random'] == "gau":
             x = random.gau(dtype=self.dtype,
                            shape=self.get_shape(),
-                           mean=arg[1],
-                           dev=arg[2],
-                           var=arg[3])
+                           mean=arg['mean'],
+                           std=arg['std'])
             return self.cast(x)
 
-        elif arg[0] == "syn":
+        elif arg['random'] == "syn":
             lmax = self.paradict['lmax']
             mmax = self.paradict['mmax']
             if self.dtype == np.dtype('complex64'):
-                if 'libsharp_wrapper_gl' in gdi:
-                    x = gl.synalm_f(arg[1], lmax=lmax, mmax=mmax)
+                if gc['use_libsharp']:
+                    x = gl.synalm_f(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
-                    x = hp.synalm(arg[1].astype(np.complex128),
+                    x = hp.synalm(arg['spec'].astype(np.complex128),
                                   lmax=lmax, mmax=mmax).astype(np.complex64)
             else:
-                if 'healpy' in gdi:
-                    x = hp.synalm(arg[1], lmax=lmax, mmax=mmax)
+                if gc['use_healpy']:
+                    x = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
-                    x = gl.synalm(arg[1], lmax=lmax, mmax=mmax)
+                    x = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
             return x
 
-        elif arg[0] == "uni":
+        elif arg['random'] == "uni":
             x = random.uni(dtype=self.dtype,
                            shape=self.get_shape(),
-                           vmin=arg[1],
-                           vmax=arg[2])
+                           vmin=arg['vmin'],
+                           vmax=arg['vmax'])
             return self.cast(x)
 
         else:
             raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
+                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
 
     def calc_dot(self, x, y):
         """
@@ -508,7 +503,7 @@ class lm_space(point_space):
         x = self.cast(x)
         y = self.cast(y)
 
-        if 'libsharp_wrapper_gl' in gdi:
+        if gc['use_libsharp']:
             lmax = self.paradict['lmax']
             mmax = self.paradict['mmax']
             if self.dtype == np.dtype('complex64'):
@@ -616,7 +611,7 @@ class lm_space(point_space):
             sigma = np.sqrt(2) * np.pi / (self.paradict['lmax'] + 1)
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-        if 'healpy' in gdi:
+        if gc['use_healpy']:
             return hp.smoothalm(x, fwhm=0.0, sigma=sigma, invert=False,
                                 pol=True, mmax=self.paradict['mmax'],
                                 verbose=False, inplace=False)
@@ -646,14 +641,14 @@ class lm_space(point_space):
 
         # power spectrum
         if self.dtype == np.dtype('complex64'):
-            if 'libsharp_wrapper_gl' in gdi:
+            if gc['use_libsharp']:
                 return gl.anaalm_f(x, lmax=lmax, mmax=mmax)
             else:
                 return hp.alm2cl(x.astype(np.complex128), alms2=None,
                                  lmax=lmax, mmax=mmax, lmax_out=lmax,
                                  nspec=None).astype(np.float32)
         else:
-            if 'healpy' in gdi:
+            if gc['use_healpy']:
                 return hp.alm2cl(x, alms2=None, lmax=lmax, mmax=mmax,
                                  lmax_out=lmax, nspec=None)
             else:
@@ -758,7 +753,7 @@ class lm_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self._enforce_shape(np.array(x))
+            x = self.cast(x)
             if(np.iscomplexobj(x)):
                 if(title):
                     title += " "
@@ -840,15 +835,6 @@ class lm_space(point_space):
             pl.close(fig)
         else:
             fig.canvas.draw()
-
-    def __repr__(self):
-        return "<nifty_lm.lm_space>"
-
-    def __str__(self):
-        return ("nifty_lm.lm_space instance\n- lmax     = " +
-                str(self.paradict['lmax']) +
-                "\n- mmax     = " + str(self.paradict['mmax']) +
-                "\n- dtype    = " + str(self.dtype))
 
     def getlm(self):  # > compute all (l,m)
         index = np.arange(self.get_dim())
@@ -940,9 +926,9 @@ class gl_space(point_space):
 
         """
         # check imports
-        if 'libsharp_wrapper_gl' not in gdi:
+        if not gc['use_libsharp']:
             raise ImportError(about._errors.cstring(
-                "ERROR: libsharp_wrapper_gl not available."))
+                "ERROR: libsharp_wrapper_gl not loaded."))
 
         self.paradict = gl_space_paradict(nlat=nlat, nlon=nlon)
 
@@ -1065,11 +1051,11 @@ class gl_space(point_space):
             Compatible codomains are instances of :py:class:`gl_space` and
             :py:class:`lm_space`.
         """
-        if not isinstance(codomain, space):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
         if codomain is None:
             return False
+
+        if not isinstance(codomain, space):
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
         if self.datamodel is not codomain.datamodel:
             return False
@@ -1158,38 +1144,40 @@ class gl_space(point_space):
         if(arg is None):
             x = np.zeros(self.get_shape(), dtype=self.dtype)
 
-        elif(arg[0] == "pm1"):
+        elif(arg['random'] == "pm1"):
             x = random.pm1(dtype=self.dtype, shape=self.get_shape())
 
-        elif(arg[0] == "gau"):
+        elif(arg['random'] == "gau"):
             x = random.gau(dtype=self.dtype,
                            shape=self.get_shape(),
-                           mean=arg[1], dev=arg[2], var=arg[3])
+                           mean=arg['mean'],
+                           std=arg['std'])
 
-        elif(arg[0] == "syn"):
+        elif(arg['random'] == "syn"):
             nlat = self.paradict['nlat']
             nlon = self.paradict['nlon']
             lmax = nlat - 1
             if self.dtype == np.dtype('float32'):
-                x = gl.synfast_f(arg[1],
+                x = gl.synfast_f(arg['syn'],
                                  nlat=nlat, nlon=nlon,
                                  lmax=lmax, mmax=lmax, alm=False)
             else:
-                x = gl.synfast(arg[1],
+                x = gl.synfast(arg['syn'],
                                nlat=nlat, nlon=nlon,
                                lmax=lmax, mmax=lmax, alm=False)
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=0.5)
 
-        elif(arg[0] == "uni"):
+        elif(arg['random'] == "uni"):
             x = random.uni(dtype=self.dtype,
                            shape=self.get_shape(),
-                           vmin=arg[1], vmax=arg[2])
+                           vmin=arg['vmin'],
+                           vmax=arg['vmax'])
 
         else:
             raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
+                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
 
         return x
 
@@ -1455,7 +1443,7 @@ class gl_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self._enforce_shape(np.array(x, dtype=self.dtype))
+            x = self.cast(x)
             if(vmin is None):
                 vmin = np.min(x, axis=None, out=None)
             if(vmax is None):
@@ -1502,12 +1490,6 @@ class gl_space(point_space):
             pl.close(fig)
         else:
             fig.canvas.draw()
-
-    def __repr__(self):
-        return "<nifty_lm.gl_space>"
-
-    def __str__(self):
-        return "nifty_lm.gl_space instance\n- nlat     = " + str(self.para[0]) + "\n- nlon     = " + str(self.para[1]) + "\n- dtype = numpy." + str(np.result_type(self.dtype))
 
 
 class hp_space(point_space):
@@ -1583,7 +1565,7 @@ class hp_space(point_space):
 
         """
         # check imports
-        if 'healpy' not in gdi:
+        if not gc['use_healpy']:
             raise ImportError(about._errors.cstring(
                 "ERROR: healpy not available."))
 
@@ -1697,11 +1679,11 @@ class hp_space(point_space):
             Compatible codomains are instances of :py:class:`hp_space` and
             :py:class:`lm_space`.
         """
-        if not isinstance(codomain, space):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
-
         if codomain is None:
             return False
+
+        if not isinstance(codomain, space):
+            raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
         if self.datamodel is not codomain.datamodel:
             return False
@@ -1781,29 +1763,31 @@ class hp_space(point_space):
         if arg is None:
             x = np.zeros(self.get_shape(), dtype=self.dtype)
 
-        elif arg[0] == "pm1":
+        elif arg['random'] == "pm1":
             x = random.pm1(dtype=self.dtype, shape=self.get_shape())
 
-        elif arg[0] == "gau":
+        elif arg['random'] == "gau":
             x = random.gau(dtype=self.dtype, shape=self.get_shape(),
-                           mean=arg[1], dev=arg[2], var=arg[3])
+                           mean=arg['mean'],
+                           std=arg['std'])
 
-        elif arg[0] == "syn":
+        elif arg['random'] == "syn":
             nside = self.paradict['nside']
             lmax = 3*nside-1
-            x = hp.synfast(arg[1], nside, lmax=lmax, mmax=lmax, alm=False,
+            x = hp.synfast(arg['spec'], nside, lmax=lmax, mmax=lmax, alm=False,
                            pol=True, pixwin=False, fwhm=0.0, sigma=None)
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=0.5)
 
-        elif arg[0] == "uni":
+        elif arg['random'] == "uni":
             x = random.uni(dtype=self.dtype, shape=self.get_shape(),
-                           vmin=arg[1], vmax=arg[2])
+                           vmin=arg['vmin'],
+                           vmax=arg['vmax'])
 
         else:
             raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg[0]) + "'."))
+                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
 
         return x
 
@@ -2038,7 +2022,7 @@ class hp_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self._enforce_shape(np.array(x, dtype=self.dtype))
+            x = self.cast(x)
             if(norm == "log"):
                 if(vmin is not None):
                     if(vmin <= 0):
@@ -2060,11 +2044,3 @@ class hp_space(point_space):
             pl.close(fig)
         else:
             fig.canvas.draw()
-
-    def __repr__(self):
-        return "<nifty_lm.hp_space>"
-
-    def __str__(self):
-        return "nifty_lm.hp_space instance\n- nside = " + str(self.para[0])
-
-

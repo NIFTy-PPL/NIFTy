@@ -71,7 +71,7 @@ class configuration(object):
         self.set_path(path=path, path_section=path_section)
         try:
             self.load()
-        except ValueError:
+        except:
             pass
 
     def __getitem__(self, key):

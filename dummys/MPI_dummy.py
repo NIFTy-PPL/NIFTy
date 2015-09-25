@@ -21,7 +21,8 @@ class Comm(object):
 
 
 class Intracomm(Comm):
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.rank = 0
         self.size = 1
 
@@ -115,4 +116,4 @@ COMPLEX = _datatype("MPI_COMPLEX")
 DOUBLE_COMPLEX = _datatype("MPI_DOUBLE_COMPLEX")
 
 
-COMM_WORLD = Intracomm()
+COMM_WORLD = Intracomm('MPI_dummy_COMM_WORLD')

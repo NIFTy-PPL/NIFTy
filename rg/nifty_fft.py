@@ -80,84 +80,6 @@ class fft(object):
         return None
 
 
-# The instances of plan_and_info store the fftw plan and all
-# other information needed in order to perform a mpi-fftw transformation
-class _fftw_plan_and_info(object):
-
-    def __init__(self, domain, codomain, fft_fftw_context, **kwargs):
-        if pyfftw is None:
-            raise ImportError("The module pyfftw is needed but not available.")
-        self.compute_plan_and_info(domain, codomain, fft_fftw_context,
-                                   **kwargs)
-
-    def set_plan(self, x):
-        self.plan = x
-
-    def get_plan(self):
-        return self.plan
-
-    def set_domain_centering_mask(self, x):
-        self.domain_centering_mask = x
-
-    def get_domain_centering_mask(self):
-        return self.domain_centering_mask
-
-    def set_codomain_centering_mask(self, x):
-        self.codomain_centering_mask = x
-
-    def get_codomain_centering_mask(self):
-        return self.codomain_centering_mask
-
-    def compute_plan_and_info(self, domain, codomain, fft_fftw_context,
-                              **kwargs):
-
-        self.input_dtype = 'complex128'
-        self.output_dtype = 'complex128'
-
-        self.global_input_shape = domain.get_shape()
-        self.global_output_shape = codomain.get_shape()
-        self.fftw_local_size = pyfftw.local_size(self.global_input_shape)
-
-        self.in_zero_centered_dimensions = domain.paradict['zerocenter']
-        self.out_zero_centered_dimensions = codomain.paradict['zerocenter']
-
-        self.overall_sign = (-1)**np.sum(
-                                np.array(self.in_zero_centered_dimensions) *
-                                np.array(self.out_zero_centered_dimensions))
-
-        self.local_node_dimensions = np.append((self.fftw_local_size[1],),
-                                               self.global_input_shape[1:])
-        self.offsetQ = self.fftw_local_size[2] % 2
-
-        if codomain.harmonic:
-            self.direction = 'FFTW_FORWARD'
-        else:
-            self.direction = 'FFTW_BACKWARD'
-
-        # compute the centering masks
-        self.set_domain_centering_mask(
-            fft_fftw_context.get_centering_mask(
-                self.in_zero_centered_dimensions,
-                self.local_node_dimensions,
-                self.offsetQ))
-
-        self.set_codomain_centering_mask(
-            fft_fftw_context.get_centering_mask(
-                self.out_zero_centered_dimensions,
-                self.local_node_dimensions,
-                self.offsetQ))
-
-        self.set_plan(
-            pyfftw.create_mpi_plan(
-                input_shape=self.global_input_shape,
-                input_dtype=self.input_dtype,
-                output_dtype=self.output_dtype,
-                direction=self.direction,
-                flags=["FFTW_ESTIMATE"],
-                **kwargs)
-        )
-
-
 class fft_fftw(fft):
     """
         The pyfftw pendant of a fft object.
@@ -388,6 +310,83 @@ class fft_fftw(fft):
         return_val *= current_plan_and_info.overall_sign
 
         return return_val
+
+# The instances of plan_and_info store the fftw plan and all
+# other information needed in order to perform a mpi-fftw transformation
+class _fftw_plan_and_info(object):
+
+    def __init__(self, domain, codomain, fft_fftw_context, **kwargs):
+        if pyfftw is None:
+            raise ImportError("The module pyfftw is needed but not available.")
+        self.compute_plan_and_info(domain, codomain, fft_fftw_context,
+                                   **kwargs)
+
+    def set_plan(self, x):
+        self.plan = x
+
+    def get_plan(self):
+        return self.plan
+
+    def set_domain_centering_mask(self, x):
+        self.domain_centering_mask = x
+
+    def get_domain_centering_mask(self):
+        return self.domain_centering_mask
+
+    def set_codomain_centering_mask(self, x):
+        self.codomain_centering_mask = x
+
+    def get_codomain_centering_mask(self):
+        return self.codomain_centering_mask
+
+    def compute_plan_and_info(self, domain, codomain, fft_fftw_context,
+                              **kwargs):
+
+        self.input_dtype = 'complex128'
+        self.output_dtype = 'complex128'
+
+        self.global_input_shape = domain.get_shape()
+        self.global_output_shape = codomain.get_shape()
+        self.fftw_local_size = pyfftw.local_size(self.global_input_shape)
+
+        self.in_zero_centered_dimensions = domain.paradict['zerocenter']
+        self.out_zero_centered_dimensions = codomain.paradict['zerocenter']
+
+        self.overall_sign = (-1)**np.sum(
+                                np.array(self.in_zero_centered_dimensions) *
+                                np.array(self.out_zero_centered_dimensions))
+
+        self.local_node_dimensions = np.append((self.fftw_local_size[1],),
+                                               self.global_input_shape[1:])
+        self.offsetQ = self.fftw_local_size[2] % 2
+
+        if codomain.harmonic:
+            self.direction = 'FFTW_FORWARD'
+        else:
+            self.direction = 'FFTW_BACKWARD'
+
+        # compute the centering masks
+        self.set_domain_centering_mask(
+            fft_fftw_context.get_centering_mask(
+                self.in_zero_centered_dimensions,
+                self.local_node_dimensions,
+                self.offsetQ))
+
+        self.set_codomain_centering_mask(
+            fft_fftw_context.get_centering_mask(
+                self.out_zero_centered_dimensions,
+                self.local_node_dimensions,
+                self.offsetQ))
+
+        self.set_plan(
+            pyfftw.create_mpi_plan(
+                input_shape=self.global_input_shape,
+                input_dtype=self.input_dtype,
+                output_dtype=self.output_dtype,
+                direction=self.direction,
+                flags=["FFTW_ESTIMATE"],
+                **kwargs)
+        )
 
 
 class fft_gfft(fft):

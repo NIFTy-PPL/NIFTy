@@ -38,7 +38,6 @@ from nifty_core import space,\
                     field
 
 from nifty_mpi_data import distributed_data_object, d2o_librarian
-from nifty_power import *
 from nifty_random import random
 from nifty_simple_math import *
 from nifty_utilities import *
@@ -46,7 +45,6 @@ from nifty_utilities import *
 from nifty_paradict import space_paradict,\
                             point_space_paradict,\
                             nested_space_paradict
-from smoothing import *
 from operators import *
 
 ## optional submodule `rg`

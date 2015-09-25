@@ -407,8 +407,11 @@ class space(object):
             check : bool
                 Whether or not the given codomain is compatible to the space.
         """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'check_codomain'."))
+        if codomain is None:
+            return False
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: no generic instance method 'check_codomain'."))
 
     def get_codomain(self, **kwargs):
         """
@@ -735,11 +738,13 @@ class space(object):
             "ERROR: no generic instance method 'get_plot'."))
 
     def __repr__(self):
-        return "<nifty_core.space>"
+        string = ""
+        string += str(type(self)) + "\n"
+        string += "paradict: " + str(self.paradict) + "\n"
+        return string
 
     def __str__(self):
-        return "nifty_core.space instance\n- para     = " + str(self.para) + \
-            "\n- dtype = " + str(self.dtype.type)
+        return self.__repr__()
 
 
 class point_space(space):
@@ -1808,13 +1813,16 @@ class point_space(space):
             fig.canvas.draw()
 
     def __repr__(self):
-        return "<nifty_core.point_space>"
-
-    def __str__(self):
-        result = "nifty_core.point_space instance\n- num      = " + \
-                 str(self.para[0]) + "\n- dtype = numpy." + \
-                 str(np.dtype(self.dtype))
-        return result
+        string = ""
+        string += str(type(self)) + "\n"
+        string += "paradict: " + str(self.paradict)
+        string += 'dtype: ' + str(self.dtype) + "\n"
+        string += 'datamodel: ' + str(self.datamodel) + "\n"
+        string += 'comm: ' + self.comm.name + "\n"
+        string += 'discrete: ' + str(self.discrete) + "\n"
+        string += 'harmonic: ' + str(self.harmonic) + "\n"
+        string += 'distances: ' + str(self.distances) + "\n"
+        return string
 
 
 class field(object):
