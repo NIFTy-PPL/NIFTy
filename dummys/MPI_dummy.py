@@ -22,6 +22,9 @@ class Comm(object):
 
 class Intracomm(Comm):
     def __init__(self, name):
+        if not running_single_threadedQ():
+            raise RuntimeError("ERROR: MPI_dummy module is running in a " +
+                               "mpirun with n>1.")
         self.name = name
         self.rank = 0
         self.size = 1
@@ -99,6 +102,19 @@ class Intracomm(Comm):
 class _datatype():
     def __init__(self, name):
         self.name = str(name)
+
+
+def running_single_threadedQ():
+    try:
+        from mpi4py import MPI
+    except ImportError:
+        return True
+    else:
+        if MPI.COMM_WORLD.size != 1:
+            return False
+        else:
+            return True
+
 
 BYTE = _datatype('MPI_BYTE')
 SHORT = _datatype('MPI_SHORT')

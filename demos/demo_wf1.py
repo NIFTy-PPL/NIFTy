@@ -36,8 +36,8 @@ from __future__ import division
 import matplotlib as mpl
 mpl.use('Agg')
 import imp
-nifty = imp.load_module('nifty', None,
-                        '/home/steininger/Downloads/nifty', ('','',5))
+#nifty = imp.load_module('nifty', None,
+#                        '/home/steininger/Downloads/nifty', ('','',5))
 
 from nifty import *                                              # version 0.8.0
 about.warnings.off()

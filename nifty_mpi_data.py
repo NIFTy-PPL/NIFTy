@@ -2433,6 +2433,7 @@ class _slicing_distributor(distributor):
     def get_iter(self, d2o):
         return d2o_slicing_iter(d2o)
 
+
 def _equal_slicer(comm, global_shape):
     rank = comm.rank
     size = comm.size

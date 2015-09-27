@@ -14,7 +14,7 @@
 build
 
 operators/*
-!operators/__init__py
+!operators/__init__.py
 !operators/nifty_explicit.py
 !operators/nifty_operators.py
 !operators/nifty_probing.py
