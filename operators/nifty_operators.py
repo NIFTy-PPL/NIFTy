@@ -31,7 +31,7 @@ from nifty_probing import trace_prober,\
     diagonal_prober,\
     inverse_diagonal_prober
 import nifty.nifty_utilities as utilities
-import nifty_simple_math
+import nifty.nifty_simple_math
 
 
 # =============================================================================
