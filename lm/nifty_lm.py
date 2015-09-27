@@ -52,8 +52,8 @@ from nifty.nifty_power_indices import lm_power_indices
 
 from nifty.nifty_random import random
 
-gl = gdi['libsharp_wrapper_gl']
-hp = gdi['healpy']
+gl = gdi.get('libsharp_wrapper_gl')
+hp = gdi.get('healpy')
 
 LM_DISTRIBUTION_STRATEGIES = []
 GL_DISTRIBUTION_STRATEGIES = []
