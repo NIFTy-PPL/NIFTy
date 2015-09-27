@@ -18,7 +18,7 @@ global_dependency_injector = dependency_injector(
 
 
 variable_fft_module = variable('fft_module',
-                               ['pyfftw', 'gfft', 'gfft_fallback'],
+                               ['pyfftw', 'gfft', 'gfft_dummy'],
                                lambda z: z in global_dependency_injector)
 
 variable_lm2gl = variable('lm2gl',
