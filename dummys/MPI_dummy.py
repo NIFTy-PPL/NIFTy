@@ -132,4 +132,26 @@ COMPLEX = _datatype("MPI_COMPLEX")
 DOUBLE_COMPLEX = _datatype("MPI_DOUBLE_COMPLEX")
 
 
-COMM_WORLD = Intracomm('MPI_dummy_COMM_WORLD')
+class _comm_wrapper(object):
+    def __init__(self, name):
+        self.cache = None
+        self.name = name
+
+    @property
+    def comm(self):
+        if self.cache is None:
+            self.cache = Intracomm(self.name)
+        return self.cache
+
+    def __getattr__(self, x):
+        return self.comm.__getattribute__(x)
+
+
+COMM_WORLD = _comm_wrapper('MPI_dummy_COMM_WORLD')
+
+
+
+
+
+
+

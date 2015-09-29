@@ -1297,7 +1297,6 @@ class distributor(object):
                         distribution_strategy='freeform',
                         comm=self.comm)
                 # disperse the data one after another
-                print ('i', i, temp_data_update)
                 self._disperse_data_primitive(
                                       data=data,
                                       to_key=to_key_list[i],

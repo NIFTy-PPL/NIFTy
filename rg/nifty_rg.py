@@ -1672,7 +1672,7 @@ class rg_space(point_space):
         else:
             fig.canvas.draw()
 
-def __repr__(self):
-    string = super(rg_space, self).__repr__()
-    string += repr(self.fft_machine) + "\n "
-    return string
+    def __repr__(self):
+        string = super(rg_space, self).__repr__()
+        string += repr(self.fft_machine) + "\n "
+        return string

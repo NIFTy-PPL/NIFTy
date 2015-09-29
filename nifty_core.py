@@ -1815,7 +1815,7 @@ class point_space(space):
     def __repr__(self):
         string = ""
         string += str(type(self)) + "\n"
-        string += "paradict: " + str(self.paradict)
+        string += "paradict: " + str(self.paradict) + "\n"
         string += 'dtype: ' + str(self.dtype) + "\n"
         string += 'datamodel: ' + str(self.datamodel) + "\n"
         string += 'comm: ' + self.comm.name + "\n"

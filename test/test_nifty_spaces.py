@@ -932,6 +932,35 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
+    @parameterized.expand(
+        itertools.product(fft_modules,
+                          [(6, 6), (8, 8), (6, 8)],
+                          [(True, True), (False, False),
+                           (True, False), (False, True)],
+                          [(True, True), (False, False),
+                           (True, False), (False, True)],
+                          DATAMODELS['rg_space']),
+        testcase_func_name=custom_name_func)
+    def test_calc_transform_variations(self, fft_module, shape, zerocenter_in,
+                                       zerocenter_out, datamodel):
+        data = np.arange(np.prod(shape)).reshape(shape)
+        x = rg_space(shape, complexity=2, zerocenter=zerocenter_in,
+                     fft_module=fft_module, datamodel=datamodel)
+        y = x.get_codomain()
+        y.paradict['zerocenter'] = zerocenter_out
+
+        casted_data = x.cast(data)
+        x_result = x.calc_transform(casted_data, codomain=y)
+
+        np_data = data.copy()
+        np_data = np.fft.fftshift(np_data, axes=np.where(zerocenter_in)[0])
+        np_data = np.fft.fftn(np_data)
+        np_data = np.fft.fftshift(np_data, axes=np.where(zerocenter_out)[0])
+        np_result = np_data/np.prod(shape)
+        assert(check_almost_equality(x, x_result, np_result))
+
+###############################################################################
+
     @parameterized.expand(DATAMODELS['rg_space'],
                           testcase_func_name=custom_name_func)
     def test_calc_smooth(self, datamodel):

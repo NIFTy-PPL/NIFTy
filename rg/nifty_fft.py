@@ -311,6 +311,7 @@ class fft_fftw(fft):
 
         return return_val
 
+
 # The instances of plan_and_info store the fftw plan and all
 # other information needed in order to perform a mpi-fftw transformation
 class _fftw_plan_and_info(object):
@@ -354,7 +355,9 @@ class _fftw_plan_and_info(object):
 
         self.overall_sign = (-1)**np.sum(
                                 np.array(self.in_zero_centered_dimensions) *
-                                np.array(self.out_zero_centered_dimensions))
+                                np.array(self.out_zero_centered_dimensions) *
+                                (np.array(self.global_input_shape)//2 % 2)
+                                )
 
         self.local_node_dimensions = np.append((self.fftw_local_size[1],),
                                                self.global_input_shape[1:])
