@@ -2020,8 +2020,10 @@ class field(object):
         """
         if new_val is not None:
             if copy:
-                new_val = self.domain.unary_operation(new_val, 'copy')
-            self.val = self.domain.cast(new_val)
+                new_val = self._map(
+                            lambda z: self.domain.unary_operation(z, 'copy'),
+                            new_val)
+            self.val = self._map(lambda z: self.domain.cast(z), new_val)
         return self.val
 
     def get_val(self):

@@ -1835,11 +1835,11 @@ class _slicing_distributor(distributor):
                     get_full_data(target_rank=j)
                 if j == rank:
                     result = temp_result
-
-            if not all(result[i] <= result[i + 1]
-                       for i in xrange(len(result) - 1)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The first dimemnsion of list_key must be sorted!"))
+# TODO: Implement fast check!
+#            if not all(result[i] <= result[i + 1]
+#                       for i in xrange(len(result) - 1)):
+#                raise ValueError(about._errors.cstring(
+#                    "ERROR: The first dimemnsion of list_key must be sorted!"))
             result = [result]
 
             for ii in xrange(1, len(from_list_key)):
@@ -1877,10 +1877,11 @@ class _slicing_distributor(distributor):
             local_selection = greater_than_lower * less_than_upper
 
             result = [local_zeroth_key[local_selection]]
-            if not all(result[0][i] <= result[0][i + 1]
-                       for i in xrange(len(result[0]) - 1)):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The first dimemnsion of list_key must be sorted!"))
+# TODO: Implement fast check!
+#            if not all(result[0][i] <= result[0][i + 1]
+#                       for i in xrange(len(result[0]) - 1)):
+#                raise ValueError(about._errors.cstring(
+#                    "ERROR: The first dimemnsion of list_key must be sorted!"))
 
             for ii in xrange(1, len(from_list_key)):
                 current = from_list_key[ii]

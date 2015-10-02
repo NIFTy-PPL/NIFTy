@@ -20,7 +20,16 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from distutils.core import setup
+#from Cython.Build import cythonize
+from distutils.extension import Extension
+from Cython.Distutils import build_ext
+import sys
 import os
+
+ext_modules=[Extension(
+                   "line_integrator_vector",
+                   ["operators/line_integrator.pyx"])]
+
 
 setup(name="ift_nifty",
       version="1.0.6",
@@ -32,6 +41,13 @@ setup(name="ift_nifty",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
       packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm",
                 "nifty.operators", "nifty.dummys", "nifty.keepers"],
+      cmdclass={'build_ext': build_ext},
+      ext_modules = ext_modules,
+      #ext_modules=cythonize(["operators/line_integrator_vector.pyx"]),
+
       package_dir={"nifty": ""},
       data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])],
       license="GPLv3")
+
+
+

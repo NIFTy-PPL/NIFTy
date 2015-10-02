@@ -2845,7 +2845,8 @@ class response_operator(operator):
             None
         """
         if not isinstance(domain, space):
-            raise TypeError(about._errors.cstring("ERROR: invalid input."))
+            raise TypeError(about._errors.cstring(
+                "ERROR: The domain must be a space instance."))
         self.domain = domain
 
         if self.domain.check_codomain(codomain):
