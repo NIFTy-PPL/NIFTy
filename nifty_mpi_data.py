@@ -87,7 +87,6 @@ class distributed_data_object(object):
             If the supplied distribution strategy is not known.
 
     """
-
     def __init__(self, global_data=None, global_shape=None, dtype=None,
                  local_data=None, local_shape=None,
                  distribution_strategy='fftw', hermitian=False,
@@ -904,6 +903,14 @@ class distributed_data_object(object):
         else:
             return work_d2o
 
+    def cumsum(self, axis=None):
+        cumsum_data = self.distributor.cumsum(self.data, axis=axis)
+        result_d2o = self.copy_empty()
+        if axis is None:
+            result_d2o = result_d2o.flatten(inplace=True)
+        result_d2o.set_local_data(cumsum_data)
+        return result_d2o
+
     def save(self, alias, path=None, overwriteQ=True):
         """
             Saves a distributed_data_object to disk utilizing h5py.
@@ -948,10 +955,20 @@ class _distributor_factory(object):
                      global_data=None, global_shape=None,
                      local_data=None, local_shape=None,
                      alias=None, path=None,
-                     dtype=None, **kwargs):
+                     dtype=None, skip_parsing=False, **kwargs):
+
+        if skip_parsing:
+            return_dict = {'comm': comm,
+                           'dtype': dtype,
+                           'name': distribution_strategy
+                           }
+            if distribution_strategy in STRATEGIES['global']:
+                return_dict['global_shape'] = global_shape
+            elif distribution_strategy in STRATEGIES['local']:
+                return_dict['local_shape'] = local_shape
+            return return_dict
 
         return_dict = {}
-
         # Check that all nodes got the same distribution_strategy
         strat_list = comm.allgather(distribution_strategy)
         if all(x == strat_list[0] for x in strat_list) == False:
@@ -998,7 +1015,7 @@ class _distributor_factory(object):
             else:
                 dtype = np.dtype(dtype)
 
-        elif distribution_strategy in ['freeform']:
+        elif distribution_strategy in STRATEGIES['local']:
             if dtype is None:
                 if isinstance(global_data, distributed_data_object):
                     dtype = global_data.dtype
@@ -1021,7 +1038,7 @@ class _distributor_factory(object):
 
         # Parse the shape
         # Case 1: global-type slicer
-        if distribution_strategy in ['not', 'equal', 'fftw']:
+        if distribution_strategy in STRATEGIES['global']:
             if dset is not None:
                 global_shape = dset.shape
             elif global_data is not None and np.isscalar(global_data) == False:
@@ -1376,6 +1393,9 @@ class _slicing_distributor(distributor):
                 hermitian = True
             elif local_data is None:
                 local_data = np.empty(self.local_shape, dtype=self.dtype)
+            elif isinstance(local_data, np.ndarray):
+                local_data = local_data.astype(
+                               self.dtype, copy=copy).reshape(self.local_shape)
             else:
                 local_data = np.array(local_data).astype(
                     self.dtype, copy=copy).reshape(self.local_shape)
@@ -2179,6 +2199,22 @@ class _slicing_distributor(distributor):
                            local_where)
         return global_where
 
+    def cumsum(self, data, axis):
+        # compute the local np.cumsum
+        local_cumsum = np.cumsum(data, axis=axis)
+        if axis is None or axis == 0:
+            # communicate the highest value from node to node
+            rank = self.comm.rank
+            if local_cumsum.shape[0] == 0:
+                local_shift = np.zeros((), dtype=local_cumsum.dtype)
+            else:
+                local_shift = local_cumsum[-1]
+            local_shift_list = self.comm.allgather(local_shift)
+            local_sum_of_shift = np.sum(local_shift_list[:rank],
+                                        axis=0)
+            local_cumsum += local_sum_of_shift
+        return local_cumsum
+
     def _sliceify(self, inp):
         sliceified = []
         result = []
@@ -2196,7 +2232,10 @@ class _slicing_distributor(distributor):
             else:
                 if x[i] >= self.global_shape[i]:
                     raise IndexError('Index out of bounds!')
-                result += [slice(x[i], x[i] + 1), ]
+                if x[i] == -1:
+                    result += [slice(-1, None)]
+                else:
+                    result += [slice(x[i], x[i] + 1), ]
                 sliceified += [True, ]
 
         return (tuple(result), sliceified)
@@ -2412,7 +2451,6 @@ class _slicing_distributor(distributor):
                     "the distributed_data_object."))
             # check dtype
             if dset.dtype != self.dtype:
-                print ('dsets', dset.dtype, self.dtype)
                 raise TypeError(about._errors.cstring(
                     "ERROR: The datatype of the given dataset does not " +
                     "match the one of the distributed_data_object."))
@@ -2542,6 +2580,8 @@ class _not_distributor(distributor):
             return np.empty(self.global_shape, dtype=self.dtype)
         elif isinstance(data, distributed_data_object):
             new_data = data.get_full_data()
+        elif isinstance(data, np.ndarray):
+            new_data = data
         else:
             new_data = np.array(data)
         return new_data.astype(self.dtype,
@@ -2607,6 +2647,11 @@ class _not_distributor(distributor):
                                                  distribution_strategy='not'),
                            local_where)
         return global_where
+
+    def cumsum(self, data, axis):
+        # compute the local results from np.cumsum
+        cumsum = np.cumsum(data, axis=axis)
+        return cumsum
 
     if 'h5py' in gdi:
         def save_data(self, data, alias, path=None, overwriteQ=True):

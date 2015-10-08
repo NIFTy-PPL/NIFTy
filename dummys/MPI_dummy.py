@@ -79,11 +79,11 @@ class Intracomm(Comm):
         return self._scattergather_helper(*args, **kwargs)
 
     def Allreduce(self, sendbuf, recvbuf, op, **kwargs):
-        recvbuf[:] = op(sendbuf)
+        recvbuf[:] = sendbuf
         return recvbuf
 
     def allreduce(self, sendbuf, recvbuf, op, **kwargs):
-        recvbuf[:] = op(sendbuf)
+        recvbuf[:] = sendbuf
         return recvbuf
 
     def sendrecv(self, sendobj, **kwargs):

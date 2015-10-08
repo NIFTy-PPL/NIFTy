@@ -1677,6 +1677,20 @@ class Test_special_methods(unittest.TestCase):
         assert_equal(obj.imag.get_full_data(), a.imag)
 
 ###############################################################################
+
+    @parameterized.expand(
+        itertools.product([None, 0, 1, 2],
+                          all_distribution_strategies),
+        testcase_func_name=custom_name_func)
+    def test_cumsum(self, axis, distribution_strategy):
+        global_shape = (3, 4, 5)
+        dtype = np.dtype('float')
+        (a, obj) = generate_data(global_shape, dtype,
+                                 distribution_strategy)
+        assert_equal(obj.cumsum(axis=axis).get_full_data(),
+                     a.cumsum(axis=axis))
+
+###############################################################################
 ###############################################################################
 
 

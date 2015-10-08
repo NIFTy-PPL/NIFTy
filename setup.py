@@ -26,9 +26,13 @@ from Cython.Distutils import build_ext
 import sys
 import os
 
+#os.environ["CC"] = "g++-4.8"
+#os.environ["CXX"] = "g++-4.8"
+
 ext_modules=[Extension(
-                   "line_integrator_vector",
-                   ["operators/line_integrator.pyx"])]
+                   "line_integrator",
+                   ["operators/line_integrator.pyx"],)]# "vector.pxd"],
+                   #language='c++')]
 
 
 setup(name="ift_nifty",
