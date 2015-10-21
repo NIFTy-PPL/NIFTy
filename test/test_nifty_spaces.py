@@ -218,7 +218,7 @@ class Test_Common_Space_Features(unittest.TestCase):
                           testcase_func_name=custom_name_func)
     def test_successfull_init_and_methods(self, name):
         s = generate_space(name)
-        assert(callable(s._identifier))
+        assert(callable(s.__hash__))
         assert(callable(s.__eq__))
         assert(callable(s.__ne__))
         assert(callable(s.__len__))
@@ -251,6 +251,13 @@ class Test_Common_Space_Features(unittest.TestCase):
 
         assert(s.check_codomain(None) == False)
         assert(isinstance(repr(s), str))
+
+    @parameterized.expand(all_spaces,
+                          testcase_func_name=custom_name_func)
+    def test_successfull_hashing(self, name):
+        s1 = generate_space(name)
+        s2 = generate_space(name)
+        assert(s1.__hash__() == s2.__hash__())
 
 
 ###############################################################################

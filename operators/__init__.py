@@ -27,7 +27,9 @@ from nifty_operators import operator,\
                             vecvec_operator,\
                             response_operator,\
                             invertible_operator,\
-                            propagator_operator
+                            propagator_operator,\
+                            identity,\
+                            identity_operator
 
 
 from nifty_probing import prober,\
@@ -35,6 +37,8 @@ from nifty_probing import prober,\
                                 inverse_trace_prober,\
                                 diagonal_prober,\
                                 inverse_diagonal_prober
+
+from nifty_los import los_response
 
 from nifty_minimization import conjugate_gradient,\
                                steepest_descent

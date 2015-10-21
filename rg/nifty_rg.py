@@ -122,7 +122,7 @@ class rg_space(point_space):
     epsilon = 0.0001  # relative precision for comparisons
 
     def __init__(self, shape, zerocenter=False, complexity=0, distances=None,
-                 harmonic=False, datamodel='fftw', fft_module='pyfftw',
+                 harmonic=False, datamodel='fftw', fft_module=gc['fft_module'],
                  comm=gc['default_comm']):
         """
             Sets the attributes for an rg_space class instance.
@@ -226,6 +226,14 @@ class rg_space(point_space):
         self.paradict['zerocenter'] = x[(np.size(x) + 1) // 2:]
         self.paradict['complexity'] = x[(np.size(x) - 1) // 2]
 
+    def __hash__(self):
+        result_hash = 0
+        for (key, item) in vars(self).items():
+            if key in ['fft_machine', 'power_indices']:
+                continue
+            result_hash ^= item.__hash__() * hash(key)
+        return result_hash
+
     # __identiftier__ returns an object which contains all information needed
     # to uniquely identify a space. It returns a (immutable) tuple which
     # therefore can be compared.
@@ -280,7 +288,7 @@ class rg_space(point_space):
         return casted_x
 
     def enforce_power(self, spec, size=None, kindex=None, codomain=None,
-                      log=False, nbin=None, binbounds=None):
+                      **kwargs):
         """
             Provides a valid power spectrum array from a given object.
 
@@ -337,9 +345,9 @@ class rg_space(point_space):
                                           "generic codomain. This can " +
                                           "be expensive!")
                     kindex_supply_space = self.get_codomain()
+
             kindex = kindex_supply_space.\
-                power_indices.get_index_dict(log=log, nbin=nbin,
-                                             binbounds=binbounds)['kindex']
+                power_indices.get_index_dict(**kwargs)['kindex']
 
         return self._enforce_power_helper(spec=spec,
                                           size=size,
@@ -629,18 +637,17 @@ class rg_space(point_space):
             spec = arg['spec']
             kpack = arg['kpack']
             harmonic_domain = arg['harmonic_domain']
-            log = arg['log']
-            nbin = arg['nbin']
-            binbounds = arg['binbounds']
+            lnb_dict = {}
+            for name in ('log', 'nbin', 'binbounds'):
+                if arg[name] != 'default':
+                    lnb_dict[name] = arg[name]
+
             # Check whether there is a kpack available or not.
             # kpack is only used for computing kdict and extracting kindex
             # If not, take kdict and kindex from the fourier_domain
             if kpack is None:
                 power_indices =\
-                    harmonic_domain.power_indices.get_index_dict(
-                                                        log=log,
-                                                        nbin=nbin,
-                                                        binbounds=binbounds)
+                    harmonic_domain.power_indices.get_index_dict(**lnb_dict)
 
                 kindex = power_indices['kindex']
                 kdict = power_indices['kdict']
@@ -900,7 +907,7 @@ class rg_space(point_space):
 
         # Check sigma
         if sigma == 0:
-            return x
+            return self.unary_operation(x, op='copy')
         elif sigma == -1:
             about.infos.cprint(
                 "INFO: Resetting sigma to sqrt(2)*max(dist).")
@@ -1021,18 +1028,12 @@ class rg_space(point_space):
         # favor them over those from the self.power_indices dictionary.
         # As the default value in kwargs.get(key, default) does NOT evaluate
         # lazy, a distinction of cases is necessary. Otherwise the
-        # powerindices might be computed, although not necessary
-        if 'pindex' in kwargs and 'kindex' in kwargs and 'rho' in kwargs:
+        # powerindices might be computed, although not needed
+        if 'pindex' in kwargs and 'rho' in kwargs:
             pindex = kwargs.get('pindex')
             rho = kwargs.get('rho')
         else:
-            log = kwargs.get('log', None)
-            nbin = kwargs.get('nbin', None)
-            binbounds = kwargs.get('binbounds', None)
-            power_indices = self.power_indices.get_index_dict(
-                                                        log=log,
-                                                        nbin=nbin,
-                                                        binbounds=binbounds)
+            power_indices = self.power_indices.get_index_dict(**kwargs)
             pindex = kwargs.get('pindex', power_indices['pindex'])
             rho = kwargs.get('rho', power_indices['rho'])
 
@@ -1051,7 +1052,6 @@ class rg_space(point_space):
         # Divide out the degeneracy factor
         power_spectrum /= rho
         return power_spectrum
-
 
     def get_plot(self,x,title="",vmin=None,vmax=None,power=None,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
         """
@@ -1143,13 +1143,34 @@ class rg_space(point_space):
             ## implicit kindex
             if(xaxes is None):
                 try:
-                    self.set_power_indices(**kwargs)
+                    self.power_indices
+                    kindex_supply_space = self
                 except:
-                    codomain = kwargs.get("codomain",self.get_codomain())
-                    codomain.set_power_indices(**kwargs)
-                    xaxes = codomain.power_indices.get("kindex")
-                else:
-                    xaxes = self.power_indices.get("kindex")
+                    kindex_supply_space = self.get_codomain()
+
+
+                try:
+                    default_indices = self.power_indices.default_parameters
+                except AttributeError:
+                    default_indices = self.get_codomain().power_indices.default_parameters
+                log = kwargs.get('log', default_indices['log'])
+                nbin = kwargs.get('nbin', default_indices['nbin'])
+                binbounds = kwargs.get('binbounds', default_indices['binbounds'])
+
+                xaxes = kindex_supply_space.power_indices.get_index_dict(
+                                                log=log,
+                                                nbin=nbin,
+                                                binbounds=binbounds)['kindex']
+
+
+#                try:
+#                    self.set_power_indices(**kwargs)
+#                except:
+#                    codomain = kwargs.get("codomain",self.get_codomain())
+#                    codomain.set_power_indices(**kwargs)
+#                    xaxes = codomain.power_indices.get("kindex")
+#                else:
+#                    xaxes = self.power_indices.get("kindex")
 
             if(norm is None)or(not isinstance(norm,int)):
                 norm = naxes

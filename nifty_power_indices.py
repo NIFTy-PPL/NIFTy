@@ -104,9 +104,10 @@ class power_indices(object):
         if temp_config_dict is not None:
             return self._cast_config_helper(**temp_config_dict)
         else:
-            temp_log = kwargs.get("log", None)
-            temp_nbin = kwargs.get("nbin", None)
-            temp_binbounds = kwargs.get("binbounds", None)
+            defaults = self.default_parameters
+            temp_log = kwargs.get("log", defaults['log'])
+            temp_nbin = kwargs.get("nbin", defaults['nbin'])
+            temp_binbounds = kwargs.get("binbounds", defaults['binbounds'])
 
             return self._cast_config_helper(log=temp_log,
                                             nbin=temp_nbin,

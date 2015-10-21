@@ -13,8 +13,8 @@ from nifty.nifty_core import point_space,\
                              field
 from nifty.rg import rg_space
 from nifty.operators import operator
-
 MPI = gdi['MPI']
+
 
 class los_response(operator):
 
@@ -155,7 +155,7 @@ class los_response(operator):
                 "numpy ndarray."))
         return parsed_sig
 
-    def convert_physical_to_indices(self, physical_positions):
+    def _convert_physical_to_indices(self, physical_positions):
         pixel_coordinates = [None]*len(physical_positions)
         local_zero_point = self._get_local_zero_point()
 
@@ -168,12 +168,12 @@ class los_response(operator):
 
         return pixel_coordinates
 
-    def _convert_physical_to_pixel_lengths(self, lengths, starts, ends):
-        directions = np.array(ends) - np.array(starts)
-        distances = np.array(self.domain.distances)[:, None]
-        rescalers = (np.linalg.norm(directions / distances, axis=0) /
-                     np.linalg.norm(directions, axis=0))
-        return lengths * rescalers
+#    def _convert_physical_to_pixel_lengths(self, lengths, starts, ends):
+#        directions = np.array(ends) - np.array(starts)
+#        distances = np.array(self.domain.distances)[:, None]
+#        rescalers = (np.linalg.norm(directions / distances, axis=0) /
+#                     np.linalg.norm(directions, axis=0))
+#        return lengths * rescalers
 
     def _convert_sigmas_to_physical_coordinates(self, starts, ends,
                                                 sigmas_low, sigmas_up):
@@ -222,8 +222,8 @@ class los_response(operator):
 
     def _compute_weights_and_indices(self):
         # compute the local pixel coordinates for the starts and ends
-        localized_pixel_starts = self.convert_physical_to_indices(self.starts)
-        localized_pixel_ends = self.convert_physical_to_indices(self.ends)
+        localized_pixel_starts = self._convert_physical_to_indices(self.starts)
+        localized_pixel_ends = self._convert_physical_to_indices(self.ends)
 
         # Convert the sigmas from physical distances to pixel coordinates
         # Therefore transform the distances to physical coordinates...
@@ -233,9 +233,9 @@ class los_response(operator):
                                                          self.sigmas_low,
                                                          self.sigmas_up)
         # ...and then transform them to pixel coordinates
-        localized_pixel_sigmas_low = self.convert_physical_to_indices(
+        localized_pixel_sigmas_low = self._convert_physical_to_indices(
                                                              sigmas_low_coords)
-        localized_pixel_sigmas_up = self.convert_physical_to_indices(
+        localized_pixel_sigmas_up = self._convert_physical_to_indices(
                                                              sigmas_up_coords)
 
         # get the shape of the local data slice

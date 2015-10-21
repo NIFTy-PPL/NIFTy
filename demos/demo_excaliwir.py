@@ -32,6 +32,13 @@
 
 """
 from __future__ import division
+import matplotlib as mpl
+mpl.use('Agg')
+
+import imp
+#nifty = imp.load_module('nifty', None,
+#                        '/home/steininger/Downloads/nifty', ('','',5))
+
 from nifty import *
 
 
@@ -39,7 +46,7 @@ from nifty import *
 
 class problem(object):
 
-    def __init__(self, x_space, s2n=2, **kwargs):
+    def __init__(self, x_space, s2n=0.5, **kwargs):
         """
             Sets up a Wiener filter problem.
 
@@ -51,14 +58,16 @@ class problem(object):
                 Signal-to-noise ratio (default: 2).
 
         """
+        self.store = []
         ## set signal space
         self.z = x_space
         ## set conjugate space
         self.k = self.z.get_codomain()
+        #self.k.power_indices.set_default()
         #self.k.set_power_indices(**kwargs)
 
         ## set some power spectrum
-        self.power = (lambda k: 42 / (k + 1) ** 3)
+        self.power = (lambda k: 42 / (k + 1) ** 5)
 
         ## define signal covariance
         self.S = power_operator(self.k, spec=self.power, bare=True)
@@ -151,7 +160,10 @@ class problem(object):
         ## pre-compute denominator
         denominator = self.k.power_indices["rho"] + 2 * (alpha - 1 + abs(epsilon))
 
+        self.save_signal_and_data()
+
         ## iterate
+        i = 0
         iterating = True
         while(iterating):
 
@@ -159,7 +171,7 @@ class problem(object):
             self.m = self.D(self.j, W=self.S, tol=1E-3, note=True)
             if(self.m is None):
                 break
-            print 'Reconstructed m'
+            #print'Reconstructed m'
             ## reconstruct power spectrum
             tr_B1 = self.Sk.pseudo_tr(self.m) ## == Sk(m).pseudo_dot(m)
             print 'Calculated trace B1'
@@ -173,16 +185,48 @@ class problem(object):
             print ('denominator', denominator)
             print ('power', power)
             print 'Calculated power'
-            power = np.clip(power, 0.1, np.max(power))
+
+            power = np.clip(power, 0.00000001, np.max(power))
+            self.store += [{'tr_B1': tr_B1,
+                            'tr_B2': tr_B2,
+                            'num': numerator,
+                            'denom': denominator}]
             ## check convergence
             dtau = log(power / self.S.get_power(), base=self.S.get_power())
+            print ('dtau', np.max(np.abs(dtau)))
             iterating = (np.max(np.abs(dtau)) > 2E-2)
-            print max(np.abs(dtau))
-
+            #printmax(np.abs(dtau))
+            self.save_map(i)
+            i += 1
             ## update signal covariance
             self.S.set_power(power, bare=False) ## auto-updates D
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+    def save_signal_and_data(self):
+        self.s.plot(title="signal", save="img/signal.png")
+
+        try:
+            d_ = field(self.z, val=self.d.val, target=self.k)
+            d_.plot(title="data", vmin=self.s.min(), vmax=self.s.max(),
+                    save="img/data.png")
+        except:
+            pass
+
+
+    def save_map(self, index=0):
+
+        # save map
+        if(self.m is None):
+            pass
+        else:
+            self.m.plot(title="reconstructed map",
+                        vmin=self.s.min(), vmax=self.s.max(),
+                        save="img/map_"+str(index)+".png")
+            self.m.plot(power=True, mono=False,
+                        other=(self.power, self.S.get_power()),
+                        nbin=None, binbounds=None, log=False,
+                        save='img/map_power_'+str(index)+".png")
 
     def plot(self):
         """
@@ -209,7 +253,7 @@ class problem(object):
 ##-----------------------------------------------------------------------------
 #
 if(__name__=="__main__"):
-    x = rg_space((128,))
+    x = rg_space((128,128), zerocenter=True)
     p = problem(x, log = False)
     about.warnings.off()
 ##    pl.close("all")

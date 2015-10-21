@@ -135,9 +135,9 @@ class random(object):
             pindex = kwargs.get('pindex', None)
             kindex = kwargs.get('kindex', None)
             size = kwargs.get('size', None)
-            log = kwargs.get('log', False)
-            nbin = kwargs.get('nbin', None)
-            binbounds = kwargs.get('binbounds', None)
+            log = kwargs.get('log', 'default')
+            nbin = kwargs.get('nbin', 'default')
+            binbounds = kwargs.get('binbounds', 'default')
             spec = kwargs.get('spec', 1)
             codomain = kwargs.get('codomain', None)
 

@@ -31,7 +31,7 @@ from nifty_probing import trace_prober,\
     diagonal_prober,\
     inverse_diagonal_prober
 import nifty.nifty_utilities as utilities
-import nifty.nifty_simple_math
+import nifty.nifty_simple_math as nifty_simple_math
 
 
 # =============================================================================
@@ -108,8 +108,7 @@ class operator(object):
     """
 
     def __init__(self, domain, codomain=None, sym=False, uni=False,
-                 imp=False, target=None, cotarget=None, bare=False,
-                 para=None):
+                 imp=False, target=None, cotarget=None, bare=False):
         """
             Sets the attributes for an operator class instance.
 
@@ -184,8 +183,6 @@ class operator(object):
         else:
             self.imp = bool(imp)
 
-        self.para = para
-
     def set_val(self, new_val):
         """
             Resets the field values.
@@ -196,76 +193,11 @@ class operator(object):
                 New field values either as a constant or an arbitrary array.
 
         """
-        self.val = self.domain.cast(new_val)
+        self.val = new_val
         return self.val
 
     def get_val(self):
         return self.val
-
-    def nrow(self):
-        """
-            Computes the number of rows.
-
-            Returns
-            -------
-            nrow : int
-                number of rows (equal to the dimension of the codomain)
-        """
-        return self.target.get_dim(split=False)
-
-    def ncol(self):
-        """
-            Computes the number of columns
-
-            Returns
-            -------
-            ncol : int
-                number of columns (equal to the dimension of the domain)
-        """
-        return self.domain.get_dim(split=False)
-
-    def dim(self, axis=None):
-        """
-            Computes the dimension of the space
-
-            Parameters
-            ----------
-            axis : int, *optional*
-                Axis along which the dimension is to be calculated.
-                (default: None)
-
-            Returns
-            -------
-            dim : {int, ndarray}
-                The dimension(s) of the operator.
-
-        """
-        if axis is None:
-            return np.array([self.nrow(), self.ncol()])
-        elif axis == 0:
-            return self.nrow()
-        elif axis == 1:
-            return self.ncol()
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: invalid input axis."))
-
-    def set_para(self, newpara):
-        """
-            Sets the parameters and creates the `para` property if it does
-            not exist
-
-            Parameters
-            ----------
-            newpara : {object, list of objects}
-                A single parameter or a list of parameters.
-
-            Returns
-            -------
-            None
-
-        """
-        self.para = newpara
 
     def _multiply(self, x, **kwargs):
         # > applies the operator to a given field
@@ -1686,6 +1618,14 @@ class diagonal_operator(operator):
         return "<nifty_core.diagonal_operator>"
 
 
+class identity_operator(diagonal_operator):
+    def __init__(self, domain, codomain=None, bare=False):
+        super(diagonal_operator, self).__init__(domain=domain,
+                                                codomain=codomain,
+                                                diag=1,
+                                                bare=bare)
+
+
 def identity(domain, codomain=None):
     """
         Returns an identity operator.
@@ -1738,6 +1678,8 @@ def identity(domain, codomain=None):
         <nifty.field>
 
     """
+    about.warnings.cprint('WARNING: The identity function is deprecated. ' +
+                          'Use the identity_operator class.')
     return diagonal_operator(domain=domain,
                              codomain=codomain,
                              diag=1,
@@ -2310,7 +2252,7 @@ class projection_operator(operator):
             rho = self.domain.calc_bincount(self.assign)
         else:
             meta_mask = self.domain.calc_weight(
-                self.domain.get_meta_volume(total=False),
+                self.domain.get_meta_volume(split=True),
                 power=-1)
             rho = self.domain.calc_bincount(self.assign,
                                             weights=meta_mask)
@@ -2463,7 +2405,7 @@ class projection_operator(operator):
         # accordingly
         if self.domain.get_dim() != self.domain.get_dof():
             working_field *= self.domain.calc_weight(
-                self.domain.get_meta_volume(total=False),
+                self.domain.get_meta_volume(split=True),
                 power=-1)
         # prepare the result object
         projection_result = utilities.field_map(
@@ -3108,7 +3050,7 @@ class invertible_operator(operator):
 
     """
 
-    def __init__(self, domain, codomain, uni=False, imp=False, para=None):
+    def __init__(self, domain, codomain=None, uni=False, imp=False):
         """
             Sets the standard operator properties.
 
@@ -3147,8 +3089,6 @@ class invertible_operator(operator):
         self.target = self.domain
         self.cotarget = self.codomain
 
-        if para is not None:
-            self.para = para
 
     def _multiply(self, x, force=False, W=None, spam=None, reset=None,
                   note=False, x0=None, tol=1E-4, clevel=1, limii=None,

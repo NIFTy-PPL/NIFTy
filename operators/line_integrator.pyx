@@ -182,8 +182,8 @@ cdef class line_integrator(object):
         cdef FLOAT_t weight
 
         # estimate the maximum number of cells that could be hit
-        # the current estimator is: norm of the vector times number of dims
-        num_estimate = INT(ceil(list_norm(list_sub(end, start))))*len(start)
+        # the current estimator is: norm of the vector times number of dims + 1
+        num_estimate = INT(ceil(list_norm(list_sub(end, start))))*len(start)+1
 
         cdef np.ndarray[INT_t, ndim=2] index_list = np.empty((num_estimate,
                                                               len(start)),
@@ -203,12 +203,18 @@ cdef class line_integrator(object):
                     index_list[i, j] = floor_current_position[j]
                 else:
                     index_list[i, j] = floor_next_position[j]
+
             weight_list[i] = weight
             if next_position == end:
                 break
 
             current_position = next_position
             i += 1
+
+        for j in xrange(len(start)):
+            if index_list[i, j] == self.shape[j]:
+                return (list(index_list[:i].T), weight_list[:i])
+
         return (list(index_list[:i+1].T), weight_list[:i+1])
 
 
@@ -279,7 +285,6 @@ cpdef list multi_integrator(list starts,
             end[j] = ends[j][i]
             sigma_low[j] = sigmas_low[j][i]
             sigma_up[j] = sigmas_up[j][i]
-
         indices_and_weights_list += single_integrator(i,
                                                       start,
                                                       end,

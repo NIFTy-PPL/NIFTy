@@ -37,6 +37,16 @@ class space_paradict(object):
     def __getitem__(self, key):
         return self.parameters.__getitem__(key)
 
+    def __hash__(self):
+        result_hash = 0
+        for (key, item) in self.parameters.items():
+            try:
+                temp_hash = hash(item)
+            except TypeError:
+                temp_hash = hash(tuple(item))
+            result_hash ^= temp_hash * hash(key)
+        return result_hash
+
 
 class point_space_paradict(space_paradict):
 

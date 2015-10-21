@@ -241,6 +241,9 @@ class space(object):
     def para(self, x):
         self.paradict['default'] = x
 
+    def __hash__(self):
+        return hash(())
+
     def _identifier(self):
         """
         _identiftier returns an object which contains all information needed
@@ -834,6 +837,13 @@ class point_space(space):
     @para.setter
     def para(self, x):
         self.paradict['num'] = x[0]
+
+    def __hash__(self):
+        # Extract the identifying parts from the vars(self) dict.
+        result_hash = 0
+        for (key, item) in vars(self).items():
+            result_hash ^= item.__hash__() * hash(key)
+        return result_hash
 
     def _identifier(self):
         # Extract the identifying parts from the vars(self) dict.
@@ -2476,7 +2486,7 @@ class field(object):
 
         return return_field
 
-    def smooth(self, sigma=0, overwrite=False, **kwargs):
+    def smooth(self, sigma=0, inplace=False, **kwargs):
         """
             Smoothes the field by convolution with a Gaussian kernel.
 
@@ -2501,7 +2511,7 @@ class field(object):
                 Otherwise, nothing is returned.
 
         """
-        if overwrite:
+        if inplace:
             new_field = self
         else:
             new_field = self.copy_empty()

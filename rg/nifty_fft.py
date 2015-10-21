@@ -207,7 +207,7 @@ class fft_fftw(fft):
 
     def _get_plan_and_info(self, domain, codomain, **kwargs):
         # generate a id-tuple which identifies the domain-codomain setting
-        temp_id = (domain._identifier(), codomain._identifier())
+        temp_id = domain.__hash__() ^ (101*codomain.__hash__())
         # generate the plan_and_info object if not already there
         if temp_id not in self.plan_dict:
             self.plan_dict[temp_id] = _fftw_plan_and_info(domain, codomain,
@@ -250,7 +250,7 @@ class fft_fftw(fft):
         if isinstance(val, distributed_data_object):
             return_val = val.copy_empty(
                         global_shape=current_plan_and_info.global_output_shape,
-                        dtype=np.complex128)
+                        dtype=codomain.dtype)
             # If the distribution strategy of the d2o is fftw, extract
             # the data directly
             if val.distribution_strategy == 'fftw':
@@ -299,7 +299,7 @@ class fft_fftw(fft):
         except(NameError):
             return_val = distributed_data_object(
                 global_shape=current_plan_and_info.global_output_shape,
-                dtype=np.complex128,
+                dtype=codomain.dtype,
                 distribution_strategy='fftw')
             return_val.set_local_data(data=result)
             return_val = return_val.get_full_data()

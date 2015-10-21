@@ -193,6 +193,14 @@ class lm_space(point_space):
         self.paradict['lmax'] = x[0]
         self.paradict['mmax'] = x[1]
 
+    def __hash__(self):
+        result_hash = 0
+        for (key, item) in vars(self).items():
+            if key in ['power_indices']:
+                continue
+            result_hash ^= item.__hash__() * hash(key)
+        return result_hash
+
     def _identifier(self):
         # Extract the identifying parts from the vars(self) dict.
         temp = [(ii[0],
@@ -605,7 +613,7 @@ class lm_space(point_space):
         x = self.cast(x)
         # check sigma
         if sigma == 0:
-            return x
+            return self.unary_operation(x, op='copy')
         elif sigma == -1:
             about.infos.cprint("INFO: invalid sigma reset.")
             sigma = np.sqrt(2) * np.pi / (self.paradict['lmax'] + 1)
@@ -1158,11 +1166,11 @@ class gl_space(point_space):
             nlon = self.paradict['nlon']
             lmax = nlat - 1
             if self.dtype == np.dtype('float32'):
-                x = gl.synfast_f(arg['syn'],
+                x = gl.synfast_f(arg['spec'],
                                  nlat=nlat, nlon=nlon,
                                  lmax=lmax, mmax=lmax, alm=False)
             else:
-                x = gl.synfast(arg['syn'],
+                x = gl.synfast(arg['spec'],
                                nlat=nlat, nlon=nlon,
                                lmax=lmax, mmax=lmax, alm=False)
             # weight if discrete
@@ -1296,7 +1304,7 @@ class gl_space(point_space):
         x = self.cast(x)
         # check sigma
         if sigma == 0:
-            return x
+            return self.unary_operation(x, op='copy')
         elif sigma == -1:
             about.infos.cprint("INFO: invalid sigma reset.")
             sigma = np.sqrt(2) * np.pi / self.paradict['nlat']
@@ -1873,7 +1881,7 @@ class hp_space(point_space):
         x = self.cast(x)
         # check sigma
         if sigma == 0:
-            return x
+            return self.unary_operation(x, op='copy')
         elif sigma == -1:
             about.infos.cprint("INFO: invalid sigma reset.")
             # sqrt(2)*pi/(lmax+1)
@@ -1881,8 +1889,8 @@ class hp_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
-            lmax = 3*nside-1
-            mmax = lmax
+        lmax = 3*nside-1
+        mmax = lmax
         return hp.smoothing(x, fwhm=0.0, sigma=sigma, invert=False, pol=True,
                             iter=niter, lmax=lmax, mmax=mmax,
                             use_weights=False, datapath=None)
