@@ -267,7 +267,7 @@ class rg_space(point_space):
                                                       dtype=dtype,
                                                       **kwargs)
         if x is not None and hermitianize and \
-           self.paradict['complexity'] == 1 and not casted_x.hermitian:
+                self.paradict['complexity'] == 1 and not casted_x.hermitian:
             about.warnings.cflush(
                  "WARNING: Data gets hermitianized. This operation is " +
                  "extremely expensive\n")
@@ -593,13 +593,18 @@ class rg_space(point_space):
                 sample[sample >= 0] = 1
                 sample[sample < 0] = -1
 
+            try:
+                sample.hermitian = True
+            except(AttributeError):
+                pass
+
         # Case 2: normal distribution with zero-mean and a given standard
         #         deviation or variance
         elif arg['random'] == 'gau':
             sample = super(rg_space, self).get_random_values(**arg)
 
             if hermitianizeQ:
-                sample = utilities.hermitianize(sample)
+                sample = utilities.hermitianize_gaussian(sample)
 
         # Case 3: uniform distribution
         elif arg['random'] == "uni" and not hermitianizeQ:
@@ -632,6 +637,11 @@ class rg_space(point_space):
             vmax = arg['vmax']
             sample *= (vmax - vmin) / 2.
             sample += 1 / 2. * (vmax + vmin)
+
+            try:
+                sample.hermitian = True
+            except(AttributeError):
+                pass
 
         elif(arg['random'] == "syn"):
             spec = arg['spec']
@@ -714,11 +724,8 @@ class rg_space(point_space):
                 elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
                     # extract the local data from kdict
                     local_kdict = kdict.get_local_data()
-                    print ('local_kdict', local_kdict)
                     rescaler = np.sqrt(
                         spec[np.searchsorted(kindex, local_kdict)])
-                    print ('rescaler', rescaler)
-                    print ('sample', sample.distribution_strategy)
                     sample.apply_scalar_function(lambda x: x * rescaler,
                                                  inplace=True)
                 else:
@@ -758,9 +765,7 @@ class rg_space(point_space):
                                                          kindex=kpack[1],
                                                          spec=spec,
                                                          codomain=self,
-                                                         log=log,
-                                                         nbin=nbin,
-                                                         binbounds=binbounds)
+                                                         **lnb_dict)
 
                 # Perform a fourier transform
                 sample = temp_codomain.calc_transform(sample, codomain=self)
@@ -1053,7 +1058,8 @@ class rg_space(point_space):
         power_spectrum /= rho
         return power_spectrum
 
-    def get_plot(self,x,title="",vmin=None,vmax=None,power=None,unit="",norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
+    def get_plot(self,x,title="",vmin=None,vmax=None,power=None,unit="",
+                 norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
         """
             Creates a plot of field values according to the specifications
             given by the parameters.
@@ -1121,10 +1127,7 @@ class rg_space(point_space):
                 (default: 0).
 
         """
-        try:
-            x = x.get_full_data()
-        except AttributeError:
-            pass
+
         if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
@@ -1134,8 +1137,13 @@ class rg_space(point_space):
 
         if(power):
             x = self.calc_power(x,**kwargs)
+            try:
+                x = x.get_full_data()
+            except AttributeError:
+                pass
 
-            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
+            fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,
+                            facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
             ax0 = fig.add_axes([0.12,0.12,0.82,0.76])
 
             ## explicit kindex
@@ -1148,19 +1156,8 @@ class rg_space(point_space):
                 except:
                     kindex_supply_space = self.get_codomain()
 
-
-                try:
-                    default_indices = self.power_indices.default_parameters
-                except AttributeError:
-                    default_indices = self.get_codomain().power_indices.default_parameters
-                log = kwargs.get('log', default_indices['log'])
-                nbin = kwargs.get('nbin', default_indices['nbin'])
-                binbounds = kwargs.get('binbounds', default_indices['binbounds'])
-
                 xaxes = kindex_supply_space.power_indices.get_index_dict(
-                                                log=log,
-                                                nbin=nbin,
-                                                binbounds=binbounds)['kindex']
+                                                **kwargs)['kindex']
 
 
 #                try:
@@ -1209,6 +1206,10 @@ class rg_space(point_space):
             ax0.set_title(title)
 
         else:
+            try:
+                x = x.get_full_data()
+            except AttributeError:
+                pass
             if(naxes==1):
                 fig = pl.figure(num=None,figsize=(6.4,4.8),dpi=None,facecolor="none",edgecolor="none",frameon=False,FigureClass=pl.Figure)
                 ax0 = fig.add_axes([0.12,0.12,0.82,0.76])

@@ -53,7 +53,9 @@ class power_indices(object):
         # Initialize the dictonary which stores all individual index-dicts
         self.global_dict = {}
         # Set self.default_parameters
-        self.set_default(log=log, nbin=nbin, binbounds=binbounds)
+        self.set_default(config_dict={'log': log,
+                                      'nbin': nbin,
+                                      'binbounds': binbounds})
 
     # Redirect the direct calls approaching a power_index instance to the
     # default_indices dict
@@ -217,7 +219,10 @@ class power_indices(object):
         # indices, bin them, compute the pundex and then return everything.
         else:
             # Get the unbinned indices
-            temp_unbinned_indices = self.get_index_dict(store=False)
+            temp_unbinned_indices = self.get_index_dict(nbin=None,
+                                                        binbounds=None,
+                                                        log=False,
+                                                        store=False)
             # Bin them
             (temp_pindex, temp_kindex, temp_rho, temp_pundex) = \
                 self._bin_power_indices(

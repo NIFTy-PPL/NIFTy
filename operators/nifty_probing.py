@@ -1,23 +1,23 @@
-## NIFTY (Numerical Information Field Theory) has been developed at the
-## Max-Planck-Institute for Astrophysics.
-##
-## Copyright (C) 2015 Max-Planck-Society
-##
-## Author: Theo Steininger
-## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
-##
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-##
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-## See the GNU General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with this program. If not, see <http://www.gnu.org/licenses/>.
+# NIFTY (Numerical Information Field Theory) has been developed at the
+# Max-Planck-Institute for Astrophysics.
+#
+# Copyright (C) 2015 Max-Planck-Society
+#
+# Author: Theo Steininger
+# Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
 
@@ -27,7 +27,7 @@ from nifty.nifty_core import space, \
 from nifty.nifty_utilities import direct_dot
 
 
-##=============================================================================
+
 
 class prober(object):
     """
@@ -177,59 +177,61 @@ class prober(object):
             zeroth entry and the variance in the first entry. (default: False)
 
         """
-        ## Case 1: no operator given. Check function and domain for general
-        ## sanity
+        # Case 1: no operator given. Check function and domain for general
+        # sanity
         if operator is None:
-            ## check whether the given function callable
-            if function is None or hasattr(function, "__call__") == False:
+            # check whether the given function callable
+            if function is None or not hasattr(function, "__call__"):
                 raise ValueError(about._errors.cstring(
-                "ERROR: invalid input: No function given or not callable."))
-            ## check given domain
-            if domain is None or isinstance(domain, space) == False:
+                  "ERROR: invalid input: No function given or not callable."))
+            # check given domain
+            if domain is None or not isinstance(domain, space):
                 raise ValueError(about._errors.cstring(
-                "ERROR: invalid input: given domain is not a nifty space"))
+                    "ERROR: invalid input: given domain is not a nifty space"))
 
-        ## Case 2: An operator is given. Take domain and function from that
-        ## if not given explicitly
+        # Case 2: An operator is given. Take domain and function from that
+        # if not given explicitly
         else:
 
-            ## Case 2.1 extract function
-            ## explicit function overrides operator function
-            if function is None or hasattr(function,"__call__") == False:
+            # Check 2.1 extract function
+            # explicit function overrides operator function
+            if function is None or not hasattr(function, "__call__"):
                 try:
                     function = operator.times
                 except(AttributeError):
                     raise ValueError(about._errors.cstring(
-   "ERROR: no explicit function given and given operator has no times method!"))
-            ## check whether the given function is correctly bound to the
-            ## operator
+                        "ERROR: no explicit function given and given " +
+                        "operator has no times method!"))
+
+            # Check 2.2 check whether the given function is correctly bound to
+            # the operator
             if operator != function.im_self:
                     raise ValueError(about._errors.cstring(
-   "ERROR: the given function is not a bound function of the operator!"))
+                        "ERROR: the given function is not a bound function " +
+                        "of the operator!"))
 
-
-
-            ## Case 2.2 extract domain
-            if domain is None or isinstance(domain, space):
-                 if (function in [operator.inverse_times,
-                                  operator.adjoint_times]):
-                     try:
-                         domain = operator.target
-                     except(AttributeError):
-                         raise ValueError(about._errors.cstring(
-   "ERROR: no explicit domain given and given operator has no target!"))
-
-                 else:
-                     try:
-                         domain = operator.domain
-                     except(AttributeError):
-                         raise ValueError(about._errors.cstring(
-   "ERROR: no explicit domain given and given operator has no domain!"))
+            # Check 2.3 extract domain
+            if domain is None or not isinstance(domain, space):
+                if (function in [operator.inverse_times,
+                                 operator.adjoint_times]):
+                    try:
+                        domain = operator.target
+                    except(AttributeError):
+                        raise ValueError(about._errors.cstring(
+                            "ERROR: no explicit domain given and given " +
+                            "operator has no target!"))
+                else:
+                    try:
+                        domain = operator.domain
+                    except(AttributeError):
+                        raise ValueError(about._errors.cstring(
+                            "ERROR: no explicit domain given and given " +
+                            "operator has no domain!"))
 
         self.function = function
         self.domain = domain
 
-        ## Check the given target
+        # Check the given codomain
         if codomain is None:
             codomain = self.domain.get_codomain()
         else:
@@ -237,70 +239,15 @@ class prober(object):
 
         self.codomain = codomain
 
-        if(random not in ["pm1","gau"]):
+        if random not in ["pm1", "gau"]:
             raise ValueError(about._errors.cstring(
-                "ERROR: unsupported random key '"+str(random)+"'."))
+                "ERROR: unsupported random key '" + str(random) + "'."))
         self.random = random
 
-        ## Parse the remaining arguments
+        # Parse the remaining arguments
         self.nrun = int(nrun)
         self.varQ = bool(varQ)
         self.kwargs = kwargs
-
-        """
-            from nifty_operators import operator
-            if(not isinstance(op,operator)):
-                raise TypeError(about._errors.cstring("ERROR: invalid input."))
-            ## check whether callable
-            if(function is None)or(not hasattr(function,"__call__")):
-                function = op.times
-            elif(op==function):
-                function = op.times
-            ## check whether correctly bound
-            if(op!=function.im_self):
-                raise NameError(about._errors.cstring("ERROR: invalid input."))
-            ## check given shape and domain
-            if(domain is None)or(not isinstance(domain,space)):
-                if(function in [op.inverse_times,op.adjoint_times]):
-                    domain = op.target
-                else:
-                    domain = op.domain
-            else:
-                if(function in [op.inverse_times,op.adjoint_times]):
-                    op.target.check_codomain(domain) ## a bit pointless
-                    if(target is None)or(not isinstance(target,space)):
-                        target = op.target
-                else:
-                    op.domain.check_codomain(domain) ## a bit pointless
-                    if(target is None)or(not isinstance(target,space)):
-                        target = op.domain
-
-        self.function = function
-        self.domain = domain
-
-        ## check codomain
-        if(target is None):
-            target = self.domain.get_codomain()
-        else:
-            self.domain.check_codomain(target) ## a bit pointless
-        self.target = target
-
-        if(random not in ["pm1","gau"]):
-            raise ValueError(about._errors.cstring("ERROR: unsupported random key '"+str(random)+"'."))
-        self.random = random
-
-        self.ncpu = int(max(1,ncpu))
-        self.nrun = int(max(self.ncpu,nrun))
-        if(nper is None):
-            self.nper = None
-        else:
-            self.nper = int(max(1,min(self.nrun//self.ncpu,nper)))
-
-        self.var = bool(var)
-
-        self.quargs = quargs
-        """
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def configure(self, **kwargs):
         """
@@ -321,10 +268,11 @@ class prober(object):
                 whether the variance will be additionally returned (default: False)
 
         """
-        if("random" in kwargs):
-            if kwargs.get("random") not in ["pm1","gau"]:
+        if "random" in kwargs:
+            if kwargs.get("random") not in ["pm1", "gau"]:
                 raise ValueError(about._errors.cstring(
-            "ERROR: unsupported random key '"+str(kwargs.get("random"))+"'."))
+                    "ERROR: unsupported random key '" +
+                    str(kwargs.get("random")) + "'."))
             else:
                 self.random = kwargs.get("random")
 
@@ -333,8 +281,6 @@ class prober(object):
 
         if "varQ" in kwargs:
             self.varQ = bool(kwargs.get("varQ"))
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def generate_probe(self):
         """
@@ -348,10 +294,8 @@ class prober(object):
 
         """
         return field(self.domain,
-                     codomain = self.codomain,
-                     random = self.random)
-
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+                     codomain=self.codomain,
+                     random=self.random)
 
     def evaluate_probe(self, probe, idnum=0):
         """
@@ -375,7 +319,7 @@ class prober(object):
         return f
 
 
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
     def finalize(self, sum_of_probes, sum_of_squares, num):
         """
@@ -401,7 +345,7 @@ class prober(object):
                 (`final`,`var`).
 
         """
-        ## Check the success and efficiency of the probing
+        # Check the success and efficiency of the probing
         if num < self.nrun:
             about.infos.cflush(
             " ( %u probe(s) failed, effectiveness == %.1f%% )\n"\
@@ -424,22 +368,22 @@ class prober(object):
         else:
             return sum_of_probes*(1./num)
 
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def print_progress(self, num): ## > prints progress status by in upto 10 dots
+
+    def print_progress(self, num): # > prints progress status by in upto 10 dots
         tenths = 1+(10*num//self.nrun)
         about.infos.cflush(("\b")*10+('.')*tenths+(' ')*(10-tenths))
     """
-    def _single_probing(self,zipped): ## > performs one probing operation
-        ## generate probe
+    def _single_probing(self,zipped): # > performs one probing operation
+        # generate probe
         np.random.seed(zipped[0])
         probe = self.gen_probe()
-        ## do the actual probing
+        # do the actual probing
         return self.probing(zipped[1],probe)
     """
 
-    def probe(self): ## > performs the probing operations one after another
-        ## initialize the variables
+    def probe(self): # > performs the probing operations one after another
+        # initialize the variables
         sum_of_probes = 0
         sum_of_squares = 0
         num = 0
@@ -456,7 +400,7 @@ class prober(object):
                 num += 1
                 self.print_progress(num)
         about.infos.cflush(" done.")
-        ## evaluate
+        # evaluate
         return self.finalize(sum_of_probes, sum_of_squares, num)
 
     def __call__(self,loop=False,**kwargs):
@@ -484,18 +428,18 @@ class prober(object):
         self.configure(**kwargs)
         return self.probe()
 
-    ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 
     def __repr__(self):
         return "<nifty_core.probing>"
 
-##=============================================================================
+
 
 
 
 class _specialized_prober(object):
     def __init__(self, operator, domain=None, inverseQ=False, **kwargs):
-        ## remove a potentially supplied function keyword argument
+        # remove a potentially supplied function keyword argument
         try:
             kwargs.pop('function')
         except(KeyError):

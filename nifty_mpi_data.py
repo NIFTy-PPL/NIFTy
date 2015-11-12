@@ -631,6 +631,7 @@ class distributed_data_object(object):
         temp_d2o = self.copy_empty()
         temp_data = np.conj(self.get_local_data())
         temp_d2o.set_local_data(temp_data)
+        temp_d2o.hermitian = self.hermitian
         return temp_d2o
 
     def conj(self):

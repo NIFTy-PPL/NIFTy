@@ -1921,7 +1921,8 @@ class field(object):
 
     """
 
-    def __init__(self, domain, val=None, codomain=None, ishape=None, **kwargs):
+    def __init__(self, domain=None, val=None, codomain=None, ishape=None,
+                 **kwargs):
         """
             Sets the attributes for a field class instance.
 
@@ -1944,6 +1945,9 @@ class field(object):
         Nothing
 
         """
+        # If the given val was a field, try to cast it accordingly to the given
+        # domain and codomain, etc...
+
         # check domain
         if not isinstance(domain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
@@ -2359,7 +2363,7 @@ class field(object):
 
             # whether the domain matches exactly or not:
             # extract the data from x and try to dot with this
-            return self.dot(x=x.get_val(), axis=axis)
+            return self.dot(x=x.get_val(), axis=axis, bare=bare)
 
         # Case 3: x is something else
         else:

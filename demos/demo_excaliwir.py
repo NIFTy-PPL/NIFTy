@@ -46,7 +46,7 @@ from nifty import *
 
 class problem(object):
 
-    def __init__(self, x_space, s2n=0.5, **kwargs):
+    def __init__(self, x_space, s2n=12, **kwargs):
         """
             Sets up a Wiener filter problem.
 
@@ -67,7 +67,7 @@ class problem(object):
         #self.k.set_power_indices(**kwargs)
 
         ## set some power spectrum
-        self.power = (lambda k: 42 / (k + 1) ** 5)
+        self.power = (lambda k: 42 / (k + 1) ** 3)
 
         ## define signal covariance
         self.S = power_operator(self.k, spec=self.power, bare=True)
@@ -82,7 +82,8 @@ class problem(object):
         d_space = self.R.target
 
         ## define noise covariance
-        self.N = diagonal_operator(d_space, diag=abs(s2n) * self.s.var(), bare=True)
+        #self.N = diagonal_operator(d_space, diag=abs(s2n) * self.s.var(), bare=True)
+        self.N = diagonal_operator(d_space, diag=abs(s2n), bare=True)
         ## define (plain) projector
         self.Nj = projection_operator(d_space)
         ## generate noise
@@ -95,7 +96,9 @@ class problem(object):
         #self.j = self.R.adjoint_times(self.N.inverse_times(self.d), target=self.k)
         self.j = self.R.adjoint_times(self.N.inverse_times(self.d))
         ## define information propagator
-        self.D = propagator_operator(S=self.S, N=self.N, R=self.R)
+        self.D = propagator_operator(S=self.S,
+                                     N=self.N,
+                                     R=self.R)
 
         ## reserve map
         self.m = None
@@ -186,7 +189,7 @@ class problem(object):
             print ('power', power)
             print 'Calculated power'
 
-            power = np.clip(power, 0.00000001, np.max(power))
+            #power = np.clip(power, 0.00000001, np.max(power))
             self.store += [{'tr_B1': tr_B1,
                             'tr_B2': tr_B2,
                             'num': numerator,
@@ -253,7 +256,7 @@ class problem(object):
 ##-----------------------------------------------------------------------------
 #
 if(__name__=="__main__"):
-    x = rg_space((128,128), zerocenter=True)
+    x = rg_space((128), zerocenter=True)
     p = problem(x, log = False)
     about.warnings.off()
 ##    pl.close("all")

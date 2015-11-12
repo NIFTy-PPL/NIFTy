@@ -2292,7 +2292,7 @@ class projection_operator(operator):
                 raise TypeError(about._errors.cstring("ERROR: Invalid bands."))
 
             if bands_was_scalar:
-                new_field = x * (self.assign == bands[0])
+                new_field = fx * (self.assign == bands[0])
             else:
                 # build up the projection results
                 # prepare the projector-carrier
@@ -2392,14 +2392,17 @@ class projection_operator(operator):
             vecvec = vecvec_operator(val=x)
             return self.pseudo_tr(x=vecvec, axis=axis, **kwargs)
 
-        # Case 2: x is not an operator
-        elif isinstance(x, operator) == False:
+        # Case 2: x is an operator
+        # -> take the diagonal
+        elif isinstance(x, operator):
+            working_field = x.diag(bare=False)
+            if self.domain != working_field.domain:
+                working_field = working_field.transform(codomain=self.domain)
+
+        # Case 3: x is something else
+        else:
             raise TypeError(about._errors.cstring(
                 "ERROR: x must be a field or an operator."))
-
-        # Case 3: x is an operator
-        # -> take the diagonal
-        working_field = x.diag()
 
         # Check for hidden degrees of freedom and compensate the trace
         # accordingly
