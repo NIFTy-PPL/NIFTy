@@ -318,9 +318,6 @@ class prober(object):
         f = self.function(probe, **self.kwargs)
         return f
 
-
-
-
     def finalize(self, sum_of_probes, sum_of_squares, num):
         """
             Evaluates the probing results.
@@ -391,7 +388,7 @@ class prober(object):
         for ii in xrange(self.nrun):
             print ('running probe ', ii)
             temp_probe = self.generate_probe()
-            temp_result = self.evaluate_probe(probe = temp_probe)
+            temp_result = self.evaluate_probe(probe=temp_probe)
 
             if temp_result is not None:
                 sum_of_probes += temp_result
@@ -403,7 +400,7 @@ class prober(object):
         # evaluate
         return self.finalize(sum_of_probes, sum_of_squares, num)
 
-    def __call__(self,loop=False,**kwargs):
+    def __call__(self, loop=False, **kwargs):
         """
 
             Starts the probing process.
@@ -428,13 +425,8 @@ class prober(object):
         self.configure(**kwargs)
         return self.probe()
 
-
-
     def __repr__(self):
         return "<nifty_core.probing>"
-
-
-
 
 
 class _specialized_prober(object):
@@ -448,15 +440,15 @@ class _specialized_prober(object):
             about.warnings.cprint(
                 "WARNING: Dropped the supplied function keyword-argument!")
 
-        if domain is None and inverseQ == False:
+        if domain is None and not inverseQ:
             kwargs.update({'domain': operator.domain})
-        elif domain is None and inverseQ == True:
+        elif domain is None and inverseQ:
             kwargs.update({'domain': operator.target})
         else:
             kwargs.update({'domain': domain})
         self.operator = operator
 
-        self.prober = prober(function = self._probing_function,
+        self.prober = prober(function=self._probing_function,
                              **kwargs)
 
     def _probing_function(self, probe):
@@ -465,48 +457,45 @@ class _specialized_prober(object):
     def __call__(self, *args, **kwargs):
         return self.prober(*args, **kwargs)
 
-
     def __getattr__(self, attr):
         return getattr(self.prober, attr)
 
 
-
-
-
 class trace_prober(_specialized_prober):
     def __init__(self, operator, **kwargs):
-        super(trace_prober, self).__init__(operator = operator,
+        super(trace_prober, self).__init__(operator=operator,
                                            inverseQ=False,
                                            **kwargs)
+
     def _probing_function(self, probe):
         return direct_dot(probe.conjugate(), self.operator.times(probe))
 
+
 class inverse_trace_prober(_specialized_prober):
     def __init__(self, operator, **kwargs):
-        super(inverse_trace_prober, self).__init__(operator = operator,
+        super(inverse_trace_prober, self).__init__(operator=operator,
                                                    inverseQ=True,
                                                    **kwargs)
+
     def _probing_function(self, probe):
         return direct_dot(probe.conjugate(),
                           self.operator.inverse_times(probe))
 
+
 class diagonal_prober(_specialized_prober):
     def __init__(self, **kwargs):
-        super(diagonal_prober, self).__init__(inverseQ = False,
+        super(diagonal_prober, self).__init__(inverseQ=False,
                                               **kwargs)
+
     def _probing_function(self, probe):
         return probe.conjugate()*self.operator.times(probe)
 
+
 class inverse_diagonal_prober(_specialized_prober):
     def __init__(self, operator, **kwargs):
-        super(inverse_diagonal_prober, self).__init__(operator = operator,
+        super(inverse_diagonal_prober, self).__init__(operator=operator,
                                                       inverseQ=True,
                                                       **kwargs)
+
     def _probing_function(self, probe):
         return probe.conjugate()*self.operator.inverse_times(probe)
-
-
-
-
-
-

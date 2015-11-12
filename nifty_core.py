@@ -826,7 +826,7 @@ class point_space(space):
 
         self.comm = self._parse_comm(comm)
         self.discrete = True
-        self.harmonic = False
+#        self.harmonic = False
         self.distances = (np.float(1),)
 
     @property
@@ -1387,7 +1387,7 @@ class point_space(space):
 
         if not isinstance(codomain, space):
             raise TypeError(about._errors.cstring(
-                "ERROR: invalid input. The given input is no nifty space."))
+                "ERROR: invalid input. The given input is not a nifty space."))
 
         if codomain == self:
             return True
@@ -1830,7 +1830,6 @@ class point_space(space):
         string += 'datamodel: ' + str(self.datamodel) + "\n"
         string += 'comm: ' + self.comm.name + "\n"
         string += 'discrete: ' + str(self.discrete) + "\n"
-        string += 'harmonic: ' + str(self.harmonic) + "\n"
         string += 'distances: ' + str(self.distances) + "\n"
         return string
 
@@ -1974,25 +1973,23 @@ class field(object):
             else:
                 codomain = domain.get_codomain()
 
-        # Check if the given field lives in the same fourier-space as the
-        # new domain
-        if f.domain.harmonic != domain.harmonic:
+        # check for ishape
+        if ishape is None:
+            ishape = f.ishape
+
+        # Check if the given field lives in a space which is compatible to the
+        # given domain
+        if f.domain != domain:
             # Try to transform the given field to the given domain/codomain
             f = f.transform(new_domain=domain,
                             new_codomain=codomain)
 
-        # Check if the domain is now really the same.
-        # This is necessary since iso-fourier-conversion is not implemented
-        if f.domain == domain:
-            self._init_from_array(domain=domain,
-                                  val=f.val,
-                                  codomain=codomain,
-                                  ishape=ishape,
-                                  copy=copy,
-                                  **kwargs)
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Incompatible domain given."))
+        self._init_from_array(domain=domain,
+                              val=f.val,
+                              codomain=codomain,
+                              ishape=ishape,
+                              copy=copy,
+                              **kwargs)
 
     def _init_from_array(self, val, domain, codomain, ishape, copy, **kwargs):
         # check domain
@@ -2961,10 +2958,15 @@ class field(object):
         return new_field
 
     def _binary_helper(self, other, op='None', inplace=False):
-        # the other object could be a field/operator. Try to extract its data.
+        # if other is a field, make sure that the domains match
+        if isinstance(other, field):
+            other = field(domain=self.domain,
+                          val=other,
+                          codomain=self.codomain,
+                          copy=False)
         try:
             other_val = other.get_val()
-        except(AttributeError):
+        except AttributeError:
             other_val = other
 
         # bring other_val into the right shape

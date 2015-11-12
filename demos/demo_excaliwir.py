@@ -46,7 +46,7 @@ from nifty import *
 
 class problem(object):
 
-    def __init__(self, x_space, s2n=12, **kwargs):
+    def __init__(self, x_space, s2n=6, **kwargs):
         """
             Sets up a Wiener filter problem.
 
@@ -67,7 +67,7 @@ class problem(object):
         #self.k.set_power_indices(**kwargs)
 
         ## set some power spectrum
-        self.power = (lambda k: 42 / (k + 1) ** 3)
+        self.power = (lambda k: 42 / (k + 1) ** 2)
 
         ## define signal covariance
         self.S = power_operator(self.k, spec=self.power, bare=True)
@@ -256,7 +256,7 @@ class problem(object):
 ##-----------------------------------------------------------------------------
 #
 if(__name__=="__main__"):
-    x = rg_space((128), zerocenter=True)
+    x = rg_space((1280), zerocenter=True)
     p = problem(x, log = False)
     about.warnings.off()
 ##    pl.close("all")

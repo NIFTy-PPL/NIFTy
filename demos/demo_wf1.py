@@ -37,14 +37,14 @@ import matplotlib as mpl
 mpl.use('Agg')
 import gc
 import imp
-#nifty = imp.load_module('nifty', None,
-#                        '/home/steininger/Downloads/nifty', ('','',5))
+nifty = imp.load_module('nifty', None,
+                        '/home/steininger/Downloads/nifty', ('','',5))
 
 from nifty import *                                              # version 0.8.0
 about.warnings.off()
 
 # some signal space; e.g., a two-dimensional regular grid
-shape = [1024,]
+shape = [1024]
 x_space = rg_space(shape)
 #y_space = point_space(1280*1280)
 #x_space = hp_space(32)
@@ -91,25 +91,25 @@ m = D(j, W=S, tol=1E-8, limii=100, note=True)
 #temp_result = (D.inverse_times(m)-xi)
 
 
-#n_power = x_space.enforce_power(s.var()/np.prod(shape))
-#s_power = S.get_power()
+n_power = x_space.enforce_power(s.var()/np.prod(shape))
+s_power = S.get_power()
 
-#s.plot(title="signal", save = 'plot_s.png')
-#s.plot(title="signal power", power=True, other=power,
-#       mono=False, save = 'power_plot_s.png', nbin=1000, log=True,
-#       vmax = 100, vmin=10e-7)
+s.plot(title="signal", save = 'plot_s.png')
+s.plot(title="signal power", power=True, other=power,
+       mono=False, save = 'power_plot_s.png', nbin=1000, log=True,
+       vmax = 100, vmin=10e-7)
 
-#d_ = field(x_space, val=d.val, target=k_space)
-#d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')
-
-
-#n_ = field(x_space, val=n.val, target=k_space)
-#n_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_n.png')
+d_ = field(x_space, val=d.val, target=k_space)
+d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')
 
 
-#
-#m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')
-#m.plot(title="reconstructed power", power=True, other=(n_power, s_power),
-#       save = 'power_plot_m.png', vmin=0.001, vmax=10, mono=False)
-#
+n_ = field(x_space, val=n.val, target=k_space)
+n_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_n.png')
+
+
+
+m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')
+m.plot(title="reconstructed power", power=True, other=(n_power, s_power),
+       save = 'power_plot_m.png', vmin=0.001, vmax=10, mono=False)
+
 #

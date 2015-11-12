@@ -275,10 +275,11 @@ class Test_Common_Point_Like_Space_Interface(unittest.TestCase):
         assert(isinstance(s.dtype, np.dtype))
         assert(isinstance(s.datamodel, str))
         assert(isinstance(s.discrete, bool))
-        assert(isinstance(s.harmonic, bool))
+#        assert(isinstance(s.harmonic, bool))
         assert(isinstance(s.distances, tuple))
-        if s.harmonic:
-            assert(isinstance(s.power_indices, power_indices))
+        if hasattr(s, 'harmonic'):
+            if s.harmonic:
+                assert(isinstance(s.power_indices, power_indices))
 
     @parameterized.expand(point_like_spaces,
                           testcase_func_name=custom_name_func)
@@ -325,7 +326,6 @@ class Test_Point_Space(unittest.TestCase):
         assert_equal(p.datamodel, datamodel)
 
         assert_equal(p.discrete, True)
-        assert_equal(p.harmonic, False)
         assert_equal(p.distances, (np.float(1.),))
 
 ###############################################################################
@@ -693,6 +693,7 @@ class Test_RG_Space(unittest.TestCase):
                      harmonic=harmonic,
                      fft_module=fft_module,
                      datamodel=datamodel)
+        assert(isinstance(x.harmonic, bool))
         assert_equal(x.get_shape(), shape)
         assert_equal(x.dtype,
                      np.dtype('float64') if complexity == 0 else
@@ -1022,6 +1023,7 @@ class Test_Lm_Space(unittest.TestCase):
         testcase_func_name=custom_name_func)
     def test_successfull_init(self, lmax, mmax, dtype, datamodel):
         l = lm_space(lmax, mmax=mmax, dtype=dtype, datamodel=datamodel)
+        assert(isinstance(l.harmonic, bool))
         assert_equal(l.paradict['lmax'], lmax)
         if mmax is None or mmax > lmax:
             assert_equal(l.paradict['mmax'], lmax)

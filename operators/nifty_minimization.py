@@ -252,8 +252,7 @@ class conjugate_gradient(object):
         convergence = 0
         ii = 1
         while(True):
-            from time import sleep
-            sleep(0.5)
+
             # print ('gamma', gamma)
             q = self.A(d)
             # print ('q', q.val)
