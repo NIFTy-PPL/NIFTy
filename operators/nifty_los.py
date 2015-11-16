@@ -76,8 +76,12 @@ class los_response(operator):
 
         number_of_dimensions = len(starts)
 
+        # if zero_point is None:
+        #     zero_point = [0.] * number_of_dimensions
         if zero_point is None:
-            zero_point = [0.] * number_of_dimensions
+            phys_middle = (np.array(domain.get_vol(split=True)) *
+                           domain.get_shape()) / 2.
+            zero_point = phys_middle * domain.paradict['zerocenter']
 
         if np.shape(zero_point) != (number_of_dimensions,):
             raise ValueError(about._errors.cstring(

@@ -2056,6 +2056,20 @@ class field(object):
         new_field.set_val(new_val=copied_val)
         return new_field
 
+    def _fast_copy_empty(self):
+        # make an empty field
+        new_field = EmptyField()
+        # repair its class
+        new_field.__class__ = self.__class__
+        # copy domain, codomain, ishape and val
+        for key, value in self.__dict__.items():
+            if key != 'val':
+                new_field.__dict__[key] = value
+            else:
+                new_field.__dict__[key] = \
+                    self.domain.unary_operation(self.val, op='copy_empty')
+        return new_field
+
     def copy_empty(self, domain=None, codomain=None, ishape=None, **kwargs):
         if domain is None:
             domain = self.domain
@@ -2063,8 +2077,15 @@ class field(object):
             codomain = self.codomain
         if ishape is None:
             ishape = self.ishape
-        new_field = field(domain=domain, codomain=codomain, ishape=ishape,
-                          **kwargs)
+
+        if (domain is self.domain and
+                codomain is self.codomain and
+                ishape == self.ishape and
+                kwargs == {}):
+            new_field = self._fast_copy_empty()
+        else:
+            new_field = field(domain=domain, codomain=codomain, ishape=ishape,
+                              **kwargs)
         return new_field
 
     def set_val(self, new_val=None, copy=False):
@@ -3054,3 +3075,8 @@ class field(object):
 
     def __gt__(self, other):
         return self._binary_helper(other, op='gt')
+
+
+class EmptyField(field):
+    def __init__(self):
+        pass

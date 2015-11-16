@@ -224,6 +224,7 @@ class conjugate_gradient(object):
 
         """
         self.x = self.b.copy_empty()
+        self.x.set_val(new_val = 0)
         self.x.set_val(new_val = x0)
 
         if self.W is None:

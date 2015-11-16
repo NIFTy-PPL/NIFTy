@@ -148,6 +148,19 @@ class distributed_data_object(object):
                                hermitian=self.hermitian)
         return new_d2o
 
+    def _fast_copy_empty(self):
+        # make an empty d2o
+        new_copy = EmptyD2o()
+        # repair its class
+        new_copy.__class__ = self.__class__
+        # now copy everthing in the __dict__ except for the data array
+        for key, value in self.__dict__.items():
+            if key != 'data':
+                new_copy.__dict__[key] = value
+            else:
+                new_copy.__dict__[key] = np.empty_like(value)
+        return new_copy
+
     def copy(self, dtype=None, distribution_strategy=None, **kwargs):
         temp_d2o = self.copy_empty(dtype=dtype,
                                    distribution_strategy=distribution_strategy,
@@ -178,8 +191,18 @@ class distributed_data_object(object):
             local_shape = self.local_shape
         if dtype is None:
             dtype = self.dtype
+        else:
+            dtype = np.dtype(dtype)
         if distribution_strategy is None:
             distribution_strategy = self.distribution_strategy
+
+        # check if all parameters remain the same -> use the _fast_copy_empty
+        if (global_shape == self.shape and
+                local_shape == self.local_shape and
+                dtype == self.dtype and
+                distribution_strategy == self.distribution_strategy and
+                kwargs == self.init_kwargs):
+            return self._fast_copy_empty()
 
         kwargs.update(self.init_kwargs)
 
@@ -325,11 +348,6 @@ class distributed_data_object(object):
         return temp_d2o
 
     def _builtin_helper(self, operator, other, inplace=False):
-        if isinstance(other, distributed_data_object):
-            other_is_real = other.isreal()
-        else:
-            other_is_real = np.isreal(other)
-
         # Case 1: other is not a scalar
         if not (np.isscalar(other) or np.shape(other) == (1,)):
             try:
@@ -340,14 +358,29 @@ class distributed_data_object(object):
             temp_data = self.distributor.extract_local_data(other)
             temp_data = operator(temp_data)
 
-        # Case 2: other is a real scalar -> preserve hermitianity
-        elif other_is_real or (self.dtype not in (np.dtype('complex128'),
-                                                  np.dtype('complex256'))):
-            hermitian_Q = self.hermitian
-            temp_data = operator(other)
-        # Case 3: other is complex
+        # Case 2: other is a scalar
         else:
-            hermitian_Q = False
+            if isinstance(other, distributed_data_object):
+                other_is_real = other.isreal()
+            else:
+                other_is_real = np.isreal(other)
+
+            if other_is_real:
+                hermitian_Q = self.hermitian
+            else:
+                hermitian_Q = False
+#            #Case 2.1 self is real
+#            if (self.dtype not in (np.dtype('complex128'),
+#                                   np.dtype('complex256'))):
+#                hermitian_Q = self.hermitian
+#            elif
+#
+#            # Case 3: other is complex
+#            else:
+#                hermitian_Q = False
+#                temp_data = operator(other)
+#
+
             temp_data = operator(other)
         # write the new data into a new distributed_data_object
         if inplace is True:
@@ -356,9 +389,8 @@ class distributed_data_object(object):
             # use common datatype for self and other
             new_dtype = np.dtype(np.find_common_type((self.dtype,),
                                                      (temp_data.dtype,)))
-            temp_d2o = self.copy_empty(
-                dtype=new_dtype)
-        temp_d2o.set_local_data(data=temp_data)
+            temp_d2o = self.copy_empty(dtype=new_dtype)
+        temp_d2o.set_local_data(data=temp_data, copy=False)
         temp_d2o.hermitian = hermitian_Q
         return temp_d2o
 
@@ -2871,7 +2903,9 @@ class d2o_slicing_iter(d2o_iter):
                                         self.d2o.data.flatten(),
                                         root=self.active_node)
 
-
+class EmptyD2o(distributed_data_object):
+    def __init__(self):
+        pass
 
 
 
