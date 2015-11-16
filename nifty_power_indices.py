@@ -8,7 +8,7 @@ from nifty.nifty_mpi_data import distributed_data_object,\
                                  STRATEGIES as DISTRIBUTION_STRATEGIES
 
 MPI = gdi[gc['mpi_module']]
-hp = gdi.get['healpy']
+hp = gdi.get('healpy')
 
 
 class power_indices(object):
