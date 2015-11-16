@@ -25,13 +25,17 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 import sys
 import os
+import numpy
+
+include_dirs = [numpy.get_include()]
 
 #os.environ["CC"] = "g++-4.8"
 #os.environ["CXX"] = "g++-4.8"
 
 ext_modules=[Extension(
                    "line_integrator",
-                   ["operators/line_integrator.pyx"],)]# "vector.pxd"],
+                   ["operators/line_integrator.pyx"],
+                   include_dirs=include_dirs)]# "vector.pxd"],
                    #language='c++')]
 
 
