@@ -153,7 +153,7 @@ class rg_space(point_space):
             -------
             None
         """
-
+        self._cache_dict = {'check_codomain':{}}
         self.paradict = rg_space_paradict(shape=shape,
                                           complexity=complexity,
                                           zerocenter=zerocenter)
@@ -229,7 +229,7 @@ class rg_space(point_space):
     def __hash__(self):
         result_hash = 0
         for (key, item) in vars(self).items():
-            if key in ['fft_machine', 'power_indices']:
+            if key in ['_cache_dict', 'fft_machine', 'power_indices']:
                 continue
             result_hash ^= item.__hash__() * hash(key)
         return result_hash
@@ -245,7 +245,8 @@ class rg_space(point_space):
                  ((lambda x: tuple(x) if
                   isinstance(x, np.ndarray) else x)(ii[1])))
                 for ii in vars(self).iteritems()
-                if ii[0] not in ['fft_machine', 'power_indices', 'comm']]
+                if ii[0] not in ['_cache_dict', 'fft_machine',
+                                 'power_indices', 'comm']]
         temp.append(('comm', self.comm.__hash__()))
         # Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
@@ -353,7 +354,7 @@ class rg_space(point_space):
                                           size=size,
                                           kindex=kindex)
 
-    def check_codomain(self, codomain):
+    def _check_codomain(self, codomain):
         """
             Checks whether a given codomain is compatible to the space or not.
 

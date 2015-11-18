@@ -148,10 +148,3 @@ class _comm_wrapper(object):
 
 
 COMM_WORLD = _comm_wrapper('MPI_dummy_COMM_WORLD')
-
-
-
-
-
-
-

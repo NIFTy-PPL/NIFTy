@@ -41,6 +41,10 @@ STRATEGIES = {
                 'not': ['not'],
                 'hdf5': ['equal'] + _maybe_fftw,
              }
+if _maybe_fftw != []:
+    _default_strategy = 'fftw'
+else:
+    _default_strategy = 'equal'
 
 
 class distributed_data_object(object):
@@ -89,7 +93,7 @@ class distributed_data_object(object):
     """
     def __init__(self, global_data=None, global_shape=None, dtype=None,
                  local_data=None, local_shape=None,
-                 distribution_strategy='fftw', hermitian=False,
+                 distribution_strategy=_default_strategy, hermitian=False,
                  alias=None, path=None, comm=MPI.COMM_WORLD,
                  copy=True, *args, **kwargs):
 
@@ -737,8 +741,10 @@ class distributed_data_object(object):
         if self.distribution_strategy == 'not':
             return local_counts
         else:
-            list_of_counts = self.distributor._allgather(local_counts)
-            counts = np.sum(list_of_counts, axis=0)
+            counts = np.empty_like(local_counts)
+            self.distributor._Allreduce_sum(local_counts, counts)
+#            list_of_counts = self.distributor._allgather(local_counts)
+#            counts = np.sum(list_of_counts, axis=0)
             return counts
 
     def where(self):
@@ -1463,6 +1469,14 @@ class _slicing_distributor(distributor):
         gathered_things = comm.allgather(thing)
         return gathered_things
 
+    def _Allreduce_sum(self, sendbuf, recvbuf):
+        send_dtype = self._my_dtype_converter.to_mpi(sendbuf.dtype)
+        recv_dtype = self._my_dtype_converter.to_mpi(recvbuf.dtype)
+        self.comm.Allreduce([sendbuf, send_dtype],
+                            [recvbuf, recv_dtype],
+                            op=MPI.SUM)
+        return recvbuf
+
     def distribute_data(self, data=None, alias=None,
                         path=None, copy=True, **kwargs):
         '''
@@ -2137,13 +2151,20 @@ class _slicing_distributor(distributor):
 
             # Case 2: First dimension fits directly and data_object is a d2o
             elif isinstance(data_object, distributed_data_object):
-                # Check if the distributor and the comm match
-                # the own ones. Checking equality via 'is' is ok, as the
-                # distributor factory caches simmilar distributors
-                if self is data_object.distributor and\
-                        self.comm is data_object.distributor.comm:
-                    # Case 1: yes. Simply take the local data
+                # Check if both d2os have the same slicing
+                # If the distributor is exactly the same, extract the data
+                if self is data_object.distributor:
+                    # Simply take the local data
                     extracted_data = data_object.data
+                # If the distributor is not exactly the same, check if the
+                # geometry matches if it is a slicing distributor
+                # -> comm and local shapes
+                elif isinstance(data_object.distributor, _slicing_distributor):
+                    if (self.comm is data_object.distributor.comm) and \
+                            np.all(self.all_local_slices ==
+                                   data_object.distributor.all_local_slices):
+                        extracted_data = data_object.data
+
                 else:
                     # Case 2: no. All nodes extract their local slice from the
                     # data_object
@@ -2152,6 +2173,26 @@ class _slicing_distributor(distributor):
                                                    self.local_end),
                                              local_keys=True)
                     extracted_data = extracted_data.get_local_data()
+
+
+#                # Check if the distributor and the comm match
+#                # the own ones. Checking equality via 'is' is ok, as the
+#                # distributor factory caches simmilar distributors
+#                if self is data_object.distributor and\
+#                        self.comm is data_object.distributor.comm:
+#                    # Case 1: yes. Simply take the local data
+#                    extracted_data = data_object.data
+#                # If the distributors do not match directly, check
+#                else:
+#                    # Case 2: no. All nodes extract their local slice from the
+#                    # data_object
+#                    extracted_data =\
+#                        data_object.get_data(slice(self.local_start,
+#                                                   self.local_end),
+#                                             local_keys=True)
+#                    extracted_data = extracted_data.get_local_data()
+#
+##                    print ('boo', data_object.distribution_strategy)
 
             # Case 3: First dimension fits directly and data_object is an
             # generic array
@@ -2603,6 +2644,10 @@ class _not_distributor(distributor):
 
     def _allgather(self, thing):
         return [thing, ]
+
+    def _Allreduce_sum(self, sendbuf, recvbuf):
+        recvbuf[:] = sendbuf
+        return recvbuf
 
     def distribute_data(self, data, alias=None, path=None, copy=True,
                         **kwargs):

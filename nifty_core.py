@@ -801,6 +801,7 @@ class point_space(space):
             -------
             None.
         """
+        self._cache_dict = {'check_codomain': {}}
         self.paradict = point_space_paradict(num=num)
 
         # parse dtype
@@ -842,6 +843,8 @@ class point_space(space):
         # Extract the identifying parts from the vars(self) dict.
         result_hash = 0
         for (key, item) in vars(self).items():
+            if key in ['_cache_dict']:
+                continue
             result_hash ^= item.__hash__() * hash(key)
         return result_hash
 
@@ -850,6 +853,7 @@ class point_space(space):
         temp = [(ii[0],
                  ((lambda x: x[1].__hash__() if x[0] == 'comm' else x)(ii)))
                 for ii in vars(self).iteritems()
+                if ii[0] not in ['_cache_dict']
                 ]
         # Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
@@ -1369,6 +1373,16 @@ class point_space(space):
         return spec
 
     def check_codomain(self, codomain):
+        check_dict = self._cache_dict['check_codomain']
+        temp_id = id(codomain)
+        if temp_id in check_dict:
+            return check_dict[temp_id]
+        else:
+            temp_result = self._check_codomain(codomain)
+            check_dict[temp_id] = temp_result
+            return temp_result
+
+    def _check_codomain(self, codomain):
         """
             Checks whether a given codomain is compatible to the space or not.
 

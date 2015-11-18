@@ -154,6 +154,9 @@ class lm_space(point_space):
             raise ImportError(about._errors.cstring(
                 "ERROR: neither libsharp_wrapper_gl nor healpy activated."))
 
+
+        self._cache_dict = {'check_codomain': {}}
+
         self.paradict = lm_space_paradict(lmax=lmax, mmax=mmax)
 
         # check data type
@@ -196,7 +199,7 @@ class lm_space(point_space):
     def __hash__(self):
         result_hash = 0
         for (key, item) in vars(self).items():
-            if key in ['power_indices']:
+            if key in ['_cache_dict', 'power_indices']:
                 continue
             result_hash ^= item.__hash__() * hash(key)
         return result_hash
@@ -207,7 +210,7 @@ class lm_space(point_space):
                  ((lambda x: tuple(x) if
                   isinstance(x, np.ndarray) else x)(ii[1])))
                 for ii in vars(self).iteritems()
-                if ii[0] not in ['power_indices', 'comm']]
+                if ii[0] not in ['_cache_dict', 'power_indices', 'comm']]
         temp.append(('comm', self.comm.__hash__()))
         # Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
@@ -303,7 +306,7 @@ class lm_space(point_space):
                                           size=size,
                                           kindex=kindex)
 
-    def check_codomain(self, codomain):
+    def _check_codomain(self, codomain):
         """
             Checks whether a given codomain is compatible to the
             :py:class:`lm_space` or not.
@@ -938,6 +941,7 @@ class gl_space(point_space):
             raise ImportError(about._errors.cstring(
                 "ERROR: libsharp_wrapper_gl not loaded."))
 
+        self._cache_dict = {'check_codomain': {}}
         self.paradict = gl_space_paradict(nlat=nlat, nlon=nlon)
 
         # check data type
@@ -1040,7 +1044,7 @@ class gl_space(point_space):
                                           size=size,
                                           kindex=kindex)
 
-    def check_codomain(self, codomain):
+    def _check_codomain(self, codomain):
         """
             Checks whether a given codomain is compatible to the space or not.
 
@@ -1577,6 +1581,7 @@ class hp_space(point_space):
             raise ImportError(about._errors.cstring(
                 "ERROR: healpy not available."))
 
+        self._cache_dict = {'check_codomain': {}}
         # check parameters
         self.paradict = hp_space_paradict(nside=nside)
 
@@ -1668,7 +1673,7 @@ class hp_space(point_space):
                                           size=size,
                                           kindex=kindex)
 
-    def check_codomain(self, codomain):
+    def _check_codomain(self, codomain):
         """
             Checks whether a given codomain is compatible to the space or not.
 
