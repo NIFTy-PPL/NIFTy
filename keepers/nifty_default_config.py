@@ -57,6 +57,11 @@ variable_default_distribution_strategy = variable(
                                        if (z == 'pyfftw') else True)
                                                   )
 
+variable_d2o_init_checks = variable('d2o_init_checks',
+                                    [True, False],
+                                    lambda z: isinstance(z, bool),
+                                    genus='boolean')
+
 global_configuration = configuration(
                      [variable_fft_module,
                       variable_lm2gl,
@@ -64,7 +69,8 @@ global_configuration = configuration(
                       variable_use_libsharp,
                       variable_verbosity,
                       variable_mpi_module,
-                      variable_default_distribution_strategy
+                      variable_default_distribution_strategy,
+                      variable_d2o_init_checks
                       ],
                      path=os.path.expanduser('~') + "/.nifty/global_config")
 
