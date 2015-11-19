@@ -49,7 +49,8 @@ class los_response(operator):
         if target is None:
             self.target = point_space(num=self.number_of_los,
                                       dtype=self.domain.dtype,
-                                      datamodel=self.domain.datamodel,
+                                      datamodel='not',
+                                      # datamodel=self.domain.datamodel,
                                       comm=self.domain.comm)
         else:
             self.target = target
