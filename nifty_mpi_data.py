@@ -494,10 +494,15 @@ class distributed_data_object(object):
 
     def vdot(self, other):
         other = self.distributor.extract_local_data(other)
-        local_vdot = np.vdot(self.get_local_data(), other)
-        local_vdot_list = self.distributor._allgather(local_vdot)
-        global_vdot = np.result_type(self.dtype,
-                                     other.dtype).type(np.sum(local_vdot_list))
+        local_vdot = np.array([np.vdot(self.get_local_data(), other)])
+        global_vdot = np.empty_like(local_vdot)
+        self._Allreduce_sum(sendbuf=local_vdot,
+                            recvbuf=global_vdot)
+
+#        local_vdot = np.vdot(self.get_local_data(), other)
+#        local_vdot_list = self.distributor._allgather(local_vdot)
+#        global_vdot = np.result_type(self.dtype,
+#                                     other.dtype).type(np.sum(local_vdot_list))
         return global_vdot
 
     def __getitem__(self, key):
