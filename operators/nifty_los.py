@@ -279,7 +279,9 @@ class los_response(operator):
             global_result = np.empty_like(local_result)
             self.domain.comm.Allreduce(local_result, global_result, op=MPI.SUM)
 
-        result_field = field(self.target, val=global_result)
+        result_field = field(self.target,
+                             val=global_result,
+                             codomain=self.cotarget)
         return result_field
 
     def _adjoint_multiply(self, input_field):
@@ -308,7 +310,9 @@ class los_response(operator):
         local_result_data /= self.domain.get_vol()
 
         # construct the result field
-        result_field = field(self.domain)
+        result_field = field(self.domain,
+                             val=None,
+                             codomain=self.codomain)
         try:
             result_field.val.data = local_result_data
         except AttributeError:
