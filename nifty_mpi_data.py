@@ -773,7 +773,7 @@ class distributed_data_object(object):
         """
         self.hermitian = hermitian
         if copy is True:
-            self.data[:] = data
+            self.data[:] = data.reshape(self.local_shape)
         else:
             self.data = np.array(data,
                                  dtype=self.dtype,

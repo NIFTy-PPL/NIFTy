@@ -32,6 +32,23 @@
 
 """
 from __future__ import division
+
+#from pycallgraph import PyCallGraph
+#from pycallgraph import Config
+#from pycallgraph import GlobbingFilter
+#from pycallgraph.output import GraphvizOutput
+#
+#config = Config()
+#config.trace_filter = GlobbingFilter(exclude=[
+#    'pycallgraph.*',
+#    #'*.secret_function',
+#])
+#
+#graphviz = GraphvizOutput(output_file='steepest_profiling.png')
+#
+#
+
+
 from nifty import *                                              # version 0.8.0
 
 
@@ -43,10 +60,10 @@ k_space = x_space.get_codomain()                                 # get conjugate
 # some power spectrum
 power = (lambda k: 42 / (k + 1) ** 3)
 
-S = power_operator(k_space, spec=power)                          # define signal covariance
-s = S.get_random_field(domain=x_space)                           # generate signal
+S = power_operator(k_space, codomain=x_space, spec=power)                          # define signal covariance
+s = S.get_random_field(domain=x_space, codomain=k_space)                           # generate signal
 
-R = response_operator(x_space, sigma=0.0, mask=1.0, assign=None) # define response
+R = response_operator(x_space, codomain=k_space, sigma=0.0, mask=1.0, assign=None) # define response
 d_space = R.target                                               # get data space
 
 # some noise variance; e.g., signal-to-noise ratio of 1
@@ -70,11 +87,13 @@ def eggs(x):
     return H, g
 
 
-m = field(x_space, target=k_space)                               # reconstruct map
+m = field(x_space, codomain=k_space)                               # reconstruct map
+
+#with PyCallGraph(output=graphviz, config=config):
 m, convergence = steepest_descent(eggs=eggs, note=True)(m, tol=1E-3, clevel=3)
 
-s.plot(title="signal")                                           # plot signal
-d_ = field(x_space, val=d.val, target=k_space)
-d_.plot(title="data", vmin=s.min(), vmax=s.max())                # plot data
-m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max())    # plot map
+#s.plot(title="signal")                                           # plot signal
+#d_ = field(x_space, val=d.val, target=k_space)
+#d_.plot(title="data", vmin=s.min(), vmax=s.max())                # plot data
+#m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max())    # plot map
 

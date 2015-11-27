@@ -1167,13 +1167,17 @@ class point_space(space):
             if np.any(np.array(x.shape) != np.array(self.get_shape())):
                 # Check if at least the number of degrees of freedom is equal
                 if x.get_dim() == self.get_dim():
-                    # If the number of dof is equal or 1, use np.reshape...
-                    about.warnings.cflush(
-                        "WARNING: Trying to reshape the data. This " +
-                        "operation is expensive as it consolidates the " +
-                        "full data!\n")
-                    temp = x.get_full_data()
-                    temp = np.reshape(temp, self.get_shape())
+                    try:
+                        temp = x.copy_empty(global_shape=self.get_shape())
+                        temp.set_local_data(x.get_local_data(), copy=False)
+                    except:
+                        # If the number of dof is equal or 1, use np.reshape...
+                        about.warnings.cflush(
+                            "WARNING: Trying to reshape the data. This " +
+                            "operation is expensive as it consolidates the " +
+                            "full data!\n")
+                        temp = x.get_full_data()
+                        temp = np.reshape(temp, self.get_shape())
                     # ... and cast again
                     return self._cast_to_d2o(temp,
                                              dtype=dtype,

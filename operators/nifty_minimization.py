@@ -581,7 +581,8 @@ class steepest_descent(object):
                 self.note.cprint("\niteration : %08u   alpha < 1.0E-13\n... dead."%ii)
                 break
             else:
-                delta = np.absolute(g.val).max()*(alpha/norm)
+                delta = abs(g).max()*(alpha/norm)
+                #delta = np.absolute(g.val).max()*(alpha/norm)
                 self.note.cflush("\niteration : %08u   alpha = %3.1E   delta = %3.1E"%(ii,alpha,delta))
                 ## update
                 self.x = x_
