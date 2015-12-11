@@ -26,11 +26,26 @@ import numpy as np
 from keepers import about
 
 
+def vdot(x, y):
+    try:
+        return x.vdot(y)
+    except AttributeError:
+        pass
+
+    try:
+        return y.vdot(x)
+    except AttributeError:
+        pass
+
+    return np.vdot(x, y)
+
+
 def _math_helper(x, function):
     try:
         return x.apply_scalar_function(function)
     except(AttributeError):
         return function(np.array(x))
+
 
 def cos(x):
     """
@@ -59,6 +74,7 @@ def cos(x):
         array([ 0.54030231,  0.54030231])
     """
     return _math_helper(x, np.cos)
+
 
 def sin(x):
     """
@@ -89,6 +105,7 @@ def sin(x):
     """
     return _math_helper(x, np.sin)
 
+
 def cosh(x):
     """
         Returns the hyperbolic cosine of a given object.
@@ -117,6 +134,7 @@ def cosh(x):
 
     """
     return _math_helper(x, np.cosh)
+
 
 def sinh(x):
     """
@@ -147,6 +165,7 @@ def sinh(x):
     """
     return _math_helper(x, np.sinh)
 
+
 def tan(x):
     """
         Returns the tangent of a given object.
@@ -175,6 +194,7 @@ def tan(x):
 
     """
     return _math_helper(x, np.tan)
+
 
 def tanh(x):
     """
@@ -322,6 +342,7 @@ def arcsinh(x):
     """
     return _math_helper(x, np.arcsinh)
 
+
 def arctan(x):
     """
         Returns the arctan of a given object.
@@ -349,6 +370,7 @@ def arctan(x):
         array([ 0.78539816,  1.47112767])
     """
     return _math_helper(x, np.arctan)
+
 
 def arctanh(x):
     """
@@ -378,6 +400,7 @@ def arctanh(x):
     """
     return _math_helper(x, np.arctanh)
 
+
 def sqrt(x):
     """
         Returns the square root of a given object.
@@ -401,6 +424,7 @@ def sqrt(x):
 
     """
     return _math_helper(x, np.sqrt)
+
 
 def exp(x):
     """
@@ -430,7 +454,8 @@ def exp(x):
     """
     return _math_helper(x, np.exp)
 
-def log(x,base=None):
+
+def log(x, base=None):
     """
         Returns the logarithm with respect to a specified base.
 
@@ -462,10 +487,11 @@ def log(x,base=None):
         return _math_helper(x, np.log)
 
     base = np.array(base)
-    if(np.all(base>0)):
+    if np.all(base > 0):
         return _math_helper(x, np.log)/np.log(base)
     else:
         raise ValueError(about._errors.cstring("ERROR: invalid input basis."))
+
 
 def conjugate(x):
     """
@@ -482,9 +508,3 @@ def conjugate(x):
             The complex conjugated object.
     """
     return _math_helper(x, np.conjugate)
-
-
-
-
-
-##---------------------------------

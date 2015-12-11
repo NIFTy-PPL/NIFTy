@@ -2468,6 +2468,9 @@ class field(object):
 
             return np.sum(result, axis=axis)
 
+    def vdot(self, *args, **kwargs):
+        return self.dot(*args, **kwargs)
+
     def outer_dot(self, x=1, axis=None):
 
         # Use the fact that self.val is a numpy array of dtype np.object

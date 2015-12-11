@@ -50,10 +50,11 @@ from __future__ import division
 
 
 from nifty import *                                              # version 0.8.0
+from nifty.operators.nifty_minimization import steepest_descent_new
 
 
 # some signal space; e.g., a two-dimensional regular grid
-x_space = rg_space([128, 128])                                   # define signal space
+x_space = rg_space([256, 256])                                   # define signal space
 
 k_space = x_space.get_codomain()                                 # get conjugate space
 
@@ -76,15 +77,29 @@ j = R.adjoint_times(N.inverse_times(d))                          # define inform
 D = propagator_operator(S=S, N=N, R=R)                           # define information propagator
 
 
+
+def energy(x):
+    DIx = D.inverse_times(x)
+    H = 0.5 * DIx.dot(x) - j.dot(x)
+    return H
+
+
+def gradient(x):
+    DIx = D.inverse_times(x)
+    g = DIx - j
+    return g
+
+
 def eggs(x):
     """
         Calculation of the information Hamiltonian and its gradient.
 
     """
-    DIx = D.inverse_times(x)
-    H = 0.5 * DIx.dot(x) - j.dot(x)                              # compute information Hamiltonian
-    g = DIx - j                                                  # compute its gradient
-    return H, g
+#    DIx = D.inverse_times(x)
+#    H = 0.5 * DIx.dot(x) - j.dot(x)                              # compute information Hamiltonian
+#    g = DIx - j                                                  # compute its gradient
+#    return H, g
+    return energy(x), gradient(x)
 
 
 m = field(x_space, codomain=k_space)                               # reconstruct map
@@ -92,6 +107,8 @@ m = field(x_space, codomain=k_space)                               # reconstruct
 #with PyCallGraph(output=graphviz, config=config):
 m, convergence = steepest_descent(eggs=eggs, note=True)(m, tol=1E-3, clevel=3)
 
+m = field(x_space, codomain=k_space)
+m, convergence = steepest_descent_new(energy, gradient, note=True)(m, tol=1E-3, clevel=3)
 #s.plot(title="signal")                                           # plot signal
 #d_ = field(x_space, val=d.val, target=k_space)
 #d_.plot(title="data", vmin=s.min(), vmax=s.max())                # plot data

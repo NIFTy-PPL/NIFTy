@@ -42,6 +42,9 @@ class los_response(operator):
                                                     starts, ends, sigmas_low,
                                                     sigmas_up, zero_point)
 
+        self._local_shape = self._init_local_shape()
+        self._set_extractor_d2o()
+
         self.local_weights_and_indices = self._compute_weights_and_indices()
 
         self.number_of_los = len(self.sigmas_low)
@@ -212,7 +215,7 @@ class los_response(operator):
                 "ERROR: The space's datamodel is not supported:" +
                 str(self.domain.datamodel)))
 
-    def _get_local_shape(self):
+    def _init_local_shape(self):
         if self.domain.datamodel == 'np':
             return self.domain.get_shape()
         elif self.domain.datamodel in STRATEGIES['not']:
@@ -224,6 +227,9 @@ class los_response(operator):
                                 distribution_strategy=self.domain.datamodel,
                                 skip_parsing=True)
             return dummy_d2o.distributor.local_shape
+
+    def _get_local_shape(self):
+        return self._local_shape
 
     def _compute_weights_and_indices(self):
         # compute the local pixel coordinates for the starts and ends
@@ -258,11 +264,7 @@ class los_response(operator):
         return local_indices_and_weights_list
 
     def _multiply(self, input_field):
-        # extract the local data array from the input field
-        try:
-            local_input_data = input_field.val.data
-        except AttributeError:
-            local_input_data = input_field.val
+        local_input_data = self._multiply_preprocessing(input_field)
 
         local_result = np.zeros(self.number_of_los, dtype=self.target.dtype)
 
@@ -272,18 +274,32 @@ class los_response(operator):
             local_result[los_index] += \
                 np.sum(local_input_data[indices]*weights)
 
-        if self.domain.datamodel == 'np':
-            global_result = local_result
-        elif self.domain.datamodel is STRATEGIES['not']:
-            global_result = local_result
-        if self.domain.datamodel in STRATEGIES['slicing']:
-            global_result = np.empty_like(local_result)
-            self.domain.comm.Allreduce(local_result, global_result, op=MPI.SUM)
+        global_result = self._multiply_postprocessing(local_result)
 
         result_field = field(self.target,
                              val=global_result,
                              codomain=self.cotarget)
         return result_field
+
+    def _multiply_preprocessing(self, input_field):
+        if self.domain.datamodel == 'np':
+            local_input_data = input_field.val
+        elif self.domain.datamodel in STRATEGIES['not']:
+            local_input_data = input_field.val.data
+        elif self.domain.datamodel in STRATEGIES['slicing']:
+            extractor = self._extractor_d2o.distributor.extract_local_data
+            local_input_data = extractor(input_field.val)
+        return local_input_data
+
+    def _multiply_postprocessing(self, local_result):
+        if self.domain.datamodel == 'np':
+            global_result = local_result
+        elif self.domain.datamodel in STRATEGIES['not']:
+            global_result = local_result
+        elif self.domain.datamodel in STRATEGIES['slicing']:
+            global_result = np.empty_like(local_result)
+            self.domain.comm.Allreduce(local_result, global_result, op=MPI.SUM)
+        return global_result
 
     def _adjoint_multiply(self, input_field):
         # get the full data as np.ndarray from the input field
@@ -321,14 +337,53 @@ class los_response(operator):
 
         return result_field
 
+    def _improve_slicing(self):
+        if self.domain.datamodel not in STRATEGIES['slicing']:
+            raise ValueError(about._errors.cstring(
+                "ERROR: distribution strategy of domain is not a " +
+                "slicing one."))
 
+        comm = self.domain.comm
 
+        local_weight = np.sum(
+            [len(los[2]) for los in self.local_weights_and_indices])
+        local_length = self._get_local_shape()[0]
 
+        weights = comm.allgather(local_weight)
+        lengths = comm.allgather(local_length)
 
+        optimized_lengths = self._length_equilibrator(lengths, weights)
+        new_local_shape = list(self._local_shape)
+        new_local_shape[0] = optimized_lengths[comm.rank]
+        self._local_shape = tuple(new_local_shape)
+        self._set_extractor_d2o()
+        self.local_weights_and_indices = self._compute_weights_and_indices()
 
+    def _length_equilibrator(self, lengths, weights):
+        lengths = np.array(lengths, dtype=np.float)
+        weights = np.array(weights, dtype=np.float)
 
+        number_of_nodes = len(lengths)
 
+        cs_lengths = np.append(0, np.cumsum(lengths))
+        cs_weights = np.append(0, np.cumsum(weights))
 
+        total_weight = cs_weights[-1]
 
+        equiweights = np.linspace(0,
+                                  total_weight,
+                                  number_of_nodes+1)
+        equiweight_distances = np.interp(equiweights,
+                                         cs_weights,
+                                         cs_lengths)
+        equiweight_lengths = np.diff(np.floor(equiweight_distances))
+        return equiweight_lengths
 
-
+    def _set_extractor_d2o(self):
+        if self.domain.datamodel in STRATEGIES['slicing']:
+            temp_d2o = self.domain.cast()
+            extractor = temp_d2o.copy_empty(local_shape=self._local_shape,
+                                            distribution_strategy='freeform')
+            self._extractor_d2o = extractor
+        else:
+            self._extractor_d2o = None

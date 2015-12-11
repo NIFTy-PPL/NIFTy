@@ -874,10 +874,9 @@ class Test_list_get_set_data(unittest.TestCase):
 
         (a, obj) = generate_data(global_shape, dtype,
                                  distribution_strategy_1)
-
-        w = np.where(a > 30)
+        w = np.where(a > 28)
         p = obj.copy(distribution_strategy=distribution_strategy_2)
-        wo = (p > 30).where()
+        wo = (p > 28).where()
 
         assert_equal(obj[w].get_full_data(), a[w])
         assert_equal(obj[wo].get_full_data(), a[w])
@@ -903,7 +902,7 @@ class Test_list_get_set_data(unittest.TestCase):
         assert_equal(obj[wo].get_full_data(), a[w])
 
 
-##############################################################################
+#############################################################################
 
     @parameterized.expand(
         itertools.product(
@@ -1601,22 +1600,23 @@ class Test_comparisons(unittest.TestCase):
 
 class Test_special_methods(unittest.TestCase):
 
-    @parameterized.expand(all_distribution_strategies,
+    @parameterized.expand(
+    itertools.product(all_distribution_strategies,
+                      all_distribution_strategies),
                           testcase_func_name=custom_name_func)
-    def test_bincount(self, distribution_strategy):
-        global_shape = (80,)
+    def test_bincount(self, distribution_strategy_1, distribution_strategy_2):
+        global_shape = (10,)
         dtype = np.dtype('int')
         dtype_weights = np.dtype('float')
         (a, obj) = generate_data(global_shape, dtype,
-                                 distribution_strategy)
+                                 distribution_strategy_1)
         a = abs(a)
         obj = abs(obj)
 
         (b, p) = generate_data(global_shape, dtype_weights,
-                               distribution_strategy)
+                               distribution_strategy_2)
         b **= 2
         p **= 2
-
         assert_equal(obj.bincount(weights=p),
                      np.bincount(a, weights=b))
 

@@ -71,7 +71,7 @@ def _hermitianize_inverter(x):
     return y
 
 
-def direct_dot(x, y):
+def direct_vdot(x, y):
     # the input could be fields. Try to extract the data
     try:
         x = x.get_val()

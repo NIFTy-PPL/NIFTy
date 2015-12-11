@@ -24,7 +24,7 @@ from __future__ import division
 from nifty.keepers import about
 from nifty.nifty_core import space, \
                          field
-from nifty.nifty_utilities import direct_dot
+from nifty.nifty_utilities import direct_vdot
 
 
 
@@ -468,7 +468,7 @@ class trace_prober(_specialized_prober):
                                            **kwargs)
 
     def _probing_function(self, probe):
-        return direct_dot(probe.conjugate(), self.operator.times(probe))
+        return direct_vdot(probe.conjugate(), self.operator.times(probe))
 
 
 class inverse_trace_prober(_specialized_prober):
@@ -478,7 +478,7 @@ class inverse_trace_prober(_specialized_prober):
                                                    **kwargs)
 
     def _probing_function(self, probe):
-        return direct_dot(probe.conjugate(),
+        return direct_vdot(probe.conjugate(),
                           self.operator.inverse_times(probe))
 
 

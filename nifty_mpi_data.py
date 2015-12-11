@@ -163,6 +163,8 @@ class distributed_data_object(object):
                 new_copy.__dict__[key] = value
             else:
                 new_copy.__dict__[key] = np.empty_like(value)
+
+        new_copy.index = d2o_librarian.register(new_copy)
         return new_copy
 
     def copy(self, dtype=None, distribution_strategy=None, **kwargs):
@@ -503,7 +505,7 @@ class distributed_data_object(object):
 #        local_vdot_list = self.distributor._allgather(local_vdot)
 #        global_vdot = np.result_type(self.dtype,
 #                                     other.dtype).type(np.sum(local_vdot_list))
-        return global_vdot
+        return global_vdot[0]
 
     def __getitem__(self, key):
         return self.get_data(key)
@@ -743,13 +745,19 @@ class distributed_data_object(object):
         local_counts = np.bincount(self.get_local_data().flatten(),
                                    weights=local_weights,
                                    minlength=minlength)
+
+
         if self.distribution_strategy == 'not':
             return local_counts
         else:
             counts = np.empty_like(local_counts)
-            self.distributor._Allreduce_sum(local_counts, counts)
-#            list_of_counts = self.distributor._allgather(local_counts)
-#            counts = np.sum(list_of_counts, axis=0)
+            # self.distributor._Allreduce_sum(local_counts, counts)
+            # Potentially faster, but buggy. <- If np.binbount yields
+            # inconsistent datatypes because of empty arrays on certain nodes,
+            # the Allreduce produces non-sense results.
+
+            list_of_counts = self.distributor._allgather(local_counts)
+            counts = np.sum(list_of_counts, axis=0)
             return counts
 
     def where(self):
@@ -1764,9 +1772,7 @@ class _slicing_distributor(distributor):
 
         # Check which case we got:
         (found, found_boolean) = _infer_key_type(key)
-
         comm = self.comm
-
         if local_keys is False:
             return self._collect_data_primitive(data, key, found,
                                                 found_boolean, **kwargs)
@@ -1788,7 +1794,6 @@ class _slicing_distributor(distributor):
             else:
                 index_list = comm.allgather(key.index)
                 key_list = map(lambda z: d2o_librarian[z], index_list)
-
             i = 0
             for temp_key in key_list:
                 # build the locally fed d2o
@@ -1844,7 +1849,6 @@ class _slicing_distributor(distributor):
         if list_key == []:
             raise ValueError(about._errors.cstring(
                 "ERROR: key == [] is an unsupported key!"))
-
         local_list_key = self._advanced_index_decycler(list_key)
         local_result = data[local_list_key]
         global_result = distributed_data_object(
@@ -1922,8 +1926,8 @@ class _slicing_distributor(distributor):
 #                       for i in xrange(len(result) - 1)):
 #                raise ValueError(about._errors.cstring(
 #                    "ERROR: The first dimemnsion of list_key must be sorted!"))
-            result = [result]
 
+            result = [result]
             for ii in xrange(1, len(from_list_key)):
                 current = from_list_key[ii]
                 if np.isscalar(current):
@@ -2174,10 +2178,11 @@ class _slicing_distributor(distributor):
                 # If the distributor is not exactly the same, check if the
                 # geometry matches if it is a slicing distributor
                 # -> comm and local shapes
-                elif isinstance(data_object.distributor, _slicing_distributor):
-                    if (self.comm is data_object.distributor.comm) and \
-                            np.all(self.all_local_slices ==
-                                   data_object.distributor.all_local_slices):
+                elif (isinstance(data_object.distributor,
+                                 _slicing_distributor) and
+                      (self.comm is data_object.distributor.comm) and
+                      (np.all(self.all_local_slices ==
+                              data_object.distributor.all_local_slices))):
                         extracted_data = data_object.data
 
                 else:
@@ -2924,6 +2929,9 @@ class d2o_iter(object):
             return self.current_local_data[i]
         else:
             raise StopIteration()
+
+    def initialize_current_local_data(self):
+        raise NotImplementedError
 
     def update_current_local_data(self):
         raise NotImplementedError
