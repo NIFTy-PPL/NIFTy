@@ -47,7 +47,7 @@ from __future__ import division
 #graphviz = GraphvizOutput(output_file='steepest_profiling.png')
 #
 #
-
+# comment
 
 from nifty import *                                              # version 0.8.0
 from nifty.operators.nifty_minimization import steepest_descent_new
