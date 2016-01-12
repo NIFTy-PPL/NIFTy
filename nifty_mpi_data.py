@@ -48,47 +48,129 @@ else:
 
 
 class distributed_data_object(object):
-    """
+    """A multidimensional array with modular MPI-based distribution schemes.
 
-        NIFTY class for distributed data
+    The purpose of a distributed_data_object (d2o) is to provide the user
+    with a numpy.ndarray like interface while storing the data on an arbitrary
+    number of MPI nodes. The logic of a certain distribution strategy is
+    implemented by an associated distributor.
 
-        Parameters
-        ----------
-        global_data : {tuple, list, numpy.ndarray} *at least 1-dimensional*
-            Initial data which will be casted to a numpy.ndarray and then
-            stored according to the distribution strategy. The global_data's
-            shape overwrites global_shape.
-        global_shape : tuple of ints, *optional*
-            If no global_data is supplied, global_shape can be used to
-            initialize an empty distributed_data_object
-        dtype : type, *optional*
-            If an explicit dtype is supplied, the given global_data will be
-            casted to it.
-        distribution_strategy : {'fftw' (default), 'not'}, *optional*
-            Specifies the way, how global_data will be distributed to the
-            individual nodes.
-            'fftw' follows the distribution strategy of pyfftw.
-            'not' does not distribute the data at all.
+    Parameters
+    ----------
+    global_data : array-like, at least 1-dimensional
+        Used with global-type distribution strategies in order to fill the
+        d2o with data during initialization.
+    global_shape : tuple of ints
+        Used with global-type distribution strategies. If no global_data is
+        supplied, it will be used.
+    dtype : {np.dtype, type}
+        Used as the d2o's datatype. Overwrites the data-type of any init data.
+    local_data : array-like, at least 1-dimensional
+        Used with local-type distribution strategies in order to fill the
+        d2o with data during initialization.
+    local_shape : tuple of ints
+        Used with local-type distribution strategies. If no local_data is
+        supplied, local_shape will be used.
+    distribution_strategy : {'fftw', 'equal', 'not', 'freeform'}, optional
+        Specifies which distributor will be created and used.
+        'fftw'      uses the distribution strategy of pyfftw,
+        'equal'     tries to  distribute the data as uniform as possible
+        'not'       does not distribute the data at all
+        'freeform'  distribute the data according to the given local data/shape
+    hermitian : boolean
+        Specifies if the given init-data is hermitian or not. The
+        self.hermitian attribute will be set accordingly.
+    alias : String
+        Used in order to initialize the d2o from a hdf5 file.
+    path : String
+        Used in order to initialize the d2o from a hdf5 file. If no path is
+        given, '$working_directory/alias' is used.
+    comm : mpi4py.MPI.Intracomm
+        The MPI communicator on which the d2o lives.
+    copy : boolean
+        If true it is guaranteed that the input data will be copied. If false
+        copying is tried to be avoided.
+    *args
+        Although not directly used during the init process, further parameters
+        are stored in the self.init_args attribute.
+    **kwargs
+        Additional keyword arguments are passed to the distributor_factory and
+        furthermore get stored in the self.init_kwargs attribute.
+    skip_parsing : boolean (optional keyword argument)
+        If true, the distribution_factory will skip all sanity checks and
+        completions of the given (keyword-)arguments. It just uses what it
+        gets. Hence the user is fully responsible for supplying complete and
+        consistent parameters. This can be used in order to speed up the init
+        process. Also see notes section.
 
+    Attributes
+    ----------
+    data : numpy.ndarray
+        The numpy.ndarray in which the individual node's data is stored.
+    dtype : type
+        Data type of the data object.
+    distribution_strategy : string
+        Name of the used distribution_strategy.
+    distributor : distributor
+        The distributor object which takes care of all distribution and
+        consolidation of the data.
+    shape : tuple of int
+        The global shape of the data.
+    local_shape : tuple of int
+        The nodes individual local shape of the stored data.
+    comm : mpi4py.MPI.Intracomm
+        The MPI communicator on which the d2o lives.
+    hermitian : boolean
+        Specfies whether the d2o's data definitely possesses hermitian
+        symmetry.
+    index : int
+        The d2o's registration index it got from the d2o_librarian.
+    init_args : list
+        Any additional initialization arguments are stored here.
+    init_kwargs : dict
+        Any additional initialization keyword arguments are stored here.
 
-        Attributes
-        ----------
-        data : numpy.ndarray
-            The numpy.ndarray in which the individual node's data is stored.
-        dtype : type
-            Data type of the data object.
-        distribution_strategy : string
-            Name of the used distribution_strategy
-        distributor : distributor
-            The distributor object which takes care of all distribution and
-            consolidation of the data.
-        shape : tuple of int
-            The global shape of the data
+    Raises
+    ------
+    ValueError
+        Raised if
+            * the supplied distribution strategy is not known,
+            * comm is None,
+            * different distribution strategies where given on the
+              individual nodes,
+            * different dtypes where given on the individual nodes,
+            * neither a non-0-dimensional global_data nor global_shape nor
+              hdf5 file supplied,
+            * global_shape == (),
+            * different global_shapes where given on the individual nodes,
+            * neither non-0-dimensional local_data nor local_shape nor
+              global d2o supplied,
+            * local_shape == ()
+            * the first entry of local_shape is not the same on all nodes,
 
-        Raises
-        ------
-        TypeError :
-            If the supplied distribution strategy is not known.
+    Notes
+    -----
+    The index is the d2o's global unique indentifier. One may use it in order
+    to assemble the corresponding local d2o objects on different nodes if
+    only one local object on a specific node is given.
+
+    In order to speed up the init process the distributor_factory checks
+    if the global_configuration object gc yields gc['d2o_init_checks'] == True.
+    If yes, all checks expensive checks are skipped; namely those which  need
+    mpi communication. Use this in order to get a fast init speed without
+    loosing d2o's init parsing logic.
+
+    Examples
+    --------
+    >>> a = np.arange(16, dtype=np.float).reshape((4,4))
+    >>> obj = distributed_data_object(a, dtype=np.complex)
+    >>> obj
+    <distributed_data_object>
+    array([[  0.+0.j,   1.+0.j,   2.+0.j,   3.+0.j],
+           [  4.+0.j,   5.+0.j,   6.+0.j,   7.+0.j],
+           [  8.+0.j,   9.+0.j,  10.+0.j,  11.+0.j],
+           [ 12.+0.j,  13.+0.j,  14.+0.j,  15.+0.j]])
+
 
     """
     def __init__(self, global_data=None, global_shape=None, dtype=None,
@@ -136,6 +218,15 @@ class distributed_data_object(object):
 
     @property
     def real(self):
+        """ Returns a d2o containing the real part of the d2o's elements.
+
+        Returns
+        -------
+        out : distributed_data_object
+            The output object. The new datatype is the one numpy yields when
+            taking the real part on the local data.
+        """
+
         new_data = self.get_local_data().real
         new_dtype = new_data.dtype
         new_d2o = self.copy_empty(dtype=new_dtype)
@@ -145,6 +236,15 @@ class distributed_data_object(object):
 
     @property
     def imag(self):
+        """ Returns a d2o containing the imaginary part of the d2o's elements.
+
+        Returns
+        -------
+        out : distributed_data_object
+            The output object. The new datatype is the one numpy yields when
+            taking the imaginary part on the local data.
+        """
+
         new_data = self.get_local_data().imag
         new_dtype = new_data.dtype
         new_d2o = self.copy_empty(dtype=new_dtype)
@@ -153,6 +253,12 @@ class distributed_data_object(object):
         return new_d2o
 
     def _fast_copy_empty(self):
+        """ Make a very fast low level copy of the d2o without its data.
+
+        This function is fast, because it uses EmptyD2o - a derived class from
+        distributed_data_object and then copies the __dict__ directly. Unlike
+        copy_empty, _fast_copy_empty will copy all attributes unchanged.
+        """
         # make an empty d2o
         new_copy = EmptyD2o()
         # repair its class
@@ -163,11 +269,43 @@ class distributed_data_object(object):
                 new_copy.__dict__[key] = value
             else:
                 new_copy.__dict__[key] = np.empty_like(value)
-
+        # Register the new d2o at the librarian in order to get a unique index
         new_copy.index = d2o_librarian.register(new_copy)
         return new_copy
 
     def copy(self, dtype=None, distribution_strategy=None, **kwargs):
+        """ Returns a full copy of the distributed data object.
+
+        If no keyword arguments are given, the returned object will be an
+        identical copy of the original d2o. By explicit specification one is
+        able to define the dtype and the distribution_strategy of the returned
+        d2o.
+
+        Parameters
+        ----------
+        dtype : type
+            The dtype that the new d2o will have. The data of the primary
+            d2o will be casted.
+        distribution_strategy : all supported distribution strategies
+            The distribution strategy the new d2o should have. If not None and
+            different from the original one, there will certainly be inter-node
+            communication.
+        **kwargs
+            Additional keyword arguments get passed to the used copy_empty
+            routine.
+
+        Returns
+        -------
+        out : distributed_data_object
+            The output object. It containes the old data, possibly casted to a
+            new datatype and distributed according to a new distribution
+            strategy
+
+        See Also
+        --------
+        copy_empty
+
+        """
         temp_d2o = self.copy_empty(dtype=dtype,
                                    distribution_strategy=distribution_strategy,
                                    **kwargs)
@@ -181,6 +319,39 @@ class distributed_data_object(object):
 
     def copy_empty(self, global_shape=None, local_shape=None, dtype=None,
                    distribution_strategy=None, **kwargs):
+        """ Returns an empty copy of the distributed data object.
+
+        If no keyword arguments are given, the returned object will be an
+        identical copy of the original d2o containing random data. By explicit
+        specification one is able to define the new dtype and
+        distribution_strategy of the returned d2o and to modify the new shape.
+
+        Parameters
+        ----------
+        global_shape : tuple of ints
+            The global shape that the new d2o shall have. Relevant for
+            global-type distribution strategies like 'equal' or 'fftw'.
+        local_shape : tuple of ints
+            The local shape that the new d2o shall have. Relevant for
+            local-type distribution strategies like 'freeform'.
+        dtype : type
+            The dtype that the new d2o will have.
+        distribution_strategy : all supported distribution strategies
+            The distribution strategy the new d2o should have.
+        **kwargs
+            Additional keyword arguments get passed to the init-call if the
+            full initialization of a new distributed_data_object is necessary
+
+        Returns
+        -------
+        out : distributed_data_object
+            The output object. It contains random data.
+
+        See Also
+        --------
+        copy
+
+        """
         if self.distribution_strategy == 'not' and \
                 distribution_strategy in STRATEGIES['local'] and \
                 local_shape is None:
@@ -746,7 +917,6 @@ class distributed_data_object(object):
                                    weights=local_weights,
                                    minlength=minlength)
 
-
         if self.distribution_strategy == 'not':
             return local_counts
         else:
@@ -1053,7 +1223,6 @@ class _distributor_factory(object):
         else:
             dset = None
 
-
         # Parse the datatype
         if distribution_strategy in ['not', 'equal', 'fftw'] and \
                 (dset is not None):
@@ -1141,9 +1310,6 @@ class _distributor_factory(object):
                 cleared_set = set(local_shape_list)
                 cleared_set.discard(())
                 if len(cleared_set) > 1:
-                    # if not any(x == () for x in map(np.shape, local_shape_list)):
-                    # if not all(x == local_shape_list[0] for x in
-                    # local_shape_list):
                     raise ValueError(about._errors.cstring(
                         "ERROR: All but the first entry of local_shape " +
                         "must be the same on all nodes!"))
@@ -1188,7 +1354,7 @@ class _distributor_factory(object):
     def get_distributor(self, distribution_strategy, comm, **kwargs):
         # check if the distribution strategy is known
         if distribution_strategy not in STRATEGIES['all']:
-            raise TypeError(about._errors.cstring(
+            raise ValueError(about._errors.cstring(
                 "ERROR: Unknown distribution strategy supplied."))
 
         # parse the kwargs
@@ -1925,7 +2091,7 @@ class _slicing_distributor(distributor):
 #            if not all(result[i] <= result[i + 1]
 #                       for i in xrange(len(result) - 1)):
 #                raise ValueError(about._errors.cstring(
-#                    "ERROR: The first dimemnsion of list_key must be sorted!"))
+#                   "ERROR: The first dimemnsion of list_key must be sorted!"))
 
             result = [result]
             for ii in xrange(1, len(from_list_key)):
@@ -1967,7 +2133,7 @@ class _slicing_distributor(distributor):
 #            if not all(result[0][i] <= result[0][i + 1]
 #                       for i in xrange(len(result[0]) - 1)):
 #                raise ValueError(about._errors.cstring(
-#                    "ERROR: The first dimemnsion of list_key must be sorted!"))
+#                   "ERROR: The first dimemnsion of list_key must be sorted!"))
 
             for ii in xrange(1, len(from_list_key)):
                 current = from_list_key[ii]
@@ -2212,7 +2378,7 @@ class _slicing_distributor(distributor):
 #                                             local_keys=True)
 #                    extracted_data = extracted_data.get_local_data()
 #
-##                    print ('boo', data_object.distribution_strategy)
+#
 
             # Case 3: First dimension fits directly and data_object is an
             # generic array
@@ -2971,33 +3137,7 @@ class d2o_slicing_iter(d2o_iter):
                                         self.d2o.data.flatten(),
                                         root=self.active_node)
 
+
 class EmptyD2o(distributed_data_object):
     def __init__(self):
         pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
