@@ -360,7 +360,8 @@ class distributed_data_object(object):
                                      dtype=dtype,
                                      distribution_strategy='equal',
                                      **kwargs)
-            return result.copy_empty(distribution_strategy='freeform')
+            return result.copy_empty(
+                distribution_strategy=distribution_strategy)
 
         if global_shape is None:
             global_shape = self.shape
@@ -394,6 +395,31 @@ class distributed_data_object(object):
         return temp_d2o
 
     def apply_scalar_function(self, function, inplace=False, dtype=None):
+        """ Maps a scalar function on each entry of an array.
+
+        The result of the function evaluation may be stored in the original
+        array or in a new array (default). Furthermore the dtype of the
+        returned array can be specified explicitly if inplace is set to False.
+
+        Parameters
+        ----------
+        function : callable
+            Will be applied to the array's entries. It will be the node's local
+            data array into function as a whole. If this fails, the numpy
+            vectorize function will be used.
+        inplace : boolean
+            Specifies if the result of the function evaluation should be stored
+            in the original array or not.
+        dtype : type
+            If inplace is set to False, it is possible to specify the return
+            d2o's dtype explicitly.
+
+        Returns
+        -------
+        out : distributed_data_object
+            Resulting d2o. This is either a newly created array or the primary
+            d2o itself.
+        """
         remember_hermitianQ = self.hermitian
 
         if inplace is True:
@@ -423,27 +449,73 @@ class distributed_data_object(object):
             temp.hermitian = False
         return temp
 
-    def apply_generator(self, generator):
-        self.set_local_data(generator(self.distributor.local_shape))
+    def apply_generator(self, generator, copy=False):
+        """ Evaluates generator(local_shape) and stores the result locally.
+
+        Parameters
+        ----------
+        generator : callable
+            This function must be able to process the node's local data shape
+            and return a numpy.ndarray of this very shape. This array is then 
+            stored as the local data array on each node.
+        copy : boolean
+            Specifies whether the self.set_local_data method is instructed to 
+            copy the result from generator or not.
+
+        Notes
+        -----
+        The generator function yields node-local results. Therefore it is 
+        assumed that the resulting overall d2o does not possess hermitian 
+        symmetry anymore. Therefore self.hermitian is set to False.
+                        
+        """
+        self.set_local_data(generator(self.distributor.local_shape), copy=copy)
         self.hermitian = False
 
     def __str__(self):
+        """ x.__str__() <==> str(x)"""
         return self.data.__str__()
 
     def __repr__(self):
+        """ x.__repr__() <==> repr(x)"""
         return '<distributed_data_object>\n' + self.data.__repr__()
 
     def _compare_helper(self, other, op):
-        result = self.copy_empty(dtype=np.bool_)
+        """ _compare_helper is used for <, <=, ==, !=, >= and >.
+        
+        It checks the class of `other` and then utilizes the appropriate 
+        methods of self. If `other` is not a scalar, numpy.ndarray or 
+        distributed_data_object this method will use numpy casting.
+        
+        Parameters
+        ----------
+        other : scalar, numpy.ndarray, distributed_data_object, array_like
+            This is the object that will be compared to self.
+        op : string
+            The name of the comparison function, e.g. '__ne__'.
+        
+        Returns
+        -------
+        result : boolean, distributed_data_object
+            If `other` was None, False will be returned. This follows the 
+            behaviour of numpy but will changed as soon as numpy changed their 
+            convention. In every other case a distributed_data_object with 
+            element-wise comparison results will be returned.
+
+        """
+        
+        if other is not None:
+            result = self.copy_empty(dtype=np.bool_)
+
         # Case 1: 'other' is a scalar
-        # -> make point-wise comparison
+        # -> make element-wise comparison
         if np.isscalar(other):
             result.set_local_data(
                 getattr(self.get_local_data(copy=False), op)(other))
             return result
 
         # Case 2: 'other' is a numpy array or a distributed_data_object
-        # -> extract the local data and make point-wise comparison
+        # -> extract the local data and make element-wise comparison
         elif isinstance(other, np.ndarray) or\
                 isinstance(other, distributed_data_object):
             temp_data = self.distributor.extract_local_data(other)
@@ -462,28 +534,107 @@ class distributed_data_object(object):
             return getattr(self, op)(temp_other)
 
     def __ne__(self, other):
+        """ x.__ne__(y) <==> x != y
+
+        See Also
+        --------
+        _compare_helper
+
+        """
         return self._compare_helper(other, '__ne__')
 
     def __lt__(self, other):
+        """ x.__lt__(y) <==> x < y
+
+        See Also
+        --------
+        _compare_helper
+
+        """
+
         return self._compare_helper(other, '__lt__')
 
     def __le__(self, other):
+        """ x.__le__(y) <==> x <= y
+
+        See Also
+        --------
+        _compare_helper
+
+        """
+
         return self._compare_helper(other, '__le__')
 
     def __eq__(self, other):
+        """ x.__eq__(y) <==> x == y
+
+        See Also
+        --------
+        _compare_helper
+
+        """
 
         return self._compare_helper(other, '__eq__')
 
     def __ge__(self, other):
+        """ x.__ge__(y) <==> x >= y
+
+        See Also
+        --------
+        _compare_helper
+
+        """
+
         return self._compare_helper(other, '__ge__')
 
     def __gt__(self, other):
+        """ x.__gt__(y) <==> x > y
+
+        See Also
+        --------
+        _compare_helper
+
+        """
+
         return self._compare_helper(other, '__gt__')
 
     def __iter__(self):
+        """ x.__iter__() <==> iter(x)
+
+        The __iter__ call returns an iterator it got from self.distributor.
+
+        See Also
+        --------
+        distributor.get_iter
+
+        """
         return self.distributor.get_iter(self)
 
     def equal(self, other):
+        """  Checks if `other` and `self` are structurally the same. 
+        
+        In contrast to the element-wise comparison with `__eq__`, `equal` 
+        checks more than only the equality of the array data. 
+        It checks the equality of
+            * shape
+            * dtype
+            * init_args
+            * init_kwargs
+            * distribution_strategy
+            * node's local data
+
+        Parameters
+        ----------
+        other : object
+            The object that will be compared to `self`.
+
+        Returns
+        -------
+        result : boolean
+            True if above conditions are met, False otherwise. 
+
+        """
+
         if other is None:
             return False
         try:
@@ -499,17 +650,33 @@ class distributed_data_object(object):
             return True
 
     def __pos__(self):
+        """ x.__pos__() <==> +x 
+        
+        Returns a (positive) copy of `self`.
+        """
+        
         temp_d2o = self.copy_empty()
-        temp_d2o.set_local_data(data=self.get_local_data(), copy=True)
+        temp_d2o.set_local_data(data=self.get_local_data().__pos__(), 
+                                copy=False)
         return temp_d2o
 
     def __neg__(self):
+        """ x.__neg__() <==> -x 
+        
+        Returns a negative copy of `self`.
+        """
+        
         temp_d2o = self.copy_empty()
         temp_d2o.set_local_data(data=self.get_local_data().__neg__(),
-                                copy=True)
+                                copy=False)
         return temp_d2o
 
     def __abs__(self):
+        """ x.__abs__() <==> abs(x)
+
+        Returns an absolute valued copy of `self`.
+        """
+
         # translate complex dtypes
         if self.dtype == np.dtype('complex64'):
             new_dtype = np.dtype('float32')
@@ -521,10 +688,33 @@ class distributed_data_object(object):
             new_dtype = self.dtype
         temp_d2o = self.copy_empty(dtype=new_dtype)
         temp_d2o.set_local_data(data=self.get_local_data().__abs__(),
-                                copy=True)
+                                copy=False)
         return temp_d2o
 
     def _builtin_helper(self, operator, other, inplace=False):
+        """ Used for various binary operations like +, -, *, /, **, *=, +=,...
+
+        _builtin_helper checks whether `other` is a scalar or an array and 
+        based on that extracts the locally relevant data from it. If `self`
+        is hermitian, _builtin_helper tries to conserve this flag; but without 
+        checking hermitianity explicitly. 
+
+        Parameters
+        ----------
+        operator : callable
+
+        other : scalar, array-like
+
+        inplace : boolean
+            If the result shall be saved in the data array of `self`. Used for 
+            +=, -=, etc...
+        Returns
+        -------
+        out : distributed_data_object
+            The distributed_data_object containing the computation's result.
+            Equals `self` if `inplace is True`.
+
+        """
         # Case 1: other is not a scalar
         if not (np.isscalar(other) or np.shape(other) == (1,)):
             try:
@@ -537,29 +727,18 @@ class distributed_data_object(object):
 
         # Case 2: other is a scalar
         else:
+            # if other is a scalar packed in a d2o, extract its value.
             if isinstance(other, distributed_data_object):
-                other_is_real = other.isreal()
-            else:
-                other_is_real = np.isreal(other)
+                other = other[0]
 
-            if other_is_real:
+            if np.isrealobj(other): 
                 hermitian_Q = self.hermitian
             else:
                 hermitian_Q = False
-#            #Case 2.1 self is real
-#            if (self.dtype not in (np.dtype('complex128'),
-#                                   np.dtype('complex256'))):
-#                hermitian_Q = self.hermitian
-#            elif
-#
-#            # Case 3: other is complex
-#            else:
-#                hermitian_Q = False
-#                temp_data = operator(other)
-#
 
             temp_data = operator(other)
-        # write the new data into a new distributed_data_object
+        
+        # select the return-distributed_data_object
         if inplace is True:
             temp_d2o = self
         else:
@@ -567,53 +746,146 @@ class distributed_data_object(object):
             new_dtype = np.dtype(np.find_common_type((self.dtype,),
                                                      (temp_data.dtype,)))
             temp_d2o = self.copy_empty(dtype=new_dtype)
+        
+        # write the new data into the return-distributed_data_object
         temp_d2o.set_local_data(data=temp_data, copy=False)
         temp_d2o.hermitian = hermitian_Q
         return temp_d2o
 
     def __add__(self, other):
+        """ x.__add__(y) <==> x+y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__add__, other)
 
     def __radd__(self, other):
+        """ x.__radd__(y) <==> y+x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__radd__, other)
 
     def __iadd__(self, other):
+        """ x.__iadd__(y) <==> x+=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__iadd__,
                                     other,
                                     inplace=True)
 
     def __sub__(self, other):
+        """ x.__sub__(y) <==> x-y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__sub__, other)
 
     def __rsub__(self, other):
+        """ x.__rsub__(y) <==> y-x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__rsub__, other)
 
     def __isub__(self, other):
+        """ x.__isub__(y) <==> x-=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__isub__,
                                     other,
                                     inplace=True)
 
     def __div__(self, other):
+        """ x.__div__(y) <==> x/y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__div__, other)
 
     def __truediv__(self, other):
+        """ x.__truediv__(y) <==> x/y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self.__div__(other)
 
     def __rdiv__(self, other):
+        """ x.__rdiv__(y) <==> y/x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__rdiv__, other)
 
     def __rtruediv__(self, other):
+        """ x.__rtruediv__(y) <==> y/x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self.__rdiv__(other)
 
     def __idiv__(self, other):
+        """ x.__idiv__(y) <==> x/=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__idiv__,
                                     other,
                                     inplace=True)
 
     def __itruediv__(self, other):
+        """ x.__itruediv__(y) <==> x/=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self.__idiv__(other)
 
     def __floordiv__(self, other):
+        """ x.__floordiv__(y) <==> x//y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__floordiv__,
                                     other)
 
@@ -950,13 +1222,15 @@ class distributed_data_object(object):
 
         """
         self.hermitian = hermitian
-        if copy is True:
-            self.data[:] = data.reshape(self.local_shape)
-        else:
-            self.data = np.array(data,
+        casted_data = np.array(data,
                                  dtype=self.dtype,
                                  copy=False,
                                  order='C').reshape(self.local_shape)
+
+        if copy is True:
+            self.data[:] = casted_data
+        else:
+            self.data = casted_data
 
     def set_data(self, data, to_key, from_key=None, local_keys=False,
                  hermitian=False, copy=True, **kwargs):
