@@ -42,7 +42,7 @@ from matplotlib.ticker import LogFormatter as lf
 from nifty.nifty_core import space,\
                              point_space,\
                              field
-from keepers import about,\
+from nifty.keepers import about,\
                     global_configuration as gc,\
                     global_dependency_injector as gdi
 from nifty.nifty_paradict import lm_space_paradict,\
