@@ -21,9 +21,12 @@ variable_fft_module = variable('fft_module',
                                ['pyfftw', 'gfft', 'gfft_dummy'],
                                lambda z: z in global_dependency_injector)
 
+# gl_space needs libsharp
 variable_lm2gl = variable('lm2gl',
                           [True, False],
-                          lambda z: isinstance(z, bool),
+                          lambda z: (('libsharp_wrapper_gl' in
+                                      global_dependency_injector)
+                                     if z else True) and isinstance(z, bool),
                           genus='boolean')
 
 variable_use_healpy = variable(
