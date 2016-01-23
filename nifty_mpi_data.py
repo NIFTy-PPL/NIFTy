@@ -890,54 +890,149 @@ class distributed_data_object(object):
                                     other)
 
     def __rfloordiv__(self, other):
+        """ x.__rfloordiv__(y) <==> y//x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__rfloordiv__,
                                     other)
 
     def __ifloordiv__(self, other):
+        """ x.__ifloordiv__(y) <==> x//=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(
             self.get_local_data().__ifloordiv__, other,
             inplace=True)
 
     def __mul__(self, other):
+        """ x.__mul__(y) <==> x*y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__mul__, other)
 
     def __rmul__(self, other):
+        """ x.__rmul__(y) <==> y*x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__rmul__, other)
 
     def __imul__(self, other):
+        """ x.__imul__(y) <==> x*=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__imul__,
                                     other,
                                     inplace=True)
 
     def __pow__(self, other):
+        """ x.__pow__(y) <==> x**y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__pow__, other)
 
     def __rpow__(self, other):
+        """ x.__rpow__(y) <==> y**x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__rpow__, other)
 
     def __ipow__(self, other):
+        """ x.__ipow__(y) <==> x**=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__ipow__,
                                     other,
                                     inplace=True)
 
     def __mod__(self, other):
+        """ x.__mod__(y) <==> x%y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__mod__, other)
 
     def __rmod__(self, other):
+        """ x.__rmod__(y) <==> y%x
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__rmod__, other)
 
     def __imod__(self, other):
+        """ x.__imod__(y) <==> x%=y
+
+        See Also
+        --------
+        _builtin_helper
+        """
+
         return self._builtin_helper(self.get_local_data().__imod__,
                                     other,
                                     inplace=True)
 
     def __len__(self):
+        """ Returns the length of the first axis."""
+
         return self.shape[0]
 
     def get_dim(self):
+        """" Returns the total number of entries in the array.
+
+        This is equivalent to the product of the shape.
+        """
+
         return np.prod(self.shape)
 
     def vdot(self, other):
+        """ Returns the numpy.vdot analogous product of two arrays.
+
+        If `self` is a complex array, the complex conjugate of it will be used.
+        Internally the numpy.vdot function is used for the d2o's local data, 
+        and the individual results get MPI-reduced. 
+
+        See Also
+        --------
+        numpy.vdot
+        """
+
         other = self.distributor.extract_local_data(other)
         local_vdot = np.array([np.vdot(self.get_local_data(), other)])
         global_vdot = np.empty_like(local_vdot)
@@ -951,12 +1046,40 @@ class distributed_data_object(object):
         return global_vdot[0]
 
     def __getitem__(self, key):
+        """ x.__getitem__(y) <==> x[y] <==> x.get_data(y) """
         return self.get_data(key)
 
     def __setitem__(self, key, data):
+        """ x.__setitem__(i, y) <==> x[i]=y <==> x.set_data(y, i) """
         self.set_data(data, key)
 
     def _contraction_helper(self, function, **kwargs):
+        """ Used for various operations like min, max, sum, prod, mean,...
+
+        _builtin_helper checks whether the local node's data array is empty,
+        then applies the given function on the local data, collects the 
+        results, and then applies the function to this with the keyword axis=0.
+
+        Parameters
+        ----------
+        function : callable
+            This object will be applied to the local data array.
+
+        **kwargs
+            Additional keyword arguments will be passed to the first `function`
+            call. 
+
+        Returns
+        -------
+        out : 
+            The return object of `function`.
+
+        Raises
+        ------
+        ValueError 
+            Raised if the d2o's shape equals (0,).
+        """
+
         if self.shape == (0,):
             raise ValueError("ERROR: Zero-size array to reduction operation " +
                              "which has no identity")
@@ -979,21 +1102,50 @@ class distributed_data_object(object):
             return result
 
     def min(self, **kwargs):
+        """ x.min() <==> x.amin() """
         return self.amin(**kwargs)
 
     def amin(self, **kwargs):
+        """ Returns the minimum of an array. 
+        
+        See Also
+        --------
+        numpy.amin()
+        """
+
         return self._contraction_helper(np.amin, **kwargs)
 
     def nanmin(self, **kwargs):
+        """ Returns the minimum of an array ignoring all NaNs.
+        
+        See Also
+        --------
+        numpy.nanmin()
+        """
+
         return self._contraction_helper(np.nanmin, **kwargs)
 
     def max(self, **kwargs):
+        """ x.max() <==> x.amax() """
         return self.amax(**kwargs)
 
     def amax(self, **kwargs):
+        """ Returns the maximum of an array. 
+        
+        See Also
+        --------
+        numpy.amax()
+        """
+ 
         return self._contraction_helper(np.amax, **kwargs)
 
     def nanmax(self, **kwargs):
+        """ Returns the maximum of an array ignoring all NaNs.
+        
+        See Also
+        --------
+        numpy.nanmax()
+        """
         return self._contraction_helper(np.nanmax, **kwargs)
 
     def sum(self, **kwargs):
