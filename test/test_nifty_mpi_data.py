@@ -1025,7 +1025,7 @@ class Test_non_local_keys(unittest.TestCase):
 ###############################################################################
 ###############################################################################
 
-class Test_inject(unittest.TestCase):
+class Test_set_data_via_injection(unittest.TestCase):
 
     @parameterized.expand(
         itertools.product([
@@ -1048,7 +1048,7 @@ class Test_inject(unittest.TestCase):
         ],
             all_distribution_strategies
         ), testcase_func_name=custom_name_func)
-    def test_inject(self, (global_shape_1, slice_tuple_1,
+    def test_set_data_via_injection(self, (global_shape_1, slice_tuple_1,
                            global_shape_2, slice_tuple_2),
                     distribution_strategy):
         dtype = np.dtype('float')
@@ -1058,7 +1058,7 @@ class Test_inject(unittest.TestCase):
         (b, p) = generate_data(global_shape_2, dtype,
                                distribution_strategy)
 
-        obj.inject(to_key=slice_tuple_1,
+        obj.set_data(to_key=slice_tuple_1,
                    data=p,
                    from_key=slice_tuple_2)
         a[slice_tuple_1] = b[slice_tuple_2]
@@ -1272,7 +1272,7 @@ class Test_unary_and_binary_operations(unittest.TestCase):
                             global_shape,
                             np.dtype('complex'),
                             distribution_strategy=stored_distribution_strategy)
-            p.inject((slice(None),), a, (slice(None),))
+            p.set_data(from_key=(slice(None),), data=a, to_key=(slice(None),))
             obj = p
 
         assert_equal(obj.isreal().get_full_data(), np.isreal(a))

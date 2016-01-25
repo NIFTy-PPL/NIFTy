@@ -1204,7 +1204,9 @@ class point_space(space):
             if to_copy:
                 temp = x.copy_empty(dtype=dtype,
                                     distribution_strategy=self.datamodel)
-                temp.inject((slice(None),), x, (slice(None),))
+                temp.set_data(to_key=(slice(None),), 
+                              data=x, 
+                              from_key=(slice(None),))
                 temp.hermitian = x.hermitian
                 x = temp
 

@@ -64,8 +64,8 @@ def _hermitianize_inverter(x):
         slice_inverter[i] = slice(None, 0, -1)
 
         try:
-            y.inject(to_key=slice_picker, data=y,
-                     from_key=slice_inverter)
+            y.set_data(to_key=slice_picker, data=y,
+                       from_key=slice_inverter)
         except(AttributeError):
             y[slice_picker] = y[slice_inverter]
     return y

@@ -171,8 +171,11 @@ class distributed_data_object(object):
            [  8.+0.j,   9.+0.j,  10.+0.j,  11.+0.j],
            [ 12.+0.j,  13.+0.j,  14.+0.j,  15.+0.j]])
 
-
+    See Also
+    --------
+    distributor 
     """
+
     def __init__(self, global_data=None, global_shape=None, dtype=None,
                  local_data=None, local_shape=None,
                  distribution_strategy=_default_strategy, hermitian=False,
@@ -251,6 +254,15 @@ class distributed_data_object(object):
         new_d2o.set_local_data(data=new_data,
                                hermitian=self.hermitian)
         return new_d2o
+
+    @property 
+    def hermitian(self):
+        return self._hermitian
+
+    @hermitian.setter
+    def hermitian(self, value):
+        self._hermitian = bool(value)
+
 
     def _fast_copy_empty(self):
         """ Make a very fast low level copy of the d2o without its data.
@@ -1110,7 +1122,7 @@ class distributed_data_object(object):
         
         See Also
         --------
-        numpy.amin()
+        numpy.amin
         """
 
         return self._contraction_helper(np.amin, **kwargs)
@@ -1120,7 +1132,7 @@ class distributed_data_object(object):
         
         See Also
         --------
-        numpy.nanmin()
+        numpy.nanmin
         """
 
         return self._contraction_helper(np.nanmin, **kwargs)
@@ -1134,7 +1146,7 @@ class distributed_data_object(object):
         
         See Also
         --------
-        numpy.amax()
+        numpy.amax
         """
  
         return self._contraction_helper(np.amax, **kwargs)
@@ -1144,21 +1156,49 @@ class distributed_data_object(object):
         
         See Also
         --------
-        numpy.nanmax()
+        numpy.nanmax
         """
+
         return self._contraction_helper(np.nanmax, **kwargs)
 
     def sum(self, **kwargs):
+        """ Sums the array elements.
+        
+        See Also
+        --------
+        numpy.sum 
+        """
+
         if self.shape == (0,):
             return self.dtype.type(0)
         return self._contraction_helper(np.sum, **kwargs)
 
     def prod(self, **kwargs):
+        """ Multiplies the array elements.
+
+        See Also
+        --------
+        numpy.prod
+        """
+
         if self.shape == (0,):
             return self.dtype.type(1)
         return self._contraction_helper(np.prod, **kwargs)
 
     def mean(self, power=1):
+        """ Returns the mean of the d2o's elements. 
+
+        Parameters
+        ----------
+        power : scalar
+            Used for point-wise exponentiation of the array's elements before
+            computing the mean: mean(data**power)
+        
+        Returns
+        -------
+        mean : scalar
+            The (pre-powered) mean-value of the array.
+        """
         if self.shape == (0,):
             return np.mean(np.array([], dtype=self.dtype))
         # compute the local means and the weights for the mean-mean.
@@ -1166,7 +1206,10 @@ class distributed_data_object(object):
             local_mean = 0
             include = False
         else:
-            local_mean = np.mean(self.data**power)
+            if power != 1:
+                local_mean = np.mean(self.data**power)
+            else:
+                local_mean = np.mean(self.data)
             include = True
 
         local_weight = np.prod(self.data.shape)
@@ -1192,6 +1235,11 @@ class distributed_data_object(object):
             return global_mean
 
     def var(self):
+        """ Returns the variance of the d2o's elements. 
+        
+        Internally the formula <x**2> - <x>**2 is used.
+        """
+
         if self.shape == (0,):
             return np.var(np.array([], dtype=self.dtype))
 
@@ -1204,6 +1252,7 @@ class distributed_data_object(object):
         return mean_of_the_square - square_of_the_mean
 
     def std(self):
+        """ Returns the standard deviation of the d2o's elements. """
         if self.shape == (0,):
             return np.std(np.array([], dtype=self.dtype))
         if self.shape == (0,):
@@ -1211,6 +1260,12 @@ class distributed_data_object(object):
         return np.sqrt(self.var())
 
     def argmin(self):
+        """ Returns the (flat) index of the d2o's smallest value. 
+        
+        See Also:
+        argmax, argmin_nonflat, argmax_nonflat
+        """
+
         if self.shape == (0,):
             raise ValueError(
                 "ERROR: attempt to get argmin of an empty object")
@@ -1236,6 +1291,12 @@ class distributed_data_object(object):
         return np.int(local_argmin_list[0][1])
 
     def argmax(self):
+        """ Returns the (flat) index of the d2o's biggest value. 
+        
+        See Also:
+        argmin, argmin_nonflat, argmax_nonflat
+        """
+
         if self.shape == (0,):
             raise ValueError(
                 "ERROR: attempt to get argmax of an empty object")
@@ -1260,12 +1321,26 @@ class distributed_data_object(object):
         return np.int(local_argmax_list[0][1])
 
     def argmin_nonflat(self):
+        """ Returns the unraveld index of the d2o's smallest value. 
+        
+        See Also:
+        argmin, argmax, argmax_nonflat
+        """
+
         return np.unravel_index(self.argmin(), self.shape)
 
     def argmax_nonflat(self):
+        """ Returns the unraveld index of the d2o's biggest value. 
+        
+        See Also:
+        argmin, argmax, argmin_nonflat
+        """
+
         return np.unravel_index(self.argmax(), self.shape)
 
     def conjugate(self):
+        """ Returns the element-wise complex conjugate. """
+
         temp_d2o = self.copy_empty()
         temp_data = np.conj(self.get_local_data())
         temp_d2o.set_local_data(temp_data)
@@ -1273,56 +1348,162 @@ class distributed_data_object(object):
         return temp_d2o
 
     def conj(self):
+        """ Returns the element-wise complex conjugate. 
+        
+        This function essentially calls the `d2o.conjugate` method. 
+        """
+
         return self.conjugate()
 
     def median(self):
+        """ Returns the d2o element's median. 
+
+        The median is computed by collecting the full d2o data and then passing
+        it to the numpy.median function. Hence this implementation is very 
+        expensive. 
+        """
+
         about.warnings.cprint(
             "WARNING: The current implementation of median is very expensive!")
         median = np.median(self.get_full_data())
         return median
 
     def _is_helper(self, function):
+        """ _is_helper is used for functions like isreal, isinf, isfinite,...
+
+        Parameters
+        ----------
+        function : callable
+            The function that will be applied to the node's local data.
+
+        Returns
+        -------
+        out : distributed_data_object
+            A copy of `self` of datatype boolean containing the result of 
+            `function(self.data)`.
+        """
+
         temp_d2o = self.copy_empty(dtype=np.dtype('bool'))
         temp_d2o.set_local_data(function(self.data))
         return temp_d2o
 
     def iscomplex(self):
+        """ Returns a boolean copy of `self`, where True if element is complex.
+        
+        See Also
+        --------
+        isreal
+        """
+
         return self._is_helper(np.iscomplex)
 
     def isreal(self):
+        """ Returns a boolean copy of `self`, where True if element is real.
+        
+        See Also
+        --------
+        iscomplex
+        """
+
         return self._is_helper(np.isreal)
 
     def isnan(self):
+        """ Returns a boolean copy of `self`, where True if element is NaN.
+        
+        See Also
+        --------
+        isinf
+        isfinite
+        """
+
         return self._is_helper(np.isnan)
 
     def isinf(self):
+        """ Returns a boolean copy of `self`, where True if element is +/-inf.
+        
+        See Also
+        --------
+        isnan
+        isfinite
+        """
         return self._is_helper(np.isinf)
 
     def isfinite(self):
+        """ Returns a boolean copy of `self`, where True if element != +/-inf.
+        
+        See Also
+        --------
+        isnan
+        isinf
+        """
         return self._is_helper(np.isfinite)
 
     def nan_to_num(self):
+        """ Replace nan with zero and inf with finite numbers.
+
+        Returns a copy of `self` replacing NaN-entries with zero, (positive) 
+        infinity with a very large number and negative infinity with a very 
+        small (or negative) number.
+        
+        See Also
+        --------
+        isnan
+        isinf
+        isfinite
+        """
         temp_d2o = self.copy_empty()
         temp_d2o.set_local_data(np.nan_to_num(self.data))
         return temp_d2o
 
     def all(self):
+        """ Returns True if all elements of an array evaluate to True. """
+
         local_all = np.all(self.get_local_data())
         global_all = self.distributor._allgather(local_all)
         return np.all(global_all)
 
     def any(self):
+        """ Returns True if any element of an array evaluate to True. """
+
         local_any = np.any(self.get_local_data())
         global_any = self.distributor._allgather(local_any)
         return np.any(global_any)
 
     def unique(self):
+        """ Returns a `numpy.ndarray` holding the d2o's unique elements. """
+
         local_unique = np.unique(self.get_local_data())
         global_unique = self.distributor._allgather(local_unique)
         global_unique = np.concatenate(global_unique)
         return np.unique(global_unique)
 
     def bincount(self, weights=None, minlength=None):
+        """ Count weighted number of occurrences of each value in the d2o. 
+        
+        The number of integer bins is `max(self.amax()+1, minlength)`.  
+
+        Parameters
+        ----------
+        weights : array-like, optional
+            An array of the same shape as `self`.
+        minlength : int, optional
+            A minimum number of bins for the output array.
+
+        Returns
+        -------
+        out : numpy.ndarray of ints
+            The result of binning `self`.
+
+        Raises
+        ------
+        TypeError
+            If the type of `self` is float or complex. 
+
+        See Also
+        --------
+        numpy.bincount
+        """
+
         if self.dtype not in [np.dtype('int16'), np.dtype('int32'),
                               np.dtype('int64'),  np.dtype('uint16'),
                               np.dtype('uint32'), np.dtype('uint64')]:
@@ -1355,29 +1536,53 @@ class distributed_data_object(object):
             return counts
 
     def where(self):
+        """ Return the indices where `self` is True. 
+        
+        Returns
+        -------
+        out : list of d2os
+            The length of the list equals the number of axes `self` has. The
+            elements of the list are d2o's containing the x_i'th coordinate
+            of the elments of `self`, which were non-zero. 
+        """ 
+
         return self.distributor.where(self.data)
 
     def set_local_data(self, data, hermitian=False, copy=True):
+        """ Writes data directly to the node's local data array. 
+
+        No distribution is done. The shape of the input data must fit the 
+        local data's shape exactly. 
+            
+        Parameters
+        ----------
+        data : array-like
+            The data that will be stored in `self.data`. The input data will be
+            casted to the d2o's dtype and to C-order.
+        
+        hermitian : boolean, optional (False)
+            The d2o's hermitian attribute will be set to this value.
+
+        copy : boolean, optional (True)
+            If False, the copying of `data` will be tried to be avoided. If 
+            True, it is guaranteed, that `data` will be copied.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        get_local_data
+        set_data
+        set_full_data
         """
-            Stores data directly in the local data attribute. No distribution
-            is done. The shape of the data must fit the local data attributes
-            shape.
 
-            Parameters
-            ----------
-            data : tuple, list, numpy.ndarray
-                The data which should be stored in the local data attribute.
-
-            Returns
-            -------
-            None
-
-        """
         self.hermitian = hermitian
         casted_data = np.array(data,
-                                 dtype=self.dtype,
-                                 copy=False,
-                                 order='C').reshape(self.local_shape)
+                               dtype=self.dtype,
+                               copy=False,
+                               order='C').reshape(self.local_shape)
 
         if copy is True:
             self.data[:] = casted_data
@@ -1386,25 +1591,64 @@ class distributed_data_object(object):
 
     def set_data(self, data, to_key, from_key=None, local_keys=False,
                  hermitian=False, copy=True, **kwargs):
+        """ Takes the supplied `data` and distributes it to the nodes. 
+
+        Essentially this method behaves like `self[to_key] = data[from_key]`. 
+        In order to makes this process efficient, the built-in distributors
+        do not evaluate the object `data[from_key]`explicitly. Instead, the 
+        individual nodes check for the self-affecting part of `to_key`, then 
+        compute the corresponding part of `from_key` and extract this 
+        localized part from `data`. 
+
+        By default it is assumed that all nodes got the same `data`-objects:
+        Either the same integer/list/tuple/ndarray or the individual local 
+        instance of the same distributed_data_object. Also they assume, that 
+        the `key` objects are the same on all nodes. In case of d2o's as data-
+        and/or key-objects this is important, otherwise MPI-calls from 
+        different d2os will be mixed and therefore produce randomly wrong 
+        results or a deadlock. If one likes to use node-individual data- and 
+        key-objects, the switch `local_keys` must be set to True. Then the
+        individual objects will be process one by one and the relevant parts 
+        transported to the respective nodes.         
+
+        Parameters
+        ----------
+        data : scalar or array-like
+            Will be distributed to the individual nodes. If scalar, all entries
+            specified by `to_key` will be set this this value. 
+        to_key : indexing-key like
+            Specifies where the data should be stored to. Follows the 
+            conventions of numpy indexing. Therefore allowed types are 
+            `integer`, `slice`, `tuple of integers and slices`, `boolean 
+            array-likes` and `list of index array-like`.
+        from_key : indexing-key like, optional (None)
+            The key which specifies the source-data via `data[from_key]`. 
+        local_keys : boolean, optional (False)
+            Specifies whether all nodes got the same data- and key-objects or
+            not. See the descripion above. 
+        hermitian : boolean, optional (False)
+            The `hermitian` attribute of `self` is set to this value. As the 
+            default is False, a d2o will lose its potentential hermitianity.
+            The behaviour is like that, as a write operation in general 
+            will violate hermitian symmetry. 
+        copy : boolean, optional (True)
+            If False, it will be tried to avoid data copying. If True, it is 
+            guaranteed that `data` will be copied. 
+        **kwargs
+            Additional keyword-arguments are passed to the `disperse_data`
+            method of the distributor. 
+              
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        get_data
+        set_local_data
+        set_full_data
         """
-            Stores the supplied data in the region which is specified by key.
-            The data is distributed according to the distribution strategy. If
-            the individual nodes get different key-arguments. Their data is
-            processed one-by-one.
 
-            Parameters
-            ----------
-            data : tuple, list, numpy.ndarray
-                The data which should be distributed.
-            key : int, slice, tuple of int or slice
-                The key is the object which specifies the region, where data
-                will be stored in.
-
-            Returns
-            -------
-            None
-
-        """
         self.hermitian = hermitian
         self.distributor.disperse_data(data=self.data,
                                        to_key=to_key,
@@ -1415,46 +1659,66 @@ class distributed_data_object(object):
                                        **kwargs)
 
     def set_full_data(self, data, hermitian=False, copy=True, **kwargs):
+        """ Distributes `data` among the nodes. 
+      
+        The shapes of `data` and `self` must match. This method behaves similar 
+        to set_data(data, to_key=slice(None)). But as no slice- and/or 
+        indexing-arithmetic must be done it is faster. 
+        
+        Parameters
+        ----------
+        data : array-like
+            The full data set, that will be written into `self`.
+        hermitian : boolean, optional (False)
+            The `hermitian` attribute of `self` is set to this value. As the 
+            default is False, a d2o will lose its potentential hermitianity.
+            The behaviour is like that, as the supplied `data` is not 
+            guaranteed to have hermitian symmetry. 
+        copy : boolean, optional (True)
+            If True it is guaranteed that the input data will be copied. If 
+            False copying is tried to be avoided.
+        **kwargs
+            Additional keyword-arguments are passed to the distributor's 
+            `distribute_data` method.
+
+        Returns
+        -------
+        None
+
+        See Also
+        --------
+        get_full_data
+        set_data
+        set_local_data
         """
-            Distributes the supplied data to the nodes. The shape of data must
-            match the shape of the distributed_data_object.
 
-            Parameters
-            ----------
-            data : tuple, list, numpy.ndarray
-                The data which should be distributed.
-
-            Notes
-            -----
-            set_full_data(foo) is equivalent to set_data(foo,slice(None)) but
-            faster.
-
-            Returns
-            -------
-            None
-
-        """
         self.hermitian = hermitian
         self.data = self.distributor.distribute_data(data=data, copy=copy,
                                                      **kwargs)
 
-    def get_local_data(self, key=(slice(None),), copy=True):
+    def get_local_data(self, copy=True):
+        """ Returns the node's local data array.
+
+        Parameters
+        ----------
+        copy : boolean, optional (True)
+            If True, a copy of `self.data` is returned, else `self.data` 
+            itself.           
+
+        Returns
+        -------
+        data : numpy.ndarray
+            The node's local data array (or a copy of it). 
+           
+        See Also
+        --------
+        set_local_data
+        get_data
+        get_full_data
         """
-            Loads data directly from the local data attribute. No consolidation
-            is done.
 
-            Parameters
-            ----------
-            key : int, slice, tuple of int or slice
-                The key which will be used to access the data.
-
-            Returns
-            -------
-            self.data[key] : numpy.ndarray
-
-        """
         if copy is True:
-            return self.data[key]
+            return np.copy(self.data)
         if copy is False:
             return self.data
 
@@ -1517,11 +1781,11 @@ class distributed_data_object(object):
         return self.distributor.consolidate_data(self.data,
                                                  target_rank=target_rank)
 
-    def inject(self, to_key=(slice(None),), data=None,
-               from_key=(slice(None),)):
-        if data is None:
-            return self
-        self.distributor.inject(self.data, to_key, data, from_key)
+    #def inject(self, to_key=(slice(None),), data=None,
+    #           from_key=(slice(None),)):
+    #    if data is None:
+    #        return self
+    #    self.distributor.inject(self.data, to_key, data, from_key)
 
     def flatten(self, inplace=False):
         flat_data = self.distributor.flatten(self.data, inplace=inplace)
@@ -1852,30 +2116,30 @@ def _infer_key_type(key):
 
 class distributor(object):
 
-    def inject(self, data, to_slices, data_update, from_slices,
-               **kwargs):
-        # check if to_key and from_key are completely built of slices
-        if not np.all(
-                np.vectorize(lambda x: isinstance(x, slice))(to_slices)):
-            raise ValueError(about._errors.cstring(
-                "ERROR: The to_slices argument must be a list or " +
-                "tuple of slices!")
-            )
+    #def inject(self, data, to_slices, data_update, from_slices,
+    #           **kwargs):
+    #    # check if to_key and from_key are completely built of slices
+    #    if not np.all(
+    #            np.vectorize(lambda x: isinstance(x, slice))(to_slices)):
+    #        raise ValueError(about._errors.cstring(
+    #            "ERROR: The to_slices argument must be a list or " +
+    #            "tuple of slices!")
+    #        )
 
-        if not np.all(
-                np.vectorize(lambda x: isinstance(x, slice))(from_slices)):
-            raise ValueError(about._errors.cstring(
-                "ERROR: The from_slices argument must be a list or " +
-                "tuple of slices!")
-            )
+    #    if not np.all(
+    #            np.vectorize(lambda x: isinstance(x, slice))(from_slices)):
+    #        raise ValueError(about._errors.cstring(
+    #            "ERROR: The from_slices argument must be a list or " +
+    #            "tuple of slices!")
+    #        )
 
-        to_slices = tuple(to_slices)
-        from_slices = tuple(from_slices)
-        self.disperse_data(data=data,
-                           to_key=to_slices,
-                           data_update=data_update,
-                           from_key=from_slices,
-                           **kwargs)
+    #    to_slices = tuple(to_slices)
+    #    from_slices = tuple(from_slices)
+    #    self.disperse_data(data=data,
+    #                       to_key=to_slices,
+    #                       data_update=data_update,
+    #                       from_key=from_slices,
+    #                       **kwargs)
 
     def disperse_data(self, data, to_key, data_update, from_key=None,
                       local_keys=False, copy=True, **kwargs):
