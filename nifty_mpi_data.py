@@ -71,7 +71,7 @@ class distributed_data_object(object):
     local_shape : tuple of ints
         Used with local-type distribution strategies. If no local_data is
         supplied, local_shape will be used.
-    distribution_strategy : {'fftw', 'equal', 'not', 'freeform'}, optional
+    distribution_strategy : optional[{'fftw', 'equal', 'not', 'freeform'}]
         Specifies which distributor will be created and used.
         'fftw'      uses the distribution strategy of pyfftw,
         'equal'     tries to  distribute the data as uniform as possible
@@ -134,19 +134,19 @@ class distributed_data_object(object):
     ------
     ValueError
         Raised if
-            * the supplied distribution strategy is not known,
-            * comm is None,
+            * the supplied distribution strategy is not known
+            * comm is None
             * different distribution strategies where given on the
-              individual nodes,
-            * different dtypes where given on the individual nodes,
+              individual nodes
+            * different dtypes where given on the individual nodes
             * neither a non-0-dimensional global_data nor global_shape nor
-              hdf5 file supplied,
-            * global_shape == (),
-            * different global_shapes where given on the individual nodes,
+              hdf5 file supplied
+            * global_shape == ()
+            * different global_shapes where given on the individual nodes
             * neither non-0-dimensional local_data nor local_shape nor
-              global d2o supplied,
+              global d2o supplied
             * local_shape == ()
-            * the first entry of local_shape is not the same on all nodes,
+            * the first entry of local_shape is not the same on all nodes
 
     Notes
     -----
@@ -1484,9 +1484,9 @@ class distributed_data_object(object):
 
         Parameters
         ----------
-        weights : array-like, optional
+        weights : optional[array-like]
             An array of the same shape as `self`.
-        minlength : int, optional
+        minlength : optional[int]
             A minimum number of bins for the output array.
 
         Returns
@@ -1560,10 +1560,10 @@ class distributed_data_object(object):
             The data that will be stored in `self.data`. The input data will be
             casted to the d2o's dtype and to C-order.
         
-        hermitian : boolean, optional (False)
+        hermitian : optional[boolean] 
             The d2o's hermitian attribute will be set to this value.
 
-        copy : boolean, optional (True)
+        copy : optional[boolean] 
             If False, the copying of `data` will be tried to be avoided. If 
             True, it is guaranteed, that `data` will be copied.
 
@@ -1593,15 +1593,15 @@ class distributed_data_object(object):
                  hermitian=False, copy=True, **kwargs):
         """ Takes the supplied `data` and distributes it to the nodes. 
 
-        Essentially this method behaves like `self[to_key] = data[from_key]`. 
+        Essentially this method behaves like `d2o[to_key] = data[from_key]`. 
         In order to makes this process efficient, the built-in distributors
-        do not evaluate the object `data[from_key]`explicitly. Instead, the 
+        do not evaluate the object `d2o[from_key]` explicitly. Instead, the 
         individual nodes check for the self-affecting part of `to_key`, then 
         compute the corresponding part of `from_key` and extract this 
         localized part from `data`. 
 
         By default it is assumed that all nodes got the same `data`-objects:
-        Either the same integer/list/tuple/ndarray or the individual local 
+        either the same integer/list/tuple/ndarray or the individual local 
         instance of the same distributed_data_object. Also they assume, that 
         the `key` objects are the same on all nodes. In case of d2o's as data-
         and/or key-objects this is important, otherwise MPI-calls from 
@@ -1621,17 +1621,17 @@ class distributed_data_object(object):
             conventions of numpy indexing. Therefore allowed types are 
             `integer`, `slice`, `tuple of integers and slices`, `boolean 
             array-likes` and `list of index array-like`.
-        from_key : indexing-key like, optional (None)
+        from_key : optional[indexing-key like]
             The key which specifies the source-data via `data[from_key]`. 
-        local_keys : boolean, optional (False)
+        local_keys : optional[boolean] 
             Specifies whether all nodes got the same data- and key-objects or
             not. See the descripion above. 
-        hermitian : boolean, optional (False)
+        hermitian : optional[boolean]
             The `hermitian` attribute of `self` is set to this value. As the 
             default is False, a d2o will lose its potentential hermitianity.
             The behaviour is like that, as a write operation in general 
             will violate hermitian symmetry. 
-        copy : boolean, optional (True)
+        copy : optional[boolean]
             If False, it will be tried to avoid data copying. If True, it is 
             guaranteed that `data` will be copied. 
         **kwargs
@@ -1647,6 +1647,7 @@ class distributed_data_object(object):
         get_data
         set_local_data
         set_full_data
+        d2o_librarian
         """
 
         self.hermitian = hermitian
@@ -1661,20 +1662,21 @@ class distributed_data_object(object):
     def set_full_data(self, data, hermitian=False, copy=True, **kwargs):
         """ Distributes `data` among the nodes. 
       
-        The shapes of `data` and `self` must match. This method behaves similar 
-        to set_data(data, to_key=slice(None)). But as no slice- and/or 
-        indexing-arithmetic must be done it is faster. 
+        The shapes of `data` and `self` must match. 
+
+        This method behaves similar to set_data(data, to_key=slice(None)), but 
+        as no slice- and/or indexing-arithmetic must be done it is faster. 
         
         Parameters
         ----------
         data : array-like
             The full data set, that will be written into `self`.
-        hermitian : boolean, optional (False)
+        hermitian : optional[boolean] 
             The `hermitian` attribute of `self` is set to this value. As the 
             default is False, a d2o will lose its potentential hermitianity.
             The behaviour is like that, as the supplied `data` is not 
             guaranteed to have hermitian symmetry. 
-        copy : boolean, optional (True)
+        copy : optional[boolean] 
             If True it is guaranteed that the input data will be copied. If 
             False copying is tried to be avoided.
         **kwargs
@@ -1701,7 +1703,7 @@ class distributed_data_object(object):
 
         Parameters
         ----------
-        copy : boolean, optional (True)
+        copy : optional[boolean] 
             If True, a copy of `self.data` is returned, else `self.data` 
             itself.           
 
@@ -1723,24 +1725,53 @@ class distributed_data_object(object):
             return self.data
 
     def get_data(self, key, local_keys=False, **kwargs):
-        """
+        """ Returns data from the d2o specified by `key`.
+
+        Essentially this method corresponds to `d2o[key]`. 
+        
+        By default it is assumed that all nodes got the same `key`-objects:
+        either the same integer/list/tuple/ndarray or the individual local 
+        instance of the same distributed_data_object. In order to avoid 
+        inter-node communication as much as possible, the result is then 
+        returned as a d2o which contains the node's local part of `d2o[key]`. 
+        There the distributor decides, which distribution strategy the 
+        return-d2o should have: in case of slicing distribution strategies, 
+        the return-d2o will have a 'freeform'-distributor; the 
+        'not'-distributor will return a 'not'-distributed d2o. If `local-keys`
+        is set to True, the return-d2o will be 'freeform'-distributed and
+        every node will possess the data which was particularized by its 
+        local key. Naturally this involves more inter-node 
+        communication if a node requests some data, that was not located on 
+        itself. 
+
+
+        Parameters
+        ----------
+        key : indexing-key like 
             Loads data from the region which is specified by key. The data is
             consolidated according to the distribution strategy. If the
             individual nodes get different key-arguments, they get individual
             data.
+        local_keys : optional[boolean]
+            Specifies whether all nodes got the same key-object or not. See the
+            description above.
+        **kwargs
+            Additional keyword-arguments are passed to the `collect_data` 
+            method of the distributor.
+        
+        Returns
+        -------
+        out : distributed_data_object
+            The d2o containing the data specified by `key`. 
 
-            Parameters
-            ----------
-
-            key : int, slice, tuple of int or slice
-                The key is the object which specifies the region, where data
-                will be loaded from.
-
-            Returns
-            -------
-            global_data[key] : numpy.ndarray
-
+        See Also
+        --------
+        set_data
+        get_local_data
+        get_full_data
+        d2o_librarian
         """
+
         if key is None:
             return self.copy()
         elif isinstance(key, slice):
@@ -1759,35 +1790,49 @@ class distributed_data_object(object):
                                              **kwargs)
 
     def get_full_data(self, target_rank='all'):
-        """
-            Fully consolidates the distributed data.
+        """ Consolidates the d2o's data and returns it as a numpy.ndarray.
 
-            Parameters
-            ----------
-            target_rank : 'all' (default), int *optional*
-                If only one node should recieve the full data, it can be
-                specified here.
+        This method behaves similar to get_data(key=slice(None)) but is faster
+        as no slice- and/or indexing-arithmetic must be done.
 
-            Notes
-            -----
-            get_full_data() is equivalent to get_data(slice(None)) but
-            faster.
+        Parameters
+        ----------
+        target_rank : optional[{'all', int}]
+            Specifies if all or only one specific node should recieve the 
+            result of data consolidation. 
 
-            Returns
-            -------
-            None
+        Returns
+        -------
+        out : numpy.ndarray
+            Contains the entire data of the distributed_data_object.
+
+        See Also
+        --------
+        set_full_data
+        get_local_data
+        get_data
         """
 
         return self.distributor.consolidate_data(self.data,
                                                  target_rank=target_rank)
 
-    #def inject(self, to_key=(slice(None),), data=None,
-    #           from_key=(slice(None),)):
-    #    if data is None:
-    #        return self
-    #    self.distributor.inject(self.data, to_key, data, from_key)
-
     def flatten(self, inplace=False):
+        """ Returns a flat copy of the d2o collapsed into one dimension. 
+
+        Copying data will be avoided if possible (regardless of `inplace`).
+         
+        Parameters
+        ----------
+        inplace : optional[boolean]
+            If set to True, `self` will be replaced by the result of the 
+            flattening. 
+
+        Returns
+        -------
+        out : distributed_data_object
+            The flatted version of the original distributed_data_object.
+        """
+
         flat_data = self.distributor.flatten(self.data, inplace=inplace)
 
         flat_global_shape = (np.prod(self.shape),)
@@ -1816,6 +1861,20 @@ class distributed_data_object(object):
             return work_d2o
 
     def cumsum(self, axis=None):
+        """ Return the cumulative sum of the elements along the given axis.
+
+        Parameters
+        ----------
+        axis : optional[int]
+            Axis along which the cumulative sum is computed. The default (None)
+            is to compute the cumsum over the flattened d2o. 
+        
+        Returns
+        -------
+        out : distributed_data_object
+            Contains the results of the cummulative sum. 
+        """
+
         cumsum_data = self.distributor.cumsum(self.data, axis=axis)
         result_d2o = self.copy_empty()
         if axis is None:
