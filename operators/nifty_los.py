@@ -6,14 +6,17 @@ from line_integrator import multi_integrator, \
                             gaussian_error_function
 
 from nifty.keepers import about,\
-                          global_dependency_injector as gdi
+                          global_dependency_injector as gdi,\
+                          global_configuration as gc
+
 from nifty.nifty_mpi_data import distributed_data_object,\
                                  STRATEGIES
 from nifty.nifty_core import point_space,\
                              field
 from nifty.rg import rg_space
 from nifty.operators import operator
-MPI = gdi['MPI']
+
+MPI = gdi[gc['mpi_module']]
 
 
 class los_response(operator):

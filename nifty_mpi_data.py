@@ -1876,44 +1876,52 @@ class distributed_data_object(object):
         """
 
         cumsum_data = self.distributor.cumsum(self.data, axis=axis)
-        result_d2o = self.copy_empty()
+
         if axis is None:
-            result_d2o = result_d2o.flatten(inplace=True)
+            flat_global_shape = (np.prod(self.shape),)
+            flat_local_shape = np.shape(cumsum_data)
+            result_d2o = self.copy_empty(global_shape=flat_global_shape,
+                                         local_shape=flat_local_shape)    
+        else:
+            result_d2o = self.copy_empty()
+        
+               
         result_d2o.set_local_data(cumsum_data)
+
         return result_d2o
 
     def save(self, alias, path=None, overwriteQ=True):
+        """ Saves the distributed_data_object to disk utilizing h5py.
+            
+        Parameters
+        ----------
+        alias : string
+            The name for the dataset which is saved within the hdf5 file.
+
+        path : optional[str]
+            The path to the hdf5 file. If no path is given, the alias is
+            taken as filename in the current working directory.
+
+        overwriteQ : optional[boolean]
+            Specifies whether a dataset may be overwritten if it is already
+            present in the given hdf5 file or not.
         """
-            Saves a distributed_data_object to disk utilizing h5py.
 
-            Parameters
-            ----------
-            alias : string
-                The name for the dataset which is saved within the hdf5 file.
-
-            path : string *optional*
-                The path to the hdf5 file. If no path is given, the alias is
-                taken as filename in the current path.
-
-            overwriteQ : Boolean *optional*
-                Specifies whether a dataset may be overwritten if it is already
-                present in the given hdf5 file or not.
-        """
         self.distributor.save_data(self.data, alias, path, overwriteQ)
 
     def load(self, alias, path=None):
-        """
-            Loads a distributed_data_object from disk utilizing h5py.
+        """ Loads a distributed_data_object from disk utilizing h5py.
 
-            Parameters
-            ----------
-            alias : string
-                The name of the dataset which is loaded from the hdf5 file.
+        Parameters
+        ----------
+        alias : string
+            The name of the dataset which is loaded from the hdf5 file.
 
-            path : string *optional*
-                The path to the hdf5 file. If no path is given, the alias is
-                taken as filename in the current path.
+        path : optional[str]
+            The path to the hdf5 file. If no path is given, the alias is
+            taken as filename in the current path.
         """
+
         self.data = self.distributor.load_data(alias, path)
 
 
