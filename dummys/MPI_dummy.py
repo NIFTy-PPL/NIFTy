@@ -148,3 +148,4 @@ class _comm_wrapper(object):
 
 
 COMM_WORLD = _comm_wrapper('MPI_dummy_COMM_WORLD')
+COMM_WORLD.__class__ = COMM_WORLD.comm.__class__
