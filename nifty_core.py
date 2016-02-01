@@ -262,7 +262,7 @@ class space(object):
         return not self.__eq__(x)
 
     def __len__(self):
-        return int(self.get_dim(split=False))
+        return int(self.get_dim())
 
     def copy(self):
         return space(para=self.para,
@@ -292,7 +292,7 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'shape'."))
 
-    def get_dim(self, split=False):
+    def get_dim(self):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
 

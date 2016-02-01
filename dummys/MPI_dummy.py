@@ -136,6 +136,8 @@ class _comm_wrapper(object):
     def __init__(self, name):
         self.cache = None
         self.name = name
+        self.size = 1
+        self.rank = 0
 
     @property
     def comm(self):
