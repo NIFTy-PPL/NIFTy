@@ -204,7 +204,7 @@ We advice to install the following packages in the order as they appear below. W
         cd ..
 
 *    Install libsharp and libsharp-wrapper. Installations instructions for libsharp may be found here: https://sourceforge.net/p/libsharp/code/ci/master/tree/
-     Adopt the path of the libsharp installation in setup.py::
+     **Adopt the path of the libsharp installation in setup.py** ::
 
         sudo port install gcc
         sudo port select gcc  mp-gcc5
@@ -213,7 +213,8 @@ We advice to install the following packages in the order as they appear below. W
         sudo python setup.py install
         cd ..
 
-*      Install NIFTy::
+*    Install NIFTy::
+
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
         cd nifty
         sudo python setup.py install 
