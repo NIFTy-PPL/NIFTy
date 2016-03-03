@@ -81,55 +81,157 @@ Requirements
 
 *   `Python <http://www.python.org/>`_ (v2.7.x)
 
-    *   `NumPy <http://www.numpy.org/>`_ and `SciPy <http://www.scipy.org/>`_
+    *   `NumPy <http://www.numpy.org/>`_ 
+    *   `SciPy <http://www.scipy.org/>`_
+    *   `Cython <http://cython.org/>`_
     *   `matplotlib <http://matplotlib.org/>`_
-    *   `multiprocessing <http://docs.python.org/2/library/multiprocessing.html>`_
-        (standard library)
-
+    
 *   `GFFT <https://github.com/mrbell/gfft>`_ (v0.1.0) - Generalized Fast
     Fourier Transformations for Python - **optional**
 
 *   `HEALPy <https://github.com/healpy/healpy>`_ (v1.8.1 without openmp) - A
     Python wrapper for `HEALPix <http://sourceforge.net/projects/healpix/>`_ -
-    **optional**
+    **optional, only needed for spherical spaces**
  
 *   `libsharp-wrapper <https://github.com/mselig/libsharp-wrapper>`_ (v0.1.2
     without openmp) - A Python wrapper for the
     `libsharp <http://sourceforge.net/projects/libsharp/>`_ library -
-    **optional**
+    **optional, only needed for spherical spaces**
 
 Download
 ........
 
 The latest release is tagged **v1.0.7** and is available as a source package
-at `<https://github.com/information-field-theory/nifty/tags>`_. The current
+at `<https://gitlab.mpcdf.mpg.de/ift/NIFTy/tags>`_. The current
 version can be obtained by cloning the repository::
 
-    git clone git://github.com/information-field-theory/nifty.git
+    git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
 
-Installation
-............
+Installation on Ubuntu
+......................
 
-*   NIFTY can be installed using `PyPI <https://pypi.python.org/pypi>`_ and
-    **pip** by running the following command::
+This is for you if you want to install NIFTy on your personal computer running 
+with an Ubuntu-like linux system were you have root priviledges. Starting with
+a fresh Ubuntu installation move to a folder like ``~/Downloads``:
 
-        pip install ift_nifty
+*    Install basic packages like python, python-dev, gsl and others::
+ 
+        sudo apt-get install curl git autoconf 
+        sudo apt-get install python-dev python-pip gsl-bin libgsl0-dev libfreetype6-dev libpng-dev  libatlas-base-dev gfortran 
 
-    Alternatively, a private or user specific installation can be done by::
+*    Install matplotlib::
 
-        pip install --user ift_nifty
+        sudo apt-get install python-matplotlib
 
+*    Using pip install numpy, scipy, etc...::
 
-*   NIFTY can be installed using **Distutils** by running the following
-    command::
+        sudo pip install numpy scipy cython pyfits healpy
 
+*    Now install the 'non-standard' dependencies. First of all gfft::
+
+        curl -LOk https://github.com/mrbell/gfft/tarball/master 
+        tar -xzf master 
+        cd mrbell-gfft* 
+        sudo python setup.py install 
+        cd ..
+
+*    Libsharp::
+
+        git clone http://git.code.sf.net/p/libsharp/code libsharp-code 
+        cd libsharp-code 
+        sudo autoconf 
+        ./configure --enable-pic --disable-openmp 
+        sudo make 
+        cd ..
+
+*    Libsharpwrapper::
+
+        git clone http://github.com/mselig/libsharp-wrapper.git libsharp-wrapper 
+        cd libsharp-wrapper 
+        sudo python setup.py build_ext 
+        sudo python setup.py install 
+        cd ..
+
+*    Finally, NIFTy::
+
+        git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
         cd nifty
-        python setup.py install
+        sudo python setup.py install 
+        cd .. 
 
-    Alternatively, a private or user specific installation can be done by::
+Installation on a linux cluster
+...............................
 
-        python setup.py install --user
-        python setup.py install --install-lib=/SOMEWHERE
+This is for you if you want to install NIFTy on a HPC machine or cluster that is hosted by your university or institute. Most of the dependencies will most likely already be there, but you won't have superuser priviledges. In this case, instead::
+
+    sudo python setup.py install 
+
+use::
+
+    python setup.py install --user
+
+or::
+
+    python setup.py install --install-lib=/SOMEWHERE
+
+
+in the instruction above. This will install the python packages into your local user directory. 
+
+Installation on OS X 10.11
+..........................
+
+We advice to install the following packages in the order as they appear below. We strongly recommend to install all needed packages via MacPorts. Please be aware that not all packages are available on MacPorts, missing ones need to be installed manually. It may also be mentioned that one should only use one package manager, as multiple ones may cause trouble.
+
+*    Install basic packages python, scipy, matplotlib and cython::
+
+       sudo port install py27-numpy
+       sudo port install py27-scipy
+       sudo port install py27-matplotlib
+       sudo port install py27-cython
+
+*    Install gfft. **Depending where you installed GSL you may need to change the path in setup.py!**::
+
+        sudo port install gsl
+        git clone https://github.com/mrbell/gfft.git}{https://github.com/mrbell/gfft.git
+        sudo python setup.py install
+
+*    Install healpy::
+
+        sudo port install py27-pyfits
+        git clone https://github.com/healpy/healpy.git
+        cd healpy 
+        sudo python setup.py install
+        cd ..
+
+*    Install libsharp and libsharp-wrapper. Installations instructions for libsharp may be found here: https://sourceforge.net/p/libsharp/code/ci/master/tree/
+     **Adopt the path of the libsharp installation in setup.py** ::
+
+        sudo port install gcc
+        sudo port select gcc  mp-gcc5
+        git clone https://github.com/mselig/libsharp-wrapper.git
+        cd libsharp-wrapper
+        sudo python setup.py install
+        cd ..
+
+*    Install NIFTy::
+
+        git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
+        cd nifty
+        sudo python setup.py install 
+        cd .. 
+
+Installation using pypi
+.......................
+
+NIFTY can be installed using `PyPI <https://pypi.python.org/pypi>`_ and **pip** 
+by running the following command::
+
+    pip install ift_nifty
+
+Alternatively, a private or user specific installation can be done by::
+
+    pip install --user ift_nifty
+
 
 First Steps
 ...........
