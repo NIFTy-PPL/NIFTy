@@ -132,7 +132,7 @@ COMPLEX = _datatype("MPI_COMPLEX")
 DOUBLE_COMPLEX = _datatype("MPI_DOUBLE_COMPLEX")
 
 
-class _comm_wrapper(object):
+class _comm_wrapper(Intracomm):
     def __init__(self, name):
         self.cache = None
         self.name = name
@@ -150,4 +150,4 @@ class _comm_wrapper(object):
 
 
 COMM_WORLD = _comm_wrapper('MPI_dummy_COMM_WORLD')
-COMM_WORLD.__class__ = COMM_WORLD.comm.__class__
+#COMM_WORLD.__class__ = COMM_WORLD.comm.__class__

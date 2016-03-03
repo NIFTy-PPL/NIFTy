@@ -36,9 +36,9 @@ from __future__ import division
 import matplotlib as mpl
 mpl.use('Agg')
 import gc
-import imp
-nifty = imp.load_module('nifty', None,
-                        '/home/steininger/Downloads/nifty', ('','',5))
+#import imp
+#nifty = imp.load_module('nifty', None,
+#                        '/home/steininger/Downloads/nifty', ('','',5))
 
 from nifty import *                                              # version 0.8.0
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     about.warnings.off()
 
     # some signal space; e.g., a two-dimensional regular grid
-    shape = [1024]
+    shape = [1024, 1024]
     x_space = rg_space(shape)
     #y_space = point_space(1280*1280)
     #x_space = hp_space(32)

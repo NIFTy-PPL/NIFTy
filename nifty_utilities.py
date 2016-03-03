@@ -60,8 +60,11 @@ def _hermitianize_inverter(x):
     for i in xrange(dimensions):
         slice_picker = slice_primitive[:]
         slice_picker[i] = slice(1, None, None)
+        slice_picker = tuple(slice_picker)
+
         slice_inverter = slice_primitive[:]
         slice_inverter[i] = slice(None, 0, -1)
+        slice_inverter = tuple(slice_inverter)
 
         try:
             y.set_data(to_key=slice_picker, data=y,
