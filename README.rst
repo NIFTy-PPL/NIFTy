@@ -171,6 +171,7 @@ use::
     python setup.py install --user
 
 or::
+
     python setup.py install --install-lib=/SOMEWHERE
 
 
@@ -188,16 +189,13 @@ We advice to install the following packages in the order as they appear below. W
        sudo port install py27-matplotlib
        sudo port install py27-cython
 
-*    Install gfft::
+*    Install gfft. **Depending where you installed GSL you may need to change the path in setup.py!**::
 
         sudo port install gsl
         git clone https://github.com/mrbell/gfft.git}{https://github.com/mrbell/gfft.git
-     
-    **Depending where you installed GSL you may need to change the path in setup.py!**::
-
         sudo python setup.py install
 
-*    Install healpy:
+*    Install healpy::
 
         sudo port install py27-pyfits
         git clone https://github.com/healpy/healpy.git
@@ -205,15 +203,13 @@ We advice to install the following packages in the order as they appear below. W
         sudo python setup.py install
         cd ..
 
-*    Install libsharp and libsharp-wrapper. Installations instructions for libsharp may be found here: https://sourceforge.net/p/libsharp/code/ci/master/tree/::
+*    Install libsharp and libsharp-wrapper. Installations instructions for libsharp may be found here: https://sourceforge.net/p/libsharp/code/ci/master/tree/
+     Adopt the path of the libsharp installation in setup.py::
 
         sudo port install gcc
         sudo port select gcc  mp-gcc5
         git clone https://github.com/mselig/libsharp-wrapper.git
         cd libsharp-wrapper
-   
-    Adopt the path of the libsharp installation in setup.py::
-
         sudo python setup.py install
         cd ..
 
