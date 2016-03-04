@@ -203,7 +203,36 @@ We advice to install the following packages in the order as they appear below. W
         sudo python setup.py install
         cd ..
 
-*    Install libsharp and libsharp-wrapper. Installations instructions for libsharp may be found here: https://sourceforge.net/p/libsharp/code/ci/master/tree/
+*    Install libsharp and therefore autoconf, automake and libtool. 
+     Installations instructions for libsharp may be found here: 
+     https://sourceforge.net/p/libsharp/code/ci/master/tree/::
+                
+        curl -OL http://ftpmirror.gnu.org/autoconf/autoconf-2.69.tar.gz
+        tar -xzf autoconf-2.69.tar.gz 
+        cd autoconf-2.69
+        ./configure && make && sudo make install
+        cd ..
+        
+        curl -OL http://ftpmirror.gnu.org/automake/automake-1.14.tar.gz
+        tar -xzf automake-1.14.tar.gz
+        cd automake-1.14
+        ./configure && make && sudo make install
+        cd ..
+        
+        curl -OL http://ftpmirror.gnu.org/libtool/libtool-2.4.2.tar.gz
+        tar -xzf libtool-2.4.2.tar.gz
+        cd libtool-2.4.2
+        ./configure && make && sudo make install
+        cd ..
+        
+        git clone http://git.code.sf.net/p/libsharp/code libsharp-code 
+        cd libsharp-code 
+        sudo autoconf 
+        ./configure --enable-pic --disable-openmp 
+        sudo make 
+        cd ..
+        
+*    Install libsharp-wrapper.
      **Adopt the path of the libsharp installation in setup.py** ::
 
         sudo port install gcc
