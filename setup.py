@@ -33,5 +33,7 @@ setup(name="ift_nifty",
       packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm"],
       package_dir={"nifty": ""},
       data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])],
+      package_data={'nifty.demos' : ['demo_faraday_map.npy'],
+                    },
       license="GPLv3")
 
