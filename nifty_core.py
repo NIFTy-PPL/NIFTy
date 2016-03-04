@@ -9851,8 +9851,9 @@ class probing(object):
         _sum = 0
         _num = 0
         _var = 0
+        random_seeds = np.random.randint(10**8,high=None,size=self.nrun)
         for ii in xrange(self.nrun):
-            result = self._single_probing((np.random.randint(10**8,high=None,size=None),ii)) ## tuple(seed,idnum)
+            result = self._single_probing((random_seeds[ii], ii)) ## tuple(seed,idnum)
             if(result is not None):
                 _sum += result ## result: {scalar, np.array}
                 _num += 1
