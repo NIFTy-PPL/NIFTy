@@ -20,24 +20,66 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty_core import * ## imports `about`
-from nifty_cmaps import *
-from nifty_power import *
-from nifty_tools import *
-from nifty_explicit import *
+
+import matplotlib as mpl
+mpl.use('Agg')
+
+import dummys
+
+from keepers import about,\
+                  global_dependency_injector,\
+                  global_configuration
+
+
+
+from nifty_cmaps import ncmap
+from nifty_core import space,\
+                    point_space,\
+                    field
+
+from nifty_mpi_data import distributed_data_object, d2o_librarian
+from nifty_random import random
+from nifty_simple_math import *
+from nifty_utilities import *
+
+from nifty_paradict import space_paradict,\
+                            point_space_paradict,\
+                            nested_space_paradict
+from operators import *
 
 ## optional submodule `rg`
 try:
-    from rg import *
+    from rg import rg_space,\
+                    power_backward_conversion_rg,\
+                    power_forward_conversion_rg
+    from nifty_paradict import rg_space_paradict
 except(ImportError):
     pass
 
 ## optional submodule `lm`
 try:
-    from lm import *
+    from lm import lm_space,\
+                    power_backward_conversion_lm,\
+                    power_forward_conversion_lm
+    from nifty_paradict import lm_space_paradict
+
+    try:
+        from lm import gl_space
+        from nifty_paradict import gl_space_paradict
+    except(ImportError):
+        pass
+
+    try:
+        from lm import hp_space
+        from nifty_paradict import hp_space_paradict
+    except(ImportError):
+        pass
+
 except(ImportError):
     pass
 
-from demos import *
-from pickling import *
+from demos import get_demo_dir
+from pickling import _pickle_method, _unpickle_method
+
+#import pyximport; pyximport.install(pyimport = True)
 

@@ -32,39 +32,86 @@
 
 """
 from __future__ import division
+
+import matplotlib as mpl
+mpl.use('Agg')
+import gc
+#import imp
+#nifty = imp.load_module('nifty', None,
+#                        '/home/steininger/Downloads/nifty', ('','',5))
+
 from nifty import *                                              # version 0.8.0
 
+if __name__ == "__main__":
+    about.warnings.off()
 
-# some signal space; e.g., a two-dimensional regular grid
-x_space = rg_space([128, 128])                                   # define signal space
-#x_space = rg_space(512)
-#x_space = hp_space(32)
-#x_space = gl_space(96)
+    # some signal space; e.g., a two-dimensional regular grid
+    shape = [1024, 1024]
+    x_space = rg_space(shape)
+    #y_space = point_space(1280*1280)
+    #x_space = hp_space(32)
+    #x_space = gl_space(800)
 
-k_space = x_space.get_codomain()                                 # get conjugate space
+    k_space = x_space.get_codomain()                                 # get conjugate space
 
-# some power spectrum
-power = (lambda k: 42 / (k + 1) ** 3)
+    # some power spectrum
+    power = (lambda k: 42 / (k + 1) ** 4)
 
-S = power_operator(k_space, spec=power)                          # define signal covariance
-s = S.get_random_field(domain=x_space)                           # generate signal
+    S = power_operator(k_space, codomain=x_space, spec=power)                          # define signal covariance
+    s = S.get_random_field(domain=x_space)                           # generate signal
+    #my_mask = x_space.cast(1)
+    #stretch = 0.6
+    #my_mask[shape[0]/2*stretch:shape[0]/2/stretch, shape[1]/2*stretch:shape[1]/2/stretch] = 0
+    my_mask = 1
 
-R = response_operator(x_space, sigma=0.0, mask=1.0, assign=None) # define response
-d_space = R.target                                               # get data space
+    R = response_operator(x_space, sigma=0.01, mask=my_mask, assign=None) # define response
+    R = response_operator(x_space, assign=None) #
+    #R = identity_operator(x_space)
 
-# some noise variance; e.g., signal-to-noise ratio of 1
-N = diagonal_operator(d_space, diag=s.var(), bare=True)          # define noise covariance
-n = N.get_random_field(domain=d_space)                           # generate noise
+    d_space = R.target                                               # get data space
 
-d = R(s) + n                                                     # compute data
+    # some noise variance; e.g., signal-to-noise ratio of 1
+    N = diagonal_operator(d_space, diag=s.var(), bare=True)          # define noise covariance
+    n = N.get_random_field(domain=d_space)                           # generate noise
 
-j = R.adjoint_times(N.inverse_times(d))                          # define information source
-D = propagator_operator(S=S, N=N, R=R)                           # define information propagator
 
-m = D(j, W=S, tol=1E-3, note=True)                               # reconstruct map
+    d = R(s) + n                                                     # compute data
 
-s.plot(title="signal")                                           # plot signal
-d_ = field(x_space, val=d.val, target=k_space)
-d_.plot(title="data", vmin=s.min(), vmax=s.max())                # plot data
-m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max())    # plot map
+    j = R.adjoint_times(N.inverse_times(d))                          # define information source
+    D = propagator_operator(S=S, N=N, R=R)                           # define information propagator
 
+    #m = D(j, W=S, tol=1E-8, limii=100, note=True)
+    #m = D(j, tol=1E-8, limii=20, note=True, force=True)
+    ident = identity(x_space)
+
+    #xi = field(x_space, random='gau', target=k_space)
+
+
+    m = D(j, W=S, tol=1E-8, limii=100, note=True)
+
+
+    #temp_result = (D.inverse_times(m)-xi)
+
+
+    n_power = x_space.enforce_power(s.var()/np.prod(shape))
+    s_power = S.get_power()
+
+    s.plot(title="signal", save = 'plot_s.png')
+    s.plot(title="signal power", power=True, other=power,
+           mono=False, save = 'power_plot_s.png', nbin=1000, log=True,
+           vmax = 100, vmin=10e-7)
+
+    d_ = field(x_space, val=d.val, target=k_space)
+    d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')
+
+
+    n_ = field(x_space, val=n.val, target=k_space)
+    n_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_n.png')
+
+
+
+    m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max(), save = 'plot_m.png')
+    m.plot(title="reconstructed power", power=True, other=(n_power, s_power),
+           save = 'power_plot_m.png', vmin=0.001, vmax=10, mono=False)
+
+    #

@@ -20,8 +20,25 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty_rg import rg_space,\
-                     utilities
-from nifty_power_conversion_rg import power_backward_conversion_rg,\
-                                    power_forward_conversion_rg
+from nifty_operators import operator,\
+                            diagonal_operator,\
+                            power_operator,\
+                            projection_operator,\
+                            vecvec_operator,\
+                            response_operator,\
+                            invertible_operator,\
+                            propagator_operator,\
+                            identity,\
+                            identity_operator
 
+
+from nifty_probing import prober,\
+                                trace_prober,\
+                                inverse_trace_prober,\
+                                diagonal_prober,\
+                                inverse_diagonal_prober
+
+from nifty_los import los_response
+
+from nifty_minimization import conjugate_gradient,\
+                               steepest_descent

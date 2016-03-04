@@ -1,33 +1,31 @@
-## NIFTY (Numerical Information Field Theory) has been developed at the
-## Max-Planck-Institute for Astrophysics.
-##
-## Copyright (C) 2014 Max-Planck-Society
-##
-## Author: Maksim Greiner, Marco Selig
-## Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
-##
-## This program is free software: you can redistribute it and/or modify
-## it under the terms of the GNU General Public License as published by
-## the Free Software Foundation, either version 3 of the License, or
-## (at your option) any later version.
-##
-## This program is distributed in the hope that it will be useful,
-## but WITHOUT ANY WARRANTY; without even the implied warranty of
-## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-## See the GNU General Public License for more details.
-##
-## You should have received a copy of the GNU General Public License
-## along with this program. If not, see <http://www.gnu.org/licenses/>.
+# NIFTY (Numerical Information Field Theory) has been developed at the
+# Max-Planck-Institute for Astrophysics.
+#
+# Copyright (C) 2014 Max-Planck-Society
+#
+# Author: Maksim Greiner, Marco Selig
+# Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#from nifty import *
+
 import numpy as np
-from nifty import about,                                                     \
-                  field,                                                     \
-                  sqrt,exp,log,                                              \
-                  power_operator
+from nifty.keepers import about
+from nifty.nifty_core import field
 
 
-def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
+def power_backward_conversion_rg(k_space, p, mean=None, bare=True):
     """
         This function is designed to convert a theoretical/statistical power
         spectrum of a log-normal field to the theoretical power spectrum of
@@ -64,48 +62,63 @@ def power_backward_conversion_rg(k_space,p,mean=None,bare=True):
 
         References
         ----------
-        .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter power spectrum";
+        .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter
+               power spectrum";
             `arXiv:1312.1354 <http://arxiv.org/abs/1312.1354>`_
     """
-    pindex = k_space.get_power_indices()[2]
-    V = k_space.vol.prod()**(-1)
 
-    mono_ind = np.where(pindex==0)
+    pindex = k_space.power_indices['pindex']
+    weight = k_space.get_weight()
 
-    spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
+    monopole_index = pindex.argmin()
 
-    if(mean is None):
+    # Cast the supplied spectrum
+    spec = k_space.enforce_power(p)
+    # Now we mimick the weightning behaviour of
+    # spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
+    # by appliying the weight from the k_space
+    if bare:
+        spec *= weight
+
+    #TODO: Does this realy set the mean to the monopole as promised in the docs? -> Check!
+    if mean is None:
         mean = 0.
     else:
         spec[0] = 0.
 
-    pf = field(k_space,val=spec[pindex]).transform()+mean**2
+    p_val = pindex.apply_scalar_function(lambda x: spec[x],
+                                         dtype=spec.dtype.type)
+    power_field = field(k_space, val=p_val, zerocenter=True).transform()
+    power_field += (mean**2)
 
-    if(np.any(pf.val<0.)):
-        raise ValueError(about._errors.cstring("ERROR: spectrum or mean incompatible with positive definiteness.\n Try increasing the mean."))
-        return None
+    if power_field.min() < 0:
+        raise ValueError(about._errors.cstring(
+            "ERROR: spectrum or mean incompatible with positive " +
+            "definiteness. \n Try increasing the mean."))
 
-    p1 = sqrt(log(pf).power())
+    log_of_power_field = power_field.apply_scalar_function(np.log,
+                                                           inplace=True)
+    power_spectrum_1 = log_of_power_field.power()**(0.5)
+    power_spectrum_1[0] = log_of_power_field.transform()[monopole_index]
 
-    p1[0] = (log(pf)).transform()[mono_ind][0]
+    power_spectrum_0 = k_space.calc_weight(p_val).sum() + (mean**2)
+    power_spectrum_0 = np.log(power_spectrum_0)
+    power_spectrum_0 *= (0.5 / weight)
 
-    p2 = 0.5*V*log(k_space.calc_weight(spec[pindex],1).sum()+mean**2)
+    log_mean = weight * (power_spectrum_1[0] - power_spectrum_0)
 
-    logmean = 1/V * (p1[0]-p2)
+    power_spectrum_1[0] = 0.
 
-    p1[0] = 0.
+    # Mimik
+    # power_operator(k_space,spec=power_spectrum_1,bare=False).\
+    #  get_power(bare=True).real
+    if bare:
+        power_spectrum_1 /= weight
 
-    if(np.any(p1<0.)):
-        raise ValueError(about._errors.cstring("ERROR: spectrum or mean incompatible with positive definiteness.\n Try increasing the mean."))
-        return None
-
-    if(bare==True):
-        return logmean.real,power_operator(k_space,spec=p1,bare=False).get_power(bare=True).real
-    else:
-        return logmean.real,p1.real
+    return log_mean.real, power_spectrum_1.real
 
 
-def power_forward_conversion_rg(k_space,p,mean=0,bare=True):
+def power_forward_conversion_rg(k_space, p, mean=0, bare=True):
     """
         This function is designed to convert a theoretical/statistical power
         spectrum of a Gaussian field to the theoretical power spectrum of
@@ -132,24 +145,40 @@ def power_forward_conversion_rg(k_space,p,mean=0,bare=True):
 
         References
         ----------
-        .. [#] M. Greiner and T.A. Ensslin, "Log-transforming the matter power spectrum";
+        .. [#] M. Greiner and T.A. Ensslin,
+            "Log-transforming the matter power spectrum";
             `arXiv:1312.1354 <http://arxiv.org/abs/1312.1354>`_
     """
 
-    pindex = k_space.get_power_indices()[2]
+    pindex = k_space.power_indices['pindex']
+    weight = k_space.get_weight()
+    # Cast the supplied spectrum
+    spec = k_space.enforce_power(p)
+    # Now we mimick the weightning behaviour of
+    # spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
+    # by appliying the weight from the k_space
+    if bare:
+        spec *= weight
 
-    spec = power_operator(k_space,spec=p,bare=bare).get_power(bare=False)
+    S_val = pindex.apply_scalar_function(lambda x: spec[x],
+                                         dtype=spec.dtype.type)
 
-    S_x = field(k_space,val=spec[pindex]).transform()
+    # S_x is a field
+    S_x = field(k_space, val=S_val, zerocenter=True).transform()
+    # s_0 is a scalar
+    s_0 = k_space.calc_weight(S_val, power=1).sum()
 
-    S_0 = k_space.calc_weight(spec[pindex],1).sum()
+    # Calculate the new power_field
+    S_x += s_0
+    S_x += 2*mean
 
-    pf = exp(S_x+S_0+2*mean)
+    power_field = S_x.apply_scalar_function(np.exp, inplace=True)
 
-    p1 = sqrt(pf.power())
+    new_spec = power_field.power()**(0.5)
 
-    if(bare==True):
-        return power_operator(k_space,spec=p1,bare=False).get_power(bare=True).real
-    else:
-        return p1.real
+    # Mimik
+    # power_operator(k_space,spec=p1,bare=False).get_power(bare=True).real
+    if bare:
+        new_spec /= weight
 
+    return new_spec.real
