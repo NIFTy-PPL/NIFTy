@@ -325,7 +325,7 @@ class distributed_data_object(object):
                 distribution_strategy == self.distribution_strategy:
             temp_d2o.set_local_data(self.get_local_data(), copy=True)
         else:
-            temp_d2o.inject((slice(None),), self, (slice(None),))
+            temp_d2o.set_full_data(self, hermitian=self.hermitian)            
         temp_d2o.hermitian = self.hermitian
         return temp_d2o
 
