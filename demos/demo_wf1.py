@@ -46,10 +46,10 @@ if __name__ == "__main__":
     about.warnings.off()
 
     # some signal space; e.g., a two-dimensional regular grid
-    shape = [1024, 1024]
-    x_space = rg_space(shape)
+    #shape = [1024, 1024]
+    #x_space = rg_space(shape)
     #y_space = point_space(1280*1280)
-    #x_space = hp_space(32)
+    x_space = hp_space(32)
     #x_space = gl_space(800)
 
     k_space = x_space.get_codomain()                                 # get conjugate space
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     #temp_result = (D.inverse_times(m)-xi)
 
 
-    n_power = x_space.enforce_power(s.var()/np.prod(shape))
+    n_power = x_space.enforce_power(s.var()/x_space.get_dim())
     s_power = S.get_power()
 
     s.plot(title="signal", save = 'plot_s.png')
