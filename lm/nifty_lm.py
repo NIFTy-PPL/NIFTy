@@ -680,7 +680,7 @@ class lm_space(space):
 
         elif(isinstance(codomain,hp_space)):
             ## transform
-            Tx =  hp.alm2map(x.astype(np.complex128),codomain.para[0],lmax=self.para[0],mmax=self.para[1],pixwin=False,fwhm=0.0,sigma=None,invert=False,pol=True,inplace=False) ## FIXME: `verbose` kwarg
+            Tx =  hp.alm2map(x.astype(np.complex128),codomain.para[0],lmax=self.para[0],mmax=self.para[1],pixwin=False,fwhm=0.0,sigma=None,pol=True,inplace=False) ## FIXME: `verbose` kwarg
             ## weight if discrete
             if(codomain.discrete):
                 Tx = codomain.calc_weight(Tx,power=0.5)
@@ -722,7 +722,7 @@ class lm_space(space):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         ## smooth
         if(_hp_available): ## default
-            return hp.smoothalm(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
+            return hp.smoothalm(x,fwhm=0.0,sigma=sigma,pol=True,mmax=self.para[1],verbose=False,inplace=False) ## no overwrite
         else:
             return gl.smoothalm(x,lmax=self.para[0],mmax=self.para[1],fwhm=0.0,sigma=sigma,overwrite=False) ## no overwrite
 
@@ -2051,7 +2051,7 @@ class hp_space(space):
         elif(sigma<0):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         ## smooth
-        return hp.smoothing(x,fwhm=0.0,sigma=sigma,invert=False,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,datapath=None)
+        return hp.smoothing(x,fwhm=0.0,sigma=sigma,pol=True,iter=kwargs.get("iter",self.niter),lmax=3*self.para[0]-1,mmax=3*self.para[0]-1,use_weights=False,datapath=None)
 
     ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
