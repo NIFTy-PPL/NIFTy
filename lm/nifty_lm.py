@@ -583,7 +583,7 @@ class lm_space(point_space):
             # transform
             Tx = hp.alm2map(x.astype(np.complex128), nside, lmax=lmax,
                             mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
-                            invert=False, pol=True, inplace=False)
+                            pol=True, inplace=False)
             # re-weight if discrete
             if(codomain.discrete):
                 Tx = codomain.calc_weight(Tx, power=0.5)
@@ -623,7 +623,7 @@ class lm_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         if gc['use_healpy']:
-            return hp.smoothalm(x, fwhm=0.0, sigma=sigma, invert=False,
+            return hp.smoothalm(x, fwhm=0.0, sigma=sigma,
                                 pol=True, mmax=self.paradict['mmax'],
                                 verbose=False, inplace=False)
         else:
@@ -1896,7 +1896,7 @@ class hp_space(point_space):
         # smooth
         lmax = 3*nside-1
         mmax = lmax
-        return hp.smoothing(x, fwhm=0.0, sigma=sigma, invert=False, pol=True,
+        return hp.smoothing(x, fwhm=0.0, sigma=sigma, pol=True,
                             iter=niter, lmax=lmax, mmax=mmax,
                             use_weights=False, datapath=None)
 
