@@ -50,14 +50,16 @@ from nifty.nifty_paradict import lm_space_paradict,\
                                  hp_space_paradict
 from nifty.nifty_power_indices import lm_power_indices
 
+from nifty.nifty_mpi_data import distributed_data_object
+
 from nifty.nifty_random import random
 
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
 
-LM_DISTRIBUTION_STRATEGIES = []
-GL_DISTRIBUTION_STRATEGIES = []
-HP_DISTRIBUTION_STRATEGIES = []
+LM_DISTRIBUTION_STRATEGIES = ['not']
+GL_DISTRIBUTION_STRATEGIES = ['not']
+HP_DISTRIBUTION_STRATEGIES = ['not']
 
 
 class lm_space(point_space):
@@ -120,7 +122,7 @@ class lm_space(point_space):
     """
 
     def __init__(self, lmax, mmax=None, dtype=np.dtype('complex128'),
-                 datamodel='np', comm=gc['default_comm']):
+                 datamodel='not', comm=gc['default_comm']):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -167,9 +169,9 @@ class lm_space(point_space):
         self.dtype = dtype
 
         # set datamodel
-        if datamodel not in ['np']:
+        if datamodel not in ['not']:
             about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'np'
+            self.datamodel = 'not'
         else:
             self.datamodel = datamodel
 
@@ -283,7 +285,15 @@ class lm_space(point_space):
             return mol
 
     def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
-        raise NotImplementedError
+        casted_x = super(lm_space, self)._cast_to_d2o(x=x,
+                                                     dtype=dtype,
+                                                     **kwargs)
+        complexity_mask = distributed_data_object.iscomplex(casted_x[:self.paradict['lmax']+1])
+        if distributed_data_object.any(complexity_mask):
+            about.warnings.cprint("WARNING: Taking the absolute values for " +
+                                  "all complex entries where lmax==0")
+            casted_x[complexity_mask] = distributed_data_object.__abs__(casted_x[complexity_mask])
+        return casted_x
 
     def _cast_to_np(self, x, dtype=None, hermitianize=True, **kwargs):
         casted_x = super(lm_space, self)._cast_to_np(x=x,
@@ -911,7 +921,7 @@ class gl_space(point_space):
     """
 
     def __init__(self, nlat, nlon=None, dtype=np.dtype('float64'),
-                 datamodel='np', comm=gc['default_comm']):
+                 datamodel='not', comm=gc['default_comm']):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -952,9 +962,9 @@ class gl_space(point_space):
         self.dtype = dtype
 
         # set datamodel
-        if datamodel not in ['np']:
+        if datamodel not in ['not']:
             about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'np'
+            self.datamodel = 'not'
         else:
             self.datamodel = datamodel
 
@@ -1033,6 +1043,18 @@ class gl_space(point_space):
         else:
             mol = self.cast(1, dtype=np.float)
             return self.calc_weight(mol, power=1)
+
+    #TODO: Check with Theo!
+    def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
+        casted_x = super(gl_space, self)._cast_to_d2o(x=x,
+                                                     dtype=dtype,
+                                                     **kwargs)
+        complexity_mask = distributed_data_object.iscomplex(casted_x[:self.paradict['nlat']+1])
+        if distributed_data_object.any(complexity_mask):
+            about.warnings.cprint("WARNING: Taking the absolute values for " +
+                                  "all complex entries where lmax==0")
+            casted_x[complexity_mask] = distributed_data_object.__abs__(casted_x[complexity_mask])
+        return casted_x
 
     # TODO: Extend to binning/log
     def enforce_power(self, spec, size=None, kindex=None):
@@ -1209,22 +1231,22 @@ class gl_space(point_space):
             y : numpy.ndarray
                 Weighted array.
         """
-        x = self.cast(x)
+        x = self._cast_to_np(x)
         # weight
         nlat = self.paradict['nlat']
         nlon = self.paradict['nlon']
         if self.dtype == np.dtype('float32'):
-            return gl.weight_f(x,
+            return distributed_data_object(gl.weight_f(x,
                                np.array(self.distances),
                                p=np.float32(power),
                                nlat=nlat, nlon=nlon,
-                               overwrite=False)
+                               overwrite=False))
         else:
-            return gl.weight(x,
+            return distributed_data_object(gl.weight(x,
                              np.array(self.distances),
                              p=np.float32(power),
                              nlat=nlat, nlon=nlon,
-                             overwrite=False)
+                             overwrite=False))
 
     def get_weight(self, power=1):
         # TODO: Check if this function is compatible to the rest of nifty
@@ -1554,7 +1576,7 @@ class hp_space(point_space):
             An array with one element containing the pixel size.
     """
 
-    def __init__(self, nside, datamodel='np', comm=gc['default_comm']):
+    def __init__(self, nside, datamodel='not', comm=gc['default_comm']):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -1588,9 +1610,9 @@ class hp_space(point_space):
         self.dtype = np.dtype('float64')
 
         # set datamodel
-        if datamodel not in ['np']:
+        if datamodel not in ['not']:
             about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'np'
+            self.datamodel = 'not'
         else:
             self.datamodel = datamodel
 

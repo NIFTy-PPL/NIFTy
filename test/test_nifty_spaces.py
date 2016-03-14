@@ -82,9 +82,9 @@ all_hp_datatypes = [np.dtype('float64')]
 DATAMODELS = {}
 DATAMODELS['point_space'] = ['np'] + POINT_DISTRIBUTION_STRATEGIES
 DATAMODELS['rg_space'] = ['np'] + RG_DISTRIBUTION_STRATEGIES
-DATAMODELS['lm_space'] = ['np'] + LM_DISTRIBUTION_STRATEGIES
-DATAMODELS['gl_space'] = ['np'] + GL_DISTRIBUTION_STRATEGIES
-DATAMODELS['hp_space'] = ['np'] + HP_DISTRIBUTION_STRATEGIES
+DATAMODELS['lm_space'] = [] + LM_DISTRIBUTION_STRATEGIES
+DATAMODELS['gl_space'] = [] + GL_DISTRIBUTION_STRATEGIES
+DATAMODELS['hp_space'] = [] + HP_DISTRIBUTION_STRATEGIES
 
 ###############################################################################
 
@@ -296,6 +296,7 @@ class Test_Common_Point_Like_Space_Interface(unittest.TestCase):
         assert(isinstance(s.get_dof(split=True), tuple))
 
         assert(isinstance(s.get_meta_volume(), np.float))
+        print(s.get_meta_volume(split=True), type(s.cast(1)))
         assert(isinstance(s.get_meta_volume(split=True), type(s.cast(1))))
         assert_almost_equal(
             s.get_meta_volume(), s.get_meta_volume(split=True).sum(), 2)

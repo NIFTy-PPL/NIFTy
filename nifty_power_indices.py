@@ -672,7 +672,7 @@ class lm_power_indices(power_indices):
             -------
             nkdict : distributed_data_object
         """
-        if self.datamodel == 'np':
+        if self.datamodel == 'not':
             if 'healpy' in gdi:  # default
                 nkdict = hp.Alm.getlm(self.lmax, i=None)[0]
             else:
