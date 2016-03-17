@@ -51,15 +51,16 @@ from nifty.nifty_paradict import lm_space_paradict,\
 from nifty.nifty_power_indices import lm_power_indices
 
 from nifty.nifty_mpi_data import distributed_data_object
+from nifty.nifty_mpi_data import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.nifty_random import random
 
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
 
-LM_DISTRIBUTION_STRATEGIES = ['not']
-GL_DISTRIBUTION_STRATEGIES = ['not']
-HP_DISTRIBUTION_STRATEGIES = ['not']
+LM_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['all']
+GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['all']
+HP_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['all']
 
 
 class lm_space(point_space):
@@ -171,9 +172,7 @@ class lm_space(point_space):
         # set datamodel
         if datamodel not in ['not']:
             about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'not'
-        else:
-            self.datamodel = datamodel
+        self.datamodel = datamodel
 
         self.discrete = True
         self.harmonic = True
@@ -491,7 +490,7 @@ class lm_space(point_space):
                     x = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
                     x = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
-            return x
+            return distributed_data_object(x)
 
         elif arg['random'] == "uni":
             x = random.uni(dtype=self.dtype,
@@ -528,9 +527,9 @@ class lm_space(point_space):
             lmax = self.paradict['lmax']
             mmax = self.paradict['mmax']
             if self.dtype == np.dtype('complex64'):
-                return gl.dotlm_f(x, y, lmax=lmax, mmax=mmax)
+                return distributed_data_object(gl.dotlm_f(x, y, lmax=lmax, mmax=mmax))
             else:
-                return gl.dotlm(x, y, lmax=lmax, mmax=mmax)
+                return distributed_data_object(gl.dotlm(x, y, lmax=lmax, mmax=mmax))
         else:
             return self._dotlm(x, y)
 
@@ -576,11 +575,11 @@ class lm_space(point_space):
 
             # transform
             if self.dtype == np.dtype('complex64'):
-                Tx = gl.alm2map_f(x, nlat=nlat, nlon=nlon,
-                                  lmax=lmax, mmax=mmax, cl=False)
+                Tx = distributed_data_object(gl.alm2map_f(np.array(x), nlat=nlat, nlon=nlon,
+                                  lmax=lmax, mmax=mmax, cl=False))
             else:
-                Tx = gl.alm2map(x, nlat=nlat, nlon=nlon,
-                                lmax=lmax, mmax=mmax, cl=False)
+                Tx = distributed_data_object(gl.alm2map(np.array(x), nlat=nlat, nlon=nlon,
+                                lmax=lmax, mmax=mmax, cl=False))
             # re-weight if discrete
             if codomain.discrete:
                 Tx = codomain.calc_weight(Tx, power=0.5)
@@ -591,9 +590,9 @@ class lm_space(point_space):
             mmax = self.paradict['mmax']
 
             # transform
-            Tx = hp.alm2map(x.astype(np.complex128), nside, lmax=lmax,
+            Tx = distributed_data_object(hp.alm2map(np.array(x).astype(np.complex128), nside, lmax=lmax,
                             mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
-                            pol=True, inplace=False)
+                            pol=True, inplace=False))
             # re-weight if discrete
             if(codomain.discrete):
                 Tx = codomain.calc_weight(Tx, power=0.5)
@@ -602,7 +601,7 @@ class lm_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.astype(codomain.dtype)
+        return Tx.copy(dtype=codomain.dtype)
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -633,13 +632,13 @@ class lm_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         if gc['use_healpy']:
-            return hp.smoothalm(x, fwhm=0.0, sigma=sigma,
+            return distributed_data_object(hp.smoothalm(x, fwhm=0.0, sigma=sigma,
                                 pol=True, mmax=self.paradict['mmax'],
-                                verbose=False, inplace=False)
+                                verbose=False, inplace=False))
         else:
-            return gl.smoothalm(x, lmax=self.paradict['lmax'],
+            return distributed_data_object(gl.smoothalm(x, lmax=self.paradict['lmax'],
                                 mmax=self.paradict['mmax'],
-                                fwhm=0.0, sigma=sigma, overwrite=False)
+                                fwhm=0.0, sigma=sigma, overwrite=False))
 
     def calc_power(self, x, **kwargs):
         """
@@ -663,17 +662,17 @@ class lm_space(point_space):
         # power spectrum
         if self.dtype == np.dtype('complex64'):
             if gc['use_libsharp']:
-                return gl.anaalm_f(x, lmax=lmax, mmax=mmax)
+                return distributed_data_object(gl.anaalm_f(x, lmax=lmax, mmax=mmax))
             else:
-                return hp.alm2cl(x.astype(np.complex128), alms2=None,
+                return distributed_data_object(hp.alm2cl(x.copy(dtype=np.complex128), alms2=None,
                                  lmax=lmax, mmax=mmax, lmax_out=lmax,
-                                 nspec=None).astype(np.float32)
+                                 nspec=None).copy(dtype=np.float32))
         else:
             if gc['use_healpy']:
-                return hp.alm2cl(x, alms2=None, lmax=lmax, mmax=mmax,
-                                 lmax_out=lmax, nspec=None)
+                return distributed_data_object(hp.alm2cl(np.array(x), alms2=None, lmax=lmax, mmax=mmax,
+                                 lmax_out=lmax, nspec=None))
             else:
-                return gl.anaalm(x, lmax=lmax, mmax=mmax)
+                return distributed_data_object(gl.anaalm(x, lmax=lmax, mmax=mmax))
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=True,
                  norm=None, cmap=None, cbar=True, other=None, legend=False,
@@ -964,15 +963,13 @@ class gl_space(point_space):
         # set datamodel
         if datamodel not in ['not']:
             about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'not'
-        else:
-            self.datamodel = datamodel
+        self.datamodel = datamodel
 
         self.discrete = False
         self.harmonic = False
-        self.distances = tuple(gl.vol(self.paradict['nlat'],
+        self.distances = tuple(distributed_data_object(gl.vol(self.paradict['nlat'],
                                       nlon=self.paradict['nlon']
-                                      ).astype(np.float))
+                                      ).astype(np.float)))
         self.comm = self._parse_comm(comm)
 
     @property
@@ -1043,18 +1040,6 @@ class gl_space(point_space):
         else:
             mol = self.cast(1, dtype=np.float)
             return self.calc_weight(mol, power=1)
-
-    #TODO: Check with Theo!
-    def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
-        casted_x = super(gl_space, self)._cast_to_d2o(x=x,
-                                                     dtype=dtype,
-                                                     **kwargs)
-        complexity_mask = distributed_data_object.iscomplex(casted_x[:self.paradict['nlat']+1])
-        if distributed_data_object.any(complexity_mask):
-            about.warnings.cprint("WARNING: Taking the absolute values for " +
-                                  "all complex entries where lmax==0")
-            casted_x[complexity_mask] = distributed_data_object.__abs__(casted_x[complexity_mask])
-        return casted_x
 
     # TODO: Extend to binning/log
     def enforce_power(self, spec, size=None, kindex=None):
@@ -1192,13 +1177,13 @@ class gl_space(point_space):
             nlon = self.paradict['nlon']
             lmax = nlat - 1
             if self.dtype == np.dtype('float32'):
-                x = gl.synfast_f(arg['spec'],
+                x = distributed_data_object(gl.synfast_f(arg['spec'],
                                  nlat=nlat, nlon=nlon,
-                                 lmax=lmax, mmax=lmax, alm=False)
+                                 lmax=lmax, mmax=lmax, alm=False))
             else:
-                x = gl.synfast(arg['spec'],
+                x = distributed_data_object(gl.synfast(arg['spec'],
                                nlat=nlat, nlon=nlon,
-                               lmax=lmax, mmax=lmax, alm=False)
+                               lmax=lmax, mmax=lmax, alm=False))
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=0.5)
@@ -1295,18 +1280,18 @@ class gl_space(point_space):
             mmax = codomain.paradict['mmax']
 
             if self.dtype == np.dtype('float32'):
-                Tx = gl.map2alm_f(x,
+                Tx = distributed_data_object(gl.map2alm_f(np.array(x),
                                   nlat=nlat, nlon=nlon,
-                                  lmax=lmax, mmax=mmax)
+                                  lmax=lmax, mmax=mmax))
             else:
-                Tx = gl.map2alm(x,
+                Tx = distributed_data_object(gl.map2alm(np.array(x),
                                 nlat=nlat, nlon=nlon,
-                                lmax=lmax, mmax=mmax)
+                                lmax=lmax, mmax=mmax))
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.astype(codomain.dtype)
+        return Tx.copy(dtype=codomain.dtype)
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -1338,10 +1323,10 @@ class gl_space(point_space):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
         nlat = self.paradict['nlat']
-        return gl.smoothmap(x,
+        return distributed_data_object(gl.smoothmap(x,
                             nlat=nlat, nlon=self.paradict['nlon'],
                             lmax=nlat - 1, mmax=nlat - 1,
-                            fwhm=0.0, sigma=sigma)
+                            fwhm=0.0, sigma=sigma))
 
     def calc_power(self, x, **kwargs):
         """
@@ -1368,15 +1353,15 @@ class gl_space(point_space):
         lmax = nlat - 1
         mmax = nlat - 1
         if self.dtype == np.dtype('float32'):
-            return gl.anafast_f(x,
+            return distributed_data_object(gl.anafast_f(np.array(x),
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax,
-                                alm=False)
+                                alm=False))
         else:
-            return gl.anafast(x,
+            return distributed_data_object(gl.anafast(np.array(x),
                               nlat=nlat, nlon=nlon,
                               lmax=lmax, mmax=mmax,
-                              alm=False)
+                              alm=False))
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=False,
                  unit="", norm=None, cmap=None, cbar=True, other=None,
@@ -1497,7 +1482,7 @@ class gl_space(point_space):
                 n_ = ln(vmin=vmin, vmax=vmax)
             else:
                 n_ = None
-            sub = ax0.pcolormesh(lon, lat, np.roll(x.reshape((self.para[0], self.para[1]), order='C'), self.para[
+            sub = ax0.pcolormesh(lon, lat, np.roll(np.array(x).reshape((self.para[0], self.para[1]), order='C'), self.para[
                                  1] // 2, axis=1)[::-1, ::-1], cmap=cmap, norm=n_, vmin=vmin, vmax=vmax)
             ax0.set_xlim(-180, 180)
             ax0.set_ylim(-90, 90)
@@ -1612,9 +1597,7 @@ class hp_space(point_space):
         # set datamodel
         if datamodel not in ['not']:
             about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'not'
-        else:
-            self.datamodel = datamodel
+        self.datamodel = datamodel
 
         self.discrete = False
         self.harmonic = False
@@ -1809,8 +1792,8 @@ class hp_space(point_space):
         elif arg['random'] == "syn":
             nside = self.paradict['nside']
             lmax = 3*nside-1
-            x = hp.synfast(arg['spec'], nside, lmax=lmax, mmax=lmax, alm=False,
-                           pol=True, pixwin=False, fwhm=0.0, sigma=None)
+            x = distributed_data_object(hp.synfast(arg['spec'], nside, lmax=lmax, mmax=lmax, alm=False,
+                           pol=True, pixwin=False, fwhm=0.0, sigma=None))
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=0.5)
@@ -1866,17 +1849,17 @@ class hp_space(point_space):
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            Tx = hp.map2alm(x.astype(np.float64, copy=False),
+            Tx = distributed_data_object(hp.map2alm(x.copy(dtype=np.float64),
                             lmax=codomain.paradict['lmax'],
                             mmax=codomain.paradict['mmax'],
                             iter=niter, pol=True, use_weights=False,
-                            datapath=None)
+                            datapath=None))
 
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.astype(codomain.dtype)
+        return Tx.copy(dtype=codomain.dtype)
 
     def calc_smooth(self, x, sigma=0, niter=0, **kwargs):
         """
@@ -1918,9 +1901,9 @@ class hp_space(point_space):
         # smooth
         lmax = 3*nside-1
         mmax = lmax
-        return hp.smoothing(x, fwhm=0.0, sigma=sigma, pol=True,
+        return distributed_data_object(hp.smoothing(x, fwhm=0.0, sigma=sigma, pol=True,
                             iter=niter, lmax=lmax, mmax=mmax,
-                            use_weights=False, datapath=None)
+                            use_weights=False, datapath=None))
 
     def calc_power(self, x, niter=0, **kwargs):
         """
@@ -1952,9 +1935,9 @@ class hp_space(point_space):
         lmax = 3*nside-1
         mmax = lmax
         # power spectrum
-        return hp.anafast(x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
+        return distributed_data_object(hp.anafast(x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
                           iter=niter, alm=False, pol=True, use_weights=False,
-                          datapath=None)
+                          datapath=None))
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=False, unit="",
                  norm=None, cmap=None, cbar=True, other=None, legend=False,

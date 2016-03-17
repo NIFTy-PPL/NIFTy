@@ -1161,6 +1161,9 @@ class diagonal_operator(operator):
         # Set the diag-val
         self.val = self.domain.cast(new_diag)
 
+        # Set the bare-val #TODO Check with Theo
+        self.bare = bare
+
         # Weight if necessary
         if not self.domain.discrete and bare:
             self.val = self.domain.calc_weight(self.val, power=1)
@@ -1606,7 +1609,7 @@ class diagonal_operator(operator):
 
 class identity_operator(diagonal_operator):
     def __init__(self, domain, codomain=None, bare=False):
-        super(diagonal_operator, self).__init__(domain=domain,
+        super(identity_operator, self).__init__(domain=domain,
                                                 codomain=codomain,
                                                 diag=1,
                                                 bare=bare)

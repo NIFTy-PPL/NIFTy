@@ -249,7 +249,7 @@ class power_indices(object):
         return result
 
     def _compute_indices(self, nkdict):
-        if self.datamodel == 'np':
+        if self.datamodel in ['np','not']:
             return self._compute_indices_np(nkdict)
         elif self.datamodel in self.allowed_distribution_strategies:
             return self._compute_indices_d2o(nkdict)
