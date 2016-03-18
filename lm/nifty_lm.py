@@ -283,17 +283,6 @@ class lm_space(point_space):
             mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
             return mol
 
-    def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
-        casted_x = super(lm_space, self)._cast_to_d2o(x=x,
-                                                     dtype=dtype,
-                                                     **kwargs)
-        complexity_mask = distributed_data_object.iscomplex(casted_x[:self.paradict['lmax']+1])
-        if distributed_data_object.any(complexity_mask):
-            about.warnings.cprint("WARNING: Taking the absolute values for " +
-                                  "all complex entries where lmax==0")
-            casted_x[complexity_mask] = distributed_data_object.__abs__(casted_x[complexity_mask])
-        return casted_x
-
     def _cast_to_np(self, x, dtype=None, hermitianize=True, **kwargs):
         casted_x = super(lm_space, self)._cast_to_np(x=x,
                                                      dtype=dtype,
@@ -490,7 +479,7 @@ class lm_space(point_space):
                     x = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
                     x = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
-            return distributed_data_object(x)
+            return self.cast(x)
 
         elif arg['random'] == "uni":
             x = random.uni(dtype=self.dtype,
@@ -527,9 +516,9 @@ class lm_space(point_space):
             lmax = self.paradict['lmax']
             mmax = self.paradict['mmax']
             if self.dtype == np.dtype('complex64'):
-                return distributed_data_object(gl.dotlm_f(x, y, lmax=lmax, mmax=mmax))
+                return self.cast(gl.dotlm_f(x, y, lmax=lmax, mmax=mmax))
             else:
-                return distributed_data_object(gl.dotlm(x, y, lmax=lmax, mmax=mmax))
+                return self.cast(gl.dotlm(x, y, lmax=lmax, mmax=mmax))
         else:
             return self._dotlm(x, y)
 
@@ -575,11 +564,11 @@ class lm_space(point_space):
 
             # transform
             if self.dtype == np.dtype('complex64'):
-                Tx = distributed_data_object(gl.alm2map_f(np.array(x), nlat=nlat, nlon=nlon,
-                                  lmax=lmax, mmax=mmax, cl=False))
+                Tx = gl.alm2map_f(np.array(x), nlat=nlat, nlon=nlon,
+                                  lmax=lmax, mmax=mmax, cl=False)
             else:
-                Tx = distributed_data_object(gl.alm2map(np.array(x), nlat=nlat, nlon=nlon,
-                                lmax=lmax, mmax=mmax, cl=False))
+                Tx = gl.alm2map(np.array(x), nlat=nlat, nlon=nlon,
+                                lmax=lmax, mmax=mmax, cl=False)
             # re-weight if discrete
             if codomain.discrete:
                 Tx = codomain.calc_weight(Tx, power=0.5)
@@ -590,9 +579,9 @@ class lm_space(point_space):
             mmax = self.paradict['mmax']
 
             # transform
-            Tx = distributed_data_object(hp.alm2map(np.array(x).astype(np.complex128), nside, lmax=lmax,
+            Tx = hp.alm2map(np.array(x).astype(np.complex128), nside, lmax=lmax,
                             mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
-                            pol=True, inplace=False))
+                            pol=True, inplace=False)
             # re-weight if discrete
             if(codomain.discrete):
                 Tx = codomain.calc_weight(Tx, power=0.5)
@@ -601,7 +590,7 @@ class lm_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.copy(dtype=codomain.dtype)
+        return self.cast(Tx.astype(codomain.dtype))
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -632,11 +621,11 @@ class lm_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         if gc['use_healpy']:
-            return distributed_data_object(hp.smoothalm(x, fwhm=0.0, sigma=sigma,
+            return self.cast(hp.smoothalm(x, fwhm=0.0, sigma=sigma,
                                 pol=True, mmax=self.paradict['mmax'],
                                 verbose=False, inplace=False))
         else:
-            return distributed_data_object(gl.smoothalm(x, lmax=self.paradict['lmax'],
+            return self.cast(gl.smoothalm(x, lmax=self.paradict['lmax'],
                                 mmax=self.paradict['mmax'],
                                 fwhm=0.0, sigma=sigma, overwrite=False))
 
@@ -662,17 +651,17 @@ class lm_space(point_space):
         # power spectrum
         if self.dtype == np.dtype('complex64'):
             if gc['use_libsharp']:
-                return distributed_data_object(gl.anaalm_f(x, lmax=lmax, mmax=mmax))
+                return self.cast(gl.anaalm_f(x, lmax=lmax, mmax=mmax))
             else:
-                return distributed_data_object(hp.alm2cl(x.copy(dtype=np.complex128), alms2=None,
+                return self.cast(hp.alm2cl(x.copy(dtype=np.complex128), alms2=None,
                                  lmax=lmax, mmax=mmax, lmax_out=lmax,
                                  nspec=None).copy(dtype=np.float32))
         else:
             if gc['use_healpy']:
-                return distributed_data_object(hp.alm2cl(np.array(x), alms2=None, lmax=lmax, mmax=mmax,
+                return self.cast(hp.alm2cl(np.array(x), alms2=None, lmax=lmax, mmax=mmax,
                                  lmax_out=lmax, nspec=None))
             else:
-                return distributed_data_object(gl.anaalm(x, lmax=lmax, mmax=mmax))
+                return self.cast(gl.anaalm(x, lmax=lmax, mmax=mmax))
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=True,
                  norm=None, cmap=None, cbar=True, other=None, legend=False,
@@ -967,7 +956,7 @@ class gl_space(point_space):
 
         self.discrete = False
         self.harmonic = False
-        self.distances = tuple(distributed_data_object(gl.vol(self.paradict['nlat'],
+        self.distances = tuple(self.cast(gl.vol(self.paradict['nlat'],
                                       nlon=self.paradict['nlon']
                                       ).astype(np.float)))
         self.comm = self._parse_comm(comm)
@@ -1177,11 +1166,11 @@ class gl_space(point_space):
             nlon = self.paradict['nlon']
             lmax = nlat - 1
             if self.dtype == np.dtype('float32'):
-                x = distributed_data_object(gl.synfast_f(arg['spec'],
+                x = self.cast(gl.synfast_f(arg['spec'],
                                  nlat=nlat, nlon=nlon,
                                  lmax=lmax, mmax=lmax, alm=False))
             else:
-                x = distributed_data_object(gl.synfast(arg['spec'],
+                x = self.cast(gl.synfast(arg['spec'],
                                nlat=nlat, nlon=nlon,
                                lmax=lmax, mmax=lmax, alm=False))
             # weight if discrete
@@ -1221,13 +1210,13 @@ class gl_space(point_space):
         nlat = self.paradict['nlat']
         nlon = self.paradict['nlon']
         if self.dtype == np.dtype('float32'):
-            return distributed_data_object(gl.weight_f(x,
+            return self.cast(gl.weight_f(x,
                                np.array(self.distances),
                                p=np.float32(power),
                                nlat=nlat, nlon=nlon,
                                overwrite=False))
         else:
-            return distributed_data_object(gl.weight(x,
+            return self.cast(gl.weight(x,
                              np.array(self.distances),
                              p=np.float32(power),
                              nlat=nlat, nlon=nlon,
@@ -1280,11 +1269,11 @@ class gl_space(point_space):
             mmax = codomain.paradict['mmax']
 
             if self.dtype == np.dtype('float32'):
-                Tx = distributed_data_object(gl.map2alm_f(np.array(x),
+                Tx = self.cast(gl.map2alm_f(np.array(x),
                                   nlat=nlat, nlon=nlon,
                                   lmax=lmax, mmax=mmax))
             else:
-                Tx = distributed_data_object(gl.map2alm(np.array(x),
+                Tx = self.cast(gl.map2alm(np.array(x),
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax))
         else:
@@ -1323,7 +1312,7 @@ class gl_space(point_space):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
         nlat = self.paradict['nlat']
-        return distributed_data_object(gl.smoothmap(x,
+        return self.cast(gl.smoothmap(x,
                             nlat=nlat, nlon=self.paradict['nlon'],
                             lmax=nlat - 1, mmax=nlat - 1,
                             fwhm=0.0, sigma=sigma))
@@ -1353,12 +1342,12 @@ class gl_space(point_space):
         lmax = nlat - 1
         mmax = nlat - 1
         if self.dtype == np.dtype('float32'):
-            return distributed_data_object(gl.anafast_f(np.array(x),
+            return self.cast(gl.anafast_f(np.array(x),
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax,
                                 alm=False))
         else:
-            return distributed_data_object(gl.anafast(np.array(x),
+            return self.cast(gl.anafast(np.array(x),
                               nlat=nlat, nlon=nlon,
                               lmax=lmax, mmax=mmax,
                               alm=False))
@@ -1792,7 +1781,7 @@ class hp_space(point_space):
         elif arg['random'] == "syn":
             nside = self.paradict['nside']
             lmax = 3*nside-1
-            x = distributed_data_object(hp.synfast(arg['spec'], nside, lmax=lmax, mmax=lmax, alm=False,
+            x = self.cast(hp.synfast(arg['spec'], nside, lmax=lmax, mmax=lmax, alm=False,
                            pol=True, pixwin=False, fwhm=0.0, sigma=None))
             # weight if discrete
             if self.discrete:
@@ -1849,7 +1838,7 @@ class hp_space(point_space):
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            Tx = distributed_data_object(hp.map2alm(x.copy(dtype=np.float64),
+            Tx = self.cast(hp.map2alm(x.copy(dtype=np.float64),
                             lmax=codomain.paradict['lmax'],
                             mmax=codomain.paradict['mmax'],
                             iter=niter, pol=True, use_weights=False,
@@ -1901,7 +1890,7 @@ class hp_space(point_space):
         # smooth
         lmax = 3*nside-1
         mmax = lmax
-        return distributed_data_object(hp.smoothing(x, fwhm=0.0, sigma=sigma, pol=True,
+        return self.cast(hp.smoothing(x, fwhm=0.0, sigma=sigma, pol=True,
                             iter=niter, lmax=lmax, mmax=mmax,
                             use_weights=False, datapath=None))
 
@@ -1935,7 +1924,7 @@ class hp_space(point_space):
         lmax = 3*nside-1
         mmax = lmax
         # power spectrum
-        return distributed_data_object(hp.anafast(x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
+        return self.cast(hp.anafast(x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
                           iter=niter, alm=False, pol=True, use_weights=False,
                           datapath=None))
 
