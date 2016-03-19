@@ -590,7 +590,7 @@ class lm_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return self.cast(Tx.astype(codomain.dtype))
+        return codomain.cast(Tx.astype(codomain.dtype))
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -651,17 +651,17 @@ class lm_space(point_space):
         # power spectrum
         if self.dtype == np.dtype('complex64'):
             if gc['use_libsharp']:
-                return self.cast(gl.anaalm_f(x, lmax=lmax, mmax=mmax))
+                return gl.anaalm_f(np.array(x), lmax=lmax, mmax=mmax)
             else:
-                return self.cast(hp.alm2cl(x.copy(dtype=np.complex128), alms2=None,
+                return hp.alm2cl(np.array(x).astype(np.complex128), alms2=None,
                                  lmax=lmax, mmax=mmax, lmax_out=lmax,
-                                 nspec=None).copy(dtype=np.float32))
+                                 nspec=None).astype(np.float32)
         else:
             if gc['use_healpy']:
-                return self.cast(hp.alm2cl(np.array(x), alms2=None, lmax=lmax, mmax=mmax,
-                                 lmax_out=lmax, nspec=None))
+                return hp.alm2cl(np.array(x), alms2=None, lmax=lmax, mmax=mmax,
+                                 lmax_out=lmax, nspec=None)
             else:
-                return self.cast(gl.anaalm(x, lmax=lmax, mmax=mmax))
+                return gl.anaalm(np.array(x), lmax=lmax, mmax=mmax)
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=True,
                  norm=None, cmap=None, cbar=True, other=None, legend=False,
@@ -956,9 +956,9 @@ class gl_space(point_space):
 
         self.discrete = False
         self.harmonic = False
-        self.distances = tuple(self.cast(gl.vol(self.paradict['nlat'],
+        self.distances = tuple(gl.vol(self.paradict['nlat'],
                                       nlon=self.paradict['nlon']
-                                      ).astype(np.float)))
+                                      ).astype(np.float))
         self.comm = self._parse_comm(comm)
 
     @property
@@ -1269,18 +1269,18 @@ class gl_space(point_space):
             mmax = codomain.paradict['mmax']
 
             if self.dtype == np.dtype('float32'):
-                Tx = self.cast(gl.map2alm_f(np.array(x),
+                Tx = gl.map2alm_f(np.array(x),
                                   nlat=nlat, nlon=nlon,
-                                  lmax=lmax, mmax=mmax))
+                                  lmax=lmax, mmax=mmax)
             else:
-                Tx = self.cast(gl.map2alm(np.array(x),
+                Tx = gl.map2alm(np.array(x),
                                 nlat=nlat, nlon=nlon,
-                                lmax=lmax, mmax=mmax))
+                                lmax=lmax, mmax=mmax)
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.copy(dtype=codomain.dtype)
+        return codomain.cast(Tx.astype(codomain.dtype))
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -1312,7 +1312,7 @@ class gl_space(point_space):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
         nlat = self.paradict['nlat']
-        return self.cast(gl.smoothmap(x,
+        return self.cast(gl.smoothmap(np.array(x),
                             nlat=nlat, nlon=self.paradict['nlon'],
                             lmax=nlat - 1, mmax=nlat - 1,
                             fwhm=0.0, sigma=sigma))
@@ -1342,15 +1342,15 @@ class gl_space(point_space):
         lmax = nlat - 1
         mmax = nlat - 1
         if self.dtype == np.dtype('float32'):
-            return self.cast(gl.anafast_f(np.array(x),
+            return gl.anafast_f(np.array(x),
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax,
-                                alm=False))
+                                alm=False)
         else:
-            return self.cast(gl.anafast(np.array(x),
+            return gl.anafast(np.array(x),
                               nlat=nlat, nlon=nlon,
                               lmax=lmax, mmax=mmax,
-                              alm=False))
+                              alm=False)
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=False,
                  unit="", norm=None, cmap=None, cbar=True, other=None,
@@ -1838,17 +1838,17 @@ class hp_space(point_space):
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            Tx = self.cast(hp.map2alm(x.copy(dtype=np.float64),
+            Tx = hp.map2alm(x.copy(dtype=np.float64),
                             lmax=codomain.paradict['lmax'],
                             mmax=codomain.paradict['mmax'],
                             iter=niter, pol=True, use_weights=False,
-                            datapath=None))
+                            datapath=None)
 
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.copy(dtype=codomain.dtype)
+        return codomain.cast(Tx.astype(codomain.dtype))
 
     def calc_smooth(self, x, sigma=0, niter=0, **kwargs):
         """
@@ -1924,9 +1924,9 @@ class hp_space(point_space):
         lmax = 3*nside-1
         mmax = lmax
         # power spectrum
-        return self.cast(hp.anafast(x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
+        return hp.anafast(np.array(x), map2=None, nspec=None, lmax=lmax, mmax=mmax,
                           iter=niter, alm=False, pol=True, use_weights=False,
-                          datapath=None))
+                          datapath=None)
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=False, unit="",
                  norm=None, cmap=None, cbar=True, other=None, legend=False,

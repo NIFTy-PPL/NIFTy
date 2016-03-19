@@ -249,7 +249,7 @@ class power_indices(object):
         return result
 
     def _compute_indices(self, nkdict):
-        if self.datamodel in ['np','not']:
+        if self.datamodel in ['np']:
             return self._compute_indices_np(nkdict)
         elif self.datamodel in self.allowed_distribution_strategies:
             return self._compute_indices_d2o(nkdict)
@@ -693,6 +693,15 @@ class lm_power_indices(power_indices):
                     ).astype(np.int)
         l = index - self.lmax * m + m * (m - 1) // 2
         return l, m
+
+    def _compute_indices(self, nkdict):
+        if self.datamodel in ['np','not']:
+            return self._compute_indices_np(nkdict)
+        elif self.datamodel in self.allowed_distribution_strategies:
+            return self._compute_indices_d2o(nkdict)
+        else:
+            raise ValueError(about._errors.cstring(
+                'ERROR: Datamodel is not supported.'))
 
     def _compute_indices_d2o(self, nkdict):
         """
