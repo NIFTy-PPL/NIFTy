@@ -515,21 +515,16 @@ class lm_space(point_space):
         x = self.cast(x)
         y = self.cast(y)
 
-        if gc['use_libsharp']:
-            lmax = self.paradict['lmax']
-            mmax = self.paradict['mmax']
-            if self.dtype == np.dtype('complex64'):
-                return self.cast(gl.dotlm_f(x, y, lmax=lmax, mmax=mmax))
-            else:
-                return self.cast(gl.dotlm(x, y, lmax=lmax, mmax=mmax))
-        else:
-            return self._dotlm(x, y)
-
-    def _dotlm(self, x, y):
         lmax = self.paradict['lmax']
-        dot = np.sum(x.real[:lmax + 1] * y.real[:lmax + 1])
-        dot += 2 * np.sum(x.real[lmax + 1:] * y.real[lmax + 1:])
-        dot += 2 * np.sum(x.imag[lmax + 1:] * y.imag[lmax + 1:])
+
+        x_low = x[:lmax + 1]
+        x_high = x[lmax + 1:]
+        y_low = y[:lmax + 1]
+        y_high = y[lmax + 1:]
+
+        dot = (x_low.real * y_low.real).sum()
+        dot += 2 * (x_high.real * y_high.real).sum()
+        dot += 2 * (x_high.imag * y_high.imag).sum()
         return dot
 
     def calc_transform(self, x, codomain=None, **kwargs):
