@@ -457,18 +457,16 @@ class lm_space(point_space):
         arg = random.parse_arguments(self, **kwargs)
 
         if arg is None:
-            return np.zeros(self.get_shape(), dtype=self.dtype)
+            x = 0
 
         elif arg['random'] == "pm1":
             x = random.pm1(dtype=self.dtype, shape=self.get_shape())
-            return self.cast(x)
 
         elif arg['random'] == "gau":
             x = random.gau(dtype=self.dtype,
                            shape=self.get_shape(),
                            mean=arg['mean'],
                            std=arg['std'])
-            return self.cast(x)
 
         elif arg['random'] == "syn":
             lmax = self.paradict['lmax']
@@ -484,18 +482,18 @@ class lm_space(point_space):
                     x = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
                     x = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
-            return self.cast(x)
 
         elif arg['random'] == "uni":
             x = random.uni(dtype=self.dtype,
                            shape=self.get_shape(),
                            vmin=arg['vmin'],
                            vmax=arg['vmax'])
-            return self.cast(x)
 
         else:
             raise KeyError(about._errors.cstring(
                 "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+
+        return self.cast(x)
 
     def calc_dot(self, x, y):
         """
