@@ -554,6 +554,13 @@ class lm_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external alm2map method!")
+
+        np_x = x.get_full_data()
+
         if isinstance(codomain, gl_space):
             nlat = codomain.paradict['nlat']
             nlon = codomain.paradict['nlon']
@@ -562,14 +569,12 @@ class lm_space(point_space):
 
             # transform
             if self.dtype == np.dtype('complex64'):
-                Tx = gl.alm2map_f(np.array(x), nlat=nlat, nlon=nlon,
-                                  lmax=lmax, mmax=mmax, cl=False)
+                np_Tx = gl.alm2map_f(np_x, nlat=nlat, nlon=nlon,
+                                     lmax=lmax, mmax=mmax, cl=False)
             else:
-                Tx = gl.alm2map(np.array(x), nlat=nlat, nlon=nlon,
-                                lmax=lmax, mmax=mmax, cl=False)
-            # re-weight if discrete
-            if codomain.discrete:
-                Tx = codomain.calc_weight(Tx, power=0.5)
+                np_Tx = gl.alm2map(np_x, nlat=nlat, nlon=nlon,
+                                   lmax=lmax, mmax=mmax, cl=False)
+            Tx = codomain.cast(np_Tx)
 
         elif isinstance(codomain, hp_space):
             nside = codomain.paradict['nside']
@@ -577,18 +582,21 @@ class lm_space(point_space):
             mmax = self.paradict['mmax']
 
             # transform
-            Tx = hp.alm2map(np.array(x).astype(np.complex128), nside, lmax=lmax,
-                            mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
-                            pol=True, inplace=False)
-            # re-weight if discrete
-            if(codomain.discrete):
-                Tx = codomain.calc_weight(Tx, power=0.5)
+            np_x = np_x.astype(np.complex128, copy=False)
+            np_Tx = hp.alm2map(np_x, nside, lmax=lmax,
+                               mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
+                               pol=True, inplace=False)
+            Tx = codomain.cast(np_Tx)
 
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return codomain.cast(Tx.astype(codomain.dtype))
+        # re-weight if discrete
+        if codomain.discrete:
+            Tx = codomain.calc_weight(Tx, power=0.5)
+
+        return codomain.cast(Tx)
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
