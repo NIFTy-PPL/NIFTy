@@ -292,11 +292,12 @@ class lm_space(point_space):
         casted_x = super(lm_space, self)._cast_to_d2o(x=x,
                                                       dtype=dtype,
                                                       **kwargs)
-        complexity_mask = casted_x[:self.paradict['lmax']+1].iscomplex()
+        lmax = self.paradict['lmax']
+        complexity_mask = casted_x[:lmax+1].iscomplex()
         if complexity_mask.any():
             about.warnings.cprint("WARNING: Taking the absolute values for " +
                                   "all complex entries where lmax==0")
-            casted_x[complexity_mask] = abs(casted_x[complexity_mask])
+            casted_x[:lmax+1] = abs(casted_x[:lmax+1])
         return casted_x
 
     # TODO: Extend to binning/log
@@ -626,6 +627,7 @@ class lm_space(point_space):
             sigma = np.sqrt(2) * np.pi / (self.paradict['lmax'] + 1)
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+
         if gc['use_healpy']:
             return self.cast(hp.smoothalm(x, fwhm=0.0, sigma=sigma,
                                 pol=True, mmax=self.paradict['mmax'],
