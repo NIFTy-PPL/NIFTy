@@ -671,20 +671,46 @@ class lm_space(point_space):
         lmax = self.paradict['lmax']
         mmax = self.paradict['mmax']
 
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external anaalm/alm2cl method!")
+
+        np_x = x.get_full_data()
+
         # power spectrum
         if self.dtype == np.dtype('complex64'):
             if gc['use_libsharp']:
-                return gl.anaalm_f(np.array(x), lmax=lmax, mmax=mmax)
+                return gl.anaalm_f(np_x, lmax=lmax, mmax=mmax)
             else:
-                return hp.alm2cl(np.array(x).astype(np.complex128), alms2=None,
-                                 lmax=lmax, mmax=mmax, lmax_out=lmax,
-                                 nspec=None).astype(np.float32)
+                np_x = np_x.astype(np.complex128, copy=False)
+                result = hp.alm2cl(np_x,
+                                   alms2=None,
+                                   lmax=lmax,
+                                   mmax=mmax,
+                                   lmax_out=lmax,
+                                   nspec=None)
         else:
             if gc['use_healpy']:
-                return hp.alm2cl(np.array(x), alms2=None, lmax=lmax, mmax=mmax,
-                                 lmax_out=lmax, nspec=None)
+                return hp.alm2cl(np_x,
+                                 alms2=None,
+                                 lmax=lmax,
+                                 mmax=mmax,
+                                 lmax_out=lmax,
+                                 nspec=None)
             else:
-                return gl.anaalm(np.array(x), lmax=lmax, mmax=mmax)
+                return gl.anaalm(np_x,
+                                 lmax=lmax,
+                                 mmax=mmax)
+
+        if self.dtype == np.dtype('complex64'):
+            result = result.astype(np.float32, copy=False)
+        elif self.dtype == np.dtype('complex128'):
+            result = result.astype(np.float64, copy=False)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: dtype %s not known to calc_power method." %
+                str(self.dtype)))
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=True,
                  norm=None, cmap=None, cbar=True, other=None, legend=False,
