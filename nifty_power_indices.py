@@ -508,7 +508,8 @@ class rg_power_indices(power_indices):
             nkdict = distributed_data_object(
                                 global_shape=shape,
                                 dtype=np.float128,
-                                distribution_strategy=self.datamodel)
+                                distribution_strategy=self.datamodel,
+                                comm=self.comm)
             if self.datamodel in DISTRIBUTION_STRATEGIES['slicing']:
                 # get the node's individual slice of the first dimension
                 slice_of_first_dimension = slice(
@@ -672,15 +673,21 @@ class lm_power_indices(power_indices):
             -------
             nkdict : distributed_data_object
         """
-        if self.datamodel == 'not':
-            if 'healpy' in gdi:  # default
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: full kdict is temporarily stored on every node " +
+                "altough disribution strategy != 'not'!")
+
+        if self.datamodel in self.allowed_distribution_strategies:
+            if 'healpy' in gdi:
                 nkdict = hp.Alm.getlm(self.lmax, i=None)[0]
             else:
                 nkdict = self._getlm()[0]
-
-        elif self.datamodel in self.allowed_distribution_strategies:
-            raise NotImplementedError
-
+            nkdict = distributed_data_object(
+                         nkdict,
+                         distribution_strategy=self.datamodel,
+                         comm=self.comm)
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported datamodel"))
@@ -695,22 +702,13 @@ class lm_power_indices(power_indices):
         return l, m
 
     def _compute_indices(self, nkdict):
-        if self.datamodel in ['np','not']:
-            return self._compute_indices_np(nkdict)
-        elif self.datamodel in self.allowed_distribution_strategies:
+        if self.datamodel in self.allowed_distribution_strategies:
             return self._compute_indices_d2o(nkdict)
         else:
             raise ValueError(about._errors.cstring(
                 'ERROR: Datamodel is not supported.'))
 
     def _compute_indices_d2o(self, nkdict):
-        """
-        Internal helper function which computes pindex, kindex, rho and pundex
-        from a given nkdict
-        """
-        raise NotImplementedError
-
-    def _compute_indices_np(self, nkdict):
         """
         Internal helper function which computes pindex, kindex, rho and pundex
         from a given nkdict
@@ -723,7 +721,7 @@ class lm_power_indices(power_indices):
         ##########
         # pindex #
         ##########
-        pindex = nkdict.astype(np.int, copy=True)
+        pindex = nkdict.copy(dtype=np.int)
 
         #######
         # rho #
@@ -733,6 +731,6 @@ class lm_power_indices(power_indices):
         ##########
         # pundex #
         ##########
-        pundex = self._compute_pundex_np(pindex, kindex)
+        pundex = self._compute_pundex_d2o(pindex, kindex)
 
         return pindex, kindex, rho, pundex

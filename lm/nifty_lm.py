@@ -157,7 +157,6 @@ class lm_space(point_space):
             raise ImportError(about._errors.cstring(
                 "ERROR: neither libsharp_wrapper_gl nor healpy activated."))
 
-
         self._cache_dict = {'check_codomain': {}}
 
         self.paradict = lm_space_paradict(lmax=lmax, mmax=mmax)
@@ -165,13 +164,19 @@ class lm_space(point_space):
         # check data type
         dtype = np.dtype(dtype)
         if dtype not in [np.dtype('complex64'), np.dtype('complex128')]:
-            about.warnings.cprint("WARNING: data type set to default.")
+            about.warnings.cprint("WARNING: data type set to complex128.")
             dtype = np.dtype('complex128')
         self.dtype = dtype
 
         # set datamodel
         if datamodel not in ['not']:
-            about.warnings.cprint("WARNING: datamodel set to default.")
+            about.warnings.cprint(
+                "WARNING: %s is not a recommended datamodel for lm_space."
+                % datamodel)
+        if datamodel not in LM_DISTRIBUTION_STRATEGIES:
+            raise ValueError(about._errors.cstring(
+                "ERROR: %s is not a valid datamodel" % datamodel))
+
         self.datamodel = datamodel
 
         self.discrete = True
