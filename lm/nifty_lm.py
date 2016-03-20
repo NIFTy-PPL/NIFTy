@@ -759,6 +759,11 @@ class lm_space(point_space):
                 the figure is not saved (default: False).
 
         """
+        try:
+            x = x.get_full_data()
+        except AttributeError:
+            pass
+
         if(not pl.isinteractive())and(not bool(kwargs.get("save", False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
@@ -811,7 +816,6 @@ class lm_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self.cast(x)
             if(np.iscomplexobj(x)):
                 if(title):
                     title += " "
