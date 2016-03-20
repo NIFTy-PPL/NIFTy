@@ -288,15 +288,15 @@ class lm_space(point_space):
             mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
             return mol
 
-    def _cast_to_np(self, x, dtype=None, hermitianize=True, **kwargs):
-        casted_x = super(lm_space, self)._cast_to_np(x=x,
-                                                     dtype=dtype,
-                                                     **kwargs)
-        complexity_mask = np.iscomplex(casted_x[:self.paradict['lmax']+1])
-        if np.any(complexity_mask):
+    def _cast_to_d2o(self, x, dtype=None, **kwargs):
+        casted_x = super(lm_space, self)._cast_to_d2o(x=x,
+                                                      dtype=dtype,
+                                                      **kwargs)
+        complexity_mask = casted_x[:self.paradict['lmax']+1].iscomplex()
+        if complexity_mask.any():
             about.warnings.cprint("WARNING: Taking the absolute values for " +
                                   "all complex entries where lmax==0")
-            casted_x[complexity_mask] = np.abs(casted_x[complexity_mask])
+            casted_x[complexity_mask] = abs(casted_x[complexity_mask])
         return casted_x
 
     # TODO: Extend to binning/log
