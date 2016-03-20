@@ -628,14 +628,29 @@ class lm_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
 
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothalm method!")
+
+        np_x = x.get_full_data()
+
         if gc['use_healpy']:
-            return self.cast(hp.smoothalm(x, fwhm=0.0, sigma=sigma,
-                                pol=True, mmax=self.paradict['mmax'],
-                                verbose=False, inplace=False))
+            np_smoothed_x = hp.smoothalm(np_x,
+                                         fwhm=0.0,
+                                         sigma=sigma,
+                                         pol=True,
+                                         mmax=self.paradict['mmax'],
+                                         verbose=False,
+                                         inplace=False)
         else:
-            return self.cast(gl.smoothalm(x, lmax=self.paradict['lmax'],
-                                mmax=self.paradict['mmax'],
-                                fwhm=0.0, sigma=sigma, overwrite=False))
+            np_smoothed_x = gl.smoothalm(np_x,
+                                         lmax=self.paradict['lmax'],
+                                         mmax=self.paradict['mmax'],
+                                         fwhm=0.0,
+                                         sigma=sigma,
+                                         overwrite=False)
+        return self.cast(np_smoothed_x)
 
     def calc_power(self, x, **kwargs):
         """
