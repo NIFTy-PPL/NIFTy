@@ -685,7 +685,7 @@ class lm_space(point_space):
         # power spectrum
         if self.dtype == np.dtype('complex64'):
             if gc['use_libsharp']:
-                return gl.anaalm_f(np_x, lmax=lmax, mmax=mmax)
+                result = gl.anaalm_f(np_x, lmax=lmax, mmax=mmax)
             else:
                 np_x = np_x.astype(np.complex128, copy=False)
                 result = hp.alm2cl(np_x,
@@ -696,16 +696,16 @@ class lm_space(point_space):
                                    nspec=None)
         else:
             if gc['use_healpy']:
-                return hp.alm2cl(np_x,
-                                 alms2=None,
-                                 lmax=lmax,
-                                 mmax=mmax,
-                                 lmax_out=lmax,
-                                 nspec=None)
+                result = hp.alm2cl(np_x,
+                                   alms2=None,
+                                   lmax=lmax,
+                                   mmax=mmax,
+                                   lmax_out=lmax,
+                                   nspec=None)
             else:
-                return gl.anaalm(np_x,
-                                 lmax=lmax,
-                                 mmax=mmax)
+                result = gl.anaalm(np_x,
+                                   lmax=lmax,
+                                   mmax=mmax)
 
         if self.dtype == np.dtype('complex64'):
             result = result.astype(np.float32, copy=False)
@@ -1435,16 +1435,26 @@ class gl_space(point_space):
         nlon = self.paradict['nlon']
         lmax = nlat - 1
         mmax = nlat - 1
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external anafast method!")
+
+        np_x = x.get_full_data()
+
         if self.dtype == np.dtype('float32'):
-            return gl.anafast_f(np.array(x),
+            result = gl.anafast_f(np_x,
+                                  nlat=nlat, nlon=nlon,
+                                  lmax=lmax, mmax=mmax,
+                                  alm=False)
+        else:
+            result = gl.anafast(np_x,
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax,
                                 alm=False)
-        else:
-            return gl.anafast(np.array(x),
-                              nlat=nlat, nlon=nlon,
-                              lmax=lmax, mmax=mmax,
-                              alm=False)
+
+        return result
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=False,
                  unit="", norm=None, cmap=None, cbar=True, other=None,
@@ -1493,6 +1503,11 @@ class gl_space(point_space):
                 the figure is not saved (default: False).
 
         """
+        try:
+            x = x.get_full_data()
+        except AttributeError:
+            pass
+
         if(not pl.isinteractive())and(not bool(kwargs.get("save", False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
