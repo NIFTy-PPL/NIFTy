@@ -559,6 +559,9 @@ class rg_space(point_space):
         # Parse the keyword arguments
         arg = random.parse_arguments(self, **kwargs)
 
+        if arg is None:
+            return self.cast(0)
+
         # Should the output be hermitianized?
         hermitianizeQ = (self.paradict['complexity'] == 1)
 

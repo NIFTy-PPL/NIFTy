@@ -50,14 +50,17 @@ from nifty.nifty_paradict import lm_space_paradict,\
                                  hp_space_paradict
 from nifty.nifty_power_indices import lm_power_indices
 
+from nifty.nifty_mpi_data import distributed_data_object
+from nifty.nifty_mpi_data import STRATEGIES as DISTRIBUTION_STRATEGIES
+
 from nifty.nifty_random import random
 
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
 
-LM_DISTRIBUTION_STRATEGIES = []
-GL_DISTRIBUTION_STRATEGIES = []
-HP_DISTRIBUTION_STRATEGIES = []
+LM_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
+GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
+HP_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
 class lm_space(point_space):
@@ -120,7 +123,7 @@ class lm_space(point_space):
     """
 
     def __init__(self, lmax, mmax=None, dtype=np.dtype('complex128'),
-                 datamodel='np', comm=gc['default_comm']):
+                 datamodel='not', comm=gc['default_comm']):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -154,7 +157,6 @@ class lm_space(point_space):
             raise ImportError(about._errors.cstring(
                 "ERROR: neither libsharp_wrapper_gl nor healpy activated."))
 
-
         self._cache_dict = {'check_codomain': {}}
 
         self.paradict = lm_space_paradict(lmax=lmax, mmax=mmax)
@@ -162,16 +164,19 @@ class lm_space(point_space):
         # check data type
         dtype = np.dtype(dtype)
         if dtype not in [np.dtype('complex64'), np.dtype('complex128')]:
-            about.warnings.cprint("WARNING: data type set to default.")
+            about.warnings.cprint("WARNING: data type set to complex128.")
             dtype = np.dtype('complex128')
         self.dtype = dtype
 
         # set datamodel
-        if datamodel not in ['np']:
-            about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'np'
-        else:
-            self.datamodel = datamodel
+        if datamodel not in ['not']:
+            about.warnings.cprint(
+                "WARNING: %s is not a recommended datamodel for lm_space."
+                % datamodel)
+        if datamodel not in LM_DISTRIBUTION_STRATEGIES:
+            raise ValueError(about._errors.cstring(
+                "ERROR: %s is not a valid datamodel" % datamodel))
+        self.datamodel = datamodel
 
         self.discrete = True
         self.harmonic = True
@@ -282,18 +287,16 @@ class lm_space(point_space):
             mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
             return mol
 
-    def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
-        raise NotImplementedError
-
-    def _cast_to_np(self, x, dtype=None, hermitianize=True, **kwargs):
-        casted_x = super(lm_space, self)._cast_to_np(x=x,
-                                                     dtype=dtype,
-                                                     **kwargs)
-        complexity_mask = np.iscomplex(casted_x[:self.paradict['lmax']+1])
-        if np.any(complexity_mask):
+    def _cast_to_d2o(self, x, dtype=None, **kwargs):
+        casted_x = super(lm_space, self)._cast_to_d2o(x=x,
+                                                      dtype=dtype,
+                                                      **kwargs)
+        lmax = self.paradict['lmax']
+        complexity_mask = casted_x[:lmax+1].iscomplex()
+        if complexity_mask.any():
             about.warnings.cprint("WARNING: Taking the absolute values for " +
                                   "all complex entries where lmax==0")
-            casted_x[complexity_mask] = np.abs(casted_x[complexity_mask])
+            casted_x[:lmax+1] = abs(casted_x[:lmax+1])
         return casted_x
 
     # TODO: Extend to binning/log
@@ -453,46 +456,49 @@ class lm_space(point_space):
         """
         arg = random.parse_arguments(self, **kwargs)
 
-        if arg is None:
-            return np.zeros(self.get_shape(), dtype=self.dtype)
+#        if arg is None:
+#            x = 0
+#
+#        elif arg['random'] == "pm1":
+#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#
+#        elif arg['random'] == "gau":
+#            x = random.gau(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           mean=arg['mean'],
+#                           std=arg['std'])
 
-        elif arg['random'] == "pm1":
-            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
-            return self.cast(x)
-
-        elif arg['random'] == "gau":
-            x = random.gau(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           mean=arg['mean'],
-                           std=arg['std'])
-            return self.cast(x)
-
-        elif arg['random'] == "syn":
+        if arg['random'] == "syn":
             lmax = self.paradict['lmax']
             mmax = self.paradict['mmax']
             if self.dtype == np.dtype('complex64'):
                 if gc['use_libsharp']:
-                    x = gl.synalm_f(arg['spec'], lmax=lmax, mmax=mmax)
+                    sample = gl.synalm_f(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
-                    x = hp.synalm(arg['spec'].astype(np.complex128),
-                                  lmax=lmax, mmax=mmax).astype(np.complex64)
+                    sample = hp.synalm(
+                                arg['spec'].astype(np.complex128),
+                                lmax=lmax, mmax=mmax).astype(np.complex64,
+                                                             copy=False)
             else:
                 if gc['use_healpy']:
-                    x = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
+                    sample = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
-                    x = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
-            return x
-
-        elif arg['random'] == "uni":
-            x = random.uni(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           vmin=arg['vmin'],
-                           vmax=arg['vmax'])
-            return self.cast(x)
+                    sample = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
 
         else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+            sample = super(lm_space, self).get_random_values(**arg)
+
+#        elif arg['random'] == "uni":
+#            x = random.uni(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           vmin=arg['vmin'],
+#                           vmax=arg['vmax'])
+#
+#        else:
+#            raise KeyError(about._errors.cstring(
+#                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+        sample = self.cast(sample)
+        return sample
 
     def calc_dot(self, x, y):
         """
@@ -514,21 +520,16 @@ class lm_space(point_space):
         x = self.cast(x)
         y = self.cast(y)
 
-        if gc['use_libsharp']:
-            lmax = self.paradict['lmax']
-            mmax = self.paradict['mmax']
-            if self.dtype == np.dtype('complex64'):
-                return gl.dotlm_f(x, y, lmax=lmax, mmax=mmax)
-            else:
-                return gl.dotlm(x, y, lmax=lmax, mmax=mmax)
-        else:
-            return self._dotlm(x, y)
-
-    def _dotlm(self, x, y):
         lmax = self.paradict['lmax']
-        dot = np.sum(x.real[:lmax + 1] * y.real[:lmax + 1])
-        dot += 2 * np.sum(x.real[lmax + 1:] * y.real[lmax + 1:])
-        dot += 2 * np.sum(x.imag[lmax + 1:] * y.imag[lmax + 1:])
+
+        x_low = x[:lmax + 1]
+        x_high = x[lmax + 1:]
+        y_low = y[:lmax + 1]
+        y_high = y[lmax + 1:]
+
+        dot = (x_low.real * y_low.real).sum()
+        dot += 2 * (x_high.real * y_high.real).sum()
+        dot += 2 * (x_high.imag * y_high.imag).sum()
         return dot
 
     def calc_transform(self, x, codomain=None, **kwargs):
@@ -558,6 +559,13 @@ class lm_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external alm2map method!")
+
+        np_x = x.get_full_data()
+
         if isinstance(codomain, gl_space):
             nlat = codomain.paradict['nlat']
             nlon = codomain.paradict['nlon']
@@ -566,14 +574,12 @@ class lm_space(point_space):
 
             # transform
             if self.dtype == np.dtype('complex64'):
-                Tx = gl.alm2map_f(x, nlat=nlat, nlon=nlon,
-                                  lmax=lmax, mmax=mmax, cl=False)
+                np_Tx = gl.alm2map_f(np_x, nlat=nlat, nlon=nlon,
+                                     lmax=lmax, mmax=mmax, cl=False)
             else:
-                Tx = gl.alm2map(x, nlat=nlat, nlon=nlon,
-                                lmax=lmax, mmax=mmax, cl=False)
-            # re-weight if discrete
-            if codomain.discrete:
-                Tx = codomain.calc_weight(Tx, power=0.5)
+                np_Tx = gl.alm2map(np_x, nlat=nlat, nlon=nlon,
+                                   lmax=lmax, mmax=mmax, cl=False)
+            Tx = codomain.cast(np_Tx)
 
         elif isinstance(codomain, hp_space):
             nside = codomain.paradict['nside']
@@ -581,18 +587,21 @@ class lm_space(point_space):
             mmax = self.paradict['mmax']
 
             # transform
-            Tx = hp.alm2map(x.astype(np.complex128), nside, lmax=lmax,
-                            mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
-                            pol=True, inplace=False)
-            # re-weight if discrete
-            if(codomain.discrete):
-                Tx = codomain.calc_weight(Tx, power=0.5)
+            np_x = np_x.astype(np.complex128, copy=False)
+            np_Tx = hp.alm2map(np_x, nside, lmax=lmax,
+                               mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
+                               pol=True, inplace=False)
+            Tx = codomain.cast(np_Tx)
 
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.astype(codomain.dtype)
+        # re-weight if discrete
+        if codomain.discrete:
+            Tx = codomain.calc_weight(Tx, power=0.5)
+
+        return codomain.cast(Tx)
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -622,14 +631,30 @@ class lm_space(point_space):
             sigma = np.sqrt(2) * np.pi / (self.paradict['lmax'] + 1)
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothalm method!")
+
+        np_x = x.get_full_data()
+
         if gc['use_healpy']:
-            return hp.smoothalm(x, fwhm=0.0, sigma=sigma,
-                                pol=True, mmax=self.paradict['mmax'],
-                                verbose=False, inplace=False)
+            np_smoothed_x = hp.smoothalm(np_x,
+                                         fwhm=0.0,
+                                         sigma=sigma,
+                                         pol=True,
+                                         mmax=self.paradict['mmax'],
+                                         verbose=False,
+                                         inplace=False)
         else:
-            return gl.smoothalm(x, lmax=self.paradict['lmax'],
-                                mmax=self.paradict['mmax'],
-                                fwhm=0.0, sigma=sigma, overwrite=False)
+            np_smoothed_x = gl.smoothalm(np_x,
+                                         lmax=self.paradict['lmax'],
+                                         mmax=self.paradict['mmax'],
+                                         fwhm=0.0,
+                                         sigma=sigma,
+                                         overwrite=False)
+        return self.cast(np_smoothed_x)
 
     def calc_power(self, x, **kwargs):
         """
@@ -650,20 +675,46 @@ class lm_space(point_space):
         lmax = self.paradict['lmax']
         mmax = self.paradict['mmax']
 
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external anaalm/alm2cl method!")
+
+        np_x = x.get_full_data()
+
         # power spectrum
         if self.dtype == np.dtype('complex64'):
             if gc['use_libsharp']:
-                return gl.anaalm_f(x, lmax=lmax, mmax=mmax)
+                result = gl.anaalm_f(np_x, lmax=lmax, mmax=mmax)
             else:
-                return hp.alm2cl(x.astype(np.complex128), alms2=None,
-                                 lmax=lmax, mmax=mmax, lmax_out=lmax,
-                                 nspec=None).astype(np.float32)
+                np_x = np_x.astype(np.complex128, copy=False)
+                result = hp.alm2cl(np_x,
+                                   alms2=None,
+                                   lmax=lmax,
+                                   mmax=mmax,
+                                   lmax_out=lmax,
+                                   nspec=None)
         else:
             if gc['use_healpy']:
-                return hp.alm2cl(x, alms2=None, lmax=lmax, mmax=mmax,
-                                 lmax_out=lmax, nspec=None)
+                result = hp.alm2cl(np_x,
+                                   alms2=None,
+                                   lmax=lmax,
+                                   mmax=mmax,
+                                   lmax_out=lmax,
+                                   nspec=None)
             else:
-                return gl.anaalm(x, lmax=lmax, mmax=mmax)
+                result = gl.anaalm(np_x,
+                                   lmax=lmax,
+                                   mmax=mmax)
+
+        if self.dtype == np.dtype('complex64'):
+            result = result.astype(np.float32, copy=False)
+        elif self.dtype == np.dtype('complex128'):
+            result = result.astype(np.float64, copy=False)
+        else:
+            raise NotImplementedError(about._errors.cstring(
+                "ERROR: dtype %s not known to calc_power method." %
+                str(self.dtype)))
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=True,
                  norm=None, cmap=None, cbar=True, other=None, legend=False,
@@ -712,6 +763,11 @@ class lm_space(point_space):
                 the figure is not saved (default: False).
 
         """
+        try:
+            x = x.get_full_data()
+        except AttributeError:
+            pass
+
         if(not pl.isinteractive())and(not bool(kwargs.get("save", False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
@@ -764,7 +820,6 @@ class lm_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self.cast(x)
             if(np.iscomplexobj(x)):
                 if(title):
                     title += " "
@@ -911,7 +966,7 @@ class gl_space(point_space):
     """
 
     def __init__(self, nlat, nlon=None, dtype=np.dtype('float64'),
-                 datamodel='np', comm=gc['default_comm']):
+                 datamodel='not', comm=gc['default_comm']):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -952,11 +1007,14 @@ class gl_space(point_space):
         self.dtype = dtype
 
         # set datamodel
-        if datamodel not in ['np']:
-            about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'np'
-        else:
-            self.datamodel = datamodel
+        if datamodel not in ['not']:
+            about.warnings.cprint(
+                "WARNING: %s is not a recommended datamodel for gl_space."
+                % datamodel)
+        if datamodel not in GL_DISTRIBUTION_STRATEGIES:
+            raise ValueError(about._errors.cstring(
+                "ERROR: %s is not a valid datamodel" % datamodel))
+        self.datamodel = datamodel
 
         self.discrete = False
         self.harmonic = False
@@ -1153,45 +1211,49 @@ class gl_space(point_space):
         """
         arg = random.parse_arguments(self, **kwargs)
 
-        if(arg is None):
-            x = np.zeros(self.get_shape(), dtype=self.dtype)
-
-        elif(arg['random'] == "pm1"):
-            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
-
-        elif(arg['random'] == "gau"):
-            x = random.gau(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           mean=arg['mean'],
-                           std=arg['std'])
-
-        elif(arg['random'] == "syn"):
+#        if(arg is None):
+#            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#
+#        elif(arg['random'] == "pm1"):
+#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#
+#        elif(arg['random'] == "gau"):
+#            x = random.gau(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           mean=arg['mean'],
+#                           std=arg['std'])
+#
+        if(arg['random'] == "syn"):
             nlat = self.paradict['nlat']
             nlon = self.paradict['nlon']
             lmax = nlat - 1
             if self.dtype == np.dtype('float32'):
-                x = gl.synfast_f(arg['spec'],
-                                 nlat=nlat, nlon=nlon,
-                                 lmax=lmax, mmax=lmax, alm=False)
+                sample = gl.synfast_f(arg['spec'],
+                                      nlat=nlat, nlon=nlon,
+                                      lmax=lmax, mmax=lmax, alm=False)
             else:
-                x = gl.synfast(arg['spec'],
-                               nlat=nlat, nlon=nlon,
-                               lmax=lmax, mmax=lmax, alm=False)
+                sample = gl.synfast(arg['spec'],
+                                    nlat=nlat, nlon=nlon,
+                                    lmax=lmax, mmax=lmax, alm=False)
             # weight if discrete
             if self.discrete:
-                x = self.calc_weight(x, power=0.5)
-
-        elif(arg['random'] == "uni"):
-            x = random.uni(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           vmin=arg['vmin'],
-                           vmax=arg['vmax'])
+                sample = self.calc_weight(sample, power=0.5)
 
         else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+            sample = super(gl_space, self).get_random_values(**arg)
 
-        return x
+
+#        elif(arg['random'] == "uni"):
+#            x = random.uni(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           vmin=arg['vmin'],
+#                           vmax=arg['vmax'])
+#
+#        else:
+#            raise KeyError(about._errors.cstring(
+#                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+        sample = self.cast(sample)
+        return sample
 
     def calc_weight(self, x, power=1):
         """
@@ -1210,21 +1272,29 @@ class gl_space(point_space):
                 Weighted array.
         """
         x = self.cast(x)
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external alm2map method!")
+        np_x = x.get_full_data()
+
         # weight
         nlat = self.paradict['nlat']
         nlon = self.paradict['nlon']
         if self.dtype == np.dtype('float32'):
-            return gl.weight_f(x,
-                               np.array(self.distances),
-                               p=np.float32(power),
-                               nlat=nlat, nlon=nlon,
-                               overwrite=False)
+            np_result = gl.weight_f(np_x,
+                                    np.array(self.distances),
+                                    p=np.float32(power),
+                                    nlat=nlat, nlon=nlon,
+                                    overwrite=False)
         else:
-            return gl.weight(x,
-                             np.array(self.distances),
-                             p=np.float32(power),
-                             nlat=nlat, nlon=nlon,
-                             overwrite=False)
+            np_result = gl.weight(np_x,
+                                  np.array(self.distances),
+                                  p=np.float32(power),
+                                  nlat=nlat, nlon=nlon,
+                                  overwrite=False)
+        return self.cast(np_result)
 
     def get_weight(self, power=1):
         # TODO: Check if this function is compatible to the rest of nifty
@@ -1257,12 +1327,16 @@ class gl_space(point_space):
         """
         x = self.cast(x)
 
+        if codomain is None:
+            codomain = self.get_codomain()
+
         # Check if the given codomain is suitable for the transformation
         if not self.check_codomain(codomain):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
         if isinstance(codomain, lm_space):
+
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
@@ -1272,19 +1346,26 @@ class gl_space(point_space):
             lmax = codomain.paradict['lmax']
             mmax = codomain.paradict['mmax']
 
+            if self.datamodel != 'not':
+                about.warnings.cprint(
+                    "WARNING: Field data is consolidated to all nodes for "
+                    "external map2alm method!")
+
+            np_x = x.get_full_data()
+
             if self.dtype == np.dtype('float32'):
-                Tx = gl.map2alm_f(x,
+                Tx = gl.map2alm_f(np_x,
                                   nlat=nlat, nlon=nlon,
                                   lmax=lmax, mmax=mmax)
             else:
-                Tx = gl.map2alm(x,
+                Tx = gl.map2alm(np_x,
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax)
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.astype(codomain.dtype)
+        return codomain.cast(Tx)
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -1316,10 +1397,19 @@ class gl_space(point_space):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
         nlat = self.paradict['nlat']
-        return gl.smoothmap(x,
-                            nlat=nlat, nlon=self.paradict['nlon'],
-                            lmax=nlat - 1, mmax=nlat - 1,
-                            fwhm=0.0, sigma=sigma)
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothmap method!")
+
+        np_x = x.get_full_data()
+
+        result = self.cast(gl.smoothmap(np_x,
+                           nlat=nlat, nlon=self.paradict['nlon'],
+                           lmax=nlat - 1, mmax=nlat - 1,
+                           fwhm=0.0, sigma=sigma))
+        return result
 
     def calc_power(self, x, **kwargs):
         """
@@ -1345,16 +1435,26 @@ class gl_space(point_space):
         nlon = self.paradict['nlon']
         lmax = nlat - 1
         mmax = nlat - 1
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external anafast method!")
+
+        np_x = x.get_full_data()
+
         if self.dtype == np.dtype('float32'):
-            return gl.anafast_f(x,
+            result = gl.anafast_f(np_x,
+                                  nlat=nlat, nlon=nlon,
+                                  lmax=lmax, mmax=mmax,
+                                  alm=False)
+        else:
+            result = gl.anafast(np_x,
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax,
                                 alm=False)
-        else:
-            return gl.anafast(x,
-                              nlat=nlat, nlon=nlon,
-                              lmax=lmax, mmax=mmax,
-                              alm=False)
+
+        return result
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=False,
                  unit="", norm=None, cmap=None, cbar=True, other=None,
@@ -1403,6 +1503,11 @@ class gl_space(point_space):
                 the figure is not saved (default: False).
 
         """
+        try:
+            x = x.get_full_data()
+        except AttributeError:
+            pass
+
         if(not pl.isinteractive())and(not bool(kwargs.get("save", False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
@@ -1475,7 +1580,7 @@ class gl_space(point_space):
                 n_ = ln(vmin=vmin, vmax=vmax)
             else:
                 n_ = None
-            sub = ax0.pcolormesh(lon, lat, np.roll(x.reshape((self.para[0], self.para[1]), order='C'), self.para[
+            sub = ax0.pcolormesh(lon, lat, np.roll(np.array(x).reshape((self.para[0], self.para[1]), order='C'), self.para[
                                  1] // 2, axis=1)[::-1, ::-1], cmap=cmap, norm=n_, vmin=vmin, vmax=vmax)
             ax0.set_xlim(-180, 180)
             ax0.set_ylim(-90, 90)
@@ -1554,7 +1659,7 @@ class hp_space(point_space):
             An array with one element containing the pixel size.
     """
 
-    def __init__(self, nside, datamodel='np', comm=gc['default_comm']):
+    def __init__(self, nside, datamodel='not', comm=gc['default_comm']):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -1588,11 +1693,14 @@ class hp_space(point_space):
         self.dtype = np.dtype('float64')
 
         # set datamodel
-        if datamodel not in ['np']:
-            about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = 'np'
-        else:
-            self.datamodel = datamodel
+        if datamodel not in ['not']:
+            about.warnings.cprint(
+                "WARNING: %s is not a recommended datamodel for hp_space."
+                % datamodel)
+        if datamodel not in HP_DISTRIBUTION_STRATEGIES:
+            raise ValueError(about._errors.cstring(
+                "ERROR: %s is not a valid datamodel" % datamodel))
+        self.datamodel = datamodel
 
         self.discrete = False
         self.harmonic = False
@@ -1773,36 +1881,43 @@ class hp_space(point_space):
         """
         arg = random.parse_arguments(self, **kwargs)
 
-        if arg is None:
-            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#        if arg is None:
+#            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#
+#        elif arg['random'] == "pm1":
+#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#
+#        elif arg['random'] == "gau":
+#            x = random.gau(dtype=self.dtype, shape=self.get_shape(),
+#                           mean=arg['mean'],
+#                           std=arg['std'])
 
-        elif arg['random'] == "pm1":
-            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
-
-        elif arg['random'] == "gau":
-            x = random.gau(dtype=self.dtype, shape=self.get_shape(),
-                           mean=arg['mean'],
-                           std=arg['std'])
-
-        elif arg['random'] == "syn":
+        if arg['random'] == "syn":
             nside = self.paradict['nside']
             lmax = 3*nside-1
-            x = hp.synfast(arg['spec'], nside, lmax=lmax, mmax=lmax, alm=False,
-                           pol=True, pixwin=False, fwhm=0.0, sigma=None)
+            sample = hp.synfast(arg['spec'],
+                                nside,
+                                lmax=lmax, mmax=lmax,
+                                alm=False, pol=True, pixwin=False,
+                                fwhm=0.0, sigma=None)
             # weight if discrete
             if self.discrete:
-                x = self.calc_weight(x, power=0.5)
-
-        elif arg['random'] == "uni":
-            x = random.uni(dtype=self.dtype, shape=self.get_shape(),
-                           vmin=arg['vmin'],
-                           vmax=arg['vmax'])
+                sample = self.calc_weight(sample, power=0.5)
 
         else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+            sample = super(hp_space, self).get_random_values(**arg)
 
-        return x
+
+#        elif arg['random'] == "uni":
+#            x = random.uni(dtype=self.dtype, shape=self.get_shape(),
+#                           vmin=arg['vmin'],
+#                           vmax=arg['vmax'])
+#
+#        else:
+#            raise KeyError(about._errors.cstring(
+#                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+        sample = self.cast(sample)
+        return sample
 
     def calc_transform(self, x, codomain=None, niter=0, **kwargs):
         """
@@ -1839,22 +1954,29 @@ class hp_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external map2alm method!")
+
+        np_x = x.get_full_data()
+
         if isinstance(codomain, lm_space):
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            Tx = hp.map2alm(x.astype(np.float64, copy=False),
-                            lmax=codomain.paradict['lmax'],
-                            mmax=codomain.paradict['mmax'],
-                            iter=niter, pol=True, use_weights=False,
-                            datapath=None)
+            np_Tx = hp.map2alm(np_x.astype(np.float64, copy=False),
+                               lmax=codomain.paradict['lmax'],
+                               mmax=codomain.paradict['mmax'],
+                               iter=niter, pol=True, use_weights=False,
+                               datapath=None)
 
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return Tx.astype(codomain.dtype)
+        return codomain.cast(np_Tx)
 
     def calc_smooth(self, x, sigma=0, niter=0, **kwargs):
         """
@@ -1894,11 +2016,20 @@ class hp_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothalm method!")
+
+        np_x = x.get_full_data()
+
         lmax = 3*nside-1
         mmax = lmax
-        return hp.smoothing(x, fwhm=0.0, sigma=sigma, pol=True,
-                            iter=niter, lmax=lmax, mmax=mmax,
-                            use_weights=False, datapath=None)
+        result = hp.smoothing(np_x, fwhm=0.0, sigma=sigma, pol=True,
+                              iter=niter, lmax=lmax, mmax=mmax,
+                              use_weights=False, datapath=None)
+        return self.cast(result)
 
     def calc_power(self, x, niter=0, **kwargs):
         """
@@ -1929,8 +2060,16 @@ class hp_space(point_space):
         nside = self.paradict['nside']
         lmax = 3*nside-1
         mmax = lmax
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothalm method!")
+
+        np_x = x.get_full_data()
+
         # power spectrum
-        return hp.anafast(x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
+        return hp.anafast(np_x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
                           iter=niter, alm=False, pol=True, use_weights=False,
                           datapath=None)
 
@@ -1983,6 +2122,11 @@ class hp_space(point_space):
                 Number of iterations performed in the HEALPix basis
                 transformation.
         """
+        try:
+            x = x.get_full_data()
+        except AttributeError:
+            pass
+
         if(not pl.isinteractive())and(not bool(kwargs.get("save", False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
@@ -2035,7 +2179,6 @@ class hp_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self.cast(x)
             if(norm == "log"):
                 if(vmin is not None):
                     if(vmin <= 0):

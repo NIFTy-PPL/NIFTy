@@ -82,9 +82,9 @@ all_hp_datatypes = [np.dtype('float64')]
 DATAMODELS = {}
 DATAMODELS['point_space'] = ['np'] + POINT_DISTRIBUTION_STRATEGIES
 DATAMODELS['rg_space'] = ['np'] + RG_DISTRIBUTION_STRATEGIES
-DATAMODELS['lm_space'] = ['np'] + LM_DISTRIBUTION_STRATEGIES
-DATAMODELS['gl_space'] = ['np'] + GL_DISTRIBUTION_STRATEGIES
-DATAMODELS['hp_space'] = ['np'] + HP_DISTRIBUTION_STRATEGIES
+DATAMODELS['lm_space'] = [] + LM_DISTRIBUTION_STRATEGIES
+DATAMODELS['gl_space'] = [] + GL_DISTRIBUTION_STRATEGIES
+DATAMODELS['hp_space'] = [] + HP_DISTRIBUTION_STRATEGIES
 
 ###############################################################################
 
@@ -296,6 +296,7 @@ class Test_Common_Point_Like_Space_Interface(unittest.TestCase):
         assert(isinstance(s.get_dof(split=True), tuple))
 
         assert(isinstance(s.get_meta_volume(), np.float))
+        print(s.get_meta_volume(split=True), type(s.cast(1)))
         assert(isinstance(s.get_meta_volume(split=True), type(s.cast(1))))
         assert_almost_equal(
             s.get_meta_volume(), s.get_meta_volume(split=True).sum(), 2)
@@ -1022,18 +1023,22 @@ class Test_Lm_Space(unittest.TestCase):
                           DATAMODELS['lm_space']),
         testcase_func_name=custom_name_func)
     def test_successfull_init(self, lmax, mmax, dtype, datamodel):
-        l = lm_space(lmax, mmax=mmax, dtype=dtype, datamodel=datamodel)
-        assert(isinstance(l.harmonic, bool))
-        assert_equal(l.paradict['lmax'], lmax)
-        if mmax is None or mmax > lmax:
-            assert_equal(l.paradict['mmax'], lmax)
+        if datamodel in ['not']:
+            l = lm_space(lmax, mmax=mmax, dtype=dtype, datamodel=datamodel)
+            assert(isinstance(l.harmonic, bool))
+            assert_equal(l.paradict['lmax'], lmax)
+            if mmax is None or mmax > lmax:
+                assert_equal(l.paradict['mmax'], lmax)
+            else:
+                assert_equal(l.paradict['mmax'], mmax)
+            assert_equal(l.dtype, dtype)
+            assert_equal(l.datamodel, datamodel)
+            assert_equal(l.discrete, True)
+            assert_equal(l.harmonic, True)
+            assert_equal(l.distances, (np.float(1),))
         else:
-            assert_equal(l.paradict['mmax'], mmax)
-        assert_equal(l.dtype, dtype)
-        assert_equal(l.datamodel, datamodel)
-        assert_equal(l.discrete, True)
-        assert_equal(l.harmonic, True)
-        assert_equal(l.distances, (np.float(1),))
+            with assert_raises(NotImplementedError): lm_space(lmax, mmax=mmax, dtype=dtype, datamodel=datamodel)
+
 
 ###############################################################################
 
@@ -1076,18 +1081,21 @@ class Test_Lm_Space(unittest.TestCase):
     def test_enforce_power(self, datamodel):
         lmax = 17
         mmax = 12
-        l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
+        if datamodel in ['not']:
+            l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
 
-        assert_equal(l.enforce_power(2),
-                     np.ones(18)*2)
-        assert_almost_equal(
-            l.enforce_power(lambda x: 42 / (1 + x)**5),
-            np.array([  4.20000000e+01,   1.31250000e+00,   1.72839506e-01,
-         4.10156250e-02,   1.34400000e-02,   5.40123457e-03,
-         2.49895877e-03,   1.28173828e-03,   7.11273688e-04,
-         4.20000000e-04,   2.60786956e-04,   1.68788580e-04,
-         1.13118211e-04,   7.80924615e-05,   5.53086420e-05,
-         4.00543213e-05,   2.95804437e-05,   2.22273027e-05]))
+            assert_equal(l.enforce_power(2),
+                         np.ones(18)*2)
+            assert_almost_equal(
+                l.enforce_power(lambda x: 42 / (1 + x)**5),
+                np.array([  4.20000000e+01,   1.31250000e+00,   1.72839506e-01,
+             4.10156250e-02,   1.34400000e-02,   5.40123457e-03,
+             2.49895877e-03,   1.28173828e-03,   7.11273688e-04,
+             4.20000000e-04,   2.60786956e-04,   1.68788580e-04,
+             1.13118211e-04,   7.80924615e-05,   5.53086420e-05,
+             4.00543213e-05,   2.95804437e-05,   2.22273027e-05]))
+        else:
+            with assert_raises(NotImplementedError): lm_space(lmax, mmax=mmax, datamodel=datamodel)
 
 ##############################################################################
 
@@ -1096,20 +1104,23 @@ class Test_Lm_Space(unittest.TestCase):
     def test_get_check_codomain(self, datamodel):
         lmax = 23
         mmax = 23
-        l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
+        if datamodel in ['not']:
+            l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
 
-        y = l.get_codomain()
-        assert(l.check_codomain(y))
-        assert(y.check_codomain(l))
-
-        if 'hp_space' in available:
-            y = l.get_codomain('hp')
+            y = l.get_codomain()
             assert(l.check_codomain(y))
             assert(y.check_codomain(l))
-        if 'gl_space' in available:
-            y = l.get_codomain('gl')
-            assert(l.check_codomain(y))
-            assert(y.check_codomain(l))
+
+            if 'hp_space' in available:
+                y = l.get_codomain('hp')
+                assert(l.check_codomain(y))
+                assert(y.check_codomain(l))
+            if 'gl_space' in available:
+                y = l.get_codomain('gl')
+                assert(l.check_codomain(y))
+                assert(y.check_codomain(l))
+        else:
+            with assert_raises(NotImplementedError): lm_space(lmax, mmax=mmax, datamodel=datamodel)
 
 
 ###############################################################################
