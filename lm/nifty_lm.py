@@ -1327,12 +1327,16 @@ class gl_space(point_space):
         """
         x = self.cast(x)
 
+        if codomain is None:
+            codomain = self.get_codomain()
+
         # Check if the given codomain is suitable for the transformation
         if not self.check_codomain(codomain):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
         if isinstance(codomain, lm_space):
+
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
@@ -1342,19 +1346,26 @@ class gl_space(point_space):
             lmax = codomain.paradict['lmax']
             mmax = codomain.paradict['mmax']
 
+            if self.datamodel != 'not':
+                about.warnings.cprint(
+                    "WARNING: Field data is consolidated to all nodes for "
+                    "external map2alm method!")
+
+            np_x = x.get_full_data()
+
             if self.dtype == np.dtype('float32'):
-                Tx = gl.map2alm_f(np.array(x),
+                Tx = gl.map2alm_f(np_x,
                                   nlat=nlat, nlon=nlon,
                                   lmax=lmax, mmax=mmax)
             else:
-                Tx = gl.map2alm(np.array(x),
+                Tx = gl.map2alm(np_x,
                                 nlat=nlat, nlon=nlon,
                                 lmax=lmax, mmax=mmax)
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return codomain.cast(Tx.astype(codomain.dtype))
+        return codomain.cast(Tx)
 
     def calc_smooth(self, x, sigma=0, **kwargs):
         """
@@ -1386,10 +1397,19 @@ class gl_space(point_space):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
         nlat = self.paradict['nlat']
-        return self.cast(gl.smoothmap(np.array(x),
-                            nlat=nlat, nlon=self.paradict['nlon'],
-                            lmax=nlat - 1, mmax=nlat - 1,
-                            fwhm=0.0, sigma=sigma))
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothmap method!")
+
+        np_x = x.get_full_data()
+
+        result = self.cast(gl.smoothmap(np_x,
+                           nlat=nlat, nlon=self.paradict['nlon'],
+                           lmax=nlat - 1, mmax=nlat - 1,
+                           fwhm=0.0, sigma=sigma))
+        return result
 
     def calc_power(self, x, **kwargs):
         """
