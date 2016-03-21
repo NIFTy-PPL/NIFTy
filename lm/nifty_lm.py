@@ -176,7 +176,6 @@ class lm_space(point_space):
         if datamodel not in LM_DISTRIBUTION_STRATEGIES:
             raise ValueError(about._errors.cstring(
                 "ERROR: %s is not a valid datamodel" % datamodel))
-
         self.datamodel = datamodel
 
         self.discrete = True
@@ -457,44 +456,49 @@ class lm_space(point_space):
         """
         arg = random.parse_arguments(self, **kwargs)
 
-        if arg is None:
-            x = 0
+#        if arg is None:
+#            x = 0
+#
+#        elif arg['random'] == "pm1":
+#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#
+#        elif arg['random'] == "gau":
+#            x = random.gau(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           mean=arg['mean'],
+#                           std=arg['std'])
 
-        elif arg['random'] == "pm1":
-            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
-
-        elif arg['random'] == "gau":
-            x = random.gau(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           mean=arg['mean'],
-                           std=arg['std'])
-
-        elif arg['random'] == "syn":
+        if arg['random'] == "syn":
             lmax = self.paradict['lmax']
             mmax = self.paradict['mmax']
             if self.dtype == np.dtype('complex64'):
                 if gc['use_libsharp']:
-                    x = gl.synalm_f(arg['spec'], lmax=lmax, mmax=mmax)
+                    sample = gl.synalm_f(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
-                    x = hp.synalm(arg['spec'].astype(np.complex128),
-                                  lmax=lmax, mmax=mmax).astype(np.complex64)
+                    sample = hp.synalm(
+                                arg['spec'].astype(np.complex128),
+                                lmax=lmax, mmax=mmax).astype(np.complex64,
+                                                             copy=False)
             else:
                 if gc['use_healpy']:
-                    x = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
+                    sample = hp.synalm(arg['spec'], lmax=lmax, mmax=mmax)
                 else:
-                    x = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
-
-        elif arg['random'] == "uni":
-            x = random.uni(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           vmin=arg['vmin'],
-                           vmax=arg['vmax'])
+                    sample = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
 
         else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+            sample = super(lm_space, self).get_random_values(**arg)
 
-        return self.cast(x)
+#        elif arg['random'] == "uni":
+#            x = random.uni(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           vmin=arg['vmin'],
+#                           vmax=arg['vmax'])
+#
+#        else:
+#            raise KeyError(about._errors.cstring(
+#                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+        sample = self.cast(sample)
+        return sample
 
     def calc_dot(self, x, y):
         """
@@ -1004,7 +1008,12 @@ class gl_space(point_space):
 
         # set datamodel
         if datamodel not in ['not']:
-            about.warnings.cprint("WARNING: datamodel set to default.")
+            about.warnings.cprint(
+                "WARNING: %s is not a recommended datamodel for gl_space."
+                % datamodel)
+        if datamodel not in GL_DISTRIBUTION_STRATEGIES:
+            raise ValueError(about._errors.cstring(
+                "ERROR: %s is not a valid datamodel" % datamodel))
         self.datamodel = datamodel
 
         self.discrete = False
@@ -1202,45 +1211,49 @@ class gl_space(point_space):
         """
         arg = random.parse_arguments(self, **kwargs)
 
-        if(arg is None):
-            x = np.zeros(self.get_shape(), dtype=self.dtype)
-
-        elif(arg['random'] == "pm1"):
-            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
-
-        elif(arg['random'] == "gau"):
-            x = random.gau(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           mean=arg['mean'],
-                           std=arg['std'])
-
-        elif(arg['random'] == "syn"):
+#        if(arg is None):
+#            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#
+#        elif(arg['random'] == "pm1"):
+#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#
+#        elif(arg['random'] == "gau"):
+#            x = random.gau(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           mean=arg['mean'],
+#                           std=arg['std'])
+#
+        if(arg['random'] == "syn"):
             nlat = self.paradict['nlat']
             nlon = self.paradict['nlon']
             lmax = nlat - 1
             if self.dtype == np.dtype('float32'):
-                x = self.cast(gl.synfast_f(arg['spec'],
-                                 nlat=nlat, nlon=nlon,
-                                 lmax=lmax, mmax=lmax, alm=False))
+                sample = gl.synfast_f(arg['spec'],
+                                      nlat=nlat, nlon=nlon,
+                                      lmax=lmax, mmax=lmax, alm=False)
             else:
-                x = self.cast(gl.synfast(arg['spec'],
-                               nlat=nlat, nlon=nlon,
-                               lmax=lmax, mmax=lmax, alm=False))
+                sample = gl.synfast(arg['spec'],
+                                    nlat=nlat, nlon=nlon,
+                                    lmax=lmax, mmax=lmax, alm=False)
             # weight if discrete
             if self.discrete:
-                x = self.calc_weight(x, power=0.5)
-
-        elif(arg['random'] == "uni"):
-            x = random.uni(dtype=self.dtype,
-                           shape=self.get_shape(),
-                           vmin=arg['vmin'],
-                           vmax=arg['vmax'])
+                sample = self.calc_weight(sample, power=0.5)
 
         else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+            sample = super(gl_space, self).get_random_values(**arg)
 
-        return x
+
+#        elif(arg['random'] == "uni"):
+#            x = random.uni(dtype=self.dtype,
+#                           shape=self.get_shape(),
+#                           vmin=arg['vmin'],
+#                           vmax=arg['vmax'])
+#
+#        else:
+#            raise KeyError(about._errors.cstring(
+#                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+        sample = self.cast(sample)
+        return sample
 
     def calc_weight(self, x, power=1):
         """
@@ -1820,36 +1833,43 @@ class hp_space(point_space):
         """
         arg = random.parse_arguments(self, **kwargs)
 
-        if arg is None:
-            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#        if arg is None:
+#            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#
+#        elif arg['random'] == "pm1":
+#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#
+#        elif arg['random'] == "gau":
+#            x = random.gau(dtype=self.dtype, shape=self.get_shape(),
+#                           mean=arg['mean'],
+#                           std=arg['std'])
 
-        elif arg['random'] == "pm1":
-            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
-
-        elif arg['random'] == "gau":
-            x = random.gau(dtype=self.dtype, shape=self.get_shape(),
-                           mean=arg['mean'],
-                           std=arg['std'])
-
-        elif arg['random'] == "syn":
+        if arg['random'] == "syn":
             nside = self.paradict['nside']
             lmax = 3*nside-1
-            x = self.cast(hp.synfast(arg['spec'], nside, lmax=lmax, mmax=lmax, alm=False,
-                           pol=True, pixwin=False, fwhm=0.0, sigma=None))
+            sample = hp.synfast(arg['spec'],
+                                nside,
+                                lmax=lmax, mmax=lmax,
+                                alm=False, pol=True, pixwin=False,
+                                fwhm=0.0, sigma=None)
             # weight if discrete
             if self.discrete:
-                x = self.calc_weight(x, power=0.5)
-
-        elif arg['random'] == "uni":
-            x = random.uni(dtype=self.dtype, shape=self.get_shape(),
-                           vmin=arg['vmin'],
-                           vmax=arg['vmax'])
+                sample = self.calc_weight(sample, power=0.5)
 
         else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+            sample = super(hp_space, self).get_random_values(**arg)
 
-        return x
+
+#        elif arg['random'] == "uni":
+#            x = random.uni(dtype=self.dtype, shape=self.get_shape(),
+#                           vmin=arg['vmin'],
+#                           vmax=arg['vmax'])
+#
+#        else:
+#            raise KeyError(about._errors.cstring(
+#                "ERROR: unsupported random key '" + str(arg['random']) + "'."))
+        sample = self.cast(sample)
+        return sample
 
     def calc_transform(self, x, codomain=None, niter=0, **kwargs):
         """
