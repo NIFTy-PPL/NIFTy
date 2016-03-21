@@ -1694,7 +1694,11 @@ class hp_space(point_space):
 
         # set datamodel
         if datamodel not in ['not']:
-            about.warnings.cprint("WARNING: datamodel set to default.")
+            about.warnings.cprint("WARNING: %s is not a recommended datamodel for lm_space."
+                % datamodel)
+        if datamodel not in HP_DISTRIBUTION_STRATEGIES:
+            raise ValueError(about._errors.cstring(
+                "ERROR: %s is not a valid datamodel" % datamodel))
         self.datamodel = datamodel
 
         self.discrete = False
@@ -1949,12 +1953,19 @@ class hp_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external alm2map method!")
+
+        np_x = x.get_full_data()
+
         if isinstance(codomain, lm_space):
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            Tx = hp.map2alm(x.copy(dtype=np.float64),
+            np_Tx = hp.map2alm(np_x.astype(np.float64),
                             lmax=codomain.paradict['lmax'],
                             mmax=codomain.paradict['mmax'],
                             iter=niter, pol=True, use_weights=False,
@@ -1964,7 +1975,7 @@ class hp_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return codomain.cast(Tx.astype(codomain.dtype))
+        return codomain.cast(np_Tx.astype(codomain.dtype))
 
     def calc_smooth(self, x, sigma=0, niter=0, **kwargs):
         """
@@ -2004,9 +2015,17 @@ class hp_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothalm method!")
+
+        np_x = x.get_full_data()
+
         lmax = 3*nside-1
         mmax = lmax
-        return self.cast(hp.smoothing(x, fwhm=0.0, sigma=sigma, pol=True,
+        return self.cast(hp.smoothing(np_x, fwhm=0.0, sigma=sigma, pol=True,
                             iter=niter, lmax=lmax, mmax=mmax,
                             use_weights=False, datapath=None))
 
@@ -2039,8 +2058,17 @@ class hp_space(point_space):
         nside = self.paradict['nside']
         lmax = 3*nside-1
         mmax = lmax
+
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external smoothalm method!")
+
+        np_x = x.get_full_data()
+
         # power spectrum
-        return hp.anafast(np.array(x), map2=None, nspec=None, lmax=lmax, mmax=mmax,
+        return hp.anafast(np_x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
                           iter=niter, alm=False, pol=True, use_weights=False,
                           datapath=None)
 
@@ -2093,6 +2121,11 @@ class hp_space(point_space):
                 Number of iterations performed in the HEALPix basis
                 transformation.
         """
+        try:
+            x = x.get_full_data()
+        except AttributeError:
+            pass
+
         if(not pl.isinteractive())and(not bool(kwargs.get("save", False))):
             about.warnings.cprint("WARNING: interactive mode off.")
 
@@ -2145,7 +2178,6 @@ class hp_space(point_space):
             ax0.set_title(title)
 
         else:
-            x = self.cast(x)
             if(norm == "log"):
                 if(vmin is not None):
                     if(vmin <= 0):
