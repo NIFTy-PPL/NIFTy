@@ -1271,22 +1271,30 @@ class gl_space(point_space):
             y : numpy.ndarray
                 Weighted array.
         """
-        x = self._cast_to_np(x)
+        x = self.cast(x)
+
+        if self.datamodel != 'not':
+            about.warnings.cprint(
+                "WARNING: Field data is consolidated to all nodes for "
+                "external alm2map method!")
+        np_x = x.get_full_data()
+
         # weight
         nlat = self.paradict['nlat']
         nlon = self.paradict['nlon']
         if self.dtype == np.dtype('float32'):
-            return self.cast(gl.weight_f(x,
-                               np.array(self.distances),
-                               p=np.float32(power),
-                               nlat=nlat, nlon=nlon,
-                               overwrite=False))
+            np_result = gl.weight_f(np_x,
+                                    np.array(self.distances),
+                                    p=np.float32(power),
+                                    nlat=nlat, nlon=nlon,
+                                    overwrite=False)
         else:
-            return self.cast(gl.weight(x,
-                             np.array(self.distances),
-                             p=np.float32(power),
-                             nlat=nlat, nlon=nlon,
-                             overwrite=False))
+            np_result = gl.weight(np_x,
+                                  np.array(self.distances),
+                                  p=np.float32(power),
+                                  nlat=nlat, nlon=nlon,
+                                  overwrite=False)
+        return self.cast(np_result)
 
     def get_weight(self, power=1):
         # TODO: Check if this function is compatible to the rest of nifty
