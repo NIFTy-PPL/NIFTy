@@ -1694,7 +1694,8 @@ class hp_space(point_space):
 
         # set datamodel
         if datamodel not in ['not']:
-            about.warnings.cprint("WARNING: %s is not a recommended datamodel for lm_space."
+            about.warnings.cprint(
+                "WARNING: %s is not a recommended datamodel for hp_space."
                 % datamodel)
         if datamodel not in HP_DISTRIBUTION_STRATEGIES:
             raise ValueError(about._errors.cstring(
@@ -1956,7 +1957,7 @@ class hp_space(point_space):
         if self.datamodel != 'not':
             about.warnings.cprint(
                 "WARNING: Field data is consolidated to all nodes for "
-                "external alm2map method!")
+                "external map2alm method!")
 
         np_x = x.get_full_data()
 
@@ -1965,17 +1966,17 @@ class hp_space(point_space):
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)
             # transform
-            np_Tx = hp.map2alm(np_x.astype(np.float64),
-                            lmax=codomain.paradict['lmax'],
-                            mmax=codomain.paradict['mmax'],
-                            iter=niter, pol=True, use_weights=False,
-                            datapath=None)
+            np_Tx = hp.map2alm(np_x.astype(np.float64, copy=False),
+                               lmax=codomain.paradict['lmax'],
+                               mmax=codomain.paradict['mmax'],
+                               iter=niter, pol=True, use_weights=False,
+                               datapath=None)
 
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
 
-        return codomain.cast(np_Tx.astype(codomain.dtype))
+        return codomain.cast(np_Tx)
 
     def calc_smooth(self, x, sigma=0, niter=0, **kwargs):
         """
@@ -2025,9 +2026,10 @@ class hp_space(point_space):
 
         lmax = 3*nside-1
         mmax = lmax
-        return self.cast(hp.smoothing(np_x, fwhm=0.0, sigma=sigma, pol=True,
-                            iter=niter, lmax=lmax, mmax=mmax,
-                            use_weights=False, datapath=None))
+        result = hp.smoothing(np_x, fwhm=0.0, sigma=sigma, pol=True,
+                              iter=niter, lmax=lmax, mmax=mmax,
+                              use_weights=False, datapath=None)
+        return self.cast(result)
 
     def calc_power(self, x, niter=0, **kwargs):
         """
@@ -2058,7 +2060,6 @@ class hp_space(point_space):
         nside = self.paradict['nside']
         lmax = 3*nside-1
         mmax = lmax
-
 
         if self.datamodel != 'not':
             about.warnings.cprint(
