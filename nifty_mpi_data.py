@@ -486,6 +486,10 @@ class distributed_data_object(object):
         self.set_local_data(generator(self.distributor.local_shape), copy=copy)
         self.hermitian = False
 
+    def __array__(self):
+        """ Returns the d2o's full data. """
+        return self.get_full_data()
+
     def __str__(self):
         """ x.__str__() <==> str(x)"""
         return self.data.__str__()
