@@ -80,11 +80,11 @@ all_hp_datatypes = [np.dtype('float64')]
 ###############################################################################
 
 DATAMODELS = {}
-DATAMODELS['point_space'] = ['np'] + POINT_DISTRIBUTION_STRATEGIES
-DATAMODELS['rg_space'] = ['np'] + RG_DISTRIBUTION_STRATEGIES
-DATAMODELS['lm_space'] = [] + LM_DISTRIBUTION_STRATEGIES
-DATAMODELS['gl_space'] = [] + GL_DISTRIBUTION_STRATEGIES
-DATAMODELS['hp_space'] = [] + HP_DISTRIBUTION_STRATEGIES
+DATAMODELS['point_space'] = POINT_DISTRIBUTION_STRATEGIES
+DATAMODELS['rg_space'] = RG_DISTRIBUTION_STRATEGIES
+DATAMODELS['lm_space'] = LM_DISTRIBUTION_STRATEGIES
+DATAMODELS['gl_space'] = GL_DISTRIBUTION_STRATEGIES
+DATAMODELS['hp_space'] = HP_DISTRIBUTION_STRATEGIES
 
 ###############################################################################
 

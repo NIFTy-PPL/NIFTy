@@ -627,13 +627,7 @@ class rg_space(point_space):
                 def temp_erf(x):
                     return erf(x / np.sqrt(2))
 
-            if self.datamodel == 'np':
-                sample = temp_erf(sample)
-            elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
-                sample.apply_scalar_function(function=temp_erf, inplace=True)
-            else:
-                raise NotImplementedError(about._errors.cstring(
-                    "ERROR: function is not implemented for given datamodel."))
+            sample.apply_scalar_function(function=temp_erf, inplace=True)
 
             # Shift and stretch the uniform distribution into the given limits
             # sample = (sample + 1)/2 * (vmax-vmin) + vmin
@@ -722,20 +716,13 @@ class rg_space(point_space):
                                                     std=1)
 
                 # apply the powerspectrum renormalization
-                if self.datamodel == 'np':
-                    rescaler = np.sqrt(spec[np.searchsorted(kindex, kdict)])
-                    sample *= rescaler
-                elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
-                    # extract the local data from kdict
-                    local_kdict = kdict.get_local_data()
-                    rescaler = np.sqrt(
-                        spec[np.searchsorted(kindex, local_kdict)])
-                    sample.apply_scalar_function(lambda x: x * rescaler,
-                                                 inplace=True)
-                else:
-                    raise NotImplementedError(about._errors.cstring(
-                        "ERROR: function is not implemented for given " +
-                        "datamodel."))
+                # extract the local data from kdict
+                local_kdict = kdict.get_local_data()
+                rescaler = np.sqrt(
+                    spec[np.searchsorted(kindex, local_kdict)])
+                sample.apply_scalar_function(lambda x: x * rescaler,
+                                             inplace=True)
+
             # Case 2: self is a position space
             else:
                 # get a suitable codomain
@@ -829,13 +816,7 @@ class rg_space(point_space):
         x = self.cast(x)
         y = self.cast(y)
 
-        if self.datamodel == 'np':
-            result = np.vdot(x, y)
-        elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
-            result = x.vdot(y)
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+        result = x.vdot(y)
 
         if np.isreal(result):
             result = np.asscalar(np.real(result))
@@ -1049,14 +1030,7 @@ class rg_space(point_space):
         fieldabs = abs(x)**2
         power_spectrum = np.zeros(rho.shape)
 
-        if self.datamodel == 'np':
-            power_spectrum = np.bincount(pindex.flatten(),
-                                         weights=fieldabs.flatten())
-        elif self.datamodel in RG_DISTRIBUTION_STRATEGIES:
-            power_spectrum = pindex.bincount(weights=fieldabs)
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+        power_spectrum = pindex.bincount(weights=fieldabs)
 
         # Divide out the degeneracy factor
         power_spectrum /= rho

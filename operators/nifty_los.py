@@ -197,9 +197,7 @@ class los_response(operator):
         return (sigmas_low_coords, sigmas_up_coords)
 
     def _get_local_zero_point(self):
-        if self.domain.datamodel == 'np':
-            return self.zero_point
-        elif self.domain.datamodel in STRATEGIES['not']:
+        if self.domain.datamodel in STRATEGIES['not']:
             return self.zero_point
         elif self.domain.datamodel in STRATEGIES['slicing']:
             dummy_d2o = distributed_data_object(
@@ -219,9 +217,7 @@ class los_response(operator):
                 str(self.domain.datamodel)))
 
     def _init_local_shape(self):
-        if self.domain.datamodel == 'np':
-            return self.domain.get_shape()
-        elif self.domain.datamodel in STRATEGIES['not']:
+        if self.domain.datamodel in STRATEGIES['not']:
             return self.domain.get_shape()
         elif self.domain.datamodel in STRATEGIES['slicing']:
             dummy_d2o = distributed_data_object(
@@ -285,9 +281,7 @@ class los_response(operator):
         return result_field
 
     def _multiply_preprocessing(self, input_field):
-        if self.domain.datamodel == 'np':
-            local_input_data = input_field.val
-        elif self.domain.datamodel in STRATEGIES['not']:
+        if self.domain.datamodel in STRATEGIES['not']:
             local_input_data = input_field.val.data
         elif self.domain.datamodel in STRATEGIES['slicing']:
             extractor = self._extractor_d2o.distributor.extract_local_data
@@ -295,9 +289,7 @@ class los_response(operator):
         return local_input_data
 
     def _multiply_postprocessing(self, local_result):
-        if self.domain.datamodel == 'np':
-            global_result = local_result
-        elif self.domain.datamodel in STRATEGIES['not']:
+        if self.domain.datamodel in STRATEGIES['not']:
             global_result = local_result
         elif self.domain.datamodel in STRATEGIES['slicing']:
             global_result = np.empty_like(local_result)

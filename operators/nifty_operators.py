@@ -1904,14 +1904,8 @@ class power_operator(diagonal_operator):
             diag = pindex.apply_scalar_function(lambda x: temp_spec[x],
                                                 dtype=temp_spec.dtype.type)
             diag.hermitian = True
-        except(AttributeError):  # TODO: update all pindices to d2o's
+        except(AttributeError):
             diag = temp_spec[pindex]
-
-        if self.domain.datamodel == 'np':
-            try:
-                diag = diag.get_full_data()
-            except(AttributeError):
-                pass
 
         # Weight if necessary
         if not self.domain.discrete and bare:

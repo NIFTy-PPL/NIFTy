@@ -818,7 +818,7 @@ class point_space(space):
                              "WARNING: incompatible dtype: " + str(dtype)))
         self.dtype = dtype
 
-        if datamodel not in ['np'] + POINT_DISTRIBUTION_STRATEGIES:
+        if datamodel not in POINT_DISTRIBUTION_STRATEGIES:
             about._errors.cstring("WARNING: datamodel set to default.")
             self.datamodel = \
                 gc['default_distribution_strategy']
@@ -890,24 +890,7 @@ class point_space(space):
         data[key] = update
 
     def apply_scalar_function(self, x, function, inplace=False):
-        if self.datamodel == 'np':
-            if not inplace:
-                try:
-                    return function(x)
-                except:
-                    return np.vectorize(function)(x)
-            else:
-                try:
-                    x[:] = function(x)
-                except:
-                    x[:] = np.vectorize(function)(x)
-                return x
-
-        elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            return x.apply_scalar_function(function, inplace=inplace)
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+        return x.apply_scalar_function(function, inplace=inplace)
 
     def unary_operation(self, x, op='None', **kwargs):
         """
@@ -915,88 +898,36 @@ class point_space(space):
         Valid operations are
 
         """
-        if self.datamodel == 'np':
-            def _argmin(z, **kwargs):
-                ind = np.argmin(z, **kwargs)
-                if np.isscalar(ind):
-                    ind = np.unravel_index(ind, z.shape, order='C')
-                    if(len(ind) == 1):
-                        return ind[0]
-                return ind
-
-            def _argmax(z, **kwargs):
-                ind = np.argmax(z, **kwargs)
-                if np.isscalar(ind):
-                    ind = np.unravel_index(ind, z.shape, order='C')
-                    if(len(ind) == 1):
-                        return ind[0]
-                return ind
-
-            translation = {'pos': lambda y: getattr(y, '__pos__')(),
-                           'neg': lambda y: getattr(y, '__neg__')(),
-                           'abs': lambda y: getattr(y, '__abs__')(),
-                           'real': lambda y: getattr(y, 'real'),
-                           'imag': lambda y: getattr(y, 'imag'),
-                           'nanmin': np.nanmin,
-                           'amin': np.amin,
-                           'nanmax': np.nanmax,
-                           'amax': np.amax,
-                           'median': np.median,
-                           'mean': np.mean,
-                           'std': np.std,
-                           'var': np.var,
-                           'argmin': _argmin,
-                           'argmin_flat': np.argmin,
-                           'argmax': _argmax,
-                           'argmax_flat': np.argmax,
-                           'conjugate': np.conjugate,
-                           'sum': np.sum,
-                           'prod': np.prod,
-                           'unique': np.unique,
-                           'copy': np.copy,
-                           'copy_empty': np.empty_like,
-                           'isnan': np.isnan,
-                           'isinf': np.isinf,
-                           'isfinite': np.isfinite,
-                           'nan_to_num': np.nan_to_num,
-                           'all': np.all,
-                           'any': np.any,
-                           'None': lambda y: y}
-
-        elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            translation = {'pos': lambda y: getattr(y, '__pos__')(),
-                           'neg': lambda y: getattr(y, '__neg__')(),
-                           'abs': lambda y: getattr(y, '__abs__')(),
-                           'real': lambda y: getattr(y, 'real'),
-                           'imag': lambda y: getattr(y, 'imag'),
-                           'nanmin': lambda y: getattr(y, 'nanmin')(),
-                           'amin': lambda y: getattr(y, 'amin')(),
-                           'nanmax': lambda y: getattr(y, 'nanmax')(),
-                           'amax': lambda y: getattr(y, 'amax')(),
-                           'median': lambda y: getattr(y, 'median')(),
-                           'mean': lambda y: getattr(y, 'mean')(),
-                           'std': lambda y: getattr(y, 'std')(),
-                           'var': lambda y: getattr(y, 'var')(),
-                           'argmin': lambda y: getattr(y, 'argmin_nonflat')(),
-                           'argmin_flat': lambda y: getattr(y, 'argmin')(),
-                           'argmax': lambda y: getattr(y, 'argmax_nonflat')(),
-                           'argmax_flat': lambda y: getattr(y, 'argmax')(),
-                           'conjugate': lambda y: getattr(y, 'conjugate')(),
-                           'sum': lambda y: getattr(y, 'sum')(),
-                           'prod': lambda y: getattr(y, 'prod')(),
-                           'unique': lambda y: getattr(y, 'unique')(),
-                           'copy': lambda y: getattr(y, 'copy')(),
-                           'copy_empty': lambda y: getattr(y, 'copy_empty')(),
-                           'isnan': lambda y: getattr(y, 'isnan')(),
-                           'isinf': lambda y: getattr(y, 'isinf')(),
-                           'isfinite': lambda y: getattr(y, 'isfinite')(),
-                           'nan_to_num': lambda y: getattr(y, 'nan_to_num')(),
-                           'all': lambda y: getattr(y, 'all')(),
-                           'any': lambda y: getattr(y, 'any')(),
-                           'None': lambda y: y}
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+        translation = {'pos': lambda y: getattr(y, '__pos__')(),
+                       'neg': lambda y: getattr(y, '__neg__')(),
+                       'abs': lambda y: getattr(y, '__abs__')(),
+                       'real': lambda y: getattr(y, 'real'),
+                       'imag': lambda y: getattr(y, 'imag'),
+                       'nanmin': lambda y: getattr(y, 'nanmin')(),
+                       'amin': lambda y: getattr(y, 'amin')(),
+                       'nanmax': lambda y: getattr(y, 'nanmax')(),
+                       'amax': lambda y: getattr(y, 'amax')(),
+                       'median': lambda y: getattr(y, 'median')(),
+                       'mean': lambda y: getattr(y, 'mean')(),
+                       'std': lambda y: getattr(y, 'std')(),
+                       'var': lambda y: getattr(y, 'var')(),
+                       'argmin': lambda y: getattr(y, 'argmin_nonflat')(),
+                       'argmin_flat': lambda y: getattr(y, 'argmin')(),
+                       'argmax': lambda y: getattr(y, 'argmax_nonflat')(),
+                       'argmax_flat': lambda y: getattr(y, 'argmax')(),
+                       'conjugate': lambda y: getattr(y, 'conjugate')(),
+                       'sum': lambda y: getattr(y, 'sum')(),
+                       'prod': lambda y: getattr(y, 'prod')(),
+                       'unique': lambda y: getattr(y, 'unique')(),
+                       'copy': lambda y: getattr(y, 'copy')(),
+                       'copy_empty': lambda y: getattr(y, 'copy_empty')(),
+                       'isnan': lambda y: getattr(y, 'isnan')(),
+                       'isinf': lambda y: getattr(y, 'isinf')(),
+                       'isfinite': lambda y: getattr(y, 'isfinite')(),
+                       'nan_to_num': lambda y: getattr(y, 'nan_to_num')(),
+                       'all': lambda y: getattr(y, 'all')(),
+                       'any': lambda y: getattr(y, 'any')(),
+                       'None': lambda y: y}
 
         return translation[op](x, **kwargs)
 
@@ -1121,17 +1052,11 @@ class point_space(space):
                              dtype=dtype,
                              **kwargs)
 
-        if self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
+        else:
             return self._cast_to_d2o(x=x,
                                      dtype=dtype,
                                      **kwargs)
-        elif self.datamodel == 'np':
-            return self._cast_to_np(x=x,
-                                    dtype=dtype,
-                                    **kwargs)
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+
 
     def _cast_to_d2o(self, x, dtype=None, **kwargs):
         """
@@ -1204,8 +1129,8 @@ class point_space(space):
             if to_copy:
                 temp = x.copy_empty(dtype=dtype,
                                     distribution_strategy=self.datamodel)
-                temp.set_data(to_key=(slice(None),), 
-                              data=x, 
+                temp.set_data(to_key=(slice(None),),
+                              data=x,
                               from_key=(slice(None),))
                 temp.hermitian = x.hermitian
                 x = temp
@@ -1221,89 +1146,6 @@ class point_space(space):
                                         distribution_strategy=self.datamodel)
             # Cast the d2o
             return self.cast(x, dtype=dtype)
-
-    def _cast_to_np(self, x, dtype=None, **kwargs):
-        """
-            Computes valid field values from a given object, trying
-            to translate the given data into a valid form. Thereby it is as
-            benevolent as possible.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray, distributed_data_object
-                Array containing the field values, which are compatible to the
-                space.
-
-            Other parameters
-            ----------------
-            verbose : bool, *optional*
-                Whether the method should raise a warning if information is
-                lost during casting (default: False).
-        """
-        if dtype is None:
-            dtype = self.dtype
-
-        # Case 1: x is a distributed_data_object
-        if isinstance(x, distributed_data_object):
-            # Extract the data
-            temp = x.get_full_data()
-            # Cast the resulting numpy array again
-            return self._cast_to_np(temp,
-                                    dtype=dtype,
-                                    **kwargs)
-
-        # Case 2: x is a distributed_data_object
-        elif isinstance(x, np.ndarray):
-            # Check the shape
-            if np.any(np.array(x.shape) != np.array(self.get_shape())):
-                # Check if at least the number of degrees of freedom is equal
-                if x.size == self.get_dim():
-                    # If the number of dof is equal or 1, use np.reshape...
-                    temp = x.reshape(self.get_shape())
-                    # ... and cast again
-                    return self._cast_to_np(temp,
-                                            dtype=dtype,
-                                            **kwargs)
-                elif x.size == 1:
-                    temp = np.empty(shape=self.get_shape(),
-                                    dtype=dtype)
-                    temp[:] = x
-                    return self._cast_to_np(temp,
-                                            dtype=dtype,
-                                            **kwargs)
-                else:
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: Data has incompatible shape!"))
-
-            # Check the dtype
-            if x.dtype != dtype:
-                if x.dtype > dtype:
-                    about.warnings.cflush(
-                        "WARNING: Datatypes are of conflicting precision " +
-                        " (own: " + str(dtype) + " <> foreign: " +
-                        str(x.dtype) + ") and will be casted! Potential " +
-                        "loss of precision!\n")
-                # Fix the datatype...
-                temp = x.astype(dtype)
-                # ... and cast again
-                return self._cast_to_np(temp,
-                                        dtype=dtype,
-                                        **kwargs)
-
-            return x
-
-        # Case 3: x is something else
-        # Use general numpy casting
-        else:
-            temp = np.empty(self.get_shape(), dtype=dtype)
-            if x is not None:
-                temp[:] = x
-            return self._cast_to_np(temp, dtype=dtype)
 
     def enforce_power(self, spec, **kwargs):
         """
@@ -1496,67 +1338,44 @@ class point_space(space):
         if arg is None:
             return self.cast(0)
 
-        if self.datamodel == 'np':
-            if arg['random'] == "pm1":
-                x = random.pm1(dtype=self.dtype,
-                               shape=self.get_shape())
-            elif arg['random'] == "gau":
-                x = random.gau(dtype=self.dtype,
-                               shape=self.get_shape(),
-                               mean=arg['mean'],
-                               std=arg['std'])
-            elif arg['random'] == "uni":
-                x = random.uni(dtype=self.dtype,
-                               shape=self.get_shape(),
-                               vmin=arg['vmin'],
-                               vmax=arg['vmax'])
+        # Prepare the empty distributed_data_object
+        sample = distributed_data_object(
+                                    global_shape=self.get_shape(),
+                                    dtype=self.dtype,
+                                    distribution_strategy=self.datamodel)
+
+        # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
+        if arg['random'] == 'pm1':
+            sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
+                                                        shape=s))
+
+        # Case 2: normal distribution with zero-mean and a given standard
+        #         deviation or variance
+        elif arg['random'] == 'gau':
+            std = arg['std']
+            if np.isscalar(std) or std is None:
+                processed_std = std
             else:
-                raise KeyError(about._errors.cstring(
-                    "ERROR: unsupported random key '" +
-                    str(arg['random']) + "'."))
-            return x
-
-        elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            # Prepare the empty distributed_data_object
-            sample = distributed_data_object(
-                                        global_shape=self.get_shape(),
-                                        dtype=self.dtype,
-                                        distribution_strategy=self.datamodel)
-
-            # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
-            if arg['random'] == 'pm1':
-                sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
-                                                            shape=s))
-
-            # Case 2: normal distribution with zero-mean and a given standard
-            #         deviation or variance
-            elif arg['random'] == 'gau':
-                std = arg['std']
-                if np.isscalar(std) or std is None:
+                try:
+                    processed_std = sample.distributor.\
+                                                    extract_local_data(std)
+                except(AttributeError):
                     processed_std = std
-                else:
-                    try:
-                        processed_std = sample.distributor.\
-                                                        extract_local_data(std)
-                    except(AttributeError):
-                        processed_std = std
 
-                sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
-                                                            shape=s,
-                                                            mean=arg['mean'],
-                                                            std=processed_std))
+            sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
+                                                        shape=s,
+                                                        mean=arg['mean'],
+                                                        std=processed_std))
 
-            # Case 3: uniform distribution
-            elif arg['random'] == 'uni':
-                sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
-                                                            shape=s,
-                                                            vmin=arg['vmin'],
-                                                            vmax=arg['vmax']))
-            return sample
+        # Case 3: uniform distribution
+        elif arg['random'] == 'uni':
+            sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
+                                                        shape=s,
+                                                        vmin=arg['vmin'],
+                                                        vmax=arg['vmax']))
+        return sample
 
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+
 
     def calc_weight(self, x, power=1):
         """
@@ -1631,16 +1450,11 @@ class point_space(space):
         x = self.cast(x)
         y = self.cast(y)
 
-        if self.datamodel == 'np':
-            result = np.vdot(x, y)
-        elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            result = x.vdot(y)
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+        result = x.vdot(y)
 
         if np.isreal(result):
             result = np.asscalar(np.real(result))
+
         return result
 
     def calc_transform(self, x, codomain=None, **kwargs):
@@ -1699,27 +1513,14 @@ class point_space(space):
         except AttributeError:
             complex_weights_Q = False
 
-        if self.datamodel == 'np':
-            if complex_weights_Q:
-                    real_bincount = np.bincount(x, weights=weights.real,
-                                                minlength=minlength)
-                    imag_bincount = np.bincount(x, weights=weights.imag,
-                                                minlength=minlength)
-                    return real_bincount + imag_bincount
-            else:
-                return np.bincount(x, weights=weights, minlength=minlength)
-        elif self.datamodel in POINT_DISTRIBUTION_STRATEGIES:
-            if complex_weights_Q:
-                real_bincount = x.bincount(weights=weights.real,
-                                           minlength=minlength)
-                imag_bincount = x.bincount(weights=weights.imag,
-                                           minlength=minlength)
-                return real_bincount + imag_bincount
-            else:
-                return x.bincount(weights=weights, minlength=minlength)
+        if complex_weights_Q:
+            real_bincount = x.bincount(weights=weights.real,
+                                       minlength=minlength)
+            imag_bincount = x.bincount(weights=weights.imag,
+                                       minlength=minlength)
+            return real_bincount + imag_bincount
         else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: function is not implemented for given datamodel."))
+            return x.bincount(weights=weights, minlength=minlength)
 
     def get_plot(self, x, title="", vmin=None, vmax=None, unit=None,
                  norm=None, other=None, legend=False, save=None, **kwargs):
