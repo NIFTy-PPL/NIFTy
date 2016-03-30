@@ -11,9 +11,9 @@ import unittest
 from nifty.nifty_utilities import hermitianize,\
     _hermitianize_inverter
 
-from nifty.nifty_mpi_data import distributed_data_object,\
-    STRATEGIES
-    
+from nifty.d2o import distributed_data_object,\
+                      STRATEGIES
+
 ###############################################################################
 
 def custom_name_func(testcase_func, param_num, param):
@@ -43,12 +43,12 @@ flipped_data = np.array([[-10,  -8,  -7,   2,  10,   9],
 
 class Test_hermitianize_inverter(unittest.TestCase):
     def test_with_ndarray(self):
-       assert_equal(_hermitianize_inverter(test_data), flipped_data) 
-    
+       assert_equal(_hermitianize_inverter(test_data), flipped_data)
+
     @parameterized.expand(STRATEGIES['global'],
-                          testcase_func_name=custom_name_func)        
+                          testcase_func_name=custom_name_func)
     def test_with_d2o(self, distribution_strategy):
         d = distributed_data_object(
-                                test_data, 
+                                test_data,
                                 distribution_strategy=distribution_strategy)
         assert_equal(_hermitianize_inverter(d).get_full_data(), flipped_data)

@@ -4,8 +4,8 @@ import numpy as np
 from nifty.keepers import about,\
                           global_configuration as gc,\
                           global_dependency_injector as gdi
-from nifty.nifty_mpi_data import distributed_data_object,\
-                                 STRATEGIES as DISTRIBUTION_STRATEGIES
+from nifty.d2o import distributed_data_object,\
+                      STRATEGIES as DISTRIBUTION_STRATEGIES
 
 MPI = gdi[gc['mpi_module']]
 hp = gdi.get('healpy')

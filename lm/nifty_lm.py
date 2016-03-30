@@ -50,8 +50,7 @@ from nifty.nifty_paradict import lm_space_paradict,\
                                  hp_space_paradict
 from nifty.nifty_power_indices import lm_power_indices
 
-from nifty.nifty_mpi_data import distributed_data_object
-from nifty.nifty_mpi_data import STRATEGIES as DISTRIBUTION_STRATEGIES
+from nifty.d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.nifty_random import random
 

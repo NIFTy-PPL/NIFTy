@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from nifty.nifty_mpi_data import distributed_data_object
-from nifty.keepers import about,\
-    global_dependency_injector as gdi
+from nifty.d2o import distributed_data_object
+from nifty.keepers import global_dependency_injector as gdi
 
 pyfftw = gdi.get('pyfftw')
 gfft = gdi.get('gfft')

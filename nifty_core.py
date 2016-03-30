@@ -152,8 +152,8 @@ from keepers import about,\
     global_dependency_injector as gdi
 
 from nifty_random import random
-from nifty.nifty_mpi_data import distributed_data_object,\
-    STRATEGIES as DISTRIBUTION_STRATEGIES
+from nifty.d2o import distributed_data_object,\
+                      STRATEGIES as DISTRIBUTION_STRATEGIES
 
 import nifty.nifty_utilities as utilities
 

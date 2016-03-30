@@ -9,8 +9,8 @@ from nifty.keepers import about,\
                           global_dependency_injector as gdi,\
                           global_configuration as gc
 
-from nifty.nifty_mpi_data import distributed_data_object,\
-                                 STRATEGIES
+from nifty.d2o import distributed_data_object,\
+                      STRATEGIES
 from nifty.nifty_core import point_space,\
                              field
 from nifty.rg import rg_space

@@ -21,7 +21,7 @@
 
 import numpy as np
 from keepers import about
-from nifty_mpi_data import distributed_data_object
+from nifty.d2o import distributed_data_object
 
 # -----------------------------------------------------------------------------
 

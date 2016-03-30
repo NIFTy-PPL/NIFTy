@@ -47,8 +47,8 @@ import nifty_fft
 from nifty.keepers import about,\
                           global_dependency_injector as gdi,\
                           global_configuration as gc
-from nifty.nifty_mpi_data import distributed_data_object
-from nifty.nifty_mpi_data import STRATEGIES as DISTRIBUTION_STRATEGIES
+from nifty.d2o import distributed_data_object,\
+                      STRATEGIES as DISTRIBUTION_STRATEGIES
 from nifty.nifty_paradict import rg_space_paradict
 from nifty.nifty_power_indices import rg_power_indices
 from nifty.nifty_random import random

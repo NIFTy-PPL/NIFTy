@@ -37,7 +37,7 @@ from nifty_core import space,\
                     point_space,\
                     field
 
-from nifty_mpi_data import distributed_data_object, d2o_librarian
+from d2o import distributed_data_object, d2o_librarian
 from nifty_random import random
 from nifty_simple_math import *
 from nifty_utilities import *

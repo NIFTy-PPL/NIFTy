@@ -14,8 +14,8 @@ import warnings
 import tempfile
 
 import nifty
-from nifty.nifty_mpi_data import distributed_data_object,\
-                                 STRATEGIES
+from nifty.d2o import distributed_data_object,\
+                      STRATEGIES
 
 FOUND = {}
 try:
