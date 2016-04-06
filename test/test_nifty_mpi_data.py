@@ -707,7 +707,7 @@ class Test_slicing_get_set_data(unittest.TestCase):
              (2, slice(5, 18)),
              (slice(None), 2),
              (slice(5, 18), slice(18, 5, -1))],
-            ['equal', 'np']),
+            all_distribution_strategies + ['np']),
         testcase_func_name=custom_name_func)
     def test_get_set_slicing_data(self,
                                   global_shape,
