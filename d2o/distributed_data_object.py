@@ -1074,7 +1074,7 @@ class distributed_data_object(object):
         if self.shape == (0,):
             raise ValueError("ERROR: Zero-size array to reduction operation " +
                              "which has no identity")
-        if np.prod(self.data.shape) == 0:
+        if self.data.size == 0:
             local = 0
             include = False
         else:

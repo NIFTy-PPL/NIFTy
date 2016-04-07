@@ -464,7 +464,7 @@ class _slicing_distributor(distributor):
                                                   copy=copy)
         elif self.distribution_strategy in ['freeform']:
             if isinstance(global_data, distributed_data_object):
-                local_data = global_data.get_local_data()
+                local_data = global_data.get_local_data(copy=copy)
             elif np.isscalar(local_data):
                 temp_local_data = np.empty(self.local_shape,
                                            dtype=self.dtype)
@@ -1053,8 +1053,8 @@ class _slicing_distributor(distributor):
                              localized_stop,
                              first_step),) + slice_objects[1:]
 
-        # if directly_to_np_Q == False:
         local_result = data[local_slice]
+
         if (first_step is not None) and (first_step < 0):
             local_result = self._invert_mpi_data_ordering(local_result)
 
