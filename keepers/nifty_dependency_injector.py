@@ -22,34 +22,29 @@ class dependency_injector(object):
     def __getattr__(self, x):
         return self.registry.__getattribute__(x)
 
-    def register(self, module_name):
+    def register(self, module_name, check=None):
         if isinstance(module_name, tuple):
             module_name, key_name = (str(module_name[0]), str(module_name[1]))
         else:
             module_name = str(module_name)
             key_name = module_name
+
         try:
             loaded_module = sys.modules[module_name]
-            self.registry[key_name] = loaded_module
         except KeyError:
             try:
                 loaded_module = recursive_import(module_name)
-#                print module_name
-#                fp, pathname, description = imp.find_module(module_name)
-#                print pathname
-#                loaded_module = \
-#                    imp.load_module(module_name, fp, pathname, description)
-#
-#                print loaded_module
-                self.registry[key_name] = loaded_module
             except ImportError:
                 pass
-#            finally:
-#                # Since we may exit via an exception, close fp explicitly.
-#                try:
-#                    fp.close()
-#                except (UnboundLocalError, AttributeError):
-#                    pass
+
+        if loaded_module is not None:
+            if check is not None:
+                check_passed = check(loaded_module)
+            else:
+                check_passed = True
+
+            if check_passed is True:
+                self.registry[key_name] = loaded_module
 
     def unregister(self, module_name):
         try:

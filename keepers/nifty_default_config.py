@@ -6,16 +6,17 @@ from nifty_dependency_injector import dependency_injector
 from nifty_configuration import variable,\
                                 configuration
 
+
 global_dependency_injector = dependency_injector(
                                    ['h5py',
                                     ('mpi4py.MPI', 'MPI'),
                                     ('nifty.dummys.MPI_dummy', 'MPI_dummy'),
-                                    'pyfftw',
                                     'gfft',
                                     ('nifty.dummys.gfft_dummy', 'gfft_dummy'),
                                     'healpy',
                                     'libsharp_wrapper_gl'])
 
+global_dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
 
 variable_fft_module = variable('fft_module',
                                ['pyfftw', 'gfft', 'gfft_dummy'],
@@ -57,7 +58,7 @@ variable_default_distribution_strategy = variable(
                             'default_distribution_strategy',
                             ['fftw', 'equal', 'not'],
                             lambda z: (('pyfftw' in global_dependency_injector)
-                                       if (z == 'pyfftw') else True)
+                                       if (z == 'fftw') else True)
                                                   )
 
 variable_d2o_init_checks = variable('d2o_init_checks',
