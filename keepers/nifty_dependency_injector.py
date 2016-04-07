@@ -35,7 +35,7 @@ class dependency_injector(object):
             try:
                 loaded_module = recursive_import(module_name)
             except ImportError:
-                pass
+                loaded_module = None
 
         if loaded_module is not None:
             if check is not None:
