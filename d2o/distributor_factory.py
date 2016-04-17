@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import numbers
+
 import numpy as np
 
 from nifty.keepers import about,\
@@ -12,6 +14,8 @@ from d2o_iter import d2o_slicing_iter,\
                      d2o_not_iter
 from d2o_librarian import d2o_librarian
 from dtype_converter import dtype_converter
+from cast_axis_to_tuple import cast_axis_to_tuple
+from translate_to_mpi_operator import op_translate_dict
 
 from strategies import STRATEGIES
 
@@ -278,31 +282,6 @@ def _infer_key_type(key):
 
 class distributor(object):
 
-    #def inject(self, data, to_slices, data_update, from_slices,
-    #           **kwargs):
-    #    # check if to_key and from_key are completely built of slices
-    #    if not np.all(
-    #            np.vectorize(lambda x: isinstance(x, slice))(to_slices)):
-    #        raise ValueError(about._errors.cstring(
-    #            "ERROR: The to_slices argument must be a list or " +
-    #            "tuple of slices!")
-    #        )
-
-    #    if not np.all(
-    #            np.vectorize(lambda x: isinstance(x, slice))(from_slices)):
-    #        raise ValueError(about._errors.cstring(
-    #            "ERROR: The from_slices argument must be a list or " +
-    #            "tuple of slices!")
-    #        )
-
-    #    to_slices = tuple(to_slices)
-    #    from_slices = tuple(from_slices)
-    #    self.disperse_data(data=data,
-    #                       to_key=to_slices,
-    #                       data_update=data_update,
-    #                       from_key=from_slices,
-    #                       **kwargs)
-
     def disperse_data(self, data, to_key, data_update, from_key=None,
                       local_keys=False, copy=True, **kwargs):
         # Check which keys we got:
@@ -464,7 +443,7 @@ class _slicing_distributor(distributor):
                                                   copy=copy)
         elif self.distribution_strategy in ['freeform']:
             if isinstance(global_data, distributed_data_object):
-                local_data = global_data.get_local_data(copy=copy)
+                local_data = global_data.get_local_data()
             elif np.isscalar(local_data):
                 temp_local_data = np.empty(self.local_shape,
                                            dtype=self.dtype)
@@ -510,13 +489,63 @@ class _slicing_distributor(distributor):
         gathered_things = comm.allgather(thing)
         return gathered_things
 
-    def _Allreduce_sum(self, sendbuf, recvbuf):
+    def _Allreduce_helper(self, sendbuf, recvbuf, op):
         send_dtype = self._my_dtype_converter.to_mpi(sendbuf.dtype)
         recv_dtype = self._my_dtype_converter.to_mpi(recvbuf.dtype)
         self.comm.Allreduce([sendbuf, send_dtype],
                             [recvbuf, recv_dtype],
-                            op=MPI.SUM)
+                            op=op)
         return recvbuf
+
+    def _contraction_helper(self, parent, function, axis=None, **kwargs):
+        if axis == ():
+            return parent.copy()
+
+        old_shape = parent.shape
+        axis = cast_axis_to_tuple(axis)
+        if axis is None:
+            new_shape = ()
+        else:
+            new_shape = tuple([old_shape[i] for i in xrange(len(old_shape))
+                               if i not in axis])
+
+        # do the contraction on the node's local data
+        local_data = parent.data
+        contracted_local_data = function(local_data, axis=axis, **kwargs)
+        new_dtype = contracted_local_data.dtype
+
+        # check if additional contraction along the first axis must be done
+        if axis is None or 0 in axis:
+            (mpi_op, bufferQ) = op_translate_dict[function]
+            contracted_local_data = self.comm.allreduce(contracted_local_data,
+                                                        op=mpi_op)
+            new_dist_strategy = 'not'
+        else:
+            new_dist_strategy = parent.distribution_strategy
+
+        if new_shape == ():
+            result = contracted_local_data
+        else:
+            # try to store the result in a distributed_data_object with the
+            # distribution_strategy as parent
+            result = parent.copy_empty(global_shape=new_shape,
+                                       dtype=new_dtype,
+                                       distribution_strategy=new_dist_strategy)
+
+            # However, there are cases where the contracted data does not any
+            # longer follow the prior distribution scheme.
+            # Example: FFTW distribution on 4 MPI processes
+            # Contracting (4, 4) to (4,).
+            # (4, 4) was distributed (1, 4)...(1, 4)
+            # (4, ) is not distributed like (1,)...(1,) but like (2,)(2,)()()!
+            if result.local_shape != contracted_local_data.shape:
+                result = parent.copy_empty(
+                                    local_shape=contracted_local_data.shape,
+                                    dtype=new_dtype,
+                                    distribution_strategy='freeform')
+            result.set_local_data(contracted_local_data, copy=False)
+
+        return result
 
     def distribute_data(self, data=None, alias=None,
                         path=None, copy=True, **kwargs):
@@ -1053,8 +1082,8 @@ class _slicing_distributor(distributor):
                              localized_stop,
                              first_step),) + slice_objects[1:]
 
+        # if directly_to_np_Q == False:
         local_result = data[local_slice]
-
         if (first_step is not None) and (first_step < 0):
             local_result = self._invert_mpi_data_ordering(local_result)
 
@@ -1327,6 +1356,17 @@ class _slicing_distributor(distributor):
                            local_where)
         return global_where
 
+    def bincount(self, local_data, local_weights, minlength):
+        local_counts = np.bincount(local_data,
+                                   weights=local_weights,
+                                   minlength=minlength)
+
+        global_counts = np.empty_like(local_counts)
+        self._Allreduce_helper(local_counts,
+                               global_counts,
+                               MPI.SUM)
+        return global_counts
+
     def cumsum(self, data, axis):
         # compute the local np.cumsum
         local_cumsum = np.cumsum(data, axis=axis)
@@ -1414,7 +1454,7 @@ class _slicing_distributor(distributor):
             if sliceified[0]:
                 # Case 1: The in_data d2o has more than one dimension
                 if len(in_data.shape) > 1 and \
-                in_data.distribution_strategy in STRATEGIES['slicing']:
+                  in_data.distribution_strategy in STRATEGIES['slicing']:
                     local_in_data = in_data.get_local_data(copy=False)
                     local_has_data = (np.prod(local_in_data.shape) != 0)
                     local_has_data_list = np.array(
@@ -1702,9 +1742,24 @@ class _not_distributor(distributor):
     def _allgather(self, thing):
         return [thing, ]
 
-    def _Allreduce_sum(self, sendbuf, recvbuf):
+    def _Allreduce_helper(self, sendbuf, recvbuf, op):
         recvbuf[:] = sendbuf
         return recvbuf
+
+    def _contraction_helper(self, parent, function, axis=None, **kwargs):
+        if axis == ():
+            return parent.copy()
+
+        local_result = function(parent.data, axis=axis, **kwargs)
+
+        if isinstance(local_result, np.ndarray):
+            result_object = parent.copy_empty(global_shape=local_result.shape,
+                                              dtype=local_result.dtype)
+            result_object.set_local_data(local_result, copy=False)
+        else:
+            result_object = local_result
+
+        return result_object
 
     def distribute_data(self, data, alias=None, path=None, copy=True,
                         **kwargs):
@@ -1796,6 +1851,12 @@ class _not_distributor(distributor):
                                                  distribution_strategy='not'),
                            local_where)
         return global_where
+
+    def bincount(self, local_data, local_weights, minlength):
+        counts = np.bincount(local_data,
+                             weights=local_weights,
+                             minlength=minlength)
+        return counts
 
     def cumsum(self, data, axis):
         # compute the local results from np.cumsum

@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 
+import numbers
+import copy
 import numpy as np
 
-#def MIN():
-#    return np.min
-#
-#def MAX():
-#    return np.max
-#
-#def SUM():
-#    return np.sum
 
-MIN = np.min
-MAX = np.max
-SUM = np.sum
+class Op(object):
+    @classmethod
+    def Create(cls, function, commute=False):
+        pass
+
+MIN = Op()
+MAX = Op()
+SUM = Op()
+PROD = Op()
+LAND = Op()
+LOR = Op()
+BAND = Op()
+BOR = Op()
 
 
 class Comm(object):
@@ -79,12 +83,15 @@ class Intracomm(Comm):
         return self._scattergather_helper(*args, **kwargs)
 
     def Allreduce(self, sendbuf, recvbuf, op, **kwargs):
+        sendbuf = self._unwrapper(sendbuf)
+        recvbuf = self._unwrapper(recvbuf)
         recvbuf[:] = sendbuf
         return recvbuf
 
-    def allreduce(self, sendbuf, recvbuf, op, **kwargs):
-        recvbuf[:] = sendbuf
-        return recvbuf
+    def allreduce(self, sendobj, op=SUM, **kwargs):
+        if isinstance(sendobj, numbers.Number):
+            return sendobj
+        return copy.copy(sendobj)
 
     def sendrecv(self, sendobj, **kwargs):
         return sendobj
