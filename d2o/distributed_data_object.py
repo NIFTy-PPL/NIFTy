@@ -1377,10 +1377,7 @@ class distributed_data_object(object):
     def unique(self):
         """ Returns a `numpy.ndarray` holding the d2o's unique elements. """
 
-        local_unique = np.unique(self.get_local_data())
-        global_unique = self.distributor._allgather(local_unique)
-        global_unique = np.concatenate(global_unique)
-        return np.unique(global_unique)
+        return self.distributor.unique(self.data)
 
     def bincount(self, weights=None, minlength=None):
         """ Count weighted number of occurrences of each value in the d2o.

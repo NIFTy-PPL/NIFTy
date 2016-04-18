@@ -1355,6 +1355,17 @@ class _slicing_distributor(distributor):
                            local_where)
         return global_where
 
+    def unique(self, data):
+        # if the size of the MPI communicator is equal to 1, the
+        # reduce operator will not be applied. -> Cover this case directly.
+        if self.comm.size == 1:
+            unique_data = np.unique(data)
+        else:
+            data = data.flatten()
+            (mpi_unique, bufferQ) = op_translate_dict[np.unique]
+            unique_data = self.comm.allreduce(data, op=mpi_unique)
+        return unique_data
+
     def bincount(self, local_data, local_weights, minlength):
         local_counts = np.bincount(local_data,
                                    weights=local_weights,
@@ -1850,6 +1861,9 @@ class _not_distributor(distributor):
                                                  distribution_strategy='not'),
                            local_where)
         return global_where
+
+    def unique(self, data):
+        return np.unique(data)
 
     def bincount(self, local_data, local_weights, minlength):
         counts = np.bincount(local_data,

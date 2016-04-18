@@ -13,6 +13,9 @@ custom_NANMIN = MPI.Op.Create(lambda x, y, datatype:
 custom_NANMAX = MPI.Op.Create(lambda x, y, datatype:
                               np.nanmax(np.vstack(x, y), axis=0))
 
+custom_UNIQUE = MPI.Op.Create(lambda x, y, datatype:
+                              np.unique(np.concatenate([x, y])))
+
 op_translate_dict = {}
 
 # the value tuple contains the operator and a boolean which specifies
@@ -25,3 +28,4 @@ op_translate_dict[np.all] = (MPI.LAND, True)
 op_translate_dict[np.any] = (MPI.LOR, True)
 op_translate_dict[np.nanmin] = (custom_NANMIN, False)
 op_translate_dict[np.nanmax] = (custom_NANMAX, False)
+op_translate_dict[np.unique] = (custom_UNIQUE, False)
