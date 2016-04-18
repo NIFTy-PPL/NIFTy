@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import numbers as numbers
 
 import numpy as np
 
@@ -1175,7 +1176,11 @@ class distributed_data_object(object):
 
     def std(self, axis=None):
         """ Returns the standard deviation of the d2o's elements. """
-        return np.sqrt(self.var(axis=axis))
+        var = self.var(axis=axis)
+        if isinstance(var, numbers.Number):
+            return np.sqrt(var)
+        else:
+            return var.apply_scalar_function(np.sqrt)
 
     def argmin(self):
         """ Returns the (flat) index of the d2o's smallest value.
@@ -1284,7 +1289,12 @@ class distributed_data_object(object):
         about.warnings.cprint(
             "WARNING: The current implementation of median is very expensive!")
         median = np.median(self.get_full_data(), axis=axis, **kwargs)
-        return median
+        if isinstance(median, numbers.Number):
+            return median
+        else:
+            return distributed_data_object(global_data=median,
+                                       global_shape=median.shape,
+                                       distribution_strategy='not')
 
     def _is_helper(self, function):
         """ _is_helper is used for functions like isreal, isinf, isfinite,...
