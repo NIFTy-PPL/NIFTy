@@ -1738,3 +1738,55 @@ if FOUND['h5py'] == True:
 # Todo: Assert that data is copied, when copy flag is set
 # Todo: Assert that set, get and injection work, if there is different data
 # on the nodes
+
+class Test_axis(unittest.TestCase):
+
+    @parameterized.expand(
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
+                           'any', 'min', 'amin', 'nanmin', 'max',
+                           'amax', 'nanmax'],
+                          all_datatypes[1:],
+                          [(0,), (1,), (6, 6), (5, 5, 5)],
+                          all_distribution_strategies,
+                          [None, 0, (1, ), (0, 1)]),
+        testcase_func_name=custom_name_func)
+    def test_axis_with_functions(self, function, dtype, global_shape,
+                                 distribution_strategy, axis):
+        (a, obj) = generate_data(global_shape, dtype,
+                                 distribution_strategy,
+                                 strictly_positive=True)
+        if global_shape != (0,) and global_shape != (1,):
+            assert_almost_equal(getattr(obj, function)(axis=axis),
+                                getattr(np, function)(a, axis=axis), decimal=4)
+        else:
+            if function in ['min', 'amin', 'nanmin', 'max',
+                            'amax', 'nanmax']:
+                assert_raises(ValueError)
+            else:
+                if axis is None or axis == 0 or axis == (0,):
+                    assert_almost_equal(getattr(obj, function)(axis=axis),
+                                        getattr(np, function)(a, axis=axis),
+                                        decimal=4)
+
+    @parameterized.expand(
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
+                           'any', 'min', 'amin', 'nanmin', 'max',
+                           'amax', 'nanmax'],
+                          all_datatypes[1:],
+                          [(5, 5, 5), (4, 0, 3)],
+                          all_distribution_strategies, [(0, 1), (1, 2)]),
+        testcase_func_name=custom_name_func)
+    def test_axis_with_functions_for_many_dimentions(self, function, dtype,
+                                                     global_shape,
+                                                     distribution_strategy,
+                                                     axis):
+        (a, obj) = generate_data(global_shape, dtype,
+                                 distribution_strategy,
+                                 strictly_positive=True)
+        if function in ['min', 'amin', 'nanmin', 'max', 'amax', 'nanmax']\
+                and np.prod(global_shape) == 0:
+                assert_raises(ValueError)
+        else:
+            assert_almost_equal(getattr(obj, function)
+                                (axis=axis).get_full_data(),
+                                getattr(np, function)(a, axis=axis), decimal=4)
