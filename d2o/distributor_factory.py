@@ -1054,6 +1054,8 @@ class _slicing_distributor(distributor):
         return global_result
 
     def _invert_mpi_data_ordering(self, data):
+        data = np.ascontiguousarray(data)
+
         comm = self.comm
         s = comm.size
         r = comm.rank
@@ -1061,10 +1063,18 @@ class _slicing_distributor(distributor):
             return data
 
         partner = s - 1 - r
-        new_data = comm.sendrecv(sendobj=data,
-                                 dest=partner,
-                                 source=partner)
-        comm.barrier()
+
+        new_shape = comm.sendrecv(sendobj=data.shape,
+                                  dest=partner,
+                                  source=partner)
+        new_data = np.empty(new_shape,
+                            dtype=self.dtype)
+
+        comm.Sendrecv(sendbuf=[data, self.mpi_dtype],
+                      recvbuf=[new_data, self.mpi_dtype],
+                      dest=partner,
+                      source=partner)
+
         return new_data
 
     def collect_data_from_slices(self, data, slice_objects, copy=True,
