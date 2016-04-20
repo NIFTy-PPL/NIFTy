@@ -132,9 +132,9 @@ if HP_DISTRIBUTION_STRATEGIES != []:
 
 unary_operations = ['pos', 'neg', 'abs', 'real', 'imag', 'nanmin', 'amin',
                     'nanmax', 'amax', 'median', 'mean', 'std', 'var', 'argmin',
-                    'argmin_flat', 'argmax', 'argmax_flat', 'conjugate', 'sum',
-                    'prod', 'unique', 'copy', 'copy_empty', 'isnan', 'isinf',
-                    'isfinite', 'nan_to_num', 'all', 'any', 'None']
+                    'argmin_nonflat', 'argmax', 'argmax_nonflat', 'conjugate',
+                    'sum', 'prod', 'unique', 'copy', 'copy_empty', 'isnan',
+                    'isinf', 'isfinite', 'nan_to_num', 'all', 'any', 'None']
 
 binary_operations = ['add', 'radd', 'iadd', 'sub', 'rsub', 'isub', 'mul',
                      'rmul', 'imul', 'div', 'rdiv', 'idiv', 'pow', 'rpow',
@@ -1358,15 +1358,21 @@ class Test_axis(unittest.TestCase):
     @parameterized.expand(
         itertools.product(point_like_spaces, [8, 16],
                           ['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
-                           'any', 'nanmin', 'nanmax'], [None, (0,)],
+                           'any', 'amin', 'nanmin', 'argmin',
+                           'argmin_nonflat', 'amax', 'nanmax', 'argmax',
+                           'argmax_nonflat'],
+                          [None, (0,)],
                           DATAMODELS['point_space']),
         testcase_func_name=custom_name_func)
     def test_binary_operations(self, name, num, op, axis, datamodel):
         s = generate_space_with_size(name, np.prod(num), datamodel=datamodel)
         d = generate_data(s)
         a = d.get_full_data()
-        assert_almost_equal(s.unary_operation(d, op, axis=axis),
-                            getattr(np, op)(a, axis=axis), decimal=4)
-        if name in ['rg_space']:
-            assert_almost_equal(s.unary_operation(d, op, axis=(0, 1)),
-                            getattr(np, op)(a, axis=(0, 1)), decimal=4)
+        if op in ['argmin', 'argmin_nonflat', 'argmax', 'argmax_nonflat']:
+            assert_raises(NotImplementedError)
+        else:
+            assert_almost_equal(s.unary_operation(d, op, axis=axis),
+                                getattr(np, op)(a, axis=axis), decimal=4)
+            if name in ['rg_space']:
+                assert_almost_equal(s.unary_operation(d, op, axis=(0, 1)),
+                                getattr(np, op)(a, axis=(0, 1)), decimal=4)

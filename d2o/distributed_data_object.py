@@ -1182,7 +1182,7 @@ class distributed_data_object(object):
         else:
             return var.apply_scalar_function(np.sqrt)
 
-    def argmin(self):
+    def argmin(self, axis=None):
         """ Returns the (flat) index of the d2o's smallest value.
 
         See Also:
@@ -1192,6 +1192,9 @@ class distributed_data_object(object):
         if 0 in self.shape:
             raise ValueError(
                 "ERROR: attempt to get argmin of an empty object")
+        if axis is not None:
+            raise NotImplementedError("ERROR: argmin doesn't support axis "
+                                      "keyword")
         if 0 in self.local_shape:
             local_argmin = np.nan
             local_argmin_value = np.nan
@@ -1213,7 +1216,7 @@ class distributed_data_object(object):
                                     order=['value', 'index'])
         return np.int(local_argmin_list[0][1])
 
-    def argmax(self):
+    def argmax(self, axis=None):
         """ Returns the (flat) index of the d2o's biggest value.
 
         See Also:
@@ -1223,6 +1226,9 @@ class distributed_data_object(object):
         if 0 in self.shape:
             raise ValueError(
                 "ERROR: attempt to get argmax of an empty object")
+        if axis is not None:
+            raise NotImplementedError("ERROR: argmax doesn't support axis "
+                                      "keyword")
         if 0 in self.local_shape:
             local_argmax = np.nan
             local_argmax_value = np.nan
@@ -1243,23 +1249,22 @@ class distributed_data_object(object):
                                     order=['value', 'index'])
         return np.int(local_argmax_list[0][1])
 
-    def argmin_nonflat(self):
+    def argmin_nonflat(self, axis=None):
         """ Returns the unraveld index of the d2o's smallest value.
 
         See Also:
         argmin, argmax, argmax_nonflat
         """
 
-        return np.unravel_index(self.argmin(), self.shape)
+        return np.unravel_index(self.argmin(axis=axis), self.shape)
 
-    def argmax_nonflat(self):
+    def argmax_nonflat(self, axis=None):
         """ Returns the unraveld index of the d2o's biggest value.
 
         See Also:
         argmin, argmax, argmin_nonflat
         """
-
-        return np.unravel_index(self.argmax(), self.shape)
+        return np.unravel_index(self.argmax(axis=axis), self.shape)
 
     def conjugate(self):
         """ Returns the element-wise complex conjugate. """
@@ -1292,9 +1297,12 @@ class distributed_data_object(object):
         if isinstance(median, numbers.Number):
             return median
         else:
-            return distributed_data_object(global_data=median,
-                                       global_shape=median.shape,
-                                       distribution_strategy='not')
+            x = self.copy_empty(global_shape=median.shape,
+                                dtype=median.dtype,
+                                distribution_strategy='not')
+            x.set_local_data(median)
+            return x
+
 
     def _is_helper(self, function):
         """ _is_helper is used for functions like isreal, isinf, isfinite,...

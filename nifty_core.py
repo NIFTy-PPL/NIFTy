@@ -911,10 +911,10 @@ class point_space(space):
                        'mean': lambda y: getattr(y, 'mean')(axis=axis),
                        'std': lambda y: getattr(y, 'std')(axis=axis),
                        'var': lambda y: getattr(y, 'var')(axis=axis),
-                       'argmin': lambda y: getattr(y, 'argmin_nonflat')(),
-                       'argmin_flat': lambda y: getattr(y, 'argmin')(),
-                       'argmax': lambda y: getattr(y, 'argmax_nonflat')(),
-                       'argmax_flat': lambda y: getattr(y, 'argmax')(),
+                       'argmin_nonflat': lambda y: getattr(y, 'argmin_nonflat')(axis=axis),
+                       'argmin': lambda y: getattr(y, 'argmin')(axis=axis),
+                       'argmax_nonflat': lambda y: getattr(y, 'argmax_nonflat')(axis=axis),
+                       'argmax': lambda y: getattr(y, 'argmax')(axis=axis),
                        'conjugate': lambda y: getattr(y, 'conjugate')(),
                        'sum': lambda y: getattr(y, 'sum')(axis=axis),
                        'prod': lambda y: getattr(y, 'prod')(axis=axis),
@@ -2747,10 +2747,10 @@ class field(object):
 
         """
         if split:
-            return self._unary_helper(self.get_val(), op='argmin',
+            return self._unary_helper(self.get_val(), op='argmin_nonflat',
                                       **kwargs)
         else:
-            return self._unary_helper(self.get_val(), op='argmin_flat',
+            return self._unary_helper(self.get_val(), op='argmin',
                                       **kwargs)
 
     def argmax(self, split=True, **kwargs):
@@ -2776,10 +2776,10 @@ class field(object):
 
         """
         if split:
-            return self._unary_helper(self.get_val(), op='argmax',
+            return self._unary_helper(self.get_val(), op='argmax_nonflat',
                                       **kwargs)
         else:
-            return self._unary_helper(self.get_val(), op='argmax_flat',
+            return self._unary_helper(self.get_val(), op='argmax',
                                       **kwargs)
 
     # TODO: Implement the full range of unary and binary operotions
