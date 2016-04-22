@@ -27,6 +27,8 @@ from nifty.nifty_power_indices import power_indices
 from nifty.nifty_utilities import _hermitianize_inverter as \
                                                         hermitianize_inverter
 
+from nifty.operators.nifty_operators import power_operator
+
 available = []
 try:
     from nifty import  lm_space
@@ -130,9 +132,9 @@ if HP_DISTRIBUTION_STRATEGIES != []:
 
 unary_operations = ['pos', 'neg', 'abs', 'real', 'imag', 'nanmin', 'amin',
                     'nanmax', 'amax', 'median', 'mean', 'std', 'var', 'argmin',
-                    'argmin_flat', 'argmax', 'argmax_flat', 'conjugate', 'sum',
-                    'prod', 'unique', 'copy', 'copy_empty', 'isnan', 'isinf',
-                    'isfinite', 'nan_to_num', 'all', 'any', 'None']
+                    'argmin_nonflat', 'argmax', 'argmax_nonflat', 'conjugate',
+                    'sum', 'prod', 'unique', 'copy', 'copy_empty', 'isnan',
+                    'isinf', 'isfinite', 'nan_to_num', 'all', 'any', 'None']
 
 binary_operations = ['add', 'radd', 'iadd', 'sub', 'rsub', 'isub', 'mul',
                      'rmul', 'imul', 'div', 'rdiv', 'idiv', 'pow', 'rpow',
@@ -177,6 +179,22 @@ def generate_space(name):
 
     return space_dict[name]
 
+
+def generate_space_with_size(name, num, datamodel='fftw'):
+    space_dict = {'space': space(),
+                  'point_space': point_space(num, datamodel=datamodel),
+                  'rg_space': rg_space((num, num), datamodel=datamodel),
+                  }
+    if 'lm_space' in available:
+        space_dict['lm_space'] = lm_space(mmax=num, lmax=num,
+                                          datamodel=datamodel)
+    if 'hp_space' in available:
+        space_dict['hp_space'] = hp_space(num, datamodel=datamodel)
+    if 'gl_space' in available:
+        space_dict['gl_space'] = gl_space(nlat=num, nlon=num,
+                                          datamodel=datamodel)
+
+    return space_dict[name]
 
 def generate_data(space):
     a = np.arange(space.get_dim()).reshape(space.get_shape())
@@ -1335,3 +1353,26 @@ class Test_Lm_Space(unittest.TestCase):
 
 print all_spaces
 print generate_space('rg_space')
+
+class Test_axis(unittest.TestCase):
+    @parameterized.expand(
+        itertools.product(point_like_spaces, [8, 16],
+                          ['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
+                           'any', 'amin', 'nanmin', 'argmin',
+                           'argmin_nonflat', 'amax', 'nanmax', 'argmax',
+                           'argmax_nonflat'],
+                          [None, (0,)],
+                          DATAMODELS['point_space']),
+        testcase_func_name=custom_name_func)
+    def test_binary_operations(self, name, num, op, axis, datamodel):
+        s = generate_space_with_size(name, np.prod(num), datamodel=datamodel)
+        d = generate_data(s)
+        a = d.get_full_data()
+        if op in ['argmin', 'argmin_nonflat', 'argmax', 'argmax_nonflat']:
+            assert_raises(NotImplementedError)
+        else:
+            assert_almost_equal(s.unary_operation(d, op, axis=axis),
+                                getattr(np, op)(a, axis=axis), decimal=4)
+            if name in ['rg_space']:
+                assert_almost_equal(s.unary_operation(d, op, axis=(0, 1)),
+                                getattr(np, op)(a, axis=(0, 1)), decimal=4)
