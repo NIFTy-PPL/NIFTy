@@ -1366,15 +1366,45 @@ class _slicing_distributor(distributor):
         return global_where
 
     def unique(self, data):
-        # if the size of the MPI communicator is equal to 1, the
+#        # if the size of the MPI communicator is equal to 1, the
+#        # reduce operator will not be applied. -> Cover this case directly.
+#        if self.comm.size == 1:
+#            unique_data = np.unique(data)
+#        else:
+#            data = data.flatten()
+#            (mpi_unique, bufferQ) = op_translate_dict[np.unique]
+#            unique_data = self.comm.allreduce(data, op=mpi_unique)
+#        return unique_data
+
+        #if the size of the MPI communicator is equal to 1, the
         # reduce operator will not be applied. -> Cover this case directly.
-        if self.comm.size == 1:
-            unique_data = np.unique(data)
+        comm = self.comm
+        size = self.comm.size
+        rank = self.comm.rank
+        if size == 1:
+            global_unique_data = np.unique(data)
         else:
-            data = data.flatten()
-            (mpi_unique, bufferQ) = op_translate_dict[np.unique]
-            unique_data = self.comm.allreduce(data, op=mpi_unique)
-        return unique_data
+            local_unique_data = np.unique(data)
+            local_data_length = np.array([local_unique_data.shape[0]])
+            local_data_length_list = np.empty(size, dtype=np.int)
+            comm.Allgather([local_data_length, MPI.INT],
+                           [local_data_length_list, MPI.INT])
+
+            global_unique_data = np.array([], dtype=self.dtype)
+            for i in xrange(size):
+                # broadcast data to the other nodes
+                # prepare the recv array
+                if rank != i:
+                    work_shape = local_data_length_list[i]
+                    work_array = np.empty(work_shape, dtype=self.dtype)
+                else:
+                    work_array = local_unique_data
+                # do the actual broadcasting
+                comm.Bcast([work_array, self.mpi_dtype], root=i)
+                global_unique_data = np.unique(
+                                        np.concatenate([work_array.flatten(),
+                                                        global_unique_data]))
+        return global_unique_data
 
     def bincount(self, local_data, local_weights, minlength):
         local_counts = np.bincount(local_data,
