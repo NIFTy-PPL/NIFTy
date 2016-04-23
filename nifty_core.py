@@ -892,7 +892,7 @@ class point_space(space):
     def apply_scalar_function(self, x, function, inplace=False):
         return x.apply_scalar_function(function, inplace=inplace)
 
-    def unary_operation(self, x, op='None', **kwargs):
+    def unary_operation(self, x, op='None', axis=None, **kwargs):
         """
         x must be a numpy array which is compatible with the space!
         Valid operations are
@@ -903,21 +903,21 @@ class point_space(space):
                        'abs': lambda y: getattr(y, '__abs__')(),
                        'real': lambda y: getattr(y, 'real'),
                        'imag': lambda y: getattr(y, 'imag'),
-                       'nanmin': lambda y: getattr(y, 'nanmin')(),
-                       'amin': lambda y: getattr(y, 'amin')(),
-                       'nanmax': lambda y: getattr(y, 'nanmax')(),
-                       'amax': lambda y: getattr(y, 'amax')(),
-                       'median': lambda y: getattr(y, 'median')(),
-                       'mean': lambda y: getattr(y, 'mean')(),
-                       'std': lambda y: getattr(y, 'std')(),
-                       'var': lambda y: getattr(y, 'var')(),
-                       'argmin': lambda y: getattr(y, 'argmin_nonflat')(),
-                       'argmin_flat': lambda y: getattr(y, 'argmin')(),
-                       'argmax': lambda y: getattr(y, 'argmax_nonflat')(),
-                       'argmax_flat': lambda y: getattr(y, 'argmax')(),
+                       'nanmin': lambda y: getattr(y, 'nanmin')(axis=axis),
+                       'amin': lambda y: getattr(y, 'amin')(axis=axis),
+                       'nanmax': lambda y: getattr(y, 'nanmax')(axis=axis),
+                       'amax': lambda y: getattr(y, 'amax')(axis=axis),
+                       'median': lambda y: getattr(y, 'median')(axis=axis),
+                       'mean': lambda y: getattr(y, 'mean')(axis=axis),
+                       'std': lambda y: getattr(y, 'std')(axis=axis),
+                       'var': lambda y: getattr(y, 'var')(axis=axis),
+                       'argmin_nonflat': lambda y: getattr(y, 'argmin_nonflat')(axis=axis),
+                       'argmin': lambda y: getattr(y, 'argmin')(axis=axis),
+                       'argmax_nonflat': lambda y: getattr(y, 'argmax_nonflat')(axis=axis),
+                       'argmax': lambda y: getattr(y, 'argmax')(axis=axis),
                        'conjugate': lambda y: getattr(y, 'conjugate')(),
-                       'sum': lambda y: getattr(y, 'sum')(),
-                       'prod': lambda y: getattr(y, 'prod')(),
+                       'sum': lambda y: getattr(y, 'sum')(axis=axis),
+                       'prod': lambda y: getattr(y, 'prod')(axis=axis),
                        'unique': lambda y: getattr(y, 'unique')(),
                        'copy': lambda y: getattr(y, 'copy')(),
                        'copy_empty': lambda y: getattr(y, 'copy_empty')(),
@@ -925,8 +925,8 @@ class point_space(space):
                        'isinf': lambda y: getattr(y, 'isinf')(),
                        'isfinite': lambda y: getattr(y, 'isfinite')(),
                        'nan_to_num': lambda y: getattr(y, 'nan_to_num')(),
-                       'all': lambda y: getattr(y, 'all')(),
-                       'any': lambda y: getattr(y, 'any')(),
+                       'all': lambda y: getattr(y, 'all')(axis=axis),
+                       'any': lambda y: getattr(y, 'any')(axis=axis),
                        'None': lambda y: y}
 
         return translation[op](x, **kwargs)
@@ -2747,10 +2747,10 @@ class field(object):
 
         """
         if split:
-            return self._unary_helper(self.get_val(), op='argmin',
+            return self._unary_helper(self.get_val(), op='argmin_nonflat',
                                       **kwargs)
         else:
-            return self._unary_helper(self.get_val(), op='argmin_flat',
+            return self._unary_helper(self.get_val(), op='argmin',
                                       **kwargs)
 
     def argmax(self, split=True, **kwargs):
@@ -2776,10 +2776,10 @@ class field(object):
 
         """
         if split:
-            return self._unary_helper(self.get_val(), op='argmax',
+            return self._unary_helper(self.get_val(), op='argmax_nonflat',
                                       **kwargs)
         else:
-            return self._unary_helper(self.get_val(), op='argmax_flat',
+            return self._unary_helper(self.get_val(), op='argmax',
                                       **kwargs)
 
     # TODO: Implement the full range of unary and binary operotions
