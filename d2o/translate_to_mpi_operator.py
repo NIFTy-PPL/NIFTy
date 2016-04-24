@@ -8,10 +8,10 @@ from nifty.keepers import global_configuration as gc,\
 MPI = gdi[gc['mpi_module']]
 
 custom_NANMIN = MPI.Op.Create(lambda x, y, datatype:
-                              np.nanmin(np.vstack(x, y), axis=0))
+                              np.nanmin(np.vstack((x, y)), axis=0))
 
 custom_NANMAX = MPI.Op.Create(lambda x, y, datatype:
-                              np.nanmax(np.vstack(x, y), axis=0))
+                              np.nanmax(np.vstack((x, y)), axis=0))
 
 custom_UNIQUE = MPI.Op.Create(lambda x, y, datatype:
                               np.unique(np.concatenate([x, y])))
