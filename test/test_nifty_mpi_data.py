@@ -1747,7 +1747,7 @@ class Test_axis(unittest.TestCase):
                            'argmin_nonflat', 'max', 'amax', 'nanmax',
                            'argmax', 'argmax_nonflat'],
                           all_datatypes[1:],
-                          [(0,), (1,), (6, 6), (5, 5, 5)],
+                          [(0,), (1,), (6, 6), (4, 4, 3)],
                           all_distribution_strategies,
                           [None, 0, (1, ), (0, 1)]),
         testcase_func_name=custom_name_func)
@@ -1779,7 +1779,7 @@ class Test_axis(unittest.TestCase):
                            'argmin_nonflat', 'max', 'amax', 'nanmax',
                            'argmax', 'argmax_nonflat'],
                           all_datatypes[1:],
-                          [(5, 5, 5), (4, 0, 3)],
+                          [(4, 4, 3), (4, 0, 3)],
                           all_distribution_strategies, [(0, 1), (1, 2)]),
         testcase_func_name=custom_name_func)
     def test_axis_with_functions_for_many_dimentions(self, function, dtype,

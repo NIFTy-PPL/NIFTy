@@ -31,19 +31,19 @@ from nifty.operators.nifty_operators import power_operator
 
 available = []
 try:
-    from nifty import  lm_space
+    from nifty import lm_space
 except ImportError:
     pass
 else:
     available += ['lm_space']
 try:
-    from nifty import  gl_space
+    from nifty import gl_space
 except ImportError:
     pass
 else:
     available += ['gl_space']
 try:
-    from nifty import  hp_space
+    from nifty import hp_space
 except ImportError:
     pass
 else:
@@ -1364,7 +1364,7 @@ class Test_axis(unittest.TestCase):
                           [None, (0,)],
                           DATAMODELS['point_space']),
         testcase_func_name=custom_name_func)
-    def test_binary_operations(self, name, num, op, axis, datamodel):
+    def test_unary_operations(self, name, num, op, axis, datamodel):
         s = generate_space_with_size(name, np.prod(num), datamodel=datamodel)
         d = generate_data(s)
         a = d.get_full_data()
@@ -1375,4 +1375,6 @@ class Test_axis(unittest.TestCase):
                                 getattr(np, op)(a, axis=axis), decimal=4)
             if name in ['rg_space']:
                 assert_almost_equal(s.unary_operation(d, op, axis=(0, 1)),
-                                getattr(np, op)(a, axis=(0, 1)), decimal=4)
+                                    getattr(np, op)(a, axis=(0, 1)), decimal=4)
+                assert_almost_equal(s.unary_operation(d, op, axis=(1,)),
+                                    getattr(np, op)(a, axis=(1,)), decimal=4)
