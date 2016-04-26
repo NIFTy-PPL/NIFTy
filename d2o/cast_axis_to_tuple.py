@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import numbers
 import numpy as np
 from nifty import about
 
@@ -11,7 +10,7 @@ def cast_axis_to_tuple(axis):
     try:
         axis = tuple([int(item) for item in axis])
     except(TypeError):
-        if isinstance(axis, numbers.Number):
+        if np.isscalar(axis):
             axis = (int(axis), )
         else:
             raise TypeError(about._errors.cstring(

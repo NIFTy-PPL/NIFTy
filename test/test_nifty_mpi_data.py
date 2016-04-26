@@ -1049,8 +1049,8 @@ class Test_set_data_via_injection(unittest.TestCase):
             all_distribution_strategies
         ), testcase_func_name=custom_name_func)
     def test_set_data_via_injection(self, (global_shape_1, slice_tuple_1,
-                           global_shape_2, slice_tuple_2),
-                    distribution_strategy):
+                                           global_shape_2, slice_tuple_2),
+                                    distribution_strategy):
         dtype = np.dtype('float')
         (a, obj) = generate_data(global_shape_1, dtype,
                                  distribution_strategy)
@@ -1059,8 +1059,8 @@ class Test_set_data_via_injection(unittest.TestCase):
                                distribution_strategy)
 
         obj.set_data(to_key=slice_tuple_1,
-                   data=p,
-                   from_key=slice_tuple_2)
+                     data=p,
+                     from_key=slice_tuple_2)
         a[slice_tuple_1] = b[slice_tuple_2]
         assert_equal(obj.get_full_data(), a)
 
@@ -1601,9 +1601,9 @@ class Test_comparisons(unittest.TestCase):
 class Test_special_methods(unittest.TestCase):
 
     @parameterized.expand(
-    itertools.product(all_distribution_strategies,
-                      all_distribution_strategies),
-                          testcase_func_name=custom_name_func)
+        itertools.product(all_distribution_strategies,
+                          all_distribution_strategies),
+        testcase_func_name=custom_name_func)
     def test_bincount(self, distribution_strategy_1, distribution_strategy_2):
         global_shape = (10,)
         dtype = np.dtype('int')
@@ -1742,8 +1742,8 @@ if FOUND['h5py'] == True:
 class Test_axis(unittest.TestCase):
 
     @parameterized.expand(
-        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
-                           'any', 'min', 'amin', 'nanmin', 'argmin',
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', #'median',
+                           'all', 'any', 'min', 'amin', 'nanmin', 'argmin',
                            'argmin_nonflat', 'max', 'amax', 'nanmax',
                            'argmax', 'argmax_nonflat'],
                           all_datatypes[1:],
@@ -1774,8 +1774,8 @@ class Test_axis(unittest.TestCase):
                                             decimal=4)
 
     @parameterized.expand(
-        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
-                           'any', 'min', 'amin', 'nanmin', 'argmin',
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', #'median',
+                           'all', 'any', 'min', 'amin', 'nanmin', 'argmin',
                            'argmin_nonflat', 'max', 'amax', 'nanmax',
                            'argmax', 'argmax_nonflat'],
                           all_datatypes[1:],

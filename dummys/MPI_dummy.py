@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import numbers
 import copy
 import numpy as np
 
@@ -89,7 +88,7 @@ class Intracomm(Comm):
         return recvbuf
 
     def allreduce(self, sendobj, op=SUM, **kwargs):
-        if isinstance(sendobj, numbers.Number):
+        if np.isscalar(sendobj):
             return sendobj
         return copy.copy(sendobj)
 

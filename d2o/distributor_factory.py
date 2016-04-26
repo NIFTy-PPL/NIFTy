@@ -517,7 +517,14 @@ class _slicing_distributor(distributor):
         # check if additional contraction along the first axis must be done
         if axis is None or 0 in axis:
             (mpi_op, bufferQ) = op_translate_dict[function]
+            # check if allreduce must be used instead of Allreduce
+            use_Uppercase = False
             if bufferQ and isinstance(contracted_local_data, np.ndarray):
+                # MPI.MAX and MPI.MIN do not support complex data types
+                if not np.issubdtype(contracted_local_data.dtype,
+                                     np.complexfloating):
+                    use_Uppercase = True
+            if use_Uppercase:
                 global_contracted_local_data = np.empty_like(
                     contracted_local_data)
                 new_mpi_dtype = self._my_dtype_converter.to_mpi(new_dtype)
