@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import numbers as numbers
-
 import numpy as np
 
 from nifty.keepers import about,\
@@ -1177,7 +1175,7 @@ class distributed_data_object(object):
     def std(self, axis=None):
         """ Returns the standard deviation of the d2o's elements. """
         var = self.var(axis=axis)
-        if isinstance(var, numbers.Number):
+        if np.isscalar(var):
             return np.sqrt(var)
         else:
             return var.apply_scalar_function(np.sqrt)
@@ -1294,7 +1292,7 @@ class distributed_data_object(object):
         about.warnings.cprint(
             "WARNING: The current implementation of median is very expensive!")
         median = np.median(self.get_full_data(), axis=axis, **kwargs)
-        if isinstance(median, numbers.Number):
+        if np.isscalar(median):
             return median
         else:
             x = self.copy_empty(global_shape=median.shape,
@@ -1302,7 +1300,6 @@ class distributed_data_object(object):
                                 distribution_strategy='not')
             x.set_local_data(median)
             return x
-
 
     def _is_helper(self, function):
         """ _is_helper is used for functions like isreal, isinf, isfinite,...

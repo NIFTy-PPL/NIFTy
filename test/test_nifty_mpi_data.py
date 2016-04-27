@@ -17,6 +17,8 @@ import nifty
 from nifty.d2o import distributed_data_object,\
                       STRATEGIES
 
+from distutils.version import LooseVersion as lv
+
 FOUND = {}
 try:
     import h5py
@@ -1049,8 +1051,8 @@ class Test_set_data_via_injection(unittest.TestCase):
             all_distribution_strategies
         ), testcase_func_name=custom_name_func)
     def test_set_data_via_injection(self, (global_shape_1, slice_tuple_1,
-                           global_shape_2, slice_tuple_2),
-                    distribution_strategy):
+                                           global_shape_2, slice_tuple_2),
+                                    distribution_strategy):
         dtype = np.dtype('float')
         (a, obj) = generate_data(global_shape_1, dtype,
                                  distribution_strategy)
@@ -1059,8 +1061,8 @@ class Test_set_data_via_injection(unittest.TestCase):
                                distribution_strategy)
 
         obj.set_data(to_key=slice_tuple_1,
-                   data=p,
-                   from_key=slice_tuple_2)
+                     data=p,
+                     from_key=slice_tuple_2)
         a[slice_tuple_1] = b[slice_tuple_2]
         assert_equal(obj.get_full_data(), a)
 
@@ -1601,9 +1603,9 @@ class Test_comparisons(unittest.TestCase):
 class Test_special_methods(unittest.TestCase):
 
     @parameterized.expand(
-    itertools.product(all_distribution_strategies,
-                      all_distribution_strategies),
-                          testcase_func_name=custom_name_func)
+        itertools.product(all_distribution_strategies,
+                          all_distribution_strategies),
+        testcase_func_name=custom_name_func)
     def test_bincount(self, distribution_strategy_1, distribution_strategy_2):
         global_shape = (10,)
         dtype = np.dtype('int')
@@ -1742,12 +1744,11 @@ if FOUND['h5py'] == True:
 class Test_axis(unittest.TestCase):
 
     @parameterized.expand(
-        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
-                           'any', 'min', 'amin', 'nanmin', 'argmin',
-                           'argmin_nonflat', 'max', 'amax', 'nanmax',
-                           'argmax', 'argmax_nonflat'],
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'all', 'any',
+                           'min', 'amin', 'nanmin', 'argmin', 'argmin_nonflat',
+                           'max', 'amax', 'nanmax', 'argmax', 'argmax_nonflat'],
                           all_datatypes[1:],
-                          [(0,), (1,), (6, 6), (5, 5, 5)],
+                          [(0,), (1,), (6, 6), (4, 4, 3)],
                           all_distribution_strategies,
                           [None, 0, (1, ), (0, 1)]),
         testcase_func_name=custom_name_func)
@@ -1774,12 +1775,11 @@ class Test_axis(unittest.TestCase):
                                             decimal=4)
 
     @parameterized.expand(
-        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
-                           'any', 'min', 'amin', 'nanmin', 'argmin',
-                           'argmin_nonflat', 'max', 'amax', 'nanmax',
-                           'argmax', 'argmax_nonflat'],
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'all', 'any',
+                           'min', 'amin', 'nanmin', 'argmin', 'argmin_nonflat',
+                           'max', 'amax', 'nanmax', 'argmax', 'argmax_nonflat'],
                           all_datatypes[1:],
-                          [(5, 5, 5), (4, 0, 3)],
+                          [(4, 4, 3), (4, 0, 3)],
                           all_distribution_strategies, [(0, 1), (1, 2)]),
         testcase_func_name=custom_name_func)
     def test_axis_with_functions_for_many_dimentions(self, function, dtype,
@@ -1798,4 +1798,27 @@ class Test_axis(unittest.TestCase):
             else:
                 assert_almost_equal(getattr(obj, function)
                                     (axis=axis).get_full_data(),
-                                    getattr(np, function)(a, axis=axis), decimal=4)
+                                    getattr(np, function)(a, axis=axis),
+                                    decimal=4)
+
+    @parameterized.expand(
+        itertools.product(all_datatypes[1:],
+                          [(0,), (1,), (4, 4, 3), (4, 0, 3)],
+                          all_distribution_strategies,
+                          [None, 0, (1, ), (0, 1), (1, 2)]),
+        testcase_func_name=custom_name_func)
+    def test_axis_for_median(self, dtype, global_shape,
+                             distribution_strategy, axis):
+        (a, obj) = generate_data(global_shape, dtype,
+                                 distribution_strategy,
+                                 strictly_positive=True)
+        if global_shape != (0,) and global_shape != (1,) and lv("1.9.0Z") < \
+                lv(np.__version__):
+            assert_almost_equal(getattr(obj, 'median')(axis=axis),
+                                getattr(np, 'median')(a, axis=axis),
+                                decimal=4)
+        else:
+            if axis is None or axis == 0 or axis == (0,):
+                assert_almost_equal(getattr(obj, 'median')(axis=axis),
+                                    getattr(np, 'median')(a, axis=axis),
+                                    decimal=4)

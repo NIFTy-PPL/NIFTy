@@ -517,14 +517,32 @@ class _slicing_distributor(distributor):
         # check if additional contraction along the first axis must be done
         if axis is None or 0 in axis:
             (mpi_op, bufferQ) = op_translate_dict[function]
-            contracted_local_data = self.comm.allreduce(contracted_local_data,
-                                                        op=mpi_op)
+            # check if allreduce must be used instead of Allreduce
+            use_Uppercase = False
+            if bufferQ and isinstance(contracted_local_data, np.ndarray):
+                # MPI.MAX and MPI.MIN do not support complex data types
+                if not np.issubdtype(contracted_local_data.dtype,
+                                     np.complexfloating):
+                    use_Uppercase = True
+            if use_Uppercase:
+                global_contracted_local_data = np.empty_like(
+                    contracted_local_data)
+                new_mpi_dtype = self._my_dtype_converter.to_mpi(new_dtype)
+                self.comm.Allreduce([contracted_local_data,
+                                     new_mpi_dtype],
+                                    [global_contracted_local_data,
+                                     new_mpi_dtype],
+                                    op=mpi_op)
+            else:
+                global_contracted_local_data = self.comm.allreduce(
+                    contracted_local_data, op=mpi_op)
             new_dist_strategy = 'not'
         else:
             new_dist_strategy = parent.distribution_strategy
+            global_contracted_local_data = contracted_local_data
 
         if new_shape == ():
-            result = contracted_local_data
+            result = global_contracted_local_data
         else:
             # try to store the result in a distributed_data_object with the
             # distribution_strategy as parent
@@ -538,12 +556,12 @@ class _slicing_distributor(distributor):
             # Contracting (4, 4) to (4,).
             # (4, 4) was distributed (1, 4)...(1, 4)
             # (4, ) is not distributed like (1,)...(1,) but like (2,)(2,)()()!
-            if result.local_shape != contracted_local_data.shape:
+            if result.local_shape != global_contracted_local_data.shape:
                 result = parent.copy_empty(
-                                    local_shape=contracted_local_data.shape,
+                                    local_shape=global_contracted_local_data.shape,
                                     dtype=new_dtype,
                                     distribution_strategy='freeform')
-            result.set_local_data(contracted_local_data, copy=False)
+            result.set_local_data(global_contracted_local_data, copy=False)
 
         return result
 
