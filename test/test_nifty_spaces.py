@@ -1358,23 +1358,31 @@ class Test_axis(unittest.TestCase):
     @parameterized.expand(
         itertools.product(point_like_spaces, [8, 16],
                           ['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
-                           'any', 'amin', 'nanmin', 'argmin',
-                           'argmin_nonflat', 'amax', 'nanmax', 'argmax',
-                           'argmax_nonflat'],
+                           'any', 'amin', 'nanmin', 'argmin', 'amax', 'nanmax',
+                           'argmax'],
                           [None, (0,)],
                           DATAMODELS['point_space']),
         testcase_func_name=custom_name_func)
     def test_unary_operations(self, name, num, op, axis, datamodel):
-        s = generate_space_with_size(name, np.prod(num), datamodel=datamodel)
+        s = generate_space_with_size(name, num, datamodel=datamodel)
         d = generate_data(s)
         a = d.get_full_data()
-        if op in ['argmin', 'argmin_nonflat', 'argmax', 'argmax_nonflat']:
-            assert_raises(NotImplementedError)
+        if op in ['argmin', 'argmax'] and axis is not None:
+            assert_raises(NotImplementedError, lambda: s.unary_operation
+                          (d, op, axis=axis))
         else:
             assert_almost_equal(s.unary_operation(d, op, axis=axis),
                                 getattr(np, op)(a, axis=axis), decimal=4)
             if name in ['rg_space']:
-                assert_almost_equal(s.unary_operation(d, op, axis=(0, 1)),
-                                    getattr(np, op)(a, axis=(0, 1)), decimal=4)
-                assert_almost_equal(s.unary_operation(d, op, axis=(1,)),
-                                    getattr(np, op)(a, axis=(1,)), decimal=4)
+                if op in ['argmin', 'argmax']:
+                    assert_raises(NotImplementedError, lambda: s.unary_operation
+                                  (d, op, axis=(0, 1)))
+                    assert_raises(NotImplementedError, lambda: s.unary_operation
+                                  (d, op, axis=(1, )))
+                else:
+                    assert_almost_equal(s.unary_operation(d, op, axis=(0, 1)),
+                                        getattr(np, op)(a, axis=(0, 1)),
+                                        decimal=4)
+                    assert_almost_equal(s.unary_operation(d, op, axis=(1,)),
+                                        getattr(np, op)(a, axis=(1,)),
+                                        decimal=4)
