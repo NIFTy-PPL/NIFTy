@@ -1798,19 +1798,7 @@ class distributed_data_object(object):
             Contains the results of the cummulative sum.
         """
 
-        cumsum_data = self.distributor.cumsum(self.data, axis=axis)
-
-        if axis is None:
-            flat_global_shape = (np.prod(self.shape),)
-            flat_local_shape = np.shape(cumsum_data)
-            result_d2o = self.copy_empty(global_shape=flat_global_shape,
-                                         local_shape=flat_local_shape)
-        else:
-            result_d2o = self.copy_empty()
-
-        result_d2o.set_local_data(cumsum_data)
-
-        return result_d2o
+        return self.distributor.cumsum(parent=self, axis=axis)
 
     def save(self, alias, path=None, overwriteQ=True):
         """ Saves the distributed_data_object to disk utilizing h5py.
