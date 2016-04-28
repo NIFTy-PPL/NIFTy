@@ -409,6 +409,7 @@ class _slicing_distributor(distributor):
         self.local_start = self._local_size[0]
         self.local_end = self._local_size[1]
         self.global_shape = self._local_size[2]
+        self.global_dim = reduce(lambda x, y: x*y, self.global_shape)
 
         self.local_length = self.local_end - self.local_start
         self.local_shape = (self.local_length,) + tuple(self.global_shape[1:])
@@ -497,7 +498,70 @@ class _slicing_distributor(distributor):
                             op=op)
         return recvbuf
 
-    def _contraction_helper(self, parent, function, axis=None, **kwargs):
+    def _selective_allreduce(self, data, op, bufferQ=False):
+        size = self.comm.size
+        rank = self.comm.rank
+
+        if size == 1:
+            result_data = data
+        else:
+
+            # infer which data should be included in the allreduce and if its
+            # array data
+            if data is None:
+                got_array = np.array([0])
+            elif not isinstance(data, np.ndarray):
+                got_array = np.array([1])
+            elif np.issubdtype(data.dtype, np.complexfloating):
+                # MPI.MAX and MPI.MIN do not support complex data types
+                got_array = np.array([2])
+            else:
+                got_array = np.array([3])
+
+            got_array_list = np.empty(size, dtype=np.int)
+            self.comm.Allgather([got_array, MPI.INT],
+                                [got_array_list, MPI.INT])
+
+            # get first node with non-None data
+            try:
+                start = next(i for i in xrange(size) if got_array_list[i] > 0)
+            except(StopIteration):
+                raise ValueError("ERROR: No process with non-None data.")
+
+            # check if the Uppercase function can be used or not
+            # -> check if op supports buffers and if we got real array-data
+            if bufferQ and got_array[start] == 3:
+                # Send the dtype and shape from the start process to the others
+                (new_dtype,
+                 new_shape) = self.comm.bcast((data.dtype,
+                                               data.shape), root=start)
+                mpi_dtype = self._my_dtype_converter.to_mpi(new_dtype)
+                if rank == start:
+                    result_data = data
+                else:
+                    result_data = np.empty(new_shape, dtype=new_dtype)
+
+                self.comm.Bcast([result_data, mpi_dtype], root=start)
+
+                for i in xrange(start+1, size):
+                    if got_array_list[i]:
+                        if rank == i:
+                            temp_data = data
+                        else:
+                            temp_data = np.empty(new_shape, dtype=new_dtype)
+                        self.comm.Bcast([temp_data, mpi_dtype], root=i)
+                        result_data = op(result_data, temp_data)
+
+            else:
+                result_data = self.comm.bcast(data, root=start)
+                for i in xrange(start+1, size):
+                    if got_array_list[i]:
+                        temp_data = self.comm.bcast(data, root=i)
+                        result_data = op(result_data, temp_data)
+        return result_data
+
+    def contraction_helper(self, parent, function, allow_empty_contractions,
+                           axis=None, **kwargs):
         if axis == ():
             return parent.copy()
 
@@ -509,40 +573,40 @@ class _slicing_distributor(distributor):
             new_shape = tuple([old_shape[i] for i in xrange(len(old_shape))
                                if i not in axis])
 
-        # do the contraction on the node's local data
         local_data = parent.data
-        contracted_local_data = function(local_data, axis=axis, **kwargs)
-        new_dtype = contracted_local_data.dtype
+
+        # if all local data is empty and empty_contractions are forbidden
+        # call function on the local_data in order to raise the right exception
+        if self.global_dim == 0 and not allow_empty_contractions:
+                # this shall raise an exception
+                function(local_data, axis=axis, **kwargs)
+
+        # do the contraction on the node's local data
+        if self.local_dim == 0 and not allow_empty_contractions:
+            # this case will only be reached if some nodes have data and some
+            # not
+            contracted_local_data = None
+        else:
+            # if local_dim == 0 but empty contractions will be allowed
+            # this will be a `contraction neutral` array.
+            contracted_local_data = function(local_data, axis=axis, **kwargs)
 
         # check if additional contraction along the first axis must be done
         if axis is None or 0 in axis:
             (mpi_op, bufferQ) = op_translate_dict[function]
-            # check if allreduce must be used instead of Allreduce
-            use_Uppercase = False
-            if bufferQ and isinstance(contracted_local_data, np.ndarray):
-                # MPI.MAX and MPI.MIN do not support complex data types
-                if not np.issubdtype(contracted_local_data.dtype,
-                                     np.complexfloating):
-                    use_Uppercase = True
-            if use_Uppercase:
-                global_contracted_local_data = np.empty_like(
-                    contracted_local_data)
-                new_mpi_dtype = self._my_dtype_converter.to_mpi(new_dtype)
-                self.comm.Allreduce([contracted_local_data,
-                                     new_mpi_dtype],
-                                    [global_contracted_local_data,
-                                     new_mpi_dtype],
-                                    op=mpi_op)
-            else:
-                global_contracted_local_data = self.comm.allreduce(
-                    contracted_local_data, op=mpi_op)
+            contracted_global_data = self._selective_allreduce(
+                                        contracted_local_data,
+                                        mpi_op,
+                                        bufferQ)
             new_dist_strategy = 'not'
         else:
+            contracted_global_data = contracted_local_data
             new_dist_strategy = parent.distribution_strategy
-            global_contracted_local_data = contracted_local_data
+
+        new_dtype = contracted_global_data.dtype
 
         if new_shape == ():
-            result = global_contracted_local_data
+            result = contracted_global_data
         else:
             # try to store the result in a distributed_data_object with the
             # distribution_strategy as parent
@@ -556,12 +620,12 @@ class _slicing_distributor(distributor):
             # Contracting (4, 4) to (4,).
             # (4, 4) was distributed (1, 4)...(1, 4)
             # (4, ) is not distributed like (1,)...(1,) but like (2,)(2,)()()!
-            if result.local_shape != global_contracted_local_data.shape:
+            if result.local_shape != contracted_global_data.shape:
                 result = parent.copy_empty(
-                                    local_shape=global_contracted_local_data.shape,
+                                    local_shape=contracted_global_data.shape,
                                     dtype=new_dtype,
                                     distribution_strategy='freeform')
-            result.set_local_data(global_contracted_local_data, copy=False)
+            result.set_local_data(contracted_global_data, copy=False)
 
         return result
 
@@ -1814,7 +1878,8 @@ class _not_distributor(distributor):
         recvbuf[:] = sendbuf
         return recvbuf
 
-    def _contraction_helper(self, parent, function, axis=None, **kwargs):
+    def contraction_helper(self, parent, function, allow_empty_contractions,
+                            axis=None, **kwargs):
         if axis == ():
             return parent.copy()
 

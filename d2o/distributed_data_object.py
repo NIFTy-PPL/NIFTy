@@ -1057,10 +1057,12 @@ class distributed_data_object(object):
         --------
         numpy.amin
         """
-        return self.distributor._contraction_helper(self,
-                                                    np.amin,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.amin,
+                                                allow_empty_contractions=False,
+                                                axis=axis,
+                                                **kwargs)
 
     def nanmin(self, axis=None, **kwargs):
         """ Returns the minimum of an array ignoring all NaNs.
@@ -1069,10 +1071,12 @@ class distributed_data_object(object):
         --------
         numpy.nanmin
         """
-        return self.distributor._contraction_helper(self,
-                                                    np.nanmin,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.nanmin,
+                                                allow_empty_contractions=False,
+                                                axis=axis,
+                                                **kwargs)
 
     def max(self, axis=None, **kwargs):
         """ x.max() <==> x.amax() """
@@ -1085,10 +1089,12 @@ class distributed_data_object(object):
         --------
         numpy.amax
         """
-        return self.distributor._contraction_helper(self,
-                                                    np.amax,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.amax,
+                                                allow_empty_contractions=False,
+                                                axis=axis,
+                                                **kwargs)
 
     def nanmax(self, axis=None, **kwargs):
         """ Returns the maximum of an array ignoring all NaNs.
@@ -1097,10 +1103,12 @@ class distributed_data_object(object):
         --------
         numpy.nanmax
         """
-        return self.distributor._contraction_helper(self,
-                                                    np.nanmax,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.nanmax,
+                                                allow_empty_contractions=False,
+                                                axis=axis,
+                                                **kwargs)
 
     def sum(self, axis=None, **kwargs):
         """ Sums the array elements.
@@ -1109,10 +1117,12 @@ class distributed_data_object(object):
         --------
         numpy.sum
         """
-        return self.distributor._contraction_helper(self,
-                                                    np.sum,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.sum,
+                                                allow_empty_contractions=True,
+                                                axis=axis,
+                                                **kwargs)
 
     def prod(self, axis=None, **kwargs):
         """ Multiplies the array elements.
@@ -1121,22 +1131,28 @@ class distributed_data_object(object):
         --------
         numpy.prod
         """
-        return self.distributor._contraction_helper(self,
-                                                    np.prod,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.prod,
+                                                allow_empty_contractions=True,
+                                                axis=axis,
+                                                **kwargs)
 
     def all(self, axis=None, **kwargs):
-        return self.distributor._contraction_helper(self,
-                                                    np.all,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.all,
+                                                allow_empty_contractions=True,
+                                                axis=axis,
+                                                **kwargs)
 
     def any(self, axis=None, **kwargs):
-        return self.distributor._contraction_helper(self,
-                                                    np.any,
-                                                    axis=axis,
-                                                    **kwargs)
+        return self.distributor.contraction_helper(
+                                                self,
+                                                np.any,
+                                                allow_empty_contractions=True,
+                                                axis=axis,
+                                                **kwargs)
 
     def mean(self, axis=None, **kwargs):
         # infer, which axes will be collapsed
