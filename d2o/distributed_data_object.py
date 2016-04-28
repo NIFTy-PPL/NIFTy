@@ -1424,8 +1424,9 @@ class distributed_data_object(object):
 
         Returns
         -------
-        out : numpy.ndarray of ints
-            The result of binning `self`.
+        out : numpy.ndarray
+            The result of binning `self`. The returned dtype is `int` if
+            no weights were given, and `np.float` otherwise.
 
         Raises
         ------
@@ -1515,7 +1516,7 @@ class distributed_data_object(object):
                  hermitian=False, copy=True, **kwargs):
         """ Takes the supplied `data` and distributes it to the nodes.
 
-        Essentially this method behaves like `d2o[to_key] = data[from_key]`.
+        Essentially this method behaves like `d2o[to_key] = data[from_key]`
         In order to makes this process efficient, the built-in distributors
         do not evaluate the object `d2o[from_key]` explicitly. Instead, the
         individual nodes check for the self-affecting part of `to_key`, then

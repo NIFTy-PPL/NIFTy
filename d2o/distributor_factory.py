@@ -1489,10 +1489,17 @@ class _slicing_distributor(distributor):
         return global_unique_data
 
     def bincount(self, local_data, local_weights, minlength):
+        if local_weights is None:
+            result_dtype = np.int
+        else:
+            result_dtype = np.float
+
         local_counts = np.bincount(local_data,
                                    weights=local_weights,
                                    minlength=minlength)
 
+        # cast the local_counts to the right dtype while avoiding copying
+        local_counts = np.array(local_counts, copy=False, dtype=result_dtype)
         global_counts = np.empty_like(local_counts)
         self._Allreduce_helper(local_counts,
                                global_counts,
