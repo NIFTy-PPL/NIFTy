@@ -1448,17 +1448,7 @@ class _slicing_distributor(distributor):
         return global_where
 
     def unique(self, data):
-#        # if the size of the MPI communicator is equal to 1, the
-#        # reduce operator will not be applied. -> Cover this case directly.
-#        if self.comm.size == 1:
-#            unique_data = np.unique(data)
-#        else:
-#            data = data.flatten()
-#            (mpi_unique, bufferQ) = op_translate_dict[np.unique]
-#            unique_data = self.comm.allreduce(data, op=mpi_unique)
-#        return unique_data
-
-        #if the size of the MPI communicator is equal to 1, the
+        # if the size of the MPI communicator is equal to 1, the
         # reduce operator will not be applied. -> Cover this case directly.
         comm = self.comm
         size = self.comm.size
@@ -1908,7 +1898,7 @@ class _not_distributor(distributor):
         return recvbuf
 
     def contraction_helper(self, parent, function, allow_empty_contractions,
-                            axis=None, **kwargs):
+                           axis=None, **kwargs):
         if axis == ():
             return parent.copy()
 
