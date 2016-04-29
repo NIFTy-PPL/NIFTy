@@ -1752,7 +1752,7 @@ class Test_axis(unittest.TestCase):
                           all_distribution_strategies,
                           [None, (0, ), (1, ), (0, 1)]),
         testcase_func_name=custom_name_func)
-    def test_axis_with_operations_0_dimention(self, function, dtype,
+    def test_axis_with_operations_0_dimension(self, function, dtype,
                                               global_shape,
                                               distribution_strategy, axis):
         (a, obj) = generate_data(global_shape, dtype,
