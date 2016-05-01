@@ -498,7 +498,7 @@ class _slicing_distributor(distributor):
                             op=op)
         return recvbuf
 
-    def _selective_allreduce(self, data, op, bufferQ=False):
+    def _selective_allreduce(self, data, function, bufferQ=False):
         size = self.comm.size
         rank = self.comm.rank
 
@@ -557,14 +557,29 @@ class _slicing_distributor(distributor):
                         else:
                             temp_data = np.empty(new_shape, dtype=new_dtype)
                         self.comm.Bcast([temp_data, mpi_dtype], root=i)
-                        result_data = op(result_data, temp_data)
-
+                        result_data = function([result_data, temp_data],
+                                               axis=(0,))
             else:
                 result_data = self.comm.bcast(data, root=start)
+                if bufferQ and got_array_list[start] == 4:
+                    # This if is here just because multiple processes need
+                    # the same runtime and message exchange, or they derail
+                    (new_dtype,
+                     new_shape) = self.comm.bcast((result_data.dtype,
+                                                   result_data.shape),
+                                                  root=start)
+                    mpi_dtype = self._my_dtype_converter.to_mpi(new_dtype)
+                    if rank == start:
+                        result_data2 = data
+                    else:
+                        result_data2 = np.empty(new_shape, dtype=new_dtype)
+
+                    self.comm.Bcast([result_data2, mpi_dtype], root=start)
                 for i in xrange(start+1, size):
                     if got_array_list[i] > 1:
                         temp_data = self.comm.bcast(data, root=i)
-                        result_data = op(result_data, temp_data)
+                        result_data = function([result_data, temp_data],
+                                               axis=(0,))
         return result_data
 
     def contraction_helper(self, parent, function, allow_empty_contractions,
@@ -592,7 +607,7 @@ class _slicing_distributor(distributor):
             (mpi_op, bufferQ) = op_translate_dict[function]
             contracted_global_data = self._selective_allreduce(
                                         contracted_local_data,
-                                        mpi_op,
+                                        function,
                                         bufferQ)
             new_dist_strategy = 'not'
         else:
