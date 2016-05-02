@@ -7,6 +7,16 @@ from nifty.keepers import global_configuration as gc,\
 
 MPI = gdi[gc['mpi_module']]
 
+custom_MIN = MPI.Op.Create(lambda x, y, datatype:
+                           np.amin(np.vstack((x, y)), axis=0)
+                           if isinstance(x, np.ndarray) else
+                           lambda x, y, d: MPI.MIN(x, y))
+
+custom_MAX = MPI.Op.Create(lambda x, y, datatype:
+                           np.amax(np.vstack((x, y)), axis=0)
+                           if isinstance(x, np.ndarray) else
+                           lambda x, y, d: MPI.MAX(x, y))
+
 custom_NANMIN = MPI.Op.Create(lambda x, y, datatype:
                               np.nanmin(np.vstack((x, y)), axis=0))
 
@@ -22,8 +32,8 @@ op_translate_dict = {}
 # if the operator is compatible to buffers (for Allreduce instead of allreduce)
 op_translate_dict[np.sum] = (MPI.SUM, True)
 op_translate_dict[np.prod] = (MPI.PROD, True)
-op_translate_dict[np.amin] = (MPI.MIN, True)
-op_translate_dict[np.amax] = (MPI.MAX, True)
+op_translate_dict[np.amin] = (custom_MIN, False)
+op_translate_dict[np.amax] = (custom_MAX, False)
 op_translate_dict[np.all] = (MPI.BAND, True)
 op_translate_dict[np.any] = (MPI.BOR, True)
 op_translate_dict[np.nanmin] = (custom_NANMIN, False)
