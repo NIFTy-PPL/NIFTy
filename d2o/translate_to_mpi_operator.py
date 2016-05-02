@@ -10,12 +10,12 @@ MPI = gdi[gc['mpi_module']]
 custom_MIN = MPI.Op.Create(lambda x, y, datatype:
                            np.amin(np.vstack((x, y)), axis=0)
                            if isinstance(x, np.ndarray) else
-                           lambda x, y, d: MPI.MIN(x, y))
+                           min(x, y))
 
 custom_MAX = MPI.Op.Create(lambda x, y, datatype:
                            np.amax(np.vstack((x, y)), axis=0)
                            if isinstance(x, np.ndarray) else
-                           lambda x, y, d: MPI.MAX(x, y))
+                           max(x, y))
 
 custom_NANMIN = MPI.Op.Create(lambda x, y, datatype:
                               np.nanmin(np.vstack((x, y)), axis=0))

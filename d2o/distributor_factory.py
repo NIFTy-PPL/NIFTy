@@ -602,11 +602,10 @@ class _slicing_distributor(distributor):
             contracted_global_data = contracted_local_data
             new_dist_strategy = parent.distribution_strategy
 
-        new_dtype = contracted_global_data.dtype
-
         if new_shape == ():
             result = contracted_global_data
         else:
+            new_dtype = contracted_global_data.dtype
             # try to store the result in a distributed_data_object with the
             # distribution_strategy as parent
             result = parent.copy_empty(global_shape=new_shape,
