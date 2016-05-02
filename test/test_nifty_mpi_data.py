@@ -1774,11 +1774,11 @@ class Test_axis(unittest.TestCase):
                                     decimal=4)
 
     @parameterized.expand(
-        itertools.product(['max', 'sum', 'prod', 'mean', 'var', 'std', 'all', 'any',
+        itertools.product(['sum', 'prod', 'mean', 'var', 'std', 'all', 'any',
                            'min', 'amin', 'nanmin', 'argmin', 'max', 'amax',
                            'nanmax', 'argmax'],
-                           all_datatypes[1:],
-                          [(1,), (6, 6)],
+                          all_datatypes[1:],
+                          [(1, ), (2, 3)],
                           all_distribution_strategies,
                           [None, 0, (1, ), (0, 1)]),
         testcase_func_name=custom_name_func)
@@ -1796,7 +1796,7 @@ class Test_axis(unittest.TestCase):
                                     getattr(np, function)(a, axis=axis),
                                     decimal=4)
             else:
-                if axis is None or axis == 0 or axis == (0,):
+                if axis in [None, 0, (0,)]:
                     assert_almost_equal(getattr(obj, function)(axis=axis),
                                         getattr(np, function)(a, axis=axis),
                                         decimal=4)
