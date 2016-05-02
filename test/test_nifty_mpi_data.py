@@ -1806,9 +1806,9 @@ class Test_axis(unittest.TestCase):
                            'min', 'amin', 'nanmin', 'argmin', 'max', 'amax',
                            'nanmax', 'argmax'],
                           all_datatypes[1:],
-                          [(4, 2, 3)],
+                          [(3, 2, 3)],
                           all_distribution_strategies,
-                          [(0, 1)]),#, (1, 2), (0, 1, 2)]),
+                          [(0, 1), (1, 2), (0, 1, 2)]),
         testcase_func_name=custom_name_func)
     def test_axis_with_operations_many_dimentions(self, function, dtype,
                                                   global_shape,
