@@ -537,7 +537,7 @@ class _slicing_distributor(distributor):
 
             # check if the Uppercase function can be used or not
             # -> check if op supports buffers and if we got real array-data
-            if bufferQ and got_array[start] == 4:
+            if bufferQ and got_array_list[start] == 4:
                 # Send the dtype and shape from the start process to the others
                 (new_dtype,
                  new_shape) = self.comm.bcast((data.dtype,
