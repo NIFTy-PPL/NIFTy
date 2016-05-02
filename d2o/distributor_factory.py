@@ -656,6 +656,8 @@ class _slicing_distributor(distributor):
                                          copy=copy)
                 return temp_d2o.get_local_data(copy=False).astype(self.dtype,
                                                                   copy=False)
+            elif np.isscalar(data):
+                return np.ones(self.local_shape, dtype=self.dtype)*data
             else:
                 return data[self.local_start:self.local_end].astype(
                     self.dtype,
@@ -1923,6 +1925,9 @@ class _not_distributor(distributor):
             new_data = data.get_full_data()
         elif isinstance(data, np.ndarray):
             new_data = data
+        elif np.isscalar(data):
+            new_data = np.ones(self.global_shape, dtype=self.dtype)*data
+            copy = False
         else:
             new_data = np.array(data)
         return new_data.astype(self.dtype,
