@@ -1356,7 +1356,7 @@ print generate_space('rg_space')
 
 class Test_axis(unittest.TestCase):
     @parameterized.expand(
-        itertools.product(point_like_spaces, [8, 4],
+        itertools.product(point_like_spaces, [4],
                           ['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
                            'any', 'amin', 'nanmin', 'argmin', 'amax', 'nanmax',
                            'argmax'],
