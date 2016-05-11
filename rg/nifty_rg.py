@@ -828,7 +828,7 @@ class rg_space(point_space):
             result = np.asscalar(np.real(result))
         return result
 
-    def calc_transform(self, x, codomain=None, **kwargs):
+    def calc_transform(self, x, codomain=None, axes=None, **kwargs):
         """
             Computes the transform of a given array of field values.
 
@@ -839,6 +839,8 @@ class rg_space(point_space):
             codomain : nifty.rg_space, *optional*
                 codomain space to which the transformation shall map
                 (default: None).
+            axes : None or tuple
+                Axes in the array which should be transformed.
 
             Returns
             -------
@@ -861,7 +863,7 @@ class rg_space(point_space):
 
         # Perform the transformation
         Tx = self.fft_machine.transform(val=x, domain=self, codomain=codomain,
-                                        **kwargs)
+                                        axes=axes, **kwargs)
 
         if not codomain.harmonic:
             # correct for inverse fft
