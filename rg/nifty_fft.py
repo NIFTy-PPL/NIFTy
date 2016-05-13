@@ -93,6 +93,7 @@ class fft_fftw(fft):
         if 'pyfftw' not in gdi:
             raise ImportError("The module pyfftw is needed but not available.")
 
+        self.name = 'pyfftw'
         # The plan_dict stores the plan_and_info objects which correspond
         # to a certain set of (field_val, domain, codomain) sets.
         self.plan_dict = {}
@@ -401,6 +402,7 @@ class fft_gfft(fft):
 
     """
     def __init__(self, fft_module_name):
+        self.name = fft_module_name
         self.fft_machine = gdi.get(fft_module_name)
         if self.fft_machine is None:
             raise ImportError(
