@@ -7,19 +7,15 @@ from itertools import product
 
 def get_slice_list(shape, axes):
     """
-    Helper function which generate slice list(s) to traverse over all
-    combinations of axes, other than the selected axes. This is used in
-    conjunction with outer-product spaces. The generated slice list can
-    passed to the target outer-product space to extract the selected
-    data. The target outer-product space can be either a d2o object or
-    a numpy.ndarray.
+    Helper function which generates slice list(s) to traverse over all
+    combinations of axes, other than the selected axes.
 
     Parameters
     ----------
     shape: tuple
-        Shape of the target d2o object or numpy.ndarray.
+        Shape of the data array to traverse over.
     axes: tuple
-        Axes along which data needs to be extracted.
+        Axes which should not be iterated over.
 
     Yields
     -------
@@ -33,6 +29,7 @@ def get_slice_list(shape, axes):
     ValueError
         If axes(axis) does not match shape.
     """
+
     if not shape:
         raise ValueError(about._errors.cstring("ERROR: shape cannot be None."))
 
