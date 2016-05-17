@@ -1,6 +1,42 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from keepers import about
+from itertools import product
+
+
+def get_slice_list(shape, axes):
+    """
+    Yields a slice list which can be passed directly to d2o object or
+    numpy.ndarray to extract that slice of data.
+
+    :shape: Tuple
+        Shape of the target d2o object or numpy.ndarray
+    :axes: Tuple
+        Axes which are to be extracted
+    :returns: List
+        List of indices and/or slice objects
+
+    """
+    if not shape:
+        raise ValueError(about._errors.cstring("ERROR: shape cannot be None."))
+
+    if not all(axis < len(shape) for axis in axes):
+        raise ValueError(
+            about._errors.cstring("ERROR: axes(axis) do not match shape.")
+        )
+
+    axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
+
+    axes_iterables = [range(y) for x, y in enumerate(shape) if x not in axes]
+
+    for index in product(*axes_iterables):
+        it_iter = iter(index)
+        slice_list = [
+            next(it_iter)
+            if axis else slice(None, None) for axis in axes_select
+        ]
+        yield slice_list
 
 
 def hermitianize_gaussian(x):
@@ -108,8 +144,8 @@ def convert_nested_list_to_object_array(x):
     dimension_counter = 0
     current_extract = x
     for i in xrange(len(possible_shape)):
-        if isinstance(current_extract, list) == False and\
-            isinstance(current_extract, tuple) == False:
+        if not isinstance(current_extract, list) and \
+                not isinstance(current_extract, tuple):
             break
         current_extract = current_extract[0]
         dimension_counter += 1
@@ -153,8 +189,10 @@ def field_map(ishape, function, *args):
             result = np.empty_like(args[0])
             for i in xrange(np.prod(result.shape)):
                 ii = np.unravel_index(i, result.shape)
-                result[ii] = function(*map(
-                                        lambda z: get_clipped(z, ii), args)
-                                      )
+                result[ii] = function(
+                    *map(
+                        lambda z: get_clipped(z, ii), args
+                    )
+                )
                 # result[ii] = function(*map(lambda z: z[ii], args))
             return result
