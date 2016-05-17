@@ -7,23 +7,38 @@ from itertools import product
 
 def get_slice_list(shape, axes):
     """
-    Yields a slice list which can be passed directly to d2o object or
-    numpy.ndarray to extract that slice of data.
+    Helper function which generate slice list(s) to traverse over all
+    combinations of axes, other than the selected axes. This is used in
+    conjunction with outer-product spaces. The generated slice list can
+    passed to the target outer-product space to extract the selected
+    data. The target outer-product space can be either a d2o object or
+    a numpy.ndarray.
 
-    :shape: Tuple
-        Shape of the target d2o object or numpy.ndarray
-    :axes: Tuple
-        Axes which are to be extracted
-    :returns: List
-        List of indices and/or slice objects
+    Parameters
+    ----------
+    shape: tuple
+        Shape of the target d2o object or numpy.ndarray.
+    axes: tuple
+        Axes along which data needs to be extracted.
 
+    Yields
+    -------
+    list
+        The next list of indices and/or slice objects for each dimension.
+
+    Raises
+    ------
+    ValueError
+        If shape is empty.
+    ValueError
+        If axes(axis) does not match shape.
     """
     if not shape:
         raise ValueError(about._errors.cstring("ERROR: shape cannot be None."))
 
     if not all(axis < len(shape) for axis in axes):
         raise ValueError(
-            about._errors.cstring("ERROR: axes(axis) do not match shape.")
+            about._errors.cstring("ERROR: axes(axis) does not match shape.")
         )
 
     axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
