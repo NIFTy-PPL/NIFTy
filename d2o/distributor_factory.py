@@ -255,12 +255,11 @@ def _infer_key_type(key):
         return (None, None)
     found_boolean = False
     # Check which case we got:
-    if isinstance(key, tuple) or isinstance(key, slice) or np.isscalar(key):
+    if isinstance(key, slice) or np.isscalar(key):
+        found = 'slicetuple'
+    elif isinstance(key, tuple) or isinstance(key, list):
         # Check if there is something different in the array than
         # scalars and slices
-        if isinstance(key, slice) or np.isscalar(key):
-            key = [key]
-
         scalarQ = np.array(map(np.isscalar, key))
         sliceQ = np.array(map(lambda z: isinstance(z, slice), key))
         if np.all(scalarQ + sliceQ):
@@ -273,8 +272,6 @@ def _infer_key_type(key):
     elif isinstance(key, distributed_data_object):
         found = 'd2o'
         found_boolean = (key.dtype == np.bool_)
-    elif isinstance(key, list):
-        found = 'indexinglist'
     else:
         raise ValueError(about._errors.cstring("ERROR: Unknown keytype!"))
     return (found, found_boolean)
