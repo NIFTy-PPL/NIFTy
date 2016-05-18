@@ -59,7 +59,7 @@ class FFT(object):
     def __init__(self):
         pass
 
-    def transform(self, val, domain, codomain, **kwargs):
+    def transform(self, val, domain, codomain, axes, **kwargs):
         """
             A generic ff-transform function.
 
@@ -442,11 +442,12 @@ class GFFT(FFT):
         else:
             temp = val
 
+        # Cast input datatype to complex
         if domain.dtype == np.float64:
             temp = temp.astype(np.complex128)
 
         # Result is generated and stored in a local numpy array
-        res = np.empty_like(temp)
+        return_val = np.empty_like(temp)
 
         if axes:
             for slice_list in utilities.get_slice_list(temp.shape, axes):
@@ -467,9 +468,9 @@ class GFFT(FFT):
                     verbose=False
                 )
 
-                res[slice_list] = inp
+                return_val[slice_list] = inp
         else:
-            res = self.fft_machine.gfft(
+            return_val = self.fft_machine.gfft(
                 temp,
                 in_ax=[],
                 out_ax=[],
@@ -485,14 +486,14 @@ class GFFT(FFT):
             )
 
         if isinstance(val, distributed_data_object):
-            new_val = val.copy_empty(dtype=np.complex128)
+            new_val = val.copy_empty(dtype=codomain.dtype)
             new_val.set_full_data(res)
             # If the values living in domain are purely real, the result of
             # the fft is hermitian
             if domain.paradict['complexity'] == 0:
                 new_val.hermitian = True
-            val = new_val
+            return_val = new_val
         else:
-            val = res
+            return_val = return_val.astype(codomain.dtype)
 
-        return val
+        return return_val

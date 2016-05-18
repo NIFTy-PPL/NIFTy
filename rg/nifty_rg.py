@@ -872,12 +872,6 @@ class rg_space(point_space):
             # correct for inverse fft
             Tx = codomain.calc_weight(Tx, power=-1)
 
-        # when the codomain space is purely real, the result of the
-        # transformation must be corrected accordingly. Using the casting
-        # method of codomain is sufficient
-        # TODO: Let .transform  yield the correct dtype
-        Tx = codomain.cast(Tx)
-
         return Tx
 
     def calc_smooth(self, x, sigma=0, codomain=None):
