@@ -56,11 +56,11 @@ all_hp_datatypes = [np.dtype('float64')]
 ###############################################################################
 
 DATAMODELS = {}
-DATAMODELS['point_space'] = ['np'] + POINT_DISTRIBUTION_STRATEGIES
-DATAMODELS['rg_space'] = ['np'] + RG_DISTRIBUTION_STRATEGIES
-DATAMODELS['lm_space'] = ['np'] + LM_DISTRIBUTION_STRATEGIES
-DATAMODELS['gl_space'] = ['np'] + GL_DISTRIBUTION_STRATEGIES
-DATAMODELS['hp_space'] = ['np'] + HP_DISTRIBUTION_STRATEGIES
+DATAMODELS['point_space'] = POINT_DISTRIBUTION_STRATEGIES
+DATAMODELS['rg_space'] = RG_DISTRIBUTION_STRATEGIES
+DATAMODELS['lm_space'] = LM_DISTRIBUTION_STRATEGIES
+DATAMODELS['gl_space'] = GL_DISTRIBUTION_STRATEGIES
+DATAMODELS['hp_space'] = HP_DISTRIBUTION_STRATEGIES
 
 ###############################################################################
 
@@ -110,10 +110,9 @@ class Test_field_init(unittest.TestCase):
 
     @parameterized.expand(space_list)
     def test_successfull_init_and_attributes(self, s):
-        s = s[0]
-        f = field(s)
-        assert(f.domain is s)
-        assert(s.check_codomain(f.codomain))
+        f = field(domain=np.array([s]), dtype=s.dtype)
+        assert(f.domain[0] is s)
+        assert(s.check_codomain(f.codomain[0]))
 
 
 
