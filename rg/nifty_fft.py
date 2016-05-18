@@ -162,17 +162,14 @@ class FFTW(FFT):
             # use np.tile in order to stack the core alternation scheme
             # until the desired format is constructed.
             core = np.fromfunction(
-                lambda *args: (-1) ** (
-                    np.tensordot(
-                        to_center,
-                        args + offset.reshape(
-                            offset.shape + (1,) * (np.array(args).ndim - 1)
-                        ),
-                        1
-                    )
-                ),
-                (2,) * to_center.size
-            )
+                lambda *args: (-1) **
+                (np.tensordot(to_center,
+                              args +
+                              offset.reshape(offset.shape +
+                                             (1,) *
+                                             (np.array(args).ndim - 1)),
+                              1)),
+                (2,) * to_center.size)
             # Cast the core to the smallest integers we can get
             core = core.astype(np.int8)
 
@@ -436,54 +433,41 @@ class GFFT(FFT):
             result : np.ndarray
                 Fourier-transformed pendant of the input field.
         """
-        # GFFT is dumb. The entire input needs to be present on the node.
+        # GFFT doesn't accept d2o objects as input. Consolidate data from
+        # all nodes into numpy.ndarray before proceeding.
         if isinstance(val, distributed_data_object):
             temp = val.get_full_data()
         else:
             temp = val
 
-        # Cast input datatype to complex
-        if domain.dtype == np.float64:
-            temp = temp.astype(np.complex128)
+        # Cast input datatype to codomain's dtype
+        temp = temp.astype(codomain.dtype)
 
-        # Result is generated and stored in a local numpy array
+        # Array for storing the result
         return_val = np.empty_like(temp)
 
-        if axes:
-            for slice_list in utilities.get_slice_list(temp.shape, axes):
+        for slice_list in utilities.get_slice_list(temp.shape, axes):
+            # don't copy the whole data array
+            if slice_list == [slice(None, None)]:
+                inp = temp
+            else:
                 inp = temp[slice_list]
 
-                inp = self.fft_machine.gfft(
-                    inp,
-                    in_ax=[],
-                    out_ax=[],
-                    ftmachine='fft' if codomain.harmonic else 'ifft',
-                    in_zero_center=map(bool, domain.paradict['zerocenter']),
-                    out_zero_center=map(bool, codomain.paradict['zerocenter']),
-                    enforce_hermitian_symmetry=bool(
-                        codomain.paradict['complexity']
-                    ),
-                    W=-1,
-                    alpha=-1,
-                    verbose=False
-                )
-
-                return_val[slice_list] = inp
-        else:
-            return_val = self.fft_machine.gfft(
-                temp,
+            inp = self.fft_machine.gfft(
+                inp,
                 in_ax=[],
                 out_ax=[],
                 ftmachine='fft' if codomain.harmonic else 'ifft',
                 in_zero_center=map(bool, domain.paradict['zerocenter']),
                 out_zero_center=map(bool, codomain.paradict['zerocenter']),
-                enforce_hermitian_symmetry=bool(
-                    codomain.paradict['complexity']
-                ),
+                enforce_hermitian_symmetry=
+                bool(codomain.paradict['complexity']),
                 W=-1,
                 alpha=-1,
                 verbose=False
             )
+
+            return_val[slice_list] = inp
 
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=codomain.dtype)
