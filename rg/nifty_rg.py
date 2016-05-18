@@ -258,6 +258,7 @@ class rg_space(point_space):
                         distances=self.distances,
                         harmonic=self.harmonic,
                         datamodel=self.datamodel,
+                        fft_module=self.fft_machine.name,
                         comm=self.comm)
 
     def get_shape(self):
@@ -482,6 +483,7 @@ class rg_space(point_space):
         distances = 1 / (np.array(self.paradict['shape']) *
                          np.array(self.distances))
         datamodel = self.datamodel
+        fft_module = self.fft_machine.name
         comm = self.comm
         complexity = {0: 1, 1: 0, 2: 2}[self.paradict['complexity']]
         harmonic = bool(not self.harmonic)
@@ -492,6 +494,7 @@ class rg_space(point_space):
                              distances=distances,
                              harmonic=harmonic,
                              datamodel=datamodel,
+                             fft_module=fft_module,
                              comm=comm)
         return new_space
 

@@ -406,32 +406,26 @@ class distributed_data_object(object):
         """
         remember_hermitianQ = self.hermitian
 
+        local_data = self.get_local_data(copy=False)
+        try:
+            result_data = function(local_data)
+        except:
+            about.warnings.cprint(
+                "WARNING: Trying to use np.vectorize!")
+            result_data = np.vectorize(function)(local_data)
+
         if inplace is True:
-            temp = self
-            if dtype is not None and self.dtype != np.dtype(dtype):
-                about.warnings.cprint(
-                    "WARNING: Inplace dtype conversion is not possible!")
-
+            result_d2o = self
         else:
-            temp = self.copy_empty(dtype=dtype)
+            result_d2o = self.copy_empty(dtype=result_data.dtype)
 
-        if np.prod(self.local_shape) != 0:
-            try:
-                temp.data[:] = function(self.data)
-            except:
-                about.warnings.cprint(
-                    "WARNING: Trying to use np.vectorize!")
-                temp.data[:] = np.vectorize(function)(self.data)
-        else:
-            # Noting to do here. The value-empty array
-            # is also geometrically empty
-            pass
+        result_d2o.set_local_data(result_data, copy=False)
 
         if function in (np.exp, np.log):
-            temp.hermitian = remember_hermitianQ
+            result_d2o.hermitian = remember_hermitianQ
         else:
-            temp.hermitian = False
-        return temp
+            result_d2o.hermitian = False
+        return result_d2o
 
     def apply_generator(self, generator, copy=False):
         """ Evaluates generator(local_shape) and stores the result locally.
