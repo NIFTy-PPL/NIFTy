@@ -487,7 +487,7 @@ class GFFT(FFT):
 
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=codomain.dtype)
-            new_val.set_full_data(res)
+            new_val.set_full_data(return_val)
             # If the values living in domain are purely real, the result of
             # the fft is hermitian
             if domain.paradict['complexity'] == 0:
