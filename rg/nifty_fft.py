@@ -262,21 +262,36 @@ class FFTW(FFT):
             # might be slow but the subsequent calls in the same session will
             # be much faster.
             if codomain.harmonic:
-                result = pyfftw.interfaces.numpy_fft.fftn(local_val, axes=axes)
+                return_val = pyfftw.interfaces.numpy_fft.fftn(local_val,
+                                                              axes=axes)
             else:
-                result = pyfftw.interfaces.numpy_fft.ifftn(local_val, axes=axes)
+                return_val = pyfftw.interfaces.numpy_fft.ifftn(local_val,
+                                                               axes=axes)
 
             # Apply domain centering mask
             for slice_list in utilities.get_slice_list(val.shape, axes):
                 if slice_list == [slice(None, None)]:
-                    result *= domain_centering_mask
+                    return_val *= domain_centering_mask
                 else:
-                    result[slice_list] *= domain_centering_mask
+                    return_val[slice_list] *= domain_centering_mask
 
-            return result.astype(codomain.dtype)
+            return return_val.astype(codomain.dtype)
         else:
-            # val is a distributed_data_object
-            pass
+            # Setup the final result array
+            return_val = val.copy_empty(
+                global_shape=codomain.get_shape(),
+                dtype=codomain.type
+            )
+
+            if val.distribution_strategy == 'not':
+                pass
+            elif val.distribution_strategy in ('equal', 'fftw', 'freeform'):
+                # slicing distributor need to examine axes before proceeding
+                pass
+            else:
+                raise ValueError('ERROR: Unknown distribution strategy')
+
+            return return_val
 
 
 # The instances of plan_and_info store the fftw plan and all
