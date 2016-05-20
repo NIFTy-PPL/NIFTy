@@ -110,7 +110,7 @@ class Test_field_init(unittest.TestCase):
 
     @parameterized.expand(space_list)
     def test_successfull_init_and_attributes(self, s):
-        f = field(domain=np.array([s]), dtype=s.dtype)
+        f = field(domain=np.array([s]), dtype=s.dtype, datamodel=s.datamodel)
         assert(f.domain[0] is s)
         assert(s.check_codomain(f.codomain[0]))
 
