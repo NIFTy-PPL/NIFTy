@@ -280,12 +280,9 @@ class FFTW(FFT):
         else:
             if val.distribution_strategy == 'not':
                 new_val = val.copy(distribution_strategy='fftw')
-                return_val = self.transform(
-                    new_val,
-                    domain,
-                    codomain,
-                    axes,
-                    **kwargs).copy(distribution_strategy='not')
+                return_val = self.transform(new_val, domain, codomain, axes,
+                                            **kwargs)
+                return_val = return_val.copy(distribution_strategy='not')
             elif val.distribution_strategy in ('equal', 'fftw', 'freeform'):
                 if axes:
                     # We use pyfftw in this case
