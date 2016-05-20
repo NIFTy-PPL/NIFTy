@@ -1994,7 +1994,12 @@ class field(object):
             return gotten
 
     def get_shape(self):
-        global_shape = np.sum([space.get_shape() for space in self.domain])
+        if len(self.domain) > 1:
+            global_shape = reduce(lambda x, y: x.get_shape()+y.get_shape(),
+                                self.domain)
+        else:
+            global_shape = self.domain[0].get_shape()
+
         if isinstance(global_shape, tuple):
             return global_shape
         else:
@@ -2017,10 +2022,14 @@ class field(object):
                 Dimension of space.
 
         """
-        return np.prod(np.sum([space.get_shape() for space in self.domain]))
+        return np.prod(self.get_shape())
 
     def get_dof(self, split=False):
-        return np.sum([len(space.get_shape()) for space in self.domain])
+        dim = self.get_dim()
+        if np.issubdtype(self.dtype, np.complex):
+            return 2*dim
+        else:
+            return dim
 
     def _map(self, function, *args):
         return utilities.field_map(self.get_shape(), function, *args)
