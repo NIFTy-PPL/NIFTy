@@ -239,7 +239,7 @@ class FFTW(FFT):
         # If the input is a numpy array we transform it locally
         if not isinstance(val, distributed_data_object):
             # Copy data for local manipulation
-            local_val = val[:]
+            local_val = np.copy(val)
 
             # Create domain and codomain centering mask
             domain_centering_mask = self.get_centering_mask(
