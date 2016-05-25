@@ -121,7 +121,7 @@ class lm_space(point_space):
     """
 
     def __init__(self, lmax, mmax=None, dtype=np.dtype('complex128'),
-                 datamodel='not', comm=gc['default_comm']):
+                 comm=gc['default_comm']):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -166,16 +166,6 @@ class lm_space(point_space):
             dtype = np.dtype('complex128')
         self.dtype = dtype
 
-        # set datamodel
-        if datamodel not in ['not']:
-            about.warnings.cprint(
-                "WARNING: %s is not a recommended datamodel for lm_space."
-                % datamodel)
-        if datamodel not in LM_DISTRIBUTION_STRATEGIES:
-            raise ValueError(about._errors.cstring(
-                "ERROR: %s is not a valid datamodel" % datamodel))
-        self.datamodel = datamodel
-
         self.discrete = True
         self.harmonic = True
         self.distances = (np.float(1),)
@@ -185,7 +175,6 @@ class lm_space(point_space):
                     lmax=self.paradict['lmax'],
                     dim=self.get_dim(),
                     comm=self.comm,
-                    datamodel=self.datamodel,
                     allowed_distribution_strategies=LM_DISTRIBUTION_STRATEGIES)
 
     @property
@@ -337,9 +326,6 @@ class lm_space(point_space):
         if self.comm is not codomain.comm:
             return False
 
-        if self.datamodel is not codomain.datamodel:
-            return False
-
         elif isinstance(codomain, gl_space):
             # lmax==mmax
             # nlat==lmax+1
@@ -400,13 +386,11 @@ class lm_space(point_space):
             nlat = self.paradict['lmax'] + 1
             nlon = self.paradict['lmax'] * 2 + 1
             return gl_space(nlat=nlat, nlon=nlon, dtype=new_dtype,
-                            datamodel=self.datamodel,
                             comm=self.comm)
 
         elif coname == 'hp' or (coname is None and not gc['lm2gl']):
             nside = (self.paradict['lmax']+1) // 3
             return hp_space(nside=nside,
-                            datamodel=self.datamodel,
                             comm=self.comm)
 
         else:
@@ -557,10 +541,10 @@ class lm_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external alm2map method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external alm2map method!")
 
         np_x = x.get_full_data()
 
@@ -630,10 +614,10 @@ class lm_space(point_space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external smoothalm method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external smoothalm method!")
 
         np_x = x.get_full_data()
 
@@ -673,10 +657,10 @@ class lm_space(point_space):
         lmax = self.paradict['lmax']
         mmax = self.paradict['mmax']
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external anaalm/alm2cl method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external anaalm/alm2cl method!")
 
         np_x = x.get_full_data()
 
@@ -964,7 +948,7 @@ class gl_space(point_space):
     """
 
     def __init__(self, nlat, nlon=None, dtype=np.dtype('float64'),
-                 datamodel='not', comm=gc['default_comm']):
+                 comm=gc['default_comm']):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -1003,16 +987,6 @@ class gl_space(point_space):
             about.warnings.cprint("WARNING: data type set to default.")
             dtype = np.dtype('float')
         self.dtype = dtype
-
-        # set datamodel
-        if datamodel not in ['not']:
-            about.warnings.cprint(
-                "WARNING: %s is not a recommended datamodel for gl_space."
-                % datamodel)
-        if datamodel not in GL_DISTRIBUTION_STRATEGIES:
-            raise ValueError(about._errors.cstring(
-                "ERROR: %s is not a valid datamodel" % datamodel))
-        self.datamodel = datamodel
 
         self.discrete = False
         self.harmonic = False
@@ -1125,9 +1099,6 @@ class gl_space(point_space):
         if not isinstance(codomain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        if self.datamodel is not codomain.datamodel:
-            return False
-
         if self.comm is not codomain.comm:
             return False
 
@@ -1160,11 +1131,9 @@ class gl_space(point_space):
         # lmax,mmax = nlat-1,nlat-1
         if self.dtype == np.dtype('float32'):
             return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex64,
-                            datamodel=self.datamodel,
                             comm=self.comm)
         else:
             return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex128,
-                            datamodel=self.datamodel,
                             comm=self.comm)
 
     def get_random_values(self, **kwargs):
@@ -1271,10 +1240,10 @@ class gl_space(point_space):
         """
         x = self.cast(x)
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external alm2map method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external alm2map method!")
         np_x = x.get_full_data()
 
         # weight
@@ -1344,10 +1313,10 @@ class gl_space(point_space):
             lmax = codomain.paradict['lmax']
             mmax = codomain.paradict['mmax']
 
-            if self.datamodel != 'not':
-                about.warnings.cprint(
-                    "WARNING: Field data is consolidated to all nodes for "
-                    "external map2alm method!")
+            # if self.datamodel != 'not':
+            #     about.warnings.cprint(
+            #         "WARNING: Field data is consolidated to all nodes for "
+            #         "external map2alm method!")
 
             np_x = x.get_full_data()
 
@@ -1396,10 +1365,10 @@ class gl_space(point_space):
         # smooth
         nlat = self.paradict['nlat']
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external smoothmap method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external smoothmap method!")
 
         np_x = x.get_full_data()
 
@@ -1434,10 +1403,10 @@ class gl_space(point_space):
         lmax = nlat - 1
         mmax = nlat - 1
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external anafast method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external anafast method!")
 
         np_x = x.get_full_data()
 
@@ -1657,7 +1626,7 @@ class hp_space(point_space):
             An array with one element containing the pixel size.
     """
 
-    def __init__(self, nside, datamodel='not', comm=gc['default_comm']):
+    def __init__(self, nside, comm=gc['default_comm']):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -1689,16 +1658,6 @@ class hp_space(point_space):
         self.paradict = hp_space_paradict(nside=nside)
 
         self.dtype = np.dtype('float64')
-
-        # set datamodel
-        if datamodel not in ['not']:
-            about.warnings.cprint(
-                "WARNING: %s is not a recommended datamodel for hp_space."
-                % datamodel)
-        if datamodel not in HP_DISTRIBUTION_STRATEGIES:
-            raise ValueError(about._errors.cstring(
-                "ERROR: %s is not a valid datamodel" % datamodel))
-        self.datamodel = datamodel
 
         self.discrete = False
         self.harmonic = False
@@ -1804,9 +1763,6 @@ class hp_space(point_space):
         if not isinstance(codomain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        if self.datamodel is not codomain.datamodel:
-            return False
-
         if self.comm is not codomain.comm:
             return False
 
@@ -1834,7 +1790,6 @@ class hp_space(point_space):
         lmax = 3*self.paradict['nside'] - 1
         mmax = lmax
         return lm_space(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'),
-                        datamodel=self.datamodel,
                         comm=self.comm)
 
     def get_random_values(self, **kwargs):
@@ -1952,10 +1907,11 @@ class hp_space(point_space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external map2alm method!")
+        # TODO look at these kinds of checks maybe need replacement
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external map2alm method!")
 
         np_x = x.get_full_data()
 
@@ -2015,10 +1971,10 @@ class hp_space(point_space):
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
         # smooth
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external smoothalm method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external smoothalm method!")
 
         np_x = x.get_full_data()
 
@@ -2059,10 +2015,10 @@ class hp_space(point_space):
         lmax = 3*nside-1
         mmax = lmax
 
-        if self.datamodel != 'not':
-            about.warnings.cprint(
-                "WARNING: Field data is consolidated to all nodes for "
-                "external smoothalm method!")
+        # if self.datamodel != 'not':
+        #     about.warnings.cprint(
+        #         "WARNING: Field data is consolidated to all nodes for "
+        #         "external smoothalm method!")
 
         np_x = x.get_full_data()
 

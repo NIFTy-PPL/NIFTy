@@ -180,19 +180,17 @@ def generate_space(name):
     return space_dict[name]
 
 
-def generate_space_with_size(name, num, datamodel='fftw'):
+def generate_space_with_size(name, num):
     space_dict = {'space': space(),
-                  'point_space': point_space(num, datamodel=datamodel),
-                  'rg_space': rg_space((num, num), datamodel=datamodel),
+                  'point_space': point_space(num),
+                  'rg_space': rg_space((num, num)),
                   }
     if 'lm_space' in available:
-        space_dict['lm_space'] = lm_space(mmax=num, lmax=num,
-                                          datamodel=datamodel)
+        space_dict['lm_space'] = lm_space(mmax=num, lmax=num)
     if 'hp_space' in available:
-        space_dict['hp_space'] = hp_space(num, datamodel=datamodel)
+        space_dict['hp_space'] = hp_space(num)
     if 'gl_space' in available:
-        space_dict['gl_space'] = gl_space(nlat=num, nlon=num,
-                                          datamodel=datamodel)
+        space_dict['gl_space'] = gl_space(nlat=num, nlon=num)
 
     return space_dict[name]
 
@@ -291,7 +289,6 @@ class Test_Common_Point_Like_Space_Interface(unittest.TestCase):
         assert(isinstance(s.paradict, space_paradict))
         assert(isinstance(s.paradict, space_paradict))
         assert(isinstance(s.dtype, np.dtype))
-        assert(isinstance(s.datamodel, str))
         assert(isinstance(s.discrete, bool))
 #        assert(isinstance(s.harmonic, bool))
         assert(isinstance(s.distances, tuple))
@@ -335,14 +332,12 @@ class Test_Point_Space(unittest.TestCase):
 
     @parameterized.expand(
         itertools.product([0, 1, 10],
-                          all_point_datatypes,
-                          DATAMODELS['point_space']),
+                          all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_successfull_init(self, num, dtype, datamodel):
-        p = point_space(num, dtype, datamodel)
+    def test_successfull_init(self, num, dtype):
+        p = point_space(num, dtype)
         assert_equal(p.paradict['num'], num)
         assert_equal(p.dtype, dtype)
-        assert_equal(p.datamodel, datamodel)
 
         assert_equal(p.discrete, True)
         assert_equal(p.distances, (np.float(1.),))
@@ -368,11 +363,10 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product([0, 1, 10],
-                          DATAMODELS['point_space']),
+        itertools.product([0, 1, 10]),
         testcase_func_name=custom_name_func)
-    def test_apply_scalar_function(self, num, datamodel):
-        s = point_space(num, datamodel=datamodel)
+    def test_apply_scalar_function(self, num):
+        s = point_space(num)
         d = generate_data(s)
         t = s.apply_scalar_function(d, lambda x: x**2)
         assert(check_equality(s, d**2, t))
@@ -386,22 +380,20 @@ class Test_Point_Space(unittest.TestCase):
 
     @parameterized.expand(
         itertools.product([1, 10],
-                          unary_operations,
-                          DATAMODELS['point_space']),
+                          unary_operations),
         testcase_func_name=custom_name_func)
-    def test_unary_operations(self, num, op, datamodel):
-        s = point_space(num, datamodel=datamodel)
+    def test_unary_operations(self, num, op):
+        s = point_space(num)
         d = s.cast(np.arange(num))
         s.unary_operation(d, op)
         # TODO: Implement value verification
 
     @parameterized.expand(
         itertools.product([1, 10],
-                          binary_operations,
-                          DATAMODELS['point_space']),
+                          binary_operations),
         testcase_func_name=custom_name_func)
-    def test_binary_operations(self, num, op, datamodel):
-        s = point_space(num, datamodel=datamodel)
+    def test_binary_operations(self, num, op):
+        s = point_space(num)
         d = s.cast(np.arange(num))
         d2 = d[::-1]
         s.binary_operation(d, d2, op)
@@ -410,12 +402,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_get_shape_dim(self, dtype, datamodel):
+    def test_get_shape_dim(self, dtype):
         num = 10
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
 
         assert_equal(s.get_shape(), (num,))
         assert_equal(s.get_dim(), num)
@@ -423,12 +414,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_get_shape_dof(self, dtype, datamodel):
+    def test_get_shape_dof(self, dtype):
         num = 10
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
 
         if issubclass(dtype.type, np.complexfloating):
             assert_equal(s.get_dof(), 2 * num)
@@ -440,12 +430,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_get_shape_vol(self, dtype, datamodel):
+    def test_get_shape_vol(self, dtype):
         num = 10
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
 
         assert_equal(s.get_vol(), 1.)
         assert_equal(s.get_vol(split=True), (1.,))
@@ -453,12 +442,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_get_shape_metavolume(self, dtype, datamodel):
+    def test_get_shape_metavolume(self, dtype):
         num = 10
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
 
         assert_equal(s.get_meta_volume(), 10.)
         assert(check_equality(s, s.get_meta_volume(split=True), s.cast(1)))
@@ -466,93 +454,69 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_cast_from_scalar(self, dtype, datamodel):
+    def test_cast_from_scalar(self, dtype):
         num = 10
         scalar = 4
-        s = point_space(num, dtype, datamodel=datamodel)
-        if datamodel == 'np':
-            d = (np.ones((num,)) * scalar).astype(dtype=dtype)
-        else:
-            d = distributed_data_object(scalar,
-                                        global_shape=(num,),
-                                        dtype=dtype,
-                                        distribution_strategy=datamodel)
+        s = point_space(num, dtype)
+        d = distributed_data_object(scalar,
+                                    global_shape=(num,),
+                                    dtype=dtype)
 
         casted_scalar = s.cast(scalar)
         assert(check_equality(s, casted_scalar, d))
-        if datamodel != 'np':
-            assert(d.equal(casted_scalar))
+        assert(d.equal(casted_scalar))
 
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_cast_from_field(self, dtype, datamodel):
+    def test_cast_from_field(self, dtype):
         num = 10
         a = np.arange(num,).astype(dtype)
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
         f = field(s, val=a)
 
-        if datamodel == 'np':
-            d = a
-        else:
-            d = distributed_data_object(a, dtype=dtype,
-                                        distribution_strategy=datamodel)
+        d = distributed_data_object(a, dtype=dtype)
 
         casted_f = s.cast(f)
         assert(check_equality(s, casted_f, d))
-        if datamodel != 'np':
-            assert(d.equal(casted_f))
+        assert(d.equal(casted_f))
 
 ###############################################################################
 
     @parameterized.expand(
         itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
         testcase_func_name=custom_name_func)
-    def test_cast_from_ndarray(self, dtype, datamodel):
+    def test_cast_from_ndarray(self, dtype):
         num = 10
         a = np.arange(num,)
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
 
-        if datamodel == 'np':
-            d = a.astype(dtype)
-        else:
-            d = distributed_data_object(a, dtype=dtype,
-                                        distribution_strategy=datamodel)
+        d = distributed_data_object(a, dtype=dtype)
 
         casted_a = s.cast(a)
         assert(check_equality(s, casted_a, d))
-        if datamodel != 'np':
-            assert(d.equal(casted_a))
+        assert(d.equal(casted_a))
 
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_cast_from_d2o(self, dtype, datamodel):
+    def test_cast_from_d2o(self, dtype):
         num = 10
         pre_a = np.arange(num,)
         a = distributed_data_object(pre_a)
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
 
-        if datamodel == 'np':
-            d = pre_a.astype(dtype)
-        else:
-            d = distributed_data_object(a, dtype=dtype,
-                                        distribution_strategy=datamodel)
+        d = distributed_data_object(a, dtype=dtype)
 
         casted_a = s.cast(a)
         assert(check_equality(s, casted_a, d))
-        if datamodel != 'np':
-            assert(d.equal(casted_a))
+        assert(d.equal(casted_a))
 
 
 ###############################################################################
@@ -567,17 +531,17 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        [[10, np.dtype('float64'), 'equal'],
-         [10, np.dtype('float32'), 'np'],
-         [12, np.dtype('float64'), 'np']],
+        [[10, np.dtype('float64')],
+         [10, np.dtype('float32')],
+         [12, np.dtype('float64')]],
         testcase_func_name=custom_name_func)
-    def test_get_check_codomain(self, num, dtype, datamodel):
-        s = point_space(10, dtype=np.dtype('float64'), datamodel='np')
+    def test_get_check_codomain(self, num, dtype):
+        s = point_space(10, dtype=np.dtype('float64'))
 
         t = s.get_codomain()
         assert(s.check_codomain(t))
 
-        t_bad = point_space(num, dtype=dtype, datamodel=datamodel)
+        t_bad = point_space(num, dtype=dtype)
         assert(s.check_codomain(t_bad) == False)
 
         assert(s.check_codomain(None) == False)
@@ -585,46 +549,38 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_get_random_values(self, dtype, datamodel):
+    def test_get_random_values(self, dtype):
         if dtype == np.dtype('bool'):
             return None
 
         num = 100000
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
 
         pm = s.get_random_values(random='pm1')
         assert(abs(s.unary_operation(pm, op='mean')) < 0.1)
-        if datamodel != 'np':
-            assert(pm.distribution_strategy == datamodel)
 
         std = 4
         mean = 5
         gau = s.get_random_values(random='gau', mean=mean, std=std)
         assert(abs(gau.std() - std) / std < 0.2)
         assert(abs(gau.mean() - mean) / mean < 0.2)
-        if datamodel != 'np':
-            assert(pm.distribution_strategy == datamodel)
 
         vmin = -4
         vmax = 10
         uni = s.get_random_values(random='uni', vmin=vmin, vmax=vmax)
         assert(abs(uni.real.mean() - 3.) / 3. < 0.1)
         assert(abs(uni.real.std() - 4.) / 4. < 0.1)
-        if datamodel != 'np':
-            assert(pm.distribution_strategy == datamodel)
 
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_get_calc_weight(self, dtype, datamodel):
+    def test_get_calc_weight(self, dtype):
         num = 100
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
         weight = 1
         assert_equal(s.get_weight(), weight)
         assert_equal(s.get_weight(power=4), weight)
@@ -636,12 +592,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
-                          DATAMODELS['point_space']),
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
-    def test_calc_dot(self, dtype, datamodel):
+    def test_calc_dot(self, dtype):
         num = 100
-        s = point_space(num, dtype, datamodel=datamodel)
+        s = point_space(num, dtype)
         if dtype == np.dtype('bool'):
             assert_equal(s.calc_dot(1, 1), 1)
         else:
@@ -651,11 +606,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(DATAMODELS['point_space']),
+        itertools.product(),
         testcase_func_name=custom_name_func)
-    def test_calc_norm(self, datamodel):
+    def test_calc_norm(self):
         num = 10
-        s = point_space(num, datamodel=datamodel)
+        s = point_space(num)
         d = s.cast(np.arange(num))
         assert_almost_equal(s.calc_norm(d), 16.881943016134134)
         assert_almost_equal(s.calc_norm(d, q=3), 12.651489979526238)
@@ -663,11 +618,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(DATAMODELS['point_space']),
+        itertools.product(),
         testcase_func_name=custom_name_func)
-    def test_calc_real_Q(self, datamodel):
+    def test_calc_real_Q(self):
         num = 100
-        s = point_space(num, dtype=np.complex, datamodel=datamodel)
+        s = point_space(num, dtype=np.complex)
         real_data = s.cast(1)
         assert(s.calc_real_Q(real_data))
         complex_data = s.cast(1 + 1j)
@@ -676,11 +631,11 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(DATAMODELS['point_space']),
+        itertools.product(),
         testcase_func_name=custom_name_func)
-    def test_calc_bincount(self, datamodel):
+    def test_calc_bincount(self):
         num = 10
-        s = point_space(num, dtype=np.int, datamodel=datamodel)
+        s = point_space(num, dtype=np.int)
         data = s.cast(np.array([1, 1, 2, 0, 5, 8, 4, 5, 4, 5]))
         weights = np.arange(10) / 10.
         assert_equal(s.calc_bincount(data),
@@ -700,24 +655,21 @@ class Test_RG_Space(unittest.TestCase):
                           [True, False],
                           [None, 0.5],
                           [True, False],
-                          fft_modules,
-                          DATAMODELS['rg_space']),
+                          fft_modules),
         testcase_func_name=custom_name_func)
     def test_successfull_init(self, shape, complexity, zerocenter, distances,
-                              harmonic, fft_module, datamodel):
+                              harmonic, fft_module):
         x = rg_space(shape,
                      complexity=complexity,
                      zerocenter=zerocenter,
                      distances=distances,
                      harmonic=harmonic,
-                     fft_module=fft_module,
-                     datamodel=datamodel)
+                     fft_module=fft_module)
         assert(isinstance(x.harmonic, bool))
         assert_equal(x.get_shape(), shape)
         assert_equal(x.dtype,
                      np.dtype('float64') if complexity == 0 else
                      np.dtype('complex128'))
-        assert_equal(x.datamodel, datamodel)
         assert_equal(x.distances,
                      1. / np.array(shape) if distances is None else
                      np.ones(len(shape)) * distances)
@@ -748,9 +700,8 @@ class Test_RG_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        DATAMODELS['rg_space'],
         testcase_func_name=custom_name_func)
-    def test_cast_to_hermitian(self, datamodel):
+    def test_cast_to_hermitian(self):
         shape = (10, 10)
         x = rg_space(shape, complexity=1)
         data = np.random.random(shape) + np.random.random(shape) * 1j
@@ -761,11 +712,10 @@ class Test_RG_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        DATAMODELS['rg_space'],
         testcase_func_name=custom_name_func)
-    def test_enforce_power(self, datamodel):
+    def test_enforce_power(self):
         shape = (6, 6)
-        x = rg_space(shape, datamodel=datamodel)
+        x = rg_space(shape)
 
         assert_equal(x.enforce_power(2),
                      np.array([2., 2., 2., 2., 2., 2., 2., 2., 2., 2.]))
@@ -794,13 +744,11 @@ class Test_RG_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product([True], #[True, False],
+        itertools.product([True],
                           ['pyfftw']),
-                          #DATAMODELS['rg_space']),
         testcase_func_name=custom_name_func)
-    def test_get_random_values(self, harmonic, datamodel):
-        x = rg_space((4, 4), complexity=1, harmonic=harmonic,
-                     datamodel=datamodel)
+    def test_get_random_values(self, harmonic, ):
+        x = rg_space((4, 4), complexity=1, harmonic=harmonic)
 
         # pm1
         data = x.get_random_values(random='pm1')
@@ -826,9 +774,8 @@ class Test_RG_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        DATAMODELS['rg_space'],
         testcase_func_name=custom_name_func)
-    def test_calc_dot(self, datamodel):
+    def test_calc_dot(self):
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
         x = rg_space(shape)
@@ -839,14 +786,13 @@ class Test_RG_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product([0, 1],
-                          DATAMODELS['rg_space']),
+        itertools.product([0, 1]),
         testcase_func_name=custom_name_func)
-    def test_calc_transform_general(self, complexity, datamodel):
+    def test_calc_transform_general(self, complexity):
         data = fft_test_data.copy()
         shape = data.shape
 
-        x = rg_space(shape, complexity=complexity, datamodel=datamodel)
+        x = rg_space(shape, complexity=complexity)
         data = fft_test_data.copy()
         data = x.cast(data)
         check_equality(x, data, x.calc_transform(x.calc_transform(data)))
@@ -854,15 +800,14 @@ class Test_RG_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(fft_modules,
-                          DATAMODELS['rg_space']),
+        itertools.product(fft_modules),
         testcase_func_name=custom_name_func)
-    def test_calc_transform_explicit(self, fft_module, datamodel):
+    def test_calc_transform_explicit(self, fft_module):
         data = fft_test_data.copy()
         shape = data.shape
 
         x = rg_space(shape, complexity=2, zerocenter=False,
-                     fft_module=fft_module, datamodel=datamodel)
+                     fft_module=fft_module)
         casted_data = x.cast(data)
         assert(check_almost_equality(x, x.calc_transform(casted_data),
                                      np.array([[0.50541615 + 0.50558267j, -0.01458536 - 0.01646137j,
@@ -885,7 +830,7 @@ class Test_RG_Space(unittest.TestCase):
                                                 -0.02395259 - 0.02185743j, -0.03107832 - 0.04714527j]])))
 
         x = rg_space(shape, complexity=2, zerocenter=True,
-                     fft_module=fft_module, datamodel=datamodel)
+                     fft_module=fft_module)
         casted_data = x.cast(data)
         assert(check_almost_equality(x, x.calc_transform(casted_data),
                                      np.array([[0.00517758 + 0.08601604j, 0.02246912 + 0.01942764j,
@@ -908,7 +853,7 @@ class Test_RG_Space(unittest.TestCase):
                                                 0.03347793 + 0.0358814j, -0.03924164 - 0.01978305j]])))
 
         x = rg_space(shape, complexity=2, zerocenter=[True, False],
-                     fft_module=fft_module, datamodel=datamodel)
+                     fft_module=fft_module)
         casted_data = x.cast(data)
         assert(check_almost_equality(x, x.calc_transform(casted_data),
                                      np.array([[-0.02238926 - 0.06140625j, 0.06211313 - 0.03317753j,
@@ -931,10 +876,10 @@ class Test_RG_Space(unittest.TestCase):
                                                 0.07533170 + 0.14590143j, -0.01493027 - 0.02664675j]])))
 
         x = rg_space(shape, complexity=2, zerocenter=[True, False],
-                     fft_module=fft_module, datamodel=datamodel)
+                     fft_module=fft_module)
         y = rg_space(shape, complexity=2, zerocenter=[False, True],
                      distances=[1, 1], harmonic=True,
-                     fft_module=fft_module, datamodel=datamodel)
+                     fft_module=fft_module)
         casted_data = x.cast(data)
         assert(check_almost_equality(x, x.calc_transform(casted_data,
                                                          codomain=y),
@@ -965,14 +910,13 @@ class Test_RG_Space(unittest.TestCase):
                           [(True, True), (False, False),
                            (True, False), (False, True)],
                           [(True, True), (False, False),
-                           (True, False), (False, True)],
-                          DATAMODELS['rg_space']),
+                           (True, False), (False, True)]),
         testcase_func_name=custom_name_func)
     def test_calc_transform_variations(self, fft_module, shape, zerocenter_in,
-                                       zerocenter_out, datamodel):
+                                       zerocenter_out):
         data = np.arange(np.prod(shape)).reshape(shape)
         x = rg_space(shape, complexity=2, zerocenter=zerocenter_in,
-                     fft_module=fft_module, datamodel=datamodel)
+                     fft_module=fft_module)
         y = x.get_codomain()
         y.paradict['zerocenter'] = zerocenter_out
 
@@ -988,9 +932,8 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(DATAMODELS['rg_space'],
-                          testcase_func_name=custom_name_func)
-    def test_calc_smooth(self, datamodel):
+    @parameterized.expand(testcase_func_name=custom_name_func)
+    def test_calc_smooth(self):
         sigma = 0.01
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
@@ -1016,9 +959,8 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(DATAMODELS['rg_space'],
-                          testcase_func_name=custom_name_func)
-    def test_calc_power(self, datamodel):
+    @parameterized.expand(testcase_func_name=custom_name_func)
+    def test_calc_power(self):
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
         x = rg_space(shape)
@@ -1037,12 +979,12 @@ class Test_Lm_Space(unittest.TestCase):
     @parameterized.expand(
         itertools.product([1, 17],
                           [None, 12, 17],
-                          all_lm_datatypes,
-                          DATAMODELS['lm_space']),
+                          all_lm_datatypes),
         testcase_func_name=custom_name_func)
-    def test_successfull_init(self, lmax, mmax, dtype, datamodel):
+    def test_successfull_init(self, lmax, mmax, dtype):
+        # TODO Look at this
         if datamodel in ['not']:
-            l = lm_space(lmax, mmax=mmax, dtype=dtype, datamodel=datamodel)
+            l = lm_space(lmax, mmax=mmax, dtype=dtype)
             assert(isinstance(l.harmonic, bool))
             assert_equal(l.paradict['lmax'], lmax)
             if mmax is None or mmax > lmax:
@@ -1050,12 +992,11 @@ class Test_Lm_Space(unittest.TestCase):
             else:
                 assert_equal(l.paradict['mmax'], mmax)
             assert_equal(l.dtype, dtype)
-            assert_equal(l.datamodel, datamodel)
             assert_equal(l.discrete, True)
             assert_equal(l.harmonic, True)
             assert_equal(l.distances, (np.float(1),))
         else:
-            with assert_raises(NotImplementedError): lm_space(lmax, mmax=mmax, dtype=dtype, datamodel=datamodel)
+            with assert_raises(NotImplementedError): lm_space(lmax, mmax=mmax, dtype=dtype)
 
 
 ###############################################################################
@@ -1094,11 +1035,11 @@ class Test_Lm_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        DATAMODELS['lm_space'],
         testcase_func_name=custom_name_func)
-    def test_enforce_power(self, datamodel):
+    def test_enforce_power(self):
         lmax = 17
         mmax = 12
+        # TODO Look at this
         if datamodel in ['not']:
             l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
 
@@ -1117,13 +1058,13 @@ class Test_Lm_Space(unittest.TestCase):
 
 ##############################################################################
 
-    @parameterized.expand(DATAMODELS['lm_space'],
-                          testcase_func_name=custom_name_func)
-    def test_get_check_codomain(self, datamodel):
+    @parameterized.expand(testcase_func_name=custom_name_func)
+    def test_get_check_codomain(self):
         lmax = 23
         mmax = 23
+        # TODO Look at this
         if datamodel in ['not']:
-            l = lm_space(lmax, mmax=mmax, datamodel=datamodel)
+            l = lm_space(lmax, mmax=mmax)
 
             y = l.get_codomain()
             assert(l.check_codomain(y))
@@ -1138,7 +1079,7 @@ class Test_Lm_Space(unittest.TestCase):
                 assert(l.check_codomain(y))
                 assert(y.check_codomain(l))
         else:
-            with assert_raises(NotImplementedError): lm_space(lmax, mmax=mmax, datamodel=datamodel)
+            with assert_raises(NotImplementedError): lm_space(lmax, mmax=mmax)
 
 
 ###############################################################################
@@ -1360,11 +1301,10 @@ class Test_axis(unittest.TestCase):
                           ['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
                            'any', 'amin', 'nanmin', 'argmin', 'amax', 'nanmax',
                            'argmax'],
-                          [None, (0,)],
-                          DATAMODELS['point_space']),
+                          [None, (0,)]),
         testcase_func_name=custom_name_func)
-    def test_unary_operations(self, name, num, op, axis, datamodel):
-        s = generate_space_with_size(name, num, datamodel=datamodel)
+    def test_unary_operations(self, name, num, op, axis):
+        s = generate_space_with_size(name, num)
         d = generate_data(s)
         a = d.get_full_data()
         if op in ['argmin', 'argmax'] and axis is not None:

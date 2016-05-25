@@ -272,7 +272,7 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'getitem'."))
 
-    def setitem(self, data, key):
+    def setitem(self, data, update, key):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'getitem'."))
 
@@ -785,7 +785,7 @@ class point_space(space):
             Pixel volume of the :py:class:`point_space`, which is always 1.
     """
 
-    def __init__(self, num, dtype=np.dtype('float'), datamodel='fftw',
+    def __init__(self, num, dtype=np.dtype('float'),
                  comm=gc['default_comm']):
         """
             Sets the attributes for a point_space class instance.
@@ -817,13 +817,6 @@ class point_space(space):
             raise ValueError(about._errors.cstring(
                              "WARNING: incompatible dtype: " + str(dtype)))
         self.dtype = dtype
-
-        if datamodel not in POINT_DISTRIBUTION_STRATEGIES:
-            about._errors.cstring("WARNING: datamodel set to default.")
-            self.datamodel = \
-                gc['default_distribution_strategy']
-        else:
-            self.datamodel = datamodel
 
         self.comm = self._parse_comm(comm)
         self.discrete = True
@@ -880,7 +873,6 @@ class point_space(space):
     def copy(self):
         return point_space(num=self.paradict['num'],
                            dtype=self.dtype,
-                           datamodel=self.datamodel,
                            comm=self.comm)
 
     def getitem(self, data, key):
@@ -1108,13 +1100,8 @@ class point_space(space):
                         "loss of precision!\n")
                 to_copy = True
 
-            # Check the distribution_strategy
-            if x.distribution_strategy != self.datamodel:
-                to_copy = True
-
             if to_copy:
-                temp = x.copy_empty(dtype=dtype,
-                                    distribution_strategy=self.datamodel)
+                temp = x.copy_empty(dtype=dtype)
                 temp.set_data(to_key=(slice(None),),
                               data=x,
                               from_key=(slice(None),))
@@ -1128,8 +1115,7 @@ class point_space(space):
         else:
             x = distributed_data_object(x,
                                         global_shape=self.get_shape(),
-                                        dtype=dtype,
-                                        distribution_strategy=self.datamodel)
+                                        dtype=dtype)
             # Cast the d2o
             return self.cast(x, dtype=dtype)
 
@@ -1327,8 +1313,7 @@ class point_space(space):
         # Prepare the empty distributed_data_object
         sample = distributed_data_object(
                                     global_shape=self.get_shape(),
-                                    dtype=self.dtype,
-                                    distribution_strategy=self.datamodel)
+                                    dtype=self.dtype)
 
         # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
         if arg['random'] == 'pm1':
@@ -1632,7 +1617,6 @@ class point_space(space):
         string += str(type(self)) + "\n"
         string += "paradict: " + str(self.paradict) + "\n"
         string += 'dtype: ' + str(self.dtype) + "\n"
-        string += 'datamodel: ' + str(self.datamodel) + "\n"
         string += 'comm: ' + self.comm.name + "\n"
         string += 'discrete: ' + str(self.discrete) + "\n"
         string += 'distances: ' + str(self.distances) + "\n"

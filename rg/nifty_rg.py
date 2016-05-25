@@ -122,7 +122,7 @@ class rg_space(point_space):
     epsilon = 0.0001  # relative precision for comparisons
 
     def __init__(self, shape, zerocenter=False, complexity=0, distances=None,
-                 harmonic=False, datamodel='fftw', fft_module=gc['fft_module'],
+                 harmonic=False, fft_module=gc['fft_module'],
                  comm=gc['default_comm']):
         """
             Sets the attributes for an rg_space class instance.
@@ -163,14 +163,6 @@ class rg_space(point_space):
         else:
             self.dtype = np.dtype('complex128')
 
-        # set datamodel
-        if datamodel not in ['np'] + RG_DISTRIBUTION_STRATEGIES:
-            about.warnings.cprint("WARNING: datamodel set to default.")
-            self.datamodel = \
-                gc['default_distribution_strategy']
-        else:
-            self.datamodel = datamodel
-
         # set volume/distances
         naxes = len(self.paradict['shape'])
         if distances is None:
@@ -210,7 +202,6 @@ class rg_space(point_space):
                     dgrid=distances,
                     zerocentered=self.paradict['zerocenter'],
                     comm=self.comm,
-                    datamodel=self.datamodel,
                     allowed_distribution_strategies=RG_DISTRIBUTION_STRATEGIES)
 
     @property
@@ -257,7 +248,6 @@ class rg_space(point_space):
                         zerocenter=self.paradict['zerocenter'],
                         distances=self.distances,
                         harmonic=self.harmonic,
-                        datamodel=self.datamodel,
                         fft_module=self.fft_machine.name,
                         comm=self.comm)
 
@@ -376,9 +366,6 @@ class rg_space(point_space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty rg_space."))
 
-        if self.datamodel is not codomain.datamodel:
-            return False
-
         if self.comm is not codomain.comm:
             return False
 
@@ -482,7 +469,6 @@ class rg_space(point_space):
         shape = self.paradict['shape']
         distances = 1 / (np.array(self.paradict['shape']) *
                          np.array(self.distances))
-        datamodel = self.datamodel
         fft_module = self.fft_machine.name
         comm = self.comm
         complexity = {0: 1, 1: 0, 2: 2}[self.paradict['complexity']]
@@ -493,7 +479,6 @@ class rg_space(point_space):
                              complexity=complexity,
                              distances=distances,
                              harmonic=harmonic,
-                             datamodel=datamodel,
                              fft_module=fft_module,
                              comm=comm)
         return new_space
@@ -929,8 +914,9 @@ class rg_space(point_space):
         x = self.cast(x)
 
         # if x is hermitian it remains hermitian during smoothing
-        if self.datamodel in RG_DISTRIBUTION_STRATEGIES:
-            remeber_hermitianQ = x.hermitian
+        # TODO look at this later
+        # if self.datamodel in RG_DISTRIBUTION_STRATEGIES:
+        remeber_hermitianQ = x.hermitian
 
         # Define the Gaussian kernel function
         gaussian = lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
