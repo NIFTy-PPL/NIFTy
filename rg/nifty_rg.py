@@ -193,6 +193,8 @@ class rg_space(point_space):
 
         # Initialize the power_indices object which takes care of kindex,
         # pindex, rho and the pundex for a given set of parameters
+
+        # TODO harmonic = True doesn't work yet
         if self.harmonic:
             self.power_indices = rg_power_indices(
                     shape=self.get_shape(),

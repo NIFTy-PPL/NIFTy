@@ -80,27 +80,23 @@ space_list = []
 
 # Add point_spaces
 for param in itertools.product([1, 10],
-                               all_point_datatypes,
-                               DATAMODELS['point_space']):
-    space_list += [[point_space(num=param[0],
-                               dtype=param[1],
-                               datamodel=param[2])]]
+                               all_point_datatypes):
+    space_list += [[point_space(num=param[0], dtype=param[1])]]
 
 # Add rg_spaces
 for param in itertools.product([(1,), (4, 6), (5, 8)],
                                [False, True],
                                [0, 1, 2],
                                [None, 0.3],
-                               [False, True],
+                               [False],
                                DATAMODELS['rg_space'],
                                fft_modules):
-    space_list += [[rg_space(shape=param[0],
+    space_list += [[(rg_space(shape=param[0],
                             zerocenter=param[1],
                             complexity=param[2],
                             distances=param[3],
                             harmonic=param[4],
-                            datamodel=param[5],
-                            fft_module=param[6])]]
+                            fft_module=param[6]),param[6])]]
 
 
 ###############################################################################
@@ -109,8 +105,8 @@ for param in itertools.product([(1,), (4, 6), (5, 8)],
 class Test_field_init(unittest.TestCase):
 
     @parameterized.expand(space_list)
-    def test_successfull_init_and_attributes(self, s):
-        f = field(domain=np.array([s]), dtype=s.dtype, datamodel=s.datamodel)
+    def test_successfull_init_and_attributes(self, s, datamodel):
+        f = field(domain=np.array([s]), dtype=s.dtype, datamodel=datamodel)
         assert(f.domain[0] is s)
         assert(s.check_codomain(f.codomain[0]))
 

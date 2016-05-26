@@ -1825,10 +1825,6 @@ class field(object):
                 raise AttributeError(about._errors.cstring(
                     "ERROR: The dtype of a space in the domain missmatches "
                     "the field's dtype."))
-            elif d.datamodel != self.datamodel:
-                raise AttributeError(about._errors.cstring(
-                    "ERROR: The datamodel of a space in the domain missmatches "
-                    "the field's datamodel."))
         return domain
 
     def check_codomain(self, domain, codomain):
