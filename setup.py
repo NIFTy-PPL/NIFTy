@@ -38,7 +38,7 @@ setup(name="ift_nifty",
       zip_safe=False,
       dependency_links = [
         'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers',
-        'https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o'],
+        'git+https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o'],
       install_requires = ['keepers', 'd2o'],
       data_files=[(os.path.expanduser('~') + "/.nifty",
                    ['nifty_config', 'd2o_config'])],
