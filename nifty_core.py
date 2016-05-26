@@ -144,17 +144,17 @@ from __future__ import division
 import numpy as np
 import pylab as pl
 
+from d2o import distributed_data_object,\
+                STRATEGIES as DISTRIBUTION_STRATEGIES
+
 from nifty_paradict import space_paradict,\
     point_space_paradict
 
-from keepers import about,\
-    global_configuration as gc,\
-    global_dependency_injector as gdi
+from nifty.config import about,\
+                         nifty_configuration as gc,\
+                         dependency_injector as gdi
 
 from nifty_random import random
-from nifty.d2o import distributed_data_object,\
-                      STRATEGIES as DISTRIBUTION_STRATEGIES
-
 import nifty.nifty_utilities as utilities
 
 POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']

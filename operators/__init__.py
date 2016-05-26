@@ -38,7 +38,5 @@ from nifty_probing import prober,\
                                 diagonal_prober,\
                                 inverse_diagonal_prober
 
-from nifty_los import los_response
-
 from nifty_minimization import conjugate_gradient,\
                                steepest_descent

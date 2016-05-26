@@ -23,8 +23,7 @@ from sys import stdout as so
 import os
 import inspect
 
-__version__ = "1.0.7"
-
+from nifty import __version__
 
 
 class switch(object):

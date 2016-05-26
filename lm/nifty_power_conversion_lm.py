@@ -22,7 +22,7 @@
 #from nifty import *
 import numpy as np
 from numpy import pi
-from nifty.keepers import about
+from nifty.config import about
 from nifty.nifty_core import field
 from nifty.nifty_simple_math import sqrt, exp, log
 

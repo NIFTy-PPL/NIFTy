@@ -39,7 +39,7 @@
 from __future__ import division
 #from nifty_core import *
 import numpy as np
-from nifty.keepers import notification, about
+from nifty.config import notification, about
 from nifty.nifty_core import field
 from nifty.nifty_simple_math import vdot
 

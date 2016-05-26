@@ -41,14 +41,14 @@ import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
 
+from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
+
 from nifty.nifty_core import point_space,\
                              field
 import nifty_fft
-from nifty.keepers import about,\
-                          global_dependency_injector as gdi,\
-                          global_configuration as gc
-from nifty.d2o import distributed_data_object,\
-                      STRATEGIES as DISTRIBUTION_STRATEGIES
+from nifty.config import about,\
+                         nifty_configuration as gc,\
+                         dependency_injector as gdi
 from nifty.nifty_paradict import rg_space_paradict
 from nifty.nifty_power_indices import rg_power_indices
 from nifty.nifty_random import random
