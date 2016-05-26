@@ -48,7 +48,7 @@ setup(name="ift_nifty",
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
-        "License :: OSI Approved :: GPLv3 License",
+"License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     ],)
 
 
