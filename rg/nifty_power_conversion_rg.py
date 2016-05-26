@@ -21,7 +21,7 @@
 
 
 import numpy as np
-from nifty.keepers import about
+from nifty.config import about
 from nifty.nifty_core import field
 
 

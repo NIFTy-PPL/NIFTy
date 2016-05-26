@@ -6,7 +6,7 @@ Created on Thu Apr  2 21:29:30 2015
 """
 
 import numpy as np
-from keepers import about
+from nifty.config import about
 
 
 class space_paradict(object):

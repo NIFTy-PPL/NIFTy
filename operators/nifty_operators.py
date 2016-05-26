@@ -21,7 +21,7 @@
 
 from __future__ import division
 import numpy as np
-from nifty.keepers import about
+from nifty.config import about
 from nifty.nifty_core import space, \
     point_space, \
     field

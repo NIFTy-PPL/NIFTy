@@ -20,8 +20,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
-from keepers import about
-from nifty.d2o import distributed_data_object
+from nifty.config import about
+
 
 # -----------------------------------------------------------------------------
 

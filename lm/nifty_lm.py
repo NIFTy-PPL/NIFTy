@@ -39,19 +39,18 @@ import pylab as pl
 from matplotlib.colors import LogNorm as ln
 from matplotlib.ticker import LogFormatter as lf
 
+from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
+
 from nifty.nifty_core import space,\
                              point_space,\
                              field
-from nifty.keepers import about,\
-                    global_configuration as gc,\
-                    global_dependency_injector as gdi
+from nifty.config import about,\
+                         nifty_configuration as gc,\
+                         dependency_injector as gdi
 from nifty.nifty_paradict import lm_space_paradict,\
                                  gl_space_paradict,\
                                  hp_space_paradict
 from nifty.nifty_power_indices import lm_power_indices
-
-from nifty.d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
-
 from nifty.nifty_random import random
 
 gl = gdi.get('libsharp_wrapper_gl')

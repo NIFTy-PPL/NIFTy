@@ -26,18 +26,20 @@ mpl.use('Agg')
 
 import dummys
 
-from keepers import about,\
-                  global_dependency_injector,\
-                  global_configuration
+# it is important to import config before d2o such that NIFTy is able to
+# pre-create d2o's configuration object with the corrected path
+from config import about,\
+                   dependency_injector,\
+                   nifty_configuration,\
+                   d2o_configuration
 
-
+from d2o import distributed_data_object, d2o_librarian
 
 from nifty_cmaps import ncmap
 from nifty_core import space,\
                     point_space,\
                     field
 
-from d2o import distributed_data_object, d2o_librarian
 from nifty_random import random
 from nifty_simple_math import *
 from nifty_utilities import *
