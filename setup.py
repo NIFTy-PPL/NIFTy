@@ -19,28 +19,13 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from distutils.core import setup
-#from Cython.Build import cythonize
-from distutils.extension import Extension
-from Cython.Distutils import build_ext
-import sys
+from setuptools import setup
 import os
-import numpy
 
-include_dirs = [numpy.get_include()]
-
-#os.environ["CC"] = "g++-4.8"
-#os.environ["CXX"] = "g++-4.8"
-
-ext_modules=[Extension(
-                   "line_integrator",
-                   ["operators/line_integrator.pyx"],
-                   include_dirs=include_dirs)]# "vector.pxd"],
-                   #language='c++')]
-
+exec(open('version.py').read())
 
 setup(name="ift_nifty",
-      version="1.0.7",
+      version=__version__,
       author="Marco Selig",
       author_email="mselig@mpa-garching.mpg.de",
       maintainer="Theo Steininger",
@@ -49,15 +34,22 @@ setup(name="ift_nifty",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
       packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm",
                 "nifty.operators", "nifty.dummys", "nifty.config"],
-      cmdclass={'build_ext': build_ext},
-      ext_modules = ext_modules,
-      #ext_modules=cythonize(["operators/line_integrator_vector.pyx"]),
-
       package_dir={"nifty": ""},
-      data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])],
+      zip_safe=False,
+      dependency_links = [
+        'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers',
+        'https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o'],
+      install_requires = ['keepers', 'd2o'],
+      data_files=[(os.path.expanduser('~') + "/.nifty",
+                   ['nifty_config', 'd2o_config'])],
       package_data={'nifty.demos' : ['demo_faraday_map.npy'],
                     },
-      license="GPLv3")
+      license="GPLv3",
+      classifiers=[
+        "Development Status :: 4 - Beta",
+        "Topic :: Utilities",
+        "License :: OSI Approved :: GPLv3 License",
+    ],)
 
 
 

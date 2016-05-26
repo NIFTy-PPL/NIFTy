@@ -1,20 +1,9 @@
-## nifty configuration
-##
-## errors colour code
-31
-## warnings
-1
-## warnings colour code
-33;1
-## infos
-0
-## infos colour code
-32
-## multiprocessing
-1
-## hermitianize
-1
-## lm2gl
-1
-##
-##
+[DEFAULT]
+use_libsharp = True
+use_healpy = True
+verbosity = 1
+fft_module = pyfftw
+default_comm = COMM_WORLD
+mpi_module = MPI
+lm2gl = True
+

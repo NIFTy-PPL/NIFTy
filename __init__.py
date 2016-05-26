@@ -24,6 +24,8 @@ from __future__ import division
 import matplotlib as mpl
 mpl.use('Agg')
 
+from .version import __version__
+
 import dummys
 
 # it is important to import config before d2o such that NIFTy is able to
