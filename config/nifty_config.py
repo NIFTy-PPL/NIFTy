@@ -7,7 +7,6 @@ import keepers
 # Setup the dependency injector
 dependency_injector = keepers.DependencyInjector(
                                    [('mpi4py.MPI', 'MPI'),
-                                    'h5py',
                                     'gfft',
                                     ('nifty.dummys.gfft_dummy', 'gfft_dummy'),
                                     'healpy',
