@@ -122,8 +122,7 @@ class rg_space(point_space):
     epsilon = 0.0001  # relative precision for comparisons
 
     def __init__(self, shape, zerocenter=False, complexity=0, distances=None,
-                 harmonic=False, fft_module=gc['fft_module'],
-                 comm=gc['default_comm']):
+                 harmonic=False, fft_module=gc['fft_module']):
         """
             Sets the attributes for an rg_space class instance.
 
@@ -185,8 +184,6 @@ class rg_space(point_space):
         self.harmonic = bool(harmonic)
         self.discrete = False
 
-        self.comm = self._parse_comm(comm)
-
         # Initializes the fast-fourier-transform machine, which will be used
         # to transform the space
         if not gc.validQ('fft_module', fft_module):
@@ -201,7 +198,6 @@ class rg_space(point_space):
                     shape=self.get_shape(),
                     dgrid=distances,
                     zerocentered=self.paradict['zerocenter'],
-                    comm=self.comm,
                     allowed_distribution_strategies=RG_DISTRIBUTION_STRATEGIES)
 
     @property
@@ -237,8 +233,7 @@ class rg_space(point_space):
                   isinstance(x, np.ndarray) else x)(ii[1])))
                 for ii in vars(self).iteritems()
                 if ii[0] not in ['_cache_dict', 'fft_machine',
-                                 'power_indices', 'comm']]
-        temp.append(('comm', self.comm.__hash__()))
+                                 'power_indices']]
         # Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
 
@@ -248,8 +243,7 @@ class rg_space(point_space):
                         zerocenter=self.paradict['zerocenter'],
                         distances=self.distances,
                         harmonic=self.harmonic,
-                        fft_module=self.fft_machine.name,
-                        comm=self.comm)
+                        fft_module=self.fft_machine.name)
 
     def get_shape(self):
         return tuple(self.paradict['shape'])
@@ -366,9 +360,6 @@ class rg_space(point_space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty rg_space."))
 
-        if self.comm is not codomain.comm:
-            return False
-
         # check number of number and size of axes
         if not np.all(np.array(self.paradict['shape']) ==
                       np.array(codomain.paradict['shape'])):
@@ -470,7 +461,6 @@ class rg_space(point_space):
         distances = 1 / (np.array(self.paradict['shape']) *
                          np.array(self.distances))
         fft_module = self.fft_machine.name
-        comm = self.comm
         complexity = {0: 1, 1: 0, 2: 2}[self.paradict['complexity']]
         harmonic = bool(not self.harmonic)
 
@@ -479,8 +469,7 @@ class rg_space(point_space):
                              complexity=complexity,
                              distances=distances,
                              harmonic=harmonic,
-                             fft_module=fft_module,
-                             comm=comm)
+                             fft_module=fft_module)
         return new_space
 
     def get_random_values(self, **kwargs):

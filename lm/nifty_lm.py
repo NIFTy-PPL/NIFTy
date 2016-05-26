@@ -120,8 +120,7 @@ class lm_space(point_space):
             Pixel volume of the :py:class:`lm_space`, which is always 1.
     """
 
-    def __init__(self, lmax, mmax=None, dtype=np.dtype('complex128'),
-                 comm=gc['default_comm']):
+    def __init__(self, lmax, mmax=None, dtype=np.dtype('complex128')):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -169,12 +168,10 @@ class lm_space(point_space):
         self.discrete = True
         self.harmonic = True
         self.distances = (np.float(1),)
-        self.comm = self._parse_comm(comm)
 
         self.power_indices = lm_power_indices(
                     lmax=self.paradict['lmax'],
                     dim=self.get_dim(),
-                    comm=self.comm,
                     allowed_distribution_strategies=LM_DISTRIBUTION_STRATEGIES)
 
     @property
@@ -202,8 +199,7 @@ class lm_space(point_space):
                  ((lambda x: tuple(x) if
                   isinstance(x, np.ndarray) else x)(ii[1])))
                 for ii in vars(self).iteritems()
-                if ii[0] not in ['_cache_dict', 'power_indices', 'comm']]
-        temp.append(('comm', self.comm.__hash__()))
+                if ii[0] not in ['_cache_dict', 'power_indices']]
         # Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
 
@@ -323,9 +319,6 @@ class lm_space(point_space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty lm_space."))
 
-        if self.comm is not codomain.comm:
-            return False
-
         elif isinstance(codomain, gl_space):
             # lmax==mmax
             # nlat==lmax+1
@@ -385,13 +378,11 @@ class lm_space(point_space):
                 raise NotImplementedError
             nlat = self.paradict['lmax'] + 1
             nlon = self.paradict['lmax'] * 2 + 1
-            return gl_space(nlat=nlat, nlon=nlon, dtype=new_dtype,
-                            comm=self.comm)
+            return gl_space(nlat=nlat, nlon=nlon, dtype=new_dtype)
 
         elif coname == 'hp' or (coname is None and not gc['lm2gl']):
             nside = (self.paradict['lmax']+1) // 3
-            return hp_space(nside=nside,
-                            comm=self.comm)
+            return hp_space(nside=nside)
 
         else:
             raise ValueError(about._errors.cstring(
@@ -947,8 +938,7 @@ class gl_space(point_space):
             An array containing the pixel sizes.
     """
 
-    def __init__(self, nlat, nlon=None, dtype=np.dtype('float64'),
-                 comm=gc['default_comm']):
+    def __init__(self, nlat, nlon=None, dtype=np.dtype('float64')):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -993,7 +983,6 @@ class gl_space(point_space):
         self.distances = tuple(gl.vol(self.paradict['nlat'],
                                       nlon=self.paradict['nlon']
                                       ).astype(np.float))
-        self.comm = self._parse_comm(comm)
 
     @property
     def para(self):
@@ -1099,9 +1088,6 @@ class gl_space(point_space):
         if not isinstance(codomain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        if self.comm is not codomain.comm:
-            return False
-
         if isinstance(codomain, lm_space):
             nlat = self.paradict['nlat']
             nlon = self.paradict['nlon']
@@ -1130,11 +1116,9 @@ class gl_space(point_space):
         mmax = nlat-1
         # lmax,mmax = nlat-1,nlat-1
         if self.dtype == np.dtype('float32'):
-            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex64,
-                            comm=self.comm)
+            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex64)
         else:
-            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex128,
-                            comm=self.comm)
+            return lm_space(lmax=lmax, mmax=mmax, dtype=np.complex128)
 
     def get_random_values(self, **kwargs):
         """
@@ -1626,7 +1610,7 @@ class hp_space(point_space):
             An array with one element containing the pixel size.
     """
 
-    def __init__(self, nside, comm=gc['default_comm']):
+    def __init__(self, nside):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -1662,7 +1646,6 @@ class hp_space(point_space):
         self.discrete = False
         self.harmonic = False
         self.distances = (np.float(4*np.pi / (12*self.paradict['nside']**2)),)
-        self.comm = self._parse_comm(comm)
 
     @property
     def para(self):
@@ -1763,9 +1746,6 @@ class hp_space(point_space):
         if not isinstance(codomain, space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        if self.comm is not codomain.comm:
-            return False
-
         if isinstance(codomain, lm_space):
             nside = self.paradict['nside']
             lmax = codomain.paradict['lmax']
@@ -1789,8 +1769,7 @@ class hp_space(point_space):
         """
         lmax = 3*self.paradict['nside'] - 1
         mmax = lmax
-        return lm_space(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'),
-                        comm=self.comm)
+        return lm_space(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
 
     def get_random_values(self, **kwargs):
         """

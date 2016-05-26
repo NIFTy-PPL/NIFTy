@@ -488,7 +488,7 @@ class Test_Point_Space(unittest.TestCase):
 ###############################################################################
 
     @parameterized.expand(
-        itertools.product(all_point_datatypes,
+        itertools.product(all_point_datatypes),
         testcase_func_name=custom_name_func)
     def test_cast_from_ndarray(self, dtype):
         num = 10
@@ -699,8 +699,7 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(
-        testcase_func_name=custom_name_func)
+    @parameterized.expand([], testcase_func_name=custom_name_func)
     def test_cast_to_hermitian(self):
         shape = (10, 10)
         x = rg_space(shape, complexity=1)
@@ -711,8 +710,7 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(
-        testcase_func_name=custom_name_func)
+    @parameterized.expand([], testcase_func_name=custom_name_func)
     def test_enforce_power(self):
         shape = (6, 6)
         x = rg_space(shape)
@@ -773,8 +771,7 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(
-        testcase_func_name=custom_name_func)
+    @parameterized.expand([], testcase_func_name=custom_name_func)
     def test_calc_dot(self):
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
@@ -932,7 +929,7 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(testcase_func_name=custom_name_func)
+    @parameterized.expand([],testcase_func_name=custom_name_func)
     def test_calc_smooth(self):
         sigma = 0.01
         shape = (8, 8)
@@ -959,7 +956,7 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(testcase_func_name=custom_name_func)
+    @parameterized.expand([], testcase_func_name=custom_name_func)
     def test_calc_power(self):
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
@@ -1034,8 +1031,7 @@ class Test_Lm_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(
-        testcase_func_name=custom_name_func)
+    @parameterized.expand([], testcase_func_name=custom_name_func)
     def test_enforce_power(self):
         lmax = 17
         mmax = 12
@@ -1058,7 +1054,7 @@ class Test_Lm_Space(unittest.TestCase):
 
 ##############################################################################
 
-    @parameterized.expand(testcase_func_name=custom_name_func)
+    @parameterized.expand([], testcase_func_name=custom_name_func)
     def test_get_check_codomain(self):
         lmax = 23
         mmax = 23

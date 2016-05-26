@@ -785,8 +785,7 @@ class point_space(space):
             Pixel volume of the :py:class:`point_space`, which is always 1.
     """
 
-    def __init__(self, num, dtype=np.dtype('float'),
-                 comm=gc['default_comm']):
+    def __init__(self, num, dtype=np.dtype('float')):
         """
             Sets the attributes for a point_space class instance.
 
@@ -818,7 +817,6 @@ class point_space(space):
                              "WARNING: incompatible dtype: " + str(dtype)))
         self.dtype = dtype
 
-        self.comm = self._parse_comm(comm)
         self.discrete = True
 #        self.harmonic = False
         self.distances = (np.float(1),)
@@ -851,29 +849,9 @@ class point_space(space):
         # Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
 
-    def _parse_comm(self, comm):
-        # check if comm is a string -> the name of comm is given
-        # -> Extract it from the mpi_module
-        if isinstance(comm, str):
-            if gc.validQ('default_comm', comm):
-                result_comm = getattr(gdi[gc['mpi_module']], comm)
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The given communicator-name is not supported."))
-        # check if the given comm object is an instance of default Intracomm
-        else:
-            if isinstance(comm, gdi[gc['mpi_module']].Intracomm):
-                result_comm = comm
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The given comm object is not an instance of the " +
-                    "default-MPI-module's Intracomm Class."))
-        return result_comm
-
     def copy(self):
         return point_space(num=self.paradict['num'],
-                           dtype=self.dtype,
-                           comm=self.comm)
+                           dtype=self.dtype)
 
     def getitem(self, data, key):
         return data[key]
@@ -1113,8 +1091,7 @@ class point_space(space):
         # Case 2: x is something else
         # Use general d2o casting
         else:
-            x = distributed_data_object(x,
-                                        global_shape=self.get_shape(),
+            x = distributed_data_object(x, global_shape=self.get_shape(),
                                         dtype=dtype)
             # Cast the d2o
             return self.cast(x, dtype=dtype)
@@ -1617,7 +1594,6 @@ class point_space(space):
         string += str(type(self)) + "\n"
         string += "paradict: " + str(self.paradict) + "\n"
         string += 'dtype: ' + str(self.dtype) + "\n"
-        string += 'comm: ' + self.comm.name + "\n"
         string += 'discrete: ' + str(self.discrete) + "\n"
         string += 'distances: ' + str(self.distances) + "\n"
         return string
@@ -1709,8 +1685,8 @@ class field(object):
 
     """
 
-    def __init__(self, domain=None, val=None, codomain=None,
-                 copy=False, dtype=np.dtype('float64'), datamodel='not',
+    def __init__(self, domain=None, val=None, codomain=None, comm=gc[
+        'default_comm'], copy=False, dtype=np.dtype('float64'), datamodel='not',
                                                                   **kwargs):
         """
             Sets the attributes for a field class instance.
@@ -1740,6 +1716,7 @@ class field(object):
             self._init_from_field(f=val,
                                   domain=domain,
                                   codomain=codomain,
+                                  comm=comm,
                                   copy=copy,
                                   dtype=dtype,
                                   datamodel=datamodel,
@@ -1748,12 +1725,14 @@ class field(object):
             self._init_from_array(val=val,
                                   domain=domain,
                                   codomain=codomain,
+                                  comm=comm,
                                   copy=copy,
                                   dtype=dtype,
                                   datamodel=datamodel,
                                   **kwargs)
 
-    def _init_from_field(self, f, domain, codomain, copy, dtype, datamodel,
+    def _init_from_field(self, f, domain, codomain, comm, copy, dtype,
+                         datamodel,
                          **kwargs):
         # check domain
         if domain is None:
@@ -1776,16 +1755,18 @@ class field(object):
         self._init_from_array(domain=domain,
                               val=f.val,
                               codomain=codomain,
+                              comm=comm,
                               copy=copy,
                               dtype=dtype,
                               datamodel=datamodel,
                               **kwargs)
 
-    def _init_from_array(self, val, domain, codomain, copy, dtype, datamodel,
-                         **kwargs):
+    def _init_from_array(self, val, domain, codomain, comm, copy, dtype,
+                         datamodel, **kwargs):
         if dtype is None:
             dtype = np.dtype('float64')
         self.dtype = dtype
+        self.comm = self._parse_comm(comm)
 
         if datamodel not in DISTRIBUTION_STRATEGIES['global']:
             about.warnings.cprint("WARNING: datamodel set to default.")
@@ -1812,6 +1793,25 @@ class field(object):
                     codomain=self.codomain,
                     **kwargs))
         self.set_val(new_val=val, copy=copy)
+
+    def _parse_comm(self, comm):
+        # check if comm is a string -> the name of comm is given
+        # -> Extract it from the mpi_module
+        if isinstance(comm, str):
+            if gc.validQ('default_comm', comm):
+                result_comm = getattr(gdi[gc['mpi_module']], comm)
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: The given communicator-name is not supported."))
+        # check if the given comm object is an instance of default Intracomm
+        else:
+            if isinstance(comm, gdi[gc['mpi_module']].Intracomm):
+                result_comm = comm
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: The given comm object is not an instance of the " +
+                    "default-MPI-module's Intracomm Class."))
+        return result_comm
 
     def check_valid_domain(self, domain):
         if not isinstance(domain, np.ndarray):
@@ -1886,22 +1886,29 @@ class field(object):
                     self.domain.unary_operation(self.val, op='copy_empty')
         return new_field
 
-    def copy_empty(self, domain=None, codomain=None, ishape=None, **kwargs):
+    def copy_empty(self, domain=None, codomain=None, dtype=None, comm=None,
+                   datamodel=None, **kwargs):
         if domain is None:
             domain = self.domain
         if codomain is None:
             codomain = self.codomain
-        if ishape is None:
-            ishape = self.ishape
+        if dtype is None:
+            dtype = self.dtype
+        if comm is None:
+            comm = self.comm
+        if datamodel is None:
+            datamodel = self.datamodel
 
         if (domain is self.domain and
                 codomain is self.codomain and
-                ishape == self.ishape and
+                dtype == self.dtype and
+                comm == self.comm and
+                datamodel == self.datamodel and
                 kwargs == {}):
             new_field = self._fast_copy_empty()
         else:
-            new_field = field(domain=domain, codomain=codomain, ishape=ishape,
-                              **kwargs)
+            new_field = field(domain=domain, codomain=codomain, dtype=dtype,
+                              comm=comm, datamodel=datamodel, **kwargs)
         return new_field
 
     def set_val(self, new_val=None, copy=False):
