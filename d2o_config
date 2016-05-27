@@ -1,0 +1,6 @@
+[DEFAULT]
+mpi_module = MPI
+mpi_init_checks = False
+default_distribution_strategy = fftw
+default_comm = COMM_WORLD
+

@@ -23,7 +23,7 @@
 ##-----------------------------------------------------------------------------
 import numpy as np
 #from nifty.nifty_core import field
-from keepers import about
+from nifty.config import about
 
 
 def vdot(x, y):

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from nifty.d2o import distributed_data_object
-from nifty.keepers import global_dependency_injector as gdi
+from d2o import distributed_data_object
+from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 
 pyfftw = gdi.get('pyfftw')

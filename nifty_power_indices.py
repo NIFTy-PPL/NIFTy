@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from nifty.keepers import about,\
-                          global_configuration as gc,\
-                          global_dependency_injector as gdi
-from nifty.d2o import distributed_data_object,\
-                      STRATEGIES as DISTRIBUTION_STRATEGIES
+from d2o import distributed_data_object,\
+                STRATEGIES as DISTRIBUTION_STRATEGIES
+
+from nifty.config import about,\
+                         nifty_configuration as gc,\
+                         dependency_injector as gdi
 
 MPI = gdi[gc['mpi_module']]
 hp = gdi.get('healpy')

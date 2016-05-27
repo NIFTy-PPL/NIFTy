@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from keepers import about
 from itertools import product
 
+from nifty.config import about
 
 def get_slice_list(shape, axes):
     """

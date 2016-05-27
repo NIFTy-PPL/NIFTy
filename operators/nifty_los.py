@@ -2,15 +2,16 @@
 
 import numpy as np
 
+from d2o import distributed_data_object,\
+                STRATEGIES
+
 from line_integrator import multi_integrator, \
                             gaussian_error_function
 
-from nifty.keepers import about,\
-                          global_dependency_injector as gdi,\
-                          global_configuration as gc
+from nifty.config import about,\
+                         nifty_configuration as gc,\
+                         dependency_injector as gdi
 
-from nifty.d2o import distributed_data_object,\
-                      STRATEGIES
 from nifty.nifty_core import point_space,\
                              field
 from nifty.rg import rg_space
