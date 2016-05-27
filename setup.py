@@ -36,20 +36,18 @@ setup(name="ift_nifty",
                 "nifty.operators", "nifty.dummys", "nifty.config"],
       package_dir={"nifty": ""},
       zip_safe=False,
-      dependency_links = [
+      dependency_links=[
         'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers',
         'git+https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o'],
-      install_requires = ['keepers', 'd2o'],
+      install_requires=['keepers', 'd2o'],
       data_files=[(os.path.expanduser('~') + "/.nifty",
                    ['nifty_config', 'd2o_config'])],
-      package_data={'nifty.demos' : ['demo_faraday_map.npy'],
+      package_data={'nifty.demos': ['demo_faraday_map.npy'],
                     },
       license="GPLv3",
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
-"License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
-    ],)
-
-
-
+        "License :: OSI Approved :: GNU General Public License v3 "
+        "or later (GPLv3+)"],
+      )
