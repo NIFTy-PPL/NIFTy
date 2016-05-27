@@ -22,9 +22,9 @@
 from __future__ import division
 import numpy as np
 from nifty.config import about
+from nifty.nifty_field import field
 from nifty.nifty_core import space, \
-    point_space, \
-    field
+    point_space
 from nifty_minimization import conjugate_gradient
 from nifty_probing import trace_prober,\
     inverse_trace_prober,\

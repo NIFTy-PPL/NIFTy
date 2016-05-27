@@ -22,7 +22,7 @@
 
 import numpy as np
 from nifty.config import about
-from nifty.nifty_core import field
+from nifty.nifty_field import field
 
 
 def power_backward_conversion_rg(k_space, p, mean=None, bare=True):

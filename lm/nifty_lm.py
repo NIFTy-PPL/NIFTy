@@ -42,8 +42,10 @@ from matplotlib.ticker import LogFormatter as lf
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.nifty_core import space,\
-                             point_space,\
-                             field
+                             point_space
+
+from nifty.nifty_field import field
+
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi

@@ -23,7 +23,7 @@
 import numpy as np
 from numpy import pi
 from nifty.config import about
-from nifty.nifty_core import field
+from nifty.nifty_field import field
 from nifty.nifty_simple_math import sqrt, exp, log
 
 

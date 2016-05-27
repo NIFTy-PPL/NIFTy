@@ -38,9 +38,9 @@ from config import about,\
 from d2o import distributed_data_object, d2o_librarian
 
 from nifty_cmaps import ncmap
+from nifty_field import field
 from nifty_core import space,\
-                    point_space,\
-                    field
+                    point_space
 
 from nifty_random import random
 from nifty_simple_math import *

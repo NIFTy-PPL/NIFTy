@@ -9,17 +9,18 @@ import unittest
 import itertools
 import numpy as np
 
-from nifty import space,\
-    point_space,\
-    rg_space,\
-    field,\
-    distributed_data_object
+from nifty.nifty_field import field
+
+from d2o import distributed_data_object
 
 from nifty.nifty_paradict import space_paradict
-from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES
+from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES,\
+    space,\
+    point_space
 
 from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES,\
-                              gc as RG_GC
+                              gc as RG_GC,\
+                              rg_space
 from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
                               GL_DISTRIBUTION_STRATEGIES,\
                               HP_DISTRIBUTION_STRATEGIES

@@ -14,8 +14,9 @@ from nifty import space,\
     rg_space,\
     lm_space,\
     hp_space,\
-    gl_space,\
-    field
+    gl_space
+
+from nifty.nifty_field import field
 
 from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES
 from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES,\

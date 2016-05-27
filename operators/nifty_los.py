@@ -12,8 +12,8 @@ from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
 
-from nifty.nifty_core import point_space,\
-                             field
+from nifty.nifty_core import point_space
+from nifty.nifty_field import field
 from nifty.rg import rg_space
 from nifty.operators import operator
 

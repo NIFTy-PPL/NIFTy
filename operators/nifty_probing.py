@@ -22,8 +22,8 @@
 from __future__ import division
 
 from nifty.config import about
-from nifty.nifty_core import space, \
-                         field
+from nifty.nifty_core import space
+from nifty.nifty_field import field
 from nifty.nifty_utilities import direct_vdot
 
 
