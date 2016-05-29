@@ -272,17 +272,23 @@ class lm_space(point_space):
             mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
             return mol
 
-    def _cast_to_d2o(self, x, dtype=None, **kwargs):
-        casted_x = super(lm_space, self)._cast_to_d2o(x=x,
-                                                      dtype=dtype,
-                                                      **kwargs)
-        lmax = self.paradict['lmax']
-        complexity_mask = casted_x[:lmax+1].iscomplex()
-        if complexity_mask.any():
-            about.warnings.cprint("WARNING: Taking the absolute values for " +
-                                  "all complex entries where lmax==0")
-            casted_x[:lmax+1] = abs(casted_x[:lmax+1])
-        return casted_x
+    def _complement_cast(self, x, axis=None, **kwargs):
+        if axis is None:
+            lmax = self.paradict['lmax']
+            complexity_mask = x[:lmax+1].iscomplex()
+            if complexity_mask.any():
+                about.warnings.cprint("WARNING: Taking the absolute values for " +
+                                      "all complex entries where lmax==0")
+                x[:lmax+1] = abs(x[:lmax+1])
+        else:
+            # TODO hermitianize only on specific axis
+            lmax = self.paradict['lmax']
+            complexity_mask = x[:lmax+1].iscomplex()
+            if complexity_mask.any():
+                about.warnings.cprint("WARNING: Taking the absolute values for " +
+                                      "all complex entries where lmax==0")
+                x[:lmax+1] = abs(x[:lmax+1])
+        return x
 
     # TODO: Extend to binning/log
     def enforce_power(self, spec, size=None, kindex=None):

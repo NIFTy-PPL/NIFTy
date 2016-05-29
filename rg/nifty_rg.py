@@ -251,30 +251,23 @@ class rg_space(point_space):
     def get_shape(self):
         return tuple(self.paradict['shape'])
 
-    def _cast_to_d2o(self, x, dtype=None, hermitianize=True, **kwargs):
-        casted_x = super(rg_space, self)._cast_to_d2o(x=x,
-                                                      dtype=dtype,
-                                                      **kwargs)
-        if x is not None and hermitianize and \
-                self.paradict['complexity'] == 1 and not casted_x.hermitian:
-            about.warnings.cflush(
-                 "WARNING: Data gets hermitianized. This operation is " +
-                 "extremely expensive\n")
-            casted_x = utilities.hermitianize(casted_x)
-
-        return casted_x
-
-    def _cast_to_np(self, x, dtype=None, hermitianize=True, **kwargs):
-        casted_x = super(rg_space, self)._cast_to_np(x=x,
-                                                     dtype=dtype,
-                                                     **kwargs)
-        if x is not None and hermitianize and self.paradict['complexity'] == 1:
-            about.warnings.cflush(
-                 "WARNING: Data gets hermitianized. This operation is " +
-                 "extremely expensive\n")
-            casted_x = utilities.hermitianize(casted_x)
-
-        return casted_x
+    def _complement_cast(self, x, axis=None, hermitianize=True):
+        if axis is None:
+            if x is not None and hermitianize and self.paradict['complexity']\
+                    == 1 and not x.hermitian:
+                about.warnings.cflush(
+                     "WARNING: Data gets hermitianized. This operation is " +
+                     "extremely expensive\n")
+                x = utilities.hermitianize(x)
+        else:
+            # TODO hermitianize only on specific axis
+            if x is not None and hermitianize and self.paradict['complexity']\
+                    == 1 and not x.hermitian:
+                about.warnings.cflush(
+                     "WARNING: Data gets hermitianized. This operation is " +
+                     "extremely expensive\n")
+                x = utilities.hermitianize(x)
+        return x
 
     def enforce_power(self, spec, size=None, kindex=None, codomain=None,
                       **kwargs):

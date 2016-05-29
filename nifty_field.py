@@ -102,9 +102,9 @@ class field(object):
 
     """
 
-    def __init__(self, domain=None, val=None, codomain=None, comm=gc[
-        'default_comm'], copy=False, dtype=np.dtype('float64'), datamodel='not',
-                 **kwargs):
+    def __init__(self, domain=None, val=None, codomain=None,
+                 comm=gc['default_comm'], copy=False, dtype=np.dtype('float64'),
+                 datamodel='fftw', **kwargs):
         """
             Sets the attributes for a field class instance.
 
@@ -149,15 +149,14 @@ class field(object):
                                   **kwargs)
 
     def _init_from_field(self, f, domain, codomain, comm, copy, dtype,
-                         datamodel,
-                         **kwargs):
+                         datamodel, **kwargs):
         # check domain
         if domain is None:
             domain = f.domain
 
         # check codomain
         if codomain is None:
-            if self.check_codomain(domain, f.codomain):
+            if self._check_codomain(domain, f.codomain):
                 codomain = f.codomain
             else:
                 codomain = self.get_codomain(domain)
@@ -181,10 +180,18 @@ class field(object):
     def _init_from_array(self, val, domain, codomain, comm, copy, dtype,
                          datamodel, **kwargs):
         if dtype is None:
-            dtype = np.dtype('float64')
+            dtype = self._get_dtype_from_domain(domain)
         self.dtype = dtype
         self.comm = self._parse_comm(comm)
 
+        # if val is a distributed data object, we take it's datamodel,
+        # since we don't want to redistribute large amounts of data, if not
+        # necessary
+        if isinstance(val, distributed_data_object):
+            if datamodel != val.distribution_strategy:
+                about.warnings.cprint("WARNING: datamodel set to val's "
+                                      "datamodel.")
+            datamodel = val.distribution_strategy
         if datamodel not in DISTRIBUTION_STRATEGIES['global']:
             about.warnings.cprint("WARNING: datamodel set to default.")
             self.datamodel = \
@@ -192,12 +199,13 @@ class field(object):
         else:
             self.datamodel = datamodel
         # check domain
-        self.domain = self.check_valid_domain(domain=domain)
+        self.domain = self._check_valid_domain(domain=domain)
+        self._axis_list = self._get_axis_list_from_domain(domain=domain)
 
         # check codomain
         if codomain is None:
-            codomain = self.get_codomain(domain)
-        elif not self.check_codomain(domain=domain, codomain=codomain):
+            codomain = self.get_codomain(domain=domain)
+        elif not self._check_codomain(domain=domain, codomain=codomain):
             raise ValueError(about._errors.cstring(
                 "ERROR: The given codomain is not compatible to the domain."))
         self.codomain = codomain
@@ -209,6 +217,19 @@ class field(object):
                 val = map(lambda z: self.domain.get_random_values(
                     codomain=z, **kwargs), self.codomain)
         self.set_val(new_val=val, copy=copy)
+
+    def _get_dtype_from_domain(self, domain=None):
+        if domain is None:
+            domain = self.domain
+        dtype_tuple = tuple(space.dtype for space in domain)
+        dtype = np.result_type(dtype_tuple)
+        return dtype
+
+    def _get_axis_list_from_domain(self, domain=None):
+        if domain is None:
+            domain = self.domain
+        axis_list = [space.get_shape() for space in domain]
+        return axis_list
 
     def _parse_comm(self, comm):
         # check if comm is a string -> the name of comm is given
@@ -229,7 +250,7 @@ class field(object):
                     "default-MPI-module's Intracomm Class."))
         return result_comm
 
-    def check_valid_domain(self, domain):
+    def _check_valid_domain(self, domain):
         if not isinstance(domain, tuple):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given domain is not a list."))
@@ -237,13 +258,13 @@ class field(object):
             if not isinstance(d, space):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Given domain is not a space."))
-            elif d.dtype != self.dtype:
+            elif d.dtype > self.dtype:
                 raise AttributeError(about._errors.cstring(
-                    "ERROR: The dtype of a space in the domain missmatches "
+                    "ERROR: The dtype of a space in the domain is larger than "
                     "the field's dtype."))
         return domain
 
-    def check_codomain(self, domain, codomain):
+    def _check_codomain(self, domain, codomain):
         if codomain is None:
             return False
         if len(domain) == len(codomain):
@@ -453,9 +474,7 @@ class field(object):
                         temp = x
                         temp = np.reshape(temp, shape)
                     # ... and cast again
-                    return self._cast_to_d2o(temp,
-                                             dtype=dtype,
-                                             **kwargs)
+                    return self._cast_to_d2o(temp, dtype=dtype, **kwargs)
 
                 else:
                     raise ValueError(about._errors.cstring(
@@ -497,7 +516,8 @@ class field(object):
             return self.cast(x, dtype=dtype)
 
     def _complement_cast(self, x):
-        # TODO implement complement cast for multiple spaces.
+        for ind, space in enumerate(self.domain):
+            space._complement_cast(x, axis=self._axis_list[ind])
         return x
 
     def set_domain(self, new_domain=None, force=False):

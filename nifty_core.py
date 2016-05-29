@@ -319,31 +319,8 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dof'."))
 
-    def cast(self, x, verbose=False):
-        """
-            Computes valid field values from a given object, trying
-            to translate the given data into a valid form. Thereby it is as
-            benevolent as possible.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray, distributed_data_object
-                Array containing the field values, which are compatible to the
-                space.
-
-            Other parameters
-            ----------------
-            verbose : bool, *optional*
-                Whether the method should raise a warning if information is
-                lost during casting (default: False).
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'cast'."))
+    def _complement_cast(self, x, axis=None):
+        return x
 
     # TODO: Move enforce power into power_indices class
     def enforce_power(self, spec, **kwargs):
@@ -1005,93 +982,6 @@ class point_space(space):
         else:
             mol = self.cast(1, dtype=np.dtype('float'))
             return self.calc_weight(mol, power=1)
-
-    def cast(self, x=None, dtype=None, **kwargs):
-        return self._cast_to_d2o(x=x, dtype=dtype, **kwargs)
-
-    def _cast_to_d2o(self, x, dtype=None, **kwargs):
-        """
-            Computes valid field values from a given object, trying
-            to translate the given data into a valid form. Thereby it is as
-            benevolent as possible.
-
-            Parameters
-            ----------
-            x : {float, numpy.ndarray, nifty.field}
-                Object to be transformed into an array of valid field values.
-
-            Returns
-            -------
-            x : numpy.ndarray, distributed_data_object
-                Array containing the field values, which are compatible to the
-                space.
-
-            Other parameters
-            ----------------
-            verbose : bool, *optional*
-                Whether the method should raise a warning if information is
-                lost during casting (default: False).
-        """
-        if dtype is not None:
-            dtype = np.dtype(dtype)
-        if dtype is None:
-            dtype = self.dtype
-
-        # Case 1: x is a distributed_data_object
-        if isinstance(x, distributed_data_object):
-            to_copy = False
-
-            # Check the shape
-            if np.any(np.array(x.shape) != np.array(self.get_shape())):
-                # Check if at least the number of degrees of freedom is equal
-                if x.get_dim() == self.get_dim():
-                    try:
-                        temp = x.copy_empty(global_shape=self.get_shape())
-                        temp.set_local_data(x.get_local_data(), copy=False)
-                    except:
-                        # If the number of dof is equal or 1, use np.reshape...
-                        about.warnings.cflush(
-                            "WARNING: Trying to reshape the data. This " +
-                            "operation is expensive as it consolidates the " +
-                            "full data!\n")
-                        temp = x.get_full_data()
-                        temp = np.reshape(temp, self.get_shape())
-                    # ... and cast again
-                    return self._cast_to_d2o(temp,
-                                             dtype=dtype,
-                                             **kwargs)
-
-                else:
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: Data has incompatible shape!"))
-
-            # Check the dtype
-            if x.dtype != dtype:
-                if x.dtype > dtype:
-                    about.warnings.cflush(
-                        "WARNING: Datatypes are of conflicting precision " +
-                        "(own: " + str(dtype) + " <> foreign: " +
-                        str(x.dtype) + ") and will be casted! Potential " +
-                        "loss of precision!\n")
-                to_copy = True
-
-            if to_copy:
-                temp = x.copy_empty(dtype=dtype)
-                temp.set_data(to_key=(slice(None),),
-                              data=x,
-                              from_key=(slice(None),))
-                temp.hermitian = x.hermitian
-                x = temp
-
-            return x
-
-        # Case 2: x is something else
-        # Use general d2o casting
-        else:
-            x = distributed_data_object(x, global_shape=self.get_shape(),
-                                        dtype=dtype)
-            # Cast the d2o
-            return self.cast(x, dtype=dtype)
 
     def enforce_power(self, spec, **kwargs):
         """
