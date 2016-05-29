@@ -427,9 +427,8 @@ class power_indices(object):
 
 class rg_power_indices(power_indices):
 
-    def __init__(self, shape, dgrid, datamodel,
-                 allowed_distribution_strategies,
-                 zerocentered=False, log=False, nbin=None,
+    def __init__(self, shape, dgrid, allowed_distribution_strategies,
+                 datamodel='not', zerocentered=False, log=False, nbin=None,
                  binbounds=None, comm=None):
         """
             Returns an instance of the power_indices class. Given the shape and

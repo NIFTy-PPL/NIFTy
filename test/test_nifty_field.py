@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from numpy.testing import assert_equal,\
-    assert_almost_equal,\
+from numpy.testing import assert_equal, \
+    assert_almost_equal, \
     assert_raises
 
 from nose_parameterized import parameterized
@@ -9,21 +9,21 @@ import unittest
 import itertools
 import numpy as np
 
-from nifty import space,\
-    point_space,\
-    rg_space,\
-    lm_space,\
-    hp_space,\
+from nifty import space, \
+    point_space, \
+    rg_space, \
+    lm_space, \
+    hp_space, \
     gl_space
 
 from nifty.nifty_field import field
 
 from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES
-from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES,\
-                              gc as RG_GC
-from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
-                              GL_DISTRIBUTION_STRATEGIES,\
-                              HP_DISTRIBUTION_STRATEGIES
+from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES, \
+    gc as RG_GC
+from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES, \
+    GL_DISTRIBUTION_STRATEGIES, \
+    HP_DISTRIBUTION_STRATEGIES
 
 
 ###############################################################################
@@ -33,6 +33,7 @@ def custom_name_func(testcase_func, param_num, param):
         testcase_func.__name__,
         parameterized.to_safe_name("_".join(str(x) for x in param.args)),
     )
+
 
 ###############################################################################
 ###############################################################################
@@ -92,62 +93,33 @@ for param in itertools.product([(1,), (4, 6), (5, 8)],
                                [False],
                                DATAMODELS['rg_space'],
                                fft_modules):
-    space_list += [[(rg_space(shape=param[0],
-                            zerocenter=param[1],
-                            complexity=param[2],
-                            distances=param[3],
-                            harmonic=param[4],
-                            fft_module=param[6]),param[6])]]
+    space_list += [[rg_space(shape=param[0],
+                             zerocenter=param[1],
+                             complexity=param[2],
+                             distances=param[3],
+                             harmonic=param[4],
+                             fft_module=param[6]), param[5]]]
 
 
 ###############################################################################
 ###############################################################################
 
 class Test_field_init(unittest.TestCase):
-
-    @parameterized.expand(space_list)
-    def test_successfull_init_and_attributes(self, s, datamodel):
-        f = field(domain=np.array([s]), dtype=s.dtype, datamodel=datamodel)
-        assert(f.domain[0] is s)
-        assert(s.check_codomain(f.codomain[0]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    @parameterized.expand(
+        itertools.product([(1,), (4, 6), (5, 8)],
+                          [False, True],
+                          [0, 1, 2],
+                          [None, 0.3],
+                          [False],
+                          fft_modules,
+                          DATAMODELS['rg_space']),
+        testcase_func_name=custom_name_func)
+    def test_successfull_init_and_attributes(self, shape, zerocenter,
+                                             complexity, distances, harmonic,
+                                             fft_module, datamodel):
+        s = rg_space(shape=shape, zerocenter=zerocenter,
+                     complexity=complexity, distances=distances,
+                     harmonic=harmonic, fft_module=fft_module)
+        f = field(domain=(s,), dtype=s.dtype, datamodel=datamodel)
+        assert (f.domain[0] is s)
+        assert (s.check_codomain(f.codomain[0]))
