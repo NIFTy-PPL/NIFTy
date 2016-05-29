@@ -123,3 +123,31 @@ class Test_field_init(unittest.TestCase):
         f = field(domain=(s,), dtype=s.dtype, datamodel=datamodel)
         assert (f.domain[0] is s)
         assert (s.check_codomain(f.codomain[0]))
+        assert (s.get_shape() == f.get_shape())
+
+
+class Test_field_multiple_init(unittest.TestCase):
+    @parameterized.expand(
+        itertools.product([(1,)],
+                          [True],
+                          [0],
+                          [None],
+                          [False],
+                          fft_modules,
+                          DATAMODELS['rg_space']),
+        testcase_func_name=custom_name_func)
+    def test_multiple_space_init(self, shape, zerocenter,
+                                 complexity, distances, harmonic,
+                                 fft_module, datamodel):
+        s1 = rg_space(shape=shape, zerocenter=zerocenter,
+                      complexity=complexity, distances=distances,
+                      harmonic=harmonic, fft_module=fft_module)
+        s2 = rg_space(shape=shape, zerocenter=zerocenter,
+                      complexity=complexity, distances=distances,
+                      harmonic=harmonic, fft_module=fft_module)
+        f = field(domain=(s1, s2), dtype=s1.dtype, datamodel=datamodel)
+        assert (f.domain[0] is s1)
+        assert (f.domain[1] is s2)
+        assert (s1.check_codomain(f.codomain[0]))
+        assert (s2.check_codomain(f.codomain[1]))
+        assert (s1.get_shape() + s2.get_shape() == f.get_shape())
