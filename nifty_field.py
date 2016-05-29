@@ -289,7 +289,7 @@ class field(object):
         new_field = EmptyField()
         # repair its class
         new_field.__class__ = self.__class__
-        # copy domain, codomain, ishape and val
+        # copy domain, codomain and val
         for key, value in self.__dict__.items():
             if key != 'val':
                 new_field.__dict__[key] = value
@@ -347,54 +347,10 @@ class field(object):
     # TODO: Add functionality for boolean indexing.
 
     def __getitem__(self, key):
-        if np.isscalar(key) == True or isinstance(key, slice):
-            key = (key,)
-        if self.ishape == ():
-            return self.domain.getitem(self.get_val(), key)
-        else:
-            gotten = self.get_val()[key[:len(self.ishape)]]
-            try:
-                is_data_container = (gotten.dtype.type == np.object_)
-            except(AttributeError):
-                is_data_container = False
+        return self.val[key]
 
-            if len(key) > len(self.ishape):
-                if is_data_container:
-                    gotten = map(
-                        lambda z: self.domain.getitem(
-                            z, key[len(self.ishape):]),
-                        gotten)
-                else:
-                    gotten = self.domain.getitem(gotten,
-                                                 key[len(self.ishape):])
-            return gotten
-
-    def __setitem__(self, key, value):
-        if np.isscalar(key) or isinstance(key, slice):
-            key = (key,)
-        if self.ishape == ():
-            return self.domain.setitem(self.get_val(), value, key)
-        else:
-            if len(key) > len(self.ishape):
-                gotten = self.get_val()[key[:len(self.ishape)]]
-                try:
-                    is_data_container = (gotten.dtype.type == np.object_)
-                except(AttributeError):
-                    is_data_container = False
-
-                if is_data_container:
-                    gotten = map(
-                        lambda z1, z2: self.domain.setitem(
-                            z1, z2, key[len(self.ishape):]),
-                        gotten, value)
-                else:
-                    gotten = self.domain.setitem(gotten, value,
-                                                 key[len(self.ishape):])
-            else:
-                dummy = np.empty(self.ishape)
-                gotten = self.val.__setitem__(key, self.cast(
-                    value, ishape=np.shape(dummy[key])))
-            return gotten
+    def __setitem__(self, key, item):
+        self.val[key] = item
 
     def get_shape(self):
         if len(self.domain) > 1:
