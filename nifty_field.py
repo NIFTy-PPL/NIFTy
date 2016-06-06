@@ -359,7 +359,7 @@ class field(object):
                 new_val = map(
                     lambda z: self.unary_operation(z, 'copy'),
                     new_val)
-            self.val = map(lambda z: self.cast(z), new_val)
+            self.val = self.cast(new_val)
         return self.val
 
     def get_val(self):
@@ -996,11 +996,8 @@ class field(object):
                "\n- codomain      = " + repr(self.codomain) + \
                "\n- ishape          = " + str(self.ishape)
 
-    def _unary_helper(self, x, op, **kwargs):
-        result = map(
-            lambda z: self.domain.unary_operation(z, op=op, **kwargs),
-            self.get_val())
-        return result
+    def all(self, **kwargs):
+        return self._unary_operation(self.get_val(), op='all', **kwargs)
 
     def min(self, ignore=False, **kwargs):
         """
@@ -1021,10 +1018,10 @@ class field(object):
             np.amin, np.nanmin
 
         """
-        return self._unary_helper(self.get_val(), op='amin', **kwargs)
+        return self._unary_operation(self.get_val(), op='amin', **kwargs)
 
     def nanmin(self, **kwargs):
-        return self._unary_helper(self.get_val(), op='nanmin', **kwargs)
+        return self._unary_operation(self.get_val(), op='nanmin', **kwargs)
 
     def max(self, **kwargs):
         """
@@ -1045,10 +1042,10 @@ class field(object):
             np.amax, np.nanmax
 
         """
-        return self._unary_helper(self.get_val(), op='amax', **kwargs)
+        return self._unary_operation(self.get_val(), op='amax', **kwargs)
 
     def nanmax(self, **kwargs):
-        return self._unary_helper(self.get_val(), op='nanmax', **kwargs)
+        return self._unary_operation(self.get_val(), op='nanmax', **kwargs)
 
     def median(self, **kwargs):
         """
@@ -1064,7 +1061,7 @@ class field(object):
             np.median
 
         """
-        return self._unary_helper(self.get_val(), op='median',
+        return self._unary_operation(self.get_val(), op='median',
                                   **kwargs)
 
     def mean(self, **kwargs):
@@ -1081,7 +1078,7 @@ class field(object):
             np.mean
 
         """
-        return self._unary_helper(self.get_val(), op='mean',
+        return self._unary_operation(self.get_val(), op='mean',
                                   **kwargs)
 
     def std(self, **kwargs):
@@ -1098,7 +1095,7 @@ class field(object):
             np.std
 
         """
-        return self._unary_helper(self.get_val(), op='std',
+        return self._unary_operation(self.get_val(), op='std',
                                   **kwargs)
 
     def var(self, **kwargs):
@@ -1115,7 +1112,7 @@ class field(object):
             np.var
 
         """
-        return self._unary_helper(self.get_val(), op='var',
+        return self._unary_operation(self.get_val(), op='var',
                                   **kwargs)
 
     def argmin(self, split=True, **kwargs):
@@ -1141,10 +1138,10 @@ class field(object):
 
         """
         if split:
-            return self._unary_helper(self.get_val(), op='argmin_nonflat',
+            return self._unary_operation(self.get_val(), op='argmin_nonflat',
                                       **kwargs)
         else:
-            return self._unary_helper(self.get_val(), op='argmin',
+            return self._unary_operation(self.get_val(), op='argmin',
                                       **kwargs)
 
     def argmax(self, split=True, **kwargs):
@@ -1170,29 +1167,29 @@ class field(object):
 
         """
         if split:
-            return self._unary_helper(self.get_val(), op='argmax_nonflat',
+            return self._unary_operation(self.get_val(), op='argmax_nonflat',
                                       **kwargs)
         else:
-            return self._unary_helper(self.get_val(), op='argmax',
+            return self._unary_operation(self.get_val(), op='argmax',
                                       **kwargs)
 
     # TODO: Implement the full range of unary and binary operotions
 
     def __pos__(self):
         new_field = self.copy_empty()
-        new_val = self._unary_helper(self.get_val(), op='pos')
+        new_val = self._unary_operation(self.get_val(), op='pos')
         new_field.set_val(new_val=new_val)
         return new_field
 
     def __neg__(self):
         new_field = self.copy_empty()
-        new_val = self._unary_helper(self.get_val(), op='neg')
+        new_val = self._unary_operation(self.get_val(), op='neg')
         new_field.set_val(new_val=new_val)
         return new_field
 
     def __abs__(self):
         new_field = self.copy_empty()
-        new_val = self._unary_helper(self.get_val(), op='abs')
+        new_val = self._unary_operation(self.get_val(), op='abs')
         new_field.set_val(new_val=new_val)
         return new_field
 
@@ -1224,7 +1221,7 @@ class field(object):
         working_field.set_val(new_val=new_val)
         return working_field
 
-    def unary_operation(self, x, op='None', axis=None, **kwargs):
+    def _unary_operation(self, x, op='None', axis=None, **kwargs):
         """
         x must be a numpy array which is compatible with the space!
         Valid operations are

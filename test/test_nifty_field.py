@@ -9,6 +9,8 @@ import unittest
 import itertools
 import numpy as np
 
+from d2o import distributed_data_object
+
 from nifty import space, \
     point_space, \
     rg_space, \
@@ -101,6 +103,21 @@ for param in itertools.product([(1,), (4, 6), (5, 8)],
                              fft_module=param[6]), param[5]]]
 
 
+def generate_space_with_size(name, num):
+    space_dict = {'space': space(),
+                  'point_space': point_space(num),
+                  'rg_space': rg_space((num, num)),
+                  'lm_space': lm_space(mmax=num, lmax=num),
+                  'hp_space': hp_space(num),
+                  'gl_space': gl_space(nlat=num, nlon=num),
+                  }
+    return space_dict[name]
+
+
+def generate_data(space):
+    a = np.arange(space.get_dim()).reshape(space.get_shape())
+    return distributed_data_object(a)
+
 ###############################################################################
 ###############################################################################
 
@@ -151,3 +168,21 @@ class Test_field_multiple_init(unittest.TestCase):
         assert (s1.check_codomain(f.codomain[0]))
         assert (s2.check_codomain(f.codomain[1]))
         assert (s1.get_shape() + s2.get_shape() == f.get_shape())
+
+
+class Test_axis(unittest.TestCase):
+    @parameterized.expand(
+        itertools.product(point_like_spaces, [4],
+                          ['sum', 'prod', 'mean', 'var', 'std', 'median', 'all',
+                           'any', 'amin', 'nanmin', 'argmin', 'amax', 'nanmax',
+                           'argmax'],
+                          [None, (0,)],
+                          DATAMODELS['rg_space']),
+        testcase_func_name=custom_name_func)
+    def test_unary_operations(self, name, num, op, axis, datamodel):
+        s = generate_space_with_size(name, num)
+        d = generate_data(s)
+        a = d.get_full_data()
+        f = field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
+        assert_almost_equal(getattr(f, op)(axis=axis),
+                                getattr(np, op)(a, axis=axis), decimal=4)
