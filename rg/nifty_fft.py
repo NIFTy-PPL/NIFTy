@@ -378,8 +378,9 @@ class FFTW(FFT):
                         temp_val = None
 
                         # If axes tuple includes all axes, set it to None
-                        if set(axes) == set(range(len(val.shape))):
-                            axes = None
+                        if axes is not None:
+                            if set(axes) == set(range(len(val.shape))):
+                                axes = None
 
                         for slice_list in\
                                 utilities.get_slice_list(local_val.shape,
