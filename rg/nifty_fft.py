@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from mpi4py import MPI
 from d2o import distributed_data_object, STRATEGIES
 from nifty.config import dependency_injector as gdi
+from nifty.config import about
 import nifty.nifty_utilities as utilities
 
 pyfftw = gdi.get('pyfftw')
@@ -207,11 +209,20 @@ class FFTW(FFT):
     def _get_transform_info(self, domain, codomain, is_local=False, **kwargs):
         # generate a id-tuple which identifies the domain-codomain setting
         temp_id = domain.__hash__() ^ (101 * codomain.__hash__())
+
         # generate the plan_and_info object if not already there
         if temp_id not in self.info_dict:
-            self.info_dict[temp_id] = FFTWTransformInfo(domain, codomain,
-                                                        is_local, self,
-                                                        **kwargs)
+            if is_local:
+                self.info_dict[temp_id] = FFTWLocalTransformInfo(
+                    domain, codomain,
+                    self, **kwargs
+                )
+            else:
+                self.info_dict[temp_id] = FFTWMPITransfromInfo(
+                    domain, codomain,
+                    self, **kwargs
+                )
+
         return self.info_dict[temp_id]
 
     def _apply_mask(self, val, mask, axes):
@@ -249,20 +260,35 @@ class FFTW(FFT):
             temp_val = np.copy(val)
             val = self._apply_mask(temp_val, info.cmask_codomain, axes)
 
-        if info.local:
-            result = info.plan(val, axes=axes, planner_effort='FFTW_ESTIMATE')
-        else:
-            p = info.plan
-            # Load the value into the plan
-            if p.has_input:
-                p.input_array[:] = val
-            # Execute the plan
-            p()
+        result = info.fftw_interface(val, axes=axes,
+                                     planner_effort='FFTW_ESTIMATE')
 
-            if p.has_output:
-                result = p.output_array
-            else:
-                raise RuntimeError('ERROR: PyFFTW-MPI transform failed.')
+        # Apply domain centering mask
+        if reduce(lambda x, y: x+y, domain.paradict['zerocenter']):
+            result = self._apply_mask(result, info.cmask_domain, axes)
+
+        # Correct the sign if needed
+        result *= info.sign
+
+        return result
+
+    def _mpi_transform(self, val, info, axes, domain, codomain):
+        # Apply codomain centering mask
+        if reduce(lambda x, y: x+y, codomain.paradict['zerocenter']):
+            temp_val = np.copy(val)
+            val = self._apply_mask(temp_val, info.cmask_codomain, axes)
+
+        p = info.plan
+        # Load the value into the plan
+        if p.has_input:
+            p.input_array[:] = val
+        # Execute the plan
+        p()
+
+        if p.has_output:
+            result = p.output_array
+        else:
+            raise RuntimeError('ERROR: PyFFTW-MPI transform failed.')
 
         # Apply domain centering mask
         if reduce(lambda x, y: x+y, domain.paradict['zerocenter']):
@@ -307,66 +333,80 @@ class FFTW(FFT):
 
         # If the input is a numpy array we transform it locally
         if not isinstance(val, distributed_data_object):
+            # Cast to a np.ndarray
+            temp_val = np.asarray(val)
+
             current_info = self._get_transform_info(domain, codomain,
                                                     is_local=True,
                                                     **kwargs)
+
             # local transform doesn't apply transforms inplace
-            return_val = self._local_transform(val, current_info, axes,
+            return_val = self._local_transform(temp_val, current_info, axes,
                                                domain, codomain)
         else:
+            if val.comm is not MPI.COMM_WORLD:
+                raise RuntimeError('ERROR: Input array uses an unsupported \
+                                   comm object')
+
             if val.distribution_strategy in STRATEGIES['slicing']:
-                if axes is None or set(axes) == set(range(len(val.shape))):
-                    current_info = self._get_transform_info(domain, codomain,
-                                                            **kwargs)
+                if axes is None or set(axes) == set(range(len(val.shape))) \
+                        or 0 in axes:
+                    if val.distribution_strategy != 'fftw':
+                        temp_val = val.copy_empty(distribution_strategy='fftw')
+                        temp_val.set_full_data(val, copy=False)
 
-                    return_val = val.copy_empty(global_shape=val.shape,
-                                                dtype=codomain.dtype)
+                        # Recursive call to transform
+                        result = self.transform(temp_val, domain, codomain,
+                                                axes, **kwargs)
 
-                    # Compute transform for the local data
-                    result = self._local_transform(
-                        val.get_local_data(copy=False),
-                        current_info, axes,
-                        domain, codomain
-                    )
+                        return_val = result.copy_empty(
+                            distribution_strategy=val.distribution_strategy
+                        )
+                        return_val.set_full_data(data=result, copy=False)
+                    else:
+                        current_info = self._get_transform_info(domain,
+                                                                codomain,
+                                                                **kwargs)
 
-                    # Insert result into the return_val
-                    return_val.set_local_data(data=result, copy=False)
-                elif 0 in axes:
-                    current_info = self._get_transform_info(domain, codomain,
-                                                            **kwargs)
-                    # Repack val to fftw
-                    new_val = val.copy(distribution_strategy='fftw',
-                                       copy=False)
-                    return_val = new_val.copy_empty(global_shape=new_val.shape,
+                        return_val = val.copy_empty(global_shape=val.shape,
                                                     dtype=codomain.dtype)
-                    # Extract local data
-                    local_val = val.get_local_data(copy=False)
 
-                    # Intermediate storage for individual slices
-                    temp_val = np.empty_like(local_val)
+                        # Extract local data
+                        local_val = val.get_local_data(copy=False)
 
-                    for slice_list in utilities.get_slice_list(local_val.shape,
-                                                               axes):
-                        inp = local_val[slice_list]
-                        result = self._local_transform(inp, current_info,
-                                                       axes, domain, codomain)
-                        temp_val[slice_list] = result
+                        # Create temporary storage for slices
+                        temp_val = None
 
-                    return_val.set_local_data(data=temp_val, copy=False)
+                        # If axes tuple includes all axes, set it to None
+                        if set(axes) == set(range(len(val.shape))):
+                            axes = None
 
-                    # Repack to original distribution strategy
-                    return_val = return_val.copy(
-                        distribution_strategy=val.distribution_strategy,
-                        copy=False
-                    )
+                        for slice_list in\
+                                utilities.get_slice_list(local_val.shape,
+                                                         axes):
+                            if slice_list == [slice(None, None)]:
+                                inp = local_val
+                            else:
+                                if temp_val is None:
+                                    temp_val = np.empty_like(local_val)
+                                inp = local_val[slice_list]
+
+                            result = self._mpi_transform(inp,
+                                                         current_info,
+                                                         axes, domain,
+                                                         codomain)
+
+                            if slice_list == [slice(None, None)]:
+                                temp_val = result
+                            else:
+                                temp_val[slice_list] = result
+
+                        return_val.set_local_data(data=temp_val, copy=False)
                 else:
                     current_info = self._get_transform_info(domain, codomain,
                                                             is_local=True,
                                                             **kwargs)
 
-                    return_val = val.copy_empty(global_shape=val.shape,
-                                                dtype=codomain.dtype)
-
                     # Compute transform for the local data
                     result = self._local_transform(
                         val.get_local_data(copy=False),
@@ -374,41 +414,42 @@ class FFTW(FFT):
                         domain, codomain
                     )
 
-                    # Insert result inplace in return_val
+                    # Create return object and insert results inplace
+                    return_val = val.copy_empty(global_shape=val.shape,
+                                                dtype=codomain.dtype)
                     return_val.set_local_data(data=result, copy=False)
 
                 # If domain is purely real, the result of the FFT is hermitian
                 if domain.paradict['complexity'] == 0:
                     return_val.hermitian = True
             else:
-                new_val = val.copy(distribution_strategy='fftw',
-                                   copy=False)
+                temp_val = val.copy_empty(distribution_strategy='fftw')
+                about.warnings.cprint('WARNING: Repacking d2o to fftw \
+                                       distribution strategy')
+                temp_val.set_full_data(val, copy=False)
 
                 # Recursive call to take advantage of the fact that the data
                 # necessary is already present on the nodes.
-                return_val = self.transform(new_val, domain, codomain, axes,
-                                            **kwargs)
+                result = self.transform(temp_val, domain, codomain, axes,
+                                        **kwargs)
 
-                return_val = return_val.copy(
-                    distribution_strategy=val.distribution_strategy,
-                    copy=False
+                return_val = val.copy_empty(
+                    distribution_strategy=val.distribution_strategy
                 )
+                return_val.set_full_data(result, copy=False)
 
             # If domain is purely real, the result of the FFT is hermitian
             if domain.paradict['complexity'] == 0:
                 return_val.hermitian = True
 
-            return return_val
+        return return_val
 
 
 class FFTWTransformInfo(object):
 
-    def __init__(self, domain, codomain, is_local, fftw_context, **kwargs):
+    def __init__(self, domain, codomain, fftw_context, **kwargs):
         if pyfftw is None:
             raise ImportError("The module pyfftw is needed but not available.")
-
-        # Whether it's a local or an MPI transformation
-        self.local = is_local
 
         # Create domain centering mask. The mask is the same size
         # as the domain's shape.
@@ -432,24 +473,6 @@ class FFTWTransformInfo(object):
             (np.array(domain.get_shape()) // 2 % 2)
         )
 
-        # Create the plans. If it's a local transform store pyfftw.interfaces
-        # instance otherwise an MPI plan
-        if self.local:
-            if codomain.harmonic:
-                self.plan = pyfftw.interfaces.numpy_fft.fftn
-            else:
-                self.plan = pyfftw.interfaces.numpy_fftn.ifftn
-        else:
-            self.plan = pyfftw.create_mpi_plan(
-                input_shape=domain.get_shape(),
-                input_dtype='complex128',
-                output_dtype='complex128',
-                direction='FFTW_FORWARD'
-                if codomain.harmonic else 'FFTW_BACKWARD',
-                flags=["FFTW_ESTIMATE"],
-                **kwargs
-            )
-
     @property
     def cmask_domain(self):
         return self._domain_centering_mask
@@ -467,12 +490,45 @@ class FFTWTransformInfo(object):
         self._codomain_centering_mask = cmask
 
     @property
-    def local(self):
-        return self._local
+    def sign(self):
+        return self._sign
 
-    @local.setter
-    def local(self, local):
-        self._local = local
+    @sign.setter
+    def sign(self, sign):
+        self._sign = sign
+
+
+class FFTWLocalTransformInfo(FFTWTransformInfo):
+    def __init__(self, domain, codomain, fftw_context, **kwargs):
+        super(FFTWLocalTransformInfo, self).__init__(domain, codomain,
+                                                     fftw_context, **kwargs)
+        if codomain.harmonic:
+            self._fftw_interface = pyfftw.interfaces.numpy_fft.fftn
+        else:
+            self._fftw_interface = pyfftw.interfaces.numpy_fftn.ifftn
+
+    @property
+    def fftw_interface(self):
+        return self._fftw_interface
+
+    @fftw_interface.setter
+    def fftw_interface(self, interface):
+        about.warnings.cprint('WARNING: FFTWLocalTransformInfo fftw_interface \
+                               cannot be modified')
+
+
+class FFTWMPITransfromInfo(FFTWTransformInfo):
+    def __init__(self, domain, codomain, fftw_context, **kwargs):
+        super(FFTWMPITransfromInfo, self).__init__(domain, codomain,
+                                                   fftw_context, **kwargs)
+        self._plan = pyfftw.create_mpi_plan(
+            input_shape=domain.get_shape(),
+            input_dtype='complex128',
+            output_dtype='complex128',
+            direction='FFTW_FORWARD' if codomain.harmonic else 'FFTW_BACKWARD',
+            flags=["FFTW_ESTIMATE"],
+            **kwargs
+        )
 
     @property
     def plan(self):
@@ -480,15 +536,8 @@ class FFTWTransformInfo(object):
 
     @plan.setter
     def plan(self, plan):
-        self._plan = plan
-
-    @property
-    def sign(self):
-        return self._sign
-
-    @sign.setter
-    def sign(self, sign):
-        self._sign = sign
+        about.warnings.cprint('WARNING: FFTWMPITransfromInfo plan \
+                               cannot be modified')
 
 
 class GFFT(FFT):
