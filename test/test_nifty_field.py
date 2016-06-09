@@ -203,3 +203,32 @@ class Test_axis(unittest.TestCase):
         else:
             assert_almost_equal(getattr(f, op)(axis=axis),
                                 getattr(np, op)(a, axis=axis), decimal=4)
+
+
+binary_operations = [('add','__add__'),('radd','__radd__'),('iadd','__iadd__'),
+                     ('sub','__sub__'),('rsub','__rsub__'),('isub','__isub__'),
+                     ('mul','__mul__'),('rmul','__rmul__'),('imul','__imul__'),
+                     ('div','__div__'),('rdiv','__rdiv__'),('idiv','__idiv__'),
+                     ('pow','__pow__'),('rpow','__rpow__'),('ipow','__ipow__'),
+                     ('ne','__ne__'),('lt','__lt__'),('eq','__eq__'),
+                     ('ge','__ge__'),('gt','__gt__')]
+
+class Test_binary_operation(unittest.TestCase):
+    @parameterized.expand(
+    itertools.product([point_like_spaces[0]], [4], binary_operations,
+                      DATAMODELS['rg_space']),
+    testcase_func_name=custom_name_func)
+    def test_binary_operations(self, name, num, op, datamodel):
+        s = generate_space_with_size(name, num)
+        d = generate_data(s)
+        a = d.get_full_data()
+        f = field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
+        d2 = d[::-1]
+        a2 = np.copy(a[::-1])
+        if op[0] in ['iadd','isub','imul','idiv']:
+            getattr(a, op[1])(a2)
+            f.binary_operation(d, d2, op[0])
+            assert_almost_equal(a,d,4)
+        else:
+            assert_almost_equal(getattr(a, op[1])(a2),f.binary_operation(d, d2,
+                                                                      op[0]), 4)
