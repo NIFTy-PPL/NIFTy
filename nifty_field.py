@@ -996,8 +996,17 @@ class field(object):
                "\n- codomain      = " + repr(self.codomain) + \
                "\n- ishape          = " + str(self.ishape)
 
+    def sum(self, **kwargs):
+        return self._unary_operation(self.get_val(), op='sum', **kwargs)
+
+    def prod(self, **kwargs):
+        return self._unary_operation(self.get_val(), op='prod', **kwargs)
+
     def all(self, **kwargs):
         return self._unary_operation(self.get_val(), op='all', **kwargs)
+
+    def any(self, **kwargs):
+        return self._unary_operation(self.get_val(), op='any', **kwargs)
 
     def min(self, ignore=False, **kwargs):
         """

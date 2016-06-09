@@ -619,8 +619,8 @@ class rg_power_indices(power_indices):
 
 class lm_power_indices(power_indices):
 
-    def __init__(self, lmax, dim, datamodel,
-                 allowed_distribution_strategies,
+    def __init__(self, lmax, dim,
+                 allowed_distribution_strategies, datamodel='not',
                  zerocentered=False, log=False, nbin=None,
                  binbounds=None, comm=None):
         """
