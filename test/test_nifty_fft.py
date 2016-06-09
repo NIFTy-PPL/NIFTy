@@ -107,5 +107,27 @@ class TestFFTWTransform(unittest.TestCase):
             ), 'results do not match numpy.fft.fftn'
         )
 
+    def test_mpi_zero_equal(self):
+        x = nt.rg_space(8, fft_module='pyfftw')
+        a = np.ones((8, 8)) + 1j*np.zeros((8, 8))
+        b = d2o.distributed_data_object(a, distribution_strategy='equal')
+        self.assertTrue(
+            np.allclose(
+                x.fft_machine.transform(b, x, x.get_codomain(), axes=(0,)),
+                np.fft.fftn(a, axes=(0,))
+            ), 'results do not match numpy.fft.fftn'
+        )
+
+    def test_mpi_zero_not(self):
+        x = nt.rg_space(8, fft_module='pyfftw')
+        a = np.ones((8, 8)) + 1j*np.zeros((8, 8))
+        b = d2o.distributed_data_object(a, distribution_strategy='not')
+        self.assertTrue(
+            np.allclose(
+                x.fft_machine.transform(b, x, x.get_codomain(), axes=(0,)),
+                np.fft.fftn(a, axes=(0,))
+            ), 'results do not match numpy.fft.fftn'
+        )
+
 if __name__ == '__main__':
     unittest.main()
