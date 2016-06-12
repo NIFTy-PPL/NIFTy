@@ -1129,7 +1129,7 @@ class field(object):
         return self._unary_operation(self.get_val(), op='var',
                                   **kwargs)
 
-    def argmin(self, split=True, **kwargs):
+    def argmin(self, split=False, **kwargs):
         """
             Returns the index of the minimum field value.
 
@@ -1158,7 +1158,7 @@ class field(object):
             return self._unary_operation(self.get_val(), op='argmin',
                                       **kwargs)
 
-    def argmax(self, split=True, **kwargs):
+    def argmax(self, split=False, **kwargs):
         """
             Returns the index of the maximum field value.
 
