@@ -212,9 +212,9 @@ class field(object):
 
         if val is None:
             if kwargs == {}:
-                val = map(lambda z: self.cast(z), (0,))
+                val = self.cast(0)
             else:
-                val = map(lambda z: self.domain.get_random_values(
+                val = map(lambda z: self.get_random_values(domain = self.domain,
                     codomain=z, **kwargs), self.codomain)
         self.set_val(new_val=val, copy=copy)
 
@@ -280,6 +280,11 @@ class field(object):
             codomain = tuple(space.get_codomain() for space in domain)
             self.codomain = codomain
             return codomain
+
+
+    def get_random_values(self, **kwargs):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: no generic instance method 'enforce_power'."))
 
     def __len__(self):
         return int(self.get_dim()[0])
