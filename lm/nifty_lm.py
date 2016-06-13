@@ -1297,7 +1297,7 @@ class gl_space(point_space):
     def get_weight(self, power=1):
         # TODO: Check if this function is compatible to the rest of nifty
         # TODO: Can this be done more efficiently?
-        dummy = self.dtype(1)
+        dummy = self.dtype.type(1)
         weighted_dummy = self.calc_weight(dummy, power=power)
         return weighted_dummy / dummy
 
