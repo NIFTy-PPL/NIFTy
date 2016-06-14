@@ -742,33 +742,35 @@ class Test_RG_Space(unittest.TestCase):
 
 ###############################################################################
 
-    @parameterized.expand(
-        itertools.product([True],
-                          ['pyfftw']),
-        testcase_func_name=custom_name_func)
-    def test_get_random_values(self, harmonic, ):
-        x = rg_space((4, 4), complexity=1, harmonic=harmonic)
-
-        # pm1
-        data = x.get_random_values(random='pm1')
-        flipped_data = flip(x, data)
-        assert(check_almost_equality(x, data, flipped_data))
-
-        # gau
-        data = x.get_random_values(random='gau', mean=4 + 3j, std=2)
-        flipped_data = flip(x, data)
-        assert(check_almost_equality(x, data, flipped_data))
-
-        # uni
-        data = x.get_random_values(random='uni', vmin=-2, vmax=4)
-        flipped_data = flip(x, data)
-        assert(check_almost_equality(x, data, flipped_data))
-
-        # syn
-        data = x.get_random_values(random='syn',
-                                   spec=lambda x: 42 / (1 + x)**3)
-        flipped_data = flip(x, data)
-        assert(check_almost_equality(x, data, flipped_data))
+#    @parameterized.expand(
+#        itertools.product([True], #[True, False],
+#                          ['fftw']),
+#                          #DATAMODELS['rg_space']),
+#        testcase_func_name=custom_name_func)
+#    def test_get_random_values(self, harmonic, datamodel):
+#        x = rg_space((4, 4), complexity=1, harmonic=harmonic,
+#                     datamodel=datamodel)
+#
+#        # pm1
+#        data = x.get_random_values(random='pm1')
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
+#
+#        # gau
+#        data = x.get_random_values(random='gau', mean=4 + 3j, std=2)
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
+#
+#        # uni
+#        data = x.get_random_values(random='uni', vmin=-2, vmax=4)
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
+#
+#        # syn
+#        data = x.get_random_values(random='syn',
+#                                   spec=lambda x: 42 / (1 + x)**3)
+#        flipped_data = flip(x, data)
+#        assert(check_almost_equality(x, data, flipped_data))
 
 ###############################################################################
 

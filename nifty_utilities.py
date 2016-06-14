@@ -33,22 +33,25 @@ def get_slice_list(shape, axes):
     if not shape:
         raise ValueError(about._errors.cstring("ERROR: shape cannot be None."))
 
-    if not all(axis < len(shape) for axis in axes):
-        raise ValueError(
-            about._errors.cstring("ERROR: axes(axis) does not match shape.")
-        )
-
-    axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
-
-    axes_iterables = [range(y) for x, y in enumerate(shape) if x not in axes]
-
-    for index in product(*axes_iterables):
-        it_iter = iter(index)
-        slice_list = [
-            next(it_iter)
-            if axis else slice(None, None) for axis in axes_select
-        ]
-        yield slice_list
+    if axes:
+        if not all(axis < len(shape) for axis in axes):
+            raise ValueError(
+                about._errors.cstring("ERROR: \
+                                      axes(axis) does not match shape.")
+            )
+        axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
+        axes_iterables =\
+            [range(y) for x, y in enumerate(shape) if x not in axes]
+        for index in product(*axes_iterables):
+            it_iter = iter(index)
+            slice_list = [
+                next(it_iter)
+                if axis else slice(None, None) for axis in axes_select
+            ]
+            yield slice_list
+    else:
+        yield [slice(None, None)]
+        return
 
 
 def hermitianize_gaussian(x):
