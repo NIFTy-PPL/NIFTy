@@ -912,6 +912,10 @@ class point_space(space):
             "(unstructured) point spaces."))
 
     def _enforce_power_helper(self, spec, size, kindex):
+        # TODO: Resolve this import by splitting nifty_core into nifty_space
+        # and nifty_point_space
+        from nifty_field import field
+
         # Now it's about to extract a powerspectrum from spec
         # First of all just extract a numpy array. The shape is cared about
         # later.
