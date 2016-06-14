@@ -3,7 +3,7 @@
 import numpy as np
 from d2o import distributed_data_object
 from nifty.config import dependency_injector as gdi
-
+import os
 pyfftw = gdi.get('pyfftw')
 gfft = gdi.get('gfft')
 gfft_dummy = gdi.get('gfft_dummy')
@@ -388,6 +388,7 @@ class _fftw_plan_and_info(object):
                 output_dtype=self.output_dtype,
                 direction=self.direction,
                 flags=["FFTW_ESTIMATE"],
+                threads=int(os.environ['MY_FFTW_THREADS']),
                 **kwargs)
         )
 
