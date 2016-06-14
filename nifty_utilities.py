@@ -54,9 +54,9 @@ def get_slice_list(shape, axes):
         return
 
 
-def hermitianize_gaussian(x):
+def hermitianize_gaussian(x, axes=None):
     # make the point inversions
-    flipped_x = _hermitianize_inverter(x)
+    flipped_x = _hermitianize_inverter(x, axes=axes)
     flipped_x = flipped_x.conjugate()
     # check if x was already hermitian
     if (x == flipped_x).all():
@@ -71,7 +71,12 @@ def hermitianize_gaussian(x):
     dimensions = mid_index.size
     # Use ndindex to iterate over all combinations of zeros and the
     # mid_index in order to correct all fixed points.
-    for i in np.ndindex((2,)*dimensions):
+    if axes is None:
+        axes = xrange(dimensions)
+
+    ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
+    ndlist = tuple(ndlist)
+    for i in np.ndindex(ndlist):
         temp_index = tuple(i*mid_index)
         x[temp_index] *= np.sqrt(0.5)
     try:
@@ -82,15 +87,14 @@ def hermitianize_gaussian(x):
     return x
 
 
-def hermitianize(x):
+def hermitianize(x, axes=None):
     # make the point inversions
-    flipped_x = _hermitianize_inverter(x)
+    flipped_x = _hermitianize_inverter(x, axes=axes)
     flipped_x = flipped_x.conjugate()
     # check if x was already hermitian
     if (x == flipped_x).all():
         return x
     # average x and flipped_x.
-    # Correct the variance by multiplying sqrt(0.5)
     x = (x + flipped_x) / 2.
     try:
         x.hermitian = True
@@ -100,15 +104,19 @@ def hermitianize(x):
     return x
 
 
-def _hermitianize_inverter(x):
+def _hermitianize_inverter(x, axes):
     # calculate the number of dimensions the input array has
     dimensions = len(x.shape)
     # prepare the slicing object which will be used for mirroring
     slice_primitive = [slice(None), ]*dimensions
     # copy the input data
     y = x.copy()
-    # flip in every direction
-    for i in xrange(dimensions):
+
+    if axes is None:
+        axes = xrange(dimensions)
+
+    # flip in the desired directions
+    for i in axes:
         slice_picker = slice_primitive[:]
         slice_picker[i] = slice(1, None, None)
         slice_picker = tuple(slice_picker)
