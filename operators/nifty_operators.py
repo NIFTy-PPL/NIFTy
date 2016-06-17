@@ -3388,7 +3388,7 @@ class propagator_operator(operator):
                 "ERROR: At least M or N must be given."))
 
     def _multiply(self, x, W=None, spam=None, reset=None, note=True,
-                  x0=None, tol=1E-3, clevel=1, limii=None, **kwargs):
+                  x0=None, tol=1E-3, clevel=1, limii=1000, **kwargs):
 
         if W is None:
             W = self.S
