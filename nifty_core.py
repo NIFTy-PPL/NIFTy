@@ -1203,8 +1203,6 @@ class point_space(space):
             dot : scalar
                 Inner product of the two arrays.
         """
-        x = self.cast(x)
-        y = self.cast(y)
 
         result = x.vdot(y)
 
