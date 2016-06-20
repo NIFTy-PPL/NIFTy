@@ -746,7 +746,7 @@ class rg_space(point_space):
 
         return sample
 
-    def calc_weight(self, x, power=1):
+    def calc_weight(self, x, axes=None, power=1):
         """
             Weights a given array with the pixel volumes to a given power.
 
@@ -756,6 +756,8 @@ class rg_space(point_space):
                 Array to be weighted.
             power : float, *optional*
                 Power of the pixel volumes to be used (default: 1).
+            axes : None, tuple
+                Ignored in this case since it's a scalar operation.
 
             Returns
             -------
@@ -812,7 +814,7 @@ class rg_space(point_space):
             codomain : nifty.rg_space, *optional*
                 codomain space to which the transformation shall map
                 (default: None).
-            axes : None or tuple
+            axes : None, tuple
                 Axes in the array which should be transformed.
 
             Returns
@@ -844,7 +846,7 @@ class rg_space(point_space):
 
         return Tx
 
-    def calc_smooth(self, x, sigma=0, codomain=None):
+    def calc_smooth(self, x, sigma=0, codomain=None, axes=None):
         """
             Smoothes an array of field values by convolution with a Gaussian
             kernel.
@@ -857,6 +859,8 @@ class rg_space(point_space):
                 Standard deviation of the Gaussian kernel, specified in units
                 of length in position space; for testing: a sigma of -1 will be
                 reset to a reasonable value (default: 0).
+            axes: None, tuple
+                Axes which should be smoothed
 
             Returns
             -------
@@ -883,21 +887,20 @@ class rg_space(point_space):
         else:
             codomain = self.get_codomain()
 
-        x = self.calc_transform(x, codomain=codomain)
-        x = codomain._calc_smooth_helper(x, sigma)
-        x = codomain.calc_transform(x, codomain=self)
+        x = self.calc_transform(x, codomain=codomain, axes=axes)
+        x = codomain._calc_smooth_helper(x, sigma, axes=axes)
+        x = codomain.calc_transform(x, codomain=self, axes=axes)
         return x
 
-    def _calc_smooth_helper(self, x, sigma):
+    def _calc_smooth_helper(self, x, sigma, axes=None):
         # multiply the gaussian kernel, etc...
-
-        # Cast the input
-        x = self.cast(x)
+        if axes is None:
+            axes = range(len(x.shape))
 
         # if x is hermitian it remains hermitian during smoothing
         # TODO look at this later
         # if self.datamodel in RG_DISTRIBUTION_STRATEGIES:
-        remeber_hermitianQ = x.hermitian
+        remember_hermitianQ = x.hermitian
 
         # Define the Gaussian kernel function
         gaussian = lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
@@ -916,15 +919,15 @@ class rg_space(point_space):
             # compute the actual kernel vector
             gaussian_kernel_vector = gaussian(k)
             # blow up the vector to an array of shape (1,.,1,len(nk),1,.,1)
-            blown_up_shape = [1, ] * len(nx)
-            blown_up_shape[i] = len(gaussian_kernel_vector)
+            blown_up_shape = [1, ] * len(x.shape)
+            blown_up_shape[axes[i]] = len(gaussian_kernel_vector)
             gaussian_kernel_vector =\
                 gaussian_kernel_vector.reshape(blown_up_shape)
             # apply the blown-up gaussian_kernel_vector
             x = x*gaussian_kernel_vector
 
         try:
-            x.hermitian = remeber_hermitianQ
+            x.hermitian = remember_hermitianQ
         except AttributeError:
             pass
 
