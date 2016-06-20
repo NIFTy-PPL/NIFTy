@@ -1186,7 +1186,7 @@ class point_space(space):
         result = result**(1. / q)
         return result
 
-    def calc_dot(self, x, y):
+    def calc_dot(self, x, y, axes=None):
         """
             Computes the discrete inner product of two given arrays of field
             values.
@@ -1203,11 +1203,10 @@ class point_space(space):
             dot : scalar
                 Inner product of the two arrays.
         """
-
-        result = x.vdot(y)
-
-        if np.isreal(result):
-            result = np.asscalar(np.real(result))
+        if axes is None:
+            result = x.vdot(y)
+        else:
+            result = (x.conjugate() * y).sum(axis=axes)
 
         return result
 

@@ -771,38 +771,6 @@ class rg_space(point_space):
     def get_weight(self, power=1):
         return np.prod(self.distances)**power
 
-    def calc_dot(self, x, y):
-        """
-            Computes the discrete inner product of two given arrays of field
-            values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                First array
-            y : numpy.ndarray
-                Second array
-
-            Returns
-            -------
-            dot : scalar
-                Inner product of the two arrays.
-        """
-        x = self.cast(x)
-        y = self.cast(y)
-
-        result = x.vdot(y)
-
-        if np.isreal(result):
-            result = np.asscalar(np.real(result))
-        if self.paradict['complexity'] != 2:
-            if (np.absolute(result.imag) >
-                    self.epsilon**2 * np.absolute(result.real)):
-                about.warnings.cprint(
-                    "WARNING: Discarding considerable imaginary part.")
-            result = np.asscalar(np.real(result))
-        return result
-
     def calc_transform(self, x, codomain=None, axes=None, **kwargs):
         """
             Computes the transform of a given array of field values.
@@ -822,7 +790,6 @@ class rg_space(point_space):
             Tx : numpy.ndarray
                 Transformed array
         """
-        x = self.cast(x)
 
         if codomain is None:
             codomain = self.get_codomain()
