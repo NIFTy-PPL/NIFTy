@@ -50,6 +50,12 @@ variable_verbosity = keepers.Variable('verbosity',
                                       lambda z: z == abs(int(z)),
                                       genus='int')
 
+variable_default_datamodel = keepers.Variable(
+                              'default_datamodel',
+                              ['fftw', 'equal'],
+                              lambda z: (('pyfftw' in dependency_injector)
+                                         if z == 'fftw' else True),
+                              genus='str')
 
 nifty_configuration = keepers.get_Configuration(
                      'NIFTy',
@@ -58,6 +64,7 @@ nifty_configuration = keepers.get_Configuration(
                       variable_use_healpy,
                       variable_use_libsharp,
                       variable_verbosity,
+                      variable_default_datamodel,
                       ],
                      path=os.path.expanduser('~') + "/.nifty/nifty_config")
 ########
@@ -79,6 +86,7 @@ variable_default_comm = keepers.Variable(
                                        nifty_configuration['mpi_module']], z))
 
 nifty_configuration.register(variable_default_comm)
+
 
 ########
 ########

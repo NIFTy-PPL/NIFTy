@@ -103,8 +103,9 @@ class field(object):
     """
 
     def __init__(self, domain=None, val=None, codomain=None,
-                 comm=gc['default_comm'], copy=False, dtype=None,
-                 datamodel='fftw', **kwargs):
+                 dtype=None, field_type=None, copy=False,
+                 datamodel=gc['default_datamodel'], comm=gc['default_comm'],
+                 **kwargs):
         """
             Sets the attributes for a field class instance.
 
@@ -232,9 +233,9 @@ class field(object):
             domain = self.domain
         i = 0
         axis_list = []
-        for space in domain:
+        for sp in domain:
             l = []
-            for j in range(len(space.get_shape())):
+            for j in range(len(sp.get_shape())):
                 l += [i]
                 i += 1
             axis_list += [tuple(l)]
