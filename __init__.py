@@ -50,7 +50,8 @@ from nifty_paradict import space_paradict,\
                             point_space_paradict,\
                             nested_space_paradict
 
-from field_types import Field_array
+from field_types import Field_type,\
+                        Field_array
 
 from operators import *
 

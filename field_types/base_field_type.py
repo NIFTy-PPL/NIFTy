@@ -1,21 +1,38 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
 
-class Base_field_type(object):
-    def __init__(self, shape):
-        self.shape = shape
 
-    @property
-    def shape(self):
-        return self._shape
-
-    @shape.setter
-    def shape(self, shape):
+class Field_type(object):
+    def __init__(self, shape, dtype):
         try:
             new_shape = tuple([int(i) for i in shape])
         except TypeError:
             new_shape = (int(shape), )
         self._shape = new_shape
+
+        self._dtype = np.dtype(dtype)
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    def get_dof(self, split=False):
+        if issubclass(self.dtype.type, np.complexfloating):
+            multiplicator = 2
+        else:
+            multiplicator = 1
+
+        if split:
+            dof = tuple(multiplicator*np.array(self.shape))
+        else:
+            dof = multiplicator*reduce(lambda x, y: x*y, self.shape)
+
+        return dof
 
     def process(self, method_name, array, inplace=True, **kwargs):
         try:
@@ -29,3 +46,6 @@ class Base_field_type(object):
                 result_array = array.copy()
 
         return result_array
+
+    def complement_cast(self, x, axis=None):
+        return x

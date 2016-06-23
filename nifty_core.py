@@ -311,7 +311,7 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dof'."))
 
-    def _complement_cast(self, x, axis=None):
+    def complement_cast(self, x, axis=None):
         return x
 
     # TODO: Move enforce power into power_indices class

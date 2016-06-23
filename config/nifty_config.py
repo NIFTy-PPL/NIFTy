@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-
+import numpy as np
 import keepers
 
 # Setup the dependency injector
@@ -50,6 +50,21 @@ variable_verbosity = keepers.Variable('verbosity',
                                       lambda z: z == abs(int(z)),
                                       genus='int')
 
+
+def _dtype_validator(dtype):
+    try:
+        np.dtype(dtype)
+    except(TypeError):
+        return False
+    else:
+        return True
+
+variable_default_field_dtype = keepers.Variable(
+                              'default_field_dtype',
+                              ['float'],
+                              _dtype_validator,
+                              genus='str')
+
 variable_default_datamodel = keepers.Variable(
                               'default_datamodel',
                               ['fftw', 'equal'],
@@ -64,6 +79,7 @@ nifty_configuration = keepers.get_Configuration(
                       variable_use_healpy,
                       variable_use_libsharp,
                       variable_verbosity,
+                      variable_default_field_dtype,
                       variable_default_datamodel,
                       ],
                      path=os.path.expanduser('~') + "/.nifty/nifty_config")
