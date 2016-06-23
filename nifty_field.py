@@ -421,7 +421,7 @@ class field(object):
                 Dimension of space.
 
         """
-        return np.prod(self.get_shape())
+        return np.prod(self.shape)
 
     def get_dof(self, split=False):
         dof_tuple = tuple(sp.get_dof(split=split) for sp in self.domain)
@@ -474,7 +474,7 @@ class field(object):
             dtype = self.dtype
 
         if shape is None:
-            shape = self.get_shape()
+            shape = self.shape
 
         # Case 1: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
@@ -531,7 +531,7 @@ class field(object):
         # Use general d2o casting
         else:
             x = distributed_data_object(x,
-                                        global_shape=self.get_shape(),
+                                        global_shape=self.shape,
                                         dtype=dtype,
                                         distribution_strategy=self.datamodel)
             # Cast the d2o
@@ -567,7 +567,7 @@ class field(object):
             new_val = self.get_val()
 
         if spaces is None:
-            spaces = range(len(self.get_shape()))
+            spaces = range(len(self.shape))
         for ind in spaces:
             new_val = self.domain[ind].calc_weigth(new_val, power=power,
                                                    axis=self._axis_list[
@@ -752,7 +752,7 @@ class field(object):
 
         new_val = self.get_val()
         if spaces is None:
-            spaces = range(len(self.get_shape()))
+            spaces = range(len(self.shape))
         else:
             for ind in spaces:
                 new_val = self.domain[ind].calc_transform(new_val,
