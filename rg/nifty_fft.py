@@ -505,7 +505,7 @@ class FFTWTransformInfo(object):
         # will get a global minus. Store the sign to correct it.
         self.sign = (-1) ** np.sum(np.array(domain.paradict['zerocenter']) *
                                    np.array(codomain.paradict['zerocenter']) *
-                                   (np.array(domain.get_shape()) // 2 % 2))
+                                   (np.array(domain.shape) // 2 % 2))
 
     @property
     def cmask_domain(self):
@@ -544,7 +544,7 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
         if codomain.harmonic:
             self._fftw_interface = pyfftw.interfaces.numpy_fft.fftn
         else:
-            self._fftw_interface = pyfftw.interfaces.numpy_fftn.ifftn
+            self._fftw_interface = pyfftw.interfaces.numpy_fft.ifftn
 
     @property
     def fftw_interface(self):
