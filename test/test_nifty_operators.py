@@ -150,7 +150,7 @@ def generate_operator(name):
 
 
 def generate_data(space):
-    a = np.arange(space.get_dim()).reshape(space.get_shape())
+    a = np.arange(space.dim).reshape(space.shape)
     data = space.cast(a)
     return data
 

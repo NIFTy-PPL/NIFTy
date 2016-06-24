@@ -198,7 +198,7 @@ class rg_space(point_space):
         # TODO harmonic = True doesn't work yet
         if self.harmonic:
             self.power_indices = rg_power_indices(
-                    shape=self.get_shape(),
+                    shape=self.shape,
                     dgrid=distances,
                     zerocentered=self.paradict['zerocenter'],
                     allowed_distribution_strategies=RG_DISTRIBUTION_STRATEGIES)
@@ -248,7 +248,8 @@ class rg_space(point_space):
                         harmonic=self.harmonic,
                         fft_module=self.fft_machine.name)
 
-    def get_shape(self):
+    @property
+    def shape(self):
         return tuple(self.paradict['shape'])
 
     def _complement_cast(self, x, axis=None, hermitianize=True):
@@ -431,7 +432,7 @@ class rg_space(point_space):
             case it arises from an inverse Fourier transformation.If no
             `coname` is given, the Fourier conjugate grid is produced.
         """
-        naxes = len(self.get_shape())
+        naxes = len(self.shape)
         # Parse the cozerocenter input
         if(cozerocenter is None):
             cozerocenter = self.paradict['zerocenter']
@@ -553,7 +554,7 @@ class rg_space(point_space):
                 sample[(temp_data.real < 0) * (temp_data.imag < 0)] = -1j
                 # Set the mirroring invariant points to real values
                 product_list = []
-                for s in self.get_shape():
+                for s in self.shape:
                     # if the particular dimension has even length, set
                     # also the middle of the array to a real value
                     if s % 2 == 0:
@@ -664,7 +665,7 @@ class rg_space(point_space):
                     # Furthermore, the normalisation in the fft routine
                     # must be undone
                     # TODO: Insert explanation
-                    sqrt_of_dim = np.sqrt(self.get_dim())
+                    sqrt_of_dim = np.sqrt(self.dim)
                     sample /= sqrt_of_dim
                     sample = temp_codomain.calc_weight(sample, power=-1)
 
@@ -837,7 +838,7 @@ class rg_space(point_space):
 
         # Check sigma
         if sigma == 0:
-            return self.unary_operation(x, op='copy')
+            return x.copy()
         elif sigma == -1:
             about.infos.cprint(
                 "INFO: Resetting sigma to sqrt(2)*max(dist).")
@@ -873,7 +874,7 @@ class rg_space(point_space):
         gaussian = lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
 
         # Define the variables in the dialect of the legacy smoothing.py
-        nx = np.array(self.get_shape())
+        nx = np.array(self.shape)
         dx = 1 / nx / self.distances
         # Multiply the data along each axis with suitable the gaussian kernel
         for i in range(len(nx)):
@@ -1287,7 +1288,7 @@ class rg_space(point_space):
             if(np.size(x) == 1):
                 if(extend):
                     x = self.dtype(
-                        x) * np.ones(self.get_dim(split=True), dtype=self.dtype, order='C')
+                        x) * np.ones(self.dim_split, dtype=self.dtype, order='C')
                 else:
                     if(np.isscalar(x)):
                         x = np.array([x], dtype=self.dtype)

@@ -196,7 +196,7 @@ def generate_space_with_size(name, num):
     return space_dict[name]
 
 def generate_data(space):
-    a = np.arange(space.get_dim()).reshape(space.get_shape())
+    a = np.arange(space.dim).reshape(space.shape)
     data = space.cast(a)
     return data
 
@@ -245,9 +245,9 @@ class Test_Common_Space_Features(unittest.TestCase):
         assert(callable(s.apply_scalar_function))
         assert(callable(s.unary_operation))
         assert(callable(s.binary_operation))
-        assert(callable(s.get_shape))
-        assert(callable(s.get_dim))
-        assert(callable(s.get_dof))
+        #assert(callable(s.get_shape))
+        #assert(callable(s.get_dim))
+        #assert(callable(s.dof))
         assert(callable(s.cast))
         assert(callable(s.enforce_power))
         assert(callable(s.check_codomain))
@@ -301,21 +301,21 @@ class Test_Common_Point_Like_Space_Interface(unittest.TestCase):
                           testcase_func_name=custom_name_func)
     def test_getters(self, name):
         s = generate_space(name)
-        assert(isinstance(s.get_shape(), tuple))
-        assert(isinstance(s.get_dim(), np.int))
+        assert(isinstance(s.shape, tuple))
+        assert(isinstance(s.dim, np.int))
 
-        assert(isinstance(s.get_dof(), np.int))
-        assert(isinstance(s.get_dof(split=True), tuple))
-        assert_equal(s.get_dof(), np.prod(s.get_dof(split=True)))
+        assert(isinstance(s.dof, np.int))
+        assert(isinstance(s.dof_split, tuple))
+        assert_equal(s.dof, np.prod(s.dof_split))
 
         assert(isinstance(s.get_vol(), np.float))
-        assert(isinstance(s.get_dof(split=True), tuple))
+        assert(isinstance(s.dof_split, tuple))
 
-        assert(isinstance(s.get_meta_volume(), np.float))
-        print(s.get_meta_volume(split=True), type(s.cast(1)))
-        assert(isinstance(s.get_meta_volume(split=True), type(s.cast(1))))
+        assert(isinstance(s.meta_volume, np.float))
+        print(s.meta_volume_split, type(s.cast(1)))
+        assert(isinstance(s.meta_volume_split, type(s.cast(1))))
         assert_almost_equal(
-            s.get_meta_volume(), s.get_meta_volume(split=True).sum(), 2)
+            s.meta_volume, s.meta_volume_split.sum(), 2)
 
     @parameterized.expand(point_like_spaces,
                           testcase_func_name=custom_name_func)
@@ -409,8 +409,8 @@ class Test_Point_Space(unittest.TestCase):
         num = 10
         s = point_space(num, dtype)
 
-        assert_equal(s.get_shape(), (num,))
-        assert_equal(s.get_dim(), num)
+        assert_equal(s.shape, (num,))
+        assert_equal(s.dim, num)
 
 ###############################################################################
 
@@ -422,11 +422,11 @@ class Test_Point_Space(unittest.TestCase):
         s = point_space(num, dtype)
 
         if issubclass(dtype.type, np.complexfloating):
-            assert_equal(s.get_dof(), 2 * num)
-            assert_equal(s.get_dof(split=True), (2 * num,))
+            assert_equal(s.dof, 2 * num)
+            assert_equal(s.dof_split, (2 * num,))
         else:
-            assert_equal(s.get_dof(), num)
-            assert_equal(s.get_dof(split=True), (num,))
+            assert_equal(s.dof, num)
+            assert_equal(s.dof_split, (num,))
 
 ###############################################################################
 
@@ -449,8 +449,8 @@ class Test_Point_Space(unittest.TestCase):
         num = 10
         s = point_space(num, dtype)
 
-        assert_equal(s.get_meta_volume(), 10.)
-        assert(check_equality(s, s.get_meta_volume(split=True), s.cast(1)))
+        assert_equal(s.meta_volume, 10.)
+        assert(check_equality(s, s.meta_volume_split, s.cast(1)))
 
 ###############################################################################
 
@@ -667,7 +667,7 @@ class Test_RG_Space(unittest.TestCase):
                      harmonic=harmonic,
                      fft_module=fft_module)
         assert(isinstance(x.harmonic, bool))
-        assert_equal(x.get_shape(), shape)
+        assert_equal(x.shape, shape)
         assert_equal(x.dtype,
                      np.dtype('float64') if complexity == 0 else
                      np.dtype('complex128'))
@@ -1016,11 +1016,11 @@ class Test_Lm_Space(unittest.TestCase):
         mmax = 12
         l = lm_space(lmax, mmax=mmax)
 
-        assert_equal(l.get_shape(), (156,))
-        assert_equal(l.get_dof(), 294)
-        assert_equal(l.get_dof(split=True), (294,))
-        assert_equal(l.get_meta_volume(), 294.)
-        assert_equal(l.get_meta_volume(split=True),
+        assert_equal(l.shape, (156,))
+        assert_equal(l.dof, 294)
+        assert_equal(l.dof_split, (294,))
+        assert_equal(l.meta_volume, 294.)
+        assert_equal(l.meta_volume_split,
                      l.cast(np.concatenate([np.ones(18), np.ones(138)*2])))
 
     def test_cast(self):

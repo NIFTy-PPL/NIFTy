@@ -21,7 +21,15 @@ class Field_type(object):
     def dtype(self):
         return self._dtype
 
-    def get_dof(self, split=False):
+    @property
+    def dof(self):
+        return self._dof
+
+    @property
+    def dof_split(self):
+        return self._dof_split
+
+    def _get_dof(self, split=False):
         if issubclass(self.dtype.type, np.complexfloating):
             multiplicator = 2
         else:
@@ -49,3 +57,6 @@ class Field_type(object):
 
     def complement_cast(self, x, axis=None):
         return x
+
+    def dot_contraction(self, x, axes):
+        raise NotImplementedError

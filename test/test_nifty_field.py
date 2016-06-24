@@ -115,7 +115,7 @@ def generate_space_with_size(name, num):
 
 
 def generate_data(space):
-    a = np.arange(space.get_dim()).reshape(space.get_shape())
+    a = np.arange(space.dim).reshape(space.shape)
     return distributed_data_object(a)
 
 ###############################################################################
@@ -140,7 +140,7 @@ class Test_field_init(unittest.TestCase):
         f = field(domain=(s,), dtype=s.dtype, datamodel=datamodel)
         assert (f.domain[0] is s)
         assert (s.check_codomain(f.codomain[0]))
-        assert (s.get_shape() == f.get_shape())
+        assert (s.shape == f.shape)
 
 
 class Test_field_init2(unittest.TestCase):
@@ -154,7 +154,7 @@ class Test_field_init2(unittest.TestCase):
         f = field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
         assert (f.domain[0] is s)
         assert (s.check_codomain(f.codomain[0]))
-        assert (s.get_shape() == f.get_shape())
+        assert (s.shape == f.shape)
 
 class Test_field_multiple_rg_init(unittest.TestCase):
     @parameterized.expand(
@@ -180,7 +180,7 @@ class Test_field_multiple_rg_init(unittest.TestCase):
         assert (f.domain[1] is s2)
         assert (s1.check_codomain(f.codomain[0]))
         assert (s2.check_codomain(f.codomain[1]))
-        assert (s1.get_shape() + s2.get_shape() == f.get_shape())
+        assert (s1.shape + s2.shape == f.shape)
 
 class Test_field_multiple_init(unittest.TestCase):
     @parameterized.expand(
@@ -194,7 +194,7 @@ class Test_field_multiple_init(unittest.TestCase):
         assert (f.domain[1] is s2)
         assert (s1.check_codomain(f.codomain[0]))
         assert (s2.check_codomain(f.codomain[1]))
-        assert (s1.get_shape() + s2.get_shape() == f.get_shape())
+        assert (s1.shape + s2.shape == f.shape)
         s3 = generate_space_with_size('hp_space',shape)
         f = field(domain=(s1, s2, s3))
         assert (f.domain[0] is s1)
@@ -203,8 +203,8 @@ class Test_field_multiple_init(unittest.TestCase):
         assert (s1.check_codomain(f.codomain[0]))
         assert (s2.check_codomain(f.codomain[1]))
         assert (s3.check_codomain(f.codomain[2]))
-        assert (s1.get_shape() + s2.get_shape() + s3.get_shape() ==
-                f.get_shape())
+        assert (s1.shape + s2.shape + s3.shape ==
+                f.shape)
 
 
 class Test_axis(unittest.TestCase):

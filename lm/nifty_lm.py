@@ -173,7 +173,7 @@ class lm_space(point_space):
 
         self.power_indices = lm_power_indices(
                     lmax=self.paradict['lmax'],
-                    dim=self.get_dim(),
+                    dim=self.dim,
                     allowed_distribution_strategies=LM_DISTRIBUTION_STRATEGIES)
 
     @property
@@ -210,12 +210,14 @@ class lm_space(point_space):
                         mmax=self.paradict['mmax'],
                         dtype=self.dtype)
 
-    def get_shape(self):
+    @property
+    def shape(self):
         lmax = self.paradict['lmax']
         mmax = self.paradict['mmax']
         return (np.int((mmax + 1) * (lmax + 1) - ((mmax + 1) * mmax) // 2),)
 
-    def get_dof(self, split=False):
+    @property
+    def dof(self):
         """
             Computes the number of degrees of freedom of the space, taking into
             account symmetry constraints and complex-valuedness.
@@ -234,12 +236,14 @@ class lm_space(point_space):
         lmax = self.paradict['lmax']
         mmax = self.paradict['mmax']
         dof = np.int((lmax + 1) * (2 * mmax + 1) - (mmax + 1) * mmax)
-        if split:
-            return (dof, )
-        else:
-            return dof
+        return dof
 
-    def get_meta_volume(self, split=False):
+    @property
+    def dof_split(self):
+        return (self.dof,)
+
+    @property
+    def meta_volume(self):
         """
             Calculates the meta volumes.
 
@@ -265,12 +269,13 @@ class lm_space(point_space):
             volume 1, the ones with :math:`m>0` have meta volume 2, sinnce they
             each determine another component with negative :math:`m`.
         """
-        if not split:
-            return np.float(self.get_dof())
-        else:
-            mol = self.cast(1, dtype=np.float)
-            mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
-            return mol
+        return np.float(self.dof())
+
+    @property
+    def meta_volume_split(self):
+        mol = self.cast(1, dtype=np.float)
+        mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
+        return mol
 
     def _complement_cast(self, x, axis=None, **kwargs):
         if axis is None:
@@ -441,11 +446,11 @@ class lm_space(point_space):
 #            x = 0
 #
 #        elif arg['random'] == "pm1":
-#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#            x = random.pm1(dtype=self.dtype, shape=self.shape)
 #
 #        elif arg['random'] == "gau":
 #            x = random.gau(dtype=self.dtype,
-#                           shape=self.get_shape(),
+#                           shape=self.shape,
 #                           mean=arg['mean'],
 #                           std=arg['std'])
 
@@ -471,7 +476,7 @@ class lm_space(point_space):
 
 #        elif arg['random'] == "uni":
 #            x = random.uni(dtype=self.dtype,
-#                           shape=self.get_shape(),
+#                           shape=self.shape,
 #                           vmin=arg['vmin'],
 #                           vmax=arg['vmax'])
 #
@@ -481,37 +486,51 @@ class lm_space(point_space):
         sample = self.cast(sample)
         return sample
 
-    def calc_dot(self, x, y):
-        """
-            Computes the discrete inner product of two given arrays of field
-            values.
+#    def calc_dot(self, x, y):
+#        """
+#            Computes the discrete inner product of two given arrays of field
+#            values.
+#
+#            Parameters
+#            ----------
+#            x : numpy.ndarray
+#                First array
+#            y : numpy.ndarray
+#                Second array
+#
+#            Returns
+#            -------
+#            dot : scalar
+#                Inner product of the two arrays.
+#        """
+#        x = self.cast(x)
+#        y = self.cast(y)
+#
+#        lmax = self.paradict['lmax']
+#
+#        x_low = x[:lmax + 1]
+#        x_high = x[lmax + 1:]
+#        y_low = y[:lmax + 1]
+#        y_high = y[lmax + 1:]
+#
+#        dot = (x_low.real * y_low.real).sum()
+#        dot += 2 * (x_high.real * y_high.real).sum()
+#        dot += 2 * (x_high.imag * y_high.imag).sum()
+#        return dot
 
-            Parameters
-            ----------
-            x : numpy.ndarray
-                First array
-            y : numpy.ndarray
-                Second array
-
-            Returns
-            -------
-            dot : scalar
-                Inner product of the two arrays.
-        """
-        x = self.cast(x)
-        y = self.cast(y)
-
+    def dot_contraction(self, x, axes):
+        assert len(axes) == 1
+        axis = axes[0]
         lmax = self.paradict['lmax']
 
-        x_low = x[:lmax + 1]
-        x_high = x[lmax + 1:]
-        y_low = y[:lmax + 1]
-        y_high = y[lmax + 1:]
+        # extract the low and high parts of x
+        extractor = ()
+        extractor += (slice(None),)*axis
+        low_extractor = extractor + (slice(None, lmax+1), )
+        high_extractor = extractor + (slice(lmax+1), )
 
-        dot = (x_low.real * y_low.real).sum()
-        dot += 2 * (x_high.real * y_high.real).sum()
-        dot += 2 * (x_high.imag * y_high.imag).sum()
-        return dot
+        result = x[low_extractor].sum(axes) + 2 * x[high_extractor].sum(axes)
+        return result
 
     def calc_transform(self, x, codomain=None, **kwargs):
         """
@@ -884,7 +903,7 @@ class lm_space(point_space):
             fig.canvas.draw()
 
     def getlm(self):  # > compute all (l,m)
-        index = np.arange(self.get_dim())
+        index = np.arange(self.dim)
         n = 2 * self.paradict['lmax'] + 1
         m = np.ceil(
             (n - np.sqrt(n**2 - 8 * (index - self.paradict['lmax']))) / 2
@@ -1008,29 +1027,12 @@ class gl_space(point_space):
                         nlon=self.paradict['nlon'],
                         dtype=self.dtype)
 
-    def get_shape(self):
+    @property
+    def shape(self):
         return (np.int((self.paradict['nlat'] * self.paradict['nlon'])),)
 
-    def get_dof(self, split=False):
-        """
-            Computes the number of degrees of freedom of the space.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-
-            Notes
-            -----
-            Since the :py:class:`gl_space` class only supports real-valued
-            fields, the number of degrees of freedom is the number of pixels.
-        """
-        if split:
-            return self.get_shape()
-        else:
-            return self.get_dim()
-
-    def get_meta_volume(self, split=False):
+    @property
+    def meta_volume(self):
         """
             Calculates the meta volumes.
 
@@ -1055,11 +1057,12 @@ class gl_space(point_space):
             For Gauss-Legendre pixelizations, the meta volumes are the pixel
             sizes.
         """
-        if not split:
-            return np.float(4 * np.pi)
-        else:
-            mol = self.cast(1, dtype=np.float)
-            return self.calc_weight(mol, power=1)
+        return np.float(4 * np.pi)
+
+    @property
+    def meta_volume_split(self):
+        mol = self.cast(1, dtype=np.float)
+        return self.calc_weight(mol, power=1)
 
     # TODO: Extend to binning/log
     def enforce_power(self, spec, size=None, kindex=None):
@@ -1171,14 +1174,14 @@ class gl_space(point_space):
         arg = random.parse_arguments(self, **kwargs)
 
 #        if(arg is None):
-#            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#            x = np.zeros(self.shape, dtype=self.dtype)
 #
 #        elif(arg['random'] == "pm1"):
-#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#            x = random.pm1(dtype=self.dtype, shape=self.shape)
 #
 #        elif(arg['random'] == "gau"):
 #            x = random.gau(dtype=self.dtype,
-#                           shape=self.get_shape(),
+#                           shape=self.shape,
 #                           mean=arg['mean'],
 #                           std=arg['std'])
 #
@@ -1204,7 +1207,7 @@ class gl_space(point_space):
 
 #        elif(arg['random'] == "uni"):
 #            x = random.uni(dtype=self.dtype,
-#                           shape=self.get_shape(),
+#                           shape=self.shape,
 #                           vmin=arg['vmin'],
 #                           vmax=arg['vmax'])
 #
@@ -1667,29 +1670,12 @@ class hp_space(point_space):
     def copy(self):
         return hp_space(nside=self.paradict['nside'])
 
-    def get_shape(self):
+    @property
+    def shape(self):
         return (np.int(12 * self.paradict['nside']**2),)
 
-    def get_dof(self, split=False):
-        """
-            Computes the number of degrees of freedom of the space.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-
-            Notes
-            -----
-            Since the :py:class:`hp_space` class only supports real-valued
-            fields, the number of degrees of freedom is the number of pixels.
-        """
-        if split:
-            return self.get_shape()
-        else:
-            return self.get_dim()
-
-    def get_meta_volume(self, split=False):
+    @property
+    def meta_volume(self):
         """
             Calculates the meta volumes.
 
@@ -1713,11 +1699,12 @@ class hp_space(point_space):
             -----
             For HEALpix discretizations, the meta volumes are the pixel sizes.
         """
-        if not split:
-            return np.float(4 * np.pi)
-        else:
-            mol = self.cast(1, dtype=np.float)
-            return self.calc_weight(mol, power=1)
+        return np.float(4 * np.pi)
+
+    @property
+    def meta_volume_split(self):
+        mol = self.cast(1, dtype=np.float)
+        return self.calc_weight(mol, power=1)
 
     # TODO: Extend to binning/log
     def enforce_power(self, spec, size=None, kindex=None):
@@ -1822,13 +1809,13 @@ class hp_space(point_space):
         arg = random.parse_arguments(self, **kwargs)
 
 #        if arg is None:
-#            x = np.zeros(self.get_shape(), dtype=self.dtype)
+#            x = np.zeros(self.shape, dtype=self.dtype)
 #
 #        elif arg['random'] == "pm1":
-#            x = random.pm1(dtype=self.dtype, shape=self.get_shape())
+#            x = random.pm1(dtype=self.dtype, shape=self.shape)
 #
 #        elif arg['random'] == "gau":
-#            x = random.gau(dtype=self.dtype, shape=self.get_shape(),
+#            x = random.gau(dtype=self.dtype, shape=self.shape,
 #                           mean=arg['mean'],
 #                           std=arg['std'])
 
@@ -1849,7 +1836,7 @@ class hp_space(point_space):
 
 
 #        elif arg['random'] == "uni":
-#            x = random.uni(dtype=self.dtype, shape=self.get_shape(),
+#            x = random.uni(dtype=self.dtype, shape=self.shape,
 #                           vmin=arg['vmin'],
 #                           vmax=arg['vmax'])
 #

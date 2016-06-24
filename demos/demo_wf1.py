@@ -93,7 +93,7 @@ if __name__ == "__main__":
     #temp_result = (D.inverse_times(m)-xi)
 
 
-    n_power = x_space.enforce_power(s.var()/x_space.get_dim())
+    n_power = x_space.enforce_power(s.var()/x_space.dim)
     s_power = S.get_power()
 
     s.plot(title="signal", save = 'plot_s.png')

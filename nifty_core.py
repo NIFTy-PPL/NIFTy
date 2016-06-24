@@ -259,7 +259,7 @@ class space(object):
         return not self.__eq__(x)
 
     def __len__(self):
-        return int(self.get_dim())
+        return int(self.dim)
 
     def copy(self):
         return space(para=self.para,
@@ -277,11 +277,13 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'apply_scalar_function'."))
 
-    def get_shape(self):
+    @property
+    def shape(self):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'shape'."))
 
-    def get_dim(self):
+    @property
+    def dim(self):
         """
             Computes the dimension of the space, i.e.\  the number of pixels.
 
@@ -299,7 +301,8 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dim'."))
 
-    def get_dof(self):
+    @property
+    def dof(self):
         """
             Computes the number of degrees of freedom of the space.
 
@@ -310,6 +313,19 @@ class space(object):
         """
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'dof'."))
+
+    @property
+    def dof_split(self):
+        """
+            Computes the number of degrees of freedom of the space.
+
+            Returns
+            -------
+            dof : int
+                Number of degrees of freedom of the space.
+        """
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: no generic instance method 'dof_split'."))
 
     def complement_cast(self, x, axis=None):
         return x
@@ -501,7 +517,7 @@ class space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'norm'."))
 
-    def calc_dot(self, x, y):
+    def dot_contraction(self, x, axes):
         """
             Computes the discrete inner product of two given arrays of field
             values.
@@ -828,10 +844,12 @@ class point_space(space):
     def apply_scalar_function(self, x, function, inplace=False):
         return x.apply_scalar_function(function, inplace=inplace)
 
-    def get_shape(self):
+    @property
+    def shape(self):
         return (self.paradict['num'],)
 
-    def get_dim(self):
+    @property
+    def dim(self):
         """
             Computes the dimension of the space, i.e.\  the number of points.
 
@@ -846,9 +864,10 @@ class point_space(space):
             dim : {int, numpy.ndarray}
                 Dimension(s) of the space.
         """
-        return np.prod(self.get_shape())
+        return np.prod(self.shape)
 
-    def get_dof(self, split=False):
+    @property
+    def dof(self):
         """
             Computes the number of degrees of freedom of the space, i.e./  the
             number of points for real-valued fields and twice that number for
@@ -859,23 +878,38 @@ class point_space(space):
             dof : int
                 Number of degrees of freedom of the space.
         """
-        if split:
-            dof = self.get_shape()
-            if issubclass(self.dtype.type, np.complexfloating):
-                dof = tuple(np.array(dof)*2)
-        else:
-            dof = self.get_dim()
-            if issubclass(self.dtype.type, np.complexfloating):
-                dof = dof * 2
+        dof = self.dim
+        if issubclass(self.dtype.type, np.complexfloating):
+            dof = dof * 2
         return dof
 
-    def get_vol(self, split=False):
-        if split:
-            return self.distances
-        else:
-            return np.prod(self.distances)
+    @property
+    def dof_split(self):
+        """
+            Computes the number of degrees of freedom of the space, i.e./  the
+            number of points for real-valued fields and twice that number for
+            complex-valued fields.
 
-    def get_meta_volume(self, split=False):
+            Returns
+            -------
+            dof : int
+                Number of degrees of freedom of the space.
+        """
+        dof = self.shape
+        if issubclass(self.dtype.type, np.complexfloating):
+            dof = tuple(np.array(dof)*2)
+        return dof
+
+    @property
+    def vol(self, split=False):
+        return np.prod(self.distances)
+
+    @property
+    def vol_split(self):
+        return self.distances
+
+    @property
+    def meta_volume(self):
         """
             Calculates the meta volumes.
 
@@ -896,11 +930,12 @@ class point_space(space):
             mol : {numpy.ndarray, float}
                 Meta volume of the pixels or the complete space.
         """
-        if not split:
-            return self.get_dim() * self.get_vol()
-        else:
-            mol = self.cast(1, dtype=np.dtype('float'))
-            return self.calc_weight(mol, power=1)
+        return self.dim() * self.vol()
+
+    @property
+    def meta_volume_split(self):
+        mol = self.cast(1, dtype=np.dtype('float'))
+        return self.calc_weight(mol, power=1)
 
     def enforce_power(self, spec, **kwargs):
         """
@@ -1028,110 +1063,110 @@ class point_space(space):
         """
         return self.copy()
 
-    def get_random_values(self, **kwargs):
-        """
-            Generates random field values according to the specifications given
-            by the parameters.
-
-            Returns
-            -------
-            x : numpy.ndarray
-                Valid field values.
-
-            Other parameters
-            ----------------
-            random : string, *optional*
-                Specifies the probability distribution from which the random
-                numbers are to be drawn.
-                Supported distributions are:
-
-                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-                - "gau" (normal distribution with zero-mean and a given
-                standard
-                    deviation or variance)
-                - "syn" (synthesizes from a given power spectrum)
-                - "uni" (uniform distribution over [vmin,vmax[)
-
-                (default: None).
-            dev : float, *optional*
-                Standard deviation (default: 1).
-            var : float, *optional*
-                Variance, overriding `dev` if both are specified
-                (default: 1).
-            spec : {scalar, list, numpy.ndarray, nifty.field, function},
-            *optional*
-                Power spectrum (default: 1).
-            pindex : numpy.ndarray, *optional*
-                Indexing array giving the power spectrum index of each band
-                (default: None).
-            kindex : numpy.ndarray, *optional*
-                Scale of each band (default: None).
-            codomain : nifty.space, *optional*
-                A compatible codomain with power indices (default: None).
-            log : bool, *optional*
-                Flag specifying if the spectral binning is performed on
-                logarithmic
-                scale or not; if set, the number of used bins is set
-                automatically (if not given otherwise); by default no binning
-                is done (default: None).
-            nbin : integer, *optional*
-                Number of used spectral bins; if given `log` is set to
-                ``False``;
-                integers below the minimum of 3 induce an automatic setting;
-                by default no binning is done (default: None).
-            binbounds : {list, array}, *optional*
-                User specific inner boundaries of the bins, which are preferred
-                over the above parameters; by default no binning is done
-                (default: None).
-                vmin : {scalar, list, ndarray, field}, *optional*
-                Lower limit of the uniform distribution if ``random == "uni"``
-                (default: 0).
-            vmin : float, *optional*
-                Lower limit for a uniform distribution (default: 0).
-            vmax : float, *optional*
-                Upper limit for a uniform distribution (default: 1).
-        """
-
-        arg = random.parse_arguments(self, **kwargs)
-
-        if arg is None:
-            return self.cast(0)
-
-        # Prepare the empty distributed_data_object
-        sample = distributed_data_object(
-                                    global_shape=self.get_shape(),
-                                    dtype=self.dtype)
-
-        # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
-        if arg['random'] == 'pm1':
-            sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
-                                                        shape=s))
-
-        # Case 2: normal distribution with zero-mean and a given standard
-        #         deviation or variance
-        elif arg['random'] == 'gau':
-            std = arg['std']
-            if np.isscalar(std) or std is None:
-                processed_std = std
-            else:
-                try:
-                    processed_std = sample.distributor. \
-                        extract_local_data(std)
-                except(AttributeError):
-                    processed_std = std
-
-            sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
-                                                        shape=s,
-                                                        mean=arg['mean'],
-                                                        std=processed_std))
-
-        # Case 3: uniform distribution
-        elif arg['random'] == 'uni':
-            sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
-                                                        shape=s,
-                                                        vmin=arg['vmin'],
-                                                        vmax=arg['vmax']))
-        return sample
+#    def get_random_values(self, **kwargs):
+#        """
+#            Generates random field values according to the specifications given
+#            by the parameters.
+#
+#            Returns
+#            -------
+#            x : numpy.ndarray
+#                Valid field values.
+#
+#            Other parameters
+#            ----------------
+#            random : string, *optional*
+#                Specifies the probability distribution from which the random
+#                numbers are to be drawn.
+#                Supported distributions are:
+#
+#                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
+#                - "gau" (normal distribution with zero-mean and a given
+#                standard
+#                    deviation or variance)
+#                - "syn" (synthesizes from a given power spectrum)
+#                - "uni" (uniform distribution over [vmin,vmax[)
+#
+#                (default: None).
+#            dev : float, *optional*
+#                Standard deviation (default: 1).
+#            var : float, *optional*
+#                Variance, overriding `dev` if both are specified
+#                (default: 1).
+#            spec : {scalar, list, numpy.ndarray, nifty.field, function},
+#            *optional*
+#                Power spectrum (default: 1).
+#            pindex : numpy.ndarray, *optional*
+#                Indexing array giving the power spectrum index of each band
+#                (default: None).
+#            kindex : numpy.ndarray, *optional*
+#                Scale of each band (default: None).
+#            codomain : nifty.space, *optional*
+#                A compatible codomain with power indices (default: None).
+#            log : bool, *optional*
+#                Flag specifying if the spectral binning is performed on
+#                logarithmic
+#                scale or not; if set, the number of used bins is set
+#                automatically (if not given otherwise); by default no binning
+#                is done (default: None).
+#            nbin : integer, *optional*
+#                Number of used spectral bins; if given `log` is set to
+#                ``False``;
+#                integers below the minimum of 3 induce an automatic setting;
+#                by default no binning is done (default: None).
+#            binbounds : {list, array}, *optional*
+#                User specific inner boundaries of the bins, which are preferred
+#                over the above parameters; by default no binning is done
+#                (default: None).
+#                vmin : {scalar, list, ndarray, field}, *optional*
+#                Lower limit of the uniform distribution if ``random == "uni"``
+#                (default: 0).
+#            vmin : float, *optional*
+#                Lower limit for a uniform distribution (default: 0).
+#            vmax : float, *optional*
+#                Upper limit for a uniform distribution (default: 1).
+#        """
+#
+#        arg = random.parse_arguments(self, **kwargs)
+#
+#        if arg is None:
+#            return self.cast(0)
+#
+#        # Prepare the empty distributed_data_object
+#        sample = distributed_data_object(
+#                                    global_shape=self.shape,
+#                                    dtype=self.dtype)
+#
+#        # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
+#        if arg['random'] == 'pm1':
+#            sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
+#                                                        shape=s))
+#
+#        # Case 2: normal distribution with zero-mean and a given standard
+#        #         deviation or variance
+#        elif arg['random'] == 'gau':
+#            std = arg['std']
+#            if np.isscalar(std) or std is None:
+#                processed_std = std
+#            else:
+#                try:
+#                    processed_std = sample.distributor. \
+#                        extract_local_data(std)
+#                except(AttributeError):
+#                    processed_std = std
+#
+#            sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
+#                                                        shape=s,
+#                                                        mean=arg['mean'],
+#                                                        std=processed_std))
+#
+#        # Case 3: uniform distribution
+#        elif arg['random'] == 'uni':
+#            sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
+#                                                        shape=s,
+#                                                        vmin=arg['vmin'],
+#                                                        vmax=arg['vmax']))
+#        return sample
 
     def calc_weight(self, x, power=1):
         """
@@ -1186,7 +1221,7 @@ class point_space(space):
         result = result**(1. / q)
         return result
 
-    def calc_dot(self, x, y, axes=None):
+    def dot_contraction(self, x, axes):
         """
             Computes the discrete inner product of two given arrays of field
             values.
@@ -1203,12 +1238,7 @@ class point_space(space):
             dot : scalar
                 Inner product of the two arrays.
         """
-        if axes is None:
-            result = x.vdot(y)
-        else:
-            result = (x.conjugate() * y).sum(axis=axes)
-
-        return result
+        return x.sum(axis=axes)
 
     def calc_transform(self, x, codomain=None, **kwargs):
         """

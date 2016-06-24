@@ -77,7 +77,7 @@ class los_response(operator):
         if not isinstance(ends, list):
             raise TypeError(about._errors.cstring(
                 "ERROR: ends must be a list instance."))
-        if not (len(domain.get_shape()) == len(starts) == len(ends)):
+        if not (len(domain.shape) == len(starts) == len(ends)):
             raise ValueError(about._errors.cstring(
                 "ERROR: The length of starts and ends must " +
                 "be the same as the number of dimension of the domain."))
@@ -88,7 +88,7 @@ class los_response(operator):
         #     zero_point = [0.] * number_of_dimensions
         if zero_point is None:
             phys_middle = (np.array(domain.get_vol(split=True)) *
-                           domain.get_shape()) / 2.
+                           domain.shape) / 2.
             zero_point = phys_middle * domain.paradict['zerocenter']
 
         if np.shape(zero_point) != (number_of_dimensions,):
@@ -202,7 +202,7 @@ class los_response(operator):
             return self.zero_point
         elif self.domain.datamodel in STRATEGIES['slicing']:
             dummy_d2o = distributed_data_object(
-                                global_shape=self.domain.get_shape(),
+                                global_shape=self.domain.shape,
                                 dtype=np.dtype('int16'),
                                 distribution_strategy=self.domain.datamodel,
                                 skip_parsing=True)
@@ -219,10 +219,10 @@ class los_response(operator):
 
     def _init_local_shape(self):
         if self.domain.datamodel in STRATEGIES['not']:
-            return self.domain.get_shape()
+            return self.domain.shape
         elif self.domain.datamodel in STRATEGIES['slicing']:
             dummy_d2o = distributed_data_object(
-                                global_shape=self.domain.get_shape(),
+                                global_shape=self.domain.shape,
                                 dtype=np.dtype('int'),
                                 distribution_strategy=self.domain.datamodel,
                                 skip_parsing=True)

@@ -1934,7 +1934,7 @@ class power_operator(diagonal_operator):
         else:
             # TODO: Pindex casting could be done here. No must-have.
             assert(np.all(np.array(pindex.shape) ==
-                          np.array(self.domain.get_shape())))
+                          np.array(self.domain.shape)))
         return pindex
 
     def get_power(self, bare=True, **kwargs):
@@ -2191,7 +2191,7 @@ class projection_operator(operator):
             try:
                 self.domain.power_indices['pindex']
             except AttributeError:
-                assign = np.arange(self.domain.get_dim(), dtype=np.int)
+                assign = np.arange(self.domain.dim, dtype=np.int)
 
         self.assign = self.domain.cast(assign, dtype=np.dtype('int'),
                                        hermitianize=False)
@@ -2230,12 +2230,12 @@ class projection_operator(operator):
                 The number of degrees of freedom per projection band.
         """
         # Check if the space has some meta-degrees of freedom
-        if self.domain.get_dim() == self.domain.get_dof():
+        if self.domain.dim == self.domain.dof:
             # If not, compute the degeneracy factor directly
             rho = self.domain.calc_bincount(self.assign)
         else:
             meta_mask = self.domain.calc_weight(
-                self.domain.get_meta_volume(split=True),
+                self.domain.meta_volume_split,
                 power=-1)
             rho = self.domain.calc_bincount(self.assign,
                                             weights=meta_mask)
@@ -2391,9 +2391,9 @@ class projection_operator(operator):
 
         # Check for hidden degrees of freedom and compensate the trace
         # accordingly
-        if self.domain.get_dim() != self.domain.get_dof():
+        if self.domain.dim != self.domain.dof:
             working_field *= self.domain.calc_weight(
-                self.domain.get_meta_volume(split=True),
+                self.domain.meta_volume_split,
                 power=-1)
         # prepare the result object
         projection_result = utilities.field_map(
@@ -2798,14 +2798,14 @@ class response_operator(operator):
 
         # check assignment(s)
         if assign is None:
-            assignments = self.domain.get_dim()
+            assignments = self.domain.dim
             self.assign = None
         elif isinstance(assign, list):
             # check that the advanced indexing entries are either scalar
             # or all have the same size
             shape_list = map(np.shape, assign)
             shape_list.remove(())
-            if len(self.domain.get_shape()) == 1:
+            if len(self.domain.shape) == 1:
                 if len(shape_list) == 0:
                     assignments = len(assign)
                 elif len(shape_list) == 1:
@@ -2814,7 +2814,7 @@ class response_operator(operator):
                     raise ValueError(about._errors.cstring(
                         "ERROR: Wrong number of indices!"))
             else:
-                if len(assign) != len(self.domain.get_shape()):
+                if len(assign) != len(self.domain.shape):
                     raise ValueError(about._errors.cstring(
                         "ERROR: Wrong number of indices!"))
                 elif shape_list == []:
@@ -2845,14 +2845,14 @@ class response_operator(operator):
             elif not target.discrete:
                 raise ValueError(about._errors.cstring(
                     "ERROR: Given target must be a discrete space!"))
-            elif len(target.get_shape()) > 1:
+            elif len(target.shape) > 1:
                 raise ValueError(about._errors.cstring(
                     "ERROR: Given target must be a one-dimensional space."))
-            elif assignments != target.get_dim():
+            elif assignments != target.dim:
                 raise ValueError(about._errors.cstring(
                     "ERROR: dimension mismatch ( " +
                     str(assignments) + " <> " +
-                    str(target.get_dim(split=False)) + " )."))
+                    str(target.dim) + " )."))
         self.target = target
         if self.target.check_codomain(cotarget):
             self.cotarget = cotarget
@@ -3118,7 +3118,7 @@ class invertible_operator(operator):
             reset : integer, *optional*
                 Number of iterations after which to restart; i.e., forget
                 previous
-                conjugated directions (default: sqrt(b.get_dim())).
+                conjugated directions (default: sqrt(b.dim)).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
             x0 : field, *optional*
@@ -3131,7 +3131,7 @@ class invertible_operator(operator):
                 exiting (default: 1).
             limii : integer, *optional*
                 Maximum number of iterations performed
-                (default: 10 * b.get_dim()).
+                (default: 10 * b.dim).
 
         """
         x_, convergence = conjugate_gradient(self.inverse_times,
@@ -3191,7 +3191,7 @@ class invertible_operator(operator):
             reset : integer, *optional*
                 Number of iterations after which to restart; i.e., forget
                 previous
-                conjugated directions (default: sqrt(b.get_dim())).
+                conjugated directions (default: sqrt(b.dim)).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
             x0 : field, *optional*
@@ -3204,7 +3204,7 @@ class invertible_operator(operator):
                 exiting (default: 1).
             limii : integer, *optional*
                 Maximum number of iterations performed
-                (default: 10 * b.get_dim()).
+                (default: 10 * b.dim).
 
         """
         x_, convergence = conjugate_gradient(self.times,
@@ -3656,7 +3656,7 @@ class propagator_operator_old(operator):
                 counter each iteration (default: None).
             reset : integer, *optional*
                 Number of iterations after which to restart; i.e., forget previous
-                conjugated directions (default: sqrt(b.get_dim())).
+                conjugated directions (default: sqrt(b.dim)).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
             x0 : field, *optional*
@@ -3668,7 +3668,7 @@ class propagator_operator_old(operator):
                 Number of times the tolerance should be undershot before
                 exiting (default: 1).
             limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.get_dim()).
+                Maximum number of iterations performed (default: 10 * b.dim).
 
         """
         if W is None:

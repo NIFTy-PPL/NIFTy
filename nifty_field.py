@@ -15,6 +15,7 @@ from nifty.field_types import Field_type,\
 from nifty.nifty_core import space
 
 import nifty.nifty_utilities as utilities
+from nifty_random import random
 
 POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
@@ -105,7 +106,7 @@ class field(object):
 
     """
 
-    def __init__(self, domain, val=None, codomain=None,
+    def __init__(self, domain=None, val=None, codomain=None,
                  dtype=None, field_type=None, copy=False,
                  datamodel=None, comm=None, **kwargs):
         """
@@ -186,22 +187,16 @@ class field(object):
                          field_type, datamodel, **kwargs):
         # check domain
         self.domain = self._parse_domain(domain=domain)
-        self._axis_list = self._get_axis_list_from_domain(domain=self.domain)
+        self.domain_axes_list = self._get_axes_list(self.domain)
 
         # check codomain
         if codomain is None:
-            codomain = self.get_codomain(domain=self.domain)
+            self.codomain = self._build_codomain(domain=self.domain)
         else:
             self.codomain = self._parse_codomain(codomain, self.domain)
 
-        if field_type is None:
-            field_type = Field_array(shape=(), dtype=np.float)
-        elif not isinstance(field_type, Field_type):
-            raise ValueError(about._errors.cstring(
-                    "ERROR: The given field_type object is not an "
-                    "instance of nifty.Field_type."))
-
-        self.field_type = field_type
+        self.field_type = self._parse_field_type(field_type)
+        self.field_type_axes_list = self._get_axes_list(self.field_type)
 
         if dtype is None:
             dtype = self._infer_dtype(domain=self.domain,
@@ -237,21 +232,21 @@ class field(object):
         if domain is not None:
             dtype_tuple += tuple(np.dtype(sp.dtype) for sp in domain)
         if field_type is not None:
-            dtype_tuple += (field_type.dtype,)
+            dtype_tuple += tuple(np.dtype(ft.dtype) for ft in field_type)
 
         dtype = reduce(lambda x, y: np.result_type(x, y), dtype_tuple)
         return dtype
 
-    def _get_axis_list_from_domain(self, domain):
+    def _get_axes_list(self, things_with_shape):
         i = 0
-        axis_list = []
-        for sp in domain:
+        axes_list = []
+        for thing in things_with_shape:
             l = []
-            for j in range(len(sp.get_shape())):
+            for j in range(len(thing.shape)):
                 l += [i]
                 i += 1
-            axis_list += [tuple(l)]
-        return axis_list
+            axes_list += [tuple(l)]
+        return axes_list
 
     def _parse_comm(self, comm):
         # check if comm is a string -> the name of comm is given
@@ -273,7 +268,9 @@ class field(object):
         return result_comm
 
     def _parse_domain(self, domain):
-        if not isinstance(domain, tuple):
+        if domain is None:
+            domain = ()
+        elif not isinstance(domain, tuple):
             domain = (domain,)
         for d in domain:
             if not isinstance(d, space):
@@ -299,24 +296,72 @@ class field(object):
                     "to its domain-counterpart."))
         return codomain
 
-    def get_codomain(self, domain):
+    def _parse_field_type(self, field_type):
+        if field_type is None:
+            field_type = ()
+        elif not isinstance(field_type, tuple):
+            field_type = (field_type,)
+        for ft in field_type:
+            if not isinstance(ft, Field_type):
+                raise TypeError(about._errors.cstring(
+                    "ERROR: Given object is not a nifty.Field_type."))
+        return field_type
+
+    def _build_codomain(self, domain):
         codomain = tuple(sp.get_codomain() for sp in domain)
         return codomain
 
-    def get_random_values(self, domain=None, codomain=None, **kwargs):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'enforce_power'."))
+    def get_random_values(self, **kwargs):
+        arg = random.parse_arguments(self, **kwargs)
+
+        if arg is None:
+            return self.cast(0)
+
+        # Prepare the empty distributed_data_object
+        sample = distributed_data_object(
+                                    global_shape=self.shape,
+                                    dtype=self.dtype)
+
+        # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
+        if arg['random'] == 'pm1':
+            sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
+                                                        shape=s))
+
+        # Case 2: normal distribution with zero-mean and a given standard
+        #         deviation or variance
+        elif arg['random'] == 'gau':
+            std = arg['std']
+            if np.isscalar(std) or std is None:
+                processed_std = std
+            else:
+                try:
+                    processed_std = sample.distributor. \
+                        extract_local_data(std)
+                except(AttributeError):
+                    processed_std = std
+
+            sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
+                                                        shape=s,
+                                                        mean=arg['mean'],
+                                                        std=processed_std))
+
+        # Case 3: uniform distribution
+        elif arg['random'] == 'uni':
+            sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
+                                                        shape=s,
+                                                        vmin=arg['vmin'],
+                                                        vmax=arg['vmax']))
+        return sample
 
     def __len__(self):
-        return int(self.get_dim()[0])
+        return int(self.dim[0])
 
     def copy(self, domain=None, codomain=None, field_type=None, **kwargs):
         copied_val = self._unary_operation(self.get_val(), op='copy', **kwargs)
         new_field = self.copy_empty(domain=domain,
                                     codomain=codomain,
                                     field_type=field_type)
-        new_field.set_val(new_val=copied_val,
-                          copy=True)
+        new_field.set_val(new_val=copied_val, copy=True)
         return new_field
 
     def _fast_copy_empty(self):
@@ -330,7 +375,7 @@ class field(object):
                 new_field.__dict__[key] = value
             else:
                 new_field.__dict__[key] = \
-                    self.domain.unary_operation(self.val, op='copy_empty')
+                    self._unary_operation(self.val, op='copy_empty')
         return new_field
 
     def copy_empty(self, domain=None, codomain=None, dtype=None, comm=None,
@@ -354,16 +399,22 @@ class field(object):
             field_type = self.field_type
 
         _fast_copyable = True
-        for i in len(self.domain):
+        for i in xrange(len(self.domain)):
             if self.domain[i] is not domain[i]:
                 _fast_copyable = False
                 break
             if self.codomain[i] is not codomain[i]:
                 _fast_copyable = False
                 break
+
+        for i in xrange(len(self.field_type)):
+            if self.field_type[i] is not field_type[i]:
+                _fast_copyable = False
+                break
+
         if (_fast_copyable and dtype == self.dtype and comm == self.comm and
                 datamodel == self.datamodel and
-                field_type is self.field_type and kwargs == {}):
+                kwargs == {}):
             new_field = self._fast_copy_empty()
         else:
             new_field = field(domain=domain, codomain=codomain, dtype=dtype,
@@ -387,8 +438,11 @@ class field(object):
         self.val = new_val
         return self.val
 
-    def get_val(self):
-        return self.val
+    def get_val(self, copy=False):
+        if copy:
+            return self.val.copy()
+        else:
+            return self.val
 
     def __getitem__(self, key):
         return self.val[key]
@@ -398,13 +452,18 @@ class field(object):
 
     @property
     def shape(self):
-        shape_tuple = tuple(sp.get_shape() for sp in self.domain)
-        shape_tuple += (self.field_type.shape, )
-        global_shape = reduce(lambda x, y: x + y, shape_tuple)
+        shape_tuple = ()
+        shape_tuple += tuple(sp.shape for sp in self.domain)
+        shape_tuple += tuple(ft.shape for ft in self.field_type)
+        try:
+            global_shape = reduce(lambda x, y: x + y, shape_tuple)
+        except TypeError:
+            global_shape = ()
 
         return global_shape
 
-    def get_dim(self):
+    @property
+    def dim(self):
         """
             Computes the (array) dimension of the underlying space.
 
@@ -423,25 +482,42 @@ class field(object):
         """
         return np.prod(self.shape)
 
-    def get_dof(self, split=False):
-        dof_tuple = tuple(sp.get_dof(split=split) for sp in self.domain)
-        dof_tuple += (self.field_type.get_dof(split=split),)
-        if split:
-            return reduce(lambda x, y: x + y, dof_tuple)
-        else:
+    @property
+    def dof(self):
+        dof_tuple = ()
+        dof_tuple += tuple(sp.dof for sp in self.domain)
+        dof_tuple += tuple(ft.dof for ft in self.field_type)
+        try:
             return reduce(lambda x, y: x * y, dof_tuple)
+        except TypeError:
+            return ()
+
+    @property
+    def dof_split(self):
+        dof_tuple = ()
+        dof_tuple += tuple(sp.dof_split for sp in self.domain)
+        dof_tuple += tuple(ft.dof_split for ft in self.field_type)
+        try:
+            return reduce(lambda x, y: x + y, dof_tuple)
+        except TypeError:
+            return ()
 
     def cast(self, x=None, dtype=None):
         if dtype is None:
             dtype = self.dtype
         else:
             dtype = np.dtype(dtype)
+
         casted_x = self._cast_to_d2o(x, dtype=dtype)
 
         for ind, sp in enumerate(self.domain):
-            casted_x = sp.complement_cast(casted_x, axis=self._axis_list[ind])
+            casted_x = sp.complement_cast(casted_x,
+                                          axis=self.domain_axes_list[ind])
 
-        casted_x = self.field_type.complement_cast(casted_x)
+        for ind, ft in enumerate(self.field_type):
+            casted_x = ft.complement_cast(casted_x,
+                                          axis=self.field_type_axes_list[ind])
+
         return casted_x
 
     def _cast_to_d2o(self, x, dtype=None, shape=None, **kwargs):
@@ -483,7 +559,7 @@ class field(object):
             # Check the shape
             if np.any(np.array(x.shape) != np.array(shape)):
                 # Check if at least the number of degrees of freedom is equal
-                if x.get_dim() == self.get_dim():
+                if x.dim == self.dim:
                     try:
                         temp = x.copy_empty(global_shape=shape)
                         temp.set_local_data(x, copy=False)
@@ -537,7 +613,7 @@ class field(object):
             # Cast the d2o
             return self.cast(x, dtype=dtype)
 
-    def weight(self, new_val=None, power=1, overwrite=False, spaces=None):
+    def weight(self, power=1, inplace=False, spaces=None):
         """
             Returns the field values, weighted with the volume factors to a
             given power. The field values will optionally be overwritten.
@@ -548,35 +624,35 @@ class field(object):
                 Specifies the optional power coefficient to which the field
                 values are taken (default=1).
 
-            overwrite : bool, *optional*
+            inplace : bool, *optional*
                 Whether to overwrite the field values or not (default: False).
 
             Returns
             -------
             field   : field, *optional*
-                If overwrite is False, the weighted field is returned.
+                If inplace is False, the weighted field is returned.
                 Otherwise, nothing is returned.
 
         """
-        if overwrite:
+        if inplace:
             new_field = self
         else:
             new_field = self.copy_empty()
 
-        if new_val is None:
-            new_val = self.get_val()
+        new_val = self.get_val(copy=False)
 
         if spaces is None:
             spaces = range(len(self.shape))
-        for ind in spaces:
-            new_val = self.domain[ind].calc_weigth(new_val, power=power,
-                                                   axis=self._axis_list[
-                                                       ind])
 
-        new_field.set_val(new_val=new_val)
+        for ind, sp in enumerate(self.domain):
+            new_val = sp.calc_weight(new_val,
+                                     power=power,
+                                     axes=self.domain_axes_list[ind])
+
+        new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
-    def norm(self, q=0.5):
+    def norm(self, q=2):
         """
             Computes the Lq-norm of the field values.
 
@@ -591,12 +667,12 @@ class field(object):
                 The Lq-norm of the field values.
 
         """
-        if q == 0.5:
+        if q == 2:
             return (self.dot(x=self)) ** (1 / 2)
         else:
             return self.dot(x=self ** (q - 1)) ** (1 / q)
 
-    def dot(self, x=None, axis=None, bare=False):
+    def dot(self, x=None, bare=False):
         """
             Computes the inner product of the field with a given object
             implying the correct volume factor needed to reflect the
@@ -620,73 +696,79 @@ class field(object):
 
         # Case 2: x is a field
         elif isinstance(x, field):
-            # if x lives in the cospace, transform it an make a
-            # recursive call
-            try:
-                if self.domain.harmonic != x.domain.harmonic:
-                    return self.dot(x=x.transform(), axis=axis)
-            except(AttributeError):
-                pass
+            for ind, sp in enumerate(self.domain):
+                assert sp == x.domain[ind]
 
             # whether the domain matches exactly or not:
             # extract the data from x and try to dot with this
-            return self.dot(x=x.get_val(), axis=axis, bare=bare)
+            return self.dot(x=x.get_val(), bare=bare)
 
         # Case 3: x is something else
         else:
-            # Cast the input in order to cure dtype and shape differences
 
-            self.field_type_dot("dummy call, reverse spaces iteration")
-            casted_x = self.cast(x)
             # Compute the dot respecting the fact of discrete/continous spaces
-            if not (np.isreal(self.get_val()) or bare):
-                casted_x = self.weight(casted_x, power=1)
-            result = self.get_val().dot(casted_x)
-            return np.sum(result, axis=axis)
+            if not bare:
+                y = self.weight(power=1)
+            else:
+                y = self
+            y = y.get_val(copy=False)
 
-    def field_type_dot(self,something):
-        pass
+            # Cast the input in order to cure dtype and shape differences
+            x = self.cast(x)
+
+            dotted = x.conjugate() * y
+
+            for ind in range(-1, -len(self.field_type_axes_list)-1, -1):
+                dotted = self.field_type[ind].dot_contraction(
+                            dotted,
+                            axes=self.field_type_axes_list[ind])
+
+            for ind in range(-1, -len(self.domain_axes_list)-1, -1):
+                dotted = self.domain[ind].dot_contraction(
+                            dotted,
+                            axes=self.domain_axes_list[ind])
+            return dotted
 
     def vdot(self, *args, **kwargs):
         return self.dot(*args, **kwargs)
 
-    def outer_dot(self, x=1, axis=None):
-
-        # Use the fact that self.val is a numpy array of dtype np.object
-        # -> The shape casting, etc... can be done by numpy
-        # If ishape == (), self.val will be multiplied with x directly.
-        if self.ishape == ():
-            return self * x
-        new_val = np.sum(self.get_val() * x, axis=axis)
-        # if axis != None, the contraction was not overarching
-        if np.dtype(new_val.dtype).type == np.object_:
-            new_field = self.copy_empty(ishape=new_val.shape)
-        else:
-            new_field = self.copy_empty(ishape=())
-        new_field.set_val(new_val=new_val)
-        return new_field
-
-    def tensor_product(self, x=None):
-        if x is None:
-            return self
-        elif np.isscalar(x) == True:
-            return self * x
-        else:
-            if self.ishape == ():
-                temp_val = self.get_val()
-                old_val = np.empty((1,), dtype=np.object)
-                old_val[0] = temp_val
-            else:
-                old_val = self.get_val()
-
-            new_val = np.tensordot(old_val, x, axes=0)
-
-            if self.ishape == ():
-                new_val = new_val[0]
-            new_field = self.copy_empty(ishape=new_val.shape)
-            new_field.set_val(new_val=new_val)
-
-            return new_field
+#    def outer_dot(self, x=1, axis=None):
+#
+#        # Use the fact that self.val is a numpy array of dtype np.object
+#        # -> The shape casting, etc... can be done by numpy
+#        # If ishape == (), self.val will be multiplied with x directly.
+#        if self.ishape == ():
+#            return self * x
+#        new_val = np.sum(self.get_val() * x, axis=axis)
+#        # if axis != None, the contraction was not overarching
+#        if np.dtype(new_val.dtype).type == np.object_:
+#            new_field = self.copy_empty(ishape=new_val.shape)
+#        else:
+#            new_field = self.copy_empty(ishape=())
+#        new_field.set_val(new_val=new_val)
+#        return new_field
+#
+#    def tensor_product(self, x=None):
+#        if x is None:
+#            return self
+#        elif np.isscalar(x) == True:
+#            return self * x
+#        else:
+#            if self.ishape == ():
+#                temp_val = self.get_val()
+#                old_val = np.empty((1,), dtype=np.object)
+#                old_val[0] = temp_val
+#            else:
+#                old_val = self.get_val()
+#
+#            new_val = np.tensordot(old_val, x, axes=0)
+#
+#            if self.ishape == ():
+#                new_val = new_val[0]
+#            new_field = self.copy_empty(ishape=new_val.shape)
+#            new_field.set_val(new_val=new_val)
+#
+#            return new_field
 
     def conjugate(self, inplace=False):
         """
@@ -703,17 +785,15 @@ class field(object):
         else:
             work_field = self.copy_empty()
 
-        new_val = self.get_val()
-        for ind, space in self.domain:
-            new_val = space.unary_operation(new_val, op='conjugate',
-                                            axis=self._axis_list[ind])
+        new_val = self.get_val(copy=False)
+        new_val = self._unary_operation(new_val, op='conjugate')
 
-        work_field.set_val(new_val=new_val)
+        work_field.set_val(new_val=new_val, copy=False)
 
         return work_field
 
-    def transform(self, new_domain=None, new_codomain=None, overwrite=False,
-                  spaces=None, **kwargs):
+    def transform(self, new_domain=None, new_codomain=None, spaces=None,
+                  **kwargs):
         """
             Computes the transform of the field using the appropriate conjugate
             transformation.
@@ -741,36 +821,37 @@ class field(object):
         if new_domain is None:
             new_domain = self.codomain
 
+        # try to recycle the old domain
         if new_codomain is None:
-            # try to recycle the old domain
-            if new_domain.check_codomain(self.domain):
-                new_codomain = self.domain
-            else:
-                new_codomain = new_domain.get_codomain()
+            try:
+                new_codomain = self._parse_codomain(self.domain, new_domain)
+            except ValueError:
+                new_codomain = self._build_codomain(new_domain)
         else:
-            assert (new_domain.check_codomain(new_codomain))
+            new_codomain = self._parse_codomain(new_codomain, new_domain)
+
+        try:
+            spaces_iterator = iter(spaces)
+        except TypeError:
+            if spaces is None:
+                spaces_iterator = xrange(len(self.shape))
+            else:
+                spaces_iterator = (spaces, )
 
         new_val = self.get_val()
-        if spaces is None:
-            spaces = range(len(self.shape))
-        else:
-            for ind in spaces:
-                new_val = self.domain[ind].calc_transform(new_val,
-                                                          codomain=new_domain,
-                                                          axis=self._axis_list[
-                                                              ind], **kwargs)
-        if overwrite:
-            return_field = self
-            return_field.set_codomain(new_codomain=new_codomain, force=True)
-            return_field.set_domain(new_domain=new_domain, force=True)
-        else:
-            return_field = self.copy_empty(domain=new_domain,
-                                           codomain=new_codomain)
-        return_field.set_val(new_val=new_val, copy=False)
+        for ind in spaces_iterator:
+                sp = self.domain[ind]
+                new_val = sp.calc_transform(new_val,
+                                            codomain=new_domain[ind],
+                                            axes=self.domain_axes_list[ind],
+                                            **kwargs)
 
+        return_field = self.copy_empty(domain=new_domain,
+                                       codomain=new_codomain)
+        return_field.set_val(new_val=new_val, copy=False)
         return return_field
 
-    def smooth(self, sigma=0, inplace=False, **kwargs):
+    def smooth(self, sigma=0, spaces=None, **kwargs):
         """
             Smoothes the field by convolution with a Gaussian kernel.
 
@@ -795,17 +876,25 @@ class field(object):
                 Otherwise, nothing is returned.
 
         """
-        if inplace:
-            new_field = self
-        else:
-            new_field = self.copy_empty()
+        new_field = self.copy_empty()
+
+        try:
+            spaces_iterator = iter(spaces)
+        except TypeError:
+            if spaces is None:
+                spaces_iterator = xrange(len(self.shape))
+            else:
+                spaces_iterator = (spaces, )
 
         new_val = self.get_val()
-        for ind, space in self.domain:
-            new_val = space.calc_smooth(new_val, sigma=sigma,
-                                        axis=self._axis_list[ind], **kwargs)
+        for ind in spaces_iterator:
+            sp = self.domain[ind]
+            new_val = sp.calc_smooth(new_val,
+                                     sigma=sigma,
+                                     axes=self.domain_axes_list[ind],
+                                     **kwargs)
 
-        new_field.set_val(new_val=new_val)
+        new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
     def power(self, **kwargs):
@@ -851,14 +940,14 @@ class field(object):
             kwargs.__delitem__("codomain")
             about.warnings.cprint("WARNING: codomain was removed from kwargs.")
 
-        power_spectrum = self.get_val()
-        for ind, space in self.domain:
-            power_spectrum = space.calc_smooth(power_spectrum,
-                                               codomain=self.codomain,
-                                               axis=self._axis_list[ind],
-                                               **kwargs)
-
-        return power_spectrum
+#        power_spectrum = self.get_val()
+#        for ind, space in self.domain:
+#            power_spectrum = space.calc_smooth(power_spectrum,
+#                                               codomain=self.codomain,
+#                                               axis=self.axes_list[ind],
+#                                               **kwargs)
+#
+#        return power_spectrum
 
     def hat(self):
         """
@@ -1208,7 +1297,7 @@ class field(object):
         other_val = self._cast_to_d2o(other_val)
 
         new_val = map(
-            lambda z1, z2: self.binary_operation(z1, z2, op=op, cast=0),
+            lambda z1, z2: self._binary_operation(z1, z2, op=op, cast=0),
             self.get_val(),
             other_val)
 
@@ -1261,7 +1350,7 @@ class field(object):
 
         return translation[op](x, **kwargs)
 
-    def binary_operation(self, x, y, op='None', cast=0):
+    def _binary_operation(self, x, y, op='None', cast=0):
 
         translation = {'add': lambda z: getattr(z, '__add__'),
                        'radd': lambda z: getattr(z, '__radd__'),

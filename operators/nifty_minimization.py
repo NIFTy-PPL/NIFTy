@@ -85,7 +85,7 @@ class conjugate_gradient(object):
             counter each iteration (default: None).
         reset : integer, *optional*
             Number of iterations after which to restart; i.e., forget previous
-            conjugated directions (default: sqrt(b.get_dim())).
+            conjugated directions (default: sqrt(b.dim)).
         note : bool, *optional*
             Indicates whether notes are printed or not (default: False).
 
@@ -144,7 +144,7 @@ class conjugate_gradient(object):
             counter each iteration; can be ``None``.
         reset : integer
             Number of iterations after which to restart; i.e., forget previous
-            conjugated directions (default: sqrt(b.get_dim())).
+            conjugated directions (default: sqrt(b.dim)).
         note : notification
             Notification instance.
 
@@ -168,7 +168,7 @@ class conjugate_gradient(object):
                 counter each iteration (default: None).
             reset : integer, *optional*
                 Number of iterations after which to restart; i.e., forget previous
-                conjugated directions (default: sqrt(b.get_dim())).
+                conjugated directions (default: sqrt(b.dim)).
             note : bool, *optional*
                 Indicates whether notes are printed or not (default: False).
 
@@ -191,7 +191,7 @@ class conjugate_gradient(object):
 
         if reset is None: ## 2 < reset ~ sqrt(dim)
             self.reset = max(2,
-                             int(np.sqrt(b.domain.get_dim())))
+                             int(np.sqrt(b.domain.dim)))
         else:
             self.reset = max(2,
                              int(reset))
@@ -215,7 +215,7 @@ class conjugate_gradient(object):
                 Number of times the tolerance should be undershot before
                 exiting (default: 1).
             limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.get_dim()).
+                Maximum number of iterations performed (default: 10 * b.dim).
 
             Returns
             -------
@@ -239,7 +239,7 @@ class conjugate_gradient(object):
     def _calc_without(self, tol=1E-4, clevel=1, limii=None): ## > runs cg without preconditioner
         clevel = int(clevel)
         if limii is None:
-            limii = 10*self.b.domain.get_dim()
+            limii = 10*self.b.domain.dim
         else:
             limii = int(limii)
 
@@ -318,7 +318,7 @@ class conjugate_gradient(object):
 
         clevel = int(clevel)
         if(limii is None):
-            limii = 10*self.b.domain.get_dim()
+            limii = 10*self.b.domain.dim
         else:
             limii = int(limii)
         r = self.b-self.A(self.x)
