@@ -2371,7 +2371,9 @@ class projection_operator(operator):
             # check if field is in the same signal/harmonic space as the
             # domain of the projection operator
             if self.domain != x.domain:
-                x = x.transform(new_domain=self.domain)
+                # TODO: check if a exception should be raised, or if
+                # one should try to fix stuff.
+                # x = x.transform(new_domain=self.domain)
             vecvec = vecvec_operator(val=x)
             return self.pseudo_tr(x=vecvec, axis=axis, **kwargs)
 
@@ -2382,7 +2384,9 @@ class projection_operator(operator):
                                    domain=self.domain,
                                    codomain=self.codomain)
             if self.domain != working_field.domain:
-                working_field = working_field.transform(new_domain=self.domain)
+                # TODO: check if a exception should be raised, or if
+                # one should try to fix stuff.
+                # working_field = working_field.transform(new_domain=self.domain)
 
         # Case 3: x is something else
         else:
