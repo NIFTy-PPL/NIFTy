@@ -3,7 +3,7 @@
 import numpy as np
 
 
-class Field_type(object):
+class FieldType(object):
     def __init__(self, shape, dtype):
         try:
             new_shape = tuple([int(i) for i in shape])

@@ -50,10 +50,14 @@ from nifty_paradict import space_paradict,\
                             point_space_paradict,\
                             nested_space_paradict
 
-from field_types import Field_type,\
-                        Field_array
+from field_types import FieldType,\
+                        FieldArray
 
 from operators import *
+
+from power import PowerSpace,\
+                  RGPowerSpace,\
+                  LMPowerSpace
 
 ## optional submodule `rg`
 try:
