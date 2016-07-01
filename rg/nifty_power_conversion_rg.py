@@ -22,7 +22,7 @@
 
 import numpy as np
 from nifty.config import about
-from nifty.nifty_field import field
+from nifty.field import Field
 
 
 def power_backward_conversion_rg(k_space, p, mean=None, bare=True):
@@ -88,7 +88,7 @@ def power_backward_conversion_rg(k_space, p, mean=None, bare=True):
 
     p_val = pindex.apply_scalar_function(lambda x: spec[x],
                                          dtype=spec.dtype.type)
-    power_field = field(k_space, val=p_val, zerocenter=True).transform()
+    power_field = Field(k_space, val=p_val, zerocenter=True).transform()
     power_field += (mean**2)
 
     if power_field.min() < 0:
@@ -164,7 +164,7 @@ def power_forward_conversion_rg(k_space, p, mean=0, bare=True):
                                          dtype=spec.dtype.type)
 
     # S_x is a field
-    S_x = field(k_space, val=S_val, zerocenter=True).transform()
+    S_x = Field(k_space, val=S_val, zerocenter=True).transform()
     # s_0 is a scalar
     s_0 = k_space.calc_weight(S_val, power=1).sum()
 

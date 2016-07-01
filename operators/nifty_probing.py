@@ -22,11 +22,9 @@
 from __future__ import division
 
 from nifty.config import about
-from nifty.nifty_core import space
-from nifty.nifty_field import field
+from nifty.space import Space
+from nifty.field import Field
 from nifty.nifty_utilities import direct_vdot
-
-
 
 
 class prober(object):
@@ -185,7 +183,7 @@ class prober(object):
                 raise ValueError(about._errors.cstring(
                   "ERROR: invalid input: No function given or not callable."))
             # check given domain
-            if domain is None or not isinstance(domain, space):
+            if domain is None or not isinstance(domain, Space):
                 raise ValueError(about._errors.cstring(
                     "ERROR: invalid input: given domain is not a nifty space"))
 
@@ -211,7 +209,7 @@ class prober(object):
                         "of the operator!"))
 
             # Check 2.3 extract domain
-            if domain is None or not isinstance(domain, space):
+            if domain is None or not isinstance(domain, Space):
                 if (function in [operator.inverse_times,
                                  operator.adjoint_times]):
                     try:
@@ -293,7 +291,7 @@ class prober(object):
                 each component
 
         """
-        return field(self.domain,
+        return Field(self.domain,
                      codomain=self.codomain,
                      random=self.random)
 
@@ -353,11 +351,10 @@ class prober(object):
         else:
             about.infos.cflush("\n")
 
-
-        if self.varQ == True:
+        if self.varQ:
             if num == 1:
                 about.warnings.cprint(
-                "WARNING: Only one probe available -> infinite variance.")
+                    "WARNING: Only one probe available -> infinite variance.")
                 return (sum_of_probes, None)
             else:
                 var = 1/(num-1)*(sum_of_squares - 1/num*(sum_of_probes**2))
@@ -365,9 +362,7 @@ class prober(object):
         else:
             return sum_of_probes*(1./num)
 
-
-
-    def print_progress(self, num): # > prints progress status by in upto 10 dots
+    def print_progress(self, num):  # > prints progress status upto 10 dots
         tenths = 1+(10*num//self.nrun)
         about.infos.cflush(("\b")*10+('.')*tenths+(' ')*(10-tenths))
     """
@@ -379,7 +374,7 @@ class prober(object):
         return self.probing(zipped[1],probe)
     """
 
-    def probe(self): # > performs the probing operations one after another
+    def probe(self):  # > performs the probing operations one after another
         # initialize the variables
         sum_of_probes = 0
         sum_of_squares = 0
@@ -479,7 +474,7 @@ class inverse_trace_prober(_specialized_prober):
 
     def _probing_function(self, probe):
         return direct_vdot(probe.conjugate(),
-                          self.operator.inverse_times(probe))
+                           self.operator.inverse_times(probe))
 
 
 class diagonal_prober(_specialized_prober):

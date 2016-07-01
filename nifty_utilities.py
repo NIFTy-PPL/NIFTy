@@ -5,6 +5,7 @@ from itertools import product
 
 from nifty.config import about
 
+
 def get_slice_list(shape, axes):
     """
     Helper function which generates slice list(s) to traverse over all

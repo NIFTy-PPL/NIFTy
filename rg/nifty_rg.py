@@ -43,8 +43,8 @@ from matplotlib.ticker import LogFormatter as lf
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.nifty_core import point_space
-from nifty.nifty_field import field
+from nifty.space import Space
+from nifty.field import Field
 
 import nifty_fft
 from nifty.config import about,\
@@ -59,7 +59,7 @@ MPI = gdi[gc['mpi_module']]
 RG_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
-class rg_space(point_space):
+class rg_space(Space):
     """
         ..      _____   _______
         ..    /   __/ /   _   /
@@ -153,7 +153,7 @@ class rg_space(point_space):
             -------
             None
         """
-        self._cache_dict = {'check_codomain':{}}
+        self._cache_dict = {'check_codomain': {}}
         self.paradict = rg_space_paradict(shape=shape,
                                           complexity=complexity,
                                           zerocenter=zerocenter)
@@ -252,7 +252,7 @@ class rg_space(point_space):
     def shape(self):
         return tuple(self.paradict['shape'])
 
-    def _complement_cast(self, x, axis=None, hermitianize=True):
+    def complement_cast(self, x, axis=None, hermitianize=True):
         if axis is None:
             if x is not None and hermitianize and self.paradict['complexity']\
                     == 1 and not x.hermitian:
@@ -1274,7 +1274,7 @@ class rg_space(point_space):
         """
         about.warnings.cflush(
             "WARNING: _enforce_values is deprecated function. Please use self.cast")
-        if(isinstance(x, field)):
+        if(isinstance(x, Field)):
             if(self == x.domain):
                 if(self.dtype is not x.domain.dtype):
                     raise TypeError(about._errors.cstring("ERROR: inequal data types ( '" + str(
@@ -1429,12 +1429,12 @@ class rg_space(point_space):
                 if(isinstance(other, tuple)):
                     other = list(other)
                     for ii in xrange(len(other)):
-                        if(isinstance(other[ii], field)):
+                        if(isinstance(other[ii], Field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
                             other[ii] = self.enforce_power(
                                 other[ii], size=np.size(xaxes), kindex=xaxes)
-                elif(isinstance(other, field)):
+                elif(isinstance(other, Field)):
                     other = [other.power(**kwargs)]
                 else:
                     other = [self.enforce_power(

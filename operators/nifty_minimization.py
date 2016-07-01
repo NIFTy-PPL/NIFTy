@@ -40,7 +40,7 @@ from __future__ import division
 #from nifty_core import *
 import numpy as np
 from nifty.config import notification, about
-from nifty.nifty_field import field
+from nifty.field import Field
 from nifty.nifty_simple_math import vdot
 
 
@@ -555,7 +555,7 @@ class steepest_descent(object):
                 has converged or not.
 
         """
-        if(not isinstance(x0,field)):
+        if(not isinstance(x0,Field)):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.x = x0
 
@@ -844,7 +844,7 @@ class quasi_newton_minimizer(object):
                 has converged or not.
 
         """
-        if not isinstance(x0, field):
+        if not isinstance(x0, Field):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.x = x0
 

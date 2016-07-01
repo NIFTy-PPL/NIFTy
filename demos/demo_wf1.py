@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # some noise variance; e.g., signal-to-noise ratio of 1
     N = diagonal_operator(d_space, diag=s.var(), bare=True)          # define noise covariance
-    n = N.get_random_field(domain=d_space)                           # generate noise
+    n = N.get_random_Field(domain=d_space)                           # generate noise
 
 
     d = R(s) + n                                                     # compute data
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     #m = D(j, tol=1E-8, limii=20, note=True, force=True)
     ident = identity(x_space)
 
-    #xi = field(x_space, random='gau', target=k_space)
+    #xi = Field(x_space, random='gau', target=k_space)
 
 
     m = D(j, W=S, tol=1E-8, limii=100, note=True)
@@ -101,11 +101,11 @@ if __name__ == "__main__":
            mono=False, save = 'power_plot_s.png', nbin=1000, log=True,
            vmax = 100, vmin=10e-7)
 
-    d_ = field(x_space, val=d.val, target=k_space)
+    d_ = Field(x_space, val=d.val, target=k_space)
     d_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_d.png')
 
 
-    n_ = field(x_space, val=n.val, target=k_space)
+    n_ = Field(x_space, val=n.val, target=k_space)
     n_.plot(title="data", vmin=s.min(), vmax=s.max(), save = 'plot_n.png')
 
 

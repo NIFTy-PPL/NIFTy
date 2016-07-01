@@ -112,7 +112,7 @@ class problem(object):
 
             Parameters
             ----------
-            newspace : {scalar, list, array, field, function}, *optional*
+            newspace : {scalar, list, array, Field, function}, *optional*
                 Assumed power spectrum (default: k ** -2).
 
         """
@@ -135,7 +135,7 @@ class problem(object):
 
             Parameters
             ----------
-            newspace : {scalar, list, array, field, function}, *optional*
+            newspace : {scalar, list, array, Field, function}, *optional*
                 Initial power spectrum (default: k ** -2).
             q : {scalar, list, array}, *optional*
                 Spectral scale parameter of the assumed inverse-Gamme prior
@@ -210,7 +210,7 @@ class problem(object):
         self.s.plot(title="signal", save="img/signal.png")
 
         try:
-            d_ = field(self.z, val=self.d.val, target=self.k)
+            d_ = Field(self.z, val=self.d.val, target=self.k)
             d_.plot(title="data", vmin=self.s.min(), vmax=self.s.max(),
                     save="img/data.png")
         except:
@@ -240,7 +240,7 @@ class problem(object):
         self.s.plot(title="signal")
         ## plot data
         try:
-            d_ = field(self.z, val=self.d.val, target=self.k)
+            d_ = Field(self.z, val=self.d.val, target=self.k)
             d_.plot(title="data", vmin=self.s.min(), vmax=self.s.max())
         except:
             pass

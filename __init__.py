@@ -38,17 +38,19 @@ from config import about,\
 from d2o import distributed_data_object, d2o_librarian
 
 from nifty_cmaps import ncmap
-from nifty_field import field
-from nifty_core import space,\
-                    point_space
+from field import Field
+from space import Space
+
+# this line exists for compatibility reasons
+# TODO: Remove this once the transition to field types is done.
+from space import Space as point_space
 
 from nifty_random import random
 from nifty_simple_math import *
 from nifty_utilities import *
 
 from nifty_paradict import space_paradict,\
-                            point_space_paradict,\
-                            nested_space_paradict
+                           nested_space_paradict
 
 from field_types import FieldType,\
                         FieldArray

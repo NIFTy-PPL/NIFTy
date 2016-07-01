@@ -22,9 +22,9 @@
 from __future__ import division
 import numpy as np
 from nifty.config import about
-from nifty.nifty_field import field
-from nifty.nifty_core import space, \
-    point_space
+from nifty.field import Field
+from nifty.space import Space
+
 from nifty_minimization import conjugate_gradient
 from nifty_probing import trace_prober,\
     inverse_trace_prober,\
@@ -227,7 +227,7 @@ class operator(object):
     def _briefing(self, x, domain, codomain, inverse):
         # make sure, that the result_field of the briefing lives in the
         # given domain and codomain
-        result_field = field(domain=domain, val=x, codomain=codomain,
+        result_field = Field(domain=domain, val=x, codomain=codomain,
                              copy=False)
 
         # weight if necessary
@@ -238,7 +238,7 @@ class operator(object):
     def _debriefing(self, x, y, target, cotarget, inverse):
         # The debriefing takes care that the result field lives in the same
         # fourier-type domain as the input field
-        assert(isinstance(y, field))
+        assert(isinstance(y, Field))
 
         # weight if necessary
         if (not self.imp) and (not target.discrete) and inverse:
@@ -1402,7 +1402,7 @@ class diagonal_operator(operator):
                 diag_val = self.domain.calc_weight(self.val, power=-1)
             else:
                 diag_val = self.val
-            diag = field(self.domain, codomain=self.codomain, val=diag_val)
+            diag = Field(self.domain, codomain=self.codomain, val=diag_val)
         else:
             diag = super(diagonal_operator, self).diag(bare=bare,
                                                        domain=domain,
@@ -1490,7 +1490,7 @@ class diagonal_operator(operator):
                                                            power=-1)
             else:
                 inverse_diag_val = inverse_val
-            inverse_diag = field(self.domain, codomain=self.codomain,
+            inverse_diag = Field(self.domain, codomain=self.codomain,
                                  val=inverse_diag_val)
 
         else:
@@ -1578,7 +1578,7 @@ class diagonal_operator(operator):
                 Random field.
 
         """
-        temp_field = field(domain=self.domain,
+        temp_field = Field(domain=self.domain,
                            codomain=self.codomain,
                            random='gau',
                            std=nifty_simple_math.sqrt(
@@ -1592,7 +1592,7 @@ class diagonal_operator(operator):
         else:
             codomain = domain.get_codomain()
 
-        return field(domain=domain, val=temp_field, codomain=codomain)
+        return Field(domain=domain, val=temp_field, codomain=codomain)
 
 #        if domain.harmonic != self.domain.harmonic:
 #            temp_field = temp_field.transform(new_domain=domain)
@@ -1802,7 +1802,7 @@ class power_operator(diagonal_operator):
 
         """
         # Set the domain
-        if not isinstance(domain, space):
+        if not isinstance(domain, Space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given domain is not a nifty space."))
         self.domain = domain
@@ -2173,7 +2173,7 @@ class projection_operator(operator):
 
         """
         # Check the domain
-        if not isinstance(domain, space):
+        if not isinstance(domain, Space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The supplied domain is not a nifty space instance."))
         self.domain = domain
@@ -2275,7 +2275,7 @@ class projection_operator(operator):
                 raise TypeError(about._errors.cstring("ERROR: Invalid bands."))
 
             if bands_was_scalar:
-                new_field = fx * (self.assign == bands[0])
+                new_field = x * (self.assign == bands[0])
             else:
                 # build up the projection results
                 # prepare the projector-carrier
@@ -2367,12 +2367,13 @@ class projection_operator(operator):
         # Case 1: x is a field
         # -> Compute the diagonal of the corresponding vecvec-operator:
         # x * x^dagger
-        if isinstance(x, field):
+        if isinstance(x, Field):
             # check if field is in the same signal/harmonic space as the
             # domain of the projection operator
             if self.domain != x.domain:
                 # TODO: check if a exception should be raised, or if
                 # one should try to fix stuff.
+                pass
                 # x = x.transform(new_domain=self.domain)
             vecvec = vecvec_operator(val=x)
             return self.pseudo_tr(x=vecvec, axis=axis, **kwargs)
@@ -2386,6 +2387,7 @@ class projection_operator(operator):
             if self.domain != working_field.domain:
                 # TODO: check if a exception should be raised, or if
                 # one should try to fix stuff.
+                pass
                 # working_field = working_field.transform(new_domain=self.domain)
 
         # Case 3: x is something else
@@ -2472,13 +2474,13 @@ class vecvec_operator(operator):
             -------
             None
         """
-        if isinstance(val, field):
+        if isinstance(val, Field):
             if domain is None:
                 domain = val.domain
             if codomain is None:
                 codomain = val.codomain
 
-        if not isinstance(domain, space):
+        if not isinstance(domain, Space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
 
@@ -2489,7 +2491,7 @@ class vecvec_operator(operator):
 
         self.target = self.domain
         self.cotarget = self.codomain
-        self.val = field(domain=self.domain,
+        self.val = Field(domain=self.domain,
                          codomain=self.codomain,
                          val=val)
 
@@ -2778,7 +2780,7 @@ class response_operator(operator):
             -------
             None
         """
-        if not isinstance(domain, space):
+        if not isinstance(domain, Space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The domain must be a space instance."))
         self.domain = domain
@@ -2838,12 +2840,13 @@ class response_operator(operator):
 
         if target is None:
             # set target
-            target = point_space(assignments,
+            # TODO: Fix the target spaces
+            target = Space(assignments,
                                  dtype=self.domain.dtype,
                                  datamodel=self.domain.datamodel)
         else:
             # check target
-            if not isinstance(target, space):
+            if not isinstance(target, Space):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Given target is not a nifty space"))
             elif not target.discrete:
@@ -2915,7 +2918,7 @@ class response_operator(operator):
                 val = y.flatten(inplace=True)
             except TypeError:
                 val = y.flatten()
-        return field(self.target,
+        return Field(self.target,
                      val=val,
                      codomain=self.cotarget)
 
@@ -2928,14 +2931,14 @@ class response_operator(operator):
 
         y *= self.mask
         y = self.domain.calc_smooth(y, sigma=self.sigma)
-        return field(self.domain,
+        return Field(self.domain,
                      val=y,
                      codomain=self.codomain)
 
     def _briefing(self, x, domain, codomain, inverse):
         # make sure, that the result_field of the briefing lives in the
         # given domain and codomain
-        result_field = field(domain=domain, val=x, codomain=codomain,
+        result_field = Field(domain=domain, val=x, codomain=codomain,
                              copy=False)
 
         # weight if necessary
@@ -2947,7 +2950,7 @@ class response_operator(operator):
     def _debriefing(self, x, y, target, cotarget, inverse):
         # The debriefing takes care that the result field lives in the same
         # fourier-type domain as the input field
-        assert(isinstance(y, field))
+        assert(isinstance(y, Field))
 
         # weight if necessary
         if (not self.imp) and (not target.discrete) and \
@@ -3066,7 +3069,7 @@ class invertible_operator(operator):
                 the operator class can use (default: None).
 
         """
-        if not isinstance(domain, space):
+        if not isinstance(domain, Space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
         self.domain = domain
         if self.domain.check_codomain(codomain):
@@ -3084,7 +3087,6 @@ class invertible_operator(operator):
 
         self.target = self.domain
         self.cotarget = self.codomain
-
 
     def _multiply(self, x, force=False, W=None, spam=None, reset=None,
                   note=False, x0=None, tol=1E-4, clevel=1, limii=None,
@@ -3600,8 +3602,8 @@ class propagator_operator_old(operator):
 
     def _briefing(self, x):  # > prepares x for `multiply`
         # inspect x
-        if not isinstance(x, field):
-            return (field(self.domain, codomain=self.codomain,
+        if not isinstance(x, Field):
+            return (Field(self.domain, codomain=self.codomain,
                           val=x),
                     False)
         # check x.domain
@@ -3619,7 +3621,7 @@ class propagator_operator_old(operator):
         if x_ is None:
             return None
         # inspect x
-        elif isinstance(x, field):
+        elif isinstance(x, Field):
             # repair ...
             if in_codomain == True and x.domain != self.codomain:
                 x_ = x_.transform(new_domain=x.domain)  # ... domain

@@ -9,10 +9,10 @@ from nifty.config import about, \
     nifty_configuration as gc, \
     dependency_injector as gdi
 
-from nifty.field_types import Field_type,\
-                              Field_array
+from nifty.field_types import FieldType,\
+                              FieldArray
 
-from nifty.nifty_core import space
+from nifty.space import Space
 
 import nifty.nifty_utilities as utilities
 from nifty_random import random
@@ -20,7 +20,7 @@ from nifty_random import random
 POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
-class field(object):
+class Field(object):
     """
         ..         ____   __             __          __
         ..       /   _/ /__/           /  /        /  /
@@ -133,7 +133,7 @@ class field(object):
         """
         # If the given val was a field, try to cast it accordingly to the given
         # domain and codomain, etc...
-        if isinstance(val, field):
+        if isinstance(val, Field):
             self._init_from_field(f=val,
                                   domain=domain,
                                   codomain=codomain,
@@ -273,7 +273,7 @@ class field(object):
         elif not isinstance(domain, tuple):
             domain = (domain,)
         for d in domain:
-            if not isinstance(d, space):
+            if not isinstance(d, Space):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Given domain contains something that is not a "
                     "nifty.space."))
@@ -286,7 +286,7 @@ class field(object):
             raise ValueError(about._errors.cstring(
                 "ERROR: domain and codomain do not have the same length."))
         for (cd, d) in zip(codomain, domain):
-            if not isinstance(cd, space):
+            if not isinstance(cd, Space):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Given codomain contains something that is not a"
                     "nifty.space."))
@@ -302,9 +302,9 @@ class field(object):
         elif not isinstance(field_type, tuple):
             field_type = (field_type,)
         for ft in field_type:
-            if not isinstance(ft, Field_type):
+            if not isinstance(ft, FieldType):
                 raise TypeError(about._errors.cstring(
-                    "ERROR: Given object is not a nifty.Field_type."))
+                    "ERROR: Given object is not a nifty.FieldType."))
         return field_type
 
     def _build_codomain(self, domain):
@@ -417,7 +417,7 @@ class field(object):
                 kwargs == {}):
             new_field = self._fast_copy_empty()
         else:
-            new_field = field(domain=domain, codomain=codomain, dtype=dtype,
+            new_field = Field(domain=domain, codomain=codomain, dtype=dtype,
                               comm=comm, datamodel=datamodel,
                               field_type=field_type, **kwargs)
         return new_field
@@ -543,7 +543,7 @@ class field(object):
                 Whether the method should raise a warning if information is
                 lost during casting (default: False).
         """
-        if isinstance(x, field):
+        if isinstance(x, Field):
             x = x.get_val()
 
         if dtype is None:
@@ -695,7 +695,7 @@ class field(object):
             return None
 
         # Case 2: x is a field
-        elif isinstance(x, field):
+        elif isinstance(x, Field):
             for ind, sp in enumerate(self.domain):
                 assert sp == x.domain[ind]
 
@@ -1281,8 +1281,8 @@ class field(object):
 
     def _binary_helper(self, other, op='None', inplace=False):
         # if other is a field, make sure that the domains match
-        if isinstance(other, field):
-            other = field(domain=self.domain,
+        if isinstance(other, Field):
+            other = Field(domain=self.domain,
                           val=other,
                           codomain=self.codomain,
                           copy=False)
@@ -1326,11 +1326,13 @@ class field(object):
                        'mean': lambda y: getattr(y, 'mean')(axis=axis),
                        'std': lambda y: getattr(y, 'std')(axis=axis),
                        'var': lambda y: getattr(y, 'var')(axis=axis),
-                       'argmin_nonflat': lambda y: getattr(y, 'argmin_nonflat')(
-                           axis=axis),
+                       'argmin_nonflat': lambda y: getattr(y,
+                                                           'argmin_nonflat')(
+                                                               axis=axis),
                        'argmin': lambda y: getattr(y, 'argmin')(axis=axis),
-                       'argmax_nonflat': lambda y: getattr(y, 'argmax_nonflat')(
-                           axis=axis),
+                       'argmax_nonflat': lambda y: getattr(y,
+                                                           'argmax_nonflat')(
+                                                               axis=axis),
                        'argmax': lambda y: getattr(y, 'argmax')(axis=axis),
                        'conjugate': lambda y: getattr(y, 'conjugate')(),
                        'sum': lambda y: getattr(y, 'sum')(axis=axis),
@@ -1451,6 +1453,6 @@ class field(object):
         return self._binary_helper(other, op='gt')
 
 
-class EmptyField(field):
+class EmptyField(Field):
     def __init__(self):
         pass

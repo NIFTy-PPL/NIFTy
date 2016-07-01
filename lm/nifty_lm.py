@@ -41,10 +41,9 @@ from matplotlib.ticker import LogFormatter as lf
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.nifty_core import space,\
-                             point_space
+from nifty.nifty_core import Space
 
-from nifty.nifty_field import field
+from nifty.field import Field
 
 from nifty.config import about,\
                          nifty_configuration as gc,\
@@ -63,7 +62,7 @@ GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 HP_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
-class lm_space(point_space):
+class lm_space(Space):
     """
         ..       __
         ..     /  /
@@ -277,7 +276,7 @@ class lm_space(point_space):
         mol[self.paradict['lmax'] + 1:] = 2  # redundant: (l,m) and (l,-m)
         return mol
 
-    def _complement_cast(self, x, axis=None, **kwargs):
+    def complement_cast(self, x, axis=None, **kwargs):
         if axis is None:
             lmax = self.paradict['lmax']
             complexity_mask = x[:lmax+1].iscomplex()
@@ -912,7 +911,7 @@ class lm_space(point_space):
         return l, m
 
 
-class gl_space(point_space):
+class gl_space(Space):
     """
         ..                 __
         ..               /  /
@@ -1256,12 +1255,13 @@ class gl_space(point_space):
                                   p=np.float32(power),
                                   nlat=nlat, nlon=nlon,
                                   overwrite=False)
-        return self.cast(np_result)
+        # return self.cast(np_result)
+        return np_result
 
     def get_weight(self, power=1):
         # TODO: Check if this function is compatible to the rest of nifty
         # TODO: Can this be done more efficiently?
-        dummy = self.dtype(1)
+        dummy = self.dtype.type(1)
         weighted_dummy = self.calc_weight(dummy, power=power)
         return weighted_dummy / dummy
 
@@ -1571,7 +1571,7 @@ class gl_space(point_space):
             fig.canvas.draw()
 
 
-class hp_space(point_space):
+class hp_space(Space):
     """
         ..        __
         ..      /  /
@@ -2082,11 +2082,11 @@ class hp_space(point_space):
                 if(isinstance(other, tuple)):
                     other = list(other)
                     for ii in xrange(len(other)):
-                        if(isinstance(other[ii], field)):
+                        if(isinstance(other[ii], Field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
                             other[ii] = self.enforce_power(other[ii])
-                elif(isinstance(other, field)):
+                elif(isinstance(other, Field)):
                     other = [other.power(**kwargs)]
                 else:
                     other = [self.enforce_power(other)]

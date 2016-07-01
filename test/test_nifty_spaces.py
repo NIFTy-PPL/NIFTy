@@ -9,7 +9,7 @@ import unittest
 import itertools
 import numpy as np
 
-from nifty.nifty_field import field
+from nifty.field import Field
 
 from d2o import distributed_data_object
 
@@ -478,7 +478,7 @@ class Test_Point_Space(unittest.TestCase):
         num = 10
         a = np.arange(num,).astype(dtype)
         s = point_space(num, dtype)
-        f = field(s, val=a)
+        f = Field(s, val=a)
 
         d = distributed_data_object(a, dtype=dtype)
 

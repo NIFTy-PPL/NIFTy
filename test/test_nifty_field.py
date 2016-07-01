@@ -18,7 +18,7 @@ from nifty import space, \
     hp_space, \
     gl_space
 
-from nifty.nifty_field import field
+from nifty.field import Field
 
 from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES
 from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES, \
@@ -118,6 +118,7 @@ def generate_data(space):
     a = np.arange(space.dim).reshape(space.shape)
     return distributed_data_object(a)
 
+
 ###############################################################################
 ###############################################################################
 
@@ -137,7 +138,7 @@ class Test_field_init(unittest.TestCase):
         s = rg_space(shape=shape, zerocenter=zerocenter,
                      complexity=complexity, distances=distances,
                      harmonic=harmonic, fft_module=fft_module)
-        f = field(domain=(s,), dtype=s.dtype, datamodel=datamodel)
+        f = Field(domain=(s,), dtype=s.dtype, datamodel=datamodel)
         assert (f.domain[0] is s)
         assert (s.check_codomain(f.codomain[0]))
         assert (s.shape == f.shape)
@@ -151,10 +152,11 @@ class Test_field_init2(unittest.TestCase):
     def test_successfull_init_and_attributes(self, name, num, datamodel):
         s = generate_space_with_size(name, num)
         d = generate_data(s)
-        f = field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
+        f = Field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
         assert (f.domain[0] is s)
         assert (s.check_codomain(f.codomain[0]))
         assert (s.shape == f.shape)
+
 
 class Test_field_multiple_rg_init(unittest.TestCase):
     @parameterized.expand(
@@ -175,12 +177,13 @@ class Test_field_multiple_rg_init(unittest.TestCase):
         s2 = rg_space(shape=shape, zerocenter=zerocenter,
                       complexity=complexity, distances=distances,
                       harmonic=harmonic, fft_module=fft_module)
-        f = field(domain=(s1, s2), dtype=s1.dtype, datamodel=datamodel)
+        f = Field(domain=(s1, s2), dtype=s1.dtype, datamodel=datamodel)
         assert (f.domain[0] is s1)
         assert (f.domain[1] is s2)
         assert (s1.check_codomain(f.codomain[0]))
         assert (s2.check_codomain(f.codomain[1]))
         assert (s1.shape + s2.shape == f.shape)
+
 
 class Test_field_multiple_init(unittest.TestCase):
     @parameterized.expand(
@@ -189,14 +192,14 @@ class Test_field_multiple_init(unittest.TestCase):
     def test_multiple_space_init(self, space1, space2, shape):
         s1 = generate_space_with_size(space1, shape)
         s2 = generate_space_with_size(space2, shape)
-        f = field(domain=(s1, s2))
+        f = Field(domain=(s1, s2))
         assert (f.domain[0] is s1)
         assert (f.domain[1] is s2)
         assert (s1.check_codomain(f.codomain[0]))
         assert (s2.check_codomain(f.codomain[1]))
         assert (s1.shape + s2.shape == f.shape)
-        s3 = generate_space_with_size('hp_space',shape)
-        f = field(domain=(s1, s2, s3))
+        s3 = generate_space_with_size('hp_space', shape)
+        f = Field(domain=(s1, s2, s3))
         assert (f.domain[0] is s1)
         assert (f.domain[1] is s2)
         assert (f.domain[2] is s3)
@@ -220,10 +223,10 @@ class Test_axis(unittest.TestCase):
         s = generate_space_with_size(name, num)
         d = generate_data(s)
         a = d.get_full_data()
-        f = field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
-        if op in ['argmin','argmax']:
+        f = Field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
+        if op in ['argmin', 'argmax']:
             assert_almost_equal(getattr(f, op)(),
-                                    getattr(np, op)(a), decimal=4)
+                                getattr(np, op)(a), decimal=4)
         else:
             assert_almost_equal(getattr(f, op)(axis=axis),
                                 getattr(np, op)(a, axis=axis), decimal=4)
@@ -246,7 +249,7 @@ class Test_binary_operation(unittest.TestCase):
         s = generate_space_with_size(name, num)
         d = generate_data(s)
         a = d.get_full_data()
-        f = field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
+        f = Field(val=d, domain=(s,), dtype=s.dtype, datamodel=datamodel)
         d2 = d[::-1]
         a2 = np.copy(a[::-1])
         if op[0] in ['iadd','isub','imul','idiv']:

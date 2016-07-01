@@ -22,7 +22,7 @@
 
 ##-----------------------------------------------------------------------------
 import numpy as np
-#from nifty.nifty_core import field
+#from nifty.field import Field
 from nifty.config import about
 
 

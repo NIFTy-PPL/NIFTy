@@ -103,15 +103,15 @@ if __name__ == "__main__":
         return energy(x), gradient(x)
 
 
-    m = field(x_space, codomain=k_space)                               # reconstruct map
+    m = Field(x_space, codomain=k_space)                               # reconstruct map
 
     #with PyCallGraph(output=graphviz, config=config):
     m, convergence = steepest_descent(eggs=eggs, note=True)(m, tol=1E-3, clevel=3)
 
-    m = field(x_space, codomain=k_space)
+    m = Field(x_space, codomain=k_space)
     m, convergence = steepest_descent_new(energy, gradient, note=True)(m, tol=1E-3, clevel=3)
     #s.plot(title="signal")                                           # plot signal
-    #d_ = field(x_space, val=d.val, target=k_space)
+    #d_ = Field(x_space, val=d.val, target=k_space)
     #d_.plot(title="data", vmin=s.min(), vmax=s.max())                # plot data
     #m.plot(title="reconstructed map", vmin=s.min(), vmax=s.max())    # plot map
 

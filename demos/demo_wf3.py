@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     vminmax = {"vmin":1.5 * s.val.min(), "vmax":1.5 * s.val.max()}
     s.plot(title="signal", **vminmax)                                     # plot signal
-    d_ = field(x_space, val=d.val, target=k_space)
+    d_ = Field(x_space, val=d.val, target=k_space)
     d_.plot(title="data", **vminmax)                                      # plot data
     m.plot(title="reconstructed map", error=D.diag(bare=True), **vminmax) # plot map
     D.plot(title="information propagator", bare=True)                     # plot information propagator

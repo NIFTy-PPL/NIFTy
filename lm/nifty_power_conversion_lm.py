@@ -23,7 +23,7 @@
 import numpy as np
 from numpy import pi
 from nifty.config import about
-from nifty.nifty_field import field
+from nifty.field import Field
 from nifty.nifty_simple_math import sqrt, exp, log
 
 
@@ -71,7 +71,7 @@ def power_backward_conversion_lm(k_space,p,mean=None):
         p[0] = 4*pi*mean**2
 
     klen = k_space.get_power_indices()[0]
-    C_0_Omega = field(k_space,val=0)
+    C_0_Omega = Field(k_space,val=0)
     C_0_Omega.val[:len(klen)] = p*sqrt(2*klen+1)/sqrt(4*pi)
     C_0_Omega = C_0_Omega.transform()
 
@@ -130,7 +130,7 @@ def power_forward_conversion_lm(k_space,p,mean=0):
     """
     m = mean
     klen = k_space.get_power_indices()[0]
-    C_0_Omega = field(k_space,val=0)
+    C_0_Omega = Field(k_space,val=0)
     C_0_Omega.val[:len(klen)] = p*sqrt(2*klen+1)/sqrt(4*pi)
     C_0_Omega = C_0_Omega.transform()
 
