@@ -10,7 +10,7 @@ import itertools
 import numpy as np
 
 from nifty import Space,\
-                  RgSpace,\
+                  RGSpace,\
                   Field,\
                   distributed_data_object
 
@@ -34,19 +34,19 @@ from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
 
 available = []
 try:
-    from nifty import LmSpace
+    from nifty import LMSpace
 except ImportError:
     pass
 else:
     available += ['lm_space']
 try:
-    from nifty import  GlSpace
+    from nifty import  GLSpace
 except ImportError:
     pass
 else:
     available += ['gl_space']
 try:
-    from nifty import  HpSpace
+    from nifty import  HPSpace
 except ImportError:
     pass
 else:
@@ -135,7 +135,7 @@ all_operators = ['operator', 'diagonal_operator', 'power_operator',
 ###############################################################################
 
 def generate_operator(name):
-    x = RgSpace((8, 8))
+    x = RGSpace((8, 8))
     k = x.get_codomain()
     operator_dict = {'operator': operator(domain=x),
                      'diagonal_operator': diagonal_operator(domain=x),

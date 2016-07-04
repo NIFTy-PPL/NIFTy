@@ -9,7 +9,7 @@ if __name__ == "__main__":
 
     shape = (256, 256)
 
-    x_space = RgSpace(shape)
+    x_space = RGSpace(shape)
     k_space = x_space.get_codomain()
 
     power = lambda k: 42/((1+k*shape[0])**3)

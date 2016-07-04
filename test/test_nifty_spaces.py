@@ -20,7 +20,7 @@ from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES,\
 
 from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES,\
                               gc as RG_GC,\
-                              RgSpace
+                              RGSpace
 from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
                               GL_DISTRIBUTION_STRATEGIES,\
                               HP_DISTRIBUTION_STRATEGIES
@@ -32,19 +32,19 @@ from nifty.operators.nifty_operators import power_operator
 
 available = []
 try:
-    from nifty import LmSpace
+    from nifty import LMSpace
 except ImportError:
     pass
 else:
     available += ['lm_space']
 try:
-    from nifty import GlSpace
+    from nifty import GLSpace
 except ImportError:
     pass
 else:
     available += ['gl_space']
 try:
-    from nifty import HpSpace
+    from nifty import HPSpace
 except ImportError:
     pass
 else:
@@ -169,14 +169,14 @@ fft_test_data = np.array(
 def generate_space(name):
     space_dict = {'space': space(),
                   'point_space': point_space(10),
-                  'rg_space': RgSpace((8, 8)),
+                  'rg_space': RGSpace((8, 8)),
                   }
     if 'lm_space' in available:
-        space_dict['lm_space'] = LmSpace(mmax=11, lmax=11)
+        space_dict['lm_space'] = LMSpace(mmax=11, lmax=11)
     if 'hp_space' in available:
-        space_dict['hp_space'] = HpSpace(8)
+        space_dict['hp_space'] = HPSpace(8)
     if 'gl_space' in available:
-        space_dict['gl_space'] = GlSpace(nlat=10, nlon=19)
+        space_dict['gl_space'] = GLSpace(nlat=10, nlon=19)
 
     return space_dict[name]
 
@@ -184,14 +184,14 @@ def generate_space(name):
 def generate_space_with_size(name, num):
     space_dict = {'space': space(),
                   'point_space': point_space(num),
-                  'rg_space': RgSpace((num, num)),
+                  'rg_space': RGSpace((num, num)),
                   }
     if 'lm_space' in available:
-        space_dict['lm_space'] = LmSpace(mmax=num, lmax=num)
+        space_dict['lm_space'] = LMSpace(mmax=num, lmax=num)
     if 'hp_space' in available:
-        space_dict['hp_space'] = HpSpace(num)
+        space_dict['hp_space'] = HPSpace(num)
     if 'gl_space' in available:
-        space_dict['gl_space'] = GlSpace(nlat=num, nlon=num)
+        space_dict['gl_space'] = GLSpace(nlat=num, nlon=num)
 
     return space_dict[name]
 
@@ -660,7 +660,7 @@ class Test_RG_Space(unittest.TestCase):
         testcase_func_name=custom_name_func)
     def test_successfull_init(self, shape, complexity, zerocenter, distances,
                               harmonic, fft_module):
-        x = RgSpace(shape,
+        x = RGSpace(shape,
                      complexity=complexity,
                      zerocenter=zerocenter,
                      distances=distances,
@@ -681,7 +681,7 @@ class Test_RG_Space(unittest.TestCase):
         shape = (10, 10)
         zerocenter = True
         complexity = 2
-        x = RgSpace(shape, zerocenter=zerocenter, complexity=complexity)
+        x = RGSpace(shape, zerocenter=zerocenter, complexity=complexity)
         assert_equal(x.para, np.array([10, 10, 2, 1, 1]))
 
         new_para = np.array([6, 6, 1, 0, 1])
@@ -691,11 +691,11 @@ class Test_RG_Space(unittest.TestCase):
 ###############################################################################
 
     def test_init_fail(self):
-        assert_raises(ValueError, lambda: RgSpace((-3, 10)))
-        assert_raises(ValueError, lambda: RgSpace((10, 10), complexity=3))
-        assert_raises(ValueError, lambda: RgSpace((10, 10),
+        assert_raises(ValueError, lambda: RGSpace((-3, 10)))
+        assert_raises(ValueError, lambda: RGSpace((10, 10), complexity=3))
+        assert_raises(ValueError, lambda: RGSpace((10, 10),
                                                    distances=[1, 1, 1]))
-        assert_raises(ValueError, lambda: RgSpace((10, 10),
+        assert_raises(ValueError, lambda: RGSpace((10, 10),
                                                    zerocenter=[1, 1, 1]))
 
 ###############################################################################
@@ -714,7 +714,7 @@ class Test_RG_Space(unittest.TestCase):
     @parameterized.expand([], testcase_func_name=custom_name_func)
     def test_enforce_power(self):
         shape = (6, 6)
-        x = RgSpace(shape)
+        x = RGSpace(shape)
 
         assert_equal(x.enforce_power(2),
                      np.array([2., 2., 2., 2., 2., 2., 2., 2., 2., 2.]))
@@ -734,7 +734,7 @@ class Test_RG_Space(unittest.TestCase):
         testcase_func_name=custom_name_func)
     def test_get_check_codomain(self, complexity, distances, harmonic):
         shape = (6, 6)
-        x = RgSpace(shape, complexity=complexity, distances=distances,
+        x = RGSpace(shape, complexity=complexity, distances=distances,
                      harmonic=harmonic)
         y = x.get_codomain()
         assert(x.check_codomain(y))
@@ -748,7 +748,7 @@ class Test_RG_Space(unittest.TestCase):
 #                          #DATAMODELS['rg_space']),
 #        testcase_func_name=custom_name_func)
 #    def test_get_random_values(self, harmonic, datamodel):
-#        x = RgSpace((4, 4), complexity=1, harmonic=harmonic,
+#        x = RGSpace((4, 4), complexity=1, harmonic=harmonic,
 #                     datamodel=datamodel)
 #
 #        # pm1
@@ -778,7 +778,7 @@ class Test_RG_Space(unittest.TestCase):
     def test_calc_dot(self):
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
-        x = RgSpace(shape)
+        x = RGSpace(shape)
         assert_equal(x.calc_dot(a, a), 85344)
         assert_equal(x.calc_dot(a, 1), 2016)
         assert_equal(x.calc_dot(1, a), 2016)
@@ -792,7 +792,7 @@ class Test_RG_Space(unittest.TestCase):
         data = fft_test_data.copy()
         shape = data.shape
 
-        x = RgSpace(shape, complexity=complexity)
+        x = RGSpace(shape, complexity=complexity)
         data = fft_test_data.copy()
         data = x.cast(data)
         check_equality(x, data, x.calc_transform(x.calc_transform(data)))
@@ -806,7 +806,7 @@ class Test_RG_Space(unittest.TestCase):
         data = fft_test_data.copy()
         shape = data.shape
 
-        x = RgSpace(shape, complexity=2, zerocenter=False,
+        x = RGSpace(shape, complexity=2, zerocenter=False,
                      fft_module=fft_module)
         casted_data = x.cast(data)
         assert(check_almost_equality(x, x.calc_transform(casted_data),
@@ -829,7 +829,7 @@ class Test_RG_Space(unittest.TestCase):
                                                 -0.09492552 + 0.01306734j, 0.09355730 + 0.07553701j,
                                                 -0.02395259 - 0.02185743j, -0.03107832 - 0.04714527j]])))
 
-        x = RgSpace(shape, complexity=2, zerocenter=True,
+        x = RGSpace(shape, complexity=2, zerocenter=True,
                      fft_module=fft_module)
         casted_data = x.cast(data)
         assert(check_almost_equality(x, x.calc_transform(casted_data),
@@ -852,7 +852,7 @@ class Test_RG_Space(unittest.TestCase):
                                                 0.01493027 + 0.02664675j, -0.01128964 - 0.02424692j,
                                                 0.03347793 + 0.0358814j, -0.03924164 - 0.01978305j]])))
 
-        x = RgSpace(shape, complexity=2, zerocenter=[True, False],
+        x = RGSpace(shape, complexity=2, zerocenter=[True, False],
                      fft_module=fft_module)
         casted_data = x.cast(data)
         assert(check_almost_equality(x, x.calc_transform(casted_data),
@@ -875,9 +875,9 @@ class Test_RG_Space(unittest.TestCase):
                                                 -0.03924164 - 0.01978305j, 0.03821242 - 0.00435542j,
                                                 0.07533170 + 0.14590143j, -0.01493027 - 0.02664675j]])))
 
-        x = RgSpace(shape, complexity=2, zerocenter=[True, False],
+        x = RGSpace(shape, complexity=2, zerocenter=[True, False],
                      fft_module=fft_module)
-        y = RgSpace(shape, complexity=2, zerocenter=[False, True],
+        y = RGSpace(shape, complexity=2, zerocenter=[False, True],
                      distances=[1, 1], harmonic=True,
                      fft_module=fft_module)
         casted_data = x.cast(data)
@@ -915,7 +915,7 @@ class Test_RG_Space(unittest.TestCase):
     def test_calc_transform_variations(self, fft_module, shape, zerocenter_in,
                                        zerocenter_out):
         data = np.arange(np.prod(shape)).reshape(shape)
-        x = RgSpace(shape, complexity=2, zerocenter=zerocenter_in,
+        x = RGSpace(shape, complexity=2, zerocenter=zerocenter_in,
                      fft_module=fft_module)
         y = x.get_codomain()
         y.paradict['zerocenter'] = zerocenter_out
@@ -937,7 +937,7 @@ class Test_RG_Space(unittest.TestCase):
         sigma = 0.01
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
-        x = RgSpace(shape)
+        x = RGSpace(shape)
         casted_a = x.cast(a)
         assert(check_almost_equality(x, x.calc_smooth(casted_a, sigma=sigma),
                                      np.array([[0.3869063,   1.33370382,   2.34906384,   3.3400879,
@@ -963,7 +963,7 @@ class Test_RG_Space(unittest.TestCase):
     def test_calc_power(self):
         shape = (8, 8)
         a = np.arange(np.prod(shape)).reshape(shape)
-        x = RgSpace(shape)
+        x = RGSpace(shape)
         assert_almost_equal(x.calc_power(a),
                             np.array([992.25, 55.48097039, 0., 16.25,
                                       0., 0., 9.51902961, 0.,
@@ -984,7 +984,7 @@ class Test_Lm_Space(unittest.TestCase):
     def test_successfull_init(self, lmax, mmax, dtype):
         # TODO Look at this
         if datamodel in ['not']:
-            l = LmSpace(lmax, mmax=mmax, dtype=dtype)
+            l = LMSpace(lmax, mmax=mmax, dtype=dtype)
             assert(isinstance(l.harmonic, bool))
             assert_equal(l.paradict['lmax'], lmax)
             if mmax is None or mmax > lmax:
@@ -996,7 +996,7 @@ class Test_Lm_Space(unittest.TestCase):
             assert_equal(l.harmonic, True)
             assert_equal(l.distances, (np.float(1),))
         else:
-            with assert_raises(NotImplementedError): LmSpace(lmax, mmax=mmax, dtype=dtype)
+            with assert_raises(NotImplementedError): LMSpace(lmax, mmax=mmax, dtype=dtype)
 
 
 ###############################################################################
@@ -1004,7 +1004,7 @@ class Test_Lm_Space(unittest.TestCase):
     def test_para(self):
         lmax = 17
         mmax = 12
-        l = LmSpace(lmax, mmax=mmax)
+        l = LMSpace(lmax, mmax=mmax)
         assert_equal(l.para, np.array([lmax, mmax]))
 
         new_para = np.array([9, 12])
@@ -1014,7 +1014,7 @@ class Test_Lm_Space(unittest.TestCase):
     def test_get_shape_dof_meta_volume(self):
         lmax = 17
         mmax = 12
-        l = LmSpace(lmax, mmax=mmax)
+        l = LMSpace(lmax, mmax=mmax)
 
         assert_equal(l.shape, (156,))
         assert_equal(l.dof, 294)
@@ -1026,7 +1026,7 @@ class Test_Lm_Space(unittest.TestCase):
     def test_cast(self):
         lmax = 17
         mmax = 12
-        l = LmSpace(lmax, mmax=mmax)
+        l = LMSpace(lmax, mmax=mmax)
 
         casted = l.cast(1+1j)
         real_part = casted[:18]
@@ -1040,7 +1040,7 @@ class Test_Lm_Space(unittest.TestCase):
         mmax = 12
         # TODO Look at this
         if datamodel in ['not']:
-            l = LmSpace(lmax, mmax=mmax, datamodel=datamodel)
+            l = LMSpace(lmax, mmax=mmax, datamodel=datamodel)
 
             assert_equal(l.enforce_power(2),
                          np.ones(18)*2)
@@ -1053,7 +1053,7 @@ class Test_Lm_Space(unittest.TestCase):
              1.13118211e-04,   7.80924615e-05,   5.53086420e-05,
              4.00543213e-05,   2.95804437e-05,   2.22273027e-05]))
         else:
-            with assert_raises(NotImplementedError): LmSpace(lmax, mmax=mmax, datamodel=datamodel)
+            with assert_raises(NotImplementedError): LMSpace(lmax, mmax=mmax, datamodel=datamodel)
 
 ##############################################################################
 
@@ -1063,7 +1063,7 @@ class Test_Lm_Space(unittest.TestCase):
         mmax = 23
         # TODO Look at this
         if datamodel in ['not']:
-            l = LmSpace(lmax, mmax=mmax)
+            l = LMSpace(lmax, mmax=mmax)
 
             y = l.get_codomain()
             assert(l.check_codomain(y))
@@ -1078,7 +1078,7 @@ class Test_Lm_Space(unittest.TestCase):
                 assert(l.check_codomain(y))
                 assert(y.check_codomain(l))
         else:
-            with assert_raises(NotImplementedError): LmSpace(lmax, mmax=mmax)
+            with assert_raises(NotImplementedError): LMSpace(lmax, mmax=mmax)
 
 
 ###############################################################################
@@ -1089,7 +1089,7 @@ class Test_Lm_Space(unittest.TestCase):
 #                          #DATAMODELS['rg_space']),
 #        testcase_func_name=custom_name_func)
 #    def test_get_random_values(self, harmonic, datamodel):
-#        x = RgSpace((4, 4), complexity=1, harmonic=harmonic,
+#        x = RGSpace((4, 4), complexity=1, harmonic=harmonic,
 #                     datamodel=datamodel)
 #
 #        # pm1
@@ -1121,7 +1121,7 @@ class Test_Lm_Space(unittest.TestCase):
 #    def test_calc_dot(self, datamodel):
 #        shape = (8, 8)
 #        a = np.arange(np.prod(shape)).reshape(shape)
-#        x = RgSpace(shape)
+#        x = RGSpace(shape)
 #        assert_equal(x.calc_dot(a, a), 85344)
 #        assert_equal(x.calc_dot(a, 1), 2016)
 #        assert_equal(x.calc_dot(1, a), 2016)
@@ -1136,7 +1136,7 @@ class Test_Lm_Space(unittest.TestCase):
 #        data = fft_test_data.copy()
 #        shape = data.shape
 #
-#        x = RgSpace(shape, complexity=complexity, datamodel=datamodel)
+#        x = RGSpace(shape, complexity=complexity, datamodel=datamodel)
 #        data = fft_test_data.copy()
 #        data = x.cast(data)
 #        check_equality(x, data, x.calc_transform(x.calc_transform(data)))
@@ -1151,7 +1151,7 @@ class Test_Lm_Space(unittest.TestCase):
 #        data = fft_test_data.copy()
 #        shape = data.shape
 #
-#        x = RgSpace(shape, complexity=2, zerocenter=False,
+#        x = RGSpace(shape, complexity=2, zerocenter=False,
 #                     fft_module=fft_module, datamodel=datamodel)
 #        casted_data = x.cast(data)
 #        assert(check_almost_equality(x, x.calc_transform(casted_data),
@@ -1174,7 +1174,7 @@ class Test_Lm_Space(unittest.TestCase):
 #                                                -0.09492552 + 0.01306734j, 0.09355730 + 0.07553701j,
 #                                                -0.02395259 - 0.02185743j, -0.03107832 - 0.04714527j]])))
 #
-#        x = RgSpace(shape, complexity=2, zerocenter=True,
+#        x = RGSpace(shape, complexity=2, zerocenter=True,
 #                     fft_module=fft_module, datamodel=datamodel)
 #        casted_data = x.cast(data)
 #        assert(check_almost_equality(x, x.calc_transform(casted_data),
@@ -1197,7 +1197,7 @@ class Test_Lm_Space(unittest.TestCase):
 #                                                0.01493027 + 0.02664675j, -0.01128964 - 0.02424692j,
 #                                                0.03347793 + 0.0358814j, -0.03924164 - 0.01978305j]])))
 #
-#        x = RgSpace(shape, complexity=2, zerocenter=[True, False],
+#        x = RGSpace(shape, complexity=2, zerocenter=[True, False],
 #                     fft_module=fft_module, datamodel=datamodel)
 #        casted_data = x.cast(data)
 #        assert(check_almost_equality(x, x.calc_transform(casted_data),
@@ -1220,9 +1220,9 @@ class Test_Lm_Space(unittest.TestCase):
 #                                                -0.03924164 - 0.01978305j, 0.03821242 - 0.00435542j,
 #                                                0.07533170 + 0.14590143j, -0.01493027 - 0.02664675j]])))
 #
-#        x = RgSpace(shape, complexity=2, zerocenter=[True, False],
+#        x = RGSpace(shape, complexity=2, zerocenter=[True, False],
 #                     fft_module=fft_module, datamodel=datamodel)
-#        y = RgSpace(shape, complexity=2, zerocenter=[False, True],
+#        y = RGSpace(shape, complexity=2, zerocenter=[False, True],
 #                     distances=[1, 1], harmonic=True,
 #                     fft_module=fft_module, datamodel=datamodel)
 #        casted_data = x.cast(data)
@@ -1255,7 +1255,7 @@ class Test_Lm_Space(unittest.TestCase):
 #        sigma = 0.01
 #        shape = (8, 8)
 #        a = np.arange(np.prod(shape)).reshape(shape)
-#        x = RgSpace(shape)
+#        x = RGSpace(shape)
 #        casted_a = x.cast(a)
 #        assert(check_almost_equality(x, x.calc_smooth(casted_a, sigma=sigma),
 #                                     np.array([[0.3869063,   1.33370382,   2.34906384,   3.3400879,
@@ -1282,7 +1282,7 @@ class Test_Lm_Space(unittest.TestCase):
 #    def test_calc_power(self, datamodel):
 #        shape = (8, 8)
 #        a = np.arange(np.prod(shape)).reshape(shape)
-#        x = RgSpace(shape)
+#        x = RGSpace(shape)
 #        assert_almost_equal(x.calc_power(a),
 #                            np.array([992.25, 55.48097039, 0., 16.25,
 #                                      0., 0., 9.51902961, 0.,

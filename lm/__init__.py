@@ -38,8 +38,8 @@ except(ImportError):
             "INFO: neither libsharp_wrapper_gl nor healpy available.")
         pass ## import nothing
     else:
-        from lm_space import LmSpace ## import lm & hp
-        from hp_space import HpSpace
+        from lm_space import LMSpace ## import lm & hp
+        from hp_space import HPSpace
         ## TODO: change about
 else:
     try:
@@ -49,13 +49,13 @@ else:
                 about._errors.cprint(
                 "ERROR: installed healpy version is older than 1.8.1!"))
     except(ImportError):
-        from gl_space import GlSpace ## import lm & gl
-        from lm_space import LmSpace
+        from gl_space import GLSpace ## import lm & gl
+        from lm_space import LMSpace
     else:
-        from gl_space import GlSpace ##import all
-        from lm_space import LmSpace
-        from hp_space import HpSpace
+        from gl_space import GLSpace ##import all
+        from lm_space import LMSpace
+        from hp_space import HPSpace
 
 from nifty.lm.nifty_power_conversion_lm import power_backward_conversion_lm,\
-                                            power_forward_conversion_lm
+                                               power_forward_conversion_lm
 

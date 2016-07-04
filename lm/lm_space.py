@@ -10,8 +10,8 @@ from matplotlib.ticker import LogFormatter as lf
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.space import Space
-from hp_space import HpSpace
-from gl_space import GlSpace
+from hp_space import HPSpace
+from gl_space import GLSpace
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
@@ -25,7 +25,7 @@ hp = gdi.get('healpy')
 LM_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
-class LmSpace(Space):
+class LMSpace(Space):
     """
         ..       __
         ..     /  /
@@ -168,9 +168,9 @@ class LmSpace(Space):
         return tuple(sorted(temp))
 
     def copy(self):
-        return LmSpace(lmax=self.paradict['lmax'],
-                        mmax=self.paradict['mmax'],
-                        dtype=self.dtype)
+        return LMSpace(lmax=self.paradict['lmax'],
+                       mmax=self.paradict['mmax'],
+                       dtype=self.dtype)
 
     @property
     def shape(self):
@@ -294,7 +294,7 @@ class LmSpace(Space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty lm_space."))
 
-        elif isinstance(codomain, GlSpace):
+        elif isinstance(codomain, GLSpace):
             # lmax==mmax
             # nlat==lmax+1
             # nlon==2*lmax+1
@@ -303,7 +303,7 @@ class LmSpace(Space):
                     (codomain.paradict['nlon'] == 2*self.paradict['lmax']+1)):
                 return True
 
-        elif isinstance(codomain, HpSpace):
+        elif isinstance(codomain, HPSpace):
             # lmax==mmax
             # 3*nside-1==lmax
             if ((self.paradict['lmax'] == self.paradict['mmax']) and
@@ -353,11 +353,11 @@ class LmSpace(Space):
                 raise NotImplementedError
             nlat = self.paradict['lmax'] + 1
             nlon = self.paradict['lmax'] * 2 + 1
-            return GlSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
+            return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
 
         elif coname == 'hp' or (coname is None and not gc['lm2gl']):
             nside = (self.paradict['lmax']+1) // 3
-            return HpSpace(nside=nside)
+            return HPSpace(nside=nside)
 
         else:
             raise ValueError(about._errors.cstring(
@@ -434,7 +434,7 @@ class LmSpace(Space):
                     sample = gl.synalm(arg['spec'], lmax=lmax, mmax=mmax)
 
         else:
-            sample = super(LmSpace, self).get_random_values(**arg)
+            sample = super(LMSpace, self).get_random_values(**arg)
 
 #        elif arg['random'] == "uni":
 #            x = random.uni(dtype=self.dtype,
@@ -528,7 +528,7 @@ class LmSpace(Space):
 
         np_x = x.get_full_data()
 
-        if isinstance(codomain, GlSpace):
+        if isinstance(codomain, GLSpace):
             nlat = codomain.paradict['nlat']
             nlon = codomain.paradict['nlon']
             lmax = self.paradict['lmax']
@@ -543,7 +543,7 @@ class LmSpace(Space):
                                    lmax=lmax, mmax=mmax, cl=False)
             Tx = codomain.cast(np_Tx)
 
-        elif isinstance(codomain, HpSpace):
+        elif isinstance(codomain, HPSpace):
             nside = codomain.paradict['nside']
             lmax = self.paradict['lmax']
             mmax = self.paradict['mmax']

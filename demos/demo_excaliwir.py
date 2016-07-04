@@ -256,7 +256,7 @@ class problem(object):
 ##-----------------------------------------------------------------------------
 #
 if(__name__=="__main__"):
-    x = RgSpace((1280), zerocenter=True)
+    x = RGSpace((1280), zerocenter=True)
     p = problem(x, log = False)
     about.warnings.off()
 ##    pl.close("all")

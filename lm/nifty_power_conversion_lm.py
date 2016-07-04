@@ -27,7 +27,7 @@ from nifty.field import Field
 from nifty.nifty_simple_math import sqrt, exp, log
 
 
-def power_backward_conversion_lm(k_space,p,mean=None):
+def power_backward_conversion_lm(k_space, p, mean=None):
     """
         This function is designed to convert a theoretical/statistical power
         spectrum of a log-normal field to the theoretical power spectrum of

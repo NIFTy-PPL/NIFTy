@@ -14,7 +14,7 @@ from d2o import distributed_data_object
 from nifty import Space, \
     point_space
 
-from nifty.rg import RgSpace
+from nifty.rg import RGSpace
 
 from nifty.lm import *
 
@@ -95,7 +95,7 @@ for param in itertools.product([(1,), (4, 6), (5, 8)],
                                [False],
                                DATAMODELS['rg_space'],
                                fft_modules):
-    space_list += [[RgSpace(shape=param[0],
+    space_list += [[RGSpace(shape=param[0],
                              zerocenter=param[1],
                              complexity=param[2],
                              distances=param[3],
@@ -106,10 +106,10 @@ for param in itertools.product([(1,), (4, 6), (5, 8)],
 def generate_space_with_size(name, num):
     space_dict = {'space': Space(),
                   'point_space': point_space(num),
-                  'rg_space': RgSpace((num, num)),
-                  'lm_space': LmSpace(mmax=num+1, lmax=num+1),
-                  'hp_space': HpSpace(num),
-                  'gl_space': GlSpace(nlat=num, nlon=2*num-1),
+                  'rg_space': RGSpace((num, num)),
+                  'lm_space': LMSpace(mmax=num+1, lmax=num+1),
+                  'hp_space': HPSpace(num),
+                  'gl_space': GLSpace(nlat=num, nlon=2*num-1),
                   }
     return space_dict[name]
 
@@ -135,7 +135,7 @@ class Test_field_init(unittest.TestCase):
     def test_successfull_init_and_attributes(self, shape, zerocenter,
                                              complexity, distances, harmonic,
                                              fft_module, datamodel):
-        s = RgSpace(shape=shape, zerocenter=zerocenter,
+        s = RGSpace(shape=shape, zerocenter=zerocenter,
                      complexity=complexity, distances=distances,
                      harmonic=harmonic, fft_module=fft_module)
         f = Field(domain=(s,), dtype=s.dtype, datamodel=datamodel)
@@ -171,10 +171,10 @@ class Test_field_multiple_rg_init(unittest.TestCase):
     def test_multiple_space_init(self, shape, zerocenter,
                                  complexity, distances, harmonic,
                                  fft_module, datamodel):
-        s1 = RgSpace(shape=shape, zerocenter=zerocenter,
+        s1 = RGSpace(shape=shape, zerocenter=zerocenter,
                       complexity=complexity, distances=distances,
                       harmonic=harmonic, fft_module=fft_module)
-        s2 = RgSpace(shape=shape, zerocenter=zerocenter,
+        s2 = RGSpace(shape=shape, zerocenter=zerocenter,
                       complexity=complexity, distances=distances,
                       harmonic=harmonic, fft_module=fft_module)
         f = Field(domain=(s1, s2), dtype=s1.dtype, datamodel=datamodel)

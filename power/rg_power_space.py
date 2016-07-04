@@ -13,13 +13,13 @@ class RGPowerSpace(PowerSpace):
                  binbounds=None):
         self.dtype = np.dtype(dtype)
         self.paradict = rg_power_space_paradict(
-                                    shape=shape,
-                                    dgrid=dgrid,
-                                    zerocentered=zerocentered,
-                                    distribution_strategy=distribution_strategy,
-                                    log=log,
-                                    nbin=nbin,
-                                    binbounds=binbounds)
+                                shape=shape,
+                                dgrid=dgrid,
+                                zerocentered=zerocentered,
+                                distribution_strategy=distribution_strategy,
+                                log=log,
+                                nbin=nbin,
+                                binbounds=binbounds)
 
         # self.power_indices = RGPowerIndexFactory.get_power_indices(
         #                         **self.paradict.parameters)

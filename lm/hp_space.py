@@ -38,6 +38,8 @@ import pylab as pl
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
+from nifty.lm import LMSpace
+
 from nifty.space import Space
 from nifty.field import Field
 
@@ -51,7 +53,8 @@ hp = gdi.get('healpy')
 
 HP_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
-class HpSpace(Space):
+
+class HPSpace(Space):
     """
         ..        __
         ..      /  /
@@ -148,7 +151,7 @@ class HpSpace(Space):
         self.paradict['nside'] = x[0]
 
     def copy(self):
-        return HpSpace(nside=self.paradict['nside'])
+        return HPSpace(nside=self.paradict['nside'])
 
     @property
     def shape(self):
@@ -221,7 +224,7 @@ class HpSpace(Space):
         if not isinstance(codomain, Space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        if isinstance(codomain, LmSpace):
+        if isinstance(codomain, LMSpace):
             nside = self.paradict['nside']
             lmax = codomain.paradict['lmax']
             mmax = codomain.paradict['mmax']
@@ -244,7 +247,7 @@ class HpSpace(Space):
         """
         lmax = 3*self.paradict['nside'] - 1
         mmax = lmax
-        return LmSpace(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
+        return LMSpace(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
 
     def get_random_values(self, **kwargs):
         """
@@ -312,7 +315,7 @@ class HpSpace(Space):
                 sample = self.calc_weight(sample, power=0.5)
 
         else:
-            sample = super(HpSpace, self).get_random_values(**arg)
+            sample = super(HPSpace, self).get_random_values(**arg)
 
 
 #        elif arg['random'] == "uni":
@@ -369,7 +372,7 @@ class HpSpace(Space):
 
         np_x = x.get_full_data()
 
-        if isinstance(codomain, LmSpace):
+        if isinstance(codomain, LMSpace):
             # weight if discrete
             if self.discrete:
                 x = self.calc_weight(x, power=-0.5)

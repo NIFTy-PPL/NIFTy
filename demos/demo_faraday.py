@@ -48,7 +48,7 @@ about.infos.off()
 ##-----------------------------------------------------------------------------
 
 # (global) Faraday map
-m = field(HpSpace(128), val=np.load(os.path.join(get_demo_dir(),
+m = field(HPSpace(128), val=np.load(os.path.join(get_demo_dir(),
                                            "demo_faraday_map.npy")))
 
 ##-----------------------------------------------------------------------------
@@ -98,8 +98,8 @@ def run(projection=False, power=False):
         m4.plot(title=r"angular quadrupole of $m$ on a Gauss-Legendre grid", **nicely)
 
     # (d) representation on regular grid
-    y_space = GlSpace(384, nlon=768) # auxiliary gl_space
-    z_space = RgSpace([768, 384], dist=[1/360, 1/180])
+    y_space = GLSpace(384, nlon=768) # auxiliary gl_space
+    z_space = RGSpace([768, 384], dist=[1/360, 1/180])
     m5 = m1.transform(y_space)
     m5.cast_domain(z_space)
     m5.set_val(np.roll(m5.val[::-1, ::-1], y_space.paradict['nlon']//2, axis=1)) # rearrange value array

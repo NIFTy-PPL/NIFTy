@@ -7,6 +7,8 @@ from matplotlib.ticker import LogFormatter as lf
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
+from nifty.lm import LMSpace
+
 from nifty.space import Space
 from nifty.config import about,\
                          nifty_configuration as gc,\
@@ -18,7 +20,8 @@ gl = gdi.get('libsharp_wrapper_gl')
 
 GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
-class GlSpace(Space):
+
+class GLSpace(Space):
     """
         ..                 __
         ..               /  /
@@ -129,9 +132,9 @@ class GlSpace(Space):
         self.paradict['nlon'] = x[1]
 
     def copy(self):
-        return GlSpace(nlat=self.paradict['nlat'],
-                        nlon=self.paradict['nlon'],
-                        dtype=self.dtype)
+        return GLSpace(nlat=self.paradict['nlat'],
+                       nlon=self.paradict['nlon'],
+                       dtype=self.dtype)
 
     @property
     def shape(self):
@@ -205,7 +208,7 @@ class GlSpace(Space):
         if not isinstance(codomain, Space):
             raise TypeError(about._errors.cstring("ERROR: invalid input."))
 
-        if isinstance(codomain, LmSpace):
+        if isinstance(codomain, LMSpace):
             nlat = self.paradict['nlat']
             nlon = self.paradict['nlon']
             lmax = codomain.paradict['lmax']
@@ -233,9 +236,9 @@ class GlSpace(Space):
         mmax = nlat-1
         # lmax,mmax = nlat-1,nlat-1
         if self.dtype == np.dtype('float32'):
-            return LmSpace(lmax=lmax, mmax=mmax, dtype=np.complex64)
+            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex64)
         else:
-            return LmSpace(lmax=lmax, mmax=mmax, dtype=np.complex128)
+            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex128)
 
     def get_random_values(self, **kwargs):
         """
@@ -308,7 +311,7 @@ class GlSpace(Space):
                 sample = self.calc_weight(sample, power=0.5)
 
         else:
-            sample = super(GlSpace, self).get_random_values(**arg)
+            sample = super(GLSpace, self).get_random_values(**arg)
 
 
 #        elif(arg['random'] == "uni"):
@@ -404,7 +407,7 @@ class GlSpace(Space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
-        if isinstance(codomain, LmSpace):
+        if isinstance(codomain, LMSpace):
 
             # weight if discrete
             if self.discrete:
