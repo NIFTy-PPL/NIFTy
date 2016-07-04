@@ -26,7 +26,7 @@ from nifty.operators import operator,\
 
 from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES
 
-from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES,\
+from nifty.rg.rg_space import RG_DISTRIBUTION_STRATEGIES,\
                               gc as RG_GC
 from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
                               GL_DISTRIBUTION_STRATEGIES,\

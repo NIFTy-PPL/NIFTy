@@ -18,7 +18,7 @@ from nifty.nifty_core import POINT_DISTRIBUTION_STRATEGIES,\
     space,\
     point_space
 
-from nifty.rg.nifty_rg import RG_DISTRIBUTION_STRATEGIES,\
+from nifty.rg.rg_space import RG_DISTRIBUTION_STRATEGIES,\
                               gc as RG_GC,\
                               RGSpace
 from nifty.lm.nifty_lm import LM_DISTRIBUTION_STRATEGIES,\
