@@ -10,8 +10,8 @@ from matplotlib.ticker import LogFormatter as lf
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.space import Space
-from hp_space import HPSpace
-from gl_space import GLSpace
+#from hp_space import HPSpace
+#from gl_space import GLSpace
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
@@ -290,6 +290,8 @@ class LMSpace(Space):
         if codomain is None:
             return False
 
+        from hp_space import HPSpace
+        from gl_space import GLSpace
         if not isinstance(codomain, Space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty lm_space."))
@@ -344,6 +346,8 @@ class LMSpace(Space):
                    `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
         """
+        from hp_space import HPSpace
+        from gl_space import GLSpace
         if coname == 'gl' or (coname is None and gc['lm2gl']):
             if self.dtype == np.dtype('complex64'):
                 new_dtype = np.float32
@@ -527,7 +531,8 @@ class LMSpace(Space):
         #         "external alm2map method!")
 
         np_x = x.get_full_data()
-
+        from hp_space import HPSpace
+        from gl_space import GLSpace
         if isinstance(codomain, GLSpace):
             nlat = codomain.paradict['nlat']
             nlon = codomain.paradict['nlon']

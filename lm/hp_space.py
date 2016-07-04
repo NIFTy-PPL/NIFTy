@@ -38,7 +38,7 @@ import pylab as pl
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.lm import LMSpace
+from nifty.lm.lm_space import LMSpace
 
 from nifty.space import Space
 from nifty.field import Field

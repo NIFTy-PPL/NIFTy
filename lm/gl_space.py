@@ -7,7 +7,7 @@ from matplotlib.ticker import LogFormatter as lf
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.lm import LMSpace
+from nifty.lm.lm_space import LMSpace
 
 from nifty.space import Space
 from nifty.config import about,\
