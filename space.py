@@ -484,7 +484,8 @@ class Space(object):
             codomain : nifty.point_space
                 A compatible codomain.
         """
-        return self.copy()
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no generic codomain for the Space base class."))
 
 #    def get_random_values(self, **kwargs):
 #        """

@@ -49,9 +49,6 @@ from nifty_random import random
 from nifty_simple_math import *
 from nifty_utilities import *
 
-from nifty_paradict import space_paradict,\
-                           nested_space_paradict
-
 from field_types import FieldType,\
                         FieldArray
 

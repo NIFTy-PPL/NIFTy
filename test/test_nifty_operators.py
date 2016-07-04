@@ -10,10 +10,9 @@ import itertools
 import numpy as np
 
 from nifty import space,\
-    point_space,\
-    rg_space,\
-    field,\
-    distributed_data_object
+                  rg_space,\
+                  Field,\
+                  distributed_data_object
 
 from nifty.operators import operator,\
                             diagonal_operator,\

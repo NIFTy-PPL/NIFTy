@@ -16,6 +16,9 @@ class space_paradict(object):
         for key in kwargs:
             self[key] = kwargs[key]
 
+    def __iter__(self):
+        return self.parameters.__iter__()
+
     def __eq__(self, other):
         return (isinstance(other, self.__class__) and
                 self.__dict__ == other.__dict__)
@@ -27,12 +30,7 @@ class space_paradict(object):
         return self.parameters.__repr__()
 
     def __setitem__(self, key, arg):
-        if(np.isscalar(arg)):
-            arg = np.array([arg], dtype=np.int)
-        else:
-            arg = np.array(arg, dtype=np.int)
-
-        self.parameters.__setitem__(key, arg)
+        raise NotImplementedError
 
     def __getitem__(self, key):
         return self.parameters.__getitem__(key)
@@ -64,7 +62,7 @@ class rg_space_paradict(space_paradict):
             temp = np.array(arg, dtype=np.int).flatten()
             if np.any(temp < 0):
                 raise ValueError("ERROR: negative number in shape.")
-            temp = list(temp)
+            temp = tuple(temp)
             if len(temp) != self.ndim:
                 raise ValueError(about._errors.cstring(
                     "ERROR: Number of dimensions does not match the init " +
@@ -77,24 +75,7 @@ class rg_space_paradict(space_paradict):
         elif key == 'zerocenter':
             temp = np.empty(self.ndim, dtype=bool)
             temp[:] = arg
-            temp = list(temp)
-        self.parameters.__setitem__(key, temp)
-
-
-class nested_space_paradict(space_paradict):
-
-    def __init__(self, ndim):
-        self.ndim = np.int(ndim)
-        space_paradict.__init__(self)
-
-    def __setitem__(self, key, arg):
-        if not isinstance(key, int):
-            raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported point_space parameter"))
-        if key >= self.ndim or key < 0:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Nestindex out of bounds"))
-        temp = list(np.array(arg, dtype=int).flatten())
+            temp = tuple(temp)
         self.parameters.__setitem__(key, temp)
 
 
@@ -202,3 +183,79 @@ class hp_space_paradict(space_paradict):
             raise ValueError(about._errors.cstring(
                 "ERROR: invalid parameter ( nside <> 2**n )."))
         self.parameters.__setitem__(key, temp)
+
+
+class power_space_paradict(space_paradict):
+    def __init__(self, distribution_strategy, log, nbin, binbounds):
+        super(power_space_paradict, self).__init___(
+                                distribution_strategy=distribution_strategy,
+                                log=log,
+                                nbin=nbin,
+                                binbounds=binbounds)
+
+    def __setitem__(self, key, arg):
+        if key not in ['distribution_strategy', 'log', 'nbin', 'binbounds']:
+            raise ValueError(about._errors.cstring(
+                "ERROR: Unsupported PowerSpace parameter"))
+
+        if key == 'log':
+            try:
+                temp = bool(arg)
+            except(TypeError):
+                temp = False
+
+        elif key == 'nbin':
+            try:
+                temp = int(arg)
+            except(TypeError):
+                temp = None
+
+        elif key == 'binbounds':
+            try:
+                temp = tuple(np.array(arg))
+            except(TypeError):
+                temp = None
+
+        elif key == 'distribution_strategy':
+            temp = str(arg)
+
+        self.parameters.__setitem__(key, temp)
+
+
+class rg_power_space_paradict(power_space_paradict, rg_space_paradict):
+    def __init__(self, shape, dgrid, zerocentered, log, nbin, binbounds):
+        rg_space_paradict.__init___(shape=shape,
+                                    dgrid=dgrid,
+                                    zerocentered=zerocentered,
+                                    log=log,
+                                    nbin=nbin,
+                                    binbounds=binbounds)
+
+    def __setitem__(self, key, arg):
+        if key not in ['shape', 'zerocentered', 'distribution_strategy',
+                       'log', 'nbin', 'binbounds']:
+            raise ValueError(about._errors.cstring(
+                "ERROR: Unsupported RGPowerSpace parameter"))
+
+        if key in ['distribution_strategy', 'log', 'nbin', 'binbounds']:
+            power_space_paradict.__setitem__(key, arg)
+        elif key == 'dgrid':
+            temp = np.array(arg, dtype=np.float).flatten()
+            temp = tuple(temp)
+            if len(temp) != self.ndim:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: Number of dimensions does not match the init "
+                    "value."))
+            self.parameters.__setitem__(key, temp)
+        else:
+            rg_space_paradict.__setitem__(key, arg)
+
+
+
+
+
+
+
+
+
+
