@@ -29,7 +29,7 @@ try:
 except(ImportError):
     try:
         import healpy as hp
-        if lv(hp.__version__) < lv('3.8.1'):
+        if lv(hp.__version__) < lv('1.8.1'):
             raise ImportError(
                 about._errors.cprint(
                 "ERROR: installed healpy version is older than 1.8.1!"))
@@ -44,7 +44,7 @@ except(ImportError):
 else:
     try:
         import healpy as hp
-        if lv(hp.__version__) < lv('3.8.1'):
+        if lv(hp.__version__) < lv('1.8.1'):
             raise ImportError(
                 about._errors.cprint(
                 "ERROR: installed healpy version is older than 1.8.1!"))
