@@ -770,7 +770,7 @@ class rg_space(Space):
         return x
 
     def get_weight(self, power=1):
-        return np.prod(self.distances)**power
+        return reduce(lambda x, y: x * y, self.distances)**power
 
     def calc_transform(self, x, codomain=None, axes=None, **kwargs):
         """

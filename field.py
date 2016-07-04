@@ -480,7 +480,7 @@ class Field(object):
                 Dimension of space.
 
         """
-        return np.prod(self.shape)
+        return reduce(lambda x, y: x * y, self.shape)
 
     @property
     def dof(self):
