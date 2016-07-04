@@ -2832,7 +2832,7 @@ class response_operator(operator):
                         "ERROR: Non-scalar entries of assign list all must " +
                         "have the same shape!"))
                 else:
-                    assignments = np.prod(shape_list[0])
+                    assignments = reduce(lambda x, y: x * y, shape_list[0])
             self.assign = assign
         else:
             raise ValueError(about._errors.cstring(

@@ -292,7 +292,7 @@ class power_indices(object):
             local_pundex = np.zeros(shape=global_kindex.shape, dtype=np.int)
             # Set the default value higher than the maximal possible pundex
             # value so that MPI.MIN can sort out the default
-            local_pundex += np.prod(global_pindex.shape) + 1
+            local_pundex += reduce(lambda x, y: x * y, global_pindex.shape) + 1
             # Set the default value higher than the length
             global_pundex = np.empty_like(local_pundex)
             # Store the individual pundices in the local_pundex array

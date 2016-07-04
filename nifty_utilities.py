@@ -179,7 +179,7 @@ def convert_nested_list_to_object_array(x):
         return x
     # Prepare the carrier-object
     carrier = np.empty(real_shape, dtype=np.object)
-    for i in xrange(np.prod(real_shape)):
+    for i in xrange(reduce(lambda x, y: x * y, real_shape)):
         ii = np.unravel_index(i, real_shape)
         try:
             carrier[ii] = x[ii]
@@ -197,7 +197,7 @@ def field_map(ishape, function, *args):
     else:
         if args == ():
             result = np.empty(ishape, dtype=np.object)
-            for i in xrange(np.prod(ishape)):
+            for i in xrange(reduce(lambda x, y: x * y, ishape)):
                 ii = np.unravel_index(i, ishape)
                 result[ii] = function()
             return result
@@ -211,7 +211,7 @@ def field_map(ishape, function, *args):
                 get_tuple = tuple(np.clip(ind, 0, w_shape-1))
                 return w[get_tuple]
             result = np.empty_like(args[0])
-            for i in xrange(np.prod(result.shape)):
+            for i in xrange(reduce(lambda x, y: x * y, result.shape)):
                 ii = np.unravel_index(i, result.shape)
                 result[ii] = function(
                     *map(

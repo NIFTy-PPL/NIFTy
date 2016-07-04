@@ -202,7 +202,7 @@ class random(object):
                 Random field values (with correct dtype and shape).
 
         """
-        size = np.prod(shape, axis=0, dtype=np.dtype('int'), out=None)
+        size = reduce(lambda x, y: x * y, shape)
 
         if issubclass(dtype.type, np.complexfloating):
             x = np.array([1 + 0j, 0 + 1j, -1 + 0j, 0 - 1j],
@@ -247,7 +247,7 @@ class random(object):
                 `shape`.
 
         """
-        size = np.prod(shape)
+        size = reduce(lambda x, y: x * y, shape)
 
         if issubclass(dtype.type, np.complexfloating):
             x = np.empty(size, dtype=dtype)
@@ -304,7 +304,7 @@ class random(object):
                 Random field values (with correct dtype and shape).
 
         """
-        size = np.prod(shape, axis=0, dtype=np.dtype('int'), out=None)
+        size = reduce(lambda x, y: x * y, shape)
         if(np.size(vmin) > 1):
             vmin = np.array(vmin).flatten(order='C')
         if(np.size(vmax) > 1):

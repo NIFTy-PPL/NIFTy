@@ -284,7 +284,7 @@ class Space(object):
             dim : {int, numpy.ndarray}
                 Dimension(s) of the space.
         """
-        return np.prod(self.shape)
+        return reduce(lambda x, y: x * y, self.shape)
 
     @property
     def dof(self):
@@ -322,7 +322,7 @@ class Space(object):
 
     @property
     def vol(self, split=False):
-        return np.prod(self.distances)
+        return reduce(lambda x, y: x * y, self.distances)
 
     @property
     def vol_split(self):
@@ -615,7 +615,7 @@ class Space(object):
     def get_weight(self, power=1, split=False):
         splitted_weight = tuple(np.array(self.distances)**np.array(power))
         if not split:
-            return np.prod(splitted_weight)
+            return reduce(lambda x, y: x * y, splitted_weight)
         else:
             return splitted_weight
 
