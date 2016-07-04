@@ -20,7 +20,7 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
-from nifty_rg import rg_space,\
+from nifty_rg import RgSpace,\
                      utilities
 from nifty_power_conversion_rg import power_backward_conversion_rg,\
                                     power_forward_conversion_rg

@@ -60,7 +60,7 @@ from power import PowerSpace,\
 
 ## optional submodule `rg`
 try:
-    from rg import rg_space,\
+    from rg import RgSpace,\
                     power_backward_conversion_rg,\
                     power_forward_conversion_rg
     from nifty_paradict import rg_space_paradict
@@ -69,19 +69,19 @@ except(ImportError):
 
 ## optional submodule `lm`
 try:
-    from lm import lm_space,\
+    from lm import LmSpace,\
                     power_backward_conversion_lm,\
                     power_forward_conversion_lm
     from nifty_paradict import lm_space_paradict
 
     try:
-        from lm import gl_space
+        from lm import GlSpace
         from nifty_paradict import gl_space_paradict
     except(ImportError):
         pass
 
     try:
-        from lm import hp_space
+        from lm import HpSpace
         from nifty_paradict import hp_space_paradict
     except(ImportError):
         pass

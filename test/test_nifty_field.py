@@ -11,12 +11,12 @@ import numpy as np
 
 from d2o import distributed_data_object
 
-from nifty import space, \
-    point_space, \
-    rg_space, \
-    lm_space, \
-    hp_space, \
-    gl_space
+from nifty import Space, \
+    point_space
+
+from nifty.rg import RgSpace
+
+from nifty.lm import *
 
 from nifty.field import Field
 
@@ -95,7 +95,7 @@ for param in itertools.product([(1,), (4, 6), (5, 8)],
                                [False],
                                DATAMODELS['rg_space'],
                                fft_modules):
-    space_list += [[rg_space(shape=param[0],
+    space_list += [[RgSpace(shape=param[0],
                              zerocenter=param[1],
                              complexity=param[2],
                              distances=param[3],
@@ -104,12 +104,12 @@ for param in itertools.product([(1,), (4, 6), (5, 8)],
 
 
 def generate_space_with_size(name, num):
-    space_dict = {'space': space(),
+    space_dict = {'space': Space(),
                   'point_space': point_space(num),
-                  'rg_space': rg_space((num, num)),
-                  'lm_space': lm_space(mmax=num+1, lmax=num+1),
-                  'hp_space': hp_space(num),
-                  'gl_space': gl_space(nlat=num, nlon=2*num-1),
+                  'rg_space': RgSpace((num, num)),
+                  'lm_space': LmSpace(mmax=num+1, lmax=num+1),
+                  'hp_space': HpSpace(num),
+                  'gl_space': GlSpace(nlat=num, nlon=2*num-1),
                   }
     return space_dict[name]
 
@@ -135,7 +135,7 @@ class Test_field_init(unittest.TestCase):
     def test_successfull_init_and_attributes(self, shape, zerocenter,
                                              complexity, distances, harmonic,
                                              fft_module, datamodel):
-        s = rg_space(shape=shape, zerocenter=zerocenter,
+        s = RgSpace(shape=shape, zerocenter=zerocenter,
                      complexity=complexity, distances=distances,
                      harmonic=harmonic, fft_module=fft_module)
         f = Field(domain=(s,), dtype=s.dtype, datamodel=datamodel)
@@ -171,10 +171,10 @@ class Test_field_multiple_rg_init(unittest.TestCase):
     def test_multiple_space_init(self, shape, zerocenter,
                                  complexity, distances, harmonic,
                                  fft_module, datamodel):
-        s1 = rg_space(shape=shape, zerocenter=zerocenter,
+        s1 = RgSpace(shape=shape, zerocenter=zerocenter,
                       complexity=complexity, distances=distances,
                       harmonic=harmonic, fft_module=fft_module)
-        s2 = rg_space(shape=shape, zerocenter=zerocenter,
+        s2 = RgSpace(shape=shape, zerocenter=zerocenter,
                       complexity=complexity, distances=distances,
                       harmonic=harmonic, fft_module=fft_module)
         f = Field(domain=(s1, s2), dtype=s1.dtype, datamodel=datamodel)

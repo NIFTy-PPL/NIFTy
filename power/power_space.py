@@ -7,7 +7,7 @@ from nifty.nifty_paradict import power_space_paradict
 
 
 class PowerSpace(Space):
-    def __init__(self, dtype=np.dtype('float'), distribution_strategy,
+    def __init__(self, dtype=np.dtype('float'), distribution_strategy='fftw',
                  log=False, nbin=None, binbounds=None):
         self.dtype = np.dtype(dtype)
         self.paradict = power_space_paradict(

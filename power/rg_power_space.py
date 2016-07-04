@@ -4,7 +4,7 @@ import numpy as np
 
 from nifty.power import PowerSpace
 from nifty.nifty_paradict import rg_power_space_paradict
-from nifty.power.power_index_factory import RGPowerIndexFactory
+# from nifty.power.power_index_factory import RGPowerIndexFactory
 
 
 class RGPowerSpace(PowerSpace):
@@ -16,10 +16,10 @@ class RGPowerSpace(PowerSpace):
                                     shape=shape,
                                     dgrid=dgrid,
                                     zerocentered=zerocentered,
-                                    distribution_strategy=distribution_strategy
+                                    distribution_strategy=distribution_strategy,
                                     log=log,
                                     nbin=nbin,
                                     binbounds=binbounds)
 
-        self.power_indices = RGPowerIndexFactory.get_power_indices(
-                                **self.paradict.parameters)
+        # self.power_indices = RGPowerIndexFactory.get_power_indices(
+        #                         **self.paradict.parameters)

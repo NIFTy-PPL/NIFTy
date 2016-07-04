@@ -49,8 +49,8 @@ if __name__ == "__main__":
     #shape = [1024, 1024]
     #x_space = rg_space(shape)
     #y_space = point_space(1280*1280)
-    x_space = hp_space(32)
-    #x_space = gl_space(800)
+    x_space = HpSpace(32)
+    #x_space = GlSpace(800)
 
     k_space = x_space.get_codomain()                                 # get conjugate space
 

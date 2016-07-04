@@ -59,7 +59,7 @@ MPI = gdi[gc['mpi_module']]
 RG_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
-class rg_space(Space):
+class RgSpace(Space):
     """
         ..      _____   _______
         ..    /   __/ /   _   /
@@ -241,7 +241,7 @@ class rg_space(Space):
         return tuple(sorted(temp))
 
     def copy(self):
-        return rg_space(shape=self.paradict['shape'],
+        return RgSpace(shape=self.paradict['shape'],
                         complexity=self.paradict['complexity'],
                         zerocenter=self.paradict['zerocenter'],
                         distances=self.distances,
@@ -353,7 +353,7 @@ class rg_space(Space):
         if codomain is None:
             return False
 
-        if not isinstance(codomain, rg_space):
+        if not isinstance(codomain, RgSpace):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty rg_space."))
 
@@ -461,7 +461,7 @@ class rg_space(Space):
         complexity = {0: 1, 1: 0, 2: 2}[self.paradict['complexity']]
         harmonic = bool(not self.harmonic)
 
-        new_space = rg_space(shape,
+        new_space = RgSpace(shape,
                              zerocenter=cozerocenter,
                              complexity=complexity,
                              distances=distances,
@@ -541,7 +541,7 @@ class rg_space(Space):
 
         # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
         if arg['random'] == 'pm1' and not hermitianizeQ:
-            sample = super(rg_space, self).get_random_values(**arg)
+            sample = super(RgSpace, self).get_random_values(**arg)
 
         elif arg['random'] == 'pm1' and hermitianizeQ:
             sample = self.get_random_values(random='uni', vmin=-1, vmax=1)
@@ -579,14 +579,14 @@ class rg_space(Space):
         # Case 2: normal distribution with zero-mean and a given standard
         #         deviation or variance
         elif arg['random'] == 'gau':
-            sample = super(rg_space, self).get_random_values(**arg)
+            sample = super(RgSpace, self).get_random_values(**arg)
 
             if hermitianizeQ:
                 sample = utilities.hermitianize_gaussian(sample)
 
         # Case 3: uniform distribution
         elif arg['random'] == "uni" and not hermitianizeQ:
-            sample = super(rg_space, self).get_random_values(**arg)
+            sample = super(RgSpace, self).get_random_values(**arg)
 
         elif arg['random'] == "uni" and hermitianizeQ:
             # For a hermitian uniform sample, generate a gaussian one
@@ -1614,6 +1614,6 @@ class rg_space(Space):
             fig.canvas.draw()
 
     def __repr__(self):
-        string = super(rg_space, self).__repr__()
+        string = super(RgSpace, self).__repr__()
         string += repr(self.fft_machine) + "\n "
         return string

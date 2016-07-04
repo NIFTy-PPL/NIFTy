@@ -6,7 +6,7 @@ import d2o
 
 class TestFFTWTransform(unittest.TestCase):
     def test_comm(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         b = d2o.distributed_data_object(a)
         b.comm = [1, 2, 3]  # change comm to something not supported
@@ -14,14 +14,14 @@ class TestFFTWTransform(unittest.TestCase):
             x.fft_machine.transform(b, x, x.get_codomain())
 
     def test_shapemismatch(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         b = x.cast(a)
         with self.assertRaises(ValueError):
             x.fft_machine.transform(b, x, x.get_codomain(), axes=(0, 1, 2))
 
     def test_local_ndarray(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         self.assertTrue(
             np.allclose(
@@ -31,7 +31,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_local_notzero(self):
-        x = nt.rg_space(8, fft_module='pyfftw')
+        x = nt.RgSpace(8, fft_module='pyfftw')
         a = np.ones((8, 8))
         b = x.cast(a)
         self.assertTrue(
@@ -42,7 +42,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_not(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         b = d2o.distributed_data_object(a, distribution_strategy='not')
         self.assertTrue(
@@ -53,7 +53,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_mpi_axesnone(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         b = x.cast(a)
         self.assertTrue(
@@ -64,7 +64,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_mpi_axesnone_equal(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         b = d2o.distributed_data_object(a, distribution_strategy='equal')
         self.assertTrue(
@@ -75,7 +75,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_mpi_axesall(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         b = x.cast(a)
         self.assertTrue(
@@ -86,7 +86,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_mpi_axesall_equal(self):
-        x = nt.rg_space((8, 8), fft_module='pyfftw')
+        x = nt.RgSpace((8, 8), fft_module='pyfftw')
         a = np.ones((8, 8))
         b = d2o.distributed_data_object(a, distribution_strategy='equal')
         self.assertTrue(
@@ -97,7 +97,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_mpi_zero(self):
-        x = nt.rg_space(8, fft_module='pyfftw')
+        x = nt.RgSpace(8, fft_module='pyfftw')
         a = np.ones((8, 8)) + 1j*np.zeros((8, 8))
         b = x.cast(a)
         self.assertTrue(
@@ -108,7 +108,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_mpi_zero_equal(self):
-        x = nt.rg_space(8, fft_module='pyfftw')
+        x = nt.RgSpace(8, fft_module='pyfftw')
         a = np.ones((8, 8)) + 1j*np.zeros((8, 8))
         b = d2o.distributed_data_object(a, distribution_strategy='equal')
         self.assertTrue(
@@ -119,7 +119,7 @@ class TestFFTWTransform(unittest.TestCase):
         )
 
     def test_mpi_zero_not(self):
-        x = nt.rg_space(8, fft_module='pyfftw')
+        x = nt.RgSpace(8, fft_module='pyfftw')
         a = np.ones((8, 8)) + 1j*np.zeros((8, 8))
         b = d2o.distributed_data_object(a, distribution_strategy='not')
         self.assertTrue(
