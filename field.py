@@ -108,7 +108,7 @@ class Field(object):
 
     def __init__(self, domain=None, val=None, codomain=None,
                  dtype=None, field_type=None, copy=False,
-                 datamodel=None, comm=None, **kwargs):
+                 datamodel=None, **kwargs):
         """
             Sets the attributes for a field class instance.
 
@@ -137,7 +137,6 @@ class Field(object):
             self._init_from_field(f=val,
                                   domain=domain,
                                   codomain=codomain,
-                                  comm=comm,
                                   copy=copy,
                                   dtype=dtype,
                                   field_type=field_type,
@@ -147,14 +146,13 @@ class Field(object):
             self._init_from_array(val=val,
                                   domain=domain,
                                   codomain=codomain,
-                                  comm=comm,
                                   copy=copy,
                                   dtype=dtype,
                                   field_type=field_type,
                                   datamodel=datamodel,
                                   **kwargs)
 
-    def _init_from_field(self, f, domain, codomain, comm, copy, dtype,
+    def _init_from_field(self, f, domain, codomain, copy, dtype,
                          field_type, datamodel, **kwargs):
         # check domain
         if domain is None:
@@ -177,13 +175,12 @@ class Field(object):
         self._init_from_array(domain=domain,
                               val=f.val,
                               codomain=codomain,
-                              comm=comm,
                               copy=copy,
                               dtype=dtype,
                               datamodel=datamodel,
                               **kwargs)
 
-    def _init_from_array(self, val, domain, codomain, comm, copy, dtype,
+    def _init_from_array(self, val, domain, codomain, copy, dtype,
                          field_type, datamodel, **kwargs):
         # check domain
         self.domain = self._parse_domain(domain=domain)
@@ -204,12 +201,7 @@ class Field(object):
                                       field_type=self.field_type)
         self.dtype = dtype
 
-        if comm is not None:
-            self.comm = self._parse_comm(comm)
-        elif isinstance(val, distributed_data_object):
-            self.comm = val.comm
-        else:
-            self.comm = gc['default_comm']
+        self._comm = getattr(gdi[gc['mpi_module']], gc['default_comm'])
 
         if datamodel in DISTRIBUTION_STRATEGIES['all']:
             self.datamodel = datamodel
@@ -247,25 +239,6 @@ class Field(object):
                 i += 1
             axes_list += [tuple(l)]
         return tuple(axes_list)
-
-    def _parse_comm(self, comm):
-        # check if comm is a string -> the name of comm is given
-        # -> Extract it from the mpi_module
-        if isinstance(comm, str):
-            if gc.validQ('default_comm', comm):
-                result_comm = getattr(gdi[gc['mpi_module']], comm)
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The given communicator-name is not supported."))
-        # check if the given comm object is an instance of default Intracomm
-        else:
-            if isinstance(comm, gdi[gc['mpi_module']].Intracomm):
-                result_comm = comm
-            else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The given comm object is not an instance of the " +
-                    "default-MPI-module's Intracomm Class."))
-        return result_comm
 
     def _parse_domain(self, domain):
         if domain is None:
@@ -378,7 +351,7 @@ class Field(object):
                     self._unary_operation(self.val, op='copy_empty')
         return new_field
 
-    def copy_empty(self, domain=None, codomain=None, dtype=None, comm=None,
+    def copy_empty(self, domain=None, codomain=None, dtype=None,
                    datamodel=None, field_type=None, **kwargs):
         if domain is None:
             domain = self.domain
@@ -388,9 +361,6 @@ class Field(object):
 
         if dtype is None:
             dtype = self.dtype
-
-        if comm is None:
-            comm = self.comm
 
         if datamodel is None:
             datamodel = self.datamodel
@@ -412,14 +382,13 @@ class Field(object):
                 _fast_copyable = False
                 break
 
-        if (_fast_copyable and dtype == self.dtype and comm == self.comm and
-                datamodel == self.datamodel and
-                kwargs == {}):
+        if (_fast_copyable and dtype == self.dtype and
+                datamodel == self.datamodel and kwargs == {}):
             new_field = self._fast_copy_empty()
         else:
             new_field = Field(domain=domain, codomain=codomain, dtype=dtype,
-                              comm=comm, datamodel=datamodel,
-                              field_type=field_type, **kwargs)
+                              datamodel=datamodel, field_type=field_type,
+                              **kwargs)
         return new_field
 
     def set_val(self, new_val=None, copy=False):
@@ -554,6 +523,9 @@ class Field(object):
 
         # Case 1: x is a distributed_data_object
         if isinstance(x, distributed_data_object):
+            if x.comm is not self._comm:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: comms do not match."))
             to_copy = False
 
             # Check the shape
@@ -609,7 +581,8 @@ class Field(object):
             x = distributed_data_object(x,
                                         global_shape=self.shape,
                                         dtype=dtype,
-                                        distribution_strategy=self.datamodel)
+                                        distribution_strategy=self.datamodel,
+                                        comm=self._comm)
             # Cast the d2o
             return self.cast(x, dtype=dtype)
 

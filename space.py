@@ -220,9 +220,27 @@ class Space(object):
                              "WARNING: incompatible dtype: " + str(dtype)))
         self.dtype = dtype
 
-        self.discrete = True
-#        self.harmonic = False
-        self.distances = (np.float(1),)
+        self.discrete = None
+        self.harmonic = None
+        self._distances = None
+
+    @property
+    def distances(self):
+        return self._distances
+
+    @distances.setter
+    def distances(self, distances):
+        naxes = len(self.shape)
+
+        if np.isscalar(distances):
+            distances = tuple(np.ones(naxes, dtype=np.float) * distances)
+        elif not isinstance(distances, tuple):
+            distances = tuple(distances)
+            if len(distances) != naxes:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: size mismatch ( " + str(np.size(distances)) +
+                    " <> " + str(naxes) + " )."))
+        self._distances = distances
 
     @property
     def para(self):
@@ -321,8 +339,9 @@ class Space(object):
         return dof
 
     @property
-    def vol(self, split=False):
-        return reduce(lambda x, y: x * y, self.distances)
+    def vol(self):
+        collapsed_distances = [np.sum(x) for x in self.distances]
+        return reduce(lambda x, y: x * y, collapsed_distances)
 
     @property
     def vol_split(self):

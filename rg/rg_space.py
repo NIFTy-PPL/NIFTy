@@ -163,25 +163,10 @@ class RGSpace(Space):
         else:
             self.dtype = np.dtype('complex128')
 
-        # set volume/distances
-        naxes = len(self.paradict['shape'])
         if distances is None:
-            distances = 1 / np.array(self.paradict['shape'], dtype=np.float)
-        elif np.isscalar(distances):
-            distances = np.ones(naxes, dtype=np.float) * distances
-        else:
-            distances = np.array(distances, dtype=np.float)
-            if np.size(distances) == 1:
-                distances = distances * np.ones(naxes, dtype=np.float)
-            if np.size(distances) != naxes:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: size mismatch ( " + str(np.size(distances)) +
-                    " <> " + str(naxes) + " )."))
-        if np.any(distances <= 0):
-            raise ValueError(about._errors.cstring(
-                "ERROR: nonpositive distance(s)."))
+            distances = 1 / np.array(self.shape, dtype=np.float)
 
-        self.distances = tuple(distances)
+        self.distances = distances
         self.harmonic = bool(harmonic)
         self.discrete = False
 

@@ -18,6 +18,10 @@ class PowerSpace(Space):
         # Here it would be time to initialize the power indices
         raise NotImplementedError
 
+        self.distances = None
+
+        self.harmonic = True
+
     def calculate_power_spectrum(self):
         raise NotImplementedError
 

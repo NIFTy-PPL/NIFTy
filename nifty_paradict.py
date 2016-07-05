@@ -12,7 +12,8 @@ from nifty.config import about
 class space_paradict(object):
 
     def __init__(self, **kwargs):
-        self.parameters = {}
+        if not hasattr(self, 'parameters'):
+            self.parameters = {}
         for key in kwargs:
             self[key] = kwargs[key]
 
@@ -56,7 +57,7 @@ class rg_space_paradict(space_paradict):
     def __setitem__(self, key, arg):
         if key not in ['shape', 'complexity', 'zerocenter']:
             raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported rg_space parameter"))
+                "ERROR: Unsupported RGSpace parameter:" + key))
 
         if key == 'shape':
             temp = np.array(arg, dtype=np.int).flatten()
@@ -90,7 +91,7 @@ class lm_space_paradict(space_paradict):
     def __setitem__(self, key, arg):
         if key not in ['lmax', 'mmax']:
             raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported rg_space parameter"))
+                "ERROR: Unsupported LMSpace parameter: " + key))
 
         if key == 'lmax':
             temp = np.int(arg)
@@ -135,7 +136,7 @@ class gl_space_paradict(space_paradict):
     def __setitem__(self, key, arg):
         if key not in ['nlat', 'nlon']:
             raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported rg_space parameter"))
+                "ERROR: Unsupported GLSpace parameter: " + key))
 
         if key == 'nlat':
             temp = int(arg)
@@ -187,7 +188,7 @@ class hp_space_paradict(space_paradict):
 
 class power_space_paradict(space_paradict):
     def __init__(self, distribution_strategy, log, nbin, binbounds):
-        super(power_space_paradict, self).__init___(
+        space_paradict.__init__(self,
                                 distribution_strategy=distribution_strategy,
                                 log=log,
                                 nbin=nbin,
@@ -196,7 +197,7 @@ class power_space_paradict(space_paradict):
     def __setitem__(self, key, arg):
         if key not in ['distribution_strategy', 'log', 'nbin', 'binbounds']:
             raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported PowerSpace parameter"))
+                "ERROR: Unsupported PowerSpace parameter: " + key))
 
         if key == 'log':
             try:
@@ -223,32 +224,38 @@ class power_space_paradict(space_paradict):
 
 
 class rg_power_space_paradict(power_space_paradict, rg_space_paradict):
-    def __init__(self, shape, dgrid, zerocentered, log, nbin, binbounds):
-        rg_space_paradict.__init___(shape=shape,
-                                    dgrid=dgrid,
-                                    zerocentered=zerocentered,
-                                    log=log,
-                                    nbin=nbin,
-                                    binbounds=binbounds)
+    def __init__(self, shape, dgrid, zerocenter, distribution_strategy,
+                 log, nbin, binbounds):
+        rg_space_paradict.__init__(self,
+                                   shape=shape,
+                                   complexity=0,
+                                   zerocenter=zerocenter)
+        power_space_paradict.__init__(
+                                self,
+                                distribution_strategy=distribution_strategy,
+                                log=log,
+                                nbin=nbin,
+                                binbounds=binbounds)
+
+        self['dgrid'] = dgrid
 
     def __setitem__(self, key, arg):
-        if key not in ['shape', 'zerocentered', 'distribution_strategy',
-                       'log', 'nbin', 'binbounds']:
+        if key not in ['shape', 'complexity', 'zerocenter',
+                       'distribution_strategy', 'log', 'nbin', 'binbounds',
+                       'dgrid']:
             raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported RGPowerSpace parameter"))
+                "ERROR: Unsupported RGPowerSpace parameter: " + key))
 
         if key in ['distribution_strategy', 'log', 'nbin', 'binbounds']:
-            power_space_paradict.__setitem__(key, arg)
+            power_space_paradict.__setitem__(self, key, arg)
         elif key == 'dgrid':
             temp = np.array(arg, dtype=np.float).flatten()
+            if np.size(temp) != self.ndim:
+                temp = temp * np.ones(self.ndim, dtype=np.float)
             temp = tuple(temp)
-            if len(temp) != self.ndim:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Number of dimensions does not match the init "
-                    "value."))
             self.parameters.__setitem__(key, temp)
         else:
-            rg_space_paradict.__setitem__(key, arg)
+            rg_space_paradict.__setitem__(self, key, arg)
 
 
 

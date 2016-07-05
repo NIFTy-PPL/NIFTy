@@ -116,9 +116,9 @@ class GLSpace(Space):
 
         self.discrete = False
         self.harmonic = False
-        self.distances = tuple(gl.vol(self.paradict['nlat'],
-                                      nlon=self.paradict['nlon']
-                                      ).astype(np.float))
+        self.distances = (tuple(gl.vol(self.paradict['nlat'],
+                                       nlon=self.paradict['nlon']
+                                       ).astype(np.float)),)
 
     @property
     def para(self):
@@ -139,6 +139,10 @@ class GLSpace(Space):
     @property
     def shape(self):
         return (np.int((self.paradict['nlat'] * self.paradict['nlon'])),)
+
+    @property
+    def vol(self):
+        return np.sum(self.paradict['nlon'] * np.array(self.distances[0]))
 
     @property
     def meta_volume(self):
