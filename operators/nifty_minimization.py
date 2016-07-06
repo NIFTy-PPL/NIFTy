@@ -860,6 +860,7 @@ class quasi_newton_minimizer(object):
                 try:
                     self.callback(self.x, f_k, i)
                 except StopIteration:
+                    self.note.cprint("\nCallback function stopped minization.")
                     break
 
             # compute the the gradient for the current x
