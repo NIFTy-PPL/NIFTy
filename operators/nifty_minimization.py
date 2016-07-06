@@ -857,7 +857,10 @@ class quasi_newton_minimizer(object):
         step_length = 0
         for i in xrange(limii):
             if self.callback is not None:
-                self.callback(self.x, i)
+                try:
+                    self.callback(self.x, f_k, i)
+                except StopIteration:
+                    break
 
             # compute the the gradient for the current x
             gradient = self.fprime(self.x)
