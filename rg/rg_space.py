@@ -954,7 +954,7 @@ class RGSpace(Space):
             rho = kwargs.get('rho', power_indices['rho'])
 
         fieldabs = abs(x)**2
-        power_spectrum = np.zeros(rho.shape)
+        #power_spectrum = np.zeros(rho.shape)
 
         power_spectrum = pindex.bincount(weights=fieldabs)
 

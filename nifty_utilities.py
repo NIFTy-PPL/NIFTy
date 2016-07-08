@@ -220,3 +220,20 @@ def field_map(ishape, function, *args):
                 )
                 # result[ii] = function(*map(lambda z: z[ii], args))
             return result
+
+
+def cast_axis_to_tuple(axis, length):
+    if axis is None:
+        return None
+    try:
+        axis = tuple(int(item) for item in axis)
+    except(TypeError):
+        if np.isscalar(axis):
+            axis = (int(axis), )
+        else:
+            raise TypeError(
+                "ERROR: Could not convert axis-input to tuple of ints")
+
+    # shift negative indices to positive ones
+    axis = tuple(item if (item >= 0) else (item + length) for item in axis)
+    return axis

@@ -563,7 +563,7 @@ class RGPowerIndices(PowerIndices):
         #######
         # rho #
         #######
-        global_rho = global_pindex.bincount()
+        global_rho = global_pindex.bincount().get_full_data()
 
         ##########
         # pundex #
