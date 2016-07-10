@@ -46,10 +46,10 @@ if __name__ == "__main__":
     about.warnings.off()
 
     # some signal space; e.g., a two-dimensional regular grid
-    #shape = [1024, 1024]
-    #x_space = rg_space(shape)
+    shape = [1024, 1024]
+    x_space = rg_space(shape)
     #y_space = point_space(1280*1280)
-    x_space = HPSpace(32)
+    #x_space = HPSpace(32)
     #x_space = GLSpace(800)
 
     k_space = x_space.get_codomain()                                 # get conjugate space
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # some noise variance; e.g., signal-to-noise ratio of 1
     N = diagonal_operator(d_space, diag=s.var(), bare=True)          # define noise covariance
-    n = N.get_random_Field(domain=d_space)                           # generate noise
+    n = N.get_random_field(domain=d_space)                           # generate noise
 
 
     d = R(s) + n                                                     # compute data
