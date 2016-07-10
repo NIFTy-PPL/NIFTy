@@ -34,7 +34,7 @@ setup(name="ift_nifty",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
       packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm",
                 "nifty.operators", "nifty.dummys", "nifty.field_types",
-                "nifty.config", "nifty.power"],
+                "nifty.config", "nifty.power", "nifty.transforms"],
       package_dir={"nifty": ""},
       zip_safe=False,
       dependency_links=[
