@@ -1,10 +1,10 @@
 import numpy as np
-from transform import FFT
+from transform import Transform
 from d2o import distributed_data_object
 import nifty.nifty_utilities as utilities
 
 
-class GFFT(FFT):
+class GFFT(Transform):
 
     """
         The gfft pendant of a fft object.
@@ -17,9 +17,12 @@ class GFFT(FFT):
     """
 
     def __init__(self, domain, codomain, fft_module):
-        self.domain = domain
-        self.codomain = codomain
-        self.fft_machine = fft_module
+        if Transform.check_codomain(domain, codomain):
+            self.domain = domain
+            self.codomain = codomain
+            self.fft_machine = fft_module
+        else:
+            raise ValueError("ERROR: Invalid codomain!")
 
     def transform(self, val, axes=None, **kwargs):
         """

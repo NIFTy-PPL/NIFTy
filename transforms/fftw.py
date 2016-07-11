@@ -4,27 +4,25 @@ import numpy as np
 from d2o import distributed_data_object, STRATEGIES
 from nifty.config import about, dependency_injector as gdi
 import nifty.nifty_utilities as utilities
-from transform import FFT
+from transform import Transform
+
+from mpi4py import MPI
 
 pyfftw = gdi.get('pyfftw')
 
 
-class FFTW(FFT):
+class FFTW(Transform):
 
     """
         The pyfftw pendant of a fft object.
     """
-    # The plan_dict stores the FFTWTransformInfo objects which correspond
-    # to a certain set of (field_val, domain, codomain) sets.
-    info_dict = {}
-
-    # initialize the dictionary which stores the values from
-    # get_centering_mask
-    centering_mask_dict = {}
 
     def __init__(self, domain, codomain):
-        self.domain = domain
-        self.codomain = codomain
+        if Transform.check_codomain(domain, codomain):
+            self.domain = domain
+            self.codomain = codomain
+        else:
+            raise ValueError("ERROR: Invalid codomain!")
 
         if 'pyfftw' not in gdi:
             raise ImportError("The module pyfftw is needed but not available.")
@@ -34,8 +32,15 @@ class FFTW(FFT):
         # Enable caching for pyfftw.interfaces
         pyfftw.interfaces.cache.enable()
 
-    @classmethod
-    def get_centering_mask(cls, to_center_input, dimensions_input,
+        # The plan_dict stores the FFTWTransformInfo objects which correspond
+        # to a certain set of (field_val, domain, codomain) sets.
+        self.info_dict = {}
+
+        # initialize the dictionary which stores the values from
+        # get_centering_mask
+        self.centering_mask_dict = {}
+
+    def get_centering_mask(self, to_center_input, dimensions_input,
                            offset_input=False):
         """
             Computes the mask, used to (de-)zerocenter domain and target
@@ -97,7 +102,7 @@ class FFTW(FFT):
         # compute an identifier for the parameter set
         temp_id = tuple(
             (tuple(to_center), tuple(dimensions), tuple(offset)))
-        if temp_id not in cls.centering_mask_dict:
+        if temp_id not in self.centering_mask_dict:
             # use np.tile in order to stack the core alternation scheme
             # until the desired format is constructed.
             core = np.fromfunction(
@@ -135,11 +140,10 @@ class FFTW(FFT):
                 else:
                     temp_slice += (slice(None),)
             centering_mask = centering_mask[temp_slice]
-            cls.centering_mask_dict[temp_id] = centering_mask
-        return cls.centering_mask_dict[temp_id]
+            self.centering_mask_dict[temp_id] = centering_mask
+        return self.centering_mask_dict[temp_id]
 
-    @classmethod
-    def _get_transform_info(cls, domain, codomain, local_shape,
+    def _get_transform_info(self, domain, codomain, local_shape,
                             local_offset_Q, is_local, transform_shape=None,
                             **kwargs):
         # generate a id-tuple which identifies the domain-codomain setting
@@ -148,19 +152,19 @@ class FFTW(FFT):
                    (211 * transform_shape.__hash__()))
 
         # generate the plan_and_info object if not already there
-        if temp_id not in cls.info_dict:
+        if temp_id not in self.info_dict:
             if is_local:
-                cls.info_dict[temp_id] = FFTWLocalTransformInfo(
+                self.info_dict[temp_id] = FFTWLocalTransformInfo(
                     domain, codomain, local_shape,
-                    local_offset_Q, **kwargs
+                    local_offset_Q, self, **kwargs
                 )
             else:
-                cls.info_dict[temp_id] = FFTWMPITransfromInfo(
+                self.info_dict[temp_id] = FFTWMPITransfromInfo(
                     domain, codomain, local_shape,
-                    local_offset_Q, transform_shape, **kwargs
+                    local_offset_Q, self, transform_shape, **kwargs
                 )
 
-        return cls.info_dict[temp_id]
+        return self.info_dict[temp_id]
 
     def _apply_mask(self, val, mask, axes):
         """
@@ -192,6 +196,7 @@ class FFTW(FFT):
         return val * mask
 
     def _atomic_mpi_transform(self, val, info, axes):
+
         # Apply codomain centering mask
         if reduce(lambda x, y: x+y, self.codomain.paradict['zerocenter']):
             temp_val = np.copy(val)
@@ -297,6 +302,7 @@ class FFTW(FFT):
         return_val = val.copy_empty(global_shape=val.shape,
                                     dtype=self.codomain.dtype)
 
+
         # Extract local data
         local_val = val.get_local_data(copy=False)
 
@@ -334,7 +340,7 @@ class FFTW(FFT):
                     local_shape=val.local_shape,
                     local_offset_Q=local_offset_Q,
                     is_local=False,
-                    transform_shape=inp.shape,
+                    transform_shape=val.shape, # TODO: check why inp.shape doesn't work
                     **kwargs
                 )
 
@@ -427,16 +433,16 @@ class FFTW(FFT):
 class FFTWTransformInfo(object):
 
     def __init__(self, domain, codomain, local_shape,
-                 local_offset_Q, **kwargs):
+                 local_offset_Q, fftw_context, **kwargs):
         if pyfftw is None:
             raise ImportError("The module pyfftw is needed but not available.")
 
-        self.cmask_domain = FFTW.get_centering_mask(
+        self.cmask_domain = fftw_context.get_centering_mask(
             domain.paradict['zerocenter'],
             local_shape,
             local_offset_Q)
 
-        self.cmask_codomain = FFTW.get_centering_mask(
+        self.cmask_codomain = fftw_context.get_centering_mask(
             codomain.paradict['zerocenter'],
             local_shape,
             local_offset_Q)
@@ -475,11 +481,12 @@ class FFTWTransformInfo(object):
 class FFTWLocalTransformInfo(FFTWTransformInfo):
 
     def __init__(self, domain, codomain, local_shape,
-                 local_offset_Q, **kwargs):
+                 local_offset_Q, fftw_context, **kwargs):
         super(FFTWLocalTransformInfo, self).__init__(domain,
                                                      codomain,
                                                      local_shape,
                                                      local_offset_Q,
+                                                     fftw_context,
                                                      **kwargs)
         if codomain.harmonic:
             self._fftw_interface = pyfftw.interfaces.numpy_fft.fftn
@@ -499,11 +506,12 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
 class FFTWMPITransfromInfo(FFTWTransformInfo):
 
     def __init__(self, domain, codomain, local_shape,
-                 local_offset_Q, transform_shape, **kwargs):
+                 local_offset_Q, fftw_context, transform_shape, **kwargs):
         super(FFTWMPITransfromInfo, self).__init__(domain,
                                                    codomain,
                                                    local_shape,
                                                    local_offset_Q,
+                                                   fftw_context,
                                                    **kwargs)
         self._plan = pyfftw.create_mpi_plan(
             input_shape=transform_shape,
