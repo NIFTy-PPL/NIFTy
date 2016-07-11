@@ -137,7 +137,6 @@ class HPSpace(Space):
 
         self.dtype = np.dtype('float64')
 
-        self.discrete = False
         self.harmonic = False
         self.distances = (np.float(4*np.pi / (12*self.paradict['nside']**2)),)
 
@@ -310,9 +309,6 @@ class HPSpace(Space):
                                 lmax=lmax, mmax=lmax,
                                 alm=False, pol=True, pixwin=False,
                                 fwhm=0.0, sigma=None)
-            # weight if discrete
-            if self.discrete:
-                sample = self.calc_weight(sample, power=0.5)
 
         else:
             sample = super(HPSpace, self).get_random_values(**arg)
@@ -373,9 +369,6 @@ class HPSpace(Space):
         np_x = x.get_full_data()
 
         if isinstance(codomain, LMSpace):
-            # weight if discrete
-            if self.discrete:
-                x = self.calc_weight(x, power=-0.5)
             # transform
             np_Tx = hp.map2alm(np_x.astype(np.float64, copy=False),
                                lmax=codomain.paradict['lmax'],
@@ -464,9 +457,6 @@ class HPSpace(Space):
                 transformation.
         """
         x = self.cast(x)
-        # weight if discrete
-        if self.discrete:
-            x = self.calc_weight(x, power=-0.5)
 
         nside = self.paradict['nside']
         lmax = 3*nside-1

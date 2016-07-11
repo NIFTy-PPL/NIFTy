@@ -114,7 +114,6 @@ class GLSpace(Space):
             dtype = np.dtype('float')
         self.dtype = dtype
 
-        self.discrete = False
         self.harmonic = False
         self.distances = (tuple(gl.vol(self.paradict['nlat'],
                                        nlon=self.paradict['nlon']
@@ -310,9 +309,6 @@ class GLSpace(Space):
                 sample = gl.synfast(arg['spec'],
                                     nlat=nlat, nlon=nlon,
                                     lmax=lmax, mmax=lmax, alm=False)
-            # weight if discrete
-            if self.discrete:
-                sample = self.calc_weight(sample, power=0.5)
 
         else:
             sample = super(GLSpace, self).get_random_values(**arg)
@@ -413,9 +409,6 @@ class GLSpace(Space):
 
         if isinstance(codomain, LMSpace):
 
-            # weight if discrete
-            if self.discrete:
-                x = self.calc_weight(x, power=-0.5)
             # transform
             nlat = self.paradict['nlat']
             nlon = self.paradict['nlon']
@@ -503,9 +496,7 @@ class GLSpace(Space):
                 Power contained in the input array.
         """
         x = self.cast(x)
-        # weight if discrete
-        if self.discrete:
-            x = self.calc_weight(x, power=-0.5)
+
         # calculate the power spectrum
         nlat = self.paradict['nlat']
         nlon = self.paradict['nlon']

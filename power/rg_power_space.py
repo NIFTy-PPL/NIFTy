@@ -30,7 +30,6 @@ class RGPowerSpace(PowerSpace):
         self.distances = (tuple(self.power_indices['rho']),)
 
         self.harmonic = True
-        self.discrete = False
 
     @property
     def shape(self):

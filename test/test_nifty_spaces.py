@@ -290,7 +290,6 @@ class Test_Common_Point_Like_Space_Interface(unittest.TestCase):
         assert(isinstance(s.paradict, space_paradict))
         assert(isinstance(s.paradict, space_paradict))
         assert(isinstance(s.dtype, np.dtype))
-        assert(isinstance(s.discrete, bool))
 #        assert(isinstance(s.harmonic, bool))
         assert(isinstance(s.distances, tuple))
         if hasattr(s, 'harmonic'):
@@ -340,7 +339,6 @@ class Test_Point_Space(unittest.TestCase):
         assert_equal(p.paradict['num'], num)
         assert_equal(p.dtype, dtype)
 
-        assert_equal(p.discrete, True)
         assert_equal(p.distances, (np.float(1.),))
 
 ###############################################################################
@@ -992,7 +990,6 @@ class Test_Lm_Space(unittest.TestCase):
             else:
                 assert_equal(l.paradict['mmax'], mmax)
             assert_equal(l.dtype, dtype)
-            assert_equal(l.discrete, True)
             assert_equal(l.harmonic, True)
             assert_equal(l.distances, (np.float(1),))
         else:

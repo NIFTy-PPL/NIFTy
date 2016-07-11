@@ -168,7 +168,6 @@ class RGSpace(Space):
 
         self.distances = distances
         self.harmonic = bool(harmonic)
-        self.discrete = False
 
         # Initializes the fast-fourier-transform machine, which will be used
         # to transform the space

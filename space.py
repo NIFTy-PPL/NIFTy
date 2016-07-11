@@ -220,7 +220,6 @@ class Space(object):
                              "WARNING: incompatible dtype: " + str(dtype)))
         self.dtype = dtype
 
-        self.discrete = None
         self.harmonic = None
         self._distances = None
 
@@ -874,6 +873,5 @@ class Space(object):
         string += str(type(self)) + "\n"
         string += "paradict: " + str(self.paradict) + "\n"
         string += 'dtype: ' + str(self.dtype) + "\n"
-        string += 'discrete: ' + str(self.discrete) + "\n"
         string += 'distances: ' + str(self.distances) + "\n"
         return string

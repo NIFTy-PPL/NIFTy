@@ -129,7 +129,6 @@ class LMSpace(Space):
             dtype = np.dtype('complex128')
         self.dtype = dtype
 
-        self.discrete = True
         self.harmonic = True
         self.distances = (np.float(1),)
 
@@ -563,10 +562,6 @@ class LMSpace(Space):
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported transformation."))
-
-        # re-weight if discrete
-        if codomain.discrete:
-            Tx = codomain.calc_weight(Tx, power=0.5)
 
         return codomain.cast(Tx)
 

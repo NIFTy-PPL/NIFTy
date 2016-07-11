@@ -138,7 +138,7 @@ class operator(object):
             None
         """
         # Check if the domain is realy a space
-        if not isinstance(domain, space):
+        if not isinstance(domain, Space):
             raise TypeError(about._errors.cstring(
                 "ERROR: invalid input. domain is not a space."))
         self.domain = domain
@@ -167,7 +167,7 @@ class operator(object):
             target = self.domain
             cotarget = self.codomain
 
-        elif isinstance(target, space):
+        elif isinstance(target, Space):
             self.target = target
             # Parse cotarget
             if self.target.check_codomain(cotarget) == True:
@@ -178,10 +178,7 @@ class operator(object):
             raise TypeError(about._errors.cstring(
                 "ERROR: invalid input. Target is not a space."))
 
-        if self.domain.discrete and self.target.discrete:
-            self.imp = True
-        else:
-            self.imp = bool(imp)
+        self.imp = bool(imp)
 
     def set_val(self, new_val):
         """
@@ -231,7 +228,7 @@ class operator(object):
                              copy=False)
 
         # weight if necessary
-        if (not self.imp) and (not domain.discrete) and (not inverse):
+        if (not self.imp) and (not inverse):
             result_field = result_field.weight(power=1)
         return result_field
 
@@ -241,7 +238,7 @@ class operator(object):
         assert(isinstance(y, Field))
 
         # weight if necessary
-        if (not self.imp) and (not target.discrete) and inverse:
+        if (not self.imp) and inverse:
             y = y.weight(power=-1)
 
         # if the operators domain as well as the target have the harmonic
@@ -580,7 +577,7 @@ class operator(object):
         if domain is None:
             domain = diag.domain
         # weight if ...
-        if (not domain.discrete) and bare:
+        if and bare:
             if(isinstance(diag, tuple)):  # diag == (diag,variance)
                 return (diag[0].weight(power=-1),
                         diag[1].weight(power=-1))
@@ -672,7 +669,7 @@ class operator(object):
         if domain is None:
             domain = diag.codomain
         # weight if ...
-        if not domain.discrete and bare:
+        if bare:
             if(isinstance(diag, tuple)):  # diag == (diag,variance)
                 return (diag[0].weight(power=-1),
                         diag[1].weight(power=-1))
@@ -1165,7 +1162,7 @@ class diagonal_operator(operator):
         self.bare = bare
 
         # Weight if necessary
-        if not self.domain.discrete and bare:
+        if bare:
             self.val = self.domain.calc_weight(self.val, power=1)
 
         # Check complexity attributes
@@ -1398,7 +1395,7 @@ class diagonal_operator(operator):
         """
 
         if (domain is None) or (domain == self.domain):
-            if not self.domain.discrete and bare:
+            if bare:
                 diag_val = self.domain.calc_weight(self.val, power=-1)
             else:
                 diag_val = self.val
@@ -1485,7 +1482,7 @@ class diagonal_operator(operator):
 
         if (domain is None) or (domain == self.domain):
             inverse_val = 1. / self.val
-            if not self.domain.discrete and bare:
+            if bare:
                 inverse_diag_val = self.domain.calc_weight(inverse_val,
                                                            power=-1)
             else:
@@ -1908,7 +1905,7 @@ class power_operator(diagonal_operator):
             diag = temp_spec[pindex]
 
         # Weight if necessary
-        if not self.domain.discrete and bare:
+        if bare:
             self.val = self.domain.calc_weight(diag, power=1)
         else:
             self.val = diag
@@ -1986,7 +1983,7 @@ class power_operator(diagonal_operator):
         temp_kwargs.update(kwargs)
 
         # Weight the diagonal values if necessary
-        if not self.domain.discrete and bare:
+        if bare:
             diag = self.domain.calc_weight(self.val, power=-1)
         else:
             diag = self.val
@@ -2641,7 +2638,7 @@ class vecvec_operator(operator):
         if domain is None or (domain == self.domain):
             diag_val = self.val * self.val.conjugate()  # bare diagonal
             # weight if ...
-            if not self.domain.discrete and not bare:
+            if not bare:
                 diag_val = diag_val.weight(power=1, overwrite=True)
             return diag_val
         else:
@@ -2849,9 +2846,6 @@ class response_operator(operator):
             if not isinstance(target, Space):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Given target is not a nifty space"))
-            elif not target.discrete:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Given target must be a discrete space!"))
             elif len(target.shape) > 1:
                 raise ValueError(about._errors.cstring(
                     "ERROR: Given target must be a one-dimensional space."))
@@ -2942,7 +2936,7 @@ class response_operator(operator):
                              copy=False)
 
         # weight if necessary
-        if (not self.imp) and (not domain.discrete) and (not inverse) and \
+        if (not self.imp) and (not inverse) and \
                 self.den:
             result_field = result_field.weight(power=1)
         return result_field
@@ -2953,8 +2947,7 @@ class response_operator(operator):
         assert(isinstance(y, Field))
 
         # weight if necessary
-        if (not self.imp) and (not target.discrete) and \
-                (not self.den ^ inverse):
+        if (not self.imp) and (not self.den ^ inverse):
             y = y.weight(power=-1)
 
         return y
@@ -3080,10 +3073,7 @@ class invertible_operator(operator):
         self.sym = True
         self.uni = bool(uni)
 
-        if(self.domain.discrete):
-            self.imp = True
-        else:
-            self.imp = bool(imp)
+        self.imp = bool(imp)
 
         self.target = self.domain
         self.cotarget = self.codomain
