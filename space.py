@@ -321,23 +321,6 @@ class Space(object):
         return dof
 
     @property
-    def dof_split(self):
-        """
-            Computes the number of degrees of freedom of the space, i.e./  the
-            number of points for real-valued fields and twice that number for
-            complex-valued fields.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-        """
-        dof = self.shape
-        if issubclass(self.dtype.type, np.complexfloating):
-            dof = tuple(np.array(dof)*2)
-        return dof
-
-    @property
     def vol(self):
         collapsed_distances = [np.sum(x) for x in self.distances]
         return reduce(lambda x, y: x * y, collapsed_distances)

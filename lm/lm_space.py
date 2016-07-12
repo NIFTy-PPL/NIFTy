@@ -200,10 +200,6 @@ class LMSpace(Space):
         return dof
 
     @property
-    def dof_split(self):
-        return (self.dof,)
-
-    @property
     def meta_volume(self):
         """
             Calculates the meta volumes.

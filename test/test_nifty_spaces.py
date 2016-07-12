@@ -304,11 +304,8 @@ class Test_Common_Point_Like_Space_Interface(unittest.TestCase):
         assert(isinstance(s.dim, np.int))
 
         assert(isinstance(s.dof, np.int))
-        assert(isinstance(s.dof_split, tuple))
-        assert_equal(s.dof, np.prod(s.dof_split))
 
         assert(isinstance(s.get_vol(), np.float))
-        assert(isinstance(s.dof_split, tuple))
 
         assert(isinstance(s.meta_volume, np.float))
         print(s.meta_volume_split, type(s.cast(1)))
@@ -421,10 +418,8 @@ class Test_Point_Space(unittest.TestCase):
 
         if issubclass(dtype.type, np.complexfloating):
             assert_equal(s.dof, 2 * num)
-            assert_equal(s.dof_split, (2 * num,))
         else:
             assert_equal(s.dof, num)
-            assert_equal(s.dof_split, (num,))
 
 ###############################################################################
 
@@ -1015,7 +1010,6 @@ class Test_Lm_Space(unittest.TestCase):
 
         assert_equal(l.shape, (156,))
         assert_equal(l.dof, 294)
-        assert_equal(l.dof_split, (294,))
         assert_equal(l.meta_volume, 294.)
         assert_equal(l.meta_volume_split,
                      l.cast(np.concatenate([np.ones(18), np.ones(138)*2])))

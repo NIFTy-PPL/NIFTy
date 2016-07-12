@@ -13,6 +13,8 @@ class FieldType(object):
 
         self._dtype = np.dtype(dtype)
 
+        self._dof = self._get_dof()
+
     @property
     def shape(self):
         return self._shape
@@ -25,21 +27,13 @@ class FieldType(object):
     def dof(self):
         return self._dof
 
-    @property
-    def dof_split(self):
-        return self._dof_split
-
-    def _get_dof(self, split=False):
+    def _get_dof(self):
         if issubclass(self.dtype.type, np.complexfloating):
             multiplicator = 2
         else:
             multiplicator = 1
 
-        if split:
-            dof = tuple(multiplicator*np.array(self.shape))
-        else:
-            dof = multiplicator*reduce(lambda x, y: x*y, self.shape)
-
+        dof = multiplicator*reduce(lambda x, y: x*y, self.shape)
         return dof
 
     def process(self, method_name, array, inplace=True, **kwargs):

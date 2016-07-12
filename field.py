@@ -461,16 +461,6 @@ class Field(object):
         except TypeError:
             return ()
 
-    @property
-    def dof_split(self):
-        dof_tuple = ()
-        dof_tuple += tuple(sp.dof_split for sp in self.domain)
-        dof_tuple += tuple(ft.dof_split for ft in self.field_type)
-        try:
-            return reduce(lambda x, y: x + y, dof_tuple)
-        except TypeError:
-            return ()
-
     def cast(self, x=None, dtype=None):
         if dtype is None:
             dtype = self.dtype
