@@ -18,11 +18,8 @@ class FFTW(Transform):
     """
 
     def __init__(self, domain, codomain):
-        if Transform.check_codomain(domain, codomain):
-            self.domain = domain
-            self.codomain = codomain
-        else:
-            raise ValueError("ERROR: Invalid codomain!")
+        self.domain = domain
+        self.codomain = codomain
 
         if 'pyfftw' not in gdi:
             raise ImportError("The module pyfftw is needed but not available.")
@@ -363,7 +360,7 @@ class FFTW(Transform):
 
         return return_val
 
-    def transform(self, val, axes=None, **kwargs):
+    def transform(self, val, axes, **kwargs):
         """
             The pyfftw transform function.
 
@@ -372,12 +369,6 @@ class FFTW(Transform):
             val : distributed_data_object or numpy.ndarray
                 The value-array of the field which is supposed to
                 be transformed.
-
-            domain : nifty.rg.nifty_rg.rg_space
-                The domain of the space which should be transformed.
-
-            codomain : nifty.rg.nifty_rg.rg_space
-                The target into which the field should be transformed.
 
             axes: tuple, None
                 The axes which should be transformed.

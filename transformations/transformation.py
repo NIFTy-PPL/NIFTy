@@ -1,12 +1,16 @@
+from fftw import FFTW
+from gfft import  GFFT
+
+from nifty.config import about, dependency_injector as gdi
 from nifty import RGSpace
-from nifty.config import about
 
 import numpy as np
 
 
-class Transform(object):
+class Transformation(object):
     """
-        A generic fft object without any implementation.
+        A generic transformation which defines a static check_codomain
+        method for all transforms.
     """
 
     @staticmethod
@@ -69,23 +73,45 @@ class Transform(object):
 
         return True
 
-    def __init__(self, domain, codomain):
+    def __init__(self, domain, codomain, module=None):
         pass
 
-    def transform(self, val, axes, **kwargs):
-        """
-            A generic ff-transform function.
-
-            Parameters
-            ----------
-            field_val : distributed_data_object
-                The value-array of the field which is supposed to
-                be transformed.
-
-            domain : nifty.rg.nifty_rg.rg_space
-                The domain of the space which should be transformed.
-
-            codomain : nifty.rg.nifty_rg.rg_space
-                The taget into which the field should be transformed.
-        """
+    def transform(self, val, axes=None, **kwargs):
         raise NotImplementedError
+
+
+class RGRGTransformation(Transformation):
+    def __init__(self, domain, codomain, module=None):
+        if Transformation.check_codomain(domain, codomain):
+            if module is None:
+                if gdi.get('pyfftw') is None:
+                    if gdi.get('gfft') is None:
+                        self._transform =\
+                            GFFT(domain, codomain, gdi.get('gfft_dummy'))
+                    else:
+                        self._transform =\
+                            GFFT(domain, codomain, gdi.get('gfft'))
+                self._transform = FFTW(domain, codomain)
+            else:
+                if module == 'pyfftw':
+                    if gdi.get('pyfftw') is not None:
+                        self._transform = FFTW(domain, codomain)
+                    else:
+                        raise RuntimeError("ERROR: pyfftw is not available.")
+                elif module == 'gfft':
+                    if gdi.get('gfft') is not None:
+                        self._transform =\
+                            GFFT(domain, codomain, gdi.get('gfft'))
+                    else:
+                        raise RuntimeError("ERROR: gfft is not available.")
+                elif module == 'gfft_dummy':
+                    self._transform =\
+                        GFFT(domain, codomain, gdi.get('gfft_dummy'))
+                else:
+                    raise ValueError('Given FFT module is not known: ' +
+                                     str(module))
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    def transform(self, val, axes=None, **kwargs):
+        return self._transform.transform(val, axes, **kwargs)

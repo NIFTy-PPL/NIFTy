@@ -93,4 +93,4 @@ from demos import get_demo_dir
 from pickling import _pickle_method, _unpickle_method
 
 #import pyximport; pyximport.install(pyimport = True)
-from transforms import tf as transformator
+from transformations import tf as transformator

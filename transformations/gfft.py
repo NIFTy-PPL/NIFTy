@@ -17,14 +17,11 @@ class GFFT(Transform):
     """
 
     def __init__(self, domain, codomain, fft_module):
-        if Transform.check_codomain(domain, codomain):
-            self.domain = domain
-            self.codomain = codomain
-            self.fft_machine = fft_module
-        else:
-            raise ValueError("ERROR: Invalid codomain!")
+        self.domain = domain
+        self.codomain = codomain
+        self.fft_machine = fft_module
 
-    def transform(self, val, axes=None, **kwargs):
+    def transform(self, val, axes, **kwargs):
         """
             The gfft transform function.
 
