@@ -321,13 +321,14 @@ class Space(object):
         return dof
 
     @property
-    def vol(self):
-        collapsed_distances = [np.sum(x) for x in self.distances]
-        return reduce(lambda x, y: x * y, collapsed_distances)
+    def volume_total(self):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no generic volume for the Space base class."))
 
     @property
-    def vol_split(self):
-        return self.distances
+    def volume_pixel(self):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no generic volume for the Space base class."))
 
     @property
     def meta_volume(self):
