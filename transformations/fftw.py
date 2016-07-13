@@ -24,8 +24,6 @@ class FFTW(Transform):
         if 'pyfftw' not in gdi:
             raise ImportError("The module pyfftw is needed but not available.")
 
-        self.name = 'pyfftw'
-
         # Enable caching for pyfftw.interfaces
         pyfftw.interfaces.cache.enable()
 

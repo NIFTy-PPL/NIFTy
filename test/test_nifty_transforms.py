@@ -21,13 +21,27 @@ def custom_name_func(testcase_func, param_num, param):
     )
 
 
+def check_equality(space, data1, data2):
+    return space.unary_operation(space.binary_operation(data1, data2, 'eq'),
+                                 'all')
+
+
+def check_almost_equality(space, data1, data2, integers=7):
+    return space.unary_operation(
+        space.binary_operation(
+            space.unary_operation(
+                space.binary_operation(data1, data2, 'sub'),
+                'abs'),
+            10. ** (-1. * integers), 'le'),
+        'all')
+
+
 ###############################################################################
 
 rg_fft_modules = []
 for name in ['gfft', 'gfft_dummy', 'pyfftw']:
     if RG_GC.validQ('fft_module', name):
         rg_fft_modules += [name]
-
 
 rg_test_shapes = [(128, 128), (179, 179), (512, 512)]
 
@@ -50,6 +64,7 @@ rg_test_data = np.array(
      [0.79367868 + 0.48149411j, 0.42484378 + 0.74870011j,
       0.79611264 + 0.50926774j, 0.35372794 + 0.10468412j,
       0.46140736 + 0.09449825j, 0.82044644 + 0.95992843j]])
+
 
 ###############################################################################
 
@@ -74,8 +89,8 @@ class TestRGSpaceTransforms(unittest.TestCase):
     def test_check_codomain_rgspecific(self, complexity, distances, harmonic):
         x = RGSpace((8, 8), complexity=complexity,
                     distances=distances, harmonic=harmonic)
-        assert(Transformation.check_codomain(x, x.get_codomain()))
-        assert(Transformation.check_codomain(x, x.get_codomain()))
+        assert (Transformation.check_codomain(x, x.get_codomain()))
+        assert (Transformation.check_codomain(x, x.get_codomain()))
 
     @parameterized.expand(rg_fft_modules, testcase_func_name=custom_name_func)
     def test_shapemismatch(self, module):
@@ -159,6 +174,7 @@ class TestRGSpaceTransforms(unittest.TestCase):
             ).transform(b),
             np.fft.fftn(a)
         )
+
 
 if __name__ == '__main__':
     unittest.main()
