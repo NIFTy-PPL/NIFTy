@@ -3,7 +3,7 @@ import numpy as np
 from nifty.rg import RGSpace
 from nifty.lm import GLSpace, HPSpace, LMSpace
 
-from transformation import RGRGTransformation
+import transformation
 
 
 class TransformationFactory(object):
@@ -17,7 +17,13 @@ class TransformationFactory(object):
 
     def _get_transform(self, domain, codomain, module):
         if isinstance(domain, RGSpace):
-            return RGRGTransformation(domain, codomain, module)
+            return transformation.RGRGTransformation(domain, codomain, module)
+        elif isinstance(domain, GLSpace):
+            return transformation.GLLMTransformation(domain, codomain, module)
+        elif isinstance(domain, HPSpace):
+            return transformation.HPLMTransformation(domain, codomain, module)
+        else:
+            raise ValueError('ERROR: unknown domain')
 
     def create(self, domain, codomain, module=None):
         key = domain.__hash__() ^ ((111 * codomain.__hash__()) ^

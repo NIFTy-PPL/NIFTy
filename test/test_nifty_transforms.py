@@ -20,21 +20,19 @@ def custom_name_func(testcase_func, param_num, param):
         parameterized.to_safe_name("_".join(str(x) for x in param.args)),
     )
 
+def weighted_np_transform(val, domain, codomain, axes=None):
+    if codomain.harmonic:
+        # correct for forward fft
+        val = domain.calc_weight(val, power=1)
 
-def check_equality(space, data1, data2):
-    return space.unary_operation(space.binary_operation(data1, data2, 'eq'),
-                                 'all')
+    # Perform the transformation
+    Tval = np.fft.fftn(val, axes=axes)
 
+    if not codomain.harmonic:
+        # correct for inverse fft
+        Tval = codomain.calc_weight(Tval, power=-1)
 
-def check_almost_equality(space, data1, data2, integers=7):
-    return space.unary_operation(
-        space.binary_operation(
-            space.unary_operation(
-                space.binary_operation(data1, data2, 'sub'),
-                'abs'),
-            10. ** (-1. * integers), 'le'),
-        'all')
-
+    return Tval
 
 ###############################################################################
 
@@ -112,7 +110,7 @@ class TestRGSpaceTransforms(unittest.TestCase):
             transformator.create(
                 x, x.get_codomain(), module=module
             ).transform(a),
-            np.fft.fftn(a)
+            weighted_np_transform(a, x, x.get_codomain())
         )
 
     @parameterized.expand(
@@ -127,7 +125,7 @@ class TestRGSpaceTransforms(unittest.TestCase):
             transformator.create(
                 x, x.get_codomain(), module=module
             ).transform(b, axes=(1,)),
-            np.fft.fftn(a, axes=(1,))
+            weighted_np_transform(a, x, x.get_codomain(), axes=(1,))
         )
 
     @parameterized.expand(
@@ -142,7 +140,7 @@ class TestRGSpaceTransforms(unittest.TestCase):
             transformator.create(
                 x, x.get_codomain(), module=module
             ).transform(b),
-            np.fft.fftn(a)
+            weighted_np_transform(a, x, x.get_codomain())
         )
 
     @parameterized.expand(
@@ -157,7 +155,7 @@ class TestRGSpaceTransforms(unittest.TestCase):
             transformator.create(
                 x, x.get_codomain(), module='pyfftw'
             ).transform(b),
-            np.fft.fftn(a)
+            weighted_np_transform(a, x, x.get_codomain())
         )
 
     @parameterized.expand(
@@ -172,9 +170,41 @@ class TestRGSpaceTransforms(unittest.TestCase):
             transformator.create(
                 x, x.get_codomain(), module='pyfftw'
             ).transform(b),
-            np.fft.fftn(a)
+            weighted_np_transform(a, x, x.get_codomain())
         )
 
+    @parameterized.expand(
+        itertools.product(rg_fft_modules),
+        testcase_func_name=custom_name_func)
+    def test_calc_transform_explicit(self, module):
+        data = rg_test_data.copy()
+        d2o_data = d2o.distributed_data_object(data)
+        shape = data.shape
+
+        x = RGSpace(shape, complexity=2, zerocenter=False)
+        assert np.allclose(
+            transformator.create(
+                x, x.get_codomain(), module=module
+            ).transform(d2o_data),
+            np.array([[0.50541615 + 0.50558267j, -0.01458536 - 0.01646137j,
+                       0.01649006 + 0.01990988j, 0.04668049 - 0.03351745j,
+                       -0.04382765 - 0.06455639j, -0.05978564 + 0.01334044j],
+                      [-0.05347464 + 0.04233343j, -0.05167177 + 0.00643947j,
+                       -0.01995970 - 0.01168872j, 0.10653817 + 0.03885947j,
+                       -0.03298075 - 0.00374715j, 0.00622585 - 0.01037453j],
+                      [-0.01128964 - 0.02424692j, -0.03347793 - 0.0358814j,
+                       -0.03924164 - 0.01978305j, 0.03821242 - 0.00435542j,
+                       0.07533170 + 0.14590143j, -0.01493027 - 0.02664675j],
+                      [0.02238926 + 0.06140625j, -0.06211313 + 0.03317753j,
+                       0.01519073 + 0.02842563j, 0.00517758 + 0.08601604j,
+                       -0.02246912 - 0.01942764j, -0.06627311 - 0.08763801j],
+                      [-0.02492378 - 0.06097411j, 0.06365649 - 0.09346585j,
+                       0.05031486 + 0.00858656j, -0.00881969 + 0.01842357j,
+                       -0.01972641 - 0.00994365j, 0.05289453 - 0.06822038j],
+                      [-0.01865586 - 0.08640926j, 0.03414096 - 0.02605602j,
+                       -0.09492552 + 0.01306734j, 0.09355730 + 0.07553701j,
+                       -0.02395259 - 0.02185743j, -0.03107832 - 0.04714527j]])
+        )
 
 if __name__ == '__main__':
     unittest.main()

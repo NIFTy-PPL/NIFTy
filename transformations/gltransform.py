@@ -22,7 +22,7 @@ class GLTransform(Transform):
 
     def transform(self, val, axes, **kwargs):
         if self.domain.discrete:
-            val = self.calc_weight(val, power=-0.5)
+            val = self.domain.calc_weight(val, power=-0.5)
 
         # shorthands for transform parameters
         nlat = self.domain.paradict['nlat']

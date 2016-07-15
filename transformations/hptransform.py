@@ -24,7 +24,7 @@ class HPTransform(Transform):
         niter = kwargs['niter'] if 'niter' in kwargs else 0
 
         if self.domain.discrete:
-            val = self.calc_weight(val, power=-0.5)
+            val = self.domain.calc_weight(val, power=-0.5)
 
         # shorthands for transform parameters
         lmax = self.codomain.paradict['lmax']

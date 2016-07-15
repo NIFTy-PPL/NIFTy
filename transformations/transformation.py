@@ -1,8 +1,9 @@
 from fftw import FFTW
-from gfft import  GFFT
-
+from gfft import GFFT
+from gltransform import GLTransform
+from hptransform import HPTransform
 from nifty.config import about, dependency_injector as gdi
-from nifty import RGSpace
+from nifty import RGSpace, GLSpace, HPSpace, LMSpace
 
 import numpy as np
 
@@ -21,7 +22,7 @@ class Transformation(object):
         if isinstance(domain, RGSpace):
             if not isinstance(codomain, RGSpace):
                 raise TypeError(about._errors.cstring(
-                    "ERROR: The given codomain must be a rg_space."
+                    "ERROR: codomain must be a RGSpace."
                 ))
 
             if not np.all(np.array(domain.paradict['shape']) ==
@@ -66,7 +67,34 @@ class Transformation(object):
             if not np.all(
                 np.absolute(np.array(domain.paradict['shape']) *
                             np.array(domain.distances) *
-                            np.array(codomain.distances) - 1) < domain.epsilon):
+                            np.array(
+                                codomain.distances) - 1) < domain.epsilon):
+                return False
+        elif isinstance(domain, GLSpace):
+            if not isinstance(codomain, LMSpace):
+                raise TypeError(about._errors.cstring(
+                    "ERROR: codomain must be a LMSpace."
+                ))
+
+            # shorthand
+            nlat = domain.paradict['nlat']
+            nlon = domain.paradict['nlon']
+            lmax = codomain.paradict['lmax']
+            mmax = codomain.paradict['mmax']
+
+            if (nlon != 2 * nlat - 1) or (lmax != nlat - 1) or (lmax != mmax):
+                return False
+        elif isinstance(domain, HPSpace):
+            if not isinstance(codomain, LMSpace):
+                raise TypeError(about._errors.cstring(
+                    "ERROR: codomain must be a LMSpace."
+                ))
+
+            nside = domain.paradict['nside']
+            lmax = codomain.paradict['lmax']
+            mmax = codomain.paradict['mmax']
+
+            if (3 * nside - 1 != lmax) or (lmax != mmax):
                 return False
         else:
             return False
@@ -86,10 +114,10 @@ class RGRGTransformation(Transformation):
             if module is None:
                 if gdi.get('pyfftw') is None:
                     if gdi.get('gfft') is None:
-                        self._transform =\
+                        self._transform = \
                             GFFT(domain, codomain, gdi.get('gfft_dummy'))
                     else:
-                        self._transform =\
+                        self._transform = \
                             GFFT(domain, codomain, gdi.get('gfft'))
                 self._transform = FFTW(domain, codomain)
             else:
@@ -100,16 +128,49 @@ class RGRGTransformation(Transformation):
                         raise RuntimeError("ERROR: pyfftw is not available.")
                 elif module == 'gfft':
                     if gdi.get('gfft') is not None:
-                        self._transform =\
+                        self._transform = \
                             GFFT(domain, codomain, gdi.get('gfft'))
                     else:
                         raise RuntimeError("ERROR: gfft is not available.")
                 elif module == 'gfft_dummy':
-                    self._transform =\
+                    self._transform = \
                         GFFT(domain, codomain, gdi.get('gfft_dummy'))
                 else:
                     raise ValueError('Given FFT module is not known: ' +
                                      str(module))
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    def transform(self, val, axes=None, **kwargs):
+        if self._transform.codomain.harmonic:
+            # correct for forward fft
+            val = self._transform.domain.calc_weight(val, power=1)
+
+        # Perform the transformation
+        Tval = self._transform.transform(val, axes, **kwargs)
+
+        if not self._transform.codomain.harmonic:
+            # correct for inverse fft
+            Tval = self._transform.codomain.calc_weight(Tval, power=-1)
+
+        return Tval
+
+
+class GLLMTransformation(Transformation):
+    def __init__(self, domain, codomain, module=None):
+        if Transformation.check_codomain(domain, codomain):
+            self._transform = GLTransform(domain, codomain)
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    def transform(self, val, axes=None, **kwargs):
+        return self._transform.transform(val, axes, **kwargs)
+
+
+class HPLMTransformation(Transformation):
+    def __init__(self, domain, codomain, module=None):
+        if Transformation.check_codomain(domain, codomain):
+            self._transform = HPTransform(domain, codomain)
         else:
             raise ValueError("ERROR: Incompatible codomain!")
 
