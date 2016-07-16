@@ -22,6 +22,15 @@ class TransformationFactory(object):
             return transformation.GLLMTransformation(domain, codomain, module)
         elif isinstance(domain, HPSpace):
             return transformation.HPLMTransformation(domain, codomain, module)
+        elif isinstance(domain, LMSpace):
+            if isinstance(codomain, GLSpace):
+                return transformation.LMGLTransformation(domain, codomain,
+                                                         module)
+            elif isinstance(codomain, HPSpace):
+                return transformation.LMHPTransformation(domain, codomain,
+                                                         module)
+            else:
+                raise ValueError('ERROR: incompatible codomain')
         else:
             raise ValueError('ERROR: unknown domain')
 

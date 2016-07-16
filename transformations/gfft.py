@@ -54,9 +54,6 @@ class GFFT(Transform):
         else:
             temp_inp = val
 
-        # Cast input datatype to codomain's dtype
-        temp_inp = temp_inp.astype(np.complex128, copy=False)
-
         # Array for storing the result
         return_val = None
 

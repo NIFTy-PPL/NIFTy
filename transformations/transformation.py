@@ -2,6 +2,7 @@ from fftw import FFTW
 from gfft import GFFT
 from gltransform import GLTransform
 from hptransform import HPTransform
+from lmtransform import LMTransform
 from nifty.config import about, dependency_injector as gdi
 from nifty import RGSpace, GLSpace, HPSpace, LMSpace
 
@@ -96,6 +97,26 @@ class Transformation(object):
 
             if (3 * nside - 1 != lmax) or (lmax != mmax):
                 return False
+        elif isinstance(domain, LMSpace):
+            if isinstance(codomain, GLSpace):
+                nlat = codomain.paradict['nlat']
+                nlon = codomain.paradict['nlon']
+                lmax = domain.paradict['lmax']
+                mmax = domain.paradict['mmax']
+
+                if (lmax != mmax) or (nlat != lmax + 1) or \
+                        (nlon != 2 * lmax + 1):
+                    return False
+            elif isinstance(codomain, HPSpace):
+                nside = codomain.paradict['nside']
+                lmax = domain.paradict['lmax']
+                mmax = domain.paradict['mmax']
+
+                if (lmax != mmax) or (3 * nside - 1 != lmax):
+                    return False
+            else:
+                raise ValueError('ERROT: LMSpace codomain should be ' +
+                                 'HPSpace or GLSpace')
         else:
             return False
 
@@ -157,7 +178,7 @@ class RGRGTransformation(Transformation):
 
 
 class GLLMTransformation(Transformation):
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain):
         if Transformation.check_codomain(domain, codomain):
             self._transform = GLTransform(domain, codomain)
         else:
@@ -168,9 +189,39 @@ class GLLMTransformation(Transformation):
 
 
 class HPLMTransformation(Transformation):
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain):
         if Transformation.check_codomain(domain, codomain):
             self._transform = HPTransform(domain, codomain)
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    def transform(self, val, axes=None, **kwargs):
+        return self._transform.transform(val, axes, **kwargs)
+
+class LMGLTransformation(Transformation):
+    def __init__(self, domain, codomain):
+        if Transformation.check_codomain(domain, codomain):
+            if gdi.get('libsharp_wrapper_gl') is None:
+                raise ImportError("The module libsharp is " +
+                                  "needed but not available.")
+
+            self._transform = LMTransform(domain, codomain,
+                                          gdi.get('libsharp_wrapper_gl'))
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    def transform(self, val, axes=None, **kwargs):
+        return self._transform.transform(val, axes, **kwargs)
+
+class LMHPTransformation(Transformation):
+    def __init__(self, domain, codomain):
+        if Transformation.check_codomain(domain, codomain):
+            if gdi.get('healpy') is None:
+                raise ImportError("The module healpy is needed" +
+                                  "but not available.")
+
+            self._transform = LMTransform(domain, codomain,
+                                          gdi.get('healpy'))
         else:
             raise ValueError("ERROR: Incompatible codomain!")
 

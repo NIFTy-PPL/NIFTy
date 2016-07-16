@@ -4,8 +4,8 @@ from d2o import distributed_data_object
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 
-
 gl = gdi.get('libsharp_wrapper_gl')
+
 
 class GLTransform(Transform):
     """
