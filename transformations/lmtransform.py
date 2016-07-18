@@ -23,7 +23,7 @@ class  LMTransform(Transform):
             lmax = self.domain.paradict['lmax']
             mmax = self.paradict['mmax']
 
-            if self.domain.dtype == np.dtype('complex64')
+            if self.domain.dtype == np.dtype('complex64'):
                 val = self.module.alm2map_f(val, nlat=nlat, nlon=nlon,
                                             lmax=lmax, mmax=mmax, cl=False)
             else:
