@@ -27,7 +27,7 @@ class Transformation(object):
                 ))
 
             if not np.all(np.array(domain.paradict['shape']) ==
-                                  np.array(codomain.paradict['shape'])):
+                          np.array(codomain.paradict['shape'])):
                 return False
 
             if domain.harmonic == codomain.harmonic:
@@ -198,6 +198,7 @@ class HPLMTransformation(Transformation):
     def transform(self, val, axes=None, **kwargs):
         return self._transform.transform(val, axes, **kwargs)
 
+
 class LMGLTransformation(Transformation):
     def __init__(self, domain, codomain):
         if Transformation.check_codomain(domain, codomain):
@@ -212,6 +213,7 @@ class LMGLTransformation(Transformation):
 
     def transform(self, val, axes=None, **kwargs):
         return self._transform.transform(val, axes, **kwargs)
+
 
 class LMHPTransformation(Transformation):
     def __init__(self, domain, codomain):

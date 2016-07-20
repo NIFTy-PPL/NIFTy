@@ -7,6 +7,7 @@ import nifty.nifty_utilities as utilities
 
 hp = gdi.get('healpy')
 
+
 class HPTransform(Transform):
     """
         GLTransform wrapper for libsharp's transform functions
