@@ -4,15 +4,39 @@ import numpy as np
 from d2o import distributed_data_object, STRATEGIES
 from nifty.config import about, dependency_injector as gdi
 import nifty.nifty_utilities as utilities
-from transform import Transform
-
-from mpi4py import MPI
+from nifty import nifty_configuration
 
 pyfftw = gdi.get('pyfftw')
 
 
-class FFTW(Transform):
+class Transform(object):
+    """
+        A generic fft object without any implementation.
+    """
 
+    def __init__(self, domain, codomain):
+        pass
+
+    def transform(self, val, axes, **kwargs):
+        """
+            A generic ff-transform function.
+
+            Parameters
+            ----------
+            field_val : distributed_data_object
+                The value-array of the field which is supposed to
+                be transformed.
+
+            domain : nifty.rg.nifty_rg.rg_space
+                The domain of the space which should be transformed.
+
+            codomain : nifty.rg.nifty_rg.rg_space
+                The taget into which the field should be transformed.
+        """
+        raise NotImplementedError
+
+
+class FFTW(Transform):
     """
         The pyfftw pendant of a fft object.
     """
@@ -102,12 +126,13 @@ class FFTW(Transform):
             # until the desired format is constructed.
             core = np.fromfunction(
                 lambda *args: (-1) **
-                (np.tensordot(to_center,
-                              args +
-                              offset.reshape(offset.shape +
-                                             (1,) *
-                                             (np.array(args).ndim - 1)),
-                              1)),
+                              (np.tensordot(to_center,
+                                            args +
+                                            offset.reshape(offset.shape +
+                                                           (1,) *
+                                                           (np.array(
+                                                               args).ndim - 1)),
+                                            1)),
                 (2,) * to_center.size)
             # Cast the core to the smallest integers we can get
             core = core.astype(np.int8)
@@ -185,7 +210,7 @@ class FFTW(Transform):
         if axes:
             mask = mask.reshape(
                 [y if x in axes else 1
-                    for x, y in enumerate(val.shape)]
+                 for x, y in enumerate(val.shape)]
             )
 
         return val * mask
@@ -193,7 +218,7 @@ class FFTW(Transform):
     def _atomic_mpi_transform(self, val, info, axes):
 
         # Apply codomain centering mask
-        if reduce(lambda x, y: x+y, self.codomain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.codomain.paradict['zerocenter']):
             temp_val = np.copy(val)
             val = self._apply_mask(temp_val, info.cmask_codomain, axes)
 
@@ -210,7 +235,7 @@ class FFTW(Transform):
             return None
 
         # Apply domain centering mask
-        if reduce(lambda x, y: x+y, self.domain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.domain.paradict['zerocenter']):
             result = self._apply_mask(result, info.cmask_domain, axes)
 
         # Correct the sign if needed
@@ -238,7 +263,7 @@ class FFTW(Transform):
                                                 **kwargs)
 
         # Apply codomain centering mask
-        if reduce(lambda x, y: x+y, self.codomain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.codomain.paradict['zerocenter']):
             temp_val = np.copy(local_val)
             local_val = self._apply_mask(temp_val,
                                          current_info.cmask_codomain, axes)
@@ -250,7 +275,7 @@ class FFTW(Transform):
         )
 
         # Apply domain centering mask
-        if reduce(lambda x, y: x+y, self.domain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.domain.paradict['zerocenter']):
             local_result = self._apply_mask(local_result,
                                             current_info.cmask_domain, axes)
 
@@ -297,7 +322,6 @@ class FFTW(Transform):
         return_val = val.copy_empty(global_shape=val.shape,
                                     dtype=self.codomain.dtype)
 
-
         # Extract local data
         local_val = val.get_local_data(copy=False)
 
@@ -335,7 +359,8 @@ class FFTW(Transform):
                     local_shape=val.local_shape,
                     local_offset_Q=local_offset_Q,
                     is_local=False,
-                    transform_shape=val.shape, # TODO: check why inp.shape doesn't work
+                    transform_shape=val.shape,
+                    # TODO: check why inp.shape doesn't work
                     **kwargs
                 )
 
@@ -420,7 +445,6 @@ class FFTW(Transform):
 
 
 class FFTWTransformInfo(object):
-
     def __init__(self, domain, codomain, local_shape,
                  local_offset_Q, fftw_context, **kwargs):
         if pyfftw is None:
@@ -468,7 +492,6 @@ class FFTWTransformInfo(object):
 
 
 class FFTWLocalTransformInfo(FFTWTransformInfo):
-
     def __init__(self, domain, codomain, local_shape,
                  local_offset_Q, fftw_context, **kwargs):
         super(FFTWLocalTransformInfo, self).__init__(domain,
@@ -493,7 +516,6 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
 
 
 class FFTWMPITransfromInfo(FFTWTransformInfo):
-
     def __init__(self, domain, codomain, local_shape,
                  local_offset_Q, fftw_context, transform_shape, **kwargs):
         super(FFTWMPITransfromInfo, self).__init__(domain,
@@ -519,3 +541,107 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
     def plan(self, plan):
         about.warnings.cprint('WARNING: FFTWMPITransfromInfo plan \
                                cannot be modified')
+
+
+class GFFT(Transform):
+    """
+        The gfft pendant of a fft object.
+
+        Parameters
+        ----------
+        fft_module_name : String
+            Switch between the gfft module used: 'gfft' and 'gfft_dummy'
+
+    """
+
+    def __init__(self, domain, codomain, fft_module):
+        if fft_module is None:
+            # gdi cannot find the required module
+            raise ImportError("ERROR: GFFT module is not available.")
+
+        self.domain = domain
+        self.codomain = codomain
+        self.fft_machine = fft_module
+
+    def transform(self, val, axes, **kwargs):
+        """
+            The gfft transform function.
+
+            Parameters
+            ----------
+            val : numpy.ndarray or distributed_data_object
+                The value-array of the field which is supposed to
+                be transformed.
+
+            axes : None or tuple
+                The axes which should be transformed.
+
+            **kwargs : *optional*
+                Further kwargs are not processed.
+
+            Returns
+            -------
+            result : np.ndarray or distributed_data_object
+                Fourier-transformed pendant of the input field.
+        """
+        # Check if the axes provided are valid given the shape
+        if axes is not None and \
+                not all(axis in range(len(val.shape)) for axis in axes):
+            raise ValueError("ERROR: Provided axes does not match array shape")
+
+        # GFFT doesn't accept d2o objects as input. Consolidate data from
+        # all nodes into numpy.ndarray before proceeding.
+        if isinstance(val, distributed_data_object):
+            temp_inp = val.get_full_data()
+        else:
+            temp_inp = val
+
+        # Array for storing the result
+        return_val = None
+
+        for slice_list in utilities.get_slice_list(temp_inp.shape, axes):
+
+            # don't copy the whole data array
+            if slice_list == [slice(None, None)]:
+                inp = temp_inp
+            else:
+                # initialize the return_val object if needed
+                if return_val is None:
+                    return_val = np.empty_like(temp_inp)
+                inp = temp_inp[slice_list]
+
+            inp = self.fft_machine.gfft(
+                inp,
+                in_ax=[],
+                out_ax=[],
+                ftmachine='fft' if self.codomain.harmonic else 'ifft',
+                in_zero_center=map(
+                    bool, self.domain.paradict['zerocenter']
+                ),
+                out_zero_center=map(
+                    bool, self.codomain.paradict['zerocenter']
+                ),
+                enforce_hermitian_symmetry=bool(
+                    self.codomain.paradict['complexity']
+                ),
+                W=-1,
+                alpha=-1,
+                verbose=False
+            )
+            if slice_list == [slice(None, None)]:
+                return_val = inp
+            else:
+                return_val[slice_list] = inp
+
+        if isinstance(val, distributed_data_object):
+            new_val = val.copy_empty(dtype=self.codomain.dtype)
+            new_val.set_full_data(return_val, copy=False)
+            # If the values living in domain are purely real, the result of
+            # the fft is hermitian
+            if self.domain.paradict['complexity'] == 0:
+                new_val.hermitian = True
+            return_val = new_val
+        else:
+            return_val = return_val.astype(self.codomain.dtype, copy=False)
+
+        return return_val

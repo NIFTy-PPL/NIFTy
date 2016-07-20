@@ -1,25 +1,57 @@
 import numpy as np
-from transform import Transform
+from transformation import Transformation
 from d2o import distributed_data_object
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
-
+from nifty import HPSpace, LMSpace
 
 hp = gdi.get('healpy')
 
-class HPTransform(Transform):
-    """
-        GLTransform wrapper for libsharp's transform functions
-    """
 
-    def __init__(self, domain, codomain):
-        self.domain = domain
-        self.codomain = codomain
-
+class HPLMTransformation(Transformation):
+    def __init__(self, domain, codomain, module=None):
         if 'healpy' not in gdi:
             raise ImportError("The module healpy is needed but not available")
 
-    def transform(self, val, axes, **kwargs):
+        if self.check_codomain(domain, codomain):
+            self.domain = domain
+            self.codomain = codomain
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    @staticmethod
+    def check_codomain(domain, codomain):
+        if not isinstance(domain, HPSpace):
+            raise TypeError('ERROR: domain is not a HPSpace')
+
+        if codomain is None:
+            return False
+
+        if not isinstance(codomain, LMSpace):
+            raise TypeError('ERROR: codomain must be a LMSpace.')
+
+        nside = domain.paradict['nside']
+        lmax = codomain.paradict['lmax']
+        mmax = codomain.paradict['mmax']
+
+        if (3 * nside - 1 != lmax) or (lmax != mmax):
+            return False
+
+        return True
+
+    def transform(self, val, axes=None, **kwargs):
+        """
+        HP -> LM transform method.
+
+        Parameters
+        ----------
+        val : np.ndarray or distributed_data_object
+            The value array which is to be transformed
+
+        axes : None or tuple
+            The axes along which the transformation should take place
+
+        """
         # get by number of iterations from kwargs
         niter = kwargs['niter'] if 'niter' in kwargs else 0
 

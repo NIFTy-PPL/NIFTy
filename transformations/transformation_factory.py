@@ -3,7 +3,11 @@ import numpy as np
 from nifty.rg import RGSpace
 from nifty.lm import GLSpace, HPSpace, LMSpace
 
-import transformation
+from rgrgtransformation import RGRGTransformation
+from gllmtransformation import GLLMTransformation
+from hplmtransformation import HPLMTransformation
+from lmgltransformation import LMGLTransformation
+from lmhptransformation import LMHPTransformation
 
 
 class TransformationFactory(object):
@@ -17,17 +21,17 @@ class TransformationFactory(object):
 
     def _get_transform(self, domain, codomain, module):
         if isinstance(domain, RGSpace):
-            return transformation.RGRGTransformation(domain, codomain, module)
+            return RGRGTransformation(domain, codomain, module)
         elif isinstance(domain, GLSpace):
-            return transformation.GLLMTransformation(domain, codomain, module)
+            return GLLMTransformation(domain, codomain, module)
         elif isinstance(domain, HPSpace):
-            return transformation.HPLMTransformation(domain, codomain, module)
+            return HPLMTransformation(domain, codomain, module)
         elif isinstance(domain, LMSpace):
             if isinstance(codomain, GLSpace):
-                return transformation.LMGLTransformation(domain, codomain,
+                return LMGLTransformation(domain, codomain,
                                                          module)
             elif isinstance(codomain, HPSpace):
-                return transformation.LMHPTransformation(domain, codomain,
+                return LMHPTransformation(domain, codomain,
                                                          module)
             else:
                 raise ValueError('ERROR: incompatible codomain')

@@ -7,7 +7,7 @@ import itertools
 
 from nifty import RGSpace, LMSpace, HPSpace, GLSpace
 from nifty import transformator
-import nifty.transformations.transformation as transformation
+from nifty.transformations.rgrgtransformation import RGRGTransformation
 from nifty.rg.rg_space import gc as RG_GC
 import d2o
 
@@ -72,8 +72,8 @@ class TestRGRGTransformation(unittest.TestCase):
     def test_check_codomain_rgspecific(self, complexity, distances, harmonic):
         x = RGSpace((8, 8), complexity=complexity,
                     distances=distances, harmonic=harmonic)
-        assert (transformation.RGRGTransformation.check_codomain(x, x.get_codomain()))
-        assert (transformation.RGRGTransformation.check_codomain(x, x.get_codomain()))
+        assert (RGRGTransformation.check_codomain(x, x.get_codomain()))
+        assert (RGRGTransformation.check_codomain(x, x.get_codomain()))
 
     @parameterized.expand(rg_rg_fft_modules, testcase_func_name=custom_name_func)
     def test_shapemismatch(self, module):

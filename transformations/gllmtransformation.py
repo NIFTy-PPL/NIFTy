@@ -1,26 +1,58 @@
 import numpy as np
-from transform import Transform
+from transformation import Transformation
 from d2o import distributed_data_object
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
+from nifty import GLSpace, LMSpace
 
 gl = gdi.get('libsharp_wrapper_gl')
 
 
-class GLTransform(Transform):
-    """
-        GLTransform wrapper for libsharp's transform functions
-    """
-
-    def __init__(self, domain, codomain):
-        self.domain = domain
-        self.codomain = codomain
-
+class GLLMTransformation(Transformation):
+    def __init__(self, domain, codomain, module=None):
         if 'libsharp_wrapper_gl' not in gdi:
-            raise ImportError("The module libsharp_wrapper_gl " +
-                              "is needed but not available")
+            raise ImportError("The module libsharp is needed but not available")
 
-    def transform(self, val, axes, **kwargs):
+        if self.check_codomain(domain, codomain):
+            self.domain = domain
+            self.codomain = codomain
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    @staticmethod
+    def check_codomain(domain, codomain):
+        if not isinstance(domain, GLSpace):
+            raise TypeError('ERROR: domain is not a GLSpace')
+
+        if codomain is None:
+            return False
+
+        if not isinstance(codomain, LMSpace):
+            raise TypeError('ERROR: codomain must be a LMSpace.')
+
+        nlat = domain.paradict['nlat']
+        nlon = domain.paradict['nlon']
+        lmax = codomain.paradict['lmax']
+        mmax = codomain.paradict['mmax']
+
+        if (nlon != 2 * nlat - 1) or (lmax != nlat - 1) or (lmax != mmax):
+            return False
+
+        return True
+
+    def transform(self, val, axes=None, **kwargs):
+        """
+        GL -> LM transform method.
+
+        Parameters
+        ----------
+        val : np.ndarray or distributed_data_object
+            The value array which is to be transformed
+
+        axes : None or tuple
+            The axes along which the transformation should take place
+
+        """
         if self.domain.discrete:
             val = self.domain.calc_weight(val, power=-0.5)
 

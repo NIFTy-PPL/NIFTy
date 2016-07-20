@@ -1,0 +1,99 @@
+import numpy as np
+from transformation import Transformation
+from d2o import distributed_data_object
+from nifty.config import dependency_injector as gdi
+import nifty.nifty_utilities as utilities
+from nifty import GLSpace, LMSpace
+
+gl = gdi.get('libsharp_wrapper_gl')
+
+
+class LMGLTransformation(Transformation):
+    def __init__(self, domain, codomain, module=None):
+        if gdi.get('libsharp_wrapper_gl') is None:
+            raise ImportError(
+                "The module libsharp is needed but not available.")
+
+        if self.check_codomain(domain, codomain):
+            self.domain = domain
+            self.codomain = codomain
+        else:
+            raise ValueError("ERROR: Incompatible codomain!")
+
+    @staticmethod
+    def check_codomain(domain, codomain):
+        if not isinstance(domain, LMSpace):
+            raise TypeError('ERROR: domain is not a LMSpace')
+
+        if codomain is None:
+            return False
+
+        if not isinstance(codomain, GLSpace):
+            raise TypeError('ERROR: codomain must be a GLSpace.')
+
+        nlat = codomain.paradict['nlat']
+        nlon = codomain.paradict['nlon']
+        lmax = domain.paradict['lmax']
+        mmax = domain.paradict['mmax']
+
+        if (lmax != mmax) or (nlat != lmax + 1) or (nlon != 2 * lmax + 1):
+            return False
+
+        return True
+
+    def transform(self, val, axes=None, **kwargs):
+        """
+        LM -> GL transform method.
+
+        Parameters
+        ----------
+        val : np.ndarray or distributed_data_object
+            The value array which is to be transformed
+
+        axes : None or tuple
+            The axes along which the transformation should take place
+
+        """
+        if isinstance(val, distributed_data_object):
+            temp_val = val.get_full_data()
+        else:
+            temp_val = val
+
+        return_val = None
+
+        for slice_list in utilities.get_slice_list(temp_val.shape, axes):
+            if slice_list == [slice(None, None)]:
+                inp = temp_val
+            else:
+                if return_val is None:
+                    return_val = np.empty_like(temp_val)
+                inp = temp_val[slice_list]
+
+            nlat = self.codomain.paradict['nlat']
+            nlon = self.codomain.paradict['nlon']
+            lmax = self.domain.paradict['lmax']
+            mmax = self.paradict['mmax']
+
+            if self.domain.dtype == np.dtype('complex64'):
+                inp = gl.alm2map_f(inp, nlat=nlat, nlon=nlon,
+                                   lmax=lmax, mmax=mmax, cl=False)
+            else:
+                inp = gl.alm2map(inp, nlat=nlat, nlon=nlon,
+                                 lmax=lmax, mmax=mmax, cl=False)
+
+            if slice_list == [slice(None, None)]:
+                return_val = inp
+            else:
+                return_val[slice_list] = inp
+
+        # re-weight if discrete
+        if self.codomain.discrete:
+            val = self.codomain.calc_weight(val, power=0.5)
+
+        if isinstance(val, distributed_data_object):
+            new_val = val.copy_empty(dtype=self.codomain.dtype)
+            new_val.set_full_data(return_val, copy=False)
+        else:
+            return_val = return_val.astype(self.codomain.dtype, copy=False)
+
+        return return_val
