@@ -1,5 +1,3 @@
-import numpy as np
-
 from nifty.rg import RGSpace
 from nifty.lm import GLSpace, HPSpace, LMSpace
 
@@ -28,11 +26,9 @@ class TransformationFactory(object):
             return HPLMTransformation(domain, codomain, module)
         elif isinstance(domain, LMSpace):
             if isinstance(codomain, GLSpace):
-                return LMGLTransformation(domain, codomain,
-                                                         module)
+                return LMGLTransformation(domain, codomain, module)
             elif isinstance(codomain, HPSpace):
-                return LMHPTransformation(domain, codomain,
-                                                         module)
+                return LMHPTransformation(domain, codomain, module)
             else:
                 raise ValueError('ERROR: incompatible codomain')
         else:
