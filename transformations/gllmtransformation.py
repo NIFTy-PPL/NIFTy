@@ -9,7 +9,7 @@ gl = gdi.get('libsharp_wrapper_gl')
 
 
 class GLLMTransformation(Transformation):
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain=None, module=None):
         if 'libsharp_wrapper_gl' not in gdi:
             raise ImportError("The module libsharp is needed but not available")
 
@@ -18,6 +18,36 @@ class GLLMTransformation(Transformation):
             self.codomain = codomain
         else:
             raise ValueError("ERROR: Incompatible codomain!")
+
+    @staticmethod
+    def get_codomain(domain):
+        """
+            Generates a compatible codomain to which transformations are
+            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+
+            Parameters
+            ----------
+            domain: GLSpace
+                Space for which a codomain is to be generated
+
+            Returns
+            -------
+            codomain : LMSpace
+                A compatible codomain.
+        """
+        if domain is None:
+            raise ValueError('ERROR: cannot generate codomain for None')
+
+        if not isinstance(domain, GLSpace):
+            raise TypeError('ERROR: domain needs to be a GLSpace')
+
+        nlat = domain.paradict['nlat']
+        lmax = nlat - 1
+        mmax = nlat - 1
+        if domain.dtype == np.dtype('float32'):
+            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex64)
+        else:
+            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex128)
 
     @staticmethod
     def check_codomain(domain, codomain):

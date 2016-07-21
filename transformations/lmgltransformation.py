@@ -9,7 +9,7 @@ gl = gdi.get('libsharp_wrapper_gl')
 
 
 class LMGLTransformation(Transformation):
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain=None, module=None):
         if gdi.get('libsharp_wrapper_gl') is None:
             raise ImportError(
                 "The module libsharp is needed but not available.")
@@ -19,6 +19,46 @@ class LMGLTransformation(Transformation):
             self.codomain = codomain
         else:
             raise ValueError("ERROR: Incompatible codomain!")
+
+    @staticmethod
+    def get_codomain(domain):
+        """
+            Generates a compatible codomain to which transformations are
+            reasonable, i.e.\  a pixelization of the two-sphere.
+
+            Parameters
+            ----------
+            domain : LMSpace
+                Space for which a codomain is to be generated
+
+            Returns
+            -------
+            codomain : HPSpace
+                A compatible codomain.
+
+            References
+            ----------
+            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013,
+                   "Libsharp - spherical
+                   harmonic transforms revisited";
+                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+        """
+        if domain is None:
+            raise ValueError('ERROR: cannot generate codomain for None')
+
+        if not isinstance(domain, LMSpace):
+            raise TypeError('ERROR: domain needs to be a LMSpace')
+
+        if domain.dtype == np.dtype('complex64'):
+            new_dtype = np.float32
+        elif domain.dtype == np.dtype('complex128'):
+            new_dtype = np.float64
+        else:
+            raise ValueError('ERROR: unsupported domain dtype')
+
+        nlat = domain.paradict['lmax'] + 1
+        nlon = domain.paradict['lmax'] * 2 + 1
+        return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
 
     @staticmethod
     def check_codomain(domain, codomain):
