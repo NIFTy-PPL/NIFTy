@@ -3,8 +3,10 @@
 import numpy as np
 from d2o import STRATEGIES
 
+from nifty.config import about
 from nifty.space import Space
 from nifty.nifty_paradict import power_space_paradict
+from nifty.nifty_utilities import cast_axis_to_tuple
 
 
 class PowerSpace(Space):
@@ -23,6 +25,37 @@ class PowerSpace(Space):
     @property
     def shape(self):
         return self.paradict['kindex'].shape
+
+    @property
+    def dim(self):
+        return self.shape[0]
+
+    @property
+    def total_volume(self):
+        # every power-pixel has a volume of 1
+        return reduce(lambda x, y: x*y, self.paradict['pindex'].shape)
+
+    def weight(self, x, power=1, axes=None):
+        total_shape = x.shape
+
+        axes = cast_axis_to_tuple(axes, len(total_shape))
+        if len(axes) != 1:
+            raise ValueError(about._errors.cstring(
+                "ERROR: axes must be of length 1."))
+
+        reshaper = [1, ] * len(total_shape)
+        reshaper[axes[0]] = self.shape[0]
+
+        weight = self.paradict['rho'].reshape(reshaper)
+        if power != 1:
+            weight = weight ** power
+        result_x = x * weight
+
+        return result_x
+
+    def compute_k_array(self, distribution_strategy):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no k_array implementation for PowerSpace."))
 
     def calculate_power_spectrum(self, x, axes=None):
         fieldabs = abs(x)**2

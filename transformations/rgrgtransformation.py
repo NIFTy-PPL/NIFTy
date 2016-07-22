@@ -67,7 +67,7 @@ class RGRGTransformation(Transformation):
         else:
             temp = np.empty_like(domain.paradict['zerocenter'])
             temp[:] = zerocenter
-        zerocenter = temp
+            zerocenter = temp
 
         # calculate the initialization parameters
         distances = 1 / (np.array(domain.paradict['shape']) *

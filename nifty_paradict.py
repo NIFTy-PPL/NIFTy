@@ -193,14 +193,11 @@ class hp_space_paradict(space_paradict):
 
 
 class power_space_paradict(space_paradict):
-    def __init__(self, pindex, kindex, rho, pundex, k_array, config,
-                 harmonic_domain):
+    def __init__(self, pindex, kindex, rho, config, harmonic_domain):
         space_paradict.__init__(self,
                                 pindex=pindex,
                                 kindex=kindex,
                                 rho=rho,
-                                pundex=pundex,
-                                k_array=k_array,
                                 config=config,
                                 harmonic_domain=harmonic_domain)
 
@@ -221,4 +218,4 @@ class power_space_paradict(space_paradict):
 
     def __hash__(self):
         return (hash(frozenset(self.parameters['config'].items())) ^
-                (hash(self.parameters['domain'])/131))
+                (hash(self.parameters['harmonic_domain'])/131))

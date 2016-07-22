@@ -92,4 +92,10 @@ from demos import get_demo_dir
 from pickling import _pickle_method, _unpickle_method
 
 #import pyximport; pyximport.install(pyimport = True)
-from transformations import tf as transformator
+from transformations import TransformationFactory,\
+                            GLLMTransformation,\
+                            HPLMTransformation,\
+                            LMGLTransformation,\
+                            LMHPTransformation,\
+                            RGRGTransformation
+
