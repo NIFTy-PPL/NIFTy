@@ -43,40 +43,38 @@ class space_paradict(object):
                 temp_hash = hash(item)
             except TypeError:
                 temp_hash = hash(tuple(item))
-            result_hash ^= temp_hash * hash(key)
+            result_hash ^= temp_hash ^ 131*hash(key)
         return result_hash
 
 
 class rg_space_paradict(space_paradict):
 
-    def __init__(self, shape, complexity, zerocenter):
-        self.ndim = len(np.array(shape).flatten())
+    def __init__(self, shape, zerocenter, distances):
+        if not hasattr(self, 'parameters'):
+            self.parameters = {}
+        self.parameters.__setitem__('shape', shape)
         space_paradict.__init__(
-            self, shape=shape, complexity=complexity, zerocenter=zerocenter)
+            self, zerocenter=zerocenter, distances=distances)
 
     def __setitem__(self, key, arg):
-        if key not in ['shape', 'complexity', 'zerocenter']:
+        if key not in ['shape', 'zerocenter', 'distances']:
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported RGSpace parameter:" + key))
 
         if key == 'shape':
-            temp = np.array(arg, dtype=np.int).flatten()
-            if np.any(temp < 0):
-                raise ValueError("ERROR: negative number in shape.")
-            temp = tuple(temp)
-            if len(temp) != self.ndim:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Number of dimensions does not match the init " +
-                    "value."))
-        elif key == 'complexity':
-            temp = int(arg)
-            if temp not in [0, 1, 2]:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Unsupported complexity parameter: " + str(temp)))
-        elif key == 'zerocenter':
-            temp = np.empty(self.ndim, dtype=bool)
+            temp = np.empty(len(self['shape']), dtype=np.int)
             temp[:] = arg
-            temp = tuple(temp)
+        elif key == 'zerocenter':
+            temp = np.empty(len(self['shape']), dtype=bool)
+            temp[:] = arg
+        elif key == 'distances':
+            if arg is None:
+                temp = 1 / np.array(self['shape'], dtype=np.float)
+            else:
+                temp = np.empty(len(self['shape']), dtype=np.float)
+                temp[:] = arg
+
+        temp = tuple(temp)
         self.parameters.__setitem__(key, temp)
 
 
@@ -187,82 +185,20 @@ class hp_space_paradict(space_paradict):
 
 
 class power_space_paradict(space_paradict):
-    def __init__(self, distribution_strategy, log, nbin, binbounds):
+    def __init__(self, power_indices):
         space_paradict.__init__(self,
-                                distribution_strategy=distribution_strategy,
-                                log=log,
-                                nbin=nbin,
-                                binbounds=binbounds)
+                                power_indices=power_indices)
 
     def __setitem__(self, key, arg):
-        if key not in ['distribution_strategy', 'log', 'nbin', 'binbounds']:
+        if key not in ['power_indices']:
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported PowerSpace parameter: " + key))
 
-        if key == 'log':
-            try:
-                temp = bool(arg)
-            except(TypeError):
-                temp = False
-
-        elif key == 'nbin':
-            try:
-                temp = int(arg)
-            except(TypeError):
-                temp = None
-
-        elif key == 'binbounds':
-            try:
-                temp = tuple(np.array(arg))
-            except(TypeError):
-                temp = None
-
-        elif key == 'distribution_strategy':
-            temp = str(arg)
+        if key == 'power_indices':
+            temp = arg
 
         self.parameters.__setitem__(key, temp)
 
-
-class rg_power_space_paradict(power_space_paradict, rg_space_paradict):
-    def __init__(self, shape, dgrid, zerocenter, distribution_strategy,
-                 log, nbin, binbounds):
-        rg_space_paradict.__init__(self,
-                                   shape=shape,
-                                   complexity=0,
-                                   zerocenter=zerocenter)
-        power_space_paradict.__init__(
-                                self,
-                                distribution_strategy=distribution_strategy,
-                                log=log,
-                                nbin=nbin,
-                                binbounds=binbounds)
-
-        self['dgrid'] = dgrid
-
-    def __setitem__(self, key, arg):
-        if key not in ['shape', 'complexity', 'zerocenter',
-                       'distribution_strategy', 'log', 'nbin', 'binbounds',
-                       'dgrid']:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported RGPowerSpace parameter: " + key))
-
-        if key in ['distribution_strategy', 'log', 'nbin', 'binbounds']:
-            power_space_paradict.__setitem__(self, key, arg)
-        elif key == 'dgrid':
-            temp = np.array(arg, dtype=np.float).flatten()
-            if np.size(temp) != self.ndim:
-                temp = temp * np.ones(self.ndim, dtype=np.float)
-            temp = tuple(temp)
-            self.parameters.__setitem__(key, temp)
-        else:
-            rg_space_paradict.__setitem__(self, key, arg)
-
-
-
-
-
-
-
-
-
-
+    def __hash__(self):
+        return (self.parameters['power_indices']['hash'] ^
+                131*hash('power_indices'))

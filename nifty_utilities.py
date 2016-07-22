@@ -237,3 +237,20 @@ def cast_axis_to_tuple(axis, length):
     # shift negative indices to positive ones
     axis = tuple(item if (item >= 0) else (item + length) for item in axis)
     return axis
+
+
+def complex_bincount(x, weights=None, minlength=None):
+    try:
+        complex_weights_Q = issubclass(weights.dtype.type,
+                                       np.complexfloating)
+    except AttributeError:
+        complex_weights_Q = False
+
+    if complex_weights_Q:
+        real_bincount = x.bincount(weights=weights.real,
+                                   minlength=minlength)
+        imag_bincount = x.bincount(weights=weights.imag,
+                                   minlength=minlength)
+        return real_bincount + imag_bincount
+    else:
+        return x.bincount(weights=weights, minlength=minlength)

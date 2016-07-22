@@ -55,8 +55,7 @@ from field_types import FieldType,\
 from operators import *
 
 from power import PowerSpace,\
-                  RGPowerSpace,\
-                  LMPowerSpace
+                  PowerIndexFactory
 
 ## optional submodule `rg`
 try:

@@ -10,14 +10,10 @@ from power_index_factory import RGPowerIndexFactory
 
 
 class RGPowerSpace(PowerSpace):
-    def __init__(self, shape, dgrid, distribution_strategy,
-                 dtype=np.dtype('float'), zerocenter=False,
+    def __init__(self, distribution_strategy, dtype=np.dtype('float'),
                  log=False, nbin=None, binbounds=None):
         self.dtype = np.dtype(dtype)
         self.paradict = rg_power_space_paradict(
-                                shape=shape,
-                                dgrid=dgrid,
-                                zerocenter=zerocenter,
                                 distribution_strategy=distribution_strategy,
                                 log=log,
                                 nbin=nbin,
