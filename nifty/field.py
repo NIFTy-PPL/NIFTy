@@ -12,7 +12,7 @@ from nifty.config import about, \
 from nifty.field_types import FieldType,\
                               FieldArray
 
-from nifty.space import Space
+from nifty.spaces.space import Space
 
 import nifty.nifty_utilities as utilities
 from nifty_random import random

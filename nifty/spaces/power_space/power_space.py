@@ -4,7 +4,7 @@ import numpy as np
 from d2o import STRATEGIES
 
 from nifty.config import about
-from nifty.space import Space
+from nifty.spaces.space import Space
 from power_space_paradict import PowerSpaceParadict
 from nifty.nifty_utilities import cast_axis_to_tuple
 

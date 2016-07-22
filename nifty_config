@@ -1,9 +1,0 @@
-[DEFAULT]
-use_libsharp = True
-use_healpy = True
-verbosity = 1
-fft_module = pyfftw
-default_comm = COMM_WORLD
-mpi_module = MPI
-lm2gl = True
-

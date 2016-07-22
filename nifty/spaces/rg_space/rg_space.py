@@ -43,8 +43,7 @@ from matplotlib.ticker import LogFormatter as lf
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.space import Space
-from nifty.field import Field
+from nifty.spaces.space import Space
 
 from nifty.config import about,\
                          nifty_configuration as gc,\
@@ -397,6 +396,7 @@ class RGSpace(Space):
                 (default: 0).
 
         """
+        from nifty.field import Field
 
         if(not pl.isinteractive())and(not bool(kwargs.get("save",False))):
             about.warnings.cprint("WARNING: interactive mode off.")
@@ -453,11 +453,11 @@ class RGSpace(Space):
                 if(isinstance(other,tuple)):
                     other = list(other)
                     for ii in xrange(len(other)):
-                        if(isinstance(other[ii],field)):
+                        if(isinstance(other[ii],Field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
                             other[ii] = self.enforce_power(other[ii],size=np.size(xaxes),kindex=xaxes)
-                elif(isinstance(other,field)):
+                elif(isinstance(other,Field)):
                     other = [other.power(**kwargs)]
                 else:
                     other = [self.enforce_power(other,size=np.size(xaxes),kindex=xaxes)]
@@ -623,6 +623,8 @@ class RGSpace(Space):
                 Whether a scalar is extented to a constant array or not
                 (default: True).
         """
+        from nifty.field import Field
+
         about.warnings.cflush(
             "WARNING: _enforce_values is deprecated function. Please use self.cast")
         if(isinstance(x, Field)):

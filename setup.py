@@ -22,25 +22,21 @@
 from setuptools import setup, find_packages
 import os
 
-exec(open('version.py').read())
+exec(open('nifty/version.py').read())
 
 setup(name="ift_nifty",
       version=__version__,
-      author="Marco Selig",
-      author_email="mselig@mpa-garching.mpg.de",
-      maintainer="Theo Steininger",
-      maintainer_email="theos@mpa-garching.mpg.de",
+      author="Theo Steininger",
+      author_email="theos@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
       packages=find_packages(),
-      package_dir={"nifty": ""},
+      package_dir={"nifty": "nifty"},
       zip_safe=False,
       dependency_links=[
         'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers',
         'git+https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o'],
       install_requires=['keepers', 'd2o'],
-      data_files=[(os.path.expanduser('~') + "/.nifty",
-                   ['nifty_config', 'd2o_config'])],
       package_data={'nifty.demos': ['demo_faraday_map.npy'],
                     },
       license="GPLv3",

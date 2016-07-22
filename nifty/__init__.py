@@ -39,11 +39,10 @@ from d2o import distributed_data_object, d2o_librarian
 
 from nifty_cmaps import ncmap
 from field import Field
-from space import Space
 
 # this line exists for compatibility reasons
 # TODO: Remove this once the transition to field types is done.
-from space import Space as point_space
+from spaces.space import Space as point_space
 
 from nifty_random import random
 from nifty_simple_math import *
@@ -56,15 +55,7 @@ from operators import *
 
 from spaces import *
 
-
 from demos import get_demo_dir
-from pickling import _pickle_method, _unpickle_method
 
 #import pyximport; pyximport.install(pyimport = True)
-from transformations import TransformationFactory,\
-                            GLLMTransformation,\
-                            HPLMTransformation,\
-                            LMGLTransformation,\
-                            LMHPTransformation,\
-                            RGRGTransformation
-
+from transformations import *

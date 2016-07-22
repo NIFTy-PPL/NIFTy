@@ -21,6 +21,3 @@
 
 from rg_space import RGSpace
 from rg_space_paradict import RGSpaceParadict
-from nifty_power_conversion_rg import power_backward_conversion_rg,\
-                                      power_forward_conversion_rg
-

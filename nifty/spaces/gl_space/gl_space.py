@@ -7,9 +7,9 @@ from matplotlib.ticker import LogFormatter as lf
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.lm.lm_space import LMSpace
+from nifty.spaces.lm_space import LMSpace
 
-from nifty.space import Space
+from nifty.spaces.space import Space
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
@@ -570,6 +570,8 @@ class GLSpace(Space):
                 the figure is not saved (default: False).
 
         """
+        from nifty.field import Field
+
         try:
             x = x.get_full_data()
         except AttributeError:
@@ -602,11 +604,11 @@ class GLSpace(Space):
                 if(isinstance(other, tuple)):
                     other = list(other)
                     for ii in xrange(len(other)):
-                        if(isinstance(other[ii], field)):
+                        if(isinstance(other[ii], Field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
                             other[ii] = self.enforce_power(other[ii])
-                elif(isinstance(other, field)):
+                elif(isinstance(other, Field)):
                     other = [other.power(**kwargs)]
                 else:
                     other = [self.enforce_power(other)]

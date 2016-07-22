@@ -22,7 +22,7 @@
 from __future__ import division
 
 from nifty.config import about
-from nifty.space import Space
+from nifty.spaces.space import Space
 from nifty.field import Field
 from nifty.nifty_utilities import direct_vdot
 

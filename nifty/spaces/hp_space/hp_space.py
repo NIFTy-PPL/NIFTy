@@ -38,10 +38,9 @@ import pylab as pl
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.lm.lm_space import LMSpace
+from nifty.spaces.lm_space import LMSpace
 
-from nifty.space import Space
-from nifty.field import Field
+from nifty.spaces.space import Space
 
 from nifty.config import about,\
                          nifty_configuration as gc,\
@@ -523,6 +522,8 @@ class HPSpace(Space):
                 Number of iterations performed in the HEALPix basis
                 transformation.
         """
+        from nifty.field import Field
+
         try:
             x = x.get_full_data()
         except AttributeError:

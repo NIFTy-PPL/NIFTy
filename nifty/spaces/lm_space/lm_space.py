@@ -9,7 +9,7 @@ from matplotlib.ticker import LogFormatter as lf
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.space import Space
+from nifty.spaces.space import Space
 
 from nifty.config import about,\
                          nifty_configuration as gc,\
@@ -285,8 +285,8 @@ class LMSpace(Space):
         if codomain is None:
             return False
 
-        from hp_space import HPSpace
-        from gl_space import GLSpace
+        from nifty.spaces.hp_space import HPSpace
+        from nifty.spaces.gl_space import GLSpace
         if not isinstance(codomain, Space):
             raise TypeError(about._errors.cstring(
                 "ERROR: The given codomain must be a nifty lm_space."))
@@ -721,6 +721,8 @@ class LMSpace(Space):
                 the figure is not saved (default: False).
 
         """
+        from nifty.field import Field
+
         try:
             x = x.get_full_data()
         except AttributeError:
@@ -753,11 +755,11 @@ class LMSpace(Space):
                 if(isinstance(other, tuple)):
                     other = list(other)
                     for ii in xrange(len(other)):
-                        if(isinstance(other[ii], field)):
+                        if(isinstance(other[ii], Field)):
                             other[ii] = other[ii].power(**kwargs)
                         else:
                             other[ii] = self.enforce_power(other[ii])
-                elif(isinstance(other, field)):
+                elif(isinstance(other, Field)):
                     other = [other.power(**kwargs)]
                 else:
                     other = [self.enforce_power(other)]

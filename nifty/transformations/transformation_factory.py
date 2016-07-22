@@ -1,5 +1,4 @@
-from nifty.rg import RGSpace
-from nifty.lm import GLSpace, HPSpace, LMSpace
+from nifty.spaces import RGSpace, GLSpace, HPSpace, LMSpace
 
 from rgrgtransformation import RGRGTransformation
 from gllmtransformation import GLLMTransformation

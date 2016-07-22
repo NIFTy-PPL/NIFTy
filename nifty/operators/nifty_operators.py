@@ -23,7 +23,7 @@ from __future__ import division
 import numpy as np
 from nifty.config import about
 from nifty.field import Field
-from nifty.space import Space
+from nifty.spaces.space import Space
 
 from nifty_minimization import conjugate_gradient
 from nifty_probing import trace_prober,\
