@@ -4,7 +4,7 @@ class Transformation(object):
         method for all transforms.
     """
 
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain=None, module=None):
         pass
 
     def transform(self, val, axes=None, **kwargs):

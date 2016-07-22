@@ -9,7 +9,7 @@ hp = gdi.get('healpy')
 
 
 class LMHPTransformation(Transformation):
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain=None, module=None):
         if gdi.get('healpy') is None:
             raise ImportError(
                 "The module libsharp is needed but not available.")
@@ -19,6 +19,37 @@ class LMHPTransformation(Transformation):
             self.codomain = codomain
         else:
             raise ValueError("ERROR: Incompatible codomain!")
+
+    @staticmethod
+    def get_codomain(domain):
+        """
+            Generates a compatible codomain to which transformations are
+            reasonable, i.e.\  a pixelization of the two-sphere.
+
+            Parameters
+            ----------
+            domain : LMSpace
+                Space for which a codomain is to be generated
+
+            Returns
+            -------
+            codomain : HPSpace
+                A compatible codomain.
+
+            References
+            ----------
+            .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+                   High-Resolution Discretization and Fast Analysis of Data
+                   Distributed on the Sphere", *ApJ* 622..759G.
+        """
+        if domain is None:
+            raise ValueError('ERROR: cannot generate codomain for None')
+
+        if not isinstance(domain, LMSpace):
+            raise TypeError('ERROR: domain needs to be a LMSpace')
+
+        nside = (domain.paradict['lmax'] + 1) // 3
+        return HPSpace(nside=nside)
 
     @staticmethod
     def check_codomain(domain, codomain):

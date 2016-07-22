@@ -9,7 +9,7 @@ hp = gdi.get('healpy')
 
 
 class HPLMTransformation(Transformation):
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain=None, module=None):
         if 'healpy' not in gdi:
             raise ImportError("The module healpy is needed but not available")
 
@@ -18,6 +18,32 @@ class HPLMTransformation(Transformation):
             self.codomain = codomain
         else:
             raise ValueError("ERROR: Incompatible codomain!")
+
+    @staticmethod
+    def get_codomain(domain):
+        """
+            Generates a compatible codomain to which transformations are
+            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+
+            Parameters
+            ----------
+            domain: HPSpace
+                Space for which a codomain is to be generated
+
+            Returns
+            -------
+            codomain : LMSpace
+                A compatible codomain.
+        """
+        if domain is None:
+            raise ValueError('ERROR: cannot generate codomain for None')
+
+        if not isinstance(domain, HPSpace):
+            raise TypeError('ERROR: domain needs to be a HPSpace')
+
+        lmax = 3 * domain.paradict['nside'] - 1
+        mmax = lmax
+        return LMSpace(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
 
     @staticmethod
     def check_codomain(domain, codomain):

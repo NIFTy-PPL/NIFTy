@@ -6,7 +6,7 @@ from nifty import RGSpace, nifty_configuration
 
 
 class RGRGTransformation(Transformation):
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain=None, module=None):
         if self.check_codomain(domain, codomain):
             if module is None:
                 if nifty_configuration['fft_module'] == 'pyfftw':
@@ -25,12 +25,64 @@ class RGRGTransformation(Transformation):
                     self._transform = FFTW(domain, codomain)
                 elif module == 'gfft':
                     self._transform = \
-                            GFFT(domain, codomain, gdi.get('gfft'))
+                        GFFT(domain, codomain, gdi.get('gfft'))
                 elif module == 'gfft_dummy':
                     self._transform = \
                         GFFT(domain, codomain, gdi.get('gfft_dummy'))
         else:
             raise ValueError("ERROR: incompatible codomain!")
+
+    @staticmethod
+    def get_codomain(domain, cozerocenter=None, **kwargs):
+        """
+            Generates a compatible codomain to which transformations are
+            reasonable, i.e.\  either a shifted grid or a Fourier conjugate
+            grid.
+
+            Parameters
+            ----------
+            domain: RGSpace
+                Space for which a codomain is to be generated
+            cozerocenter : {bool, numpy.ndarray}, *optional*
+                Whether or not the grid is zerocentered for each axis or not
+                (default: None).
+
+            Returns
+            -------
+            codomain : nifty.rg_space
+                A compatible codomain.
+        """
+        if domain is None:
+            raise ValueError('ERROR: cannot generate codomain for None')
+
+        if not isinstance(domain, RGSpace):
+            raise TypeError('ERROR: domain needs to be a RGSpace')
+
+        # parse the cozerocenter input
+        if cozerocenter is None:
+            cozerocenter = domain.paradict['zerocenter']
+        # if the input is something scalar, cast it to a boolean
+        elif np.isscalar(cozerocenter):
+            cozerocenter = bool(cozerocenter)
+        else:
+            # cast it to a numpy array
+            if np.size(cozerocenter) == 1:
+                cozerocenter = np.asscalar(cozerocenter)
+            elif np.size(cozerocenter) != len(domain.shape):
+                raise ValueError('ERROR: size mismatch (' +
+                                 str(np.size(cozerocenter)) + ' <> ' +
+                                 str(domain.shape) + ')')
+
+        # calculate the initialization parameters
+        distances = 1 / (np.array(domain.paradict['shape']) *
+                         np.array(domain.distances))
+        complexity = {0: 1, 1: 0, 2: 2}[domain.paradict['complexity']]
+
+        new_space = RGSpace(domain.paradict['shape'], zerocenter=cozerocenter,
+                            complexity=complexity, distances=distances,
+                            harmonic=bool(not domain.harmonic))
+
+        return new_space
 
     @staticmethod
     def check_codomain(domain, codomain):
