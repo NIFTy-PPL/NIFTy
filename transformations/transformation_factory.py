@@ -35,8 +35,8 @@ class TransformationFactory(object):
             raise ValueError('ERROR: unknown domain')
 
     def create(self, domain, codomain, module=None):
-        key = domain.__hash__() ^ ((111 * codomain.__hash__()) ^
-                                   (179 * module.__hash__()))
+        key = domain.__hash__() ^ ((codomain.__hash__()/111) ^
+                                   (module.__hash__())/179)
 
         if key not in self.cache:
             self.cache[key] = self._get_transform(domain, codomain, module)

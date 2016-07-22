@@ -33,7 +33,7 @@ class RGRGTransformation(Transformation):
             raise ValueError("ERROR: incompatible codomain!")
 
     @staticmethod
-    def get_codomain(domain, cozerocenter=None, **kwargs):
+    def get_codomain(domain, dtype=None, zerocenter=None, **kwargs):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  either a shifted grid or a Fourier conjugate
@@ -52,35 +52,29 @@ class RGRGTransformation(Transformation):
             codomain : nifty.rg_space
                 A compatible codomain.
         """
-        if domain is None:
-            raise ValueError('ERROR: cannot generate codomain for None')
-
         if not isinstance(domain, RGSpace):
             raise TypeError('ERROR: domain needs to be a RGSpace')
 
         # parse the cozerocenter input
-        if cozerocenter is None:
-            cozerocenter = domain.paradict['zerocenter']
+        if zerocenter is None:
+            zerocenter = domain.paradict['zerocenter']
         # if the input is something scalar, cast it to a boolean
-        elif np.isscalar(cozerocenter):
-            cozerocenter = bool(cozerocenter)
         else:
-            # cast it to a numpy array
-            if np.size(cozerocenter) == 1:
-                cozerocenter = np.asscalar(cozerocenter)
-            elif np.size(cozerocenter) != len(domain.shape):
-                raise ValueError('ERROR: size mismatch (' +
-                                 str(np.size(cozerocenter)) + ' <> ' +
-                                 str(domain.shape) + ')')
+            temp = np.empty_like(domain.paradict['zerocenter'])
+            temp[:] = zerocenter
+        zerocenter = temp
 
         # calculate the initialization parameters
         distances = 1 / (np.array(domain.paradict['shape']) *
-                         np.array(domain.distances))
-        complexity = {0: 1, 1: 0, 2: 2}[domain.paradict['complexity']]
+                         np.array(domain.paradict['distances']))
+        if dtype is None:
+            dtype = np.complex
 
-        new_space = RGSpace(domain.paradict['shape'], zerocenter=cozerocenter,
-                            complexity=complexity, distances=distances,
-                            harmonic=bool(not domain.harmonic))
+        new_space = RGSpace(domain.paradict['shape'],
+                            zerocenter=zerocenter,
+                            distances=distances,
+                            harmonic=(not domain.harmonic),
+                            dtype=dtype)
 
         return new_space
 
@@ -93,52 +87,21 @@ class RGRGTransformation(Transformation):
             return False
 
         if not isinstance(codomain, RGSpace):
-            raise TypeError(about._errors.cstring(
-                "ERROR: codomain must be a RGSpace."
-            ))
+            return False
 
         if not np.all(np.array(domain.paradict['shape']) ==
-                              np.array(codomain.paradict['shape'])):
+                      np.array(codomain.paradict['shape'])):
             return False
 
         if domain.harmonic == codomain.harmonic:
             return False
 
-        # check complexity
-        dcomp = domain.paradict['complexity']
-        cocomp = codomain.paradict['complexity']
-
-        # Case 1: if domain is completely complex, the codomain
-        # must be complex too
-        if dcomp == 2:
-            if cocomp != 2:
-                return False
-        # Case 2: if domain is hermitian, the codomain can be
-        # real, a warning is raised otherwise
-        elif dcomp == 1:
-            if cocomp > 0:
-                about.warnings.cprint(
-                    "WARNING: Unrecommended codomain! " +
-                    "The domain is hermitian, hence the" +
-                    "codomain should be restricted to real values."
-                )
-        # Case 3: if domain is real, the codomain should be hermitian
-        elif dcomp == 0:
-            if cocomp == 2:
-                about.warnings.cprint(
-                    "WARNING: Unrecommended codomain! " +
-                    "The domain is real, hence the" +
-                    "codomain should be restricted to" +
-                    "hermitian configuration."
-                )
-            elif cocomp == 0:
-                return False
-
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
         if not np.all(
             np.absolute(np.array(domain.paradict['shape']) *
-                        np.array(domain.distances) *
-                        np.array(codomain.distances) - 1) < domain.epsilon):
+                        np.array(domain.paradict['distances']) *
+                        np.array(codomain.paradict['distances']) - 1) <
+                10**-7):
             return False
 
         return True

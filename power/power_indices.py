@@ -44,8 +44,8 @@ class PowerIndices(object):
         self.domain = domain
         self.distribution_strategy = distribution_strategy
 
-        # Compute the global kdict
-        self.kdict = self.domain.compute_k_array(distribution_strategy)
+        # Compute the global k_array
+        self.k_array = self.domain.compute_k_array(distribution_strategy)
         # Initialize the dictonary which stores all individual index-dicts
         self.global_dict = {}
         # Set self.default_parameters
@@ -137,10 +137,10 @@ class PowerIndices(object):
                      "binbounds": temp_binbounds}
         return temp_dict
 
-    def compute_kdict(self):
+    def compute_k_array(self):
         raise NotImplementedError(
             about._errors.cstring(
-                "ERROR: No generic compute_kdict method implemented."))
+                "ERROR: No generic compute_k_array method implemented."))
 
     def get_index_dict(self, **kwargs):
         """
@@ -208,8 +208,8 @@ class PowerIndices(object):
         if not config_dict["log"] and config_dict["nbin"] is None and \
                 config_dict["binbounds"] is None:
             (temp_pindex, temp_kindex, temp_rho, temp_pundex) =\
-                self._compute_indices(self.kdict)
-            temp_kdict = self.kdict
+                self._compute_indices(self.k_array)
+            temp_k_array = self.k_array
 
         # if binning is required, make a recursive call to get the unbinned
         # indices, bin them, compute the pundex and then return everything.
@@ -223,46 +223,42 @@ class PowerIndices(object):
             (temp_pindex, temp_kindex, temp_rho, temp_pundex) = \
                 self._bin_power_indices(
                     temp_unbinned_indices, **config_dict)
-            # Make a binned version of kdict
-            temp_kdict = self._compute_kdict_from_pindex_kindex(temp_pindex,
-                                                                temp_kindex)
+            # Make a binned version of k_array
+            temp_k_array = self._compute_k_array_from_pindex_kindex(
+                               temp_pindex, temp_kindex)
 
-        index_dict_hash = (hash(self.domain) ^
-                           127*hash(self._freeze_config(config_dict)))
         temp_index_dict = {"config": config_dict,
                            "pindex": temp_pindex,
                            "kindex": temp_kindex,
                            "rho": temp_rho,
                            "pundex": temp_pundex,
-                           "kdict": temp_kdict,
-                           "domain": self.domain,
-                           "hash": index_dict_hash}
+                           "k_array": temp_k_array}
         return temp_index_dict
 
-    def _compute_kdict_from_pindex_kindex(self, pindex, kindex):
+    def _compute_k_array_from_pindex_kindex(self, pindex, kindex):
         tempindex = pindex.copy(dtype=kindex.dtype)
         result = tempindex.apply_scalar_function(
                             lambda x: kindex[x.astype(np.dtype('int'))])
         return result
 
-    def _compute_indices(self, nkdict):
+    def _compute_indices(self, k_array):
         """
         Internal helper function which computes pindex, kindex, rho and pundex
-        from a given nkdict
+        from a given k_array
         """
         ##########
         # kindex #
         ##########
-        global_kindex = nkdict.unique()
+        global_kindex = k_array.unique()
 
         ##########
         # pindex #
         ##########
-        # compute the local pindex slice on basis of the local nkdict data
-        local_pindex = np.searchsorted(global_kindex, nkdict.get_local_data())
+        # compute the local pindex slice on basis of the local k_array data
+        local_pindex = np.searchsorted(global_kindex, k_array.get_local_data())
         # prepare the distributed_data_object
         global_pindex = distributed_data_object(
-                            global_shape=nkdict.shape,
+                            global_shape=k_array.shape,
                             dtype=local_pindex.dtype,
                             distribution_strategy=self.distribution_strategy)
         # store the local pindex data in the global_pindex d2o
@@ -411,133 +407,133 @@ class PowerIndices(object):
 
         return pindex_, kindex_, rho_, pundex_
 
-
-class LMPowerIndices(PowerIndices):
-
-    def __init__(self, lmax, dim, distribution_strategy,
-                 log=False, nbin=None, binbounds=None):
-        """
-            Returns an instance of the PowerIndices class. Given the shape and
-            the density of a underlying rectangular grid it provides the user
-            with the pindex, kindex, rho and pundex. The indices are bined
-            according to the supplied parameter scheme. If wanted, computed
-            results are stored for future reuse.
-
-            Parameters
-            ----------
-            shape : tuple, list, ndarray
-                Array-like object which specifies the shape of the underlying
-                rectangular grid
-            dgrid : tuple, list, ndarray
-                Array-like object which specifies the step-width of the
-                underlying grid
-            zerocenter : boolean, tuple/list/ndarray of boolean *optional*
-                Specifies which dimensions are zerocentered. (default:False)
-            log : bool *optional*
-                Flag specifying if the binning of the default indices is
-                performed on logarithmic scale.
-            nbin : integer *optional*
-                Number of used bins for the binning of the default indices.
-            binbounds : {list, array}
-                Array-like inner boundaries of the used bins of the default
-                indices.
-        """
-        # Basic inits and consistency checks
-        self.lmax = np.uint(lmax)
-        self.dim = np.uint(dim)
-        super(LMPowerIndices, self).__init__(
-            distribution_strategy=distribution_strategy,
-            log=log,
-            nbin=nbin,
-            binbounds=binbounds)
-
-    def compute_kdict(self):
-        """
-            Calculates an n-dimensional array with its entries being the
-            lengths of the k-vectors from the zero point of the grid.
-
-            Parameters
-            ----------
-            None : All information is taken from the parent object.
-
-            Returns
-            -------
-            nkdict : distributed_data_object
-        """
-
-        if self.distribution_strategy != 'not':
-            about.warnings.cprint(
-                "WARNING: full kdict is temporarily stored on every node " +
-                "altough disribution strategy != 'not'!")
-
-        if 'healpy' in gdi:
-            nkdict = hp.Alm.getlm(self.lmax, i=None)[0]
-        else:
-            nkdict = self._getlm()[0]
-        nkdict = distributed_data_object(
-                     nkdict,
-                     distribution_strategy=self.distribution_strategy,
-                     comm=self._comm)
-        return nkdict
-
-    def _getlm(self):  # > compute all (l,m)
-        index = np.arange(self.dim)
-        n = 2 * self.lmax + 1
-        m = np.ceil((n - np.sqrt(n**2 - 8 * (index - self.lmax))) / 2
-                    ).astype(np.int)
-        l = index - self.lmax * m + m * (m - 1) // 2
-        return l, m
-
-    def _compute_indices_d2o(self, nkdict):
-        """
-        Internal helper function which computes pindex, kindex, rho and pundex
-        from a given nkdict
-        """
-        ##########
-        # kindex #
-        ##########
-        kindex = np.arange(self.lmax + 1, dtype=np.float)
-
-        ##########
-        # pindex #
-        ##########
-        pindex = nkdict.copy(dtype=np.int)
-
-        #######
-        # rho #
-        #######
-        rho = (2 * kindex + 1).astype(np.int)
-
-        ##########
-        # pundex #
-        ##########
-        pundex = self._compute_pundex_d2o(pindex, kindex)
-
-        return pindex, kindex, rho, pundex
-
-    def _compute_indices_np(self, nkdict):
-        """
-        Internal helper function which computes pindex, kindex, rho and pundex
-        from a given nkdict
-        """
-        ##########
-        # kindex #
-        ##########
-        kindex = np.arange(self.lmax + 1, dtype=np.float)
-
-        ##########
-        # pindex #
-        ##########
-        pindex = nkdict.astype(dtype=np.int, copy=True)
-
-        #######
-        # rho #
-        #######
-        rho = (2 * kindex + 1).astype(np.int)
-
-        ##########
-        # pundex #
-        ##########
-        pundex = self._compute_pundex_np(pindex, kindex)
-
-        return pindex, kindex, rho, pundex
+#
+#class LMPowerIndices(PowerIndices):
+#
+#    def __init__(self, lmax, dim, distribution_strategy,
+#                 log=False, nbin=None, binbounds=None):
+#        """
+#            Returns an instance of the PowerIndices class. Given the shape and
+#            the density of a underlying rectangular grid it provides the user
+#            with the pindex, kindex, rho and pundex. The indices are bined
+#            according to the supplied parameter scheme. If wanted, computed
+#            results are stored for future reuse.
+#
+#            Parameters
+#            ----------
+#            shape : tuple, list, ndarray
+#                Array-like object which specifies the shape of the underlying
+#                rectangular grid
+#            dgrid : tuple, list, ndarray
+#                Array-like object which specifies the step-width of the
+#                underlying grid
+#            zerocenter : boolean, tuple/list/ndarray of boolean *optional*
+#                Specifies which dimensions are zerocentered. (default:False)
+#            log : bool *optional*
+#                Flag specifying if the binning of the default indices is
+#                performed on logarithmic scale.
+#            nbin : integer *optional*
+#                Number of used bins for the binning of the default indices.
+#            binbounds : {list, array}
+#                Array-like inner boundaries of the used bins of the default
+#                indices.
+#        """
+#        # Basic inits and consistency checks
+#        self.lmax = np.uint(lmax)
+#        self.dim = np.uint(dim)
+#        super(LMPowerIndices, self).__init__(
+#            distribution_strategy=distribution_strategy,
+#            log=log,
+#            nbin=nbin,
+#            binbounds=binbounds)
+#
+#    def compute_kdict(self):
+#        """
+#            Calculates an n-dimensional array with its entries being the
+#            lengths of the k-vectors from the zero point of the grid.
+#
+#            Parameters
+#            ----------
+#            None : All information is taken from the parent object.
+#
+#            Returns
+#            -------
+#            nkdict : distributed_data_object
+#        """
+#
+#        if self.distribution_strategy != 'not':
+#            about.warnings.cprint(
+#                "WARNING: full kdict is temporarily stored on every node " +
+#                "altough disribution strategy != 'not'!")
+#
+#        if 'healpy' in gdi:
+#            nkdict = hp.Alm.getlm(self.lmax, i=None)[0]
+#        else:
+#            nkdict = self._getlm()[0]
+#        nkdict = distributed_data_object(
+#                     nkdict,
+#                     distribution_strategy=self.distribution_strategy,
+#                     comm=self._comm)
+#        return nkdict
+#
+#    def _getlm(self):  # > compute all (l,m)
+#        index = np.arange(self.dim)
+#        n = 2 * self.lmax + 1
+#        m = np.ceil((n - np.sqrt(n**2 - 8 * (index - self.lmax))) / 2
+#                    ).astype(np.int)
+#        l = index - self.lmax * m + m * (m - 1) // 2
+#        return l, m
+#
+#    def _compute_indices_d2o(self, nkdict):
+#        """
+#        Internal helper function which computes pindex, kindex, rho and pundex
+#        from a given nkdict
+#        """
+#        ##########
+#        # kindex #
+#        ##########
+#        kindex = np.arange(self.lmax + 1, dtype=np.float)
+#
+#        ##########
+#        # pindex #
+#        ##########
+#        pindex = nkdict.copy(dtype=np.int)
+#
+#        #######
+#        # rho #
+#        #######
+#        rho = (2 * kindex + 1).astype(np.int)
+#
+#        ##########
+#        # pundex #
+#        ##########
+#        pundex = self._compute_pundex_d2o(pindex, kindex)
+#
+#        return pindex, kindex, rho, pundex
+#
+#    def _compute_indices_np(self, nkdict):
+#        """
+#        Internal helper function which computes pindex, kindex, rho and pundex
+#        from a given nkdict
+#        """
+#        ##########
+#        # kindex #
+#        ##########
+#        kindex = np.arange(self.lmax + 1, dtype=np.float)
+#
+#        ##########
+#        # pindex #
+#        ##########
+#        pindex = nkdict.astype(dtype=np.int, copy=True)
+#
+#        #######
+#        # rho #
+#        #######
+#        rho = (2 * kindex + 1).astype(np.int)
+#
+#        ##########
+#        # pundex #
+#        ##########
+#        pundex = self._compute_pundex_np(pindex, kindex)
+#
+#        return pindex, kindex, rho, pundex

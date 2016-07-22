@@ -203,8 +203,11 @@ class Space(object):
         # parse dtype
         dtype = np.dtype(dtype)
         self.dtype = dtype
+        self._harmonic = None
 
-        self.harmonic = None
+    @property
+    def harmonic(self):
+        return self._harmonic
 
     def __hash__(self):
         # Extract the identifying parts from the vars(self) dict.
@@ -212,21 +215,17 @@ class Space(object):
         for (key, item) in vars(self).items():
             if key in []:
                 continue
-            result_hash ^= item.__hash__() ^ 113*hash(key)
+            result_hash ^= item.__hash__() ^ int(hash(key)/117)
         return result_hash
 
-    def _identifier(self):
-        # Extract the identifying parts from the vars(self) dict.
-        temp = [(ii[0],
-                 ((lambda x: x[1].__hash__() if x[0] == 'comm' else x)(ii)))
-                for ii in vars(self).iteritems()
-                if ii[0] not in []
-                ]
-        # Return the sorted identifiers as a tuple.
-        return tuple(sorted(temp))
+    def __eq__(self, x):
+        if isinstance(x, type(self)):
+            return hash(self) == hash(x)
+        else:
+            return False
 
     def copy(self):
-        return Space(dtype=self.dtype, **self.paradict.parameters)
+        return self.__class__(dtype=self.dtype, **self.paradict.parameters)
 
     @property
     def shape(self):

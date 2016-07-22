@@ -152,9 +152,13 @@ class RGSpace(Space):
 
         self.paradict = rg_space_paradict(shape=shape,
                                           zerocenter=zerocenter,
-                                          distances=distances)
+                                          distances=distances,
+                                          harmonic=harmonic)
         self.dtype = np.dtype(dtype)
-        self.harmonic = bool(harmonic)
+
+    @property
+    def harmonic(self):
+        return self.paradict['harmonic']
 
     def copy(self):
         return RGSpace(dtype=self.dtype, harmonic=self.harmonic,

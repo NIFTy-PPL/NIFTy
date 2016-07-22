@@ -8,19 +8,25 @@ from nifty.nifty_paradict import power_space_paradict
 
 
 class PowerSpace(Space):
-    def __init__(self, power_indices, dtype=np.dtype('float')):
+    def __init__(self, pindex, kindex, rho, config,
+                 harmonic_domain, dtype=np.dtype('float'), **kwargs):
+        # the **kwargs is in the __init__ in order to enable a
+        # PowerSpace(**power_index) initialization
         self.dtype = np.dtype(dtype)
-        self.paradict = power_space_paradict(power_indices=power_indices)
-
-        self.harmonic = True
+        self.paradict = power_space_paradict(pindex=pindex,
+                                             kindex=kindex,
+                                             rho=rho,
+                                             config=config,
+                                             harmonic_domain=harmonic_domain)
+        self._harmonic = True
 
     @property
     def shape(self):
-        return tuple(self.paradict['shape'])
+        return self.paradict['kindex'].shape
 
     def calculate_power_spectrum(self, x, axes=None):
         fieldabs = abs(x)**2
-        pindex = self.power_indices['pindex']
+        pindex = self.paradict['pindex']
         if axes is not None:
             pindex = self._shape_up_pindex(
                                     pindex=pindex,
@@ -30,7 +36,7 @@ class PowerSpace(Space):
         power_spectrum = pindex.bincount(weights=fieldabs,
                                          axis=axes)
 
-        rho = self.power_indices['rho']
+        rho = self.paradict['rho']
         if axes is not None:
             new_rho_shape = [1, ] * len(power_spectrum.shape)
             new_rho_shape[axes[0]] = len(rho)

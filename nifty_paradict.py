@@ -43,16 +43,17 @@ class space_paradict(object):
                 temp_hash = hash(item)
             except TypeError:
                 temp_hash = hash(tuple(item))
-            result_hash ^= temp_hash ^ 131*hash(key)
+            result_hash ^= temp_hash ^ int(hash(key)/131)
         return result_hash
 
 
 class rg_space_paradict(space_paradict):
 
-    def __init__(self, shape, zerocenter, distances):
+    def __init__(self, shape, zerocenter, distances, harmonic):
         if not hasattr(self, 'parameters'):
             self.parameters = {}
         self.parameters.__setitem__('shape', shape)
+        self.parameters.__setitem__('harmonic', harmonic)
         space_paradict.__init__(
             self, zerocenter=zerocenter, distances=distances)
 
@@ -64,17 +65,24 @@ class rg_space_paradict(space_paradict):
         if key == 'shape':
             temp = np.empty(len(self['shape']), dtype=np.int)
             temp[:] = arg
+            temp = tuple(temp)
         elif key == 'zerocenter':
             temp = np.empty(len(self['shape']), dtype=bool)
             temp[:] = arg
+            temp = tuple(temp)
         elif key == 'distances':
             if arg is None:
-                temp = 1 / np.array(self['shape'], dtype=np.float)
+                if self['harmonic']:
+                    temp = np.ones_like(self['shape'], dtype=np.float)
+                else:
+                    temp = 1 / np.array(self['shape'], dtype=np.float)
             else:
                 temp = np.empty(len(self['shape']), dtype=np.float)
                 temp[:] = arg
+            temp = tuple(temp)
+        elif key == 'harmonic':
+            temp = bool(arg)
 
-        temp = tuple(temp)
         self.parameters.__setitem__(key, temp)
 
 
@@ -185,20 +193,32 @@ class hp_space_paradict(space_paradict):
 
 
 class power_space_paradict(space_paradict):
-    def __init__(self, power_indices):
+    def __init__(self, pindex, kindex, rho, pundex, k_array, config,
+                 harmonic_domain):
         space_paradict.__init__(self,
-                                power_indices=power_indices)
+                                pindex=pindex,
+                                kindex=kindex,
+                                rho=rho,
+                                pundex=pundex,
+                                k_array=k_array,
+                                config=config,
+                                harmonic_domain=harmonic_domain)
 
     def __setitem__(self, key, arg):
-        if key not in ['power_indices']:
+        if key not in ['pindex', 'kindex', 'rho', 'config', 'harmonic_domain']:
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported PowerSpace parameter: " + key))
 
-        if key == 'power_indices':
+        if key == 'harmonic_domain':
+            if not arg.harmonic:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: harmonic_domain must be harmonic."))
+            temp = arg
+        else:
             temp = arg
 
         self.parameters.__setitem__(key, temp)
 
     def __hash__(self):
-        return (self.parameters['power_indices']['hash'] ^
-                131*hash('power_indices'))
+        return (hash(frozenset(self.parameters['config'].items())) ^
+                (hash(self.parameters['domain'])/131))
