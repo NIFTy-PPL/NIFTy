@@ -49,7 +49,7 @@ from nifty.field import Field
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
-from nifty.nifty_paradict import rg_space_paradict
+from rg_space_paradict import RGSpaceParadict
 import nifty.nifty_utilities as utilities
 
 MPI = gdi[gc['mpi_module']]
@@ -150,10 +150,10 @@ class RGSpace(Space):
             None
         """
 
-        self.paradict = rg_space_paradict(shape=shape,
-                                          zerocenter=zerocenter,
-                                          distances=distances,
-                                          harmonic=harmonic)
+        self.paradict = RGSpaceParadict(shape=shape,
+                                        zerocenter=zerocenter,
+                                        distances=distances,
+                                        harmonic=harmonic)
         self.dtype = np.dtype(dtype)
 
     @property

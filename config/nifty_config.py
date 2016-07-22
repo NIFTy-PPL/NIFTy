@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
+from distutils.version import LooseVersion as lv
+
 import numpy as np
 import keepers
 
@@ -29,11 +31,24 @@ variable_lm2gl = keepers.Variable(
                                      if z else True) and isinstance(z, bool),
                           genus='boolean')
 
+
+def _healpy_validator(use_healpy):
+    if not isinstance(use_healpy, bool):
+        return False
+    if not use_healpy:
+        return False
+    if 'healpy' not in dependency_injector:
+        return False
+    healpy = dependency_injector['healpy']
+    if lv(healpy.__version__) < lv('1.8.1'):
+        return False
+    return True
+
+
 variable_use_healpy = keepers.Variable(
                           'use_healpy',
                           [True, False],
-                          lambda z: (('healpy' in dependency_injector)
-                                     if z else True) and isinstance(z, bool),
+                          _healpy_validator,
                           genus='boolean')
 
 variable_use_libsharp = keepers.Variable(

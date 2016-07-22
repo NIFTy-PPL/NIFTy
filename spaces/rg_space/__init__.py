@@ -19,8 +19,8 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division
 from rg_space import RGSpace
+from rg_space_paradict import RGSpaceParadict
 from nifty_power_conversion_rg import power_backward_conversion_rg,\
                                       power_forward_conversion_rg
 

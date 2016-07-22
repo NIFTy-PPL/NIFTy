@@ -19,7 +19,7 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 
 exec(open('version.py').read())
@@ -32,9 +32,7 @@ setup(name="ift_nifty",
       maintainer_email="theos@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm",
-                "nifty.operators", "nifty.dummys", "nifty.field_types",
-                "nifty.config", "nifty.power", "nifty.transformations"],
+      packages=find_packages(),
       package_dir={"nifty": ""},
       zip_safe=False,
       dependency_links=[

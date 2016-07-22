@@ -145,7 +145,7 @@ import numpy as np
 import pylab as pl
 
 from nifty.config import about
-from nifty_paradict import space_paradict
+from space_paradict import SpaceParadict
 
 
 class Space(object):
@@ -198,7 +198,7 @@ class Space(object):
             -------
             None.
         """
-        self.paradict = space_paradict(**kwargs)
+        self.paradict = SpaceParadict(**kwargs)
 
         # parse dtype
         dtype = np.dtype(dtype)

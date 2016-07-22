@@ -13,7 +13,7 @@ from nifty.space import Space
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
-from nifty.nifty_paradict import gl_space_paradict
+from gl_space_paradict import GLSpaceParadict
 from nifty.nifty_random import random
 
 gl = gdi.get('libsharp_wrapper_gl')
@@ -105,7 +105,7 @@ class GLSpace(Space):
                 "ERROR: libsharp_wrapper_gl not loaded."))
 
         self._cache_dict = {'check_codomain': {}}
-        self.paradict = gl_space_paradict(nlat=nlat, nlon=nlon)
+        self.paradict = GLSpaceParadict(nlat=nlat, nlon=nlon)
 
         # check data type
         dtype = np.dtype(dtype)

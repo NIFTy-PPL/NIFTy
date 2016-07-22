@@ -5,7 +5,7 @@ from d2o import STRATEGIES
 
 from nifty.config import about
 from nifty.space import Space
-from nifty.nifty_paradict import power_space_paradict
+from power_space_paradict import PowerSpaceParadict
 from nifty.nifty_utilities import cast_axis_to_tuple
 
 
@@ -15,11 +15,11 @@ class PowerSpace(Space):
         # the **kwargs is in the __init__ in order to enable a
         # PowerSpace(**power_index) initialization
         self.dtype = np.dtype(dtype)
-        self.paradict = power_space_paradict(pindex=pindex,
-                                             kindex=kindex,
-                                             rho=rho,
-                                             config=config,
-                                             harmonic_domain=harmonic_domain)
+        self.paradict = PowerSpaceParadict(pindex=pindex,
+                                           kindex=kindex,
+                                           rho=rho,
+                                           config=config,
+                                           harmonic_domain=harmonic_domain)
         self._harmonic = True
 
     @property

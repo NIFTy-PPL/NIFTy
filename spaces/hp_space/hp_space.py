@@ -46,7 +46,7 @@ from nifty.field import Field
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
-from nifty.nifty_paradict import hp_space_paradict
+from hp_space_paradict import HPSpaceParadict
 from nifty.nifty_random import random
 
 hp = gdi.get('healpy')
@@ -133,7 +133,7 @@ class HPSpace(Space):
 
         self._cache_dict = {'check_codomain': {}}
         # check parameters
-        self.paradict = hp_space_paradict(nside=nside)
+        self.paradict = HPSpaceParadict(nside=nside)
 
         self.dtype = np.dtype('float64')
 

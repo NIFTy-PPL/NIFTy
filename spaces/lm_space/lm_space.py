@@ -10,12 +10,12 @@ from matplotlib.ticker import LogFormatter as lf
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.space import Space
-#from hp_space import HPSpace
-#from gl_space import GLSpace
+
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
-from nifty.nifty_paradict import lm_space_paradict
+
+from lm_space_paradict import LMSpaceParadict
 from nifty.nifty_power_indices import lm_power_indices
 from nifty.nifty_random import random
 
@@ -120,7 +120,7 @@ class LMSpace(Space):
 
         self._cache_dict = {'check_codomain': {}}
 
-        self.paradict = lm_space_paradict(lmax=lmax, mmax=mmax)
+        self.paradict = LMSpaceParadict(lmax=lmax, mmax=mmax)
 
         # check data type
         dtype = np.dtype(dtype)
