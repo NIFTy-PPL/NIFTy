@@ -7,30 +7,35 @@ from nifty import RGSpace, nifty_configuration
 
 class RGRGTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        if self.check_codomain(domain, codomain):
-            if module is None:
-                if nifty_configuration['fft_module'] == 'pyfftw':
-                    self._transform = FFTW(domain, codomain)
-                elif nifty_configuration['fft_module'] == 'gfft' or \
-                    nifty_configuration['fft_module'] == 'gfft_dummy':
-                    self._transform = \
-                        GFFT(domain,
-                             codomain,
-                             gdi.get(nifty_configuration['fft_module']))
-                else:
-                    raise ValueError('ERROR: unknow default FFT module:' +
-                                     nifty_configuration['fft_module'])
-            else:
-                if module == 'pyfftw':
-                    self._transform = FFTW(domain, codomain)
-                elif module == 'gfft':
-                    self._transform = \
-                        GFFT(domain, codomain, gdi.get('gfft'))
-                elif module == 'gfft_dummy':
-                    self._transform = \
-                        GFFT(domain, codomain, gdi.get('gfft_dummy'))
+        if codomain is None:
+            codomain = self.get_codomain(domain)
         else:
-            raise ValueError("ERROR: incompatible codomain!")
+            if not self.check_codomain(domain, codomain):
+                raise ValueError("ERROR: incompatible codomain!")
+
+        if module is None:
+            if nifty_configuration['fft_module'] == 'pyfftw':
+                self._transform = FFTW(domain, codomain)
+            elif nifty_configuration['fft_module'] == 'gfft' or \
+                nifty_configuration['fft_module'] == 'gfft_dummy':
+                self._transform = \
+                    GFFT(domain,
+                         codomain,
+                         gdi.get(nifty_configuration['fft_module']))
+            else:
+                raise ValueError('ERROR: unknow default FFT module:' +
+                                 nifty_configuration['fft_module'])
+        else:
+            if module == 'pyfftw':
+                self._transform = FFTW(domain, codomain)
+            elif module == 'gfft':
+                self._transform = \
+                    GFFT(domain, codomain, gdi.get('gfft'))
+            elif module == 'gfft_dummy':
+                self._transform = \
+                    GFFT(domain, codomain, gdi.get('gfft_dummy'))
+            else:
+                raise ValueError('ERROR: unknow FFT module:' + module)
 
     @staticmethod
     def get_codomain(domain, cozerocenter=None, **kwargs):

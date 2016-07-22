@@ -34,7 +34,7 @@ class TransformationFactory(object):
         else:
             raise ValueError('ERROR: unknown domain')
 
-    def create(self, domain, codomain, module=None):
+    def create(self, domain, codomain=None, module=None):
         key = domain.__hash__() ^ ((111 * codomain.__hash__()) ^
                                    (179 * module.__hash__()))
 
