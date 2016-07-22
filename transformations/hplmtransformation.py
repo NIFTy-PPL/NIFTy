@@ -13,7 +13,10 @@ class HPLMTransformation(Transformation):
         if 'healpy' not in gdi:
             raise ImportError("The module healpy is needed but not available")
 
-        if self.check_codomain(domain, codomain):
+        if codomain is None:
+            self.domain = domain
+            self.codomain = self.get_codomain(domain)
+        elif self.check_codomain(domain, codomain):
             self.domain = domain
             self.codomain = codomain
         else:

@@ -50,12 +50,6 @@ lm_gl_hp_test_spaces = [(LMSpace(8),), (RGSpace(8),)]
 ###############################################################################
 
 class TestRGRGTransformation(unittest.TestCase):
-    # all domain/codomain checks
-    def test_check_codomain_none(self):
-        x = RGSpace((8, 8))
-        with assert_raises(ValueError):
-            transformator.create(x, None)
-
     @parameterized.expand(
         rg_rg_test_spaces,
         testcase_func_name=custom_name_func
@@ -81,7 +75,7 @@ class TestRGRGTransformation(unittest.TestCase):
         b = d2o.distributed_data_object(np.ones((8, 8)))
         with assert_raises(ValueError):
             transformator.create(
-                x, x.get_codomain(), module=module
+                x, module=module
             ).transform(b, axes=(0, 1, 2))
 
     @parameterized.expand(
@@ -93,7 +87,7 @@ class TestRGRGTransformation(unittest.TestCase):
         a = np.ones(shape)
         assert np.allclose(
             transformator.create(
-                x, x.get_codomain(), module=module
+                x, module=module
             ).transform(a),
             weighted_np_transform(a, x, x.get_codomain())
         )
@@ -108,7 +102,7 @@ class TestRGRGTransformation(unittest.TestCase):
         b = d2o.distributed_data_object(a)
         assert np.allclose(
             transformator.create(
-                x, x.get_codomain(), module=module
+                x, module=module
             ).transform(b, axes=(1,)),
             weighted_np_transform(a, x, x.get_codomain(), axes=(1,))
         )
@@ -123,7 +117,7 @@ class TestRGRGTransformation(unittest.TestCase):
         b = d2o.distributed_data_object(a, distribution_strategy='not')
         assert np.allclose(
             transformator.create(
-                x, x.get_codomain(), module=module
+                x, module=module
             ).transform(b),
             weighted_np_transform(a, x, x.get_codomain())
         )
@@ -138,7 +132,7 @@ class TestRGRGTransformation(unittest.TestCase):
         b = d2o.distributed_data_object(a)
         assert np.allclose(
             transformator.create(
-                x, x.get_codomain(), module='pyfftw'
+                x, module='pyfftw'
             ).transform(b),
             weighted_np_transform(a, x, x.get_codomain())
         )
@@ -153,18 +147,12 @@ class TestRGRGTransformation(unittest.TestCase):
         b = d2o.distributed_data_object(a, distribution_strategy='equal')
         assert np.allclose(
             transformator.create(
-                x, x.get_codomain(), module='pyfftw'
+                x, module='pyfftw'
             ).transform(b),
             weighted_np_transform(a, x, x.get_codomain())
         )
 
 class TestGLLMTransformation(unittest.TestCase):
-    # all domain/codomain checks
-    def test_check_codomain_none(self):
-        x = GLSpace(8)
-        with assert_raises(ValueError):
-            transformator.create(x, None)
-
     @parameterized.expand(
         gl_hp_lm_test_spaces,
         testcase_func_name=custom_name_func
@@ -175,11 +163,6 @@ class TestGLLMTransformation(unittest.TestCase):
             transformator.create(x, space)
 
 class TestHPLMTransformation(unittest.TestCase):
-    # all domain/codomain checks
-    def test_check_codomain_none(self):
-        x = HPSpace(8)
-        with assert_raises(ValueError):
-            transformator.create(x, None)
 
     @parameterized.expand(
         gl_hp_lm_test_spaces,
@@ -191,12 +174,6 @@ class TestHPLMTransformation(unittest.TestCase):
             transformator.create(x, space)
 
 class TestLMTransformation(unittest.TestCase):
-    # all domain/codomain checks
-    def test_check_codomain_none(self):
-        x = LMSpace(8)
-        with assert_raises(ValueError):
-            transformator.create(x, None)
-
     @parameterized.expand(
         lm_gl_hp_test_spaces,
         testcase_func_name=custom_name_func
