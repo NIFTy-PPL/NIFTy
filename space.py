@@ -144,13 +144,8 @@ from __future__ import division
 import numpy as np
 import pylab as pl
 
-from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
-
-from nifty_paradict import space_paradict
-
 from nifty.config import about
-
-POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
+from nifty_paradict import space_paradict
 
 
 class Space(object):
@@ -203,60 +198,21 @@ class Space(object):
             -------
             None.
         """
-        self._cache_dict = {'check_codomain': {}}
         self.paradict = space_paradict(**kwargs)
 
         # parse dtype
         dtype = np.dtype(dtype)
-        if dtype not in [np.dtype('bool'),
-                         np.dtype('int16'),
-                         np.dtype('int32'),
-                         np.dtype('int64'),
-                         np.dtype('float32'),
-                         np.dtype('float64'),
-                         np.dtype('complex64'),
-                         np.dtype('complex128')]:
-            raise ValueError(about._errors.cstring(
-                             "WARNING: incompatible dtype: " + str(dtype)))
         self.dtype = dtype
 
         self.harmonic = None
-        self._distances = None
-
-    @property
-    def distances(self):
-        return self._distances
-
-    @distances.setter
-    def distances(self, distances):
-        naxes = len(self.shape)
-
-        if np.isscalar(distances):
-            distances = tuple(np.ones(naxes, dtype=np.float) * distances)
-        elif not isinstance(distances, tuple):
-            distances = tuple(distances)
-            if len(distances) != naxes:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: size mismatch ( " + str(np.size(distances)) +
-                    " <> " + str(naxes) + " )."))
-        self._distances = distances
-
-    @property
-    def para(self):
-        temp = np.array([self.paradict['num']], dtype=int)
-        return temp
-
-    @para.setter
-    def para(self, x):
-        self.paradict['num'] = x[0]
 
     def __hash__(self):
         # Extract the identifying parts from the vars(self) dict.
         result_hash = 0
         for (key, item) in vars(self).items():
-            if key in ['_cache_dict']:
+            if key in []:
                 continue
-            result_hash ^= item.__hash__() * hash(key)
+            result_hash ^= item.__hash__() ^ 113*hash(key)
         return result_hash
 
     def _identifier(self):
@@ -264,7 +220,7 @@ class Space(object):
         temp = [(ii[0],
                  ((lambda x: x[1].__hash__() if x[0] == 'comm' else x)(ii)))
                 for ii in vars(self).iteritems()
-                if ii[0] not in ['_cache_dict']
+                if ii[0] not in []
                 ]
         # Return the sorted identifiers as a tuple.
         return tuple(sorted(temp))
@@ -272,36 +228,15 @@ class Space(object):
     def copy(self):
         return Space(dtype=self.dtype, **self.paradict.parameters)
 
-    def getitem(self, data, key):
-        return data[key]
-
-    def setitem(self, data, update, key):
-        data[key] = update
-
-    def apply_scalar_function(self, x, function, inplace=False):
-        return x.apply_scalar_function(function, inplace=inplace)
-
     @property
     def shape(self):
-        return (self.paradict['num'],)
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no generic shape for the Space base class."))
 
     @property
     def dim(self):
-        """
-            Computes the dimension of the space, i.e.\  the number of points.
-
-            Parameters
-            ----------
-            split : bool, *optional*
-                Whether to return the dimension as an array with one component
-                or as a scalar (default: False).
-
-            Returns
-            -------
-            dim : {int, numpy.ndarray}
-                Dimension(s) of the space.
-        """
-        return reduce(lambda x, y: x * y, self.shape)
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no generic dim for the Space base class."))
 
     @property
     def dof(self):
@@ -321,280 +256,14 @@ class Space(object):
         return dof
 
     @property
-    def volume_total(self):
+    def total_volume(self):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic volume for the Space base class."))
 
-    @property
-    def volume_pixel(self):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic volume for the Space base class."))
-
-    @property
-    def meta_volume(self):
-        """
-            Calculates the meta volumes.
-
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions. In the case of an :py:class:`rg_space`, the
-            meta volumes are simply the pixel volumes.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each pixel (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the pixels or the complete space.
-        """
-        return self.dim() * self.vol()
-
-    @property
-    def meta_volume_split(self):
-        mol = self.cast(1, dtype=np.dtype('float'))
-        return self.calc_weight(mol, power=1)
-
-    def complement_cast(self, x, axis=None):
+    def complement_cast(self, x, axes=None):
         return x
 
-    def enforce_power(self, spec, **kwargs):
-        """
-            Raises an error since the power spectrum is ill-defined for point
-            spaces.
-        """
-        raise AttributeError(about._errors.cstring(
-            "ERROR: the definition of power spectra is ill-defined for " +
-            "(unstructured) point spaces."))
-
-    def _enforce_power_helper(self, spec, size, kindex):
-        # TODO: Resolve this import by splitting nifty_core into nifty_space
-        # and nifty_point_space
-        from nifty_field import field
-
-        # Now it's about to extract a powerspectrum from spec
-        # First of all just extract a numpy array. The shape is cared about
-        # later.
-        dtype = np.dtype('float')
-        # Case 1: spec is a function
-        if callable(spec):
-            # Try to plug in the kindex array in the function directly
-            try:
-                spec = np.array(spec(kindex), dtype=dtype)
-            except:
-                # Second try: Use a vectorized version of the function.
-                # This is slower, but better than nothing
-                try:
-                    spec = np.array(np.vectorize(spec)(kindex),
-                                    dtype=dtype)
-                except:
-                    raise TypeError(about._errors.cstring(
-                        "ERROR: invalid power spectra function."))
-
-        # Case 2: spec is a field:
-        elif isinstance(spec, field):
-            try:
-                spec = spec.val.get_full_data()
-            except AttributeError:
-                spec = spec.val
-            spec = spec.astype(dtype).flatten()
-
-        # Case 3: spec is a scalar or something else:
-        else:
-            spec = np.array(spec, dtype=dtype).flatten()
-
-        # Make some sanity checks
-        # check finiteness
-        if not np.all(np.isfinite(spec)):
-            about.warnings.cprint("WARNING: infinite value(s).")
-
-        # check positivity (excluding null)
-        if np.any(spec < 0):
-            raise ValueError(about._errors.cstring(
-                "ERROR: nonpositive value(s)."))
-        if np.any(spec == 0):
-            about.warnings.cprint("WARNING: nonpositive value(s).")
-
-        # Set the size parameter
-        if size is None:
-            size = len(kindex)
-
-        # Fix the size of the spectrum
-        # If spec is singlevalued, expand it
-        if np.size(spec) == 1:
-            spec = spec * np.ones(size, dtype=spec.dtype)
-        # If the size does not fit at all, throw an exception
-        elif np.size(spec) < size:
-            raise ValueError(about._errors.cstring("ERROR: size mismatch ( " +
-                                                   str(np.size(spec)) + " < " +
-                                                   str(size) + " )."))
-        elif np.size(spec) > size:
-            about.warnings.cprint("WARNING: power spectrum cut to size ( == " +
-                                  str(size) + " ).")
-            spec = spec[:size]
-
-        return spec
-
-    def check_codomain(self, codomain):
-        check_dict = self._cache_dict['check_codomain']
-        temp_id = id(codomain)
-        if temp_id in check_dict:
-            return check_dict[temp_id]
-        else:
-            temp_result = self._check_codomain(codomain)
-            check_dict[temp_id] = temp_result
-            return temp_result
-
-    def _check_codomain(self, codomain):
-        """
-            Checks whether a given codomain is compatible to the space or not.
-
-            Parameters
-            ----------
-            codomain : nifty.space
-                Space to be checked for compatibility.
-
-            Returns
-            -------
-            check : bool
-                Whether or not the given codomain is compatible to the space.
-        """
-        if codomain is None:
-            return False
-
-        if not isinstance(codomain, Space):
-            raise TypeError(about._errors.cstring(
-                "ERROR: invalid input. The given input is not a nifty space."))
-
-        if codomain == self:
-            return True
-        else:
-            return False
-
-    def get_codomain(self, **kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, in this case another instance of
-            :py:class:`point_space` with the same properties.
-
-            Returns
-            -------
-            codomain : nifty.point_space
-                A compatible codomain.
-        """
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic codomain for the Space base class."))
-
-#    def get_random_values(self, **kwargs):
-#        """
-#            Generates random field values according to the specifications given
-#            by the parameters.
-#
-#            Returns
-#            -------
-#            x : numpy.ndarray
-#                Valid field values.
-#
-#            Other parameters
-#            ----------------
-#            random : string, *optional*
-#                Specifies the probability distribution from which the random
-#                numbers are to be drawn.
-#                Supported distributions are:
-#
-#                - "pm1" (uniform distribution over {+1,-1} or {+1,+i,-1,-i}
-#                - "gau" (normal distribution with zero-mean and a given
-#                standard
-#                    deviation or variance)
-#                - "syn" (synthesizes from a given power spectrum)
-#                - "uni" (uniform distribution over [vmin,vmax[)
-#
-#                (default: None).
-#            dev : float, *optional*
-#                Standard deviation (default: 1).
-#            var : float, *optional*
-#                Variance, overriding `dev` if both are specified
-#                (default: 1).
-#            spec : {scalar, list, numpy.ndarray, nifty.field, function},
-#            *optional*
-#                Power spectrum (default: 1).
-#            pindex : numpy.ndarray, *optional*
-#                Indexing array giving the power spectrum index of each band
-#                (default: None).
-#            kindex : numpy.ndarray, *optional*
-#                Scale of each band (default: None).
-#            codomain : nifty.space, *optional*
-#                A compatible codomain with power indices (default: None).
-#            log : bool, *optional*
-#                Flag specifying if the spectral binning is performed on
-#                logarithmic
-#                scale or not; if set, the number of used bins is set
-#                automatically (if not given otherwise); by default no binning
-#                is done (default: None).
-#            nbin : integer, *optional*
-#                Number of used spectral bins; if given `log` is set to
-#                ``False``;
-#                integers below the minimum of 3 induce an automatic setting;
-#                by default no binning is done (default: None).
-#            binbounds : {list, array}, *optional*
-#                User specific inner boundaries of the bins, which are preferred
-#                over the above parameters; by default no binning is done
-#                (default: None).
-#                vmin : {scalar, list, ndarray, field}, *optional*
-#                Lower limit of the uniform distribution if ``random == "uni"``
-#                (default: 0).
-#            vmin : float, *optional*
-#                Lower limit for a uniform distribution (default: 0).
-#            vmax : float, *optional*
-#                Upper limit for a uniform distribution (default: 1).
-#        """
-#
-#        arg = random.parse_arguments(self, **kwargs)
-#
-#        if arg is None:
-#            return self.cast(0)
-#
-#        # Prepare the empty distributed_data_object
-#        sample = distributed_data_object(
-#                                    global_shape=self.shape,
-#                                    dtype=self.dtype)
-#
-#        # Case 1: uniform distribution over {-1,+1}/{1,i,-1,-i}
-#        if arg['random'] == 'pm1':
-#            sample.apply_generator(lambda s: random.pm1(dtype=self.dtype,
-#                                                        shape=s))
-#
-#        # Case 2: normal distribution with zero-mean and a given standard
-#        #         deviation or variance
-#        elif arg['random'] == 'gau':
-#            std = arg['std']
-#            if np.isscalar(std) or std is None:
-#                processed_std = std
-#            else:
-#                try:
-#                    processed_std = sample.distributor. \
-#                        extract_local_data(std)
-#                except(AttributeError):
-#                    processed_std = std
-#
-#            sample.apply_generator(lambda s: random.gau(dtype=self.dtype,
-#                                                        shape=s,
-#                                                        mean=arg['mean'],
-#                                                        std=processed_std))
-#
-#        # Case 3: uniform distribution
-#        elif arg['random'] == 'uni':
-#            sample.apply_generator(lambda s: random.uni(dtype=self.dtype,
-#                                                        shape=s,
-#                                                        vmin=arg['vmin'],
-#                                                        vmax=arg['vmax']))
-#        return sample
-
-    def calc_weight(self, x, power=1):
+    def weight(self, x, power=1, axes=None):
         """
             Weights a given array of field values with the pixel volumes (not
             the meta volumes) to a given power.
@@ -611,41 +280,7 @@ class Space(object):
             y : numpy.ndarray
                 Weighted array.
         """
-        # weight
-        return x * self.get_weight(power=power)
-
-    def get_weight(self, power=1, split=False):
-        splitted_weight = tuple(np.array(self.distances)**np.array(power))
-        if not split:
-            return reduce(lambda x, y: x * y, splitted_weight)
-        else:
-            return splitted_weight
-
-    def calc_norm(self, x, q=2):
-        """
-            Computes the Lq-norm of field values.
-
-            Parameters
-            ----------
-            x : np.ndarray
-                The data array
-            q : scalar
-                Parameter q of the Lq-norm (default: 2).
-
-            Returns
-            -------
-            norm : scalar
-                The Lq-norm of the field values.
-
-        """
-        if q == 2:
-            result = self.calc_dot(x, x)
-        else:
-            y = x**(q - 1)
-            result = self.calc_dot(x, y)
-
-        result = result**(1. / q)
-        return result
+        raise NotImplementedError
 
     def dot_contraction(self, x, axes):
         """
@@ -666,70 +301,17 @@ class Space(object):
         """
         return x.sum(axis=axes)
 
-    def calc_transform(self, x, codomain=None, **kwargs):
-        """
-            Computes the transform of a given array of field values.
+    def compute_k_array(self, distribution_strategy):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no generic k_array for Space base class."))
 
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be transformed.
-            codomain : nifty.space, *optional*
-                codomain space to which the transformation shall map
-                (default: self).
-
-            Returns
-            -------
-            Tx : numpy.ndarray
-                Transformed array
-
-            Other parameters
-            ----------------
-            iter : int, *optional*
-                Number of iterations performed in specific transformations.
-        """
-        raise AttributeError(about._errors.cstring(
-            "ERROR: fourier-transformation is ill-defined for " +
-            "(unstructured) point space."))
-
-    def calc_smooth(self, x, **kwargs):
+    def smooth(self, x, **kwargs):
         """
             Raises an error since smoothing is ill-defined on an unstructured
             space.
         """
         raise AttributeError(about._errors.cstring(
             "ERROR: smoothing ill-defined for (unstructured) point space."))
-
-    def calc_power(self, x, **kwargs):
-        """
-            Raises an error since the power spectrum is ill-defined for point
-            spaces.
-        """
-        raise AttributeError(about._errors.cstring(
-            "ERROR: power spectra ill-defined for (unstructured) " +
-            "point space."))
-
-    def calc_real_Q(self, x):
-        try:
-            return x.isreal().all()
-        except AttributeError:
-            return np.all(np.isreal(x))
-
-    def calc_bincount(self, x, weights=None, minlength=None):
-        try:
-            complex_weights_Q = issubclass(weights.dtype.type,
-                                           np.complexfloating)
-        except AttributeError:
-            complex_weights_Q = False
-
-        if complex_weights_Q:
-            real_bincount = x.bincount(weights=weights.real,
-                                       minlength=minlength)
-            imag_bincount = x.bincount(weights=weights.imag,
-                                       minlength=minlength)
-            return real_bincount + imag_bincount
-        else:
-            return x.bincount(weights=weights, minlength=minlength)
 
     def get_plot(self, x, title="", vmin=None, vmax=None, unit=None,
                  norm=None, other=None, legend=False, save=None, **kwargs):
@@ -856,6 +438,6 @@ class Space(object):
         string = ""
         string += str(type(self)) + "\n"
         string += "paradict: " + str(self.paradict) + "\n"
-        string += 'dtype: ' + str(self.dtype) + "\n"
-        string += 'distances: ' + str(self.distances) + "\n"
+        string += "dtype: " + str(self.dtype) + "\n"
+        string += "harmonic: " + str(self.harmonic) + "\n"
         return string

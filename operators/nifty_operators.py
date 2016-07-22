@@ -577,7 +577,7 @@ class operator(object):
         if domain is None:
             domain = diag.domain
         # weight if ...
-        if and bare:
+        if bare:
             if(isinstance(diag, tuple)):  # diag == (diag,variance)
                 return (diag[0].weight(power=-1),
                         diag[1].weight(power=-1))
