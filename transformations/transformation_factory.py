@@ -8,7 +8,7 @@ from lmgltransformation import LMGLTransformation
 from lmhptransformation import LMHPTransformation
 
 
-class TransformationFactory(object):
+class _TransformationFactory(object):
     """
         Transform factory which generates transform objects
     """
@@ -19,11 +19,23 @@ class TransformationFactory(object):
 
     def _get_transform(self, domain, codomain, module):
         if isinstance(domain, RGSpace):
-            return RGRGTransformation(domain, codomain, module)
+            if isinstance(codomain, RGSpace):
+                return RGRGTransformation(domain, codomain, module)
+            else:
+                raise ValueError('ERROR: incompatible codomain')
+
         elif isinstance(domain, GLSpace):
-            return GLLMTransformation(domain, codomain, module)
+            if isinstance(codomain, GLSpace):
+                return GLLMTransformation(domain, codomain, module)
+            else:
+                raise ValueError('ERROR: incompatible codomain')
+
         elif isinstance(domain, HPSpace):
-            return HPLMTransformation(domain, codomain, module)
+            if isinstance(codomain, GLSpace):
+                return HPLMTransformation(domain, codomain, module)
+            else:
+                raise ValueError('ERROR: incompatible codomain')
+
         elif isinstance(domain, LMSpace):
             if isinstance(codomain, GLSpace):
                 return LMGLTransformation(domain, codomain, module)
@@ -42,3 +54,6 @@ class TransformationFactory(object):
             self.cache[key] = self._get_transform(domain, codomain, module)
 
         return self.cache[key]
+
+
+TransformationFactory = _TransformationFactory()
