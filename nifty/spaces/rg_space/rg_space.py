@@ -175,9 +175,14 @@ class RGSpace(Space):
     def total_volume(self):
         return self.dim * reduce(lambda x, y: x*y, self.paradict['distances'])
 
-    def weight(self, x, power=1, axes=None):
+    def weight(self, x, power=1, axes=None, inplace=False):
         weight = reduce(lambda x, y: x*y, self.paradict['distances'])**power
-        return x * weight
+        if inplace:
+            x *= weight
+            result_x = x
+        else:
+            result_x = x*weight
+        return result_x
 
     def compute_k_array(self, distribution_strategy):
         """

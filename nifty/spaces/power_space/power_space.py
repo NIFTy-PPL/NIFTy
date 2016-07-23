@@ -35,7 +35,7 @@ class PowerSpace(Space):
         # every power-pixel has a volume of 1
         return reduce(lambda x, y: x*y, self.paradict['pindex'].shape)
 
-    def weight(self, x, power=1, axes=None):
+    def weight(self, x, power=1, axes=None, inplace=False):
         total_shape = x.shape
 
         axes = cast_axis_to_tuple(axes, len(total_shape))
@@ -49,7 +49,12 @@ class PowerSpace(Space):
         weight = self.paradict['rho'].reshape(reshaper)
         if power != 1:
             weight = weight ** power
-        result_x = x * weight
+
+        if inplace:
+            x *= weight
+            result_x = x
+        else:
+            result_x = x*weight
 
         return result_x
 

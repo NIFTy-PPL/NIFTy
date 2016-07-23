@@ -262,7 +262,7 @@ class Space(object):
     def complement_cast(self, x, axes=None):
         return x
 
-    def weight(self, x, power=1, axes=None):
+    def weight(self, x, power=1, axes=None, inplace=False):
         """
             Weights a given array of field values with the pixel volumes (not
             the meta volumes) to a given power.
