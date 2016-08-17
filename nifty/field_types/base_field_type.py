@@ -13,7 +13,18 @@ class FieldType(object):
 
         self._dtype = np.dtype(dtype)
 
-        self._dof = self._get_dof()
+    def __hash__(self):
+        # Extract the identifying parts from the vars(self) dict.
+        result_hash = 0
+        for (key, item) in vars(self).items():
+            result_hash ^= item.__hash__() ^ int(hash(key)/117)
+        return result_hash
+
+    def __eq__(self, x):
+        if isinstance(x, type(self)):
+            return hash(self) == hash(x)
+        else:
+            return False
 
     @property
     def shape(self):
@@ -24,17 +35,8 @@ class FieldType(object):
         return self._dtype
 
     @property
-    def dof(self):
-        return self._dof
-
-    def _get_dof(self):
-        if issubclass(self.dtype.type, np.complexfloating):
-            multiplicator = 2
-        else:
-            multiplicator = 1
-
-        dof = multiplicator*reduce(lambda x, y: x*y, self.shape)
-        return dof
+    def dim(self):
+        raise NotImplementedError
 
     def process(self, method_name, array, inplace=True, **kwargs):
         try:
@@ -49,8 +51,5 @@ class FieldType(object):
 
         return result_array
 
-    def complement_cast(self, x, axis=None):
+    def complement_cast(self, x, axes=None):
         return x
-
-    def dot_contraction(self, x, axes):
-        raise NotImplementedError

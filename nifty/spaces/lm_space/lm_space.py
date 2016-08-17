@@ -177,27 +177,6 @@ class LMSpace(Space):
         mmax = self.paradict['mmax']
         return (np.int((mmax + 1) * (lmax + 1) - ((mmax + 1) * mmax) // 2),)
 
-    @property
-    def dof(self):
-        """
-            Computes the number of degrees of freedom of the space, taking into
-            account symmetry constraints and complex-valuedness.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-
-            Notes
-            -----
-            The number of degrees of freedom is reduced due to the hermitian
-            symmetry, which is assumed for the spherical harmonics components.
-        """
-        # dof = 2*dim-(lmax+1) = (lmax+1)*(2*mmax+1)*(mmax+1)*mmax
-        lmax = self.paradict['lmax']
-        mmax = self.paradict['mmax']
-        dof = np.int((lmax + 1) * (2 * mmax + 1) - (mmax + 1) * mmax)
-        return dof
 
     @property
     def meta_volume(self):

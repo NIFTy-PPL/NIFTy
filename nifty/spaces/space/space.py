@@ -238,23 +238,6 @@ class Space(object):
             "ERROR: There is no generic dim for the Space base class."))
 
     @property
-    def dof(self):
-        """
-            Computes the number of degrees of freedom of the space, i.e./  the
-            number of points for real-valued fields and twice that number for
-            complex-valued fields.
-
-            Returns
-            -------
-            dof : int
-                Number of degrees of freedom of the space.
-        """
-        dof = self.dim
-        if issubclass(self.dtype.type, np.complexfloating):
-            dof = dof * 2
-        return dof
-
-    @property
     def total_volume(self):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic volume for the Space base class."))
@@ -280,25 +263,6 @@ class Space(object):
                 Weighted array.
         """
         raise NotImplementedError
-
-    def dot_contraction(self, x, axes):
-        """
-            Computes the discrete inner product of two given arrays of field
-            values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                First array
-            y : numpy.ndarray
-                Second array
-
-            Returns
-            -------
-            dot : scalar
-                Inner product of the two arrays.
-        """
-        return x.sum(axis=axes)
 
     def compute_k_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(

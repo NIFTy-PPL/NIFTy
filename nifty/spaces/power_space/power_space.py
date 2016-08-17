@@ -63,7 +63,9 @@ class PowerSpace(Space):
             "ERROR: There is no k_array implementation for PowerSpace."))
 
     def calculate_power_spectrum(self, x, axes=None):
-        fieldabs = abs(x)**2
+        fieldabs = abs(x)
+        fieldabs **= 2
+
         pindex = self.paradict['pindex']
         if axes is not None:
             pindex = self._shape_up_pindex(
@@ -81,6 +83,7 @@ class PowerSpace(Space):
             rho = rho.reshape(new_rho_shape)
         power_spectrum /= rho
 
+        power_spectrum **= 0.5
         return power_spectrum
 
     def _shape_up_pindex(self, pindex, target_shape, target_strategy, axes):
