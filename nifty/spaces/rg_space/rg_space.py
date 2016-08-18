@@ -149,11 +149,12 @@ class RGSpace(Space):
             None
         """
 
+        super(RGSpace, self).__init__(dtype=np.dtype('float64'))
+
         self.paradict = RGSpaceParadict(shape=shape,
                                         zerocenter=zerocenter,
                                         distances=distances,
                                         harmonic=harmonic)
-        self.dtype = np.dtype(dtype)
 
     @property
     def harmonic(self):
@@ -242,98 +243,9 @@ class RGSpace(Space):
         dists = np.sqrt(dists)
         return dists
 
-    def smooth(self, x, sigma=0, codomain=None, axes=None):
-        """
-            Smoothes an array of field values by convolution with a Gaussian
-            kernel.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values to be smoothed.
-            sigma : float, *optional*
-                Standard deviation of the Gaussian kernel, specified in units
-                of length in position space; for testing: a sigma of -1 will be
-                reset to a reasonable value (default: 0).
-            axes: None, tuple
-                Axes which should be smoothed
-
-            Returns
-            -------
-            Gx : numpy.ndarray
-                Smoothed array.
-        """
-
-        # Check sigma
-        if sigma == 0:
-            return x.copy()
-        elif sigma == -1:
-            about.infos.cprint(
-                "INFO: Resetting sigma to sqrt(2)*max(dist).")
-            sigma = np.sqrt(2) * np.max(self.distances)
-        elif(sigma < 0):
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-
-        # if a codomain was given...
-        if codomain is not None:
-            # ...check if it was suitable
-            if not self.check_codomain(codomain):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: the given codomain is not a compatible!"))
-        else:
-            codomain = self.get_codomain()
-
-        # TODO: Use the Fourier Transformation Operator for the switch into
-        # hormonic space.
-        raise NotImplementedError
-        x = self.calc_transform(x, codomain=codomain, axes=axes)
-        x = codomain._calc_smooth_helper(x, sigma, axes=axes)
-        x = codomain.calc_transform(x, codomain=self, axes=axes)
-        return x
-
-    def _calc_smooth_helper(self, x, sigma, axes=None):
-        # multiply the gaussian kernel, etc...
-        if axes is None:
-            axes = range(len(x.shape))
-
-        # if x is hermitian it remains hermitian during smoothing
-        # TODO look at this later
-        # if self.datamodel in RG_DISTRIBUTION_STRATEGIES:
-        remember_hermitianQ = x.hermitian
-
-        # Define the Gaussian kernel function
-        gaussian = lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
-
-        # Define the variables in the dialect of the legacy smoothing.py
-        nx = np.array(self.shape)
-        dx = 1 / nx / self.distances
-        # Multiply the data along each axis with suitable the gaussian kernel
-        for i in range(len(nx)):
-            # Prepare the exponent
-            dk = 1. / nx[i] / dx[i]
-            nk = nx[i]
-            k = -0.5 * nk * dk + np.arange(nk) * dk
-            if self.paradict['zerocenter'][i] == False:
-                k = np.fft.fftshift(k)
-            # compute the actual kernel vector
-            gaussian_kernel_vector = gaussian(k)
-            # blow up the vector to an array of shape (1,.,1,len(nk),1,.,1)
-            blown_up_shape = [1, ] * len(x.shape)
-            blown_up_shape[axes[i]] = len(gaussian_kernel_vector)
-            gaussian_kernel_vector =\
-                gaussian_kernel_vector.reshape(blown_up_shape)
-            # apply the blown-up gaussian_kernel_vector
-            x = x*gaussian_kernel_vector
-
-        try:
-            x.hermitian = remember_hermitianQ
-        except AttributeError:
-            pass
-
-        return x
-
     def get_plot(self,x,title="",vmin=None,vmax=None,power=None,unit="",
-                 norm=None,cmap=None,cbar=True,other=None,legend=False,mono=True,**kwargs):
+                 norm=None,cmap=None,cbar=True,other=None,legend=False,
+                 mono=True,**kwargs):
         """
             Creates a plot of field values according to the specifications
             given by the parameters.
@@ -396,7 +308,8 @@ class RGSpace(Space):
             binbounds : {list, array}, *optional*
                 User specific inner boundaries of the bins, which are preferred
                 over the above parameters; by default no binning is done
-                (default: None).            vmin : {scalar, list, ndarray, field}, *optional*
+                (default: None).
+            vmin : {scalar, list, ndarray, field}, *optional*
                 Lower limit of the uniform distribution if ``random == "uni"``
                 (default: 0).
 
