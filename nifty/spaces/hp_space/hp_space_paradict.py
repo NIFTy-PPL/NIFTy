@@ -6,10 +6,10 @@ from nifty.spaces.space import SpaceParadict
 
 class HPSpaceParadict(SpaceParadict):
 
-    def __init__(self, nside, distances):
+    def __init__(self, nside):
         if not hasattr(self, 'parameters'):
             self.parameters = {}
-        SpaceParadict.__init__(self, nside=nside, distances=distances)
+        SpaceParadict.__init__(self, nside=nside)
 
     def __setitem__(self, key, arg):
         if key not in ['nside', 'distances']:
@@ -18,10 +18,10 @@ class HPSpaceParadict(SpaceParadict):
 
         if key == 'nside':
             temp = int(arg)
-            # if(not hp.isnsideok(nside)):
             if ((temp & (temp - 1)) != 0) or (temp < 2):
-                raise ValueError("ERROR: invalid parameter ( nside <> 2**n ).")
-        elif key == 'distances':
-            temp = (arg,)
+                raise ValueError(
+                    about._errors.cstring(
+                        "ERROR: invalid parameter ( nside <> 2**n ).")
+                )
 
         self.parameters.__setitem__(key, temp)

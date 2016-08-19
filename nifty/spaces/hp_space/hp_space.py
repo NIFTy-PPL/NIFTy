@@ -128,13 +128,11 @@ class HPSpace(Space):
         if not gc['use_healpy']:
             raise ImportError("ERROR: healpy not available.")
 
-        # let the abstract Space class initialize dtype
-        super(HPSpace, self).__init__(dtype=np.dtype('float64'))
+        # setup paradict
+        self.paradict = HPSpaceParadict(nside=nside)
 
-        self.paradict = HPSpaceParadict(nside=nside,
-                                        distances=np.float(
-                                            4 * np.pi / (12 * nside ** 2))
-                                        )
+        # setup dtype
+        self.dtype = np.dtype('float64')
         # HPSpace is never harmonic
         self._harmonic = False
 
@@ -146,84 +144,11 @@ class HPSpace(Space):
         return (np.int(12 * self.paradict['nside'] ** 2),)
 
     @property
-    def meta_volume(self):
-        """
-            Calculates the meta volumes.
+    def dim(self):
+        return np.int(12 * self.paradict['nside'] ** 2)
 
-            The meta volumes are the volumes associated with each component of
-            a field, taking into account field components that are not
-            explicitly included in the array of field values but are determined
-            by symmetry conditions.
-
-            Parameters
-            ----------
-            total : bool, *optional*
-                Whether to return the total meta volume of the space or the
-                individual ones of each field component (default: False).
-
-            Returns
-            -------
-            mol : {numpy.ndarray, float}
-                Meta volume of the field components or the complete space.
-
-            Notes
-            -----
-            For HEALpix discretizations, the meta volumes are the pixel sizes.
-        """
-        return np.float(4 * np.pi)
-
-    @property
-    def meta_volume_split(self):
+    def weight(self, x, power=1, axes=None, inplace=False):
         pass
-
-    # TODO: Extend to binning/log
-    def enforce_power(self, spec, size=None, kindex=None):
-        if kindex is None:
-            kindex_size = self.paradict['nside'] * 3
-            kindex = np.arange(kindex_size,
-                               dtype=np.array(self.distances).dtype)
-        return self._enforce_power_helper(spec=spec,
-                                          size=size,
-                                          kindex=kindex)
-
-    def calc_power(self, x, niter=0, **kwargs):
-        """
-            Computes the power of an array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values of which the power is to be
-                calculated.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Power contained in the input array.
-
-            Other parameters
-            ----------------
-            iter : int, *optional*
-                Number of iterations performed in the HEALPix basis
-                transformation.
-        """
-        x = self.cast(x)
-
-        nside = self.paradict['nside']
-        lmax = 3 * nside - 1
-        mmax = lmax
-
-        # if self.datamodel != 'not':
-        #     about.warnings.cprint(
-        #         "WARNING: Field data is consolidated to all nodes for "
-        #         "external smoothalm method!")
-
-        np_x = x.get_full_data()
-
-        # power spectrum
-        return hp.anafast(np_x, map2=None, nspec=None, lmax=lmax, mmax=mmax,
-                          iter=niter, alm=False, pol=True, use_weights=False,
-                          datapath=None)
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=False, unit="",
                  norm=None, cmap=None, cbar=True, other=None, legend=False,
