@@ -11,9 +11,8 @@ from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 from nifty.spaces.lm_space import LMSpace
 
 from nifty.spaces.space import Space
-from nifty.config import about, \
-    nifty_configuration as gc, \
-    dependency_injector as gdi
+from nifty.config import about, nifty_configuration as gc,\
+                         dependency_injector as gdi
 from gl_space_paradict import GLSpaceParadict
 from nifty.nifty_random import random
 
@@ -132,6 +131,11 @@ class GLSpace(Space):
         return np.sum(self.paradict['nlon'] * np.array(self.distances[0]))
 
     def weight(self, x, power=1, axes=None, inplace=False):
+        # check if the axes provided are valid given the input shape
+        if axes is not None and \
+                not all(axis in range(len(x.shape)) for axis in axes):
+            raise ValueError("ERROR: Provided axes does not match array shape")
+
         weight = np.array(list(
             itertools.chain.from_iterable(
                 itertools.repeat(x ** power, self.paradict['nlon'])
