@@ -15,7 +15,6 @@ from nifty.field_types import FieldType,\
 from nifty.spaces.space import Space
 
 import nifty.nifty_utilities as utilities
-from nifty_random import random
 
 POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 COMM = getattr(gdi[gc['mpi_module']], gc['default_comm'])
