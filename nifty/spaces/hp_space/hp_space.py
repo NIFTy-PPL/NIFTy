@@ -33,24 +33,15 @@
 """
 from __future__ import division
 
-import itertools
 import numpy as np
-import pylab as pl
-
-from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
-
-from nifty.spaces.lm_space import LMSpace
 
 from nifty.spaces.space import Space
 
-from nifty.config import about, nifty_configuration as gc, \
+from nifty.config import nifty_configuration as gc, \
                          dependency_injector as gdi
 from hp_space_paradict import HPSpaceParadict
-from nifty.nifty_random import random
 
 hp = gdi.get('healpy')
-
-HP_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
 class HPSpace(Space):
@@ -103,7 +94,7 @@ class HPSpace(Space):
             An array with one element containing the pixel size.
     """
 
-    def __init__(self, nside):
+    def __init__(self, nside=2, dtype=np.dtype('float')):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -133,12 +124,10 @@ class HPSpace(Space):
         self.paradict = HPSpaceParadict(nside=nside)
 
         # setup dtype
-        self.dtype = np.dtype('float64')
-        # HPSpace is never harmonic
-        self._harmonic = False
+        self.dtype = np.dtype(dtype)
 
-    def copy(self):
-        return HPSpace(nside=self.paradict['nside'])
+        # HPSpace is not harmonic
+        self._harmonic = False
 
     @property
     def shape(self):
@@ -148,27 +137,12 @@ class HPSpace(Space):
     def dim(self):
         return np.int(12 * self.paradict['nside'] ** 2)
 
+    @property
+    def total_volume(self):
+        return 4 * np.pi
+
     def weight(self, x, power=1, axes=None, inplace=False):
-        # check if the axes provided are valid given the input shape
-        if axes is not None and \
-                not all(axis in range(len(x.shape)) for axis in axes):
-            raise ValueError("ERROR: Provided axes does not match array shape")
-
-        weight = np.array(list(
-            itertools.chain.from_iterable(
-                itertools.repeat(
-                    (4 * np.pi / 12 * self.paradict['nside'] ** 2) ** power,
-                    12 * self.paradict['nside'] ** 2
-                )
-            )
-        ))
-
-        if axes is not None:
-            # reshape the weight array to match the input shape
-            new_shape = np.ones(x.shape)
-            for index in range(len(axes)):
-                new_shape[index] = len(weight)
-            weight = weight.reshape(new_shape)
+        weight = ((4*np.pi) / (12 * self.paradict['nside']**2)) ** power
 
         if inplace:
             x *= weight
@@ -177,162 +151,3 @@ class HPSpace(Space):
             result_x = x * weight
 
         return result_x
-
-    def get_plot(self, x, title="", vmin=None, vmax=None, power=False, unit="",
-                 norm=None, cmap=None, cbar=True, other=None, legend=False,
-                 mono=True, **kwargs):
-        """
-            Creates a plot of field values according to the specifications
-            given by the parameters.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values.
-
-            Returns
-            -------
-            None
-
-            Other parameters
-            ----------------
-            title : string, *optional*
-                Title of the plot (default: "").
-            vmin : float, *optional*
-                Minimum value to be displayed (default: ``min(x)``).
-            vmax : float, *optional*
-                Maximum value to be displayed (default: ``max(x)``).
-            power : bool, *optional*
-                Whether to plot the power contained in the field or the field
-                values themselves (default: False).
-            unit : string, *optional*
-                Unit of the field values (default: "").
-            norm : string, *optional*
-                Scaling of the field values before plotting (default: None).
-            cmap : matplotlib.colors.LinearSegmentedColormap, *optional*
-                Color map to be used for two-dimensional plots (default: None).
-            cbar : bool, *optional*
-                Whether to show the color bar or not (default: True).
-            other : {single object, tuple of objects}, *optional*
-                Object or tuple of objects to be added, where objects can be
-                scalars, arrays, or fields (default: None).
-            legend : bool, *optional*
-                Whether to show the legend or not (default: False).
-            mono : bool, *optional*
-                Whether to plot the monopole or not (default: True).
-            save : string, *optional*
-                Valid file name where the figure is to be stored, by default
-                the figure is not saved (default: False).
-            iter : int, *optional*
-                Number of iterations performed in the HEALPix basis
-                transformation.
-        """
-        from nifty.field import Field
-
-        try:
-            x = x.get_full_data()
-        except AttributeError:
-            pass
-
-        if (not pl.isinteractive()) and (not bool(kwargs.get("save", False))):
-            about.warnings.cprint("WARNING: interactive mode off.")
-
-        if (power):
-            x = self.calc_power(x, **kwargs)
-
-            fig = pl.figure(num=None, figsize=(6.4, 4.8), dpi=None,
-                            facecolor="none",
-                            edgecolor="none", frameon=False,
-                            FigureClass=pl.Figure)
-            ax0 = fig.add_axes([0.12, 0.12, 0.82, 0.76])
-
-            xaxes = np.arange(3 * self.para[0], dtype=np.int)
-            if (vmin is None):
-                vmin = np.min(x[:mono].tolist(
-                ) + (xaxes * (2 * xaxes + 1) * x)[1:].tolist(), axis=None,
-                              out=None)
-            if (vmax is None):
-                vmax = np.max(x[:mono].tolist(
-                ) + (xaxes * (2 * xaxes + 1) * x)[1:].tolist(), axis=None,
-                              out=None)
-            ax0.loglog(xaxes[1:], (xaxes * (2 * xaxes + 1) * x)[1:], color=[0.0,
-                                                                            0.5,
-                                                                            0.0],
-                       label="graph 0", linestyle='-', linewidth=2.0, zorder=1)
-            if (mono):
-                ax0.scatter(0.5 * (xaxes[1] + xaxes[2]), x[0], s=20,
-                            color=[0.0, 0.5, 0.0], marker='o',
-                            cmap=None, norm=None, vmin=None, vmax=None,
-                            alpha=None, linewidths=None, verts=None, zorder=1)
-
-            if (other is not None):
-                if (isinstance(other, tuple)):
-                    other = list(other)
-                    for ii in xrange(len(other)):
-                        if (isinstance(other[ii], Field)):
-                            other[ii] = other[ii].power(**kwargs)
-                        else:
-                            other[ii] = self.enforce_power(other[ii])
-                elif (isinstance(other, Field)):
-                    other = [other.power(**kwargs)]
-                else:
-                    other = [self.enforce_power(other)]
-                imax = max(1, len(other) - 1)
-                for ii in xrange(len(other)):
-                    ax0.loglog(xaxes[1:],
-                               (xaxes * (2 * xaxes + 1) * other[ii])[1:],
-                               color=[max(0.0, 1.0 - (2 * ii / imax) ** 2),
-                                      0.5 * ((2 * ii - imax) / imax)
-                                      ** 2, max(0.0, 1.0 - (
-                                       2 * (ii - imax) / imax) ** 2)],
-                               label="graph " + str(ii + 1), linestyle='-',
-                               linewidth=1.0, zorder=-ii)
-                    if (mono):
-                        ax0.scatter(0.5 * (xaxes[1] + xaxes[2]), other[ii][0],
-                                    s=20,
-                                    color=[max(0.0, 1.0 - (2 * ii / imax) ** 2),
-                                           0.5 * ((2 * ii - imax) / imax) ** 2,
-                                           max(
-                                               0.0, 1.0 - (
-                                                   2 * (
-                                                   ii - imax) / imax) ** 2)],
-                                    marker='o', cmap=None, norm=None, vmin=None,
-                                    vmax=None, alpha=None, linewidths=None,
-                                    verts=None, zorder=-ii)
-                if (legend):
-                    ax0.legend()
-
-            ax0.set_xlim(xaxes[1], xaxes[-1])
-            ax0.set_xlabel(r"$\ell$")
-            ax0.set_ylim(vmin, vmax)
-            ax0.set_ylabel(r"$\ell(2\ell+1) C_\ell$")
-            ax0.set_title(title)
-
-        else:
-            if (norm == "log"):
-                if (vmin is not None):
-                    if (vmin <= 0):
-                        raise ValueError(about._errors.cstring(
-                            "ERROR: nonpositive value(s)."))
-                elif (np.min(x, axis=None, out=None) <= 0):
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: nonpositive value(s)."))
-            if (cmap is None):
-                cmap = pl.cm.jet  # default
-            cmap.set_under(color='k', alpha=0.0)  # transparent box
-            hp.mollview(x, fig=None, rot=None, coord=None, unit=unit, xsize=800,
-                        title=title, nest=False, min=vmin, max=vmax,
-                        flip="astro", remove_dip=False,
-                        remove_mono=False, gal_cut=0, format="%g", format2="%g",
-                        cbar=cbar, cmap=cmap, notext=False, norm=norm,
-                        hold=False, margins=None, sub=None)
-            fig = pl.gcf()
-
-        if (bool(kwargs.get("save", False))):
-            fig.savefig(str(kwargs.get("save")), dpi=None, facecolor="none",
-                        edgecolor="none", orientation="portrait",
-                        papertype=None, format=None, transparent=False,
-                        bbox_inches=None, pad_inches=0.1)
-            pl.close(fig)
-        else:
-            fig.canvas.draw()
