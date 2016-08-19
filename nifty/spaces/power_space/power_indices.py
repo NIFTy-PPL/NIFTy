@@ -137,11 +137,6 @@ class PowerIndices(object):
                      "binbounds": temp_binbounds}
         return temp_dict
 
-    def compute_k_array(self):
-        raise NotImplementedError(
-            about._errors.cstring(
-                "ERROR: No generic compute_k_array method implemented."))
-
     def get_index_dict(self, **kwargs):
         """
             Returns a dictionary containing the pindex, kindex, rho and pundex

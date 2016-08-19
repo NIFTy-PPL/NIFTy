@@ -39,6 +39,7 @@ from d2o import distributed_data_object, d2o_librarian
 
 from nifty_cmaps import ncmap
 from field import Field
+from paradict import Paradict
 
 # this line exists for compatibility reasons
 # TODO: Remove this once the transition to field types is done.

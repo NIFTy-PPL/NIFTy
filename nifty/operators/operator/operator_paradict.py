@@ -3,5 +3,5 @@
 from nifty.paradict import Paradict
 
 
-class SpaceParadict(Paradict):
+class OperatorParadict(Paradict):
     pass

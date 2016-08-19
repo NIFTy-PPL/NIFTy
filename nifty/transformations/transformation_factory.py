@@ -24,13 +24,13 @@ class _TransformationFactory(object):
                 raise ValueError('ERROR: incompatible codomain')
 
         elif isinstance(domain, GLSpace):
-            if isinstance(codomain, GLSpace):
+            if isinstance(codomain, LMSpace):
                 return GLLMTransformation(domain, codomain, module)
             else:
                 raise ValueError('ERROR: incompatible codomain')
 
         elif isinstance(domain, HPSpace):
-            if isinstance(codomain, GLSpace):
+            if isinstance(codomain, LMSpace):
                 return HPLMTransformation(domain, codomain, module)
             else:
                 raise ValueError('ERROR: incompatible codomain')
