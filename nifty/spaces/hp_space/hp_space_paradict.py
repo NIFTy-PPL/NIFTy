@@ -12,7 +12,7 @@ class HPSpaceParadict(SpaceParadict):
         SpaceParadict.__init__(self, nside=nside)
 
     def __setitem__(self, key, arg):
-        if key not in ['nside', 'distances']:
+        if key not in ['nside']:
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported hp_space parameter"))
 
