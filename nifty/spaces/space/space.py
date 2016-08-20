@@ -268,10 +268,6 @@ class Space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic k_array for Space base class."))
 
-    def smooth(self, x, **kwargs):
-        raise AttributeError(about._errors.cstring(
-            "ERROR: There is no generic smoothing for Space base class."))
-
     def get_plot(self, x, title="", vmin=None, vmax=None, unit=None,
                  norm=None, other=None, legend=False, save=None, **kwargs):
         """

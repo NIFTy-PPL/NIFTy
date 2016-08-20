@@ -7,6 +7,8 @@ from nifty.spaces.space import SpaceParadict
 class HPSpaceParadict(SpaceParadict):
 
     def __init__(self, nside):
+        if not hasattr(self, 'parameters'):
+            self.parameters = {}
         SpaceParadict.__init__(self, nside=nside)
 
     def __setitem__(self, key, arg):
@@ -14,9 +16,12 @@ class HPSpaceParadict(SpaceParadict):
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported hp_space parameter"))
 
-        temp = int(arg)
-        # if(not hp.isnsideok(nside)):
-        if ((temp & (temp - 1)) != 0) or (temp < 2):
-            raise ValueError(about._errors.cstring(
-                "ERROR: invalid parameter ( nside <> 2**n )."))
+        if key == 'nside':
+            temp = int(arg)
+            if ((temp & (temp - 1)) != 0) or (temp < 2):
+                raise ValueError(
+                    about._errors.cstring(
+                        "ERROR: invalid parameter ( nside <> 2**n ).")
+                )
+
         self.parameters.__setitem__(key, temp)
