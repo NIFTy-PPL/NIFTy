@@ -236,6 +236,14 @@ def cast_axis_to_tuple(axis, length):
 
     # shift negative indices to positive ones
     axis = tuple(item if (item >= 0) else (item + length) for item in axis)
+
+    # remove duplicate entries
+    axis = tuple(set(axis))
+
+    # assert that all entries are elements in [0, length]
+    for elem in axis:
+        assert(0 <= elem < length)
+
     return axis
 
 

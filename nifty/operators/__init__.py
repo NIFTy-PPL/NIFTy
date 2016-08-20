@@ -20,6 +20,13 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
+
+from linear_operator import LinearOperator,\
+                            LinearOperatorParadict
+
+from square_operator import SquareOperator,\
+                            SquareOperatorParadict
+
 from nifty_operators import operator,\
                             diagonal_operator,\
                             power_operator,\
