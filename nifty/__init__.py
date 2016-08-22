@@ -45,7 +45,7 @@ from paradict import Paradict
 # TODO: Remove this once the transition to field types is done.
 from spaces.space import Space as point_space
 
-from nifty_random import random
+from random import Random
 from nifty_simple_math import *
 from nifty_utilities import *
 

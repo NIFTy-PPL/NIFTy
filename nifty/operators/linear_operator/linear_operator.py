@@ -1,28 +1,37 @@
 # -*- coding: utf-8 -*-
 
+import abc
+
 from nifty.config import about
 from nifty.field import Field
 from nifty.spaces import Space
 from nifty.field_types import FieldType
 import nifty.nifty_utilities as utilities
 
-from linear_operator_paradict import LinearOperatorParadict
-
 
 class LinearOperator(object):
+    __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain=None, target=None,
-                 field_type=None, field_type_target=None,
-                 implemented=False, symmetric=False, unitary=False):
-        self.paradict = LinearOperatorParadict()
-
+    def __init__(self, domain=(), field_type=(), implemented=False):
+        self._domain = self._parse_domain(domain)
+        self._field_type = self._parse_field_type(field_type)
         self._implemented = bool(implemented)
 
-        self.domain = self._parse_domain(domain)
-        self.target = self._parse_domain(target)
+    @property
+    def domain(self):
+        return self._domain
 
-        self.field_type = self._parse_field_type(field_type)
-        self.field_type_target = self._parse_field_type(field_type_target)
+    @abc.abstractproperty
+    def target(self):
+        raise NotImplementedError
+
+    @property
+    def field_type(self):
+        return self._field_type
+
+    @abc.abstractproperty
+    def field_type_target(self):
+        raise NotImplementedError
 
     def _parse_domain(self, domain):
         if domain is None:

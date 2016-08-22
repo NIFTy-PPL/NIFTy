@@ -2,12 +2,12 @@ from __future__ import division
 import numpy as np
 import pylab as pl
 
-from d2o import distributed_data_object, \
+from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import about, \
-    nifty_configuration as gc, \
-    dependency_injector as gdi
+from nifty.config import about,\
+                         nifty_configuration as gc,\
+                         dependency_injector as gdi
 
 from nifty.field_types import FieldType,\
                               FieldArray
@@ -15,6 +15,8 @@ from nifty.field_types import FieldType,\
 from nifty.spaces.space import Space
 
 import nifty.nifty_utilities as utilities
+from nifty.random import Random
+
 
 POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 COMM = getattr(gdi[gc['mpi_module']], gc['default_comm'])
@@ -24,20 +26,11 @@ class Field(object):
     # ---Initialization methods---
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
                  datamodel=None, copy=False):
-        if isinstance(val, Field):
-            if domain is None:
-                domain = val.domain
-            if dtype is None:
-                dtype = val.dtype
-            if field_type is None:
-                field_type = val.field_type
-            if datamodel is None:
-                datamodel = val.datamodel
 
-        self.domain = self._parse_domain(domain=domain)
+        self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
 
-        self.field_type = self._parse_field_type(field_type)
+        self.field_type = self._parse_field_type(field_type, val=val)
 
         try:
             start = len(reduce(lambda x, y: x+y, self.domain_axes))
@@ -55,9 +48,12 @@ class Field(object):
 
         self.set_val(new_val=val, copy=copy)
 
-    def _parse_domain(self, domain):
+    def _parse_domain(self, domain, val):
         if domain is None:
-            domain = ()
+            if isinstance(val, Field):
+                domain = val.domain
+            else:
+                domain = ()
         elif not isinstance(domain, tuple):
             domain = (domain,)
         for d in domain:
@@ -67,9 +63,12 @@ class Field(object):
                     "nifty.space."))
         return domain
 
-    def _parse_field_type(self, field_type):
+    def _parse_field_type(self, field_type, val):
         if field_type is None:
-            field_type = ()
+            if isinstance(val, Field):
+                field_type = val.field_type
+            else:
+                field_type = ()
         elif not isinstance(field_type, tuple):
             field_type = (field_type,)
         for ft in field_type:
@@ -89,8 +88,11 @@ class Field(object):
             axes_list += [tuple(l)]
         return tuple(axes_list)
 
-    def _infer_dtype(self, dtype=None, domain=None, field_type=None):
+    def _infer_dtype(self, dtype, val, domain, field_type):
         if dtype is None:
+            if isinstance(val, Field) or \
+               isinstance(val, distributed_data_object):
+                dtype = val.dtype
             dtype_tuple = (np.dtype(gc['default_field_dtype']),)
         else:
             dtype_tuple = (np.dtype(dtype),)
@@ -100,17 +102,74 @@ class Field(object):
             dtype_tuple += tuple(np.dtype(ft.dtype) for ft in field_type)
 
         dtype = reduce(lambda x, y: np.result_type(x, y), dtype_tuple)
+
         return dtype
 
     def _parse_datamodel(self, datamodel, val):
-        if datamodel in DISTRIBUTION_STRATEGIES['all']:
-            pass
-        elif isinstance(val, distributed_data_object):
-            datamodel = val.distribution_strategy
-        else:
-            datamodel = gc['default_datamodel']
-
+        if datamodel is None:
+            if isinstance(val, distributed_data_object):
+                datamodel = val.distribution_strategy
+            elif isinstance(val, Field):
+                datamodel = val.datamodel
+            else:
+                about.warnings.cprint("WARNING: Datamodel set to default!")
+                datamodel = gc['default_datamodel']
+        elif datamodel not in DISTRIBUTION_STRATEGIES['all']:
+            raise ValueError(about._errors.cstring(
+                    "ERROR: Invalid datamodel!"))
         return datamodel
+
+
+    # ---Factory methods---
+    @classmethod
+    def from_random(cls, random_type, domain=None, dtype=None, field_type=None,
+                    datamodel=None, **kwargs):
+        # create a initially empty field
+        f = cls(domain=domain, dtype=dtype, field_type=field_type,
+                datamodel=datamodel)
+
+        # now use the processed input in terms of f in order to parse the
+        # random arguments
+        random_arguments = cls._parse_random_arguments(random_type=random_type,
+                                                       f=f,
+                                                       **kwargs)
+
+        # extract the distributed_dato_object from f and apply the appropriate
+        # random number generator to it
+        sample = f.get_val(copy=False)
+        generator_function = getattr(Random, random_type)
+        sample.apply_generator(
+            lambda shape: generator_function(dtype=f.dtype,
+                                             shape=shape,
+                                             **random_arguments))
+        return f
+
+    @staticmethod
+    def _parse_random_arguments(random_type, f, **kwargs):
+
+        if random_type == "pm1":
+            random_arguments = {}
+
+        elif random_type == "normal":
+            mean = kwargs.get('mean', 0)
+            std = kwargs.get('std', 1)
+            random_arguments = {'mean': mean,
+                                'std': std}
+
+        elif random_type == "uniform":
+            low = kwargs.get('low', 0)
+            high = kwargs.get('high', 1)
+            random_arguments = {'low': low,
+                                'high': high}
+
+#        elif random_type == 'syn':
+#            pass
+
+        else:
+            raise KeyError(about._errors.cstring(
+                "ERROR: unsupported random key '" + str(random_type) + "'."))
+
+        return random_arguments
 
     # ---Properties---
     def set_val(self, new_val=None, copy=False):
@@ -462,6 +521,7 @@ class Field(object):
                 assert len(other.domain) == len(self.domain)
                 for index in xrange(len(self.domain)):
                     assert other.domain[index] == self.domain[index]
+                assert len(other.field_type) == len(self.field_type)
                 for index in xrange(len(self.field_type)):
                     assert other.field_type[index] == self.field_type[index]
             except AssertionError:

@@ -21,11 +21,9 @@
 
 from __future__ import division
 
-from linear_operator import LinearOperator,\
-                            LinearOperatorParadict
+from linear_operator import LinearOperator
 
-from square_operator import SquareOperator,\
-                            SquareOperatorParadict
+from endomorphic_operator import EndomorphicOperator
 
 from nifty_operators import operator,\
                             diagonal_operator,\
