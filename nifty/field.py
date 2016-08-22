@@ -40,6 +40,7 @@ class Field(object):
                                                     start=start)
 
         self.dtype = self._infer_dtype(dtype=dtype,
+                                       val=val,
                                        domain=self.domain,
                                        field_type=self.field_type)
 

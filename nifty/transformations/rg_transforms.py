@@ -359,8 +359,7 @@ class FFTW(Transform):
                     local_shape=val.local_shape,
                     local_offset_Q=local_offset_Q,
                     is_local=False,
-                    transform_shape=val.shape,
-                    # TODO: check why inp.shape doesn't work
+                    transform_shape=inp.shape,
                     **kwargs
                 )
 
@@ -436,10 +435,6 @@ class FFTW(Transform):
                 return_val = self._repack_to_fftw_and_transform(
                     val, axes, **kwargs
                 )
-
-            # If domain is purely real, the result of the FFT is hermitian
-            if self.domain.paradict['complexity'] == 0:
-                return_val.hermitian = True
 
         return return_val
 
@@ -636,10 +631,6 @@ class GFFT(Transform):
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=self.codomain.dtype)
             new_val.set_full_data(return_val, copy=False)
-            # If the values living in domain are purely real, the result of
-            # the fft is hermitian
-            if self.domain.paradict['complexity'] == 0:
-                new_val.hermitian = True
             return_val = new_val
         else:
             return_val = return_val.astype(self.codomain.dtype, copy=False)

@@ -52,11 +52,12 @@ from nifty_utilities import *
 from field_types import FieldType,\
                         FieldArray
 
-from operators import *
-
 from spaces import *
+
+from transformations import *
+
+from operators import *
 
 from demos import get_demo_dir
 
 #import pyximport; pyximport.install(pyimport = True)
-from transformations import *

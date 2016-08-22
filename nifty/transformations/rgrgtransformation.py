@@ -126,13 +126,13 @@ class RGRGTransformation(Transformation):
         """
         if self._transform.codomain.harmonic:
             # correct for forward fft
-            val = self._transform.domain.calc_weight(val, power=1)
+            val = self._transform.domain.weight(val, power=1)
 
         # Perform the transformation
         Tval = self._transform.transform(val, axes, **kwargs)
 
         if not self._transform.codomain.harmonic:
             # correct for inverse fft
-            Tval = self._transform.codomain.calc_weight(Tval, power=-1)
+            Tval = self._transform.codomain.weight(Tval, power=-1)
 
         return Tval

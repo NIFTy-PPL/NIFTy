@@ -16,7 +16,7 @@ from nifty.config import about,\
                          dependency_injector as gdi
 
 from lm_space_paradict import LMSpaceParadict
-from nifty.nifty_power_indices import lm_power_indices
+# from nifty.nifty_power_indices import lm_power_indices
 from nifty.nifty_random import random
 
 gl = gdi.get('libsharp_wrapper_gl')
