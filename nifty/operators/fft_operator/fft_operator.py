@@ -52,6 +52,15 @@ class FFTOperator(LinearOperator):
             self.target[0], self.domain[0]
         )
 
+    def adjoint_times(self, x, spaces=None, types=None):
+        return self.inverse_times(x, spaces, types)
+
+    def adjoint_inverse_times(self, x, spaces=None, types=None):
+        return self.times(x, spaces, types)
+
+    def inverse_adjoint_times(self, x, spaces=None, types=None):
+        return self.times(x, spaces, types)
+
     def _times(self, x, spaces, types):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
 
