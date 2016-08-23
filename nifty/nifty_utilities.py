@@ -41,14 +41,14 @@ def get_slice_list(shape, axes):
                                       axes(axis) does not match shape.")
             )
         axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
-        axes_iterables =\
+        axes_iterables = \
             [range(y) for x, y in enumerate(shape) if x not in axes]
         for index in product(*axes_iterables):
             it_iter = iter(index)
             slice_list = [
                 next(it_iter)
                 if axis else slice(None, None) for axis in axes_select
-            ]
+                ]
             yield slice_list
     else:
         yield [slice(None, None)]
@@ -68,7 +68,7 @@ def hermitianize_gaussian(x, axes=None):
     # The fixed points of the point inversion must not be avaraged.
     # Hence one must multiply them again with sqrt(0.5)
     # -> Get the middle index of the array
-    mid_index = np.array(x.shape, dtype=np.int)//2
+    mid_index = np.array(x.shape, dtype=np.int) // 2
     dimensions = mid_index.size
     # Use ndindex to iterate over all combinations of zeros and the
     # mid_index in order to correct all fixed points.
@@ -78,7 +78,7 @@ def hermitianize_gaussian(x, axes=None):
     ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
     ndlist = tuple(ndlist)
     for i in np.ndindex(ndlist):
-        temp_index = tuple(i*mid_index)
+        temp_index = tuple(i * mid_index)
         x[temp_index] *= np.sqrt(0.5)
     try:
         x.hermitian = True
@@ -109,7 +109,7 @@ def _hermitianize_inverter(x, axes):
     # calculate the number of dimensions the input array has
     dimensions = len(x.shape)
     # prepare the slicing object which will be used for mirroring
-    slice_primitive = [slice(None), ]*dimensions
+    slice_primitive = [slice(None), ] * dimensions
     # copy the input data
     y = x.copy()
 
@@ -208,8 +208,9 @@ def field_map(ishape, function, *args):
             # with ishape (3,4,3) and (3,4,1)
             def get_clipped(w, ind):
                 w_shape = np.array(np.shape(w))
-                get_tuple = tuple(np.clip(ind, 0, w_shape-1))
+                get_tuple = tuple(np.clip(ind, 0, w_shape - 1))
                 return w[get_tuple]
+
             result = np.empty_like(args[0])
             for i in xrange(reduce(lambda x, y: x * y, result.shape)):
                 ii = np.unravel_index(i, result.shape)
@@ -229,7 +230,7 @@ def cast_axis_to_tuple(axis, length):
         axis = tuple(int(item) for item in axis)
     except(TypeError):
         if np.isscalar(axis):
-            axis = (int(axis), )
+            axis = (int(axis),)
         else:
             raise TypeError(
                 "ERROR: Could not convert axis-input to tuple of ints")
@@ -242,7 +243,7 @@ def cast_axis_to_tuple(axis, length):
 
     # assert that all entries are elements in [0, length]
     for elem in axis:
-        assert(0 <= elem < length)
+        assert (0 <= elem < length)
 
     return axis
 
@@ -262,3 +263,21 @@ def complex_bincount(x, weights=None, minlength=None):
         return real_bincount + imag_bincount
     else:
         return x.bincount(weights=weights, minlength=minlength)
+
+
+def get_default_codomain(domain):
+    from nifty.spaces import RGSpace, HPSpace, GLSpace, LMSpace
+    from nifty.operators.fft_operator.transformations import RGRGTransformation, \
+        HPLMTransformation, GLLMTransformation, LMGLTransformation
+
+    if isinstance(domain, RGSpace):
+        return RGRGTransformation.get_codomain(domain)
+    elif isinstance(domain, HPSpace):
+        return HPLMTransformation.get_codomain(domain)
+    elif isinstance(domain, GLSpace):
+        return GLLMTransformation.get_codomain(domain)
+    elif isinstance(domain, LMSpace):
+        # TODO: get the preferred transformation path from config
+        return LMGLTransformation.get_codomain(domain)
+    else:
+        raise TypeError(about._errors.cstring('ERROR: unknown domain'))

@@ -25,6 +25,8 @@ from linear_operator import LinearOperator
 
 from endomorphic_operator import EndomorphicOperator
 
+from fft_operator import *
+
 from nifty_operators import operator,\
                             diagonal_operator,\
                             power_operator,\
