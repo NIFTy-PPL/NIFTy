@@ -54,8 +54,6 @@ from field_types import FieldType,\
 
 from spaces import *
 
-from transformations import *
-
 from operators import *
 
 from demos import get_demo_dir

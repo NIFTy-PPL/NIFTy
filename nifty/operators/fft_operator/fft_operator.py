@@ -1,15 +1,18 @@
 from nifty.config import about
 import nifty.nifty_utilities as utilities
 from nifty.operators.linear_operator import LinearOperator
-from nifty.transformations import TransformationFactory
+from transformations import TransformationFactory
 
 
-class TransformationOperator(LinearOperator):
+class FFTOperator(LinearOperator):
+
+    # ---Overwritten properties and methods---
+
     def __init__(self, domain=(), field_type=(), target=(),
                  field_type_target=(), implemented=True):
-        super(TransformationOperator, self).__init__(domain=domain,
-                                             field_type=field_type,
-                                             implemented=implemented)
+        super(FFTOperator, self).__init__(domain=domain,
+                                          field_type=field_type,
+                                          implemented=implemented)
 
         if self.domain == ():
             raise TypeError(about._errors.cstring(
@@ -19,8 +22,8 @@ class TransformationOperator(LinearOperator):
         else:
             if len(self.domain) > 1:
                 raise TypeError(about._errors.cstring(
-                    'ERROR: TransformationOperator accepts only a single'
-                    'space as input'
+                    'ERROR: TransformationOperator accepts only a single '
+                    'space as input domain.'
                 ))
 
         if self.field_type != ():
@@ -30,7 +33,9 @@ class TransformationOperator(LinearOperator):
             ))
 
         # currently not sanitizing the target
-        self._target = self._parse_domain(target)
+        self._target = self._parse_domain(
+            utilities.get_default_codomain(self.domain[0])
+        )
         self._field_type_target = self._parse_field_type(field_type_target)
 
         if self.field_type_target != ():
@@ -47,14 +52,6 @@ class TransformationOperator(LinearOperator):
             self.target[0], self.domain[0]
         )
 
-    @property
-    def target(self):
-        return self._target
-
-    @property
-    def field_type_target(self):
-        return self._field_type_target
-
     def _times(self, x, spaces, types):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
 
@@ -64,3 +61,14 @@ class TransformationOperator(LinearOperator):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
 
         return self._inverse_transformation.transform(x.val, axes=spaces)
+
+    # ---Mandatory properties and methods---
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def field_type_target(self):
+        return self._field_type_target
+

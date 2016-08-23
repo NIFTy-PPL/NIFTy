@@ -8,13 +8,15 @@ from nifty import HPSpace, LMSpace
 hp = gdi.get('healpy')
 
 
-class LMHPTransformation(Transformation):
+class HPLMTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        if gdi.get('healpy') is None:
-            raise ImportError(
-                "The module libsharp is needed but not available.")
+        if 'healpy' not in gdi:
+            raise ImportError("The module healpy is needed but not available")
 
-        if self.check_codomain(domain, codomain):
+        if codomain is None:
+            self.domain = domain
+            self.codomain = self.get_codomain(domain)
+        elif self.check_codomain(domain, codomain):
             self.domain = domain
             self.codomain = codomain
         else:
@@ -24,55 +26,51 @@ class LMHPTransformation(Transformation):
     def get_codomain(domain):
         """
             Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  a pixelization of the two-sphere.
+            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
 
             Parameters
             ----------
-            domain : LMSpace
+            domain: HPSpace
                 Space for which a codomain is to be generated
 
             Returns
             -------
-            codomain : HPSpace
+            codomain : LMSpace
                 A compatible codomain.
-
-            References
-            ----------
-            .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-                   High-Resolution Discretization and Fast Analysis of Data
-                   Distributed on the Sphere", *ApJ* 622..759G.
         """
         if domain is None:
             raise ValueError('ERROR: cannot generate codomain for None')
 
-        if not isinstance(domain, LMSpace):
-            raise TypeError('ERROR: domain needs to be a LMSpace')
+        if not isinstance(domain, HPSpace):
+            raise TypeError('ERROR: domain needs to be a HPSpace')
 
-        nside = (domain.paradict['lmax'] + 1) // 3
-        return HPSpace(nside=nside)
+        lmax = 3 * domain.paradict['nside'] - 1
+        mmax = lmax
+        return LMSpace(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
 
     @staticmethod
     def check_codomain(domain, codomain):
-        if not isinstance(domain, LMSpace):
-            raise TypeError('ERROR: domain is not a LMSpace')
+        if not isinstance(domain, HPSpace):
+            raise TypeError('ERROR: domain is not a HPSpace')
 
         if codomain is None:
             return False
 
-        if not isinstance(codomain, HPSpace):
-            raise TypeError('ERROR: codomain must be a HPSpace.')
-        nside = codomain.paradict['nside']
-        lmax = domain.paradict['lmax']
-        mmax = domain.paradict['mmax']
+        if not isinstance(codomain, LMSpace):
+            raise TypeError('ERROR: codomain must be a LMSpace.')
 
-        if (lmax != mmax) or (3 * nside - 1 != lmax):
+        nside = domain.paradict['nside']
+        lmax = codomain.paradict['lmax']
+        mmax = codomain.paradict['mmax']
+
+        if (3 * nside - 1 != lmax) or (lmax != mmax):
             return False
 
         return True
 
     def transform(self, val, axes=None, **kwargs):
         """
-        LM -> HP transform method.
+        HP -> LM transform method.
 
         Parameters
         ----------
@@ -83,6 +81,16 @@ class LMHPTransformation(Transformation):
             The axes along which the transformation should take place
 
         """
+        # get by number of iterations from kwargs
+        niter = kwargs['niter'] if 'niter' in kwargs else 0
+
+        if self.domain.discrete:
+            val = self.domain.weight(val, power=-0.5, axes=axes)
+
+        # shorthands for transform parameters
+        lmax = self.codomain.paradict['lmax']
+        mmax = self.codomain.paradict['mmax']
+
         if isinstance(val, distributed_data_object):
             temp_val = val.get_full_data()
         else:
@@ -98,23 +106,14 @@ class LMHPTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            nside = self.codomain.paradict['nside']
-            lmax = self.domain.paradict['lmax']
-            mmax = self.domain.paradict['mmax']
-
-            inp = inp.astype(np.complex128, copy=False)
-            inp = hp.alm2map(inp, nside, lmax=lmax, mmax=mmax,
-                             pixwin=False, fwhm=0.0, sigma=None,
-                             pol=True, inplace=False)
+            inp = hp.map2alm(inp.astype(np.float64, copy=False),
+                             lmax=lmax, mmax=mmax, iter=niter, pol=True,
+                             use_weights=False, datapath=None)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp
             else:
                 return_val[slice_list] = inp
-
-        # re-weight if discrete
-        if self.codomain.discrete:
-            val = self.codomain.calc_weight(val, power=0.5)
 
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=self.codomain.dtype)

@@ -1,15 +1,15 @@
-import numpy as np
-from numpy.testing import assert_equal, assert_almost_equal, assert_raises
-
-from nose_parameterized import parameterized
-import unittest
 import itertools
+import unittest
+
+import d2o
+import numpy as np
+from nifty.rg.rg_space import gc as RG_GC
+from nose_parameterized import parameterized
+from numpy.testing import assert_raises
 
 from nifty import RGSpace, LMSpace, HPSpace, GLSpace
 from nifty import transformator
-from nifty.transformations.rgrgtransformation import RGRGTransformation
-from nifty.rg.rg_space import gc as RG_GC
-import d2o
+from nifty.operators.fft_operator.transformations.rgrgtransformation import RGRGTransformation
 
 
 ###############################################################################

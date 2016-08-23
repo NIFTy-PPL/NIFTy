@@ -3,20 +3,18 @@ from transformation import Transformation
 from d2o import distributed_data_object
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
-from nifty import GLSpace, LMSpace
+from nifty import HPSpace, LMSpace
 
-gl = gdi.get('libsharp_wrapper_gl')
+hp = gdi.get('healpy')
 
 
-class GLLMTransformation(Transformation):
+class LMHPTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        if 'libsharp_wrapper_gl' not in gdi:
-            raise ImportError("The module libsharp is needed but not available")
+        if gdi.get('healpy') is None:
+            raise ImportError(
+                "The module libsharp is needed but not available.")
 
-        if codomain is None:
-            self.domain = domain
-            self.codomain = self.get_codomain(domain)
-        elif self.check_codomain(domain, codomain):
+        if self.check_codomain(domain, codomain):
             self.domain = domain
             self.codomain = codomain
         else:
@@ -26,56 +24,55 @@ class GLLMTransformation(Transformation):
     def get_codomain(domain):
         """
             Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+            reasonable, i.e.\  a pixelization of the two-sphere.
 
             Parameters
             ----------
-            domain: GLSpace
+            domain : LMSpace
                 Space for which a codomain is to be generated
 
             Returns
             -------
-            codomain : LMSpace
+            codomain : HPSpace
                 A compatible codomain.
+
+            References
+            ----------
+            .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+                   High-Resolution Discretization and Fast Analysis of Data
+                   Distributed on the Sphere", *ApJ* 622..759G.
         """
         if domain is None:
             raise ValueError('ERROR: cannot generate codomain for None')
 
-        if not isinstance(domain, GLSpace):
-            raise TypeError('ERROR: domain needs to be a GLSpace')
+        if not isinstance(domain, LMSpace):
+            raise TypeError('ERROR: domain needs to be a LMSpace')
 
-        nlat = domain.paradict['nlat']
-        lmax = nlat - 1
-        mmax = nlat - 1
-        if domain.dtype == np.dtype('float32'):
-            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex64)
-        else:
-            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex128)
+        nside = (domain.paradict['lmax'] + 1) // 3
+        return HPSpace(nside=nside)
 
     @staticmethod
     def check_codomain(domain, codomain):
-        if not isinstance(domain, GLSpace):
-            raise TypeError('ERROR: domain is not a GLSpace')
+        if not isinstance(domain, LMSpace):
+            raise TypeError('ERROR: domain is not a LMSpace')
 
         if codomain is None:
             return False
 
-        if not isinstance(codomain, LMSpace):
-            raise TypeError('ERROR: codomain must be a LMSpace.')
+        if not isinstance(codomain, HPSpace):
+            raise TypeError('ERROR: codomain must be a HPSpace.')
+        nside = codomain.paradict['nside']
+        lmax = domain.paradict['lmax']
+        mmax = domain.paradict['mmax']
 
-        nlat = domain.paradict['nlat']
-        nlon = domain.paradict['nlon']
-        lmax = codomain.paradict['lmax']
-        mmax = codomain.paradict['mmax']
-
-        if (nlon != 2 * nlat - 1) or (lmax != nlat - 1) or (lmax != mmax):
+        if (lmax != mmax) or (3 * nside - 1 != lmax):
             return False
 
         return True
 
     def transform(self, val, axes=None, **kwargs):
         """
-        GL -> LM transform method.
+        LM -> HP transform method.
 
         Parameters
         ----------
@@ -86,15 +83,6 @@ class GLLMTransformation(Transformation):
             The axes along which the transformation should take place
 
         """
-        if self.domain.discrete:
-            val = self.domain.calc_weight(val, power=-0.5)
-
-        # shorthands for transform parameters
-        nlat = self.domain.paradict['nlat']
-        nlon = self.domain.paradict['nlon']
-        lmax = self.codomain.paradict['lmax']
-        mmax = self.codomain.paradict['mmax']
-
         if isinstance(val, distributed_data_object):
             temp_val = val.get_full_data()
         else:
@@ -110,19 +98,23 @@ class GLLMTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            if self.domain.dtype == np.dtype('float32'):
-                inp = gl.map2alm_f(inp,
-                                   nlat=nlat, nlon=nlon,
-                                   lmax=lmax, mmax=mmax)
-            else:
-                inp = gl.map2alm(inp,
-                                 nlat=nlat, nlon=nlon,
-                                 lmax=lmax, mmax=mmax)
+            nside = self.codomain.paradict['nside']
+            lmax = self.domain.paradict['lmax']
+            mmax = self.domain.paradict['mmax']
+
+            inp = inp.astype(np.complex128, copy=False)
+            inp = hp.alm2map(inp, nside, lmax=lmax, mmax=mmax,
+                             pixwin=False, fwhm=0.0, sigma=None,
+                             pol=True, inplace=False)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp
             else:
                 return_val[slice_list] = inp
+
+        # re-weight if discrete
+        if self.codomain.discrete:
+            val = self.codomain.weight(val, power=0.5, axes=axes)
 
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=self.codomain.dtype)

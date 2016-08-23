@@ -8,11 +8,10 @@ from nifty import GLSpace, LMSpace
 gl = gdi.get('libsharp_wrapper_gl')
 
 
-class LMGLTransformation(Transformation):
+class GLLMTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        if gdi.get('libsharp_wrapper_gl') is None:
-            raise ImportError(
-                "The module libsharp is needed but not available.")
+        if 'libsharp_wrapper_gl' not in gdi:
+            raise ImportError("The module libsharp is needed but not available")
 
         if codomain is None:
             self.domain = domain
@@ -27,66 +26,56 @@ class LMGLTransformation(Transformation):
     def get_codomain(domain):
         """
             Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  a pixelization of the two-sphere.
+            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
 
             Parameters
             ----------
-            domain : LMSpace
+            domain: GLSpace
                 Space for which a codomain is to be generated
 
             Returns
             -------
-            codomain : HPSpace
+            codomain : LMSpace
                 A compatible codomain.
-
-            References
-            ----------
-            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013,
-                   "Libsharp - spherical
-                   harmonic transforms revisited";
-                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         """
         if domain is None:
             raise ValueError('ERROR: cannot generate codomain for None')
 
-        if not isinstance(domain, LMSpace):
-            raise TypeError('ERROR: domain needs to be a LMSpace')
+        if not isinstance(domain, GLSpace):
+            raise TypeError('ERROR: domain needs to be a GLSpace')
 
-        if domain.dtype == np.dtype('complex64'):
-            new_dtype = np.float32
-        elif domain.dtype == np.dtype('complex128'):
-            new_dtype = np.float64
+        nlat = domain.paradict['nlat']
+        lmax = nlat - 1
+        mmax = nlat - 1
+        if domain.dtype == np.dtype('float32'):
+            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex64)
         else:
-            raise ValueError('ERROR: unsupported domain dtype')
-
-        nlat = domain.paradict['lmax'] + 1
-        nlon = domain.paradict['lmax'] * 2 + 1
-        return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
+            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex128)
 
     @staticmethod
     def check_codomain(domain, codomain):
-        if not isinstance(domain, LMSpace):
-            raise TypeError('ERROR: domain is not a LMSpace')
+        if not isinstance(domain, GLSpace):
+            raise TypeError('ERROR: domain is not a GLSpace')
 
         if codomain is None:
             return False
 
-        if not isinstance(codomain, GLSpace):
-            raise TypeError('ERROR: codomain must be a GLSpace.')
+        if not isinstance(codomain, LMSpace):
+            raise TypeError('ERROR: codomain must be a LMSpace.')
 
-        nlat = codomain.paradict['nlat']
-        nlon = codomain.paradict['nlon']
-        lmax = domain.paradict['lmax']
-        mmax = domain.paradict['mmax']
+        nlat = domain.paradict['nlat']
+        nlon = domain.paradict['nlon']
+        lmax = codomain.paradict['lmax']
+        mmax = codomain.paradict['mmax']
 
-        if (lmax != mmax) or (nlat != lmax + 1) or (nlon != 2 * lmax + 1):
+        if (nlon != 2 * nlat - 1) or (lmax != nlat - 1) or (lmax != mmax):
             return False
 
         return True
 
     def transform(self, val, axes=None, **kwargs):
         """
-        LM -> GL transform method.
+        GL -> LM transform method.
 
         Parameters
         ----------
@@ -97,6 +86,15 @@ class LMGLTransformation(Transformation):
             The axes along which the transformation should take place
 
         """
+        if self.domain.discrete:
+            val = self.domain.weight(val, power=-0.5, axes=axes)
+
+        # shorthands for transform parameters
+        nlat = self.domain.paradict['nlat']
+        nlon = self.domain.paradict['nlon']
+        lmax = self.codomain.paradict['lmax']
+        mmax = self.codomain.paradict['mmax']
+
         if isinstance(val, distributed_data_object):
             temp_val = val.get_full_data()
         else:
@@ -112,26 +110,19 @@ class LMGLTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            nlat = self.codomain.paradict['nlat']
-            nlon = self.codomain.paradict['nlon']
-            lmax = self.domain.paradict['lmax']
-            mmax = self.paradict['mmax']
-
-            if self.domain.dtype == np.dtype('complex64'):
-                inp = gl.alm2map_f(inp, nlat=nlat, nlon=nlon,
-                                   lmax=lmax, mmax=mmax, cl=False)
+            if self.domain.dtype == np.dtype('float32'):
+                inp = gl.map2alm_f(inp,
+                                   nlat=nlat, nlon=nlon,
+                                   lmax=lmax, mmax=mmax)
             else:
-                inp = gl.alm2map(inp, nlat=nlat, nlon=nlon,
-                                 lmax=lmax, mmax=mmax, cl=False)
+                inp = gl.map2alm(inp,
+                                 nlat=nlat, nlon=nlon,
+                                 lmax=lmax, mmax=mmax)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp
             else:
                 return_val[slice_list] = inp
-
-        # re-weight if discrete
-        if self.codomain.discrete:
-            val = self.codomain.calc_weight(val, power=0.5)
 
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=self.codomain.dtype)
