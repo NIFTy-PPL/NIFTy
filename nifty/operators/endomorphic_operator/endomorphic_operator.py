@@ -11,7 +11,7 @@ class EndomorphicOperator(LinearOperator):
     # ---Overwritten properties and methods---
 
     def inverse_times(self, x, spaces=None, types=None):
-        if self.paradict['symmetric'] and self.paradict['unitary']:
+        if self.symmetric and self.unitary:
             return self.times(x, spaces, types)
         else:
             return super(EndomorphicOperator, self).inverse_times(
@@ -20,10 +20,8 @@ class EndomorphicOperator(LinearOperator):
                                                               types=types)
 
     def adjoint_times(self, x, spaces=None, types=None):
-        if self.paradict['symmetric']:
+        if self.symmetric:
             return self.times(x, spaces, types)
-        elif self.paradict['unitary']:
-            return self.inverse_times(x, spaces, types)
         else:
             return super(EndomorphicOperator, self).adjoint_times(
                                                                 x=x,
@@ -31,10 +29,8 @@ class EndomorphicOperator(LinearOperator):
                                                                 types=types)
 
     def adjoint_inverse_times(self, x, spaces=None, types=None):
-        if self.paradict['symmetric']:
+        if self.symmetric:
             return self.inverse_times(x, spaces, types)
-        elif self.paradict['unitary']:
-            return self.times(x, spaces, types)
         else:
             return super(EndomorphicOperator, self).adjoint_inverse_times(
                                                                 x=x,
@@ -42,10 +38,8 @@ class EndomorphicOperator(LinearOperator):
                                                                 types=types)
 
     def inverse_adjoint_times(self, x, spaces=None, types=None):
-        if self.paradict['symmetric']:
+        if self.symmetric:
             return self.inverse_times(x, spaces, types)
-        elif self.paradict['unitary']:
-            return self.times(x, spaces, types)
         else:
             return super(EndomorphicOperator, self).inverse_adjoint_times(
                                                                 x=x,
@@ -66,10 +60,6 @@ class EndomorphicOperator(LinearOperator):
 
     @abc.abstractproperty
     def symmetric(self):
-        raise NotImplementedError
-
-    @abc.abstractproperty
-    def unitary(self):
         raise NotImplementedError
 
     def trace(self):

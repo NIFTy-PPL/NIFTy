@@ -60,6 +60,10 @@ class LinearOperator(object):
     def implemented(self):
         return self._implemented
 
+    @abc.abstractproperty
+    def unitary(self):
+        raise NotImplementedError
+
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)
 
@@ -81,6 +85,9 @@ class LinearOperator(object):
         return y
 
     def adjoint_times(self, x, spaces=None, types=None):
+        if self.unitary:
+            return self.inverse_times(x, spaces, types)
+
         spaces, types = self._check_input_compatibility(x, spaces, types)
 
         if not self.implemented:
@@ -89,6 +96,9 @@ class LinearOperator(object):
         return y
 
     def adjoint_inverse_times(self, x, spaces=None, types=None):
+        if self.unitary:
+            return self.times(x, spaces, types)
+
         spaces, types = self._check_input_compatibility(x, spaces, types)
 
         y = self._adjoint_inverse_times(x, spaces, types)
@@ -97,6 +107,9 @@ class LinearOperator(object):
         return y
 
     def inverse_adjoint_times(self, x, spaces=None, types=None):
+        if self.unitary:
+            return self.times(x, spaces, types)
+
         spaces, types = self._check_input_compatibility(x, spaces, types)
 
         y = self._inverse_adjoint_times(x, spaces, types)
