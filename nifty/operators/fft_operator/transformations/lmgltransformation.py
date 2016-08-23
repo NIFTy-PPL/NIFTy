@@ -3,15 +3,16 @@ from transformation import Transformation
 from d2o import distributed_data_object
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
-from nifty import HPSpace, LMSpace
+from nifty import GLSpace, LMSpace
 
-hp = gdi.get('healpy')
+gl = gdi.get('libsharp_wrapper_gl')
 
 
-class HPLMTransformation(Transformation):
+class LMGLTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        if 'healpy' not in gdi:
-            raise ImportError("The module healpy is needed but not available")
+        if gdi.get('libsharp_wrapper_gl') is None:
+            raise ImportError(
+                "The module libsharp is needed but not available.")
 
         if codomain is None:
             self.domain = domain
@@ -26,51 +27,66 @@ class HPLMTransformation(Transformation):
     def get_codomain(domain):
         """
             Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+            reasonable, i.e.\  a pixelization of the two-sphere.
 
             Parameters
             ----------
-            domain: HPSpace
+            domain : LMSpace
                 Space for which a codomain is to be generated
 
             Returns
             -------
-            codomain : LMSpace
+            codomain : HPSpace
                 A compatible codomain.
+
+            References
+            ----------
+            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013,
+                   "Libsharp - spherical
+                   harmonic transforms revisited";
+                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         """
         if domain is None:
             raise ValueError('ERROR: cannot generate codomain for None')
 
-        if not isinstance(domain, HPSpace):
-            raise TypeError('ERROR: domain needs to be a HPSpace')
+        if not isinstance(domain, LMSpace):
+            raise TypeError('ERROR: domain needs to be a LMSpace')
 
-        lmax = 3 * domain.paradict['nside'] - 1
-        mmax = lmax
-        return LMSpace(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
+        if domain.dtype == np.dtype('complex64'):
+            new_dtype = np.float32
+        elif domain.dtype == np.dtype('complex128'):
+            new_dtype = np.float64
+        else:
+            raise ValueError('ERROR: unsupported domain dtype')
+
+        nlat = domain.paradict['lmax'] + 1
+        nlon = domain.paradict['lmax'] * 2 + 1
+        return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
 
     @staticmethod
     def check_codomain(domain, codomain):
-        if not isinstance(domain, HPSpace):
-            raise TypeError('ERROR: domain is not a HPSpace')
+        if not isinstance(domain, LMSpace):
+            raise TypeError('ERROR: domain is not a LMSpace')
 
         if codomain is None:
             return False
 
-        if not isinstance(codomain, LMSpace):
-            raise TypeError('ERROR: codomain must be a LMSpace.')
+        if not isinstance(codomain, GLSpace):
+            raise TypeError('ERROR: codomain must be a GLSpace.')
 
-        nside = domain.paradict['nside']
-        lmax = codomain.paradict['lmax']
-        mmax = codomain.paradict['mmax']
+        nlat = codomain.paradict['nlat']
+        nlon = codomain.paradict['nlon']
+        lmax = domain.paradict['lmax']
+        mmax = domain.paradict['mmax']
 
-        if (3 * nside - 1 != lmax) or (lmax != mmax):
+        if (lmax != mmax) or (nlat != lmax + 1) or (nlon != 2 * lmax + 1):
             return False
 
         return True
 
     def transform(self, val, axes=None, **kwargs):
         """
-        HP -> LM transform method.
+        LM -> GL transform method.
 
         Parameters
         ----------
@@ -81,16 +97,6 @@ class HPLMTransformation(Transformation):
             The axes along which the transformation should take place
 
         """
-        # get by number of iterations from kwargs
-        niter = kwargs['niter'] if 'niter' in kwargs else 0
-
-        if self.domain.discrete:
-            val = self.domain.calc_weight(val, power=-0.5)
-
-        # shorthands for transform parameters
-        lmax = self.codomain.paradict['lmax']
-        mmax = self.codomain.paradict['mmax']
-
         if isinstance(val, distributed_data_object):
             temp_val = val.get_full_data()
         else:
@@ -106,14 +112,26 @@ class HPLMTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            inp = hp.map2alm(inp.astype(np.float64, copy=False),
-                             lmax=lmax, mmax=mmax, iter=niter, pol=True,
-                             use_weights=False, datapath=None)
+            nlat = self.codomain.paradict['nlat']
+            nlon = self.codomain.paradict['nlon']
+            lmax = self.domain.paradict['lmax']
+            mmax = self.paradict['mmax']
+
+            if self.domain.dtype == np.dtype('complex64'):
+                inp = gl.alm2map_f(inp, nlat=nlat, nlon=nlon,
+                                   lmax=lmax, mmax=mmax, cl=False)
+            else:
+                inp = gl.alm2map(inp, nlat=nlat, nlon=nlon,
+                                 lmax=lmax, mmax=mmax, cl=False)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp
             else:
                 return_val[slice_list] = inp
+
+        # re-weight if discrete
+        if self.codomain.discrete:
+            val = self.codomain.weight(val, power=0.5, axes=axes)
 
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=self.codomain.dtype)
