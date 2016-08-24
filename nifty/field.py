@@ -49,14 +49,17 @@ class Field(object):
 
         self.set_val(new_val=val, copy=copy)
 
-    def _parse_domain(self, domain, val):
+    def _parse_domain(self, domain, val=None):
         if domain is None:
             if isinstance(val, Field):
                 domain = val.domain
             else:
                 domain = ()
-        elif not isinstance(domain, tuple):
+        elif isinstance(domain, Space):
             domain = (domain,)
+        elif not isinstance(domain, tuple):
+            domain = tuple(domain)
+
         for d in domain:
             if not isinstance(d, Space):
                 raise TypeError(about._errors.cstring(
@@ -64,14 +67,16 @@ class Field(object):
                     "nifty.space."))
         return domain
 
-    def _parse_field_type(self, field_type, val):
+    def _parse_field_type(self, field_type, val=None):
         if field_type is None:
             if isinstance(val, Field):
                 field_type = val.field_type
             else:
                 field_type = ()
-        elif not isinstance(field_type, tuple):
+        elif isinstance(field_type, FieldType):
             field_type = (field_type,)
+        elif not isinstance(field_type, tuple):
+            field_type = tuple(field_type)
         for ft in field_type:
             if not isinstance(ft, FieldType):
                 raise TypeError(about._errors.cstring(

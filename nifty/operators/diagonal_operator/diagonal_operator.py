@@ -16,10 +16,12 @@ class DiagonalOperator(EndomorphicOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain=(), field_type=(), implemented=False,
-                 diagonal=None, bare=False, datamodel=None, copy=True):
+                 diagonal=None, bare=False, copy=True, datamodel=None):
         super(DiagonalOperator, self).__init__(domain=domain,
                                                field_type=field_type,
                                                implemented=implemented)
+
+        self._implemented = bool(implemented)
 
         if datamodel is None:
             if isinstance(diagonal, distributed_data_object):
@@ -81,6 +83,10 @@ class DiagonalOperator(EndomorphicOperator):
     # ---Mandatory properties and methods---
 
     @property
+    def implemented(self):
+        return self._implemented
+
+    @property
     def symmetric(self):
         return self._symmetric
 
@@ -116,8 +122,16 @@ class DiagonalOperator(EndomorphicOperator):
                   datamodel=self.datamodel,
                   copy=copy)
 
-        # weight if the given values were `bare`
-        f.weight(inplace=True)
+        # weight if the given values were `bare` and `implemented` is True
+        # do inverse weightening if the other way around
+        if bare and self.implemented:
+            # If `copy` is True, we won't change external data by weightening
+            # Otherwise, inplace weightening would change the external field
+            f.weight(inplace=copy)
+        elif not bare and not self.implemented:
+            # If `copy` is True, we won't change external data by weightening
+            # Otherwise, inplace weightening would change the external field
+            f.weight(inplace=copy, power=-1)
 
         # check if the operator is symmetric:
         self._symmetric = (f.val.imag == 0).all()
@@ -127,4 +141,3 @@ class DiagonalOperator(EndomorphicOperator):
 
         # store the diagonal-field
         self._diagonal = f
-

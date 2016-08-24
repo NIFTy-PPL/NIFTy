@@ -12,10 +12,9 @@ import nifty.nifty_utilities as utilities
 class LinearOperator(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain=(), field_type=(), implemented=False):
+    def __init__(self, domain=(), field_type=()):
         self._domain = self._parse_domain(domain)
         self._field_type = self._parse_field_type(field_type)
-        self._implemented = bool(implemented)
 
     @property
     def domain(self):
@@ -36,8 +35,11 @@ class LinearOperator(object):
     def _parse_domain(self, domain):
         if domain is None:
             domain = ()
-        elif not isinstance(domain, tuple):
+        elif isinstance(domain, Space):
             domain = (domain,)
+        elif not isinstance(domain, tuple):
+            domain = tuple(domain)
+
         for d in domain:
             if not isinstance(d, Space):
                 raise TypeError(about._errors.cstring(
@@ -48,17 +50,20 @@ class LinearOperator(object):
     def _parse_field_type(self, field_type):
         if field_type is None:
             field_type = ()
-        elif not isinstance(field_type, tuple):
+        elif isinstance(field_type, FieldType):
             field_type = (field_type,)
+        elif not isinstance(field_type, tuple):
+            field_type = tuple(field_type)
+
         for ft in field_type:
             if not isinstance(ft, FieldType):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Given object is not a nifty.FieldType."))
         return field_type
 
-    @property
+    @abc.abstractproperty
     def implemented(self):
-        return self._implemented
+        raise NotImplementedError
 
     @abc.abstractproperty
     def unitary(self):
