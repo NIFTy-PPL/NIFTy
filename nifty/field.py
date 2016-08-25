@@ -277,6 +277,7 @@ class Field(object):
     def power_synthesize(self):
         # check that all spaces in self.domain are real or instances of power_space
         # check if field is real- or complex-valued
+        pass
 
     # ---Properties---
 

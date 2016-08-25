@@ -549,10 +549,9 @@ class GFFT(Transform):
 
     """
 
-    def __init__(self, domain, codomain, fft_module):
+    def __init__(self, domain, codomain, fft_module=None):
         if fft_module is None:
-            # gdi cannot find the required module
-            raise ImportError("ERROR: GFFT module is not available.")
+            fft_module = gdi['gfft_dummy']
 
         self.domain = domain
         self.codomain = codomain
@@ -610,15 +609,10 @@ class GFFT(Transform):
                 in_ax=[],
                 out_ax=[],
                 ftmachine='fft' if self.codomain.harmonic else 'ifft',
-                in_zero_center=map(
-                    bool, self.domain.zerocenter
-                ),
-                out_zero_center=map(
-                    bool, self.codomain.zerocenter
-                ),
-                enforce_hermitian_symmetry=bool(
-                    self.codomain.complexity
-                ),
+                in_zero_center=map(bool, self.domain.zerocenter),
+                out_zero_center=map(bool, self.codomain.zerocenter),
+                # enforce_hermitian_symmetry=bool(self.codomain.complexity),
+                enforce_hermitian_symmetry=False,
                 W=-1,
                 alpha=-1,
                 verbose=False
