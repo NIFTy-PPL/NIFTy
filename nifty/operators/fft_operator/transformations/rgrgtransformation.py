@@ -135,4 +135,10 @@ class RGRGTransformation(Transformation):
             # correct for inverse fft
             Tval = self._transform.codomain.weight(Tval, power=-1, axes=axes)
 
+
+        if self._transform.codomain.harmonic:
+            Tval *= 1.0 / (np.sqrt(self._transform.domain.dim))
+        else:
+            Tval *= np.sqrt(self._transform.domain.dim)
+
         return Tval

@@ -26,8 +26,7 @@ class FFTOperator(LinearOperator):
         if target is None:
             target = utilities.get_default_codomain(self.domain[0])
 
-        self._target = self._parse_domain(
-                        utilities.get_default_codomain(self.domain[0]))
+        self._target = self._parse_domain(target)
 
         self._forward_transformation = TransformationFactory.create(
             self.domain[0], self.target[0]
