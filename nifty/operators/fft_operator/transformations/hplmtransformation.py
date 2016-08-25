@@ -44,7 +44,7 @@ class HPLMTransformation(Transformation):
         if not isinstance(domain, HPSpace):
             raise TypeError('ERROR: domain needs to be a HPSpace')
 
-        lmax = 3 * domain.paradict['nside'] - 1
+        lmax = 3 * domain.nside - 1
         mmax = lmax
         return LMSpace(lmax=lmax, mmax=mmax, dtype=np.dtype('complex128'))
 
@@ -59,9 +59,9 @@ class HPLMTransformation(Transformation):
         if not isinstance(codomain, LMSpace):
             raise TypeError('ERROR: codomain must be a LMSpace.')
 
-        nside = domain.paradict['nside']
-        lmax = codomain.paradict['lmax']
-        mmax = codomain.paradict['mmax']
+        nside = domain.nside
+        lmax = codomain.lmax
+        mmax = codomain.mmax
 
         if (3 * nside - 1 != lmax) or (lmax != mmax):
             return False
@@ -88,8 +88,8 @@ class HPLMTransformation(Transformation):
             val = self.domain.weight(val, power=-0.5, axes=axes)
 
         # shorthands for transform parameters
-        lmax = self.codomain.paradict['lmax']
-        mmax = self.codomain.paradict['mmax']
+        lmax = self.codomain.lmax
+        mmax = self.codomain.mmax
 
         if isinstance(val, distributed_data_object):
             temp_val = val.get_full_data()

@@ -218,7 +218,7 @@ class FFTW(Transform):
     def _atomic_mpi_transform(self, val, info, axes):
 
         # Apply codomain centering mask
-        if reduce(lambda x, y: x + y, self.codomain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.codomain.zerocenter):
             temp_val = np.copy(val)
             val = self._apply_mask(temp_val, info.cmask_codomain, axes)
 
@@ -235,7 +235,7 @@ class FFTW(Transform):
             return None
 
         # Apply domain centering mask
-        if reduce(lambda x, y: x + y, self.domain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.domain.zerocenter):
             result = self._apply_mask(result, info.cmask_domain, axes)
 
         # Correct the sign if needed
@@ -263,7 +263,7 @@ class FFTW(Transform):
                                                 **kwargs)
 
         # Apply codomain centering mask
-        if reduce(lambda x, y: x + y, self.codomain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.codomain.zerocenter):
             temp_val = np.copy(local_val)
             local_val = self._apply_mask(temp_val,
                                          current_info.cmask_codomain, axes)
@@ -275,7 +275,7 @@ class FFTW(Transform):
         )
 
         # Apply domain centering mask
-        if reduce(lambda x, y: x + y, self.domain.paradict['zerocenter']):
+        if reduce(lambda x, y: x + y, self.domain.zerocenter):
             local_result = self._apply_mask(local_result,
                                             current_info.cmask_domain, axes)
 
@@ -446,19 +446,19 @@ class FFTWTransformInfo(object):
             raise ImportError("The module pyfftw is needed but not available.")
 
         self.cmask_domain = fftw_context.get_centering_mask(
-            domain.paradict['zerocenter'],
+            domain.zerocenter,
             local_shape,
             local_offset_Q)
 
         self.cmask_codomain = fftw_context.get_centering_mask(
-            codomain.paradict['zerocenter'],
+            codomain.zerocenter,
             local_shape,
             local_offset_Q)
 
         # If both domain and codomain are zero-centered the result,
         # will get a global minus. Store the sign to correct it.
-        self.sign = (-1) ** np.sum(np.array(domain.paradict['zerocenter']) *
-                                   np.array(codomain.paradict['zerocenter']) *
+        self.sign = (-1) ** np.sum(np.array(domain.zerocenter) *
+                                   np.array(codomain.zerocenter) *
                                    (np.array(domain.shape) // 2 % 2))
 
     @property
@@ -611,13 +611,13 @@ class GFFT(Transform):
                 out_ax=[],
                 ftmachine='fft' if self.codomain.harmonic else 'ifft',
                 in_zero_center=map(
-                    bool, self.domain.paradict['zerocenter']
+                    bool, self.domain.zerocenter
                 ),
                 out_zero_center=map(
-                    bool, self.codomain.paradict['zerocenter']
+                    bool, self.codomain.zerocenter
                 ),
                 enforce_hermitian_symmetry=bool(
-                    self.codomain.paradict['complexity']
+                    self.codomain.complexity
                 ),
                 W=-1,
                 alpha=-1,

@@ -42,8 +42,6 @@ from nifty.spaces.space import Space
 
 from nifty.config import about
 
-from rg_space_paradict import RGSpaceParadict
-
 
 class RGSpace(Space):
     """
@@ -107,6 +105,8 @@ class RGSpace(Space):
             Whether or not the grid represents a Fourier basis.
     """
 
+    # ---Overwritten properties and methods---
+
     def __init__(self, shape=(1,), zerocenter=False, distances=None,
                  harmonic=False, dtype=np.dtype('float')):
         """
@@ -138,41 +138,12 @@ class RGSpace(Space):
             -------
             None
         """
+        super(RGSpace, self).__init__(dtype)
 
-        self.paradict = RGSpaceParadict(shape=shape,
-                                        zerocenter=zerocenter,
-                                        distances=distances,
-                                        harmonic=harmonic)
-        self.dtype = np.dtype(dtype)
-
-    @property
-    def harmonic(self):
-        return self.paradict['harmonic']
-
-    def copy(self):
-        return RGSpace(dtype=self.dtype, harmonic=self.harmonic,
-                       **self.paradict.parameters)
-
-    @property
-    def shape(self):
-        return self.paradict['shape']
-
-    @property
-    def dim(self):
-        return reduce(lambda x, y: x*y, self.shape)
-
-    @property
-    def total_volume(self):
-        return self.dim * reduce(lambda x, y: x*y, self.paradict['distances'])
-
-    def weight(self, x, power=1, axes=None, inplace=False):
-        weight = reduce(lambda x, y: x*y, self.paradict['distances'])**power
-        if inplace:
-            x *= weight
-            result_x = x
-        else:
-            result_x = x*weight
-        return result_x
+        self._harmonic = bool(harmonic)
+        self._shape = self._parse_shape(shape)
+        self._distances = self._parse_distances(distances)
+        self._zerocenter = self._parse_zerocenter(zerocenter)
 
     def compute_k_array(self, distribution_strategy):
         """
@@ -209,7 +180,7 @@ class RGSpace(Space):
         return nkdict
 
     def _compute_k_array_helper(self, slice_of_first_dimension):
-        dk = self.paradict['distances']
+        dk = self.distances
         shape = self.shape
 
         inds = []
@@ -220,14 +191,106 @@ class RGSpace(Space):
 
         dists = ((np.float128(0) + cords[0] - shape[0] // 2) * dk[0])**2
         # apply zerocenterQ shift
-        if self.paradict['zerocenter'][0] == False:
+        if self.zerocenter[0] == False:
             dists = np.fft.fftshift(dists)
         # only save the individual slice
         dists = dists[slice_of_first_dimension]
         for ii in range(1, len(shape)):
             temp = ((cords[ii] - shape[ii] // 2) * dk[ii])**2
-            if self.paradict['zerocenter'][ii] == False:
+            if self.zerocenter[ii] == False:
                 temp = np.fft.fftshift(temp)
             dists = dists + temp
         dists = np.sqrt(dists)
         return dists
+
+    # ---Mandatory properties and methods---
+
+    @property
+    def harmonic(self):
+        return self._harmonic
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def dim(self):
+        return reduce(lambda x, y: x*y, self.shape)
+
+    @property
+    def total_volume(self):
+        return self.dim * reduce(lambda x, y: x*y, self.distances)
+
+    def copy(self):
+        return self.__class__(shape=self.shape,
+                              zerocenter=self.zerocenter,
+                              distances=self.distances,
+                              harmonic=self.harmonic,
+                              dtype=self.dtype)
+
+    def weight(self, x, power=1, axes=None, inplace=False):
+        weight = reduce(lambda x, y: x*y, self.distances)**power
+        if inplace:
+            x *= weight
+            result_x = x
+        else:
+            result_x = x*weight
+        return result_x
+
+    # ---Added properties and methods---
+
+    @property
+    def distances(self):
+        return self._distances
+
+    @property
+    def zerocenter(self):
+        return self._zerocenter
+
+    def _parse_shape(self, shape):
+        if np.isscalar(shape):
+            shape = (shape,)
+        temp = np.empty(len(shape), dtype=np.int)
+        temp[:] = shape
+        return tuple(temp)
+
+    def _parse_distances(self, distances):
+        if distances is None:
+            if self.harmonic:
+                temp = np.ones_like(self.shape, dtype=np.float)
+            else:
+                temp = 1 / np.array(self.shape, dtype=np.float)
+        else:
+            temp = np.empty(len(self.shape), dtype=np.float)
+            temp[:] = distances
+        return tuple(temp)
+
+    def _parse_zerocenter(self, zerocenter):
+        temp = np.empty(len(self.shape), dtype=bool)
+        temp[:] = zerocenter
+        return tuple(temp)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

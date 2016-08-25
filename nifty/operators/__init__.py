@@ -23,6 +23,8 @@ from __future__ import division
 
 from linear_operator import LinearOperator
 
+from diagonal_operator import DiagonalOperator
+
 from endomorphic_operator import EndomorphicOperator
 
 from fft_operator import *

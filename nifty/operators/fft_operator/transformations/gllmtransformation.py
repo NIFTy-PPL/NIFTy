@@ -44,7 +44,7 @@ class GLLMTransformation(Transformation):
         if not isinstance(domain, GLSpace):
             raise TypeError('ERROR: domain needs to be a GLSpace')
 
-        nlat = domain.paradict['nlat']
+        nlat = domain.nlat
         lmax = nlat - 1
         mmax = nlat - 1
         if domain.dtype == np.dtype('float32'):
@@ -63,10 +63,10 @@ class GLLMTransformation(Transformation):
         if not isinstance(codomain, LMSpace):
             raise TypeError('ERROR: codomain must be a LMSpace.')
 
-        nlat = domain.paradict['nlat']
-        nlon = domain.paradict['nlon']
-        lmax = codomain.paradict['lmax']
-        mmax = codomain.paradict['mmax']
+        nlat = domain.nlat
+        nlon = domain.nlon
+        lmax = codomain.lmax
+        mmax = codomain.mmax
 
         if (nlon != 2 * nlat - 1) or (lmax != nlat - 1) or (lmax != mmax):
             return False
@@ -90,10 +90,10 @@ class GLLMTransformation(Transformation):
             val = self.domain.weight(val, power=-0.5, axes=axes)
 
         # shorthands for transform parameters
-        nlat = self.domain.paradict['nlat']
-        nlon = self.domain.paradict['nlon']
-        lmax = self.codomain.paradict['lmax']
-        mmax = self.codomain.paradict['mmax']
+        nlat = self.domain.nlat
+        nlon = self.domain.nlon
+        lmax = self.codomain.lmax
+        mmax = self.codomain.mmax
 
         if isinstance(val, distributed_data_object):
             temp_val = val.get_full_data()

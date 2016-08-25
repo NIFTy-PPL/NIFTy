@@ -8,7 +8,6 @@ from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 from nifty.spaces.space import Space
 from nifty.config import about, nifty_configuration as gc,\
                          dependency_injector as gdi
-from gl_space_paradict import GLSpaceParadict
 import nifty.nifty_utilities as utilities
 
 gl = gdi.get('libsharp_wrapper_gl')
@@ -69,7 +68,9 @@ class GLSpace(Space):
             An array containing the pixel sizes.
     """
 
-    def __init__(self, nlat, nlon=None, dtype=np.dtype('float')):
+    # ---Overwritten properties and methods---
+
+    def __init__(self, nlat=2, nlon=3, dtype=np.dtype('float')):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -97,34 +98,41 @@ class GLSpace(Space):
         # check imports
         if not gc['use_libsharp']:
             raise ImportError(about._errors.cstring(
-                "ERROR: libsharp_wrapper_gl not loaded."))
+                "ERROR: libsharp_wrapper_gl not available or not loaded."))
 
-        # setup paradict
-        self.paradict = GLSpaceParadict(nlat=nlat, nlon=nlon)
+        super(GLSpace, self).__init__(dtype)
 
-        # setup dtype
-        self.dtype = np.dtype(dtype)
+        self._nlat = self._parse_nlat(nlat)
+        self._nlon = self._parse_nlon(nlon)
 
-        # GLSpace is not harmonic
-        self._harmonic = False
+    # ---Mandatory properties and methods---
+
+    @property
+    def harmonic(self):
+        return False
 
     @property
     def shape(self):
-        return (np.int((self.paradict['nlat'] * self.paradict['nlon'])),)
+        return (np.int((self.nlat * self.nlon)),)
 
     @property
     def dim(self):
-        return np.int((self.paradict['nlat'] * self.paradict['nlon']))
+        return np.int((self.nlat * self.nlon))
 
     @property
     def total_volume(self):
         return 4 * np.pi
 
+    def copy(self):
+        return self.__class__(nlat=self.nlat,
+                              nlon=self.nlon,
+                              dtype=self.dtype)
+
     def weight(self, x, power=1, axes=None, inplace=False):
         axes = utilities.cast_axis_to_tuple(axes, length=1)
 
-        nlon = self.paradict['nlon']
-        nlat = self.paradict['nlat']
+        nlon = self.nlon
+        nlat = self.nlat
 
         weight = np.array(list(itertools.chain.from_iterable(
                     itertools.repeat(x ** power, nlon)
@@ -145,3 +153,42 @@ class GLSpace(Space):
             result_x = x * weight
 
         return result_x
+
+    # ---Added properties and methods---
+
+    @property
+    def nlat(self):
+        return self._nlat
+
+    @property
+    def nlon(self):
+        return self._nlon
+
+    def _parse_nlat(self, nlat):
+        nlat = int(nlat)
+        if nlat < 2:
+            raise ValueError(about._errors.cstring(
+                "ERROR: nlat must be a positive number."))
+        elif nlat % 2 != 0:
+            raise ValueError(about._errors.cstring(
+                "ERROR: nlat must be a multiple of 2."))
+        return nlat
+
+    def _parse_nlon(self, nlon):
+        if nlon is None:
+            nlon = 2 * self.nlat - 1
+        else:
+            nlon = int(nlon)
+            if nlon != 2 * self.nlat - 1:
+                about.warnings.cprint(
+                    "WARNING: nlon was set to an unrecommended value: "
+                    "nlon <> 2*nlat-1.")
+        return nlon
+
+
+
+
+
+
+
+

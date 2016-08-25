@@ -2,4 +2,3 @@
 
 
 from hp_space import HPSpace
-from hp_space_paradict import HPSpaceParadict

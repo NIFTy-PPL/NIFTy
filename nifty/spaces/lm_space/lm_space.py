@@ -15,7 +15,7 @@ from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
 
-from lm_space_paradict import LMSpaceParadict
+LMSpaceParadict = None
 # from nifty.nifty_power_indices import lm_power_indices
 from nifty.nifty_random import random
 

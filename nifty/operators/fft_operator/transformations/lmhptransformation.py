@@ -48,7 +48,7 @@ class LMHPTransformation(Transformation):
         if not isinstance(domain, LMSpace):
             raise TypeError('ERROR: domain needs to be a LMSpace')
 
-        nside = (domain.paradict['lmax'] + 1) // 3
+        nside = (domain.lmax + 1) // 3
         return HPSpace(nside=nside)
 
     @staticmethod
@@ -61,9 +61,9 @@ class LMHPTransformation(Transformation):
 
         if not isinstance(codomain, HPSpace):
             raise TypeError('ERROR: codomain must be a HPSpace.')
-        nside = codomain.paradict['nside']
-        lmax = domain.paradict['lmax']
-        mmax = domain.paradict['mmax']
+        nside = codomain.nside
+        lmax = domain.lmax
+        mmax = domain.mmax
 
         if (lmax != mmax) or (3 * nside - 1 != lmax):
             return False
@@ -98,9 +98,9 @@ class LMHPTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            nside = self.codomain.paradict['nside']
-            lmax = self.domain.paradict['lmax']
-            mmax = self.domain.paradict['mmax']
+            nside = self.codomain.nside
+            lmax = self.domain.lmax
+            mmax = self.domain.mmax
 
             inp = inp.astype(np.complex128, copy=False)
             inp = hp.alm2map(inp, nside, lmax=lmax, mmax=mmax,

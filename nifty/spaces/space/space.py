@@ -141,11 +141,13 @@
 
 """
 from __future__ import division
+
+import abc
+
 import numpy as np
 import pylab as pl
 
 from nifty.config import about
-from space_paradict import SpaceParadict
 
 
 class Space(object):
@@ -183,7 +185,9 @@ class Space(object):
             Pixel volume of the :py:class:`point_space`, which is always 1.
     """
 
-    def __init__(self, dtype=np.dtype('float'), **kwargs):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, dtype=np.dtype('float')):
         """
             Sets the attributes for a point_space class instance.
 
@@ -198,22 +202,17 @@ class Space(object):
             -------
             None.
         """
-        self.paradict = SpaceParadict(**kwargs)
 
         # parse dtype
-        dtype = np.dtype(dtype)
-        self.dtype = dtype
-        self._harmonic = None
+        self.dtype = np.dtype(dtype)
 
-    @property
-    def harmonic(self):
-        return self._harmonic
+        self._ignore_for_hash = []
 
     def __hash__(self):
         # Extract the identifying parts from the vars(self) dict.
         result_hash = 0
         for (key, item) in vars(self).items():
-            if key in []:
+            if key in self._ignore_for_hash or key == '_ignore_for_hash':
                 continue
             result_hash ^= item.__hash__() ^ int(hash(key)/117)
         return result_hash
@@ -224,27 +223,30 @@ class Space(object):
         else:
             return False
 
-    def copy(self):
-        return self.__class__(dtype=self.dtype, **self.paradict.parameters)
+    @abc.abstractproperty
+    def harmonic(self):
+        raise NotImplementedError
 
-    @property
+    @abc.abstractproperty
     def shape(self):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic shape for the Space base class."))
 
-    @property
+    @abc.abstractproperty
     def dim(self):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic dim for the Space base class."))
 
-    @property
+    @abc.abstractproperty
     def total_volume(self):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic volume for the Space base class."))
 
-    def complement_cast(self, x, axes=None):
-        return x
+    @abc.abstractmethod
+    def copy(self):
+        return self.__class__(dtype=self.dtype)
 
+    @abc.abstractmethod
     def weight(self, x, power=1, axes=None, inplace=False):
         """
             Weights a given array of field values with the pixel volumes (not
@@ -264,135 +266,15 @@ class Space(object):
         """
         raise NotImplementedError
 
+    def complement_cast(self, x, axes=None):
+        return x
+
     def compute_k_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic k_array for Space base class."))
 
-    def get_plot(self, x, title="", vmin=None, vmax=None, unit=None,
-                 norm=None, other=None, legend=False, save=None, **kwargs):
-        """
-            Creates a plot of field values according to the specifications
-            given by the parameters.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values.
-
-            Returns
-            -------
-            None
-
-            Other parameters
-            ----------------
-            title : string, *optional*
-                Title of the plot (default: "").
-            vmin : float, *optional*
-                Minimum value to be displayed (default: ``min(x)``).
-            vmax : float, *optional*
-                Maximum value to be displayed (default: ``max(x)``).
-            unit : string, *optional*
-                Unit of the field values (default: "").
-            norm : string, *optional*
-                Scaling of the field values before plotting (default: None).
-            other : {single object, tuple of objects}, *optional*
-                Object or tuple of objects to be added, where objects can be
-                scalars, arrays, or fields (default: None).
-            legend : bool, *optional*
-                Whether to show the legend or not (default: False).
-            save : string, *optional*
-                Valid file name where the figure is to be stored, by default
-                the figure is not saved (default: False).
-
-        """
-        if not pl.isinteractive() and save is not None:
-            about.warnings.cprint("WARNING: interactive mode off.")
-
-        x = self.cast(x)
-
-        fig = pl.figure(num=None,
-                        figsize=(6.4, 4.8),
-                        dpi=None,
-                        facecolor="none",
-                        edgecolor="none",
-                        frameon=False,
-                        FigureClass=pl.Figure)
-
-        ax0 = fig.add_axes([0.12, 0.12, 0.82, 0.76])
-        xaxes = np.arange(self.para[0], dtype=np.dtype('int'))
-
-        if (norm == "log") and (vmin <= 0):
-            raise ValueError(about._errors.cstring(
-                "ERROR: nonpositive value(s)."))
-
-        if issubclass(self.dtype.type, np.complexfloating):
-            if vmin is None:
-                vmin = min(x.real.min(), x.imag.min(), abs(x).min())
-            if vmax is None:
-                vmax = min(x.real.max(), x.imag.max(), abs(x).max())
-        else:
-            if vmin is None:
-                vmin = x.min()
-            if vmax is None:
-                vmax = x.max()
-
-        ax0.set_xlim(xaxes[0], xaxes[-1])
-        ax0.set_xlabel("index")
-        ax0.set_ylim(vmin, vmax)
-
-        if(norm == "log"):
-            ax0.set_yscale('log')
-
-        if issubclass(self.dtype.type, np.complexfloating):
-            ax0.scatter(xaxes, self.unary_operation(x, op='abs'),
-                        color=[0.0, 0.5, 0.0], marker='o',
-                        label="graph (absolute)", facecolor="none", zorder=1)
-            ax0.scatter(xaxes, self.unary_operation(x, op='real'),
-                        color=[0.0, 0.5, 0.0], marker='s',
-                        label="graph (real part)", facecolor="none", zorder=1)
-            ax0.scatter(xaxes, self.unary_operation(x, op='imag'),
-                        color=[0.0, 0.5, 0.0], marker='D',
-                        label="graph (imaginary part)", facecolor="none",
-                        zorder=1)
-        else:
-            ax0.scatter(xaxes, x, color=[0.0, 0.5, 0.0], marker='o',
-                        label="graph 0", zorder=1)
-
-        if other is not None:
-            if not isinstance(other, tuple):
-                other = (other, )
-            imax = max(1, len(other) - 1)
-            for ii in xrange(len(other)):
-                ax0.scatter(xaxes, self.dtype(other[ii]),
-                            color=[max(0.0, 1.0 - (2 * ii / imax)**2),
-                                   0.5 * ((2 * ii - imax) / imax)**2,
-                                   max(0.0, 1.0 -
-                                       (2 * (ii - imax) / imax)**2)],
-                            marker='o', label="'other' graph " + str(ii),
-                            zorder=-ii)
-
-        if legend:
-            ax0.legend()
-
-        if unit is not None:
-            unit = " [" + unit + "]"
-        else:
-            unit = ""
-
-        ax0.set_ylabel("values" + unit)
-        ax0.set_title(title)
-
-        if save is not None:
-            fig.savefig(str(save), dpi=None,
-                        facecolor="none", edgecolor="none")
-            pl.close(fig)
-        else:
-            fig.canvas.draw()
-
     def __repr__(self):
         string = ""
         string += str(type(self)) + "\n"
-        string += "paradict: " + str(self.paradict) + "\n"
         string += "dtype: " + str(self.dtype) + "\n"
-        string += "harmonic: " + str(self.harmonic) + "\n"
         return string

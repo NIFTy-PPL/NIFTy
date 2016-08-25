@@ -35,11 +35,10 @@ from __future__ import division
 
 import numpy as np
 
+from nifty.config import about
 from nifty.spaces.space import Space
-
 from nifty.config import nifty_configuration as gc, \
                          dependency_injector as gdi
-from hp_space_paradict import HPSpaceParadict
 
 hp = gdi.get('healpy')
 
@@ -94,6 +93,8 @@ class HPSpace(Space):
             An array with one element containing the pixel size.
     """
 
+    # ---Overwritten properties and methods---
+
     def __init__(self, nside=2, dtype=np.dtype('float')):
         """
             Sets the attributes for a hp_space class instance.
@@ -118,31 +119,36 @@ class HPSpace(Space):
         """
         # check imports
         if not gc['use_healpy']:
-            raise ImportError("ERROR: healpy not available.")
+            raise ImportError("ERROR: healpy not available or not loaded.")
 
-        # setup paradict
-        self.paradict = HPSpaceParadict(nside=nside)
+        super(HPSpace, self).__init__(dtype)
 
-        # setup dtype
-        self.dtype = np.dtype(dtype)
+        self._nside = self._parse_nside(nside)
 
-        # HPSpace is not harmonic
-        self._harmonic = False
+    # ---Mandatory properties and methods---
+
+    @property
+    def harmonic(self):
+        return False
 
     @property
     def shape(self):
-        return (np.int(12 * self.paradict['nside'] ** 2),)
+        return (np.int(12 * self.nside ** 2),)
 
     @property
     def dim(self):
-        return np.int(12 * self.paradict['nside'] ** 2)
+        return np.int(12 * self.nside ** 2)
 
     @property
     def total_volume(self):
         return 4 * np.pi
 
+    def copy(self):
+        return self.__class__(nside=self.nside,
+                              dtype=self.dtype)
+
     def weight(self, x, power=1, axes=None, inplace=False):
-        weight = ((4*np.pi) / (12 * self.paradict['nside']**2)) ** power
+        weight = ((4*np.pi) / (12 * self.nside**2)) ** power
 
         if inplace:
             x *= weight
@@ -151,3 +157,16 @@ class HPSpace(Space):
             result_x = x * weight
 
         return result_x
+
+    # ---Added properties and methods---
+
+    @property
+    def nside(self):
+        return self._nside
+
+    def _parse_nside(self, nside):
+        nside = int(nside)
+        if nside & (nside - 1) != 0 or nside < 2:
+            raise ValueError(about._errors.cstring(
+                "ERROR: nside must be positive and a multiple of 2."))
+        return nside

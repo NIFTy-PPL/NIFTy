@@ -62,20 +62,20 @@ class RGRGTransformation(Transformation):
 
         # parse the cozerocenter input
         if zerocenter is None:
-            zerocenter = domain.paradict['zerocenter']
+            zerocenter = domain.zerocenter
         # if the input is something scalar, cast it to a boolean
         else:
-            temp = np.empty_like(domain.paradict['zerocenter'])
+            temp = np.empty_like(domain.zerocenter)
             temp[:] = zerocenter
             zerocenter = temp
 
         # calculate the initialization parameters
-        distances = 1 / (np.array(domain.paradict['shape']) *
-                         np.array(domain.paradict['distances']))
+        distances = 1 / (np.array(domain.shape) *
+                         np.array(domain.distances))
         if dtype is None:
             dtype = np.complex
 
-        new_space = RGSpace(domain.paradict['shape'],
+        new_space = RGSpace(domain.shape,
                             zerocenter=zerocenter,
                             distances=distances,
                             harmonic=(not domain.harmonic),
@@ -94,8 +94,8 @@ class RGRGTransformation(Transformation):
         if not isinstance(codomain, RGSpace):
             return False
 
-        if not np.all(np.array(domain.paradict['shape']) ==
-                      np.array(codomain.paradict['shape'])):
+        if not np.all(np.array(domain.shape) ==
+                      np.array(codomain.shape)):
             return False
 
         if domain.harmonic == codomain.harmonic:
@@ -103,9 +103,9 @@ class RGRGTransformation(Transformation):
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
         if not np.all(
-            np.absolute(np.array(domain.paradict['shape']) *
-                        np.array(domain.paradict['distances']) *
-                        np.array(codomain.paradict['distances']) - 1) <
+            np.absolute(np.array(domain.shape) *
+                        np.array(domain.distances) *
+                        np.array(codomain.distances) - 1) <
                 10**-7):
             return False
 

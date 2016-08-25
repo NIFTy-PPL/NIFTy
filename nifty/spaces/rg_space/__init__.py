@@ -20,4 +20,3 @@
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from rg_space import RGSpace
-from rg_space_paradict import RGSpaceParadict

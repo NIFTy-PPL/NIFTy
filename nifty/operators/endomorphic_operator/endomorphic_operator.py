@@ -6,7 +6,6 @@ from nifty.operators.linear_operator import LinearOperator
 
 
 class EndomorphicOperator(LinearOperator):
-    __metaclass__ = abc.ABCMeta
 
     # ---Overwritten properties and methods---
 

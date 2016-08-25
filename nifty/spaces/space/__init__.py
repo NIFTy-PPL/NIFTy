@@ -2,4 +2,3 @@
 
 
 from space import Space
-from space_paradict import SpaceParadict

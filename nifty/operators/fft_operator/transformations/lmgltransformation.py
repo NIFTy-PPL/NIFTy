@@ -59,8 +59,8 @@ class LMGLTransformation(Transformation):
         else:
             raise ValueError('ERROR: unsupported domain dtype')
 
-        nlat = domain.paradict['lmax'] + 1
-        nlon = domain.paradict['lmax'] * 2 + 1
+        nlat = domain.lmax + 1
+        nlon = domain.lmax * 2 + 1
         return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
 
     @staticmethod
@@ -74,10 +74,10 @@ class LMGLTransformation(Transformation):
         if not isinstance(codomain, GLSpace):
             raise TypeError('ERROR: codomain must be a GLSpace.')
 
-        nlat = codomain.paradict['nlat']
-        nlon = codomain.paradict['nlon']
-        lmax = domain.paradict['lmax']
-        mmax = domain.paradict['mmax']
+        nlat = codomain.nlat
+        nlon = codomain.nlon
+        lmax = domain.lmax
+        mmax = domain.mmax
 
         if (lmax != mmax) or (nlat != lmax + 1) or (nlon != 2 * lmax + 1):
             return False
@@ -112,10 +112,10 @@ class LMGLTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            nlat = self.codomain.paradict['nlat']
-            nlon = self.codomain.paradict['nlon']
-            lmax = self.domain.paradict['lmax']
-            mmax = self.paradict['mmax']
+            nlat = self.codomain.nlat
+            nlon = self.codomain.nlon
+            lmax = self.domain.lmax
+            mmax = self.mmax
 
             if self.domain.dtype == np.dtype('complex64'):
                 inp = gl.alm2map_f(inp, nlat=nlat, nlon=nlon,

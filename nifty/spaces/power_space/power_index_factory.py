@@ -6,8 +6,8 @@ class _PowerIndexFactory(object):
     def __init__(self):
         self.power_indices_storage = {}
 
-    def get_power_indices(self, domain, distribution_strategy,
-                          log=False, nbin=None, binbounds=None):
+    def get_power_index(self, domain, distribution_strategy,
+                        log=False, nbin=None, binbounds=None):
         current_hash = domain.__hash__() ^ (111*hash(distribution_strategy))
 
         if current_hash not in self.power_indices_storage:

@@ -16,22 +16,6 @@ class LinearOperator(object):
         self._domain = self._parse_domain(domain)
         self._field_type = self._parse_field_type(field_type)
 
-    @property
-    def domain(self):
-        return self._domain
-
-    @abc.abstractproperty
-    def target(self):
-        raise NotImplementedError
-
-    @property
-    def field_type(self):
-        return self._field_type
-
-    @abc.abstractproperty
-    def field_type_target(self):
-        raise NotImplementedError
-
     def _parse_domain(self, domain):
         if domain is None:
             domain = ()
@@ -60,6 +44,22 @@ class LinearOperator(object):
                 raise TypeError(about._errors.cstring(
                     "ERROR: Given object is not a nifty.FieldType."))
         return field_type
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @abc.abstractproperty
+    def target(self):
+        raise NotImplementedError
+
+    @property
+    def field_type(self):
+        return self._field_type
+
+    @abc.abstractproperty
+    def field_type_target(self):
+        raise NotImplementedError
 
     @abc.abstractproperty
     def implemented(self):
