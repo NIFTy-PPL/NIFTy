@@ -1,6 +1,5 @@
 from __future__ import division
 import numpy as np
-import pylab as pl
 
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
@@ -9,10 +8,10 @@ from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
 
-from nifty.field_types import FieldType,\
-                              FieldArray
+from nifty.field_types import FieldType
 
 from nifty.spaces.space import Space
+from nifty.spaces.power_space import PowerSpace
 
 import nifty.nifty_utilities as utilities
 from nifty.random import Random
@@ -24,6 +23,7 @@ COMM = getattr(gdi[gc['mpi_module']], gc['default_comm'])
 
 class Field(object):
     # ---Initialization methods---
+
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
                  datamodel=None, copy=False):
 
@@ -125,8 +125,8 @@ class Field(object):
                     "ERROR: Invalid datamodel!"))
         return datamodel
 
-
     # ---Factory methods---
+
     @classmethod
     def from_random(cls, random_type, domain=None, dtype=None, field_type=None,
                     datamodel=None, **kwargs):
@@ -177,7 +177,109 @@ class Field(object):
 
         return random_arguments
 
+    def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None):
+        # check if the spaces input is valid
+        spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
+        if spaces is None:
+            if len(self.domain) == 1:
+                spaces = (0,)
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: Field has multiple spaces as domain "
+                    "but `spaces` is None."))
+
+        if len(spaces) == 0:
+            raise ValueError(about._errors.cstring(
+                "ERROR: No space for analysis specified."))
+        elif len(spaces) > 1:
+            raise ValueError(about._errors.cstring(
+                "ERROR: Conversion of only one space at a time is allowed."))
+
+        space_index = spaces[0]
+
+        if not self.domain[space_index].harmonic:
+            raise ValueError(about._errors.cstring(
+                "ERROR: Conversion of only one space at a time is allowed."))
+
+        # create the target PowerSpace instance
+        distribution_strategy = \
+            self.val.get_axes_local_distribution_strategy(
+                self.domain_axes[space_index])
+
+        harmonic_domain = self.domain[space_index]
+        power_domain = PowerSpace(harmonic_domain=harmonic_domain,
+                                  datamodel=distribution_strategy,
+                                  log=log, nbin=nbin, binbounds=binbounds)
+
+        # extract pindex and rho from power_domain and calculate the spectrum
+        pindex = power_domain.pindex
+        rho = power_domain.rho
+        power_spectrum = self._calculate_power_spectrum(
+                                            x=self.val,
+                                            pindex=pindex,
+                                            rho=rho,
+                                            axes=self.domain_axes[space_index])
+
+        # create the result field and put power_spectrum into it
+        result_domain = list(self.domain)
+        result_domain[space_index] = power_domain
+
+        result_field = self.copy_empty(domain=result_domain)
+        result_field.set_val(new_val=power_spectrum, copy=False)
+
+        return result_field
+
+    def _calculate_power_spectrum(self, x, pindex, rho, axes=None):
+        fieldabs = abs(x)
+        fieldabs **= 2
+
+        if axes is not None:
+            pindex = self._shape_up_pindex(
+                                    pindex=pindex,
+                                    target_shape=x.shape,
+                                    target_strategy=x.distribution_strategy,
+                                    axes=axes)
+        power_spectrum = pindex.bincount(weights=fieldabs,
+                                         axis=axes)
+        if axes is not None:
+            new_rho_shape = [1, ] * len(power_spectrum.shape)
+            new_rho_shape[axes[0]] = len(rho)
+            rho = rho.reshape(new_rho_shape)
+        power_spectrum /= rho
+
+        power_spectrum **= 0.5
+        return power_spectrum
+
+    def _shape_up_pindex(self, pindex, target_shape, target_strategy, axes):
+        if pindex.distribution_strategy not in \
+                DISTRIBUTION_STRATEGIES['global']:
+            raise ValueError("ERROR: pindex's distribution strategy must be "
+                             "global-type")
+
+        if pindex.distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
+            if ((0 not in axes) or
+                    (target_strategy is not pindex.distribution_strategy)):
+                raise ValueError(
+                    "ERROR: A slicing distributor shall not be reshaped to "
+                    "something non-sliced.")
+
+        semiscaled_shape = [1, ] * len(target_shape)
+        for i in axes:
+            semiscaled_shape[i] = target_shape[i]
+        local_data = pindex.get_local_data(copy=False)
+        semiscaled_local_data = local_data.reshape(semiscaled_shape)
+        result_obj = pindex.copy_empty(global_shape=target_shape,
+                                       distribution_strategy=target_strategy)
+        result_obj.set_full_data(semiscaled_local_data, copy=False)
+
+        return result_obj
+
+    def power_synthesize(self):
+        # check that all spaces in self.domain are real or instances of power_space
+        # check if field is real- or complex-valued
+
     # ---Properties---
+
     def set_val(self, new_val=None, copy=False):
         new_val = self.cast(new_val)
         if copy:
@@ -237,6 +339,7 @@ class Field(object):
             return 0
 
     # ---Special unary/binary operations---
+
     def cast(self, x=None, dtype=None):
         if dtype is None:
             dtype = self.dtype
@@ -429,6 +532,7 @@ class Field(object):
         return work_field
 
     # ---General unary/contraction methods---
+
     def __pos__(self):
         return self.copy()
 

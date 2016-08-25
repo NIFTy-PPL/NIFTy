@@ -269,28 +269,3 @@ class RGSpace(Space):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
         return tuple(temp)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
