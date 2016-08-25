@@ -38,8 +38,11 @@ class FFTOperator(LinearOperator):
 
     def _times(self, x, spaces, types):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
+        if spaces is None:
+            axes = None
+        else:
+            axes = x.domain_axes[spaces[0]]
 
-        axes = x.domain_axes[spaces[0]]
         new_val = self._forward_transformation.transform(x.val, axes=axes)
 
         if spaces is None:
@@ -55,6 +58,10 @@ class FFTOperator(LinearOperator):
 
     def _inverse_times(self, x, spaces, types):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
+        if spaces is None:
+            axes = None
+        else:
+            axes = x.domain_axes[spaces[0]]
 
         axes = x.domain_axes[spaces[0]]
         new_val = self._inverse_transformation.transform(x.val, axes=axes)
