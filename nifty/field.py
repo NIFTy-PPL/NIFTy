@@ -321,6 +321,7 @@ class Field(object):
                 raise AttributeError(
                     "ERROR: Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
+        pass
 
         # synthesize random fields in harmonic domain using
         # np.random.multivariate_normal(mean=[0,0], cov=[[0.5,0],[0,0.5]], size=shape)
