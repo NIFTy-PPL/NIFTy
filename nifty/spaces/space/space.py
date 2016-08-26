@@ -273,6 +273,9 @@ class Space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic k_array for Space base class."))
 
+    def hermitian_decomposition(self, x, axes=None):
+        raise NotImplementedError
+
     def __repr__(self):
         string = ""
         string += str(type(self)) + "\n"

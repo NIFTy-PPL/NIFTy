@@ -203,6 +203,46 @@ class RGSpace(Space):
         dists = np.sqrt(dists)
         return dists
 
+    def hermitian_decomposition(self, x, axes=None):
+        # compute the hermitian part
+        flipped_x = self._hermitianize_inverter(x, axes=axes)
+        flipped_x = flipped_x.conjugate()
+        # average x and flipped_x.
+        hermitian_part = x + flipped_x
+        hermitian_part /= 2.
+
+        # use subtraction since it is faster than flipping another time
+        anti_hermitian_part = (x-hermitian_part)/1j
+        return (hermitian_part, anti_hermitian_part)
+
+    def _hermitianize_inverter(self, x, axes):
+        # calculate the number of dimensions the input array has
+        dimensions = len(x.shape)
+        # prepare the slicing object which will be used for mirroring
+        slice_primitive = [slice(None), ] * dimensions
+        # copy the input data
+        y = x.copy()
+
+        if axes is None:
+            axes = xrange(dimensions)
+
+        # flip in the desired directions
+        for i in axes:
+            slice_picker = slice_primitive[:]
+            slice_picker[i] = slice(1, None, None)
+            slice_picker = tuple(slice_picker)
+
+            slice_inverter = slice_primitive[:]
+            slice_inverter[i] = slice(None, 0, -1)
+            slice_inverter = tuple(slice_inverter)
+
+            try:
+                y.set_data(to_key=slice_picker, data=y,
+                           from_key=slice_inverter)
+            except(AttributeError):
+                y[slice_picker] = y[slice_inverter]
+        return y
+
     # ---Mandatory properties and methods---
 
     @property

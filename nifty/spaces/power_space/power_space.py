@@ -44,6 +44,8 @@ class PowerSpace(Space):
         self._pindex = power_index['pindex']
         self._kindex = power_index['kindex']
         self._rho = power_index['rho']
+        self._pundex = power_index['pundex']
+        self._k_array = power_index['k_array']
 
     def compute_k_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(
@@ -130,3 +132,10 @@ class PowerSpace(Space):
     def rho(self):
         return self._rho
 
+    @property
+    def pundex(self):
+        return self._pundex
+
+    @property
+    def k_array(self):
+        return self._k_array

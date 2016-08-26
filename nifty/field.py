@@ -177,8 +177,19 @@ class Field(object):
 
         return random_arguments
 
-    def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None):
-        # check if the spaces input is valid
+    # ---Powerspectral methods---
+
+    def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
+                      real_signal=True):
+        # assert that all spaces in `self.domain` are either harmonic or
+        # power_space instances
+        for sp in self.domain:
+            if not sp.harmonic and not isinstance(sp, PowerSpace):
+                raise AttributeError(
+                    "ERROR: Field has a space in `domain` which is neither "
+                    "harmonic nor a PowerSpace.")
+
+        # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
             if len(self.domain) == 1:
@@ -201,20 +212,48 @@ class Field(object):
             raise ValueError(about._errors.cstring(
                 "ERROR: Conversion of only one space at a time is allowed."))
 
-        # create the target PowerSpace instance
+        # Create the target PowerSpace instance:
+        # If the associated signal-space field was real, we extract the
+        # hermitian and anti-hermitian parts of `self` and put them
+        # into the real and imaginary parts of the power spectrum.
+        # If it was complex, all the power is put into a real power spectrum.
+
         distribution_strategy = \
             self.val.get_axes_local_distribution_strategy(
                 self.domain_axes[space_index])
 
+        if real_signal:
+            power_dtype = np.dtype('complex')
+        else:
+            power_dtype = np.dtype('float')
+
         harmonic_domain = self.domain[space_index]
         power_domain = PowerSpace(harmonic_domain=harmonic_domain,
                                   datamodel=distribution_strategy,
-                                  log=log, nbin=nbin, binbounds=binbounds)
+                                  log=log, nbin=nbin, binbounds=binbounds,
+                                  dtype=power_dtype)
 
-        # extract pindex and rho from power_domain and calculate the spectrum
+        # extract pindex and rho from power_domain
         pindex = power_domain.pindex
         rho = power_domain.rho
-        power_spectrum = self._calculate_power_spectrum(
+
+        if real_signal:
+            hermitian_part, anti_hermitian_part = \
+                harmonic_domain.hermitian_decomposition(
+                                            self.val,
+                                            axes=self.domain_axes[space_index])
+
+            [hermitian_power, anti_hermitian_power] = \
+                [self._calculate_power_spectrum(
+                                            x=part,
+                                            pindex=pindex,
+                                            rho=rho,
+                                            axes=self.domain_axes[space_index])
+                 for part in [hermitian_part, anti_hermitian_part]]
+
+            power_spectrum = hermitian_power + 1j * anti_hermitian_power
+        else:
+            power_spectrum = self._calculate_power_spectrum(
                                             x=self.val,
                                             pindex=pindex,
                                             rho=rho,
@@ -274,9 +313,17 @@ class Field(object):
 
         return result_obj
 
-    def power_synthesize(self):
-        # check that all spaces in self.domain are real or instances of power_space
-        # check if field is real- or complex-valued
+    def power_synthesize(self, spaces=None, real_signal=True):
+        # assert that all spaces in `self.domain` are eiher of signal-type or
+        # power_space instances
+        for sp in self.domain:
+            if sp.harmonic and not isinstance(sp, PowerSpace):
+                raise AttributeError(
+                    "ERROR: Field has a space in `domain` which is neither "
+                    "harmonic nor a PowerSpace.")
+
+        # synthesize random fields in harmonic domain using
+        # np.random.multivariate_normal(mean=[0,0], cov=[[0.5,0],[0,0.5]], size=shape)
 
     # ---Properties---
 
@@ -365,12 +412,11 @@ class Field(object):
         if dtype is None:
             dtype = self.dtype
 
-        x = distributed_data_object(x,
-                                    global_shape=self.shape,
-                                    dtype=dtype,
-                                    distribution_strategy=self.datamodel)
-
-        return x
+        return_x = distributed_data_object(global_shape=self.shape,
+                                           dtype=dtype,
+                                           distribution_strategy=self.datamodel)
+        return_x.set_full_data(x, copy=False)
+        return return_x
 
     def copy(self, domain=None, dtype=None, field_type=None,
              datamodel=None):
