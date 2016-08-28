@@ -4,7 +4,9 @@ from d2o import distributed_data_object
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 from nifty import GLSpace, LMSpace
+import lm_transformation_factory as ltf
 
+hp = gdi.get('healpy')
 gl = gdi.get('libsharp_wrapper_gl')
 
 
@@ -110,14 +112,27 @@ class GLLMTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            if self.domain.dtype == np.dtype('float32'):
-                inp = gl.map2alm_f(inp,
-                                   nlat=nlat, nlon=nlon,
-                                   lmax=lmax, mmax=mmax)
+            if self.domain.dtype == np.dtype('complex128'):
+                inpReal = gl.map2alm(
+                    np.real(inp).astype(np.float64, copy=False), nlat=nlat,
+                    nlon=nlon, lmax=lmax, mmax=mmax)
+                inpImg = gl.map2alm(
+                    np.imag(inp).astype(np.float64, copy=False), nlat=nlat,
+                    nlon=nlon, lmax=lmax, mmax=mmax)
+                #TODO gl shouldn't depend on hp
+                lmaxArray, mmaxArray = hp.Alm.getlm(lmax=lmax)
+                inpReal = ltf.buildIdx(inpReal, lmaxArray, mmaxArray)
+                inpImg = ltf.buildIdx(inpImg, lmaxArray, mmaxArray)
+                inp = inpReal + inpImg * 1j
             else:
-                inp = gl.map2alm(inp,
-                                 nlat=nlat, nlon=nlon,
-                                 lmax=lmax, mmax=mmax)
+                if self.domain.dtype == np.dtype('float32'):
+                    inp = gl.map2alm_f(inp,
+                                       nlat=nlat, nlon=nlon,
+                                       lmax=lmax, mmax=mmax)
+                else:
+                    inp = gl.map2alm(inp,
+                                     nlat=nlat, nlon=nlon,
+                                     lmax=lmax, mmax=mmax)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp

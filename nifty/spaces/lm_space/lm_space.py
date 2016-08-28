@@ -15,8 +15,6 @@ from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
 
-LMSpaceParadict = None
-# from nifty.nifty_power_indices import lm_power_indices
 from nifty.nifty_random import random
 
 gl = gdi.get('libsharp_wrapper_gl')
@@ -118,43 +116,9 @@ class LMSpace(Space):
             raise ImportError(about._errors.cstring(
                 "ERROR: neither libsharp_wrapper_gl nor healpy activated."))
 
-        self._cache_dict = {'check_codomain': {}}
-
-        self.paradict = LMSpaceParadict(lmax=lmax, mmax=mmax)
-
-        # check data type
-        dtype = np.dtype(dtype)
-        if dtype not in [np.dtype('complex64'), np.dtype('complex128')]:
-            about.warnings.cprint("WARNING: data type set to complex128.")
-            dtype = np.dtype('complex128')
-        self.dtype = dtype
-
-        self.harmonic = True
-        self.distances = (np.float(1),)
-
-        self.power_indices = lm_power_indices(
-                    lmax=self.paradict['lmax'],
-                    dim=self.dim,
-                    allowed_distribution_strategies=LM_DISTRIBUTION_STRATEGIES)
-
-    @property
-    def para(self):
-        temp = np.array([self.paradict['lmax'],
-                         self.paradict['mmax']], dtype=int)
-        return temp
-
-    @para.setter
-    def para(self, x):
-        self.paradict['lmax'] = x[0]
-        self.paradict['mmax'] = x[1]
-
-    def __hash__(self):
-        result_hash = 0
-        for (key, item) in vars(self).items():
-            if key in ['_cache_dict', 'power_indices']:
-                continue
-            result_hash ^= item.__hash__() * hash(key)
-        return result_hash
+        super(LMSpace, self).__init__(dtype)
+        self._lmax = self._parse_lmax(lmax)
+        self._mmax = self._parse_mmax(mmax)
 
     def _identifier(self):
         # Extract the identifying parts from the vars(self) dict.
@@ -167,16 +131,21 @@ class LMSpace(Space):
         return tuple(sorted(temp))
 
     def copy(self):
-        return LMSpace(lmax=self.paradict['lmax'],
-                       mmax=self.paradict['mmax'],
+        return self.__class__(lmax=self.lmax,
+                       mmax=self.mmax,
                        dtype=self.dtype)
 
     @property
     def shape(self):
-        lmax = self.paradict['lmax']
-        mmax = self.paradict['mmax']
-        return (np.int((mmax + 1) * (lmax + 1) - ((mmax + 1) * mmax) // 2),)
+        return (np.int((self.mmax + 1) * (self.lmax + 1)),)
 
+    @property
+    def dim(self):
+        return np.int((self.mmax + 1) * (self.lmax + 1))
+
+    @property
+    def harmonic(self):
+        return True
 
     @property
     def meta_volume(self):
@@ -288,59 +257,6 @@ class LMSpace(Space):
 
         return False
 
-    def get_codomain(self, coname=None, **kwargs):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  a pixelization of the two-sphere.
-
-            Parameters
-            ----------
-            coname : string, *optional*
-                String specifying a desired codomain (default: None).
-
-            Returns
-            -------
-            codomain : nifty.space
-                A compatible codomain.
-
-            Notes
-            -----
-            Possible arguments for `coname` are ``'gl'`` in which case a Gauss-
-            Legendre pixelization [#]_ of the sphere is generated, and ``'hp'``
-            in which case a HEALPix pixelization [#]_ is generated.
-
-            References
-            ----------
-            .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-                   High-Resolution Discretization and Fast Analysis of Data
-                   Distributed on the Sphere", *ApJ* 622..759G.
-            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013,
-                   "Libsharp - spherical
-                   harmonic transforms revisited";
-                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-
-        """
-        from hp_space import HPSpace
-        from gl_space import GLSpace
-        if coname == 'gl' or (coname is None and gc['lm2gl']):
-            if self.dtype == np.dtype('complex64'):
-                new_dtype = np.float32
-            elif self.dtype == np.dtype('complex128'):
-                new_dtype = np.float64
-            else:
-                raise NotImplementedError
-            nlat = self.paradict['lmax'] + 1
-            nlon = self.paradict['lmax'] * 2 + 1
-            return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
-
-        elif coname == 'hp' or (coname is None and not gc['lm2gl']):
-            nside = (self.paradict['lmax']+1) // 3
-            return HPSpace(nside=nside)
-
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: unsupported or incompatible codomain '"+coname+"'."))
-
     def get_random_values(self, **kwargs):
         """
             Generates random field values according to the specifications given
@@ -426,37 +342,6 @@ class LMSpace(Space):
         sample = self.cast(sample)
         return sample
 
-#    def calc_dot(self, x, y):
-#        """
-#            Computes the discrete inner product of two given arrays of field
-#            values.
-#
-#            Parameters
-#            ----------
-#            x : numpy.ndarray
-#                First array
-#            y : numpy.ndarray
-#                Second array
-#
-#            Returns
-#            -------
-#            dot : scalar
-#                Inner product of the two arrays.
-#        """
-#        x = self.cast(x)
-#        y = self.cast(y)
-#
-#        lmax = self.paradict['lmax']
-#
-#        x_low = x[:lmax + 1]
-#        x_high = x[lmax + 1:]
-#        y_low = y[:lmax + 1]
-#        y_high = y[lmax + 1:]
-#
-#        dot = (x_low.real * y_low.real).sum()
-#        dot += 2 * (x_high.real * y_high.real).sum()
-#        dot += 2 * (x_high.imag * y_high.imag).sum()
-#        return dot
 
     def dot_contraction(self, x, axes):
         assert len(axes) == 1
@@ -471,187 +356,6 @@ class LMSpace(Space):
 
         result = x[low_extractor].sum(axes) + 2 * x[high_extractor].sum(axes)
         return result
-
-    def calc_transform(self, x, codomain=None, **kwargs):
-        """
-            Computes the transform of a given array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be transformed.
-            codomain : nifty.space, *optional*
-                codomain space to which the transformation shall map
-                (default: self).
-
-            Returns
-            -------
-            Tx : numpy.ndarray
-                Transformed array
-        """
-        x = self.cast(x)
-
-        if codomain is None:
-            codomain = self.get_codomain()
-
-        # Check if the given codomain is suitable for the transformation
-        if not self.check_codomain(codomain):
-            raise ValueError(about._errors.cstring(
-                "ERROR: unsupported codomain."))
-
-        # if self.distribution_strategy != 'not':
-        #     about.warnings.cprint(
-        #         "WARNING: Field data is consolidated to all nodes for "
-        #         "external alm2map method!")
-
-        np_x = x.get_full_data()
-        from hp_space import HPSpace
-        from gl_space import GLSpace
-        if isinstance(codomain, GLSpace):
-            nlat = codomain.paradict['nlat']
-            nlon = codomain.paradict['nlon']
-            lmax = self.paradict['lmax']
-            mmax = self.paradict['mmax']
-
-            # transform
-            if self.dtype == np.dtype('complex64'):
-                np_Tx = gl.alm2map_f(np_x, nlat=nlat, nlon=nlon,
-                                     lmax=lmax, mmax=mmax, cl=False)
-            else:
-                np_Tx = gl.alm2map(np_x, nlat=nlat, nlon=nlon,
-                                   lmax=lmax, mmax=mmax, cl=False)
-            Tx = codomain.cast(np_Tx)
-
-        elif isinstance(codomain, HPSpace):
-            nside = codomain.paradict['nside']
-            lmax = self.paradict['lmax']
-            mmax = self.paradict['mmax']
-
-            # transform
-            np_x = np_x.astype(np.complex128, copy=False)
-            np_Tx = hp.alm2map(np_x, nside, lmax=lmax,
-                               mmax=mmax, pixwin=False, fwhm=0.0, sigma=None,
-                               pol=True, inplace=False)
-            Tx = codomain.cast(np_Tx)
-
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: unsupported transformation."))
-
-        return codomain.cast(Tx)
-
-    def calc_smooth(self, x, sigma=0, **kwargs):
-        """
-            Smoothes an array of field values by convolution with a Gaussian
-            kernel in position space.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array of field values to be smoothed.
-            sigma : float, *optional*
-                Standard deviation of the Gaussian kernel, specified in units
-                of length in position space; for testing: a sigma of -1 will be
-                reset to a reasonable value (default: 0).
-
-            Returns
-            -------
-            Gx : numpy.ndarray
-                Smoothed array.
-        """
-        x = self.cast(x)
-        # check sigma
-        if sigma == 0:
-            return self.unary_operation(x, op='copy')
-        elif sigma == -1:
-            about.infos.cprint("INFO: invalid sigma reset.")
-            sigma = np.sqrt(2) * np.pi / (self.paradict['lmax'] + 1)
-        elif sigma < 0:
-            raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
-
-        # if self.distribution_strategy != 'not':
-        #     about.warnings.cprint(
-        #         "WARNING: Field data is consolidated to all nodes for "
-        #         "external smoothalm method!")
-
-        np_x = x.get_full_data()
-
-        if gc['use_healpy']:
-            np_smoothed_x = hp.smoothalm(np_x,
-                                         fwhm=0.0,
-                                         sigma=sigma,
-                                         pol=True,
-                                         mmax=self.paradict['mmax'],
-                                         verbose=False,
-                                         inplace=False)
-        else:
-            np_smoothed_x = gl.smoothalm(np_x,
-                                         lmax=self.paradict['lmax'],
-                                         mmax=self.paradict['mmax'],
-                                         fwhm=0.0,
-                                         sigma=sigma,
-                                         overwrite=False)
-        return self.cast(np_smoothed_x)
-
-    def calc_power(self, x, **kwargs):
-        """
-            Computes the power of an array of field values.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array containing the field values of which the power is to be
-                calculated.
-
-            Returns
-            -------
-            spec : numpy.ndarray
-                Power contained in the input array.
-        """
-        x = self.cast(x)
-        lmax = self.paradict['lmax']
-        mmax = self.paradict['mmax']
-
-        # if self.distribution_strategy != 'not':
-        #     about.warnings.cprint(
-        #         "WARNING: Field data is consolidated to all nodes for "
-        #         "external anaalm/alm2cl method!")
-
-        np_x = x.get_full_data()
-
-        # power spectrum
-        if self.dtype == np.dtype('complex64'):
-            if gc['use_libsharp']:
-                result = gl.anaalm_f(np_x, lmax=lmax, mmax=mmax)
-            else:
-                np_x = np_x.astype(np.complex128, copy=False)
-                result = hp.alm2cl(np_x,
-                                   alms2=None,
-                                   lmax=lmax,
-                                   mmax=mmax,
-                                   lmax_out=lmax,
-                                   nspec=None)
-        else:
-            if gc['use_healpy']:
-                result = hp.alm2cl(np_x,
-                                   alms2=None,
-                                   lmax=lmax,
-                                   mmax=mmax,
-                                   lmax_out=lmax,
-                                   nspec=None)
-            else:
-                result = gl.anaalm(np_x,
-                                   lmax=lmax,
-                                   mmax=mmax)
-
-        if self.dtype == np.dtype('complex64'):
-            result = result.astype(np.float32, copy=False)
-        elif self.dtype == np.dtype('complex128'):
-            result = result.astype(np.float64, copy=False)
-        else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: dtype %s not known to calc_power method." %
-                str(self.dtype)))
 
     def get_plot(self, x, title="", vmin=None, vmax=None, power=True,
                  norm=None, cmap=None, cbar=True, other=None, legend=False,
@@ -849,3 +553,36 @@ class LMSpace(Space):
                     ).astype(np.int)
         l = index - self.paradict['lmax'] * m + m * (m - 1) // 2
         return l, m
+
+    # ---Added properties and methods---
+
+    @property
+    def lmax(self):
+        return self._lmax
+
+    @property
+    def mmax(self):
+        return self._mmax
+
+    def _parse_lmax(self, lmax):
+        lmax = np.int(lmax)
+        if lmax < 1:
+            raise ValueError(about._errors.cstring(
+                "ERROR: lmax: nonpositive number."))
+        # exception lmax == 2 (nside == 1)
+        if (lmax % 2 == 0) and (lmax > 2):
+            about.warnings.cprint(
+                "WARNING: unrecommended parameter (lmax <> 2*n+1).")
+        return lmax
+
+    def _parse_mmax(self, mmax):
+        mmax = int(mmax)
+        if (mmax < 1) or(mmax > self.lmax):
+            about.warnings.cprint(
+                "WARNING: mmax parameter set to default.")
+            mmax = self.lmax
+        if(mmax != self.lmax):
+            about.warnings.cprint(
+                "WARNING: unrecommended parameter set (mmax <> lmax).")
+        return mmax
+
