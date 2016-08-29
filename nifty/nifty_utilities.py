@@ -92,17 +92,18 @@ def hermitianize(x, axes=None):
     # make the point inversions
     flipped_x = _hermitianize_inverter(x, axes=axes)
     flipped_x = flipped_x.conjugate()
-    # check if x was already hermitian
-    if (x == flipped_x).all():
-        return x
-    # average x and flipped_x.
-    x = (x + flipped_x) / 2.
-    try:
-        x.hermitian = True
-    except(AttributeError):
-        pass
 
-    return x
+    # average x and flipped_x.
+    # x = (x + flipped_x) / 2.
+    result_x = x + flipped_x
+    result_x /= 2.
+
+#    try:
+#        x.hermitian = True
+#    except(AttributeError):
+#        pass
+
+    return result_x
 
 
 def _hermitianize_inverter(x, axes):

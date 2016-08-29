@@ -82,7 +82,8 @@ class LinearOperator(object):
         return y
 
     def inverse_times(self, x, spaces=None, types=None):
-        spaces, types = self._check_input_compatibility(x, spaces, types)
+        spaces, types = self._check_input_compatibility(x, spaces, types,
+                                                        inverse=True)
 
         y = self._inverse_times(x, spaces, types)
         if not self.implemented:
@@ -93,7 +94,8 @@ class LinearOperator(object):
         if self.unitary:
             return self.inverse_times(x, spaces, types)
 
-        spaces, types = self._check_input_compatibility(x, spaces, types)
+        spaces, types = self._check_input_compatibility(x, spaces, types,
+                                                        inverse=True)
 
         if not self.implemented:
             x = x.weight(spaces=spaces)
@@ -142,7 +144,7 @@ class LinearOperator(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: no generic instance method 'inverse_adjoint_times'."))
 
-    def _check_input_compatibility(self, x, spaces, types):
+    def _check_input_compatibility(self, x, spaces, types, inverse=False):
         if not isinstance(x, Field):
             raise ValueError(about._errors.cstring(
                 "ERROR: supplied object is not a `nifty.Field`."))
@@ -160,42 +162,49 @@ class LinearOperator(object):
         # 2. Case:
         #   The domains of self and x match completely.
 
+        if not inverse:
+            self_domain = self.domain
+            self_field_type = self.field_type
+        else:
+            self_domain = self.target
+            self_field_type = self.field_type_target
+
         if spaces is None:
-            if self.domain != () and self.domain != x.domain:
+            if self_domain != () and self_domain != x.domain:
                 raise ValueError(about._errors.cstring(
                     "ERROR: The operator's and and field's domains don't "
                     "match."))
         else:
-            if len(self.domain) > 1:
+            if len(self_domain) > 1:
                 raise ValueError(about._errors.cstring(
                     "ERROR: Specifying `spaces` for operators with multiple "
                     "domain spaces is not valid."))
-            elif len(spaces) != len(self.domain):
+            elif len(spaces) != len(self_domain):
                 raise ValueError(about._errors.cstring(
                     "ERROR: Length of `spaces` does not match the number of "
                     "spaces in the operator's domain."))
             elif len(spaces) == 1:
-                if x.domain[spaces[0]] != self.domain[0]:
+                if x.domain[spaces[0]] != self_domain[0]:
                     raise ValueError(about._errors.cstring(
                         "ERROR: The operator's and and field's domains don't "
                         "match."))
 
         if types is None:
-            if self.field_type != () and self.field_type != x.field_type:
+            if self_field_type != () and self_field_type != x.field_type:
                 raise ValueError(about._errors.cstring(
                     "ERROR: The operator's and and field's field_types don't "
                     "match."))
         else:
-            if len(self.field_type) > 1:
+            if len(self_field_type) > 1:
                 raise ValueError(about._errors.cstring(
                     "ERROR: Specifying `types` for operators with multiple "
                     "field-types is not valid."))
-            elif len(types) != len(self.field_type):
+            elif len(types) != len(self_field_type):
                 raise ValueError(about._errors.cstring(
                     "ERROR: Length of `types` does not match the number of "
                     "the operator's field-types."))
             elif len(types) == 1:
-                if x.field_type[types[0]] != self.field_type[0]:
+                if x.field_type[types[0]] != self_field_type[0]:
                     raise ValueError(about._errors.cstring(
                         "ERROR: The operator's and and field's field_type "
                         "don't match."))
