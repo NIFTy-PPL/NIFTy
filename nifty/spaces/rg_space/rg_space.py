@@ -269,3 +269,11 @@ class RGSpace(Space):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
         return tuple(temp)
+
+    def get_codomain_mask(self, sigma, axis):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.max(self.distances)
+
+        mask = np.fft.fftfreq(self.shape[axis], d=self.distances[axis])
+
+        return mask if self.zerocenter[axis] else np.fft.fftshift(mask)
