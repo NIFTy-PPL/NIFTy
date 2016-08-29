@@ -314,17 +314,115 @@ class Field(object):
         return result_obj
 
     def power_synthesize(self, spaces=None, real_signal=True):
-        # assert that all spaces in `self.domain` are eiher of signal-type or
+        # assert that all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
-            if sp.harmonic and not isinstance(sp, PowerSpace):
+            if not sp.harmonic and not isinstance(sp, PowerSpace):
                 raise AttributeError(
                     "ERROR: Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
-        pass
 
-        # synthesize random fields in harmonic domain using
-        # np.random.multivariate_normal(mean=[0,0], cov=[[0.5,0],[0,0.5]], size=shape)
+        # check if the `spaces` input is valid
+        spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
+        if spaces is None:
+            if len(self.domain) == 1:
+                spaces = (0,)
+            else:
+                raise ValueError(about._errors.cstring(
+                    "ERROR: Field has multiple spaces as domain "
+                    "but `spaces` is None."))
+
+        if len(spaces) == 0:
+            raise ValueError(about._errors.cstring(
+                "ERROR: No space for synthesis specified."))
+        elif len(spaces) > 1:
+            raise ValueError(about._errors.cstring(
+                "ERROR: Conversion of only one space at a time is allowed."))
+
+        power_space_index = spaces[0]
+        power_domain = self.domain[power_space_index]
+        if not isinstance(power_domain, PowerSpace):
+            raise ValueError(about._errors.cstring(
+                "ERROR: A PowerSpace is needed for field synthetization."))
+
+        # create the result domain
+        result_domain = list(self.domain)
+        harmonic_domain = power_domain.harmonic_domain
+        result_domain[power_space_index] = harmonic_domain
+
+        # create random samples: one or two, depending on whether the
+        # power spectrum is real or complex
+
+        if issubclass(power_domain.dtype.type, np.complexfloating):
+            result_list = [None, None]
+        else:
+            result_list = [None]
+
+        result_list = [self.__class__.from_random('normal',
+                                                  result_domain,
+                                                  dtype=harmonic_domain.dtype,
+                                                  field_type=self.field_type,
+                                                  datamodel=self.datamodel)
+                       for x in result_list]
+
+        # from now on extract the values from the random fields for further
+        # processing without killing the fields.
+        # if the signal-space field should be real, hermitianize the field
+        # components
+        if real_signal:
+            result_val_list = [harmonic_domain.hermitian_decomposition(
+                                    x.val,
+                                    axes=x.domain_axes[power_space_index])[0]
+                               for x in result_list]
+        else:
+            result_val_list = [x.val for x in result_list]
+
+        # weight the random fields with the power spectrum
+        # therefore get the pindex from the power space
+        pindex = power_domain.pindex
+        # take the local data from pindex. This data must be compatible to the
+        # local data of the field given the slice of the PowerSpace
+        local_distribution_strategy = \
+            result_list[0].val.get_axes_local_distribution_strategy(
+                result_list[0].domain_axes[power_space_index])
+
+        if pindex.distribution_strategy is not local_distribution_strategy:
+            about.warnings.cprint(
+                "WARNING: The distribution_stragey of pindex does not fit the "
+                "slice_local distribution strategy of the synthesized field.")
+
+        # Now use numpy advanced indexing in order to put the entries of the
+        # power spectrum into the appropriate places of the pindex array.
+        # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
+        local_pindex = pindex.get_local_data(copy=False)
+        local_spec = self.val.get_local_data(copy=False)
+
+        local_blow_up = [slice(None)]*len(self.shape)
+        local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
+
+        # here, the power_spectrum is distributed into the new shape
+        local_rescaler = local_spec[local_blow_up]
+
+        # apply the rescaler to the random fields
+        result_val_list[0].apply_scalar_function(
+                                            lambda x: x * local_rescaler.real,
+                                            inplace=True)
+
+        if issubclass(power_domain.dtype.type, np.complexfloating):
+            result_val_list[1].apply_scalar_function(
+                                            lambda x: x * local_rescaler.imag,
+                                            inplace=True)
+
+        # store the result into the fields
+        [x.set_val(new_val=y, copy=False) for x, y in
+            zip(result_list, result_val_list)]
+
+        if issubclass(power_domain.dtype.type, np.complexfloating):
+            result = result_list[0] + 1j*result_list[1]
+        else:
+            result = result_list[0]
+
+        return result
 
     # ---Properties---
 
@@ -413,9 +511,10 @@ class Field(object):
         if dtype is None:
             dtype = self.dtype
 
-        return_x = distributed_data_object(global_shape=self.shape,
-                                           dtype=dtype,
-                                           distribution_strategy=self.datamodel)
+        return_x = distributed_data_object(
+                                        global_shape=self.shape,
+                                        dtype=dtype,
+                                        distribution_strategy=self.datamodel)
         return_x.set_full_data(x, copy=False)
         return return_x
 
