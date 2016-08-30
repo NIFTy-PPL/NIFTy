@@ -117,15 +117,14 @@ class HPLMTransformation(Transformation):
                     np.imag(inp).astype(np.float64, copy=False),
                     lmax=lmax, mmax=mmax, iter=niter, pol=True,
                     use_weights=False, datapath=None)
-                lmaxArray, mmaxArray = hp.Alm.getlm(lmax=lmax)
-                inpReal = ltf.buildIdx(inpReal,lmaxArray, mmaxArray)
-                inpImg = ltf.buildIdx(inpImg,lmaxArray, mmaxArray)
+                inpReal = ltf.buildIdx(inpReal, lmax=lmax)
+                inpImg = ltf.buildIdx(inpImg, lmax=lmax)
                 inp = inpReal + inpImg * 1j
             else:
                 inp = hp.map2alm(inp.astype(np.float64, copy=False),
                                  lmax=lmax, mmax=mmax, iter=niter, pol=True,
                                  use_weights=False, datapath=None)
-
+                inp = ltf.buildIdx(inp, lmax=lmax)
             if slice_list == [slice(None, None)]:
                 return_val = inp
             else:

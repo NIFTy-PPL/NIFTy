@@ -6,7 +6,6 @@ import nifty.nifty_utilities as utilities
 from nifty import GLSpace, LMSpace
 import lm_transformation_factory as ltf
 
-hp = gdi.get('healpy')
 gl = gdi.get('libsharp_wrapper_gl')
 
 
@@ -119,10 +118,8 @@ class GLLMTransformation(Transformation):
                 inpImg = gl.map2alm(
                     np.imag(inp).astype(np.float64, copy=False), nlat=nlat,
                     nlon=nlon, lmax=lmax, mmax=mmax)
-                #TODO gl shouldn't depend on hp
-                lmaxArray, mmaxArray = hp.Alm.getlm(lmax=lmax)
-                inpReal = ltf.buildIdx(inpReal, lmaxArray, mmaxArray)
-                inpImg = ltf.buildIdx(inpImg, lmaxArray, mmaxArray)
+                inpReal = ltf.buildIdx(inpReal, lmax=lmax)
+                inpImg = ltf.buildIdx(inpImg, lmax=lmax)
                 inp = inpReal + inpImg * 1j
             else:
                 if self.domain.dtype == np.dtype('float32'):
@@ -133,6 +130,7 @@ class GLLMTransformation(Transformation):
                     inp = gl.map2alm(inp,
                                      nlat=nlat, nlon=nlon,
                                      lmax=lmax, mmax=mmax)
+                inp = ltf.buildIdx(inp, lmax=lmax)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp

@@ -5,6 +5,8 @@ from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 from nifty import HPSpace, LMSpace
 
+import lm_transformation_factory as ltf
+
 hp = gdi.get('healpy')
 
 
@@ -102,10 +104,26 @@ class LMHPTransformation(Transformation):
             lmax = self.domain.lmax
             mmax = self.domain.mmax
 
-            inp = inp.astype(np.complex128, copy=False)
-            inp = hp.alm2map(inp, nside, lmax=lmax, mmax=mmax,
-                             pixwin=False, fwhm=0.0, sigma=None,
-                             pol=True, inplace=False)
+            if self.domain.dtype == np.dtype('complex128'):
+                inpReal = np.real(inp)
+                inpImag = np.imag(inp)
+                inpReal = ltf.buildLm(inpReal,lmax=lmax)
+                inpImag = ltf.buildLm(inpImag,lmax=lmax)
+                inpReal = hp.alm2map(inpReal.astype(np.complex128, copy=False), nside,
+                                 lmax=lmax, mmax=mmax,
+                                 pixwin=False, fwhm=0.0, sigma=None,
+                                 pol=True, inplace=False)
+                inpImag = hp.alm2map(inpImag.astype(np.complex128, copy=False), nside,
+                                 lmax=lmax, mmax=mmax,
+                                 pixwin=False, fwhm=0.0, sigma=None,
+                                 pol=True, inplace=False)
+                inp = inpReal+inpImag*(1j)
+            else:
+                inp = ltf.buildLm(inp, lmax=lmax)
+                inp = hp.alm2map(inp.astype(np.complex128, copy=False), nside,
+                                 lmax=lmax, mmax=mmax,
+                                 pixwin=False, fwhm=0.0, sigma=None,
+                                 pol=True, inplace=False)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp
