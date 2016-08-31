@@ -39,7 +39,10 @@ class FFTOperator(LinearOperator):
     def _times(self, x, spaces, types):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
-            axes = None
+            # this case means that x lives on only one space, which is
+            # identical to the space in the domain of `self`. Otherwise the
+            # input check of LinearOperator would have failed.
+            axes = x.domain_axes[0]
         else:
             axes = x.domain_axes[spaces[0]]
 
@@ -59,7 +62,10 @@ class FFTOperator(LinearOperator):
     def _inverse_times(self, x, spaces, types):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
-            axes = None
+            # this case means that x lives on only one space, which is
+            # identical to the space in the domain of `self`. Otherwise the
+            # input check of LinearOperator would have failed.
+            axes = x.domain_axes[0]
         else:
             axes = x.domain_axes[spaces[0]]
 
