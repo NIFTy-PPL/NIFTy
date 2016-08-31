@@ -63,7 +63,6 @@ class FFTOperator(LinearOperator):
         else:
             axes = x.domain_axes[spaces[0]]
 
-        axes = x.domain_axes[spaces[0]]
         new_val = self._inverse_transformation.transform(x.val, axes=axes)
 
         if spaces is None:
