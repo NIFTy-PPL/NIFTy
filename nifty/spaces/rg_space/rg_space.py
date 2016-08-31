@@ -310,10 +310,14 @@ class RGSpace(Space):
         temp[:] = zerocenter
         return tuple(temp)
 
-    def get_codomain_mask(self, sigma, axis):
+    def get_codomain_smoothing_kernel(self, sigma, axis):
         if sigma is None:
             sigma = np.sqrt(2) * np.max(self.distances)
 
-        mask = np.fft.fftfreq(self.shape[axis], d=self.distances[axis])
+        gaussian = lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
+        k = np.fft.fftfreq(self.shape[axis], d=self.distances[axis])
 
-        return mask if self.zerocenter[axis] else np.fft.fftshift(mask)
+        if self.zerocenter[axis]:
+            k = np.fft.fftshift(k)
+
+        return np.array(gaussian(k))
