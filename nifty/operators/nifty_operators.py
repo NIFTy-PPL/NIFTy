@@ -2840,7 +2840,7 @@ class response_operator(operator):
             # TODO: Fix the target spaces
             target = Space(assignments,
                                  dtype=self.domain.dtype,
-                                 datamodel=self.domain.datamodel)
+                                 distribution_strategy=self.domain.distribution_strategy)
         else:
             # check target
             if not isinstance(target, Space):

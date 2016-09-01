@@ -25,7 +25,7 @@ class Field(object):
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
-                 datamodel=None, copy=False):
+                 distribution_strategy=None, copy=False):
 
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
@@ -44,8 +44,9 @@ class Field(object):
                                        domain=self.domain,
                                        field_type=self.field_type)
 
-        self.datamodel = self._parse_datamodel(datamodel=datamodel,
-                                               val=val)
+        self.distribution_strategy = self._parse_distribution_strategy(
+                                distribution_strategy=distribution_strategy,
+                                val=val)
 
         self.set_val(new_val=val, copy=copy)
 
@@ -111,28 +112,28 @@ class Field(object):
 
         return dtype
 
-    def _parse_datamodel(self, datamodel, val):
-        if datamodel is None:
+    def _parse_distribution_strategy(self, distribution_strategy, val):
+        if distribution_strategy is None:
             if isinstance(val, distributed_data_object):
-                datamodel = val.distribution_strategy
+                distribution_strategy = val.distribution_strategy
             elif isinstance(val, Field):
-                datamodel = val.datamodel
+                distribution_strategy = val.distribution_strategy
             else:
                 about.warnings.cprint("WARNING: Datamodel set to default!")
-                datamodel = gc['default_datamodel']
-        elif datamodel not in DISTRIBUTION_STRATEGIES['all']:
+                distribution_strategy = gc['default_distribution_strategy']
+        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['all']:
             raise ValueError(about._errors.cstring(
-                    "ERROR: Invalid datamodel!"))
-        return datamodel
+                    "ERROR: Invalid distribution_strategy!"))
+        return distribution_strategy
 
     # ---Factory methods---
 
     @classmethod
     def from_random(cls, random_type, domain=None, dtype=None, field_type=None,
-                    datamodel=None, **kwargs):
+                    distribution_strategy=None, **kwargs):
         # create a initially empty field
         f = cls(domain=domain, dtype=dtype, field_type=field_type,
-                datamodel=datamodel)
+                distribution_strategy=distribution_strategy)
 
         # now use the processed input in terms of f in order to parse the
         # random arguments
@@ -229,7 +230,7 @@ class Field(object):
 
         harmonic_domain = self.domain[space_index]
         power_domain = PowerSpace(harmonic_domain=harmonic_domain,
-                                  datamodel=distribution_strategy,
+                                  distribution_strategy=distribution_strategy,
                                   log=log, nbin=nbin, binbounds=binbounds,
                                   dtype=power_dtype)
 
@@ -358,11 +359,12 @@ class Field(object):
         else:
             result_list = [None]
 
-        result_list = [self.__class__.from_random('normal',
-                                                  result_domain,
-                                                  dtype=harmonic_domain.dtype,
-                                                  field_type=self.field_type,
-                                                  datamodel=self.datamodel)
+        result_list = [self.__class__.from_random(
+                             'normal',
+                             result_domain,
+                             dtype=harmonic_domain.dtype,
+                             field_type=self.field_type,
+                             distribution_strategy=self.distribution_strategy)
                        for x in result_list]
 
         # from now on extract the values from the random fields for further
@@ -512,24 +514,25 @@ class Field(object):
             dtype = self.dtype
 
         return_x = distributed_data_object(
-                                        global_shape=self.shape,
-                                        dtype=dtype,
-                                        distribution_strategy=self.datamodel)
+                            global_shape=self.shape,
+                            dtype=dtype,
+                            distribution_strategy=self.distribution_strategy)
         return_x.set_full_data(x, copy=False)
         return return_x
 
     def copy(self, domain=None, dtype=None, field_type=None,
-             datamodel=None):
+             distribution_strategy=None):
         copied_val = self.get_val(copy=True)
-        new_field = self.copy_empty(domain=domain,
-                                    dtype=dtype,
-                                    field_type=field_type,
-                                    datamodel=datamodel)
+        new_field = self.copy_empty(
+                                domain=domain,
+                                dtype=dtype,
+                                field_type=field_type,
+                                distribution_strategy=distribution_strategy)
         new_field.set_val(new_val=copied_val, copy=False)
         return new_field
 
     def copy_empty(self, domain=None, dtype=None, field_type=None,
-                   datamodel=None):
+                   distribution_strategy=None):
         if domain is None:
             domain = self.domain
         else:
@@ -545,8 +548,8 @@ class Field(object):
         else:
             field_type = self._parse_field_type(field_type)
 
-        if datamodel is None:
-            datamodel = self.datamodel
+        if distribution_strategy is None:
+            distribution_strategy = self.distribution_strategy
 
         fast_copyable = True
         try:
@@ -562,13 +565,13 @@ class Field(object):
             fast_copyable = False
 
         if (fast_copyable and dtype == self.dtype and
-                datamodel == self.datamodel):
+                distribution_strategy == self.distribution_strategy):
             new_field = self._fast_copy_empty()
         else:
             new_field = Field(domain=domain,
                               dtype=dtype,
                               field_type=field_type,
-                              datamodel=datamodel)
+                              distribution_strategy=distribution_strategy)
         return new_field
 
     def _fast_copy_empty(self):

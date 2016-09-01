@@ -157,8 +157,7 @@ class LinearOperator(object):
         # cases:
         # 1. Case:
         #   The user specifies with `spaces` that the operators domain should
-        #   be applied to a certain domain in the domain-tuple of x. This is
-        #   only valid if len(self.domain)==1.
+        #   be applied to certain spaces in the domain-tuple of x.
         # 2. Case:
         #   The domains of self and x match completely.
 
@@ -175,16 +174,8 @@ class LinearOperator(object):
                     "ERROR: The operator's and and field's domains don't "
                     "match."))
         else:
-            if len(self_domain) > 1:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Specifying `spaces` for operators with multiple "
-                    "domain spaces is not valid."))
-            elif len(spaces) != len(self_domain):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Length of `spaces` does not match the number of "
-                    "spaces in the operator's domain."))
-            elif len(spaces) == 1:
-                if x.domain[spaces[0]] != self_domain[0]:
+            for i, space_index in enumerate(spaces):
+                if x.domain[space_index] != self_domain[i]:
                     raise ValueError(about._errors.cstring(
                         "ERROR: The operator's and and field's domains don't "
                         "match."))
@@ -195,19 +186,12 @@ class LinearOperator(object):
                     "ERROR: The operator's and and field's field_types don't "
                     "match."))
         else:
-            if len(self_field_type) > 1:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Specifying `types` for operators with multiple "
-                    "field-types is not valid."))
-            elif len(types) != len(self_field_type):
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Length of `types` does not match the number of "
-                    "the operator's field-types."))
-            elif len(types) == 1:
-                if x.field_type[types[0]] != self_field_type[0]:
+            for i, field_type_index in enumerate(types):
+                if x.field_types[field_type_index] != self_field_type[i]:
                     raise ValueError(about._errors.cstring(
                         "ERROR: The operator's and and field's field_type "
                         "don't match."))
+
         return (spaces, types)
 
     def __repr__(self):

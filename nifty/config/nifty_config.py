@@ -80,8 +80,8 @@ variable_default_field_dtype = keepers.Variable(
                               _dtype_validator,
                               genus='str')
 
-variable_default_datamodel = keepers.Variable(
-                              'default_datamodel',
+variable_default_distribution_strategy = keepers.Variable(
+                              'default_distribution_strategy',
                               ['fftw', 'equal'],
                               lambda z: (('pyfftw' in dependency_injector)
                                          if z == 'fftw' else True),
@@ -95,7 +95,7 @@ nifty_configuration = keepers.get_Configuration(
                       variable_use_libsharp,
                       variable_verbosity,
                       variable_default_field_dtype,
-                      variable_default_datamodel,
+                      variable_default_distribution_strategy,
                       ],
                      path=os.path.expanduser('~') + "/.nifty/nifty_config")
 ########
