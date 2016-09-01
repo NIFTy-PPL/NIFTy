@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-from base_field_type import FieldType
+from field_type import FieldType
 
 
 class FieldArray(FieldType):
