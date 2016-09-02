@@ -9,7 +9,7 @@ from nifty.operators.fft_operator import FFTOperator
 class SmoothOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
-    def __init__(self, domain=(), field_type=(), inplace=False, sigma=None):
+    def __init__(self, domain=(), field_type=(), sigma=None):
         super(SmoothOperator, self).__init__(domain=domain,
                                              field_type=field_type)
 
@@ -27,7 +27,6 @@ class SmoothOperator(EndomorphicOperator):
             ))
 
         self._sigma = sigma
-        self._inplace = bool(inplace)
 
     def _inverse_times(self, x, spaces, types):
         return self._smooth_helper(x, spaces, types, inverse=True)
@@ -53,56 +52,46 @@ class SmoothOperator(EndomorphicOperator):
     def sigma(self):
         return self._sigma
 
-    @property
-    def inplace(self):
-        return self._inplace
-
     def _smooth_helper(self, x, spaces, types, inverse=False):
-        if self.sigma == 0:
-            return x if self.inplace else x.copy()
-
-        spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
-
-        if spaces is None:
-            return x if self.inplace else x.copy()
-
         # copy for doing the actual smoothing
         smooth_out = x.copy()
 
-        space_obj = x.domain[spaces[0]]
-        axes = x.domain_axes[spaces[0]]
-        for space_axis, val_axis in zip(range(len(space_obj.shape)), axes):
+        if spaces is not None and self.sigma != 0:
+            spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
+
+            space_obj = x.domain[spaces[0]]
+            axes = x.domain_axes[spaces[0]]
+
             transform = FFTOperator(space_obj)
-            kernel = space_obj.get_codomain_smoothing_kernel(
-                self.sigma, space_axis
-            )
 
-            if isinstance(space_obj, RGSpace):
-                new_shape = np.ones(len(x.shape), dtype=np.int)
-                new_shape[val_axis] = len(kernel)
-                kernel = kernel.reshape(new_shape)
+            # create the kernel
+            kernel = space_obj.distance_array(
+                x.val.get_axes_local_distribution_strategy(axes=axes))
+            kernel = kernel.apply_scalar_function(
+                space_obj.get_codomain_smoothing_function(self.sigma))
 
-                # transform
-                smooth_out = transform(smooth_out, spaces=spaces[0])
+            # transform
+            smooth_out = transform(smooth_out, spaces=spaces[0])
 
-                # multiply kernel
-                if inverse:
-                    smooth_out.val /= kernel
-                else:
-                    smooth_out.val *= kernel
+            # local data
+            local_val = smooth_out.val.get_local_data(copy=False)
 
-                # inverse transform
-                smooth_out = transform.inverse_times(smooth_out,
-                                                     spaces=spaces[0])
-            elif isinstance(space_obj, LMSpace):
-                pass
+            # extract local kernel and reshape
+            local_kernel = kernel.get_local_data(copy=False)
+            new_shape = np.ones(len(local_val.shape), dtype=np.int)
+            for space_axis, val_axis in zip(range(len(space_obj.shape)), axes):
+                new_shape[val_axis] = local_kernel.shape[space_axis]
+            local_kernel = local_kernel.reshape(new_shape)
+
+            # multiply kernel
+            if inverse:
+                local_val /= kernel
             else:
-                raise ValueError(about._errors.cstring(
-                    'ERROR: SmoothOperator cannot smooth space ' +
-                    str(space_obj)))
+                local_val *= kernel
 
-        if self.inplace:
-            x.set_val(val=smooth_out.val)
-            return x
-        else:
-            return smooth_out
+            smooth_out.val.set_local_data(local_val, copy=False)
+
+            # inverse transform
+            smooth_out = transform.inverse_times(smooth_out, spaces=spaces[0])
+
+        return smooth_out

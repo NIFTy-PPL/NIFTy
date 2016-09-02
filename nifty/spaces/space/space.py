@@ -269,9 +269,9 @@ class Space(object):
     def complement_cast(self, x, axes=None):
         return x
 
-    def compute_k_array(self, distribution_strategy):
+    def distance_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic k_array for Space base class."))
+            "ERROR: There is no generic distance_array for Space base class."))
 
     def hermitian_decomposition(self, x, axes=None):
         raise NotImplementedError

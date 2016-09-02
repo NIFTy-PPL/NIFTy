@@ -152,7 +152,7 @@ class RGSpace(Space):
         self._distances = self._parse_distances(distances)
         self._zerocenter = self._parse_zerocenter(zerocenter)
 
-    def compute_k_array(self, distribution_strategy):
+    def distance_array(self, distribution_strategy):
         """
             Calculates an n-dimensional array with its entries being the
             lengths of the k-vectors from the zero point of the grid.
@@ -181,12 +181,12 @@ class RGSpace(Space):
         else:
             raise ValueError(about._errors.cstring(
                 "ERROR: Unsupported distribution strategy"))
-        dists = self._compute_k_array_helper(slice_of_first_dimension)
+        dists = self._distance_array_helper(slice_of_first_dimension)
         nkdict.set_local_data(dists)
 
         return nkdict
 
-    def _compute_k_array_helper(self, slice_of_first_dimension):
+    def _distance_array_helper(self, slice_of_first_dimension):
         dk = self.distances
         shape = self.shape
 
@@ -317,14 +317,8 @@ class RGSpace(Space):
         temp[:] = zerocenter
         return tuple(temp)
 
-    def get_codomain_smoothing_kernel(self, sigma, axis):
+    def get_codomain_smoothing_function(self, sigma):
         if sigma is None:
             sigma = np.sqrt(2) * np.max(self.distances)
 
-        gaussian = lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
-        k = np.fft.fftfreq(self.shape[axis], d=self.distances[axis])
-
-        if self.zerocenter[axis]:
-            k = np.fft.fftshift(k)
-
-        return np.array(gaussian(k))
+        return lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)

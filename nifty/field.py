@@ -4,8 +4,7 @@ import numpy as np
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import about,\
-                         nifty_configuration as gc,\
+from nifty.config import about, nifty_configuration as gc
 
 from nifty.field_types import FieldType
 

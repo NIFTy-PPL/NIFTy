@@ -45,7 +45,7 @@ class PowerIndices(object):
         self.distribution_strategy = distribution_strategy
 
         # Compute the global k_array
-        self.k_array = self.domain.compute_k_array(distribution_strategy)
+        self.k_array = self.domain.distance_array(distribution_strategy)
         # Initialize the dictonary which stores all individual index-dicts
         self.global_dict = {}
         # Set self.default_parameters
