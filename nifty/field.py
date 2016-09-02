@@ -6,7 +6,6 @@ from d2o import distributed_data_object,\
 
 from nifty.config import about,\
                          nifty_configuration as gc,\
-                         dependency_injector as gdi
 
 from nifty.field_types import FieldType
 
@@ -15,10 +14,6 @@ from nifty.spaces.power_space import PowerSpace
 
 import nifty.nifty_utilities as utilities
 from nifty.random import Random
-
-
-POINT_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
-COMM = getattr(gdi[gc['mpi_module']], gc['default_comm'])
 
 
 class Field(object):
@@ -121,9 +116,10 @@ class Field(object):
             else:
                 about.warnings.cprint("WARNING: Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
-        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['all']:
+        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(about._errors.cstring(
-                    "ERROR: Invalid distribution_strategy!"))
+                    "ERROR: distribution_strategy must be a global-type "
+                    "strategy."))
         return distribution_strategy
 
     # ---Factory methods---
