@@ -6,15 +6,16 @@ from nifty.config import about,\
                          nifty_configuration as gc
 
 from nifty.field import Field
-from nifty.operators import LinearOperator
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 
 class Prober(object):
-    def __init__(self, operator, random='pm1', distribution_strategy=None):
+    __metaclass__ = abc.ABCMeta
 
-        self.operator = operator
+    def __init__(self, random='pm1', distribution_strategy=None,
+                 compute_variance=False):
+
         self.random = random
 
         if distribution_strategy is None:
@@ -25,21 +26,29 @@ class Prober(object):
                     "strategy."))
         self._distribution_strategy = distribution_strategy
 
+        self.compute_variance = bool(compute_variance)
+
+    @abc.abstractproperty
+    def domain(self):
+        raise NotImplemented
+
+    @abc.abstractproperty
+    def field_type(self):
+        raise NotImplemented
+
+    @abc.abstractmethod
+    def probe(self):
+        """ controls the generation, evaluation and finalization of probes """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def probing_function(self, probe):
+        """ processes probes """
+        raise NotImplementedError
+
     @property
     def distribution_strategy(self):
         return self._distribution_strategy
-
-    @property
-    def operator(self):
-        return self._operator
-
-    @operator.setter
-    def operator(self, operator):
-        if not isinstance(operator, LinearOperator):
-            raise ValueError(about._errors.cstring(
-                    "ERROR: The given operator is not an instance of the "
-                    "LinearOperator class."))
-        self._operator = operator
 
     @property
     def random(self):
@@ -53,24 +62,28 @@ class Prober(object):
         else:
             self._random = random
 
-    @abc.abstractmethod
-    def probing_function(self):
-        """A callable which is constructed from self.operator."""
-        raise NotImplementedError
-
-    def generate_probe(self, inverse=False):
-        if not inverse:
-            domain = self.operator.domain
-            field_type = self.operator.field_type
-        else:
-            domain = self.operator.target
-            field_type = self.operator.field_type_target
-
+    def generate_probe(self):
+        """ a random-probe generator """
         f = Field.from_random(random=self.random,
-                              domain=domain,
-                              field_type=field_type,
+                              domain=self.domain,
+                              field_type=self.field_type,
                               distribution_strategy=self.distribution_strategy)
         return f
 
-    def probe(self, compute_variance=False):
-        raise NotImplementedError
+    def get_probe(self, index=None):
+        """ layer of abstraction for potential probe-caching """
+        return self.generate_probe()
+
+    def finalize(self, probes_count, sum_of_probes, sum_of_squares):
+        mean_of_probes = sum_of_probes/probes_count
+        if self.compute_variance:
+            # variance = 1/(n-1) (sum(x^2) - 1/n*sum(x)^2)
+            variance = ((sum_of_squares - sum_of_probes*mean_of_probes) /
+                        (probes_count-1))
+        else:
+            variance = None
+
+        return (mean_of_probes, variance)
+
+    def __call__(self):
+        return self.probe()
