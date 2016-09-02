@@ -111,23 +111,18 @@ class GLLMTransformation(Transformation):
                     return_val = np.empty_like(temp_val)
                 inp = temp_val[slice_list]
 
-            if self.domain.dtype == np.dtype('complex128'):
-                inpReal = gl.map2alm(
+            if inp.dtype >= np.dtype('complex64'):
+                inpReal = self.GlMap2Alm(
                     np.real(inp).astype(np.float64, copy=False), nlat=nlat,
                     nlon=nlon, lmax=lmax, mmax=mmax)
-                inpImg = gl.map2alm(
+                inpImg = self.GlMap2Alm(
                     np.imag(inp).astype(np.float64, copy=False), nlat=nlat,
                     nlon=nlon, lmax=lmax, mmax=mmax)
                 inpReal = ltf.buildIdx(inpReal, lmax=lmax)
                 inpImg = ltf.buildIdx(inpImg, lmax=lmax)
                 inp = inpReal + inpImg * 1j
             else:
-                if self.domain.dtype == np.dtype('float32'):
-                    inp = gl.map2alm_f(inp,
-                                       nlat=nlat, nlon=nlon,
-                                       lmax=lmax, mmax=mmax)
-                else:
-                    inp = gl.map2alm(inp,
+                inp = self.GlMap2Alm(inp,
                                      nlat=nlat, nlon=nlon,
                                      lmax=lmax, mmax=mmax)
                 inp = ltf.buildIdx(inp, lmax=lmax)
@@ -144,3 +139,9 @@ class GLLMTransformation(Transformation):
             return_val = return_val.astype(self.codomain.dtype, copy=False)
 
         return return_val
+
+    def GlMap2Alm(self, inp, **kwargs):
+        if inp.dtype == np.dtype('float32'):
+            return gl.map2alm_f(inp, kwargs)
+        else:
+            return gl.map.alm(inp, kwargs)

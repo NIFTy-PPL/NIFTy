@@ -118,25 +118,20 @@ class LMGLTransformation(Transformation):
             lmax = self.domain.lmax
             mmax = self.mmax
 
-            if self.domain.dtype == np.dtype('complex128'):
+            if inp.dtype >= np.dtype('complex64'):
                 inpReal = np.real(inp)
                 inpImag = np.imag(inp)
                 inpReal = ltf.buildLm(inpReal,lmax=lmax)
                 inpImag = ltf.buildLm(inpImag,lmax=lmax)
-                inpReal = gl.alm2map(inpReal, nlat=nlat, nlon=nlon,
+                inpReal = self.GlAlm2Map(inpReal, nlat=nlat, nlon=nlon,
                                  lmax=lmax, mmax=mmax, cl=False)
-                inpImag = gl.alm2map(inpImag, nlat=nlat, nlon=nlon,
+                inpImag = self.GlAlm2Map(inpImag, nlat=nlat, nlon=nlon,
                                  lmax=lmax, mmax=mmax, cl=False)
                 inp = inpReal+inpImag*(1j)
             else:
                 inp = ltf.buildLm(inp, lmax=lmax)
-
-                if self.domain.dtype == np.dtype('complex64'):
-                    inp = gl.alm2map_f(inp, nlat=nlat, nlon=nlon,
-                                       lmax=lmax, mmax=mmax, cl=False)
-                else:
-                    inp = gl.alm2map(inp, nlat=nlat, nlon=nlon,
-                                     lmax=lmax, mmax=mmax, cl=False)
+                inp = self.GlAlm2Map(inp, nlat=nlat, nlon=nlon,
+                                   lmax=lmax, mmax=mmax, cl=False)
 
             if slice_list == [slice(None, None)]:
                 return_val = inp
@@ -154,3 +149,9 @@ class LMGLTransformation(Transformation):
             return_val = return_val.astype(self.codomain.dtype, copy=False)
 
         return return_val
+
+    def GlAlm2Map(self, inp, **kwargs):
+        if inp.dtype == np.dtype('complex64'):
+            return gl.alm2map_f(inp, kwargs)
+        else:
+            return gl.alm2map(inp, kwargs)
