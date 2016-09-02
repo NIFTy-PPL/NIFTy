@@ -108,7 +108,7 @@ class RGSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, shape=(1,), zerocenter=False, distances=None,
-                 harmonic=False, dtype=np.dtype('float')):
+                 harmonic=False, dtype=None):
         """
             Sets the attributes for an rg_space class instance.
 
@@ -138,9 +138,16 @@ class RGSpace(Space):
             -------
             None
         """
+        self._harmonic = bool(harmonic)
+
+        if dtype is None:
+            if self.harmonic:
+                dtype = np.dtype('complex')
+            else:
+                dtype = np.dtype('float')
+
         super(RGSpace, self).__init__(dtype)
 
-        self._harmonic = bool(harmonic)
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
         self._zerocenter = self._parse_zerocenter(zerocenter)

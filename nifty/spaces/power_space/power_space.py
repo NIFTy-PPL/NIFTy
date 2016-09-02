@@ -14,7 +14,7 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_domain=RGSpace((1,)), datamodel='not',
+    def __init__(self, harmonic_domain=RGSpace((1,)), distribution_strategy='not',
                  log=False, nbin=None, binbounds=None,
                  dtype=np.dtype('float')):
 
@@ -31,7 +31,7 @@ class PowerSpace(Space):
 
         power_index = PowerIndexFactory.get_power_index(
                         domain=self.harmonic_domain,
-                        distribution_strategy=datamodel,
+                        distribution_strategy=distribution_strategy,
                         log=log,
                         nbin=nbin,
                         binbounds=binbounds)
@@ -71,9 +71,9 @@ class PowerSpace(Space):
         return reduce(lambda x, y: x*y, self.pindex.shape)
 
     def copy(self):
-        datamodel = self.pindex.distribution_strategy
+        distribution_strategy = self.pindex.distribution_strategy
         return self.__class__(harmonic_domain=self.harmonic_domain,
-                              datamodel=datamodel,
+                              distribution_strategy=distribution_strategy,
                               log=self.log,
                               nbin=self.nbin,
                               binbounds=self.binbounds,

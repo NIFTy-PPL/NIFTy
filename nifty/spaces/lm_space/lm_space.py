@@ -499,7 +499,7 @@ class LMSpace(Space):
             raise ValueError(about._errors.cstring(
                 "ERROR: unsupported codomain."))
 
-        # if self.datamodel != 'not':
+        # if self.distribution_strategy != 'not':
         #     about.warnings.cprint(
         #         "WARNING: Field data is consolidated to all nodes for "
         #         "external alm2map method!")
@@ -569,7 +569,7 @@ class LMSpace(Space):
         elif sigma < 0:
             raise ValueError(about._errors.cstring("ERROR: invalid sigma."))
 
-        # if self.datamodel != 'not':
+        # if self.distribution_strategy != 'not':
         #     about.warnings.cprint(
         #         "WARNING: Field data is consolidated to all nodes for "
         #         "external smoothalm method!")
@@ -612,7 +612,7 @@ class LMSpace(Space):
         lmax = self.paradict['lmax']
         mmax = self.paradict['mmax']
 
-        # if self.datamodel != 'not':
+        # if self.distribution_strategy != 'not':
         #     about.warnings.cprint(
         #         "WARNING: Field data is consolidated to all nodes for "
         #         "external anaalm/alm2cl method!")

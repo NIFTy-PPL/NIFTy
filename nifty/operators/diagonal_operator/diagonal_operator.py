@@ -16,26 +16,63 @@ class DiagonalOperator(EndomorphicOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain=(), field_type=(), implemented=False,
-                 diagonal=None, bare=False, copy=True, datamodel=None):
+                 diagonal=None, bare=False, copy=True,
+                 distribution_strategy=None):
         super(DiagonalOperator, self).__init__(domain=domain,
                                                field_type=field_type,
                                                implemented=implemented)
 
         self._implemented = bool(implemented)
 
-        if datamodel is None:
+        if distribution_strategy is None:
             if isinstance(diagonal, distributed_data_object):
-                datamodel = diagonal.distribution_strategy
+                distribution_strategy = diagonal.distribution_strategy
             elif isinstance(diagonal, Field):
-                datamodel = diagonal.datamodel
+                distribution_strategy = diagonal.distribution_strategy
 
-        self.datamodel = self._parse_datamodel(datamodel=datamodel,
-                                               val=diagonal)
+        self.distribution_strategy = self._parse_distribution_strategy(
+                               distribution_strategy=distribution_strategy,
+                               val=diagonal)
 
         self.set_diagonal(diagonal=diagonal, bare=bare, copy=copy)
 
     def _times(self, x, spaces, types):
-        pass
+        # if the distribution_strategy of self is sub-slice compatible to
+        # the one of x, reshape the local data of self and apply it directly
+        active_axes = []
+        if spaces is None:
+            for axes in x.domain_axes:
+                active_axes += axes
+        else:
+            for space_index in spaces:
+                active_axes += x.domain_axes[space_index]
+
+        if types is None:
+            for axes in x.field_type_axes:
+                active_axes += axes
+        else:
+            for type_index in types:
+                active_axes += x.field_type_axes[type_index]
+
+        if x.val.get_axes_local_distribution_strategy(active_axes) == \
+           self.distribution_strategy:
+            local_data = self._diagonal.val.get_local_data(copy=False)
+
+
+        # check if domains match completely
+        # -> multiply directly
+
+        # check if axes_local_distribution_strategy matches.
+        # If yes, extract local data of self.diagonal and x and use numpy
+        # reshape.
+
+        # assert that indices in spaces and types are striktly increasing
+        # otherwise a wild transpose would be necessary
+
+        # build new shape (1,1,x,1,y,1,1,z)
+        # copy self.diagonal into new shape
+        # apply reshaped array to x
+
 
     def _adjoint_times(self, x, spaces, types):
         pass
@@ -97,29 +134,29 @@ class DiagonalOperator(EndomorphicOperator):
     # ---Added properties and methods---
 
     @property
-    def datamodel(self):
-        return self._datamodel
+    def distribution_strategy(self):
+        return self._distribution_strategy
 
-    def _parse_datamodel(self, datamodel, val):
-        if datamodel is None:
+    def _parse_distribution_strategy(self, distribution_strategy, val):
+        if distribution_strategy is None:
             if isinstance(val, distributed_data_object):
-                datamodel = val.distribution_strategy
+                distribution_strategy = val.distribution_strategy
             elif isinstance(val, Field):
-                datamodel = val.datamodel
+                distribution_strategy = val.distribution_strategy
             else:
                 about.warnings.cprint("WARNING: Datamodel set to default!")
-                datamodel = gc['default_datamodel']
-        elif datamodel not in DISTRIBUTION_STRATEGIES['all']:
+                distribution_strategy = gc['default_distribution_strategy']
+        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['all']:
             raise ValueError(about._errors.cstring(
-                    "ERROR: Invalid datamodel!"))
-        return datamodel
+                    "ERROR: Invalid distribution_strategy!"))
+        return distribution_strategy
 
     def set_diagonal(self, diagonal, bare=False, copy=True):
         # use the casting functionality from Field to process `diagonal`
         f = Field(domain=self.domain,
                   val=diagonal,
                   field_type=self.field_type,
-                  datamodel=self.datamodel,
+                  distribution_strategy=self.distribution_strategy,
                   copy=copy)
 
         # weight if the given values were `bare` and `implemented` is True
