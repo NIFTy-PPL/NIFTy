@@ -1,27 +1,25 @@
 import numpy as np
-from transformation import Transformation
-from d2o import distributed_data_object
-from nifty.config import dependency_injector as gdi
-import nifty.nifty_utilities as utilities
+from nifty.config import dependency_injector as gdi,\
+                         about
 from nifty import GLSpace, LMSpace
+from slicing_transformation import SlicingTransformation
 import lm_transformation_factory as ltf
 
-gl = gdi.get('libsharp_wrapper_gl')
+libsharp = gdi.get('libsharp_wrapper_gl')
 
 
-class GLLMTransformation(Transformation):
+class GLLMTransformation(SlicingTransformation):
+
+    # ---Overwritten properties and methods---
+
     def __init__(self, domain, codomain=None, module=None):
         if 'libsharp_wrapper_gl' not in gdi:
-            raise ImportError("The module libsharp is needed but not available")
+            raise ImportError(about._errors.cstring(
+                "The module libsharp is needed but not available."))
 
-        if codomain is None:
-            self.domain = domain
-            self.codomain = self.get_codomain(domain)
-        elif self.check_codomain(domain, codomain):
-            self.domain = domain
-            self.codomain = codomain
-        else:
-            raise ValueError("ERROR: Incompatible codomain!")
+        super(GLLMTransformation, self).__init__(domain, codomain, module)
+
+    # ---Mandatory properties and methods---
 
     @staticmethod
     def get_codomain(domain):
@@ -40,10 +38,12 @@ class GLLMTransformation(Transformation):
                 A compatible codomain.
         """
         if domain is None:
-            raise ValueError('ERROR: cannot generate codomain for None')
+            raise ValueError(about._errors.cstring(
+                "ERROR: cannot generate codomain for None"))
 
         if not isinstance(domain, GLSpace):
-            raise TypeError('ERROR: domain needs to be a GLSpace')
+            raise TypeError(about._errors.cstring(
+                "ERROR: domain needs to be a GLSpace"))
 
         nlat = domain.nlat
         lmax = nlat - 1
@@ -53,16 +53,18 @@ class GLLMTransformation(Transformation):
         else:
             return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex128)
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, GLSpace):
-            raise TypeError('ERROR: domain is not a GLSpace')
+            raise TypeError(about._errors.cstring(
+                "ERROR: domain is not a GLSpace"))
 
         if codomain is None:
             return False
 
         if not isinstance(codomain, LMSpace):
-            raise TypeError('ERROR: codomain must be a LMSpace.')
+            raise TypeError(about._errors.cstring(
+                "ERROR: codomain must be a LMSpace."))
 
         nlat = domain.nlat
         nlon = domain.nlon
@@ -74,74 +76,45 @@ class GLLMTransformation(Transformation):
 
         return True
 
-    def transform(self, val, axes=None, **kwargs):
-        """
-        GL -> LM transform method.
+    # ---Added properties and methods---
 
-        Parameters
-        ----------
-        val : np.ndarray or distributed_data_object
-            The value array which is to be transformed
-
-        axes : None or tuple
-            The axes along which the transformation should take place
-
-        """
-        if self.domain.discrete:
-            val = self.domain.weight(val, power=-0.5, axes=axes)
-
+    def _transformation_of_slice(self, inp):
         # shorthands for transform parameters
         nlat = self.domain.nlat
         nlon = self.domain.nlon
         lmax = self.codomain.lmax
         mmax = self.codomain.mmax
 
-        if isinstance(val, distributed_data_object):
-            temp_val = val.get_full_data()
+        if issubclass(inp.dtype.type, np.complexfloating):
+
+            [resultReal, resultImag] = [self.libsharpMap2Alm(x,
+                                                             nlat=nlat,
+                                                             nlon=nlon,
+                                                             lmax=lmax,
+                                                             mmax=mmax)
+                                        for x in (inp.real, inp.imag)]
+
+            resultReal = ltf.buildIdx(resultReal, lmax=lmax)
+            resultImag = ltf.buildIdx(resultImag, lmax=lmax)
+            # construct correct complex dtype
+            one = resultReal.dtype.type(1)
+            result_dtype = np.dtype(type(one + 1j))
+
+            result = np.empty_like(resultReal, dtype=result_dtype)
+            result.real = resultReal
+            result.imag = resultImag
         else:
-            temp_val = val
+            result = self.libsharpMap2Alm(inp, nlat=nlat, nlon=nlon, lmax=lmax,
+                                          mmax=mmax)
+            result = ltf.buildIdx(result, lmax=lmax)
 
-        return_val = None
+        return result
 
-        for slice_list in utilities.get_slice_list(temp_val.shape, axes):
-            if slice_list == [slice(None, None)]:
-                inp = temp_val
-            else:
-                if return_val is None:
-                    return_val = np.empty_like(temp_val)
-                inp = temp_val[slice_list]
-
-            if inp.dtype >= np.dtype('complex64'):
-                inpReal = self.GlMap2Alm(
-                    np.real(inp).astype(np.float64, copy=False), nlat=nlat,
-                    nlon=nlon, lmax=lmax, mmax=mmax)
-                inpImg = self.GlMap2Alm(
-                    np.imag(inp).astype(np.float64, copy=False), nlat=nlat,
-                    nlon=nlon, lmax=lmax, mmax=mmax)
-                inpReal = ltf.buildIdx(inpReal, lmax=lmax)
-                inpImg = ltf.buildIdx(inpImg, lmax=lmax)
-                inp = inpReal + inpImg * 1j
-            else:
-                inp = self.GlMap2Alm(inp,
-                                     nlat=nlat, nlon=nlon,
-                                     lmax=lmax, mmax=mmax)
-                inp = ltf.buildIdx(inp, lmax=lmax)
-
-            if slice_list == [slice(None, None)]:
-                return_val = inp
-            else:
-                return_val[slice_list] = inp
-
-        if isinstance(val, distributed_data_object):
-            new_val = val.copy_empty(dtype=self.codomain.dtype)
-            new_val.set_full_data(return_val, copy=False)
-        else:
-            return_val = return_val.astype(self.codomain.dtype, copy=False)
-
-        return return_val
-
-    def GlMap2Alm(self, inp, **kwargs):
+    def libsharpMap2Alm(self, inp, **kwargs):
         if inp.dtype == np.dtype('float32'):
-            return gl.map2alm_f(inp, kwargs)
+            return libsharp.map2alm_f(inp, **kwargs)
+        elif inp.dtype == np.dtype('float64'):
+            return libsharp.map2alm(inp, **kwargs)
         else:
-            return gl.map.alm(inp, kwargs)
+            about.warnings.cprint("WARNING: performing dtype conversion for "
+                                  "libsharp compatibility.")

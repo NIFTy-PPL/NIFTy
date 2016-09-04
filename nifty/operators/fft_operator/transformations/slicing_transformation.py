@@ -1,0 +1,36 @@
+# -*- coding: utf-8 -*-
+
+import abc
+import numpy as np
+
+import nifty.nifty_utilities as utilities
+from transformation import Transformation
+
+
+class SlicingTransformation(Transformation):
+
+    def transform(self, val, axes=None, **kwargs):
+
+        return_shape = np.array(val.shape)
+        return_shape[list(axes)] = self.codomain.shape
+        return_shape = tuple(return_shape)
+
+        return_val = None
+
+        for slice_list in utilities.get_slice_list(val.shape, axes):
+            if return_val is None:
+                return_val = val.copy_empty(dtype=self.codomain.dtype,
+                                            global_shape=return_shape)
+
+            data = val[slice_list]
+            data = data.get_full_data()
+
+            data = self._transformation_of_slice(data)
+
+            return_val[slice_list] = data
+
+        return return_val
+
+    @abc.abstractmethod
+    def _transformation_of_slice(self, inp):
+        raise NotImplementedError
