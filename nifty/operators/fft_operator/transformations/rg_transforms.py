@@ -339,7 +339,10 @@ class FFTW(Transform):
                 inp = local_val
             else:
                 if temp_val is None:
-                    temp_val = np.empty_like(local_val)
+                    temp_val = np.empty_like(
+                        local_val,
+                        dtype=self.codomain.dtype
+                    )
                 inp = local_val[slice_list]
 
             # This is in order to make FFTW behave properly when slicing input
