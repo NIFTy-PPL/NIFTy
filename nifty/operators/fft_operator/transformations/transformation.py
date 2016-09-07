@@ -13,14 +13,13 @@ class Transformation(object):
         if codomain is None:
             self.domain = domain
             self.codomain = self.get_codomain(domain)
-        elif self.check_codomain(domain, codomain):
+        else:
+            self.check_codomain(domain, codomain)
             self.domain = domain
             self.codomain = codomain
-        else:
-            raise ValueError("ERROR: Incompatible codomain!")
 
     @staticmethod
-    def get_codomain(domain, dtype=None, zerocenter=None, **kwargs):
+    def get_codomain(domain, dtype=None, zerocenter=None):
         raise NotImplementedError
 
     @staticmethod

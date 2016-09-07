@@ -34,7 +34,7 @@ class RGRGTransformation(Transformation):
                 raise ValueError('ERROR: unknow FFT module:' + module)
 
     @staticmethod
-    def get_codomain(domain, dtype=None, zerocenter=None, **kwargs):
+    def get_codomain(domain, dtype=None, zerocenter=None):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  either a shifted grid or a Fourier conjugate

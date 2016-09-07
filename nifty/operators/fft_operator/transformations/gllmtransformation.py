@@ -39,7 +39,7 @@ class GLLMTransformation(SlicingTransformation):
         """
         if domain is None:
             raise ValueError(about._errors.cstring(
-                "ERROR: cannot generate codomain for None"))
+                "ERROR: cannot generate codomain for None-input"))
 
         if not isinstance(domain, GLSpace):
             raise TypeError(about._errors.cstring(
@@ -49,18 +49,17 @@ class GLLMTransformation(SlicingTransformation):
         lmax = nlat - 1
         mmax = nlat - 1
         if domain.dtype == np.dtype('float32'):
-            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex64)
+            return_dtype = np.float32
         else:
-            return LMSpace(lmax=lmax, mmax=mmax, dtype=np.complex128)
+            return_dtype = np.float64
+
+        return LMSpace(lmax=lmax, mmax=mmax, dtype=return_dtype)
 
     @classmethod
     def check_codomain(cls, domain, codomain):
         if not isinstance(domain, GLSpace):
             raise TypeError(about._errors.cstring(
                 "ERROR: domain is not a GLSpace"))
-
-        if codomain is None:
-            return False
 
         if not isinstance(codomain, LMSpace):
             raise TypeError(about._errors.cstring(
@@ -71,15 +70,18 @@ class GLLMTransformation(SlicingTransformation):
         lmax = codomain.lmax
         mmax = codomain.mmax
 
-        if (nlon != 2 * nlat - 1) or (lmax != nlat - 1) or (lmax != mmax):
-            return False
+        if lmax != mmax:
+            raise ValueError('ERROR: codomain has lmax != mmax.')
 
-        return True
+        if lmax != nlat - 1:
+            raise ValueError('ERROR: codomain has lmax != nlat - 1.')
 
-    # ---Added properties and methods---
+        if nlon != 2 * nlat - 1:
+            raise ValueError('ERROR: domain has nlon != 2 * nlat - 1.')
+
+        return None
 
     def _transformation_of_slice(self, inp):
-        # shorthands for transform parameters
         nlat = self.domain.nlat
         nlon = self.domain.nlon
         lmax = self.codomain.lmax
@@ -94,8 +96,9 @@ class GLLMTransformation(SlicingTransformation):
                                                              mmax=mmax)
                                         for x in (inp.real, inp.imag)]
 
-            resultReal = ltf.buildIdx(resultReal, lmax=lmax)
-            resultImag = ltf.buildIdx(resultImag, lmax=lmax)
+            [resultReal, resultImag] = [ltf.buildIdx(x, lmax=lmax)
+                                        for x in [resultReal, resultImag]]
+
             # construct correct complex dtype
             one = resultReal.dtype.type(1)
             result_dtype = np.dtype(type(one + 1j))
@@ -110,6 +113,8 @@ class GLLMTransformation(SlicingTransformation):
 
         return result
 
+    # ---Added properties and methods---
+
     def libsharpMap2Alm(self, inp, **kwargs):
         if inp.dtype == np.dtype('float32'):
             return libsharp.map2alm_f(inp, **kwargs)
@@ -118,3 +123,6 @@ class GLLMTransformation(SlicingTransformation):
         else:
             about.warnings.cprint("WARNING: performing dtype conversion for "
                                   "libsharp compatibility.")
+            casted_inp = inp.astype(np.dtype('float64'), copy=False)
+            result = libsharp.map2alm(casted_inp, **kwargs)
+            return result

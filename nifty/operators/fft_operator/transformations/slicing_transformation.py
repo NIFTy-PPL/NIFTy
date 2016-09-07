@@ -22,12 +22,12 @@ class SlicingTransformation(Transformation):
                 return_val = val.copy_empty(dtype=self.codomain.dtype,
                                             global_shape=return_shape)
 
-            data = val[slice_list]
+            data = val.get_data(slice_list, copy=False)
             data = data.get_full_data()
 
             data = self._transformation_of_slice(data)
 
-            return_val[slice_list] = data
+            return_val.set_data(data=data, to_key=slice_list, copy=False)
 
         return return_val
 
