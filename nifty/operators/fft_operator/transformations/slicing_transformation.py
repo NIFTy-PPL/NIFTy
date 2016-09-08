@@ -19,8 +19,7 @@ class SlicingTransformation(Transformation):
 
         for slice_list in utilities.get_slice_list(val.shape, axes):
             if return_val is None:
-                return_val = val.copy_empty(dtype=self.codomain.dtype,
-                                            global_shape=return_shape)
+                return_val = val.copy_empty(global_shape=return_shape)
 
             data = val.get_data(slice_list, copy=False)
             data = data.get_full_data()
