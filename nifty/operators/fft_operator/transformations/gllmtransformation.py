@@ -21,8 +21,8 @@ class GLLMTransformation(SlicingTransformation):
 
     # ---Mandatory properties and methods---
 
-    @staticmethod
-    def get_codomain(domain):
+    @classmethod
+    def get_codomain(cls, domain):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
@@ -37,9 +37,6 @@ class GLLMTransformation(SlicingTransformation):
             codomain : LMSpace
                 A compatible codomain.
         """
-        if domain is None:
-            raise ValueError(about._errors.cstring(
-                "ERROR: cannot generate codomain for None-input"))
 
         if not isinstance(domain, GLSpace):
             raise TypeError(about._errors.cstring(
@@ -53,10 +50,12 @@ class GLLMTransformation(SlicingTransformation):
         else:
             return_dtype = np.float64
 
-        return LMSpace(lmax=lmax, mmax=mmax, dtype=return_dtype)
+        result = LMSpace(lmax=lmax, mmax=mmax, dtype=return_dtype)
+        cls.check_codomain(domain, result)
+        return result
 
-    @classmethod
-    def check_codomain(cls, domain, codomain):
+    @staticmethod
+    def check_codomain(domain, codomain):
         if not isinstance(domain, GLSpace):
             raise TypeError(about._errors.cstring(
                 "ERROR: domain is not a GLSpace"))
@@ -71,17 +70,20 @@ class GLLMTransformation(SlicingTransformation):
         mmax = codomain.mmax
 
         if lmax != mmax:
-            raise ValueError('ERROR: codomain has lmax != mmax.')
+            raise ValueError(about._errors.cstring(
+                'ERROR: codomain has lmax != mmax.'))
 
         if lmax != nlat - 1:
-            raise ValueError('ERROR: codomain has lmax != nlat - 1.')
+            raise ValueError(about._errors.cstring(
+                'ERROR: codomain has lmax != nlat - 1.'))
 
         if nlon != 2 * nlat - 1:
-            raise ValueError('ERROR: domain has nlon != 2 * nlat - 1.')
+            raise ValueError(about._errors.cstring(
+                'ERROR: domain has nlon != 2 * nlat - 1.'))
 
         return None
 
-    def _transformation_of_slice(self, inp):
+    def _transformation_of_slice(self, inp, **kwargs):
         nlat = self.domain.nlat
         nlon = self.domain.nlon
         lmax = self.codomain.lmax
@@ -93,19 +95,14 @@ class GLLMTransformation(SlicingTransformation):
                                                              nlat=nlat,
                                                              nlon=nlon,
                                                              lmax=lmax,
-                                                             mmax=mmax)
+                                                             mmax=mmax,
+                                                             **kwargs)
                                         for x in (inp.real, inp.imag)]
 
             [resultReal, resultImag] = [ltf.buildIdx(x, lmax=lmax)
                                         for x in [resultReal, resultImag]]
 
-            # construct correct complex dtype
-            one = resultReal.dtype.type(1)
-            result_dtype = np.dtype(type(one + 1j))
-
-            result = np.empty_like(resultReal, dtype=result_dtype)
-            result.real = resultReal
-            result.imag = resultImag
+            result = self._combine_complex_result(resultReal, resultImag)
         else:
             result = self.libsharpMap2Alm(inp, nlat=nlat, nlon=nlon, lmax=lmax,
                                           mmax=mmax)

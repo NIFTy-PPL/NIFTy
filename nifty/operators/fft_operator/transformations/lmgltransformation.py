@@ -22,8 +22,8 @@ class LMGLTransformation(SlicingTransformation):
 
     # ---Mandatory properties and methods---
 
-    @staticmethod
-    def get_codomain(domain):
+    @classmethod
+    def get_codomain(cls, domain):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  a pixelization of the two-sphere.
@@ -45,10 +45,6 @@ class LMGLTransformation(SlicingTransformation):
                    harmonic transforms revisited";
                    `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         """
-        if domain is None:
-            raise ValueError(about._errors.cstring(
-                'ERROR: cannot generate codomain for None-input'))
-
         if not isinstance(domain, LMSpace):
             raise TypeError(about._errors.cstring(
                 'ERROR: domain needs to be a LMSpace'))
@@ -61,15 +57,19 @@ class LMGLTransformation(SlicingTransformation):
         nlat = domain.lmax + 1
         nlon = domain.lmax * 2 + 1
 
-        return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
+        result = GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
+        cls.check_codomain(domain, result)
+        return result
 
     @staticmethod
     def check_codomain(domain, codomain):
         if not isinstance(domain, LMSpace):
-            raise TypeError('ERROR: domain is not a LMSpace')
+            raise TypeError(about._errors.cstring(
+                'ERROR: domain is not a LMSpace'))
 
         if not isinstance(codomain, GLSpace):
-            raise TypeError('ERROR: codomain must be a GLSpace.')
+            raise TypeError(about._errors.cstring(
+                'ERROR: codomain must be a GLSpace.'))
 
         nlat = codomain.nlat
         nlon = codomain.nlon
@@ -77,17 +77,20 @@ class LMGLTransformation(SlicingTransformation):
         mmax = domain.mmax
 
         if lmax != mmax:
-            raise ValueError('ERROR: domain has lmax != mmax.')
+            raise ValueError(about._errors.cstring(
+                'ERROR: domain has lmax != mmax.'))
 
         if nlat != lmax + 1:
-            raise ValueError('ERROR: codomain has nlat != lmax + 1.')
+            raise ValueError(about._errors.cstring(
+                'ERROR: codomain has nlat != lmax + 1.'))
 
         if nlon != 2 * lmax + 1:
-            raise ValueError('ERROR: domain has nlon != 2 * lmax + 1.')
+            raise ValueError(about._errors.cstring(
+                'ERROR: domain has nlon != 2 * lmax + 1.'))
 
         return None
 
-    def _transformation_of_slice(self, inp):
+    def _transformation_of_slice(self, inp, **kwargs):
         nlat = self.codomain.nlat
         nlon = self.codomain.nlon
         lmax = self.domain.lmax
@@ -102,16 +105,12 @@ class LMGLTransformation(SlicingTransformation):
                                                              nlon=nlon,
                                                              lmax=lmax,
                                                              mmax=mmax,
-                                                             cl=False)
+                                                             cl=False,
+                                                             **kwargs)
                                         for x in [resultReal, resultImag]]
 
-            # construct correct complex dtype
-            one = resultReal.dtype.type(1)
-            result_dtype = np.dtype(type(one + 1j))
+            result = self._combine_complex_result(resultReal, resultImag)
 
-            result = np.empty_like(resultReal, dtype=result_dtype)
-            result.real = resultReal
-            result.imag = resultImag
         else:
             result = ltf.buildLm(inp, lmax=lmax)
             result = self.libsharpAlm2Map(result, nlat=nlat, nlon=nlon,

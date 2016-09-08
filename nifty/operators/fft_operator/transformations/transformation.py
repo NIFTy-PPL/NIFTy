@@ -18,8 +18,8 @@ class Transformation(object):
             self.domain = domain
             self.codomain = codomain
 
-    @staticmethod
-    def get_codomain(domain, dtype=None, zerocenter=None):
+    @classmethod
+    def get_codomain(cls, domain, dtype=None, zerocenter=None):
         raise NotImplementedError
 
     @staticmethod
