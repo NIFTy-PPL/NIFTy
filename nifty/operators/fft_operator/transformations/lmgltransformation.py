@@ -1,30 +1,29 @@
 import numpy as np
-from transformation import Transformation
-from d2o import distributed_data_object
-from nifty.config import dependency_injector as gdi
-import nifty.nifty_utilities as utilities
+from nifty.config import dependency_injector as gdi,\
+                         about
 from nifty import GLSpace, LMSpace
 
-gl = gdi.get('libsharp_wrapper_gl')
+from slicing_transformation import SlicingTransformation
+import lm_transformation_factory as ltf
+
+libsharp = gdi.get('libsharp_wrapper_gl')
 
 
-class LMGLTransformation(Transformation):
+class LMGLTransformation(SlicingTransformation):
+
+    # ---Overwritten properties and methods---
+
     def __init__(self, domain, codomain=None, module=None):
-        if gdi.get('libsharp_wrapper_gl') is None:
-            raise ImportError(
-                "The module libsharp is needed but not available.")
+        if 'libsharp_wrapper_gl' not in gdi:
+            raise ImportError(about._errors.cstring(
+                "The module libsharp is needed but not available."))
 
-        if codomain is None:
-            self.domain = domain
-            self.codomain = self.get_codomain(domain)
-        elif self.check_codomain(domain, codomain):
-            self.domain = domain
-            self.codomain = codomain
-        else:
-            raise ValueError("ERROR: Incompatible codomain!")
+        super(LMGLTransformation, self).__init__(domain, codomain, module)
 
-    @staticmethod
-    def get_codomain(domain):
+    # ---Mandatory properties and methods---
+
+    @classmethod
+    def get_codomain(cls, domain):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  a pixelization of the two-sphere.
@@ -46,97 +45,89 @@ class LMGLTransformation(Transformation):
                    harmonic transforms revisited";
                    `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         """
-        if domain is None:
-            raise ValueError('ERROR: cannot generate codomain for None')
-
         if not isinstance(domain, LMSpace):
-            raise TypeError('ERROR: domain needs to be a LMSpace')
+            raise TypeError(about._errors.cstring(
+                'ERROR: domain needs to be a LMSpace'))
 
-        if domain.dtype == np.dtype('complex64'):
+        if domain.dtype is np.dtype('float32'):
             new_dtype = np.float32
-        elif domain.dtype == np.dtype('complex128'):
-            new_dtype = np.float64
         else:
-            raise ValueError('ERROR: unsupported domain dtype')
+            new_dtype = np.float64
 
         nlat = domain.lmax + 1
         nlon = domain.lmax * 2 + 1
-        return GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
+
+        result = GLSpace(nlat=nlat, nlon=nlon, dtype=new_dtype)
+        cls.check_codomain(domain, result)
+        return result
 
     @staticmethod
     def check_codomain(domain, codomain):
         if not isinstance(domain, LMSpace):
-            raise TypeError('ERROR: domain is not a LMSpace')
-
-        if codomain is None:
-            return False
+            raise TypeError(about._errors.cstring(
+                'ERROR: domain is not a LMSpace'))
 
         if not isinstance(codomain, GLSpace):
-            raise TypeError('ERROR: codomain must be a GLSpace.')
+            raise TypeError(about._errors.cstring(
+                'ERROR: codomain must be a GLSpace.'))
 
         nlat = codomain.nlat
         nlon = codomain.nlon
         lmax = domain.lmax
         mmax = domain.mmax
 
-        if (lmax != mmax) or (nlat != lmax + 1) or (nlon != 2 * lmax + 1):
-            return False
+        if lmax != mmax:
+            raise ValueError(about._errors.cstring(
+                'ERROR: domain has lmax != mmax.'))
 
-        return True
+        if nlat != lmax + 1:
+            raise ValueError(about._errors.cstring(
+                'ERROR: codomain has nlat != lmax + 1.'))
 
-    def transform(self, val, axes=None, **kwargs):
-        """
-        LM -> GL transform method.
+        if nlon != 2 * lmax + 1:
+            raise ValueError(about._errors.cstring(
+                'ERROR: domain has nlon != 2 * lmax + 1.'))
 
-        Parameters
-        ----------
-        val : np.ndarray or distributed_data_object
-            The value array which is to be transformed
+        return None
 
-        axes : None or tuple
-            The axes along which the transformation should take place
+    def _transformation_of_slice(self, inp, **kwargs):
+        nlat = self.codomain.nlat
+        nlon = self.codomain.nlon
+        lmax = self.domain.lmax
+        mmax = self.domain.mmax
 
-        """
-        if isinstance(val, distributed_data_object):
-            temp_val = val.get_full_data()
+        if issubclass(inp.dtype.type, np.complexfloating):
+            [resultReal, resultImag] = [ltf.buildLm(x, lmax=lmax)
+                                        for x in (inp.real, inp.imag)]
+
+            [resultReal, resultImag] = [self.libsharpAlm2Map(x,
+                                                             nlat=nlat,
+                                                             nlon=nlon,
+                                                             lmax=lmax,
+                                                             mmax=mmax,
+                                                             cl=False,
+                                                             **kwargs)
+                                        for x in [resultReal, resultImag]]
+
+            result = self._combine_complex_result(resultReal, resultImag)
+
         else:
-            temp_val = val
+            result = ltf.buildLm(inp, lmax=lmax)
+            result = self.libsharpAlm2Map(result, nlat=nlat, nlon=nlon,
+                                          lmax=lmax, mmax=mmax, cl=False)
 
-        return_val = None
+        return result
 
-        for slice_list in utilities.get_slice_list(temp_val.shape, axes):
-            if slice_list == [slice(None, None)]:
-                inp = temp_val
-            else:
-                if return_val is None:
-                    return_val = np.empty_like(temp_val)
-                inp = temp_val[slice_list]
+    # ---Added properties and methods---
 
-            nlat = self.codomain.nlat
-            nlon = self.codomain.nlon
-            lmax = self.domain.lmax
-            mmax = self.mmax
-
-            if self.domain.dtype == np.dtype('complex64'):
-                inp = gl.alm2map_f(inp, nlat=nlat, nlon=nlon,
-                                   lmax=lmax, mmax=mmax, cl=False)
-            else:
-                inp = gl.alm2map(inp, nlat=nlat, nlon=nlon,
-                                 lmax=lmax, mmax=mmax, cl=False)
-
-            if slice_list == [slice(None, None)]:
-                return_val = inp
-            else:
-                return_val[slice_list] = inp
-
-        # re-weight if discrete
-        if self.codomain.discrete:
-            val = self.codomain.weight(val, power=0.5, axes=axes)
-
-        if isinstance(val, distributed_data_object):
-            new_val = val.copy_empty(dtype=self.codomain.dtype)
-            new_val.set_full_data(return_val, copy=False)
+    def libsharpAlm2Map(self, inp, **kwargs):
+        if inp.dtype == np.dtype('complex64'):
+            return libsharp.alm2map_f(inp, **kwargs)
+        elif inp.dtype == np.dtype('complex128'):
+            return libsharp.alm2map(inp, **kwargs)
         else:
-            return_val = return_val.astype(self.codomain.dtype, copy=False)
-
-        return return_val
+            about.warnings.cprint("WARNING: performing dtype conversion for "
+                                  "libsharp compatibility.")
+            casted_inp = inp.astype(np.dtype('complex128'), copy=False)
+            result = libsharp.alm2map(casted_inp, **kwargs)
+            return result

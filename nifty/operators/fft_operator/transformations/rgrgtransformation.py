@@ -7,17 +7,13 @@ from nifty import RGSpace, nifty_configuration
 
 class RGRGTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        if codomain is None:
-            codomain = self.get_codomain(domain)
-        else:
-            if not self.check_codomain(domain, codomain):
-                raise ValueError("ERROR: incompatible codomain!")
+        super(RGRGTransformation, self).__init__(domain, codomain, module)
 
         if module is None:
             if nifty_configuration['fft_module'] == 'pyfftw':
                 self._transform = FFTW(domain, codomain)
-            elif nifty_configuration['fft_module'] == 'gfft' or \
-                nifty_configuration['fft_module'] == 'gfft_dummy':
+            elif (nifty_configuration['fft_module'] == 'gfft' or
+                  nifty_configuration['fft_module'] == 'gfft_dummy'):
                 self._transform = \
                     GFFT(domain,
                          codomain,
@@ -37,8 +33,8 @@ class RGRGTransformation(Transformation):
             else:
                 raise ValueError('ERROR: unknow FFT module:' + module)
 
-    @staticmethod
-    def get_codomain(domain, dtype=None, zerocenter=None, **kwargs):
+    @classmethod
+    def get_codomain(cls, domain, dtype=None, zerocenter=None):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  either a shifted grid or a Fourier conjugate
@@ -73,20 +69,22 @@ class RGRGTransformation(Transformation):
         distances = 1 / (np.array(domain.shape) *
                          np.array(domain.distances))
         if dtype is None:
-            dtype = np.complex
+            # create a definitely complex dtype from the dtype of domain
+            one = domain.dtype.type(1)
+            dtype = np.dtype(type(one + 1j))
 
         new_space = RGSpace(domain.shape,
                             zerocenter=zerocenter,
                             distances=distances,
                             harmonic=(not domain.harmonic),
                             dtype=dtype)
-
+        cls.check_codomain(domain, new_space)
         return new_space
 
     @staticmethod
     def check_codomain(domain, codomain):
         if not isinstance(domain, RGSpace):
-            raise TypeError('ERROR: domain must be a RGSpace')
+            raise TypeError('ERROR: domain is not a RGSpace')
 
         if codomain is None:
             return False
@@ -100,6 +98,11 @@ class RGRGTransformation(Transformation):
 
         if domain.harmonic == codomain.harmonic:
             return False
+
+        if codomain.harmonic and not issubclass(codomain.dtype.type,
+                                                np.complexfloating):
+            about.warnings.cprint(
+                "WARNING: codomain is harmonic but dtype is real.")
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
         if not np.all(
