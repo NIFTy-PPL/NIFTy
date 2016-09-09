@@ -2,8 +2,6 @@
 
 import abc
 
-from nifty import about
-
 from prober import Prober
 
 
@@ -11,25 +9,26 @@ class OperatorProber(Prober):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, operator, random='pm1', distribution_strategy=None,
-                 compute_variance=False):
+    def __init__(self, operator, probe_count=8, random_type='pm1',
+                 distribution_strategy=None, compute_variance=False):
         super(OperatorProber, self).__init__(
-                                 random=random,
+                                 probe_count=probe_count,
+                                 random_type=random_type,
                                  distribution_strategy=distribution_strategy,
                                  compute_variance=compute_variance)
 
-        self.operator = operator
+        self._operator = operator
 
     # ---Mandatory properties and methods---
 
-    @abc.abstractproperty
+    @property
     def domain(self):
         if self.is_inverse:
             return self.operator.target
         else:
             return self.operator.domain
 
-    @abc.abstractproperty
+    @property
     def field_type(self):
         if self.is_inverse:
             return self.operator.field_type_target
@@ -39,21 +38,13 @@ class OperatorProber(Prober):
     # ---Added properties and methods---
 
     @abc.abstractproperty
-    def valid_operator_class(self):
+    def is_inverse(self):
         raise NotImplementedError
 
-    @property
-    def is_inverse(self):
+    @abc.abstractproperty
+    def valid_operator_class(self):
         raise NotImplementedError
 
     @property
     def operator(self):
         return self._operator
-
-    @operator.setter
-    def operator(self, operator):
-        if not isinstance(operator, self.valid_operator_class):
-            raise ValueError(about._errors.cstring(
-                    "ERROR: The given operator is not an instance of the "
-                    "LinearOperator class."))
-        self._operator = operator
