@@ -317,7 +317,7 @@ class RGSpace(Space):
         temp[:] = zerocenter
         return tuple(temp)
 
-    def get_codomain_smoothing_function(self, sigma):
+    def codomain_smoothing_function(self, sigma, target):
         if sigma is None:
             sigma = np.sqrt(2) * np.max(self.distances)
 

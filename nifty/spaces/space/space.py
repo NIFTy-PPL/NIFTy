@@ -273,6 +273,11 @@ class Space(object):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic distance_array for Space base class."))
 
+    def codomain_smoothing_function(self, sigma, target):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no generic smoothing fuction for Space base class."
+        ))
+
     def hermitian_decomposition(self, x, axes=None):
         raise NotImplementedError
 

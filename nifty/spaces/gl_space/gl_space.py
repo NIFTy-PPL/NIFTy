@@ -3,7 +3,7 @@ from __future__ import division
 import itertools
 import numpy as np
 
-from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
+from d2o import distributed_data_object, STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
 from nifty.config import about, nifty_configuration as gc,\
@@ -135,9 +135,8 @@ class GLSpace(Space):
         nlat = self.nlat
 
         weight = np.array(list(itertools.chain.from_iterable(
-                    itertools.repeat(x ** power, nlon)
-                    for x in gl.vol(nlat))
-                 ))
+            itertools.repeat(x ** power, nlon)
+            for x in gl.vol(nlat))))
 
         if axes is not None:
             # reshape the weight array to match the input shape
@@ -153,6 +152,33 @@ class GLSpace(Space):
             result_x = x * weight
 
         return result_x
+
+    def distance_array(self, distribution_strategy):
+        shape = self.shape[0]
+
+        dists = distributed_data_object(
+            global_shape=self.shape,
+            dtype=np.float128,
+            distribution_strategy=distribution_strategy
+        )
+
+        center_lat = np.random.randint(self.nlat)
+        center_lon = np.random.randint(self.nlon)
+
+        for i in range(self.nlat):
+            for j in range(self.nlon):
+                dists[i + j] = np.arccos(np.sin(i) * np.sin(center_lat) +
+                                         np.cos(i) * np.cos(center_lat) *
+                                         np.cos(j - center_lon))
+
+        return dists
+
+
+    def codomain_smoothing_function(self, sigma, target):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi / (target.lmax + 1)
+
+        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
 
     # ---Added properties and methods---
 
@@ -184,11 +210,3 @@ class GLSpace(Space):
                     "WARNING: nlon was set to an unrecommended value: "
                     "nlon <> 2*nlat-1.")
         return nlon
-
-
-
-
-
-
-
-

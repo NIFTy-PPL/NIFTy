@@ -68,7 +68,8 @@ class SmoothOperator(EndomorphicOperator):
             kernel = space_obj.distance_array(
                 x.val.get_axes_local_distribution_strategy(axes=axes))
             kernel = kernel.apply_scalar_function(
-                space_obj.get_codomain_smoothing_function(self.sigma))
+                space_obj.codomain_smoothing_function(self.sigma,
+                                                      transform.target))
 
             # transform
             smooth_out = transform(smooth_out, spaces=spaces[0])
