@@ -67,7 +67,7 @@ class Prober(object):
     def random_type(self, random_type):
         if random_type not in ["pm1", "normal"]:
             raise ValueError(about._errors.cstring(
-                "ERROR: unsupported random type: '" + str(random) + "'."))
+                "ERROR: unsupported random type: '" + str(random_type) + "'."))
         else:
             self._random_type = random_type
 
@@ -81,7 +81,7 @@ class Prober(object):
         for index in xrange(self.probe_count):
             current_probe = self.get_probe(index)
             pre_result = self.process_probe(current_probe, index)
-            result = self.finish_probe(pre_result)
+            result = self.finish_probe(current_probe, pre_result)
 
             sum_of_probes += result
             if self.compute_variance:
@@ -111,8 +111,9 @@ class Prober(object):
         """ processes a probe """
         raise NotImplementedError
 
-    def finish_probe(self, probe):
-        return probe
+    @abc.abstractmethod
+    def finish_probe(self, probe, pre_result):
+        return pre_result
 
     def finalize(self, sum_of_probes, sum_of_squares):
         probe_count = self.probe_count
