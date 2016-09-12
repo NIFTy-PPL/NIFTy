@@ -85,7 +85,7 @@ class LMHPTransformation(SlicingTransformation):
             [resultReal, resultImag] = [ltf.buildLm(x, lmax=lmax)
                                         for x in (inp.real, inp.imag)]
 
-            [resultReal, resultImag] = [hp.map2alm(x.astype(np.complex128,
+            [resultReal, resultImag] = [hp.alm2map(x.astype(np.complex128,
                                                             copy=False),
                                                    nside,
                                                    lmax=lmax,
