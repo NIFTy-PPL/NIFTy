@@ -577,7 +577,7 @@ class Field(object):
         new_field.__class__ = self.__class__
         # copy domain, codomain and val
         for key, value in self.__dict__.items():
-            if key != 'val':
+            if key != '_val':
                 new_field.__dict__[key] = value
             else:
                 new_field.__dict__[key] = self.val.copy_empty()
