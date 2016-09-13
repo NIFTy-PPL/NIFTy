@@ -16,7 +16,6 @@ class OperatorProber(Prober):
         super(OperatorProber, self).__init__(
                                  probe_count=probe_count,
                                  random_type=random_type,
-                                 distribution_strategy=distribution_strategy,
                                  compute_variance=compute_variance)
 
         if not isinstance(operator, self.valid_operator_class):
@@ -40,6 +39,10 @@ class OperatorProber(Prober):
             return self.operator.field_type_target
         else:
             return self.operator.field_type
+
+    @property
+    def distribution_strategy(self):
+        return self.operator.distribution_strategy
 
     # ---Added properties and methods---
 

@@ -4,9 +4,7 @@ import abc
 
 import numpy as np
 
-from nifty.config import about,\
-                         nifty_configuration as gc
-
+from nifty.config import about
 from nifty.field import Field
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
@@ -16,15 +14,11 @@ class Prober(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, probe_count=8, random_type='pm1',
-                 distribution_strategy=None, compute_variance=False):
+                 compute_variance=False):
 
         self.probe_count = probe_count
 
         self.random_type = random_type
-
-        if distribution_strategy is None:
-            distribution_strategy = gc['default_distribution_strategy']
-        self.distribution_strategy = distribution_strategy
 
         self.compute_variance = bool(compute_variance)
 
@@ -32,15 +26,15 @@ class Prober(object):
 
     @abc.abstractproperty
     def domain(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     @abc.abstractproperty
     def field_type(self):
-        raise NotImplemented
+        raise NotImplementedError
 
-    @property
+    @abc.abstractproperty
     def distribution_strategy(self):
-        return self._distribution_strategy
+        raise NotImplementedError
 
     @distribution_strategy.setter
     def distribution_strategy(self, distribution_strategy):

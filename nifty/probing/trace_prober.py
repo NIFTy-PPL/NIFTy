@@ -4,11 +4,11 @@ from nifty.operators import EndomorphicOperator
 
 from operator_prober import OperatorProber
 
-__all__ = ['DiagonalProber', 'InverseDiagonalProber',
-           'AdjointDiagonalProber', 'AdjointInverseDiagonalProber']
+__all__ = ['TraceProber', 'InverseTraceProber',
+           'AdjointTraceProber', 'AdjointInverseTraceProber']
 
 
-class DiagonalTypeProber(OperatorProber):
+class TraceTypeProber(OperatorProber):
 
     # ---Mandatory properties and methods---
     # --- ->Mandatory from OperatorProber---
@@ -20,10 +20,10 @@ class DiagonalTypeProber(OperatorProber):
     # --- ->Mandatory from Prober---
 
     def finish_probe(self, probe, pre_result):
-        return probe[1].conjugate()*pre_result
+        return probe[1].conjugate().weight(power=-1).dot(pre_result)
 
 
-class DiagonalProber(DiagonalTypeProber):
+class TraceProber(TraceTypeProber):
 
     # ---Mandatory properties and methods---
     # --- ->Mandatory from OperatorProber---
@@ -39,7 +39,7 @@ class DiagonalProber(DiagonalTypeProber):
         return self.operator.times(probe[1])
 
 
-class InverseDiagonalProber(DiagonalTypeProber):
+class InverseTraceProber(TraceTypeProber):
 
     # ---Mandatory properties and methods---
     # --- ->Mandatory from OperatorProber---
@@ -55,7 +55,7 @@ class InverseDiagonalProber(DiagonalTypeProber):
         return self.operator.inverse_times(probe[1])
 
 
-class AdjointDiagonalProber(DiagonalTypeProber):
+class AdjointTraceProber(TraceTypeProber):
 
     # ---Mandatory properties and methods---
     # --- ->Mandatory from OperatorProber---
@@ -71,7 +71,7 @@ class AdjointDiagonalProber(DiagonalTypeProber):
         return self.operator.adjoint_times(probe[1])
 
 
-class AdjointInverseDiagonalProber(DiagonalTypeProber):
+class AdjointInverseTraceProber(TraceTypeProber):
 
     # ---Mandatory properties and methods---
     # --- ->Mandatory from OperatorProber---
