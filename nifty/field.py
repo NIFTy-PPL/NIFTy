@@ -490,15 +490,23 @@ class Field(object):
         else:
             dtype = np.dtype(dtype)
 
-        casted_x = self._actual_cast(x, dtype=dtype)
-
         for ind, sp in enumerate(self.domain):
-            casted_x = sp.complement_cast(casted_x,
-                                          axes=self.domain_axes[ind])
+            casted_x = sp.pre_cast(x,
+                                   axes=self.domain_axes[ind])
 
         for ind, ft in enumerate(self.field_type):
-            casted_x = ft.complement_cast(casted_x,
-                                          axes=self.field_type_axes[ind])
+            casted_x = ft.pre_cast(casted_x,
+                                   axes=self.field_type_axes[ind])
+
+        casted_x = self._actual_cast(casted_x, dtype=dtype)
+
+        for ind, sp in enumerate(self.domain):
+            casted_x = sp.post_cast(casted_x,
+                                    axes=self.domain_axes[ind])
+
+        for ind, ft in enumerate(self.field_type):
+            casted_x = ft.post_cast(casted_x,
+                                    axes=self.field_type_axes[ind])
 
         return casted_x
 
