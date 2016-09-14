@@ -59,20 +59,19 @@ class SmoothOperator(EndomorphicOperator):
         if spaces is not None and self.sigma != 0:
             spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
 
-            space_obj = x.domain[spaces[0]]
             axes = x.domain_axes[spaces[0]]
 
-            transform = FFTOperator(space_obj)
-
-            # create the kernel
-            kernel = space_obj.distance_array(
-                x.val.get_axes_local_distribution_strategy(axes=axes))
-            kernel = kernel.apply_scalar_function(
-                space_obj.codomain_smoothing_function(self.sigma,
-                                                      transform.target))
+            transform = FFTOperator(x.domain[spaces[0]])
 
             # transform
             smooth_out = transform(smooth_out, spaces=spaces[0])
+
+            # create the kernel
+            space_obj = smooth_out.domain[spaces[0]]
+            kernel = space_obj.distance_array(
+                x.val.get_axes_local_distribution_strategy(axes=axes))
+            kernel = kernel.apply_scalar_function(
+                x.domain[spaces[0]].codomain_smoothing_function(self.sigma))
 
             # local data
             local_val = smooth_out.val.get_local_data(copy=False)

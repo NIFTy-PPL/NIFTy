@@ -3,7 +3,7 @@ from __future__ import division
 import itertools
 import numpy as np
 
-from d2o import distributed_data_object, STRATEGIES as DISTRIBUTION_STRATEGIES
+from d2o import arange, STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
 from nifty.config import about, nifty_configuration as gc,\
@@ -153,23 +153,22 @@ class GLSpace(Space):
 
         return result_x
 
-    def distance_array(self, distribution_strategy):
-        shape = self.shape[0]
+    def _distance_array_helper(self, qr_tuple):
+        numerator = np.sqrt(np.sin(qr_tuple[1])**2  +
+                            (np.sin(qr_tuple[0]) * np.cos(qr_tuple[1]))**2)
+        denominator = np.cos(qr_tuple[0]) * np.cos(qr_tuple[1])
 
-        dists = distributed_data_object(
-            global_shape=self.shape,
-            dtype=np.float128,
+        return np.arctan(numerator / denominator)
+
+    def distance_array(self, distribution_strategy):
+        dists = arange(
+            start = 0, stop = self.shape[0], dtype=np.float128,
             distribution_strategy=distribution_strategy
         )
 
-        center_lat = np.random.randint(self.nlat)
-        center_lon = np.random.randint(self.nlon)
-
-        for i in range(self.nlat):
-            for j in range(self.nlon):
-                dists[i + j] = np.arccos(np.sin(i) * np.sin(center_lat) +
-                                         np.cos(i) * np.cos(center_lat) *
-                                         np.cos(j - center_lon))
+        dists = dists.apply_scalar_function(
+            lambda x: self._distance_array_helper(divmod(int(x), self.nlon))
+        )
 
         return dists
 

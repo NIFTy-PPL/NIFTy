@@ -35,7 +35,7 @@ from __future__ import division
 
 import numpy as np
 
-from d2o import distributed_data_object, STRATEGIES as DISTRIBUTION_STRATEGIES
+from d2o import arange, STRATEGIES as DISTRIBUTION_STRATEGIES
 from nifty.config import about
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc, \
@@ -138,19 +138,18 @@ class HPSpace(Space):
         -------
         dists: distributed_data_object
         """
-        # HPSpace is always 1-dimensional
-        shape = self.shape[0]
-
-        dists = distributed_data_object(
-            global_shape=shape,
-            dtype=np.float128,
+        dists = arange(
+            start=0, stop = self.shape[0], dtype=np.float128,
             distribution_strategy=distribution_strategy
         )
 
-        center_vec = hp.pix2vec(self.nside, np.random.randint(shape))
+        # setting the center to fixed value
+        center_vec = (1, 0, 0)
 
-        for i in range(shape):
-            dists[i] = np.arccos(np.dot(hp.pix2vec(self.nside, i), center_vec))
+        dists = dists.apply_scalar_function(
+            lambda x: np.arccos(np.dot(hp.pix2vec(self.nside, int(x)),
+                                       center_vec))
+        )
 
         return dists
 
