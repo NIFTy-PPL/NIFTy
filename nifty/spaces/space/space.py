@@ -266,7 +266,10 @@ class Space(object):
         """
         raise NotImplementedError
 
-    def complement_cast(self, x, axes=None):
+    def pre_cast(self, x, axes=None):
+        return x
+
+    def post_cast(self, x, axes=None):
         return x
 
     def distance_array(self, distribution_strategy):

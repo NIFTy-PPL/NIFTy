@@ -14,7 +14,8 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_domain=RGSpace((1,)), distribution_strategy='not',
+    def __init__(self, harmonic_domain=RGSpace((1,)),
+                 distribution_strategy='not',
                  log=False, nbin=None, binbounds=None,
                  dtype=np.dtype('float')):
 
@@ -50,6 +51,12 @@ class PowerSpace(Space):
     def compute_k_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no k_array implementation for PowerSpace."))
+
+    def pre_cast(self, x, axes=None):
+        if callable(x):
+            return x(self.kindex)
+        else:
+            return x
 
     # ---Mandatory properties and methods---
 

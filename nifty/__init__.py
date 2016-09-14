@@ -55,6 +55,8 @@ from spaces import *
 
 from operators import *
 
+from probing import *
+
 from demos import get_demo_dir
 
 #import pyximport; pyximport.install(pyimport = True)
