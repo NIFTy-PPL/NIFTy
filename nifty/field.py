@@ -207,7 +207,7 @@ class Field(object):
 
         if not self.domain[space_index].harmonic:
             raise ValueError(about._errors.cstring(
-                "ERROR: Conversion of only one space at a time is allowed."))
+                "ERROR: The analyzed space must be harmonic."))
 
         # Create the target PowerSpace instance:
         # If the associated signal-space field was real, we extract the

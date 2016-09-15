@@ -126,39 +126,6 @@ class HPSpace(Space):
 
         self._nside = self._parse_nside(nside)
 
-    def distance_array(self, distribution_strategy):
-        """
-        Calculates distance from center to all the points on the sphere
-
-        Parameters
-        ----------
-        distribution_strategy: Result d2o's distribution strategy
-
-        Returns
-        -------
-        dists: distributed_data_object
-        """
-        dists = arange(
-            start=0, stop = self.shape[0], dtype=np.float128,
-            distribution_strategy=distribution_strategy
-        )
-
-        # setting the center to fixed value
-        center_vec = (1, 0, 0)
-
-        dists = dists.apply_scalar_function(
-            lambda x: np.arccos(np.dot(hp.pix2vec(self.nside, int(x)),
-                                       center_vec))
-        )
-
-        return dists
-
-    def codomain_smoothing_function(self, sigma, target):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi / (target.lmax + 1)
-
-        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
-
     # ---Mandatory properties and methods---
 
     @property
@@ -191,6 +158,36 @@ class HPSpace(Space):
             result_x = x * weight
 
         return result_x
+
+    def distance_array(self, distribution_strategy):
+        """
+        Calculates distance from center to all the points on the sphere
+
+        Parameters
+        ----------
+        distribution_strategy: Result d2o's distribution strategy
+
+        Returns
+        -------
+        dists: distributed_data_object
+        """
+        dists = arange(
+            start=0, stop=self.shape[0], dtype=np.float128,
+            distribution_strategy=distribution_strategy
+        )
+
+        # setting the center to fixed value
+        center_vec = (1, 0, 0)
+
+        dists = dists.apply_scalar_function(
+            lambda x: np.arccos(np.dot(hp.pix2vec(self.nside, int(x)),
+                                       center_vec))
+        )
+
+        return dists
+
+    def get_smoothing_kernel_function(self, sigma, target):
+        raise NotImplementedError
 
     # ---Added properties and methods---
 

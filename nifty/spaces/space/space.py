@@ -223,6 +223,12 @@ class Space(object):
         else:
             return False
 
+    def pre_cast(self, x, axes=None):
+        return x
+
+    def post_cast(self, x, axes=None):
+        return x
+
     @abc.abstractproperty
     def harmonic(self):
         raise NotImplementedError
@@ -266,20 +272,13 @@ class Space(object):
         """
         raise NotImplementedError
 
-    def pre_cast(self, x, axes=None):
-        return x
-
-    def post_cast(self, x, axes=None):
-        return x
-
     def distance_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(
             "ERROR: There is no generic distance_array for Space base class."))
 
-    def codomain_smoothing_function(self, sigma, target):
+    def get_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic smoothing fuction for Space base class."
-        ))
+            "ERROR: There is no generic smoothing function for Space class."))
 
     def hermitian_decomposition(self, x, axes=None):
         raise NotImplementedError
