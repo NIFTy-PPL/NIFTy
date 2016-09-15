@@ -110,6 +110,9 @@ class LMSpace(Space):
         self._lmax = self._parse_lmax(lmax)
         self._mmax = self._parse_mmax(mmax)
 
+    def hermitian_decomposition(self, x, axes=None):
+        return (x.real, x.imag)
+
     def compute_k_array(self, distribution_strategy):
         # return a d2o with the l-value at the individual pixels
         # e.g. for 0<=l<=2: [0,1,2, 1,1,2,2, 2,2]
