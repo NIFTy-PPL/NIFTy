@@ -48,10 +48,6 @@ class PowerSpace(Space):
         self._pundex = power_index['pundex']
         self._k_array = power_index['k_array']
 
-    def compute_k_array(self, distribution_strategy):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no k_array implementation for PowerSpace."))
-
     def pre_cast(self, x, axes=None):
         if callable(x):
             return x(self.kindex)
@@ -108,6 +104,15 @@ class PowerSpace(Space):
             result_x = x*weight
 
         return result_x
+
+    def distance_array(self, distribution_strategy):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no distance_array implementation for PowerSpace.")
+            )
+
+    def get_smoothing_kernel_function(self, sigma):
+        raise NotImplementedError(about._errors.cstring(
+            "ERROR: There is no smoothing function for PowerSpace."))
 
     # ---Added properties and methods---
 

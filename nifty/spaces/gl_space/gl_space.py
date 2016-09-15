@@ -153,16 +153,9 @@ class GLSpace(Space):
 
         return result_x
 
-    def _distance_array_helper(self, qr_tuple):
-        numerator = np.sqrt(np.sin(qr_tuple[1])**2  +
-                            (np.sin(qr_tuple[0]) * np.cos(qr_tuple[1]))**2)
-        denominator = np.cos(qr_tuple[0]) * np.cos(qr_tuple[1])
-
-        return np.arctan(numerator / denominator)
-
     def distance_array(self, distribution_strategy):
         dists = arange(
-            start = 0, stop = self.shape[0], dtype=np.float128,
+            start=0, stop=self.shape[0], dtype=np.float128,
             distribution_strategy=distribution_strategy
         )
 
@@ -172,12 +165,15 @@ class GLSpace(Space):
 
         return dists
 
+    def _distance_array_helper(self, qr_tuple):
+        numerator = np.sqrt(np.sin(qr_tuple[1])**2 +
+                            (np.sin(qr_tuple[0]) * np.cos(qr_tuple[1]))**2)
+        denominator = np.cos(qr_tuple[0]) * np.cos(qr_tuple[1])
 
-    def codomain_smoothing_function(self, sigma, target):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi / (target.lmax + 1)
+        return np.arctan(numerator / denominator)
 
-        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
+    def get_smoothing_kernel_function(self, sigma):
+        raise NotImplementedError
 
     # ---Added properties and methods---
 

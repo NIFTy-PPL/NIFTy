@@ -110,10 +110,14 @@ class LMSpace(Space):
         self._lmax = self._parse_lmax(lmax)
         self._mmax = self._parse_mmax(mmax)
 
-    def compute_k_array(self, distribution_strategy):
-        # return a d2o with the l-value at the individual pixels
-        # e.g. for 0<=l<=2: [0,1,2, 1,1,2,2, 2,2]
-        pass
+    def distance_array(self, distribution_strategy):
+        raise NotImplementedError
+
+    def get_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
+
+        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
 
     # ---Mandatory properties and methods---
 

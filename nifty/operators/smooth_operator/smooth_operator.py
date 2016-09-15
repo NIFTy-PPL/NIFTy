@@ -53,45 +53,54 @@ class SmoothOperator(EndomorphicOperator):
         return self._sigma
 
     def _smooth_helper(self, x, spaces, types, inverse=False):
-        # copy for doing the actual smoothing
-        smooth_out = x.copy()
+        if self.sigma == 0:
+            return x.copy()
 
-        if spaces is not None and self.sigma != 0:
+        # the domain of the smoothing operator contains exactly one space.
+        # Hence, if spaces is None, but we passed LinearOperator's
+        # _check_input_compatibility, we know that x is also solely defined
+        # on that space
+        if spaces is None:
+            spaces = (0,)
+        else:
             spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
 
-            axes = x.domain_axes[spaces[0]]
+        Transformator = FFTOperator(x.domain[spaces[0]])
 
-            transform = FFTOperator(x.domain[spaces[0]])
+        # transform to the (global-)default codomain and perform all remaining
+        # steps therein
+        transformed_x = Transformator(x, spaces=spaces)
+        codomain = transformed_x.domain[spaces[0]]
+        coaxes = transformed_x.domain_axes[spaces[0]]
 
-            # transform
-            smooth_out = transform(smooth_out, spaces=spaces[0])
+        # create the kernel using the knowledge of codomain about itself
+        axes_local_distribution_strategy = \
+            transformed_x.val.get_axes_local_distribution_strategy(axes=coaxes)
 
-            # create the kernel
-            space_obj = smooth_out.domain[spaces[0]]
-            kernel = space_obj.distance_array(
-                x.val.get_axes_local_distribution_strategy(axes=axes))
-            kernel = kernel.apply_scalar_function(
-                x.domain[spaces[0]].codomain_smoothing_function(self.sigma))
+        kernel = codomain.distance_array(
+                        distribution_strategy=axes_local_distribution_strategy)
+        kernel.apply_scalar_function(
+            codomain.get_smoothing_kernel_function(self.sigma),
+            inplace=True)
 
-            # local data
-            local_val = smooth_out.val.get_local_data(copy=False)
+        # now, apply the kernel to transformed_x
+        # this is done node-locally utilizing numpys reshaping in order to
+        # apply the kernel to the correct axes
+        local_transformed_x = transformed_x.val.get_local_data(copy=False)
+        local_kernel = kernel.get_local_data(copy=False)
 
-            # extract local kernel and reshape
-            local_kernel = kernel.get_local_data(copy=False)
-            new_shape = np.ones(len(local_val.shape), dtype=np.int)
-            for space_axis, val_axis in zip(range(len(space_obj.shape)), axes):
-                new_shape[val_axis] = local_kernel.shape[space_axis]
-            local_kernel = local_kernel.reshape(new_shape)
+        reshaper = [transformed_x.shape[i] if i in coaxes else 1
+                    for i in xrange(len(transformed_x.shape))]
+        local_kernel = np.reshape(local_kernel, reshaper)
 
-            # multiply kernel
-            if inverse:
-                local_val /= kernel
-            else:
-                local_val *= kernel
+        # apply the kernel
+        if inverse:
+            local_transformed_x /= local_kernel
+        else:
+            local_transformed_x *= local_kernel
 
-            smooth_out.val.set_local_data(local_val, copy=False)
+        transformed_x.val.set_local_data(local_transformed_x, copy=False)
 
-            # inverse transform
-            smooth_out = transform.inverse_times(smooth_out, spaces=spaces[0])
+        result = Transformator.inverse_times(transformed_x, spaces=spaces)
 
-        return smooth_out
+        return result
