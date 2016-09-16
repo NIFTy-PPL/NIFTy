@@ -18,8 +18,8 @@ class DiagonalOperator(EndomorphicOperator):
     def __init__(self, domain=(), field_type=(), implemented=True,
                  diagonal=None, bare=False, copy=True,
                  distribution_strategy=None):
-        super(DiagonalOperator, self).__init__(domain=domain,
-                                               field_type=field_type)
+        self._domain = self._parse_domain(domain)
+        self._field_type = self._parse_field_type(field_type)
 
         self._implemented = bool(implemented)
 
@@ -83,6 +83,14 @@ class DiagonalOperator(EndomorphicOperator):
         return np.log(self.determinant())
 
     # ---Mandatory properties and methods---
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def field_type(self):
+        return self._field_type
 
     @property
     def implemented(self):
