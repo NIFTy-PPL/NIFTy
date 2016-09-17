@@ -186,7 +186,7 @@ class LinearOperator(object):
                     "match."))
         else:
             for i, field_type_index in enumerate(types):
-                if x.field_types[field_type_index] != self_field_type[i]:
+                if x.field_type[field_type_index] != self_field_type[i]:
                     raise ValueError(about._errors.cstring(
                         "ERROR: The operator's and and field's field_type "
                         "don't match."))

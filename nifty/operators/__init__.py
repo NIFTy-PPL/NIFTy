@@ -29,6 +29,8 @@ from endomorphic_operator import EndomorphicOperator
 
 from fft_operator import *
 
+from propagator_operator import PropagatorOperator
+
 from nifty_operators import operator,\
                             diagonal_operator,\
                             power_operator,\

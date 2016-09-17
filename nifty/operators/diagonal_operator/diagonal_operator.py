@@ -163,15 +163,17 @@ class DiagonalOperator(EndomorphicOperator):
         # the one of x, reshape the local data of self and apply it directly
         active_axes = []
         if spaces is None:
-            for axes in x.domain_axes:
-                active_axes += axes
+            if self.domain != ():
+                for axes in x.domain_axes:
+                    active_axes += axes
         else:
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
 
         if types is None:
-            for axes in x.field_type_axes:
-                active_axes += axes
+            if self.field_type != ():
+                for axes in x.field_type_axes:
+                    active_axes += axes
         else:
             for type_index in types:
                 active_axes += x.field_type_axes[type_index]
