@@ -37,9 +37,11 @@ setup(name="ift_nifty",
       packages=find_packages(),
       package_dir={"nifty": "nifty"},
       zip_safe=False,
-      ext_modules=cythonize(
-          "nifty/operators/fft_operator/transformations/lm_transformation_factory"
-          ".pyx"),
+      ext_modules=cythonize([
+          "nifty/operators/fft_operator/transformations/"
+          "lm_transformation_factory.pyx",
+          "nifty/spaces/lm_space/lm_helper.pyx"
+      ]),
       include_dirs= [numpy.get_include()],
       dependency_links=[
         'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers',

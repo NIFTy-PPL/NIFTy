@@ -186,8 +186,11 @@ class HPSpace(Space):
 
         return dists
 
-    def get_smoothing_kernel_function(self, sigma, target):
-        raise NotImplementedError
+    def get_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi / self.nlat
+
+        return lambda x: np.exp((-0.5 * x**2) / sigma**2)
 
     # ---Added properties and methods---
 

@@ -1,4 +1,3 @@
-
 from __future__ import division
 
 import numpy as np
@@ -8,6 +7,10 @@ from nifty.spaces.space import Space
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
+
+from lm_helper import _distance_array_helper
+
+from d2o import arange
 
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
@@ -111,7 +114,19 @@ class LMSpace(Space):
         self._mmax = self._parse_mmax(mmax)
 
     def distance_array(self, distribution_strategy):
-        raise NotImplementedError
+        dists = arange(
+            start=0, stop=self.shape[0], dtype=np.float128,
+            distribution_strategy=distribution_strategy
+        )
+
+        l = hp.Alm.getlm(lmax=self.lmax)[0]
+        dists = dists.apply_scalar_function(
+            lambda x: _distance_array_helper(
+                int(x), l, hp.Alm.getsize(self.lmax), self.lmax
+                )
+            )
+
+        return dists
 
     def get_smoothing_kernel_function(self, sigma):
         if sigma is None:

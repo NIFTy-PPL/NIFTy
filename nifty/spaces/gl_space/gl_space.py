@@ -173,7 +173,10 @@ class GLSpace(Space):
         return np.arctan(numerator / denominator)
 
     def get_smoothing_kernel_function(self, sigma):
-        raise NotImplementedError
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi / self.nlat
+
+        return lambda x: np.exp((-0.5 * x**2) / sigma**2)
 
     # ---Added properties and methods---
 
