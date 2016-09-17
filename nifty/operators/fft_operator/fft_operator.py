@@ -35,8 +35,8 @@ class FFTOperator(LinearOperator):
 
     def __init__(self, domain=(), field_type=(), target=None, module=None):
 
-        super(FFTOperator, self).__init__(domain=domain,
-                                          field_type=field_type)
+        self._domain = self._parse_domain(domain)
+        self._field_type = self._parse_field_type(field_type)
 
         # Initialize domain and target
         if len(self.domain) != 1:
@@ -125,8 +125,16 @@ class FFTOperator(LinearOperator):
     # ---Mandatory properties and methods---
 
     @property
+    def domain(self):
+        return self._domain
+
+    @property
     def target(self):
         return self._target
+
+    @property
+    def field_type(self):
+        return self._field_type
 
     @property
     def field_type_target(self):

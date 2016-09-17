@@ -48,8 +48,9 @@ from random import Random
 from nifty_simple_math import *
 from nifty_utilities import *
 
-from field_types import FieldType,\
-                        FieldArray
+from field_types import *
+
+from minimization import *
 
 from spaces import *
 

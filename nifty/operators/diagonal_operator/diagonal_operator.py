@@ -18,8 +18,8 @@ class DiagonalOperator(EndomorphicOperator):
     def __init__(self, domain=(), field_type=(), implemented=True,
                  diagonal=None, bare=False, copy=True,
                  distribution_strategy=None):
-        super(DiagonalOperator, self).__init__(domain=domain,
-                                               field_type=field_type)
+        self._domain = self._parse_domain(domain)
+        self._field_type = self._parse_field_type(field_type)
 
         self._implemented = bool(implemented)
 
@@ -83,6 +83,14 @@ class DiagonalOperator(EndomorphicOperator):
         return np.log(self.determinant())
 
     # ---Mandatory properties and methods---
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def field_type(self):
+        return self._field_type
 
     @property
     def implemented(self):
@@ -155,15 +163,17 @@ class DiagonalOperator(EndomorphicOperator):
         # the one of x, reshape the local data of self and apply it directly
         active_axes = []
         if spaces is None:
-            for axes in x.domain_axes:
-                active_axes += axes
+            if self.domain != ():
+                for axes in x.domain_axes:
+                    active_axes += axes
         else:
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
 
         if types is None:
-            for axes in x.field_type_axes:
-                active_axes += axes
+            if self.field_type != ():
+                for axes in x.field_type_axes:
+                    active_axes += axes
         else:
             for type_index in types:
                 active_axes += x.field_type_axes[type_index]

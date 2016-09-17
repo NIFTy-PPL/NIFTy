@@ -12,9 +12,8 @@ import nifty.nifty_utilities as utilities
 class LinearOperator(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain=(), field_type=()):
-        self._domain = self._parse_domain(domain)
-        self._field_type = self._parse_field_type(field_type)
+    def __init__(self):
+        pass
 
     def _parse_domain(self, domain):
         if domain is None:
@@ -45,17 +44,17 @@ class LinearOperator(object):
                     "ERROR: Given object is not a nifty.FieldType."))
         return field_type
 
-    @property
+    @abc.abstractproperty
     def domain(self):
-        return self._domain
+        raise NotImplementedError
 
     @abc.abstractproperty
     def target(self):
         raise NotImplementedError
 
-    @property
+    @abc.abstractproperty
     def field_type(self):
-        return self._field_type
+        raise NotImplementedError
 
     @abc.abstractproperty
     def field_type_target(self):
@@ -187,7 +186,7 @@ class LinearOperator(object):
                     "match."))
         else:
             for i, field_type_index in enumerate(types):
-                if x.field_types[field_type_index] != self_field_type[i]:
+                if x.field_type[field_type_index] != self_field_type[i]:
                     raise ValueError(about._errors.cstring(
                         "ERROR: The operator's and and field's field_type "
                         "don't match."))
