@@ -114,15 +114,13 @@ class LMSpace(Space):
 
     def distance_array(self, distribution_strategy):
         dists = arange(
-            start=0, stop=self.shape[0], dtype=np.float128,
+            start=0, stop=self.shape[0],
             distribution_strategy=distribution_strategy
         )
 
-        l = hp.Alm.getlm(lmax=self.lmax)[0]
         dists = dists.apply_scalar_function(
-            lambda x: _distance_array_helper(
-                x, self.lmax
-                )
+            lambda x: _distance_array_helper(x, self.lmax),
+            dtype=np.float
             )
 
         return dists
