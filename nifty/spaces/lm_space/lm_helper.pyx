@@ -10,7 +10,11 @@ cpdef _distance_array_helper(np.ndarray[np.int_t] index_array, np.int_t lmax):
         if index_full <= lmax:
             index_half = index_full
         else:
-            index_half = (index_full + lmax + 1) / 2;
+            if (index_full - lmax) % 2 == 0:
+                index_half = (index_full + lmax) / 2;
+            else:
+                index_half = (index_full + lmax + 1) / 2;
+
         m = (np.ceil(((2 * lmax + 1) -
                       np.sqrt((2 * lmax + 1)**2 -
                               8 * (index_half - lmax))) / 2)).astype(int)
