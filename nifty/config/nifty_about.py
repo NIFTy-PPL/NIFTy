@@ -23,7 +23,18 @@ from sys import stdout as so
 import os
 import inspect
 
+import d2o
+import keepers
+
 from nifty import __version__
+
+
+MPI = d2o.config.dependency_injector[
+        keepers.get_Configuration('D2O')['mpi_module']]
+
+comm = MPI.COMM_WORLD
+size = comm.size
+rank = comm.rank
 
 
 class switch(object):
@@ -251,12 +262,12 @@ class notification(switch):
         i = 2
         current = inspect.stack()[i][3]
         while current != '<module>':
-            result = '.' + current  + result
+            result = '.' + current + result
             i += 1
             current = inspect.stack()[i][3]
         return result[1:]
 
-    def cstring(self,subject):
+    def cstring(self, subject):
         """
             Casts an object to a string and augments that with a colour code.
 
@@ -272,10 +283,11 @@ class notification(switch):
                 String augmented with a color code.
 
         """
-        return self.ccode + str(self._get_caller()) + ':\n' + \
-                str(subject) + self._code + '\n'
+        if rank == 0:
+            return self.ccode + str(self._get_caller()) + ':\n' + \
+                   str(subject) + self._code + '\n'
 
-    def cflush(self,subject):
+    def cflush(self, subject):
         """
             Flushes an object in its colour coded sting representation to the
             standard output (*without* line break).
@@ -291,11 +303,11 @@ class notification(switch):
             None
 
         """
-        if(self.status):
+        if self.status and rank == 0:
             so.write(self.cstring(subject))
             so.flush()
 
-    def cprint(self,subject):
+    def cprint(self, subject):
         """
             Flushes an object in its colour coded sting representation to the
             standard output (*with* line break).
@@ -311,7 +323,7 @@ class notification(switch):
             None
 
         """
-        if(self.status):
+        if self.status and rank == 0:
             so.write(self.cstring(subject)+"\n")
             so.flush()
 
