@@ -3383,8 +3383,8 @@ class propagator_operator(operator):
             raise ValueError(about._errors.cstring(
                 "ERROR: At least M or N must be given."))
 
-    def _multiply(self, x, W=None, spam=None, reset=None, note=False,
-                  x0=None, tol=1E-4, clevel=1, limii=None, **kwargs):
+    def _multiply(self, x, W=None, spam=None, reset=None, note=True,
+                  x0=None, tol=1E-3, clevel=1, limii=1000, **kwargs):
 
         if W is None:
             W = self.S
