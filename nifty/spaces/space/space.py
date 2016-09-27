@@ -223,6 +223,9 @@ class Space(object):
         else:
             return False
 
+    def __ne__(self, x):
+        return not self.__eq__(x)
+
     @abc.abstractproperty
     def harmonic(self):
         raise NotImplementedError
