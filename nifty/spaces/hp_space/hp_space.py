@@ -172,7 +172,7 @@ class HPSpace(Space):
         dists: distributed_data_object
         """
         dists = arange(
-            start=0, stop=self.shape[0], dtype=np.float128,
+            start=0, stop=self.shape[0],
             distribution_strategy=distribution_strategy
         )
 
@@ -181,7 +181,8 @@ class HPSpace(Space):
 
         dists = dists.apply_scalar_function(
             lambda x: np.arccos(np.dot(hp.pix2vec(self.nside, int(x)),
-                                       center_vec))
+                                       center_vec)),
+            dtype=np.float
         )
 
         return dists

@@ -155,12 +155,13 @@ class GLSpace(Space):
 
     def distance_array(self, distribution_strategy):
         dists = arange(
-            start=0, stop=self.shape[0], dtype=np.float128,
+            start=0, stop=self.shape[0],
             distribution_strategy=distribution_strategy
         )
 
         dists = dists.apply_scalar_function(
-            lambda x: self._distance_array_helper(divmod(int(x), self.nlon))
+            lambda x: self._distance_array_helper(divmod(int(x), self.nlon)),
+            dtype=np.float
         )
 
         return dists
