@@ -6,12 +6,14 @@ from nifty import RGSpace, LMSpace
 from nifty.operators.endomorphic_operator import EndomorphicOperator
 from nifty.operators.fft_operator import FFTOperator
 
+
 class SmoothOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
     def __init__(self, domain=(), field_type=(), sigma=None):
-        super(SmoothOperator, self).__init__(domain=domain,
-                                             field_type=field_type)
+
+        self._domain = self._parse_domain(domain)
+        self._field_type = self._parse_field_type(field_type)
 
         if len(self.domain) != 1:
             raise ValueError(
@@ -35,6 +37,14 @@ class SmoothOperator(EndomorphicOperator):
         return self._smooth_helper(x, spaces, types)
 
     # ---Mandatory properties and methods---
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def field_type(self):
+        return self._field_type
+
     @property
     def implemented(self):
         return True
