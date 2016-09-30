@@ -7,7 +7,7 @@ from nifty.operators.endomorphic_operator import EndomorphicOperator
 from nifty.operators.fft_operator import FFTOperator
 
 
-class SmoothOperator(EndomorphicOperator):
+class SmoothingOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
     def __init__(self, domain=(), field_type=(), sigma=None):
