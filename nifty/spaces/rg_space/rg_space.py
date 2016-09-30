@@ -152,64 +152,6 @@ class RGSpace(Space):
         self._distances = self._parse_distances(distances)
         self._zerocenter = self._parse_zerocenter(zerocenter)
 
-    def compute_k_array(self, distribution_strategy):
-        """
-            Calculates an n-dimensional array with its entries being the
-            lengths of the k-vectors from the zero point of the grid.
-
-            Parameters
-            ----------
-            None : All information is taken from the parent object.
-
-            Returns
-            -------
-            nkdict : distributed_data_object
-        """
-        shape = self.shape
-        # prepare the distributed_data_object
-        nkdict = distributed_data_object(
-                        global_shape=shape,
-                        dtype=np.float128,
-                        distribution_strategy=distribution_strategy)
-
-        if distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
-            # get the node's individual slice of the first dimension
-            slice_of_first_dimension = slice(
-                                    *nkdict.distributor.local_slice[0:2])
-        elif distribution_strategy in DISTRIBUTION_STRATEGIES['not']:
-            slice_of_first_dimension = slice(0, shape[0])
-        else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported distribution strategy"))
-        dists = self._compute_k_array_helper(slice_of_first_dimension)
-        nkdict.set_local_data(dists)
-
-        return nkdict
-
-    def _compute_k_array_helper(self, slice_of_first_dimension):
-        dk = self.distances
-        shape = self.shape
-
-        inds = []
-        for a in shape:
-            inds += [slice(0, a)]
-
-        cords = np.ogrid[inds]
-
-        dists = ((np.float128(0) + cords[0] - shape[0] // 2) * dk[0])**2
-        # apply zerocenterQ shift
-        if self.zerocenter[0] == False:
-            dists = np.fft.fftshift(dists)
-        # only save the individual slice
-        dists = dists[slice_of_first_dimension]
-        for ii in range(1, len(shape)):
-            temp = ((cords[ii] - shape[ii] // 2) * dk[ii])**2
-            if self.zerocenter[ii] == False:
-                temp = np.fft.fftshift(temp)
-            dists = dists + temp
-        dists = np.sqrt(dists)
-        return dists
-
     def hermitian_decomposition(self, x, axes=None):
         # compute the hermitian part
         flipped_x = self._hermitianize_inverter(x, axes=axes)
@@ -284,6 +226,70 @@ class RGSpace(Space):
             result_x = x*weight
         return result_x
 
+    def get_distance_array(self, distribution_strategy):
+        """
+            Calculates an n-dimensional array with its entries being the
+            lengths of the k-vectors from the zero point of the grid.
+
+            Parameters
+            ----------
+            None : All information is taken from the parent object.
+
+            Returns
+            -------
+            nkdict : distributed_data_object
+        """
+        shape = self.shape
+        # prepare the distributed_data_object
+        nkdict = distributed_data_object(
+                        global_shape=shape,
+                        dtype=np.float128,
+                        distribution_strategy=distribution_strategy)
+
+        if distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
+            # get the node's individual slice of the first dimension
+            slice_of_first_dimension = slice(
+                                    *nkdict.distributor.local_slice[0:2])
+        elif distribution_strategy in DISTRIBUTION_STRATEGIES['not']:
+            slice_of_first_dimension = slice(0, shape[0])
+        else:
+            raise ValueError(about._errors.cstring(
+                "ERROR: Unsupported distribution strategy"))
+        dists = self._distance_array_helper(slice_of_first_dimension)
+        nkdict.set_local_data(dists)
+
+        return nkdict
+
+    def _distance_array_helper(self, slice_of_first_dimension):
+        dk = self.distances
+        shape = self.shape
+
+        inds = []
+        for a in shape:
+            inds += [slice(0, a)]
+
+        cords = np.ogrid[inds]
+
+        dists = ((np.float128(0) + cords[0] - shape[0] // 2) * dk[0])**2
+        # apply zerocenterQ shift
+        if self.zerocenter[0] == False:
+            dists = np.fft.fftshift(dists)
+        # only save the individual slice
+        dists = dists[slice_of_first_dimension]
+        for ii in range(1, len(shape)):
+            temp = ((cords[ii] - shape[ii] // 2) * dk[ii])**2
+            if self.zerocenter[ii] == False:
+                temp = np.fft.fftshift(temp)
+            dists = dists + temp
+        dists = np.sqrt(dists)
+        return dists
+
+    def get_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.max(self.distances)
+
+        return lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
+
     # ---Added properties and methods---
 
     @property
@@ -316,3 +322,4 @@ class RGSpace(Space):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
         return tuple(temp)
+

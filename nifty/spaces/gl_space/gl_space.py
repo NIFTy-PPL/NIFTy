@@ -3,7 +3,7 @@ from __future__ import division
 import itertools
 import numpy as np
 
-from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
+from d2o import arange, STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
 from nifty.config import about, nifty_configuration as gc,\
@@ -135,9 +135,8 @@ class GLSpace(Space):
         nlat = self.nlat
 
         weight = np.array(list(itertools.chain.from_iterable(
-                    itertools.repeat(x ** power, nlon)
-                    for x in gl.vol(nlat))
-                 ))
+            itertools.repeat(x ** power, nlon)
+            for x in gl.vol(nlat))))
 
         if axes is not None:
             # reshape the weight array to match the input shape
@@ -153,6 +152,31 @@ class GLSpace(Space):
             result_x = x * weight
 
         return result_x
+
+    def get_distance_array(self, distribution_strategy):
+        dists = arange(start=0, stop=self.shape[0],
+                       distribution_strategy=distribution_strategy)
+
+        dists = dists.apply_scalar_function(
+            lambda x: self._distance_array_helper(divmod(x, self.nlon)),
+            dtype=np.float)
+
+        return dists
+
+    def _distance_array_helper(self, qr_tuple):
+        lat = qr_tuple[0]*(np.pi/(self.nlat-1))
+        lon = qr_tuple[1]*(2*np.pi/(self.nlon-1))
+        numerator = np.sqrt(np.sin(lat)**2 +
+                            (np.sin(lon) * np.cos(lat))**2)
+        denominator = np.cos(lon) * np.cos(lat)
+
+        return np.arctan(numerator / denominator)
+
+    def get_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi
+
+        return lambda x: np.exp((-0.5 * x**2) / sigma**2)
 
     # ---Added properties and methods---
 
@@ -184,11 +208,3 @@ class GLSpace(Space):
                     "WARNING: nlon was set to an unrecommended value: "
                     "nlon <> 2*nlat-1.")
         return nlon
-
-
-
-
-
-
-
-

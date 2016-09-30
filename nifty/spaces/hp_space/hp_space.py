@@ -35,6 +35,7 @@ from __future__ import division
 
 import numpy as np
 
+from d2o import arange, STRATEGIES as DISTRIBUTION_STRATEGIES
 from nifty.config import about
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc, \
@@ -157,6 +158,38 @@ class HPSpace(Space):
             result_x = x * weight
 
         return result_x
+
+    def get_distance_array(self, distribution_strategy):
+        """
+        Calculates distance from center to all the points on the sphere
+
+        Parameters
+        ----------
+        distribution_strategy: Result d2o's distribution strategy
+
+        Returns
+        -------
+        dists: distributed_data_object
+        """
+        dists = arange(
+            start=0, stop=self.shape[0],
+            distribution_strategy=distribution_strategy
+        )
+
+        # translate distances to 3D unit vectors on a sphere,
+        # extract the first entry (simulates the scalar product with (1,0,0))
+        # and apply arccos
+        dists = dists.apply_scalar_function(
+                    lambda z: np.arccos(hp.pix2vec(self.nside, z)[0]),
+                    dtype=np.float)
+
+        return dists
+
+    def get_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi
+
+        return lambda x: np.exp((-0.5 * x**2) / sigma**2)
 
     # ---Added properties and methods---
 

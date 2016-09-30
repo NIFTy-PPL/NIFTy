@@ -1,4 +1,3 @@
-
 from __future__ import division
 
 import numpy as np
@@ -8,6 +7,10 @@ from nifty.spaces.space import Space
 from nifty.config import about,\
                          nifty_configuration as gc,\
                          dependency_injector as gdi
+
+from lm_helper import _distance_array_helper
+
+from d2o import arange
 
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
@@ -72,7 +75,7 @@ class LMSpace(Space):
             Pixel volume of the :py:class:`lm_space`, which is always 1.
     """
 
-    def __init__(self, lmax, mmax=None, dtype=np.dtype('complex128')):
+    def __init__(self, lmax, dtype=np.dtype('complex128')):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -108,15 +111,22 @@ class LMSpace(Space):
 
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
-        self._mmax = self._parse_mmax(mmax)
 
-    def hermitian_decomposition(self, x, axes=None):
-        return (x.real, x.imag)
+    def distance_array(self, distribution_strategy):
+        dists = arange(start=0, stop=self.shape[0],
+                       distribution_strategy=distribution_strategy)
 
-    def compute_k_array(self, distribution_strategy):
-        # return a d2o with the l-value at the individual pixels
-        # e.g. for 0<=l<=2: [0,1,2, 1,1,2,2, 2,2]
-        pass
+        dists = dists.apply_scalar_function(
+            lambda x: _distance_array_helper(x, self.lmax),
+            dtype=np.float)
+
+        return dists
+
+    def get_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
+
+        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
 
     # ---Mandatory properties and methods---
 
@@ -161,7 +171,7 @@ class LMSpace(Space):
 
     @property
     def mmax(self):
-        return self._mmax
+        return self._lmax
 
     def _parse_lmax(self, lmax):
         lmax = np.int(lmax)
@@ -173,20 +183,3 @@ class LMSpace(Space):
             about.warnings.cprint(
                 "WARNING: unrecommended parameter (lmax <> 2*n+1).")
         return lmax
-
-    def _parse_mmax(self, mmax):
-        if mmax is None:
-            mmax = self.lmax
-        else:
-            mmax = int(mmax)
-
-        if mmax < 1:
-            raise ValueError(about._errors.cstring(
-                "ERROR: mmax < 1 is not allowed."))
-        if mmax > self.lmax:
-            raise ValueError(about._errors.cstring(
-                "ERROR: mmax > lmax is not allowed."))
-        if mmax != self.lmax:
-            about.warnings.cprint(
-                "WARNING: unrecommended parameter combination (mmax <> lmax).")
-        return mmax
