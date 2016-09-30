@@ -159,7 +159,7 @@ class HPSpace(Space):
 
         return result_x
 
-    def distance_array(self, distribution_strategy):
+    def get_distance_array(self, distribution_strategy):
         """
         Calculates distance from center to all the points on the sphere
 

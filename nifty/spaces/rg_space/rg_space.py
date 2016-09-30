@@ -226,7 +226,7 @@ class RGSpace(Space):
             result_x = x*weight
         return result_x
 
-    def distance_array(self, distribution_strategy):
+    def get_distance_array(self, distribution_strategy):
         """
             Calculates an n-dimensional array with its entries being the
             lengths of the k-vectors from the zero point of the grid.

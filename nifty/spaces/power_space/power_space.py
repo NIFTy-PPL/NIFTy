@@ -105,10 +105,10 @@ class PowerSpace(Space):
 
         return result_x
 
-    def distance_array(self, distribution_strategy):
+    def get_distance_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no distance_array implementation for PowerSpace.")
-            )
+            "ERROR: There is no get_distance_array implementation for "
+            "PowerSpace."))
 
     def get_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(about._errors.cstring(

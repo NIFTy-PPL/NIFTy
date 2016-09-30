@@ -272,9 +272,10 @@ class Space(object):
         """
         raise NotImplementedError
 
-    def distance_array(self, distribution_strategy):
+    def get_distance_array(self, distribution_strategy):
         raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic distance_array for Space base class."))
+            "ERROR: There is no generic get_distance_array for "
+            "Space base class."))
 
     def get_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(about._errors.cstring(
