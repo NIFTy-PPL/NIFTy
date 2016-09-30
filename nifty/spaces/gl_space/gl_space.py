@@ -167,8 +167,8 @@ class GLSpace(Space):
         return dists
 
     def _distance_array_helper(self, qr_tuple):
-        lat = qr_tuple[0]*(np.pi/self.nlat)
-        lon = qr_tuple[1]*(2*np.pi/self.nlon)
+        lat = qr_tuple[0]*(np.pi/(self.nlat-1))
+        lon = qr_tuple[1]*(2*np.pi/(self.nlon-1))
         numerator = np.sqrt(np.sin(lat)**2 +
                             (np.sin(lon) * np.cos(lat))**2)
         denominator = np.cos(lon) * np.cos(lat)
