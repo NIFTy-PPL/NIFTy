@@ -113,15 +113,12 @@ class LMSpace(Space):
         self._lmax = self._parse_lmax(lmax)
 
     def distance_array(self, distribution_strategy):
-        dists = arange(
-            start=0, stop=self.shape[0],
-            distribution_strategy=distribution_strategy
-        )
+        dists = arange(start=0, stop=self.shape[0],
+                       distribution_strategy=distribution_strategy)
 
         dists = dists.apply_scalar_function(
             lambda x: _distance_array_helper(x, self.lmax),
-            dtype=np.float
-            )
+            dtype=np.float)
 
         return dists
 

@@ -160,22 +160,24 @@ class GLSpace(Space):
         )
 
         dists = dists.apply_scalar_function(
-            lambda x: self._distance_array_helper(divmod(int(x), self.nlon)),
+            lambda x: self._distance_array_helper(divmod(x, self.nlon)),
             dtype=np.float
         )
 
         return dists
 
     def _distance_array_helper(self, qr_tuple):
-        numerator = np.sqrt(np.sin(qr_tuple[1])**2 +
-                            (np.sin(qr_tuple[0]) * np.cos(qr_tuple[1]))**2)
-        denominator = np.cos(qr_tuple[0]) * np.cos(qr_tuple[1])
+        lat = qr_tuple[0]*(np.pi/self.nlat)
+        lon = qr_tuple[1]*(2*np.pi/self.nlon)
+        numerator = np.sqrt(np.sin(lat)**2 +
+                            (np.sin(lon) * np.cos(lat))**2)
+        denominator = np.cos(lon) * np.cos(lat)
 
         return np.arctan(numerator / denominator)
 
     def get_smoothing_kernel_function(self, sigma):
         if sigma is None:
-            sigma = np.sqrt(2) * np.pi / self.nlat
+            sigma = np.sqrt(2) * np.pi
 
         return lambda x: np.exp((-0.5 * x**2) / sigma**2)
 

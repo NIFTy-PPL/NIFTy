@@ -44,9 +44,8 @@ class HPLMTransformation(SlicingTransformation):
                 "ERROR: domain needs to be a HPSpace"))
 
         lmax = 3 * domain.nside - 1
-        mmax = lmax
 
-        result = LMSpace(lmax=lmax, mmax=mmax, dtype=np.dtype('float64'))
+        result = LMSpace(lmax=lmax, dtype=np.dtype('float64'))
         cls.check_codomain(domain, result)
         return result
 
@@ -62,21 +61,16 @@ class HPLMTransformation(SlicingTransformation):
 
         nside = domain.nside
         lmax = codomain.lmax
-        mmax = codomain.mmax
 
         if 3 * nside - 1 != lmax:
             raise ValueError(about._errors.cstring(
                 'ERROR: codomain has 3*nside-1 != lmax.'))
 
-        if lmax != mmax:
-            raise ValueError(about._errors.cstring(
-                'ERROR: codomain has lmax != mmax.'))
-
         return None
 
     def _transformation_of_slice(self, inp, **kwargs):
         lmax = self.codomain.lmax
-        mmax = self.codomain.mmax
+        mmax = lmax
 
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal, resultImag] = [hp.map2alm(x.astype(np.float64,

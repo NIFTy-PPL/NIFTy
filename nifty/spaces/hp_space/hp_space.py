@@ -176,20 +176,18 @@ class HPSpace(Space):
             distribution_strategy=distribution_strategy
         )
 
-        # setting the center to fixed value
-        center_vec = (1, 0, 0)
-
+        # translate distances to 3D unit vectors on a sphere,
+        # extract the first entry (simulates the scalar product with (1,0,0))
+        # and apply arccos
         dists = dists.apply_scalar_function(
-            lambda x: np.arccos(np.dot(hp.pix2vec(self.nside, int(x)),
-                                       center_vec)),
-            dtype=np.float
-        )
+                    lambda z: np.arccos(hp.pix2vec(self.nside, z)[0]),
+                    dtype=np.float)
 
         return dists
 
     def get_smoothing_kernel_function(self, sigma):
         if sigma is None:
-            sigma = np.sqrt(2) * np.pi / self.nlat
+            sigma = np.sqrt(2) * np.pi
 
         return lambda x: np.exp((-0.5 * x**2) / sigma**2)
 

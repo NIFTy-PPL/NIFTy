@@ -64,11 +64,6 @@ class LMHPTransformation(SlicingTransformation):
 
         nside = codomain.nside
         lmax = domain.lmax
-        mmax = domain.mmax
-
-        if lmax != mmax:
-            raise ValueError(about._errors.cstring(
-                'ERROR: domain has lmax != mmax.'))
 
         if 3*nside - 1 != lmax:
             raise ValueError(about._errors.cstring(
@@ -79,7 +74,7 @@ class LMHPTransformation(SlicingTransformation):
     def _transformation_of_slice(self, inp, **kwargs):
         nside = self.codomain.nside
         lmax = self.domain.lmax
-        mmax = self.domain.mmax
+        mmax = lmax
 
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal, resultImag] = [ltf.buildLm(x, lmax=lmax)
