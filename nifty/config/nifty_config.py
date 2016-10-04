@@ -52,13 +52,12 @@ variable_use_healpy = keepers.Variable(
                           genus='boolean')
 
 variable_use_libsharp = keepers.Variable(
-                                 'use_libsharp',
-                                 [True, False],
-                                 lambda z: (('libsharp_wrapper_gl' in
-                                             dependency_injector)
-                                            if z else True) and
-                                            isinstance(z, bool),
-                                 genus='boolean')
+                         'use_libsharp',
+                         [True, False],
+                         lambda z: (('libsharp_wrapper_gl' in
+                                     dependency_injector)
+                                    if z else True) and isinstance(z, bool),
+                         genus='boolean')
 
 variable_verbosity = keepers.Variable('verbosity',
                                       [1],
@@ -88,16 +87,19 @@ variable_default_distribution_strategy = keepers.Variable(
                               genus='str')
 
 nifty_configuration = keepers.get_Configuration(
-                     'NIFTy',
-                     [variable_fft_module,
-                      variable_lm2gl,
-                      variable_use_healpy,
-                      variable_use_libsharp,
-                      variable_verbosity,
-                      variable_default_field_dtype,
-                      variable_default_distribution_strategy,
-                      ],
-                     path=os.path.expanduser('~') + "/.nifty/nifty_config")
+                 name='NIFTy',
+                 variables=[variable_fft_module,
+                            variable_lm2gl,
+                            variable_use_healpy,
+                            variable_use_libsharp,
+                            variable_verbosity,
+                            variable_default_field_dtype,
+                            variable_default_distribution_strategy],
+                 file_name='NIFTy.conf',
+                 search_pathes=[os.path.expanduser('~') + "/.config/nifty/",
+                                os.path.expanduser('~') + "/.config/",
+                                './'])
+
 ########
 ### Compatibility variables
 ########
