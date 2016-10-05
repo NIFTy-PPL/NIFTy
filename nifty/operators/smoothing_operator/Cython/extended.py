@@ -50,8 +50,7 @@ def GaussianKernel(mpower, mk, mu,smooth_length):
     return np.sum(C * mpower) / np.sum(C)
 
 
-def smoothie(power, startindex, endindex, k, kernelfunction, exclude=1,
-                                                          smooth_length=None):
+def smoothie(power, startindex, endindex, k, exclude=1, smooth_length=None):
 
     if smooth_length == 0:
         # No smoothing requested, just return the input array.
@@ -70,7 +69,7 @@ def smoothie(power, startindex, endindex, k, kernelfunction, exclude=1,
     for i in xrange(startindex, endindex):
         l = max(i-int(2*smooth_length)-1,0)
         u = min(i+int(2*smooth_length)+2,len(p_smooth))
-        p_smooth[i-startindex] = kernelfunction(power[l:u], k[l:u], k[i],
+        p_smooth[i-startindex] = GaussianKernel(power[l:u], k[l:u], k[i],
                                           smooth_length)
 
     if (exclude > 0):
@@ -87,6 +86,6 @@ def smooth_something(datablock, axis=0, startindex=None, endindex=None,
     print kernelfunction
     return np.apply_along_axis(smoothie, axis, datablock,
                                startindex=startindex, endindex=endindex, k=k,
-                               smooth_length=sigma, kernelfunction=kernelfunction)
+                               smooth_length=sigma)
 
     
