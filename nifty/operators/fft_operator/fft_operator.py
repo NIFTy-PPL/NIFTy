@@ -1,4 +1,4 @@
-from nifty.config import about
+
 import nifty.nifty_utilities as utilities
 from nifty.spaces import RGSpace,\
                          GLSpace,\
@@ -40,15 +40,15 @@ class FFTOperator(LinearOperator):
 
         # Initialize domain and target
         if len(self.domain) != 1:
-            raise ValueError(about._errors.cstring(
+            raise ValueError(
                     'ERROR: TransformationOperator accepts only exactly one '
-                    'space as input domain.'))
+                    'space as input domain.')
 
         if self.field_type != ():
-            raise ValueError(about._errors.cstring(
+            raise ValueError(
                 'ERROR: TransformationOperator field-type must be an '
                 'empty tuple.'
-            ))
+            )
 
         if target is None:
             target = (self.get_default_codomain(self.domain[0]), )
@@ -59,16 +59,16 @@ class FFTOperator(LinearOperator):
             forward_class = self.transformation_dictionary[
                 (self.domain[0].__class__, self.target[0].__class__)]
         except KeyError:
-            raise TypeError(about._errors.cstring(
-                "ERROR: No forward transformation for domain-target pair "
-                "found."))
+            raise TypeError(
+                "No forward transformation for domain-target pair "
+                "found.")
         try:
             backward_class = self.transformation_dictionary[
                 (self.target[0].__class__, self.domain[0].__class__)]
         except KeyError:
-            raise TypeError(about._errors.cstring(
-                "ERROR: No backward transformation for domain-target pair "
-                "found."))
+            raise TypeError(
+                "No backward transformation for domain-target pair "
+                "found.")
 
         self._forward_transformation = TransformationCache.create(
             forward_class, self.domain[0], self.target[0], module=module)
@@ -156,13 +156,13 @@ class FFTOperator(LinearOperator):
         try:
             codomain_class = cls.default_codomain_dictionary[domain_class]
         except KeyError:
-            raise TypeError(about._errors.cstring("ERROR: unknown domain"))
+            raise TypeError("unknown domain")
 
         try:
             transform_class = cls.transformation_dictionary[(domain_class,
                                                              codomain_class)]
         except KeyError:
-            raise TypeError(about._errors.cstring(
-                "ERROR: No transformation for domain-codomain pair found."))
+            raise TypeError(
+                "No transformation for domain-codomain pair found.")
 
         return transform_class.get_codomain(domain)

@@ -4,7 +4,6 @@ import numpy as np
 
 from power_index_factory import PowerIndexFactory
 
-from nifty.config import about
 from nifty.spaces.space import Space
 from nifty.spaces.rg_space import RGSpace
 from nifty.nifty_utilities import cast_axis_to_tuple
@@ -23,11 +22,11 @@ class PowerSpace(Space):
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
 
         if not isinstance(harmonic_domain, Space):
-            raise ValueError(about._errors.cstring(
-                "ERROR: harmonic_domain must be a Space."))
+            raise ValueError(
+                "harmonic_domain must be a Space.")
         if not harmonic_domain.harmonic:
-            raise ValueError(about._errors.cstring(
-                "ERROR: harmonic_domain must be a harmonic space."))
+            raise ValueError(
+                "harmonic_domain must be a harmonic space.")
         self._harmonic_domain = harmonic_domain
 
         power_index = PowerIndexFactory.get_power_index(
@@ -87,8 +86,8 @@ class PowerSpace(Space):
 
         axes = cast_axis_to_tuple(axes, len(total_shape))
         if len(axes) != 1:
-            raise ValueError(about._errors.cstring(
-                "ERROR: axes must be of length 1."))
+            raise ValueError(
+                "axes must be of length 1.")
 
         reshaper = [1, ] * len(total_shape)
         reshaper[axes[0]] = self.shape[0]
@@ -106,13 +105,13 @@ class PowerSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no get_distance_array implementation for "
-            "PowerSpace."))
+        raise NotImplementedError(
+            "There is no get_distance_array implementation for "
+            "PowerSpace.")
 
     def get_smoothing_kernel_function(self, sigma):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no smoothing function for PowerSpace."))
+        raise NotImplementedError(
+            "There is no smoothing function for PowerSpace.")
 
     # ---Added properties and methods---
 

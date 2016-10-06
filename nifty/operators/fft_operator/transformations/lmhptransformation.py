@@ -1,6 +1,5 @@
 import numpy as np
-from nifty.config import dependency_injector as gdi,\
-                         about
+from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
 import lm_transformation_factory as ltf
@@ -14,8 +13,8 @@ class LMHPTransformation(SlicingTransformation):
 
     def __init__(self, domain, codomain=None, module=None):
         if gdi.get('healpy') is None:
-            raise ImportError(about._errors.cstring(
-                "The module libsharp is needed but not available."))
+            raise ImportError(
+                "The module libsharp is needed but not available.")
 
         super(LMHPTransformation, self).__init__(domain, codomain, module)
 
@@ -44,8 +43,8 @@ class LMHPTransformation(SlicingTransformation):
                    Distributed on the Sphere", *ApJ* 622..759G.
         """
         if not isinstance(domain, LMSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: domain needs to be a LMSpace'))
+            raise TypeError(
+                'ERROR: domain needs to be a LMSpace')
 
         nside = (domain.lmax + 1) // 3
         result = HPSpace(nside=nside)
@@ -55,19 +54,19 @@ class LMHPTransformation(SlicingTransformation):
     @staticmethod
     def check_codomain(domain, codomain):
         if not isinstance(domain, LMSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: domain is not a LMSpace'))
+            raise TypeError(
+                'ERROR: domain is not a LMSpace')
 
         if not isinstance(codomain, HPSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: codomain must be a HPSpace.'))
+            raise TypeError(
+                'ERROR: codomain must be a HPSpace.')
 
         nside = codomain.nside
         lmax = domain.lmax
 
         if 3*nside - 1 != lmax:
-            raise ValueError(about._errors.cstring(
-                'ERROR: codomain has 3*nside -1 != lmax.'))
+            raise ValueError(
+                'ERROR: codomain has 3*nside -1 != lmax.')
 
         return None
 

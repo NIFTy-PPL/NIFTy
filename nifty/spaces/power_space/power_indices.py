@@ -4,8 +4,7 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import about,\
-                         nifty_configuration as gc,\
+from nifty.config import nifty_configuration as gc,\
                          dependency_injector as gdi
 
 MPI = gdi[gc['mpi_module']]
@@ -316,9 +315,9 @@ class PowerIndices(object):
                                return_index=True)[1]
             return pundex
         else:
-            raise NotImplementedError(about._errors.cstring(
-                "ERROR: _compute_pundex_d2o not implemented for given "
-                "distribution_strategy"))
+            raise NotImplementedError(
+                "_compute_pundex_d2o not implemented for given "
+                "distribution_strategy")
 
     def _bin_power_indices(self, index_dict, **kwargs):
         """
@@ -401,134 +400,3 @@ class PowerIndices(object):
         pundex_ = self._compute_pundex(pindex_, kindex_)
 
         return pindex_, kindex_, rho_, pundex_
-
-#
-#class LMPowerIndices(PowerIndices):
-#
-#    def __init__(self, lmax, dim, distribution_strategy,
-#                 log=False, nbin=None, binbounds=None):
-#        """
-#            Returns an instance of the PowerIndices class. Given the shape and
-#            the density of a underlying rectangular grid it provides the user
-#            with the pindex, kindex, rho and pundex. The indices are bined
-#            according to the supplied parameter scheme. If wanted, computed
-#            results are stored for future reuse.
-#
-#            Parameters
-#            ----------
-#            shape : tuple, list, ndarray
-#                Array-like object which specifies the shape of the underlying
-#                rectangular grid
-#            dgrid : tuple, list, ndarray
-#                Array-like object which specifies the step-width of the
-#                underlying grid
-#            zerocenter : boolean, tuple/list/ndarray of boolean *optional*
-#                Specifies which dimensions are zerocentered. (default:False)
-#            log : bool *optional*
-#                Flag specifying if the binning of the default indices is
-#                performed on logarithmic scale.
-#            nbin : integer *optional*
-#                Number of used bins for the binning of the default indices.
-#            binbounds : {list, array}
-#                Array-like inner boundaries of the used bins of the default
-#                indices.
-#        """
-#        # Basic inits and consistency checks
-#        self.lmax = np.uint(lmax)
-#        self.dim = np.uint(dim)
-#        super(LMPowerIndices, self).__init__(
-#            distribution_strategy=distribution_strategy,
-#            log=log,
-#            nbin=nbin,
-#            binbounds=binbounds)
-#
-#    def compute_kdict(self):
-#        """
-#            Calculates an n-dimensional array with its entries being the
-#            lengths of the k-vectors from the zero point of the grid.
-#
-#            Parameters
-#            ----------
-#            None : All information is taken from the parent object.
-#
-#            Returns
-#            -------
-#            nkdict : distributed_data_object
-#        """
-#
-#        if self.distribution_strategy != 'not':
-#            about.warnings.cprint(
-#                "WARNING: full kdict is temporarily stored on every node " +
-#                "altough disribution strategy != 'not'!")
-#
-#        if 'healpy' in gdi:
-#            nkdict = hp.Alm.getlm(self.lmax, i=None)[0]
-#        else:
-#            nkdict = self._getlm()[0]
-#        nkdict = distributed_data_object(
-#                     nkdict,
-#                     distribution_strategy=self.distribution_strategy,
-#                     comm=self._comm)
-#        return nkdict
-#
-#    def _getlm(self):  # > compute all (l,m)
-#        index = np.arange(self.dim)
-#        n = 2 * self.lmax + 1
-#        m = np.ceil((n - np.sqrt(n**2 - 8 * (index - self.lmax))) / 2
-#                    ).astype(np.int)
-#        l = index - self.lmax * m + m * (m - 1) // 2
-#        return l, m
-#
-#    def _compute_indices_d2o(self, nkdict):
-#        """
-#        Internal helper function which computes pindex, kindex, rho and pundex
-#        from a given nkdict
-#        """
-#        ##########
-#        # kindex #
-#        ##########
-#        kindex = np.arange(self.lmax + 1, dtype=np.float)
-#
-#        ##########
-#        # pindex #
-#        ##########
-#        pindex = nkdict.copy(dtype=np.int)
-#
-#        #######
-#        # rho #
-#        #######
-#        rho = (2 * kindex + 1).astype(np.int)
-#
-#        ##########
-#        # pundex #
-#        ##########
-#        pundex = self._compute_pundex_d2o(pindex, kindex)
-#
-#        return pindex, kindex, rho, pundex
-#
-#    def _compute_indices_np(self, nkdict):
-#        """
-#        Internal helper function which computes pindex, kindex, rho and pundex
-#        from a given nkdict
-#        """
-#        ##########
-#        # kindex #
-#        ##########
-#        kindex = np.arange(self.lmax + 1, dtype=np.float)
-#
-#        ##########
-#        # pindex #
-#        ##########
-#        pindex = nkdict.astype(dtype=np.int, copy=True)
-#
-#        #######
-#        # rho #
-#        #######
-#        rho = (2 * kindex + 1).astype(np.int)
-#
-#        ##########
-#        # pundex #
-#        ##########
-#        pundex = self._compute_pundex_np(pindex, kindex)
-#
-#        return pindex, kindex, rho, pundex

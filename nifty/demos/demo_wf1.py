@@ -43,7 +43,6 @@ import gc
 from nifty import *                                              # version 0.8.0
 
 if __name__ == "__main__":
-    about.warnings.off()
 
     # some signal space; e.g., a two-dimensional regular grid
     shape = [1024, 1024]

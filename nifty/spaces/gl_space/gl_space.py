@@ -6,9 +6,12 @@ import numpy as np
 from d2o import arange, STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
-from nifty.config import about, nifty_configuration as gc,\
+from nifty.config import nifty_configuration as gc,\
                          dependency_injector as gdi
 import nifty.nifty_utilities as utilities
+
+import logging
+logger = logging.getLogger('NIFTy.GLSpace')
 
 gl = gdi.get('libsharp_wrapper_gl')
 
@@ -97,8 +100,8 @@ class GLSpace(Space):
         """
         # check imports
         if not gc['use_libsharp']:
-            raise ImportError(about._errors.cstring(
-                "ERROR: libsharp_wrapper_gl not available or not loaded."))
+            raise ImportError(
+                "libsharp_wrapper_gl not available or not loaded.")
 
         super(GLSpace, self).__init__(dtype)
 
@@ -191,11 +194,11 @@ class GLSpace(Space):
     def _parse_nlat(self, nlat):
         nlat = int(nlat)
         if nlat < 2:
-            raise ValueError(about._errors.cstring(
-                "ERROR: nlat must be a positive number."))
+            raise ValueError(
+                "nlat must be a positive number.")
         elif nlat % 2 != 0:
-            raise ValueError(about._errors.cstring(
-                "ERROR: nlat must be a multiple of 2."))
+            raise ValueError(
+                "nlat must be a multiple of 2.")
         return nlat
 
     def _parse_nlon(self, nlon):
@@ -204,7 +207,6 @@ class GLSpace(Space):
         else:
             nlon = int(nlon)
             if nlon != 2 * self.nlat - 1:
-                about.warnings.cprint(
-                    "WARNING: nlon was set to an unrecommended value: "
-                    "nlon <> 2*nlat-1.")
+                logger.warn("nlon was set to an unrecommended value: "
+                            "nlon <> 2*nlat-1.")
         return nlon

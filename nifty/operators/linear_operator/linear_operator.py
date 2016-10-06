@@ -2,7 +2,6 @@
 
 import abc
 
-from nifty.config import about
 from nifty.field import Field
 from nifty.spaces import Space
 from nifty.field_types import FieldType
@@ -25,9 +24,9 @@ class LinearOperator(object):
 
         for d in domain:
             if not isinstance(d, Space):
-                raise TypeError(about._errors.cstring(
-                    "ERROR: Given object contains something that is not a "
-                    "nifty.space."))
+                raise TypeError(
+                    "Given object contains something that is not a "
+                    "nifty.space.")
         return domain
 
     def _parse_field_type(self, field_type):
@@ -40,8 +39,8 @@ class LinearOperator(object):
 
         for ft in field_type:
             if not isinstance(ft, FieldType):
-                raise TypeError(about._errors.cstring(
-                    "ERROR: Given object is not a nifty.FieldType."))
+                raise TypeError(
+                    "Given object is not a nifty.FieldType.")
         return field_type
 
     @abc.abstractproperty
@@ -124,29 +123,29 @@ class LinearOperator(object):
         return y
 
     def _times(self, x, spaces, types):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'times'."))
+        raise NotImplementedError(
+            "no generic instance method 'times'.")
 
     def _adjoint_times(self, x, spaces, types):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'adjoint_times'."))
+        raise NotImplementedError(
+            "no generic instance method 'adjoint_times'.")
 
     def _inverse_times(self, x, spaces, types):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'inverse_times'."))
+        raise NotImplementedError(
+            "no generic instance method 'inverse_times'.")
 
     def _adjoint_inverse_times(self, x, spaces, types):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'adjoint_inverse_times'."))
+        raise NotImplementedError(
+            "no generic instance method 'adjoint_inverse_times'.")
 
     def _inverse_adjoint_times(self, x, spaces, types):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: no generic instance method 'inverse_adjoint_times'."))
+        raise NotImplementedError(
+            "no generic instance method 'inverse_adjoint_times'.")
 
     def _check_input_compatibility(self, x, spaces, types, inverse=False):
         if not isinstance(x, Field):
-            raise ValueError(about._errors.cstring(
-                "ERROR: supplied object is not a `nifty.Field`."))
+            raise ValueError(
+                "supplied object is not a `nifty.Field`.")
 
         # sanitize the `spaces` and `types` input
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
@@ -169,27 +168,27 @@ class LinearOperator(object):
 
         if spaces is None:
             if self_domain != () and self_domain != x.domain:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The operator's and and field's domains don't "
-                    "match."))
+                raise ValueError(
+                    "The operator's and and field's domains don't "
+                    "match.")
         else:
             for i, space_index in enumerate(spaces):
                 if x.domain[space_index] != self_domain[i]:
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: The operator's and and field's domains don't "
-                        "match."))
+                    raise ValueError(
+                        "The operator's and and field's domains don't "
+                        "match.")
 
         if types is None:
             if self_field_type != () and self_field_type != x.field_type:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: The operator's and and field's field_types don't "
-                    "match."))
+                raise ValueError(
+                    "The operator's and and field's field_types don't "
+                    "match.")
         else:
             for i, field_type_index in enumerate(types):
                 if x.field_type[field_type_index] != self_field_type[i]:
-                    raise ValueError(about._errors.cstring(
-                        "ERROR: The operator's and and field's field_type "
-                        "don't match."))
+                    raise ValueError(
+                        "The operator's and and field's field_type "
+                        "don't match.")
 
         return (spaces, types)
 

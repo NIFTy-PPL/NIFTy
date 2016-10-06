@@ -4,9 +4,6 @@ from nifty import *
 
 if __name__ == "__main__":
 
-
-    about.warnings.off()
-
     shape = (256, 256)
 
     x_space = RGSpace(shape)

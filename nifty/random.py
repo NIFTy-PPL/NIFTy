@@ -2,6 +2,7 @@
 
 import numpy as np
 
+
 class Random(object):
     @staticmethod
     def pm1(dtype=np.dtype('int'), shape=1):

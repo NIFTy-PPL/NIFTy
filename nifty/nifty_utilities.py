@@ -3,8 +3,6 @@
 import numpy as np
 from itertools import product
 
-from nifty.config import about
-
 
 def get_slice_list(shape, axes):
     """
@@ -32,14 +30,11 @@ def get_slice_list(shape, axes):
     """
 
     if not shape:
-        raise ValueError(about._errors.cstring("ERROR: shape cannot be None."))
+        raise ValueError("shape cannot be None.")
 
     if axes:
         if not all(axis < len(shape) for axis in axes):
-            raise ValueError(
-                about._errors.cstring("ERROR: \
-                                      axes(axis) does not match shape.")
-            )
+            raise ValueError("axes(axis) does not match shape.")
         axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
         axes_iterables = \
             [range(y) for x, y in enumerate(shape) if x not in axes]
@@ -234,7 +229,7 @@ def cast_axis_to_tuple(axis, length):
             axis = (int(axis),)
         else:
             raise TypeError(
-                "ERROR: Could not convert axis-input to tuple of ints")
+                "Could not convert axis-input to tuple of ints")
 
     # shift negative indices to positive ones
     axis = tuple(item if (item >= 0) else (item + length) for item in axis)
@@ -281,4 +276,4 @@ def get_default_codomain(domain):
         # TODO: get the preferred transformation path from config
         return LMGLTransformation.get_codomain(domain)
     else:
-        raise TypeError(about._errors.cstring('ERROR: unknown domain'))
+        raise TypeError('ERROR: unknown domain')

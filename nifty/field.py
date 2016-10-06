@@ -4,8 +4,7 @@ import numpy as np
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import about,\
-                         nifty_configuration as gc
+from nifty.config import nifty_configuration as gc
 
 from nifty.field_types import FieldType
 
@@ -14,6 +13,9 @@ from nifty.spaces.power_space import PowerSpace
 
 import nifty.nifty_utilities as utilities
 from nifty.random import Random
+
+import logging
+logger = logging.getLogger('NIFTy.Field')
 
 
 class Field(object):
@@ -58,9 +60,9 @@ class Field(object):
 
         for d in domain:
             if not isinstance(d, Space):
-                raise TypeError(about._errors.cstring(
-                    "ERROR: Given domain contains something that is not a "
-                    "nifty.space."))
+                raise TypeError(
+                    "Given domain contains something that is not a "
+                    "nifty.space.")
         return domain
 
     def _parse_field_type(self, field_type, val=None):
@@ -75,8 +77,8 @@ class Field(object):
             field_type = tuple(field_type)
         for ft in field_type:
             if not isinstance(ft, FieldType):
-                raise TypeError(about._errors.cstring(
-                    "ERROR: Given object is not a nifty.FieldType."))
+                raise TypeError(
+                    "Given object is not a nifty.FieldType.")
         return field_type
 
     def _get_axes_tuple(self, things_with_shape, start=0):
@@ -114,12 +116,12 @@ class Field(object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                about.warnings.cprint("WARNING: Datamodel set to default!")
+                logger.info("Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
-            raise ValueError(about._errors.cstring(
-                    "ERROR: distribution_strategy must be a global-type "
-                    "strategy."))
+            raise ValueError(
+                    "distribution_strategy must be a global-type "
+                    "strategy.")
         return distribution_strategy
 
     # ---Factory methods---
@@ -165,12 +167,9 @@ class Field(object):
             random_arguments = {'low': low,
                                 'high': high}
 
-#        elif random_type == 'syn':
-#            pass
-
         else:
-            raise KeyError(about._errors.cstring(
-                "ERROR: unsupported random key '" + str(random_type) + "'."))
+            raise KeyError(
+                "unsupported random key '" + str(random_type) + "'.")
 
         return random_arguments
 
@@ -183,7 +182,7 @@ class Field(object):
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
                 raise AttributeError(
-                    "ERROR: Field has a space in `domain` which is neither "
+                    "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
         # check if the `spaces` input is valid
@@ -192,22 +191,22 @@ class Field(object):
             if len(self.domain) == 1:
                 spaces = (0,)
             else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Field has multiple spaces as domain "
-                    "but `spaces` is None."))
+                raise ValueError(
+                    "Field has multiple spaces as domain "
+                    "but `spaces` is None.")
 
         if len(spaces) == 0:
-            raise ValueError(about._errors.cstring(
-                "ERROR: No space for analysis specified."))
+            raise ValueError(
+                "No space for analysis specified.")
         elif len(spaces) > 1:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Conversion of only one space at a time is allowed."))
+            raise ValueError(
+                "Conversion of only one space at a time is allowed.")
 
         space_index = spaces[0]
 
         if not self.domain[space_index].harmonic:
-            raise ValueError(about._errors.cstring(
-                "ERROR: The analyzed space must be harmonic."))
+            raise ValueError(
+                "The analyzed space must be harmonic.")
 
         # Create the target PowerSpace instance:
         # If the associated signal-space field was real, we extract the
@@ -289,14 +288,14 @@ class Field(object):
     def _shape_up_pindex(self, pindex, target_shape, target_strategy, axes):
         if pindex.distribution_strategy not in \
                 DISTRIBUTION_STRATEGIES['global']:
-            raise ValueError("ERROR: pindex's distribution strategy must be "
+            raise ValueError("pindex's distribution strategy must be "
                              "global-type")
 
         if pindex.distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
             if ((0 not in axes) or
                     (target_strategy is not pindex.distribution_strategy)):
                 raise ValueError(
-                    "ERROR: A slicing distributor shall not be reshaped to "
+                    "A slicing distributor shall not be reshaped to "
                     "something non-sliced.")
 
         semiscaled_shape = [1, ] * len(target_shape)
@@ -316,7 +315,7 @@ class Field(object):
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
                 raise AttributeError(
-                    "ERROR: Field has a space in `domain` which is neither "
+                    "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
         # check if the `spaces` input is valid
@@ -325,22 +324,22 @@ class Field(object):
             if len(self.domain) == 1:
                 spaces = (0,)
             else:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: Field has multiple spaces as domain "
-                    "but `spaces` is None."))
+                raise ValueError(
+                    "Field has multiple spaces as domain "
+                    "but `spaces` is None.")
 
         if len(spaces) == 0:
-            raise ValueError(about._errors.cstring(
-                "ERROR: No space for synthesis specified."))
+            raise ValueError(
+                "No space for synthesis specified.")
         elif len(spaces) > 1:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Conversion of only one space at a time is allowed."))
+            raise ValueError(
+                "Conversion of only one space at a time is allowed.")
 
         power_space_index = spaces[0]
         power_domain = self.domain[power_space_index]
         if not isinstance(power_domain, PowerSpace):
-            raise ValueError(about._errors.cstring(
-                "ERROR: A PowerSpace is needed for field synthetization."))
+            raise ValueError(
+                "A PowerSpace is needed for field synthetization.")
 
         # create the result domain
         result_domain = list(self.domain)
@@ -385,8 +384,8 @@ class Field(object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            about.warnings.cprint(
-                "WARNING: The distribution_stragey of pindex does not fit the "
+            logger.warn(
+                "The distribution_stragey of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
         # Now use numpy advanced indexing in order to put the entries of the
@@ -623,8 +622,8 @@ class Field(object):
                 for index in xrange(len(self.field_type)):
                     assert x.field_type[index] == self.field_type[index]
             except AssertionError:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: domains are incompatible."))
+                raise ValueError(
+                    "domains are incompatible.")
             # extract the data from x and try to dot with this
             x = x.get_val(copy=False)
 
@@ -788,8 +787,8 @@ class Field(object):
                 for index in xrange(len(self.field_type)):
                     assert other.field_type[index] == self.field_type[index]
             except AssertionError:
-                raise ValueError(about._errors.cstring(
-                    "ERROR: domains are incompatible."))
+                raise ValueError(
+                    "domains are incompatible.")
             other = other.get_val(copy=False)
 
         self_val = self.get_val(copy=False)

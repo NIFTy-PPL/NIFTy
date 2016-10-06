@@ -4,7 +4,6 @@ import abc
 
 import numpy as np
 
-from nifty.config import about
 from nifty.field import Field
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
@@ -40,9 +39,8 @@ class Prober(object):
     def distribution_strategy(self, distribution_strategy):
         distribution_strategy = str(distribution_strategy)
         if distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
-            raise ValueError(about._errors.cstring(
-                    "ERROR: distribution_strategy must be a global-type "
-                    "strategy."))
+            raise ValueError("distribution_strategy must be a global-type "
+                             "strategy.")
         self._distribution_strategy = distribution_strategy
 
     @property
@@ -60,8 +58,8 @@ class Prober(object):
     @random_type.setter
     def random_type(self, random_type):
         if random_type not in ["pm1", "normal"]:
-            raise ValueError(about._errors.cstring(
-                "ERROR: unsupported random type: '" + str(random_type) + "'."))
+            raise ValueError(
+                "unsupported random type: '" + str(random_type) + "'.")
         else:
             self._random_type = random_type
 

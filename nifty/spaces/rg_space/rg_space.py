@@ -40,8 +40,6 @@ from d2o import distributed_data_object,\
 
 from nifty.spaces.space import Space
 
-from nifty.config import about
-
 
 class RGSpace(Space):
     """
@@ -253,8 +251,8 @@ class RGSpace(Space):
         elif distribution_strategy in DISTRIBUTION_STRATEGIES['not']:
             slice_of_first_dimension = slice(0, shape[0])
         else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Unsupported distribution strategy"))
+            raise ValueError(
+                "Unsupported distribution strategy")
         dists = self._distance_array_helper(slice_of_first_dimension)
         nkdict.set_local_data(dists)
 
@@ -322,4 +320,3 @@ class RGSpace(Space):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
         return tuple(temp)
-

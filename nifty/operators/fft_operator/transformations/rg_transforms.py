@@ -2,9 +2,11 @@ import warnings
 
 import numpy as np
 from d2o import distributed_data_object, STRATEGIES
-from nifty.config import about, dependency_injector as gdi
+from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
-from nifty import nifty_configuration
+
+import logging
+logger = logging.getLogger('NIFTy.RGTransforms')
 
 pyfftw = gdi.get('pyfftw')
 
@@ -131,7 +133,7 @@ class FFTW(Transform):
                                             offset.reshape(offset.shape +
                                                            (1,) *
                                                            (np.array(
-                                                               args).ndim - 1)),
+                                                              args).ndim - 1)),
                                             1)),
                 (2,) * to_center.size)
             # Cast the core to the smallest integers we can get
@@ -295,8 +297,7 @@ class FFTW(Transform):
 
     def _repack_to_fftw_and_transform(self, val, axes, **kwargs):
         temp_val = val.copy_empty(distribution_strategy='fftw')
-        about.warnings.cprint('WARNING: Repacking d2o to fftw \
-                                distribution strategy')
+        logger.info("Repacking d2o to fftw distribution strategy")
         temp_val.set_full_data(val, copy=False)
 
         # Recursive call to transform
@@ -409,7 +410,7 @@ class FFTW(Transform):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
                 not all(axis in range(len(val.shape)) for axis in axes):
-            raise ValueError("ERROR: Provided axes does not match array shape")
+            raise ValueError("Provided axes does not match array shape")
 
         # If the input is a numpy array we transform it locally
         if not isinstance(val, distributed_data_object):
@@ -507,11 +508,6 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
     def fftw_interface(self):
         return self._fftw_interface
 
-    @fftw_interface.setter
-    def fftw_interface(self, interface):
-        about.warnings.cprint('WARNING: FFTWLocalTransformInfo fftw_interface \
-                               cannot be modified')
-
 
 class FFTWMPITransfromInfo(FFTWTransformInfo):
     def __init__(self, domain, codomain, local_shape,
@@ -534,11 +530,6 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
     @property
     def plan(self):
         return self._plan
-
-    @plan.setter
-    def plan(self, plan):
-        about.warnings.cprint('WARNING: FFTWMPITransfromInfo plan \
-                               cannot be modified')
 
 
 class GFFT(Transform):
@@ -584,7 +575,7 @@ class GFFT(Transform):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
                 not all(axis in range(len(val.shape)) for axis in axes):
-            raise ValueError("ERROR: Provided axes does not match array shape")
+            raise ValueError("Provided axes does not match array shape")
 
         # GFFT doesn't accept d2o objects as input. Consolidate data from
         # all nodes into numpy.ndarray before proceeding.

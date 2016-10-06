@@ -258,7 +258,6 @@ class problem(object):
 if(__name__=="__main__"):
     x = RGSpace((1280), zerocenter=True)
     p = problem(x, log = False)
-    about.warnings.off()
 ##    pl.close("all")
 #
 #    ## define signal space

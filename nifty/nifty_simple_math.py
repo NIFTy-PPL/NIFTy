@@ -22,8 +22,6 @@
 
 ##-----------------------------------------------------------------------------
 import numpy as np
-#from nifty.field import Field
-from nifty.config import about
 
 
 def vdot(x, y):
@@ -490,7 +488,7 @@ def log(x, base=None):
     if np.all(base > 0):
         return _math_helper(x, np.log)/np.log(base)
     else:
-        raise ValueError(about._errors.cstring("ERROR: invalid input basis."))
+        raise ValueError("invalid input basis.")
 
 
 def conjugate(x):

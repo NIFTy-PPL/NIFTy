@@ -32,24 +32,3 @@ from smoothing_operator import SmoothingOperator
 from fft_operator import *
 
 from propagator_operator import PropagatorOperator
-
-from nifty_operators import operator,\
-                            diagonal_operator,\
-                            power_operator,\
-                            projection_operator,\
-                            vecvec_operator,\
-                            response_operator,\
-                            invertible_operator,\
-                            propagator_operator,\
-                            identity,\
-                            identity_operator
-
-
-from nifty_probing import prober,\
-                                trace_prober,\
-                                inverse_trace_prober,\
-                                diagonal_prober,\
-                                inverse_diagonal_prober
-
-from nifty_minimization import conjugate_gradient,\
-                               steepest_descent

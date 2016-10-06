@@ -1,6 +1,5 @@
 import numpy as np
 
-from nifty.config import about
 import nifty.nifty_utilities as utilities
 from nifty import RGSpace, LMSpace
 from nifty.operators.endomorphic_operator import EndomorphicOperator
@@ -17,16 +16,16 @@ class SmoothingOperator(EndomorphicOperator):
 
         if len(self.domain) != 1:
             raise ValueError(
-                about._errors.cstring(
+
                     'ERROR: SmoothOperator accepts only exactly one '
-                    'space as input domain.')
+                    'space as input domain.'
             )
 
         if self.field_type != ():
-            raise ValueError(about._errors.cstring(
+            raise ValueError(
                 'ERROR: SmoothOperator field-type must be an '
                 'empty tuple.'
-            ))
+            )
 
         self._sigma = sigma
 

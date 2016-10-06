@@ -4,13 +4,15 @@ import numpy as np
 
 from nifty.spaces.space import Space
 
-from nifty.config import about,\
-                         nifty_configuration as gc,\
+from nifty.config import nifty_configuration as gc,\
                          dependency_injector as gdi
 
 from lm_helper import _distance_array_helper
 
 from d2o import arange
+
+import logging
+logger = logging.getLogger('NIFTy.LMSpace')
 
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
@@ -106,8 +108,8 @@ class LMSpace(Space):
 
         # check imports
         if not gc['use_libsharp'] and not gc['use_healpy']:
-            raise ImportError(about._errors.cstring(
-                "ERROR: neither libsharp_wrapper_gl nor healpy activated."))
+            raise ImportError(
+                "neither libsharp_wrapper_gl nor healpy activated.")
 
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
@@ -176,10 +178,9 @@ class LMSpace(Space):
     def _parse_lmax(self, lmax):
         lmax = np.int(lmax)
         if lmax < 1:
-            raise ValueError(about._errors.cstring(
-                "ERROR: negative lmax is not allowed."))
+            raise ValueError(
+                "negative lmax is not allowed.")
         # exception lmax == 2 (nside == 1)
         if (lmax % 2 == 0) and (lmax > 2):
-            about.warnings.cprint(
-                "WARNING: unrecommended parameter (lmax <> 2*n+1).")
+            logger.warn("unrecommended parameter (lmax <> 2*n+1).")
         return lmax
