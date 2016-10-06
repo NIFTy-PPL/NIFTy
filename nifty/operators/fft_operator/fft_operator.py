@@ -59,14 +59,14 @@ class FFTOperator(LinearOperator):
             forward_class = self.transformation_dictionary[
                 (self.domain[0].__class__, self.target[0].__class__)]
         except KeyError:
-            raise TypeError(
+            raise ValueError(
                 "No forward transformation for domain-target pair "
                 "found.")
         try:
             backward_class = self.transformation_dictionary[
                 (self.target[0].__class__, self.domain[0].__class__)]
         except KeyError:
-            raise TypeError(
+            raise ValueError(
                 "No backward transformation for domain-target pair "
                 "found.")
 
@@ -156,13 +156,13 @@ class FFTOperator(LinearOperator):
         try:
             codomain_class = cls.default_codomain_dictionary[domain_class]
         except KeyError:
-            raise TypeError("unknown domain")
+            raise ValueError("Unknown domain")
 
         try:
             transform_class = cls.transformation_dictionary[(domain_class,
                                                              codomain_class)]
         except KeyError:
-            raise TypeError(
+            raise ValueError(
                 "No transformation for domain-codomain pair found.")
 
         return transform_class.get_codomain(domain)
