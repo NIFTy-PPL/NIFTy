@@ -1,6 +1,6 @@
 import numpy as np
-from nifty.config import dependency_injector as gdi,\
-                         about
+
+from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
 
@@ -15,8 +15,8 @@ class HPLMTransformation(SlicingTransformation):
 
     def __init__(self, domain, codomain=None, module=None):
         if 'healpy' not in gdi:
-            raise ImportError(about._errors.cstring(
-                "The module healpy is needed but not available"))
+            raise ImportError(
+                "The module healpy is needed but not available")
 
         super(HPLMTransformation, self).__init__(domain, codomain, module)
 
@@ -40,8 +40,8 @@ class HPLMTransformation(SlicingTransformation):
         """
 
         if not isinstance(domain, HPSpace):
-            raise TypeError(about._errors.cstring(
-                "ERROR: domain needs to be a HPSpace"))
+            raise TypeError(
+                "domain needs to be a HPSpace")
 
         lmax = 3 * domain.nside - 1
 
@@ -52,19 +52,19 @@ class HPLMTransformation(SlicingTransformation):
     @staticmethod
     def check_codomain(domain, codomain):
         if not isinstance(domain, HPSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: domain is not a HPSpace'))
+            raise TypeError(
+                'ERROR: domain is not a HPSpace')
 
         if not isinstance(codomain, LMSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: codomain must be a LMSpace.'))
+            raise TypeError(
+                'ERROR: codomain must be a LMSpace.')
 
         nside = domain.nside
         lmax = codomain.lmax
 
         if 3 * nside - 1 != lmax:
-            raise ValueError(about._errors.cstring(
-                'ERROR: codomain has 3*nside-1 != lmax.'))
+            raise ValueError(
+                'ERROR: codomain has 3*nside-1 != lmax.')
 
         return None
 

@@ -145,9 +145,6 @@ from __future__ import division
 import abc
 
 import numpy as np
-import pylab as pl
-
-from nifty.config import about
 
 
 class Space(object):
@@ -232,18 +229,18 @@ class Space(object):
 
     @abc.abstractproperty
     def shape(self):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic shape for the Space base class."))
+        raise NotImplementedError(
+            "There is no generic shape for the Space base class.")
 
     @abc.abstractproperty
     def dim(self):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic dim for the Space base class."))
+        raise NotImplementedError(
+            "There is no generic dim for the Space base class.")
 
     @abc.abstractproperty
     def total_volume(self):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic volume for the Space base class."))
+        raise NotImplementedError(
+            "There is no generic volume for the Space base class.")
 
     @abc.abstractmethod
     def copy(self):
@@ -276,8 +273,8 @@ class Space(object):
         return x
 
     def compute_k_array(self, distribution_strategy):
-        raise NotImplementedError(about._errors.cstring(
-            "ERROR: There is no generic k_array for Space base class."))
+        raise NotImplementedError(
+            "There is no generic k_array for Space base class.")
 
     def hermitian_decomposition(self, x, axes=None):
         raise NotImplementedError

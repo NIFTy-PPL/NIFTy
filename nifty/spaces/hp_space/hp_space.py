@@ -35,8 +35,6 @@ from __future__ import division
 
 import numpy as np
 
-from d2o import arange, STRATEGIES as DISTRIBUTION_STRATEGIES
-from nifty.config import about
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc, \
                          dependency_injector as gdi
@@ -120,7 +118,7 @@ class HPSpace(Space):
         """
         # check imports
         if not gc['use_healpy']:
-            raise ImportError("ERROR: healpy not available or not loaded.")
+            raise ImportError("healpy not available or not loaded.")
 
         super(HPSpace, self).__init__(dtype)
 
@@ -200,6 +198,6 @@ class HPSpace(Space):
     def _parse_nside(self, nside):
         nside = int(nside)
         if nside & (nside - 1) != 0 or nside < 2:
-            raise ValueError(about._errors.cstring(
-                "ERROR: nside must be positive and a multiple of 2."))
+            raise ValueError(
+                "nside must be positive and a multiple of 2.")
         return nside

@@ -1,10 +1,12 @@
 import numpy as np
-from nifty.config import dependency_injector as gdi,\
-                         about
+from nifty.config import dependency_injector as gdi
 from nifty import GLSpace, LMSpace
 
 from slicing_transformation import SlicingTransformation
 import lm_transformation_factory as ltf
+
+import logging
+logger = logging.getLogger('NIFTy.LMGLTransformation')
 
 libsharp = gdi.get('libsharp_wrapper_gl')
 
@@ -15,8 +17,8 @@ class LMGLTransformation(SlicingTransformation):
 
     def __init__(self, domain, codomain=None, module=None):
         if 'libsharp_wrapper_gl' not in gdi:
-            raise ImportError(about._errors.cstring(
-                "The module libsharp is needed but not available."))
+            raise ImportError(
+                "The module libsharp is needed but not available.")
 
         super(LMGLTransformation, self).__init__(domain, codomain, module)
 
@@ -46,8 +48,8 @@ class LMGLTransformation(SlicingTransformation):
                    `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
         """
         if not isinstance(domain, LMSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: domain needs to be a LMSpace'))
+            raise TypeError(
+                'ERROR: domain needs to be a LMSpace')
 
         if domain.dtype is np.dtype('float32'):
             new_dtype = np.float32
@@ -64,12 +66,12 @@ class LMGLTransformation(SlicingTransformation):
     @staticmethod
     def check_codomain(domain, codomain):
         if not isinstance(domain, LMSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: domain is not a LMSpace'))
+            raise TypeError(
+                'ERROR: domain is not a LMSpace')
 
         if not isinstance(codomain, GLSpace):
-            raise TypeError(about._errors.cstring(
-                'ERROR: codomain must be a GLSpace.'))
+            raise TypeError(
+                'ERROR: codomain must be a GLSpace.')
 
         nlat = codomain.nlat
         nlon = codomain.nlon
@@ -77,16 +79,16 @@ class LMGLTransformation(SlicingTransformation):
         mmax = domain.mmax
 
         if lmax != mmax:
-            raise ValueError(about._errors.cstring(
-                'ERROR: domain has lmax != mmax.'))
+            raise ValueError(
+                'ERROR: domain has lmax != mmax.')
 
         if nlat != lmax + 1:
-            raise ValueError(about._errors.cstring(
-                'ERROR: codomain has nlat != lmax + 1.'))
+            raise ValueError(
+                'ERROR: codomain has nlat != lmax + 1.')
 
         if nlon != 2 * lmax + 1:
-            raise ValueError(about._errors.cstring(
-                'ERROR: domain has nlon != 2 * lmax + 1.'))
+            raise ValueError(
+                'ERROR: domain has nlon != 2 * lmax + 1.')
 
         return None
 
@@ -126,8 +128,8 @@ class LMGLTransformation(SlicingTransformation):
         elif inp.dtype == np.dtype('complex128'):
             return libsharp.alm2map(inp, **kwargs)
         else:
-            about.warnings.cprint("WARNING: performing dtype conversion for "
-                                  "libsharp compatibility.")
+            logger.debug("performing dtype conversion for libsharp "
+                         "compatibility.")
             casted_inp = inp.astype(np.dtype('complex128'), copy=False)
             result = libsharp.alm2map(casted_inp, **kwargs)
             return result

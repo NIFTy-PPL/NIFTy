@@ -1,8 +1,11 @@
 import numpy as np
 from transformation import Transformation
 from rg_transforms import FFTW, GFFT
-from nifty.config import about, dependency_injector as gdi
+from nifty.config import dependency_injector as gdi
 from nifty import RGSpace, nifty_configuration
+
+import logging
+logger = logging.getLogger('NIFTy.RGRGTransformation')
 
 
 class RGRGTransformation(Transformation):
@@ -101,8 +104,7 @@ class RGRGTransformation(Transformation):
 
         if codomain.harmonic and not issubclass(codomain.dtype.type,
                                                 np.complexfloating):
-            about.warnings.cprint(
-                "WARNING: codomain is harmonic but dtype is real.")
+            logger.warn("codomain is harmonic but dtype is real.")
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
         if not np.all(

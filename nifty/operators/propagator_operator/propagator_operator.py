@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-from nifty.config import about
 from nifty.minimization import ConjugateGradient
 
 from nifty.operators.linear_operator import LinearOperator
+
+import logging
+logger = logging.getLogger('NIFTy.PropagatorOperator')
 
 
 class PropagatorOperator(LinearOperator):
@@ -114,15 +116,15 @@ class PropagatorOperator(LinearOperator):
                 self.field_type == M_target and
                 self.target == M_target and
                 self.field_type_target == M_field_type_target):
-            raise ValueError(about._errors.cstring(
-                "ERROR: The domains and targets of the prior " +
+            raise ValueError(
+                "The domains and targets of the prior " +
                 "signal covariance and the likelihood contribution must be " +
-                "the same in the sense of '=='."))
+                "the same in the sense of '=='.")
 
         if inverter is not None:
             self.inverter = inverter
         else:
-            self.inverter = conjugate_gradient()
+            self.inverter = ConjugateGradient()
 
     # ---Mandatory properties and methods---
 
@@ -170,8 +172,8 @@ class PropagatorOperator(LinearOperator):
                 return (N.inverse_times,
                         N.domain, N.field_type, N.target, N.field_type_target)
         else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: At least M or N must be given."))
+            raise ValueError(
+                "At least M or N must be given.")
 
     def _multiply(self, x, W=None, spam=None, reset=None, note=False,
                   x0=None, tol=1E-4, clevel=1, limii=None, **kwargs):
@@ -190,7 +192,7 @@ class PropagatorOperator(LinearOperator):
                                               limii=limii)
         # evaluate
         if not convergence:
-            about.warnings.cprint("WARNING: conjugate gradient failed.")
+            logger.warn("conjugate gradient failed.")
 
         return result
 

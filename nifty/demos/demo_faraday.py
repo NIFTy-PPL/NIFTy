@@ -41,9 +41,6 @@ from __future__ import division
 from nifty import *
 
 
-about.warnings.off()
-about.infos.off()
-
 
 ##-----------------------------------------------------------------------------
 

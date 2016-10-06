@@ -5,10 +5,12 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import about,\
-                         nifty_configuration as gc
+from nifty.config import nifty_configuration as gc
 from nifty.field import Field
 from nifty.operators.endomorphic_operator import EndomorphicOperator
+
+import logging
+logger = logging.getLogger('NIFTy.DiagonalOperator')
 
 
 class DiagonalOperator(EndomorphicOperator):
@@ -117,11 +119,11 @@ class DiagonalOperator(EndomorphicOperator):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                about.warnings.cprint("WARNING: Datamodel set to default!")
+                logger.info("Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['all']:
-            raise ValueError(about._errors.cstring(
-                    "ERROR: Invalid distribution_strategy!"))
+            raise ValueError(
+                    "Invalid distribution_strategy!")
         return distribution_strategy
 
     def set_diagonal(self, diagonal, bare=False, copy=True):

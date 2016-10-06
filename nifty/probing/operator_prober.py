@@ -2,7 +2,6 @@
 
 import abc
 
-from nifty.config import about
 
 from prober import Prober
 
@@ -19,9 +18,8 @@ class OperatorProber(Prober):
                                  compute_variance=compute_variance)
 
         if not isinstance(operator, self.valid_operator_class):
-            raise TypeError(about._errors.cstring(
-                "WARNING: operator must be an instance of %s" %
-                str(self.valid_operator_class)))
+            raise TypeError("Operator must be an instance of %s" %
+                            str(self.valid_operator_class))
         self._operator = operator
 
     # ---Mandatory properties and methods---

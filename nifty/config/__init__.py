@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from nifty_about import *
-
 from nifty_config import dependency_injector,\
                          nifty_configuration
 
