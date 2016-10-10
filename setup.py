@@ -19,21 +19,40 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 import os
 
+from Cython.Build import cythonize
+import numpy
+
+exec(open('nifty/version.py').read())
+
+
 setup(name="ift_nifty",
-      version="1.0.8",
-      author="Marco Selig",
-      author_email="mselig@mpa-garching.mpg.de",
-      maintainer="Theo Steininger",
-      maintainer_email="theos@mpa-garching.mpg.de",
+      version=__version__,
+      author="Theo Steininger",
+      author_email="theos@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=["nifty", "nifty.demos", "nifty.rg", "nifty.lm"],
-      package_dir={"nifty": ""},
-      data_files=[(os.path.expanduser('~') + "/.nifty", ["nifty_config"])],
-      package_data={'nifty.demos' : ['demo_faraday_map.npy'],
+      packages=find_packages(),
+      package_dir={"nifty": "nifty"},
+      zip_safe=False,
+      ext_modules=cythonize([
+          "nifty/operators/fft_operator/transformations/"
+          "lm_transformation_factory.pyx",
+          "nifty/spaces/lm_space/lm_helper.pyx"
+      ]),
+      include_dirs=[numpy.get_include()],
+      dependency_links=[
+        'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers-0.2.0',
+        'git+https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o-1.0.4'],
+      install_requires=['keepers>=0.2.0', 'd2o>=1.0.4'],
+      package_data={'nifty.demos': ['demo_faraday_map.npy'],
                     },
-      license="GPLv3")
-
+      license="GPLv3",
+      classifiers=[
+        "Development Status :: 4 - Beta",
+        "Topic :: Utilities",
+        "License :: OSI Approved :: GNU General Public License v3 "
+        "or later (GPLv3+)"],
+      )
