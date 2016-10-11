@@ -357,13 +357,16 @@ class FFTW(Transform):
                 inp = inp.reshape(inp.shape[0], 1)
 
             if current_info is None:
+                transform_shape = list(inp.shape)
+                transform_shape[0] = val.shape[0]
+
                 current_info = self._get_transform_info(
                     self.domain,
                     self.codomain,
                     local_shape=val.local_shape,
                     local_offset_Q=local_offset_Q,
                     is_local=False,
-                    transform_shape=inp.shape,
+                    transform_shape=tuple(transform_shape),
                     **kwargs
                 )
 
