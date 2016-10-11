@@ -392,13 +392,13 @@ class Field(object):
         # power spectrum into the appropriate places of the pindex array.
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
         local_pindex = pindex.get_local_data(copy=False)
-        local_spec = self.val.get_local_data(copy=False)
+        full_spec = self.val.get_full_data()
 
         local_blow_up = [slice(None)]*len(self.shape)
         local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
 
         # here, the power_spectrum is distributed into the new shape
-        local_rescaler = local_spec[local_blow_up]
+        local_rescaler = full_spec[local_blow_up]
 
         # apply the rescaler to the random fields
         result_val_list[0].apply_scalar_function(
