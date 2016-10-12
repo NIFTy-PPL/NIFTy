@@ -9,7 +9,7 @@ from nifty.operators.fft_operator import FFTOperator
 class SmoothingOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
-    def __init__(self, domain=(), field_type=(), sigma=None):
+    def __init__(self, domain=(), field_type=(), sigma=0):
 
         self._domain = self._parse_domain(domain)
         self._field_type = self._parse_field_type(field_type)
@@ -86,7 +86,7 @@ class SmoothingOperator(EndomorphicOperator):
         axes_local_distribution_strategy = \
             transformed_x.val.get_axes_local_distribution_strategy(axes=coaxes)
 
-        kernel = codomain.distance_array(
+        kernel = codomain.get_distance_array(
                         distribution_strategy=axes_local_distribution_strategy)
         kernel.apply_scalar_function(
             codomain.get_smoothing_kernel_function(self.sigma),

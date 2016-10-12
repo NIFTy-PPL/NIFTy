@@ -114,22 +114,6 @@ class LMSpace(Space):
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
 
-    def distance_array(self, distribution_strategy):
-        dists = arange(start=0, stop=self.shape[0],
-                       distribution_strategy=distribution_strategy)
-
-        dists = dists.apply_scalar_function(
-            lambda x: _distance_array_helper(x, self.lmax),
-            dtype=np.float)
-
-        return dists
-
-    def get_smoothing_kernel_function(self, sigma):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
-
-        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
-
     # ---Mandatory properties and methods---
 
     @property
@@ -164,6 +148,22 @@ class LMSpace(Space):
             return x
         else:
             return x.copy()
+
+    def get_distance_array(self, distribution_strategy):
+        dists = arange(start=0, stop=self.shape[0],
+                       distribution_strategy=distribution_strategy)
+
+        dists = dists.apply_scalar_function(
+            lambda x: _distance_array_helper(x, self.lmax),
+            dtype=np.float)
+
+        return dists
+
+    def get_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
+
+        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
 
     # ---Added properties and methods---
 

@@ -55,6 +55,6 @@ from operators import *
 
 from probing import *
 
-from demos import get_demo_dir
+from sugar import *
 
 #import pyximport; pyximport.install(pyimport = True)

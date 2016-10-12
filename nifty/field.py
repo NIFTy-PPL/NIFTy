@@ -309,7 +309,8 @@ class Field(object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_signal=True):
+    def power_synthesize(self, spaces=None, real_signal=True,
+                         mean=None, std=None):
         # assert that all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
@@ -356,7 +357,9 @@ class Field(object):
 
         result_list = [self.__class__.from_random(
                              'normal',
-                             result_domain,
+                             mean=mean,
+                             std=std,
+                             domain=result_domain,
                              dtype=harmonic_domain.dtype,
                              field_type=self.field_type,
                              distribution_strategy=self.distribution_strategy)
@@ -489,8 +492,10 @@ class Field(object):
         else:
             dtype = np.dtype(dtype)
 
+        casted_x = x
+
         for ind, sp in enumerate(self.domain):
-            casted_x = sp.pre_cast(x,
+            casted_x = sp.pre_cast(casted_x,
                                    axes=self.domain_axes[ind])
 
         for ind, ft in enumerate(self.field_type):
