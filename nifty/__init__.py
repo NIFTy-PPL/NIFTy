@@ -42,7 +42,8 @@ from field import Field
 
 from random import Random
 
-from nifty_simple_math import *
+from basic_arithmetics import *
+
 from nifty_utilities import *
 
 from field_types import *
