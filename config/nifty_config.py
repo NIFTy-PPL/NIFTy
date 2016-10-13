@@ -52,14 +52,14 @@ variable_verbosity = keepers.Variable('verbosity',
 
 
 nifty_configuration = keepers.get_Configuration(
-                     'NIFTy',
-                     [variable_fft_module,
-                      variable_lm2gl,
-                      variable_use_healpy,
-                      variable_use_libsharp,
-                      variable_verbosity,
-                      ],
-                     path=os.path.expanduser('~') + "/.nifty/nifty_config")
+                     name='NIFTy',
+                     variables=[variable_fft_module,
+                                variable_lm2gl,
+                                variable_use_healpy,
+                                variable_use_libsharp,
+                                variable_verbosity],
+                     file_name='nifty_config')
+
 ########
 ### Compatibility variables
 ########
