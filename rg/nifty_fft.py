@@ -381,6 +381,11 @@ class _fftw_plan_and_info(object):
                 self.local_node_dimensions,
                 self.offsetQ))
 
+        try:
+            threads = int(os.environ['NIFTY_FFTW_THREADS'])
+        except(KeyError):
+            threads = 1
+
         self.set_plan(
             pyfftw.create_mpi_plan(
                 input_shape=self.global_input_shape,
@@ -388,7 +393,7 @@ class _fftw_plan_and_info(object):
                 output_dtype=self.output_dtype,
                 direction=self.direction,
                 flags=["FFTW_ESTIMATE"],
-                threads=int(os.environ['MY_FFTW_THREADS']),
+                threads=threads,
                 **kwargs)
         )
 
