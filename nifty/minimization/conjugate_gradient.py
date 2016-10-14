@@ -4,15 +4,13 @@
 from __future__ import division
 import numpy as np
 
-from nifty import Field
-
 import logging
 logger = logging.getLogger('NIFTy.CG')
 
 
 class ConjugateGradient(object):
-    def __init__(self, convergence_tolerance=1E-4, convergence_level=1,
-                 iteration_limit=-1, reset_count=-1,
+    def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
+                 iteration_limit=None, reset_count=None,
                  preconditioner=None, callback=None):
         """
             Initializes the conjugate_gradient and sets the attributes (except
@@ -39,8 +37,14 @@ class ConjugateGradient(object):
         """
         self.convergence_tolerance = np.float(convergence_tolerance)
         self.convergence_level = np.float(convergence_level)
-        self.iteration_limit = int(iteration_limit)
-        self.reset_count = int(reset_count)
+
+        if iteration_limit is not None:
+            iteration_limit = int(iteration_limit)
+        self.iteration_limit = iteration_limit
+
+        if reset_count is not None:
+            reset_count = int(reset_count)
+        self.reset_count = reset_count
 
         if preconditioner is None:
             preconditioner = lambda z: z
@@ -48,7 +52,7 @@ class ConjugateGradient(object):
         self.preconditioner = preconditioner
         self.callback = callback
 
-    def __call__(self, A, b, x0=None):
+    def __call__(self, A, b, x0):
         """
             Runs the conjugate gradient minimization.
 
@@ -74,17 +78,14 @@ class ConjugateGradient(object):
                 has converged or not.
 
             """
-        if x0 is None:
-            x0 = Field(A.domain, val=0)
-
         r = b - A(x0)
         d = self.preconditioner(r)
         previous_gamma = r.dot(d)
         if previous_gamma == 0:
-            self.info("The starting guess is already perfect solution for "
-                      "the inverse problem.")
+            logger.info("The starting guess is already perfect solution for "
+                        "the inverse problem.")
             return x0, self.convergence_level+1
-
+        norm_b = np.sqrt(b.dot(b))
         x = x0
         convergence = 0
         iteration_number = 1
@@ -107,7 +108,9 @@ class ConjugateGradient(object):
             if alpha.real < 0:
                 logger.warn("Positive definiteness of A violated!")
                 reset = True
-            if reset or iteration_number % self.reset_count == 0:
+            if self.reset_count is not None:
+                reset += (iteration_number % self.reset_count == 0)
+            if reset:
                 logger.info("Resetting conjugate directions.")
                 r = b - A(x)
             else:
@@ -121,10 +124,7 @@ class ConjugateGradient(object):
 
             beta = max(0, gamma/previous_gamma)
 
-            d = s + d * beta
-
-            #delta = previous_delta * np.sqrt(abs(gamma))
-            delta = abs(1-np.sqrt(abs(previous_gamma))/np.sqrt(abs(gamma)))
+            delta = np.sqrt(gamma)/norm_b
 
             logger.debug("Iteration : %08u   alpha = %3.1E   beta = %3.1E   "
                          "delta = %3.1E" %
@@ -135,20 +135,23 @@ class ConjugateGradient(object):
 
             if gamma == 0:
                 convergence = self.convergence_level+1
-                self.info("Reached infinite convergence.")
+                logger.info("Reached infinite convergence.")
                 break
             elif abs(delta) < self.convergence_tolerance:
                 convergence += 1
-                self.info("Updated convergence level to: %u" % convergence)
+                logger.info("Updated convergence level to: %u" % convergence)
                 if convergence == self.convergence_level:
-                    self.info("Reached target convergence level.")
+                    logger.info("Reached target convergence level.")
                     break
             else:
                 convergence = max(0, convergence-1)
 
-            if iteration_number == self.iteration_limit:
-                self.warn("Reached iteration limit. Stopping.")
-                break
+            if self.iteration_limit is not None:
+                if iteration_number == self.iteration_limit:
+                    logger.warn("Reached iteration limit. Stopping.")
+                    break
+
+            d = s + d * beta
 
             iteration_number += 1
             previous_gamma = gamma

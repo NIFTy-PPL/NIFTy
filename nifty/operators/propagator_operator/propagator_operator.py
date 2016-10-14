@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 from nifty.minimization import ConjugateGradient
 from nifty.nifty_utilities import get_default_codomain
+from nifty.field import Field
 from nifty.operators import EndomorphicOperator,\
                             FFTOperator
 
@@ -40,22 +42,16 @@ class PropagatorOperator(EndomorphicOperator):
 
         elif R is not None:
             self._domain = R.domain
-            fft_RN = FFTOperator(self._domain, target=N.domain)
             self._likelihood_times = \
-                lambda z: R.adjoint_times(
-                            fft_RN.inverse_times(N.inverse_times(
-                                fft_RN(R.times(z)))))
+                lambda z: R.adjoint_times(N.inverse_times(R.times(z)))
         else:
-            self._domain = (get_default_codomain(N.domain[0]),)
-            fft_RN = FFTOperator(self._domain, target=N.domain)
-            self._likelihood_times = \
-                lambda z: fft_RN.inverse_times(N.inverse_times(
-                                fft_RN(z)))
+            self._domain = N.domain
+            self._likelihood_times = lambda z: N.inverse_times(z)
 
-        fft_S = FFTOperator(S.domain, self._domain)
-        self._S_times = lambda z: fft_S.inverse_times(S(fft_S(z)))
-        self._S_inverse_times = lambda z: fft_S.inverse_times(
-                                            S.inverse_times(fft_S(z)))
+        fft_S = FFTOperator(S.domain, target=self._domain)
+        self._S_times = lambda z: fft_S(S(fft_S.inverse_times(z)))
+        self._S_inverse_times = lambda z: fft_S(S.inverse_times(
+                                          fft_S.inverse_times(z)))
 
         if preconditioner is None:
             preconditioner = self._S_times
@@ -67,6 +63,8 @@ class PropagatorOperator(EndomorphicOperator):
         else:
             self.inverter = ConjugateGradient(
                                 preconditioner=self.preconditioner)
+
+        self.x0 = None
 
     # ---Mandatory properties and methods---
 
@@ -93,10 +91,17 @@ class PropagatorOperator(EndomorphicOperator):
     # ---Added properties and methods---
 
     def _times(self, x, spaces, types):
-        (result, convergence) = self.inverter(A=self._inverse_times, b=x)
+        if self.x0 is None:
+            x0 = Field(self.domain, val=0., dtype=np.complex128)
+        else:
+            x0 = self.x0
+        (result, convergence) = self.inverter(A=self.inverse_times,
+                                              b=x,
+                                              x0=x0)
+        self.x0 = result
         return result
 
-    def _inverse_multiply(self, x, **kwargs):
+    def _inverse_times(self, x, spaces, types):
         result = self._S_inverse_times(x)
         result += self._likelihood_times(x)
         return result

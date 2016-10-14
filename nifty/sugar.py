@@ -13,7 +13,8 @@ def create_power_operator(domain, power_spectrum, distribution_strategy='not'):
         fft = FFTOperator(domain)
         domain = fft.target[0]
 
-    power_domain = PowerSpace(domain)
+    power_domain = PowerSpace(domain,
+                              distribution_strategy=distribution_strategy)
 
     fp = Field(power_domain,
                val=power_spectrum,
