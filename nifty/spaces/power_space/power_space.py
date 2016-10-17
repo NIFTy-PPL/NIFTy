@@ -19,7 +19,8 @@ class PowerSpace(Space):
                  dtype=np.dtype('float')):
 
         super(PowerSpace, self).__init__(dtype)
-        self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
+        self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',
+                                  '_k_array']
 
         if not isinstance(harmonic_domain, Space):
             raise ValueError(
