@@ -2,13 +2,14 @@
 
 import abc
 
+from keepers import Loggable
 from nifty.field import Field
 from nifty.spaces import Space
 from nifty.field_types import FieldType
 import nifty.nifty_utilities as utilities
 
 
-class LinearOperator(object):
+class LinearOperator(object, Loggable):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):

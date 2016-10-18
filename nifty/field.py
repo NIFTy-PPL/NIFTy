@@ -14,11 +14,10 @@ from nifty.spaces.power_space import PowerSpace
 import nifty.nifty_utilities as utilities
 from nifty.random import Random
 
-import logging
-logger = logging.getLogger('NIFTy.Field')
+from keepers import Loggable
 
 
-class Field(object):
+class Field(object, Loggable):
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
@@ -116,7 +115,7 @@ class Field(object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                logger.info("Datamodel set to default!")
+                self.logger.info("Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(
@@ -387,7 +386,7 @@ class Field(object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            logger.warn(
+            self.logger.warn(
                 "The distribution_stragey of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 

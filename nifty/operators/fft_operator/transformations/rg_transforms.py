@@ -5,13 +5,12 @@ from d2o import distributed_data_object, STRATEGIES
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 
-import logging
-logger = logging.getLogger('NIFTy.RGTransforms')
+from keepers import Loggable
 
 pyfftw = gdi.get('pyfftw')
 
 
-class Transform(object):
+class Transform(object, Loggable):
     """
         A generic fft object without any implementation.
     """
@@ -297,7 +296,7 @@ class FFTW(Transform):
 
     def _repack_to_fftw_and_transform(self, val, axes, **kwargs):
         temp_val = val.copy_empty(distribution_strategy='fftw')
-        logger.info("Repacking d2o to fftw distribution strategy")
+        self.logger.info("Repacking d2o to fftw distribution strategy")
         temp_val.set_full_data(val, copy=False)
 
         # Recursive call to transform

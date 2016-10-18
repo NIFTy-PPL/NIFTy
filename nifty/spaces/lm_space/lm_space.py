@@ -11,9 +11,6 @@ from lm_helper import _distance_array_helper
 
 from d2o import arange
 
-import logging
-logger = logging.getLogger('NIFTy.LMSpace')
-
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
 
@@ -178,9 +175,8 @@ class LMSpace(Space):
     def _parse_lmax(self, lmax):
         lmax = np.int(lmax)
         if lmax < 1:
-            raise ValueError(
-                "negative lmax is not allowed.")
+            raise ValueError("Negative lmax is not allowed.")
         # exception lmax == 2 (nside == 1)
         if (lmax % 2 == 0) and (lmax > 2):
-            logger.warn("unrecommended parameter (lmax <> 2*n+1).")
+            self.logger.warn("Unrecommended parameter (lmax <> 2*n+1).")
         return lmax

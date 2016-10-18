@@ -26,7 +26,9 @@ mpl.use('Agg')
 
 from .version import __version__
 
-from logger import logger
+# initialize the logger instance
+from keepers import MPILogger
+logger = MPILogger()
 
 import dummys
 

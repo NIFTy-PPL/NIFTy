@@ -4,9 +4,6 @@ from rg_transforms import FFTW, GFFT
 from nifty.config import dependency_injector as gdi
 from nifty import RGSpace, nifty_configuration
 
-import logging
-logger = logging.getLogger('NIFTy.RGRGTransformation')
-
 
 class RGRGTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
@@ -84,8 +81,8 @@ class RGRGTransformation(Transformation):
         cls.check_codomain(domain, new_space)
         return new_space
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, RGSpace):
             raise TypeError('ERROR: domain is not a RGSpace')
 
@@ -104,7 +101,7 @@ class RGRGTransformation(Transformation):
 
         if codomain.harmonic and not issubclass(codomain.dtype.type,
                                                 np.complexfloating):
-            logger.warn("codomain is harmonic but dtype is real.")
+            cls.logger.warn("Codomain is harmonic but dtype is real.")
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
         if not np.all(

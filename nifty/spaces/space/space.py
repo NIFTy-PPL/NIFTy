@@ -146,8 +146,10 @@ import abc
 
 import numpy as np
 
+from keepers import Loggable
 
-class Space(object):
+
+class Space(object, Loggable):
     """
         ..                            __             __
         ..                          /__/           /  /_

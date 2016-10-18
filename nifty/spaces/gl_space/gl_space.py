@@ -10,9 +10,6 @@ from nifty.config import nifty_configuration as gc,\
                          dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 
-import logging
-logger = logging.getLogger('NIFTy.GLSpace')
-
 gl = gdi.get('libsharp_wrapper_gl')
 
 GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
@@ -207,6 +204,6 @@ class GLSpace(Space):
         else:
             nlon = int(nlon)
             if nlon != 2 * self.nlat - 1:
-                logger.warn("nlon was set to an unrecommended value: "
-                            "nlon <> 2*nlat-1.")
+                self.logger.warn("nlon was set to an unrecommended value: "
+                                 "nlon <> 2*nlat-1.")
         return nlon

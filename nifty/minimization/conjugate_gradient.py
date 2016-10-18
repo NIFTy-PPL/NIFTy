@@ -4,9 +4,6 @@
 from __future__ import division
 import numpy as np
 
-import logging
-logger = logging.getLogger('NIFTy.CG')
-
 
 class ConjugateGradient(object):
     def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
@@ -82,16 +79,16 @@ class ConjugateGradient(object):
         d = self.preconditioner(r)
         previous_gamma = r.dot(d)
         if previous_gamma == 0:
-            logger.info("The starting guess is already perfect solution for "
-                        "the inverse problem.")
+            self.logger.info("The starting guess is already perfect solution "
+                             "for the inverse problem.")
             return x0, self.convergence_level+1
         norm_b = np.sqrt(b.dot(b))
         x = x0
         convergence = 0
         iteration_number = 1
-        logger.info("Starting conjugate gradient.")
+        self.logger.info("Starting conjugate gradient.")
 
-        while(True):
+        while True:
             if self.callback is not None:
                 self.callback(x, iteration_number)
 
@@ -99,19 +96,19 @@ class ConjugateGradient(object):
             alpha = previous_gamma/d.dot(q)
 
             if not np.isfinite(alpha):
-                logger.error("Alpha became infinite! Stopping.")
+                self.logger.error("Alpha became infinite! Stopping.")
                 return x0, 0
 
             x += d * alpha
 
             reset = False
             if alpha.real < 0:
-                logger.warn("Positive definiteness of A violated!")
+                self.logger.warn("Positive definiteness of A violated!")
                 reset = True
             if self.reset_count is not None:
                 reset += (iteration_number % self.reset_count == 0)
             if reset:
-                logger.info("Resetting conjugate directions.")
+                self.logger.info("Resetting conjugate directions.")
                 r = b - A(x)
             else:
                 r -= q * alpha
@@ -120,35 +117,37 @@ class ConjugateGradient(object):
             gamma = r.dot(s)
 
             if gamma.real < 0:
-                logger.warn("Positive definitness of preconditioner violated!")
+                self.logger.warn("Positive definitness of preconditioner "
+                                 "violated!")
 
             beta = max(0, gamma/previous_gamma)
 
             delta = np.sqrt(gamma)/norm_b
 
-            logger.debug("Iteration : %08u   alpha = %3.1E   beta = %3.1E   "
-                         "delta = %3.1E" %
-                         (iteration_number,
-                          np.real(alpha),
-                          np.real(beta),
-                          np.real(delta)))
+            self.logger.debug("Iteration : %08u   alpha = %3.1E   "
+                              "beta = %3.1E   delta = %3.1E" %
+                              (iteration_number,
+                               np.real(alpha),
+                               np.real(beta),
+                               np.real(delta)))
 
             if gamma == 0:
                 convergence = self.convergence_level+1
-                logger.info("Reached infinite convergence.")
+                self.logger.info("Reached infinite convergence.")
                 break
             elif abs(delta) < self.convergence_tolerance:
                 convergence += 1
-                logger.info("Updated convergence level to: %u" % convergence)
+                self.logger.info("Updated convergence level to: %u" %
+                                 convergence)
                 if convergence == self.convergence_level:
-                    logger.info("Reached target convergence level.")
+                    self.logger.info("Reached target convergence level.")
                     break
             else:
                 convergence = max(0, convergence-1)
 
             if self.iteration_limit is not None:
                 if iteration_number == self.iteration_limit:
-                    logger.warn("Reached iteration limit. Stopping.")
+                    self.logger.warn("Reached iteration limit. Stopping.")
                     break
 
             d = s + d * beta

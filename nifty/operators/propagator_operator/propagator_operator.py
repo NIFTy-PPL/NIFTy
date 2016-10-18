@@ -6,9 +6,6 @@ from nifty.field import Field
 from nifty.operators import EndomorphicOperator,\
                             FFTOperator
 
-import logging
-logger = logging.getLogger('NIFTy.PropagatorOperator')
-
 
 class PropagatorOperator(EndomorphicOperator):
 
