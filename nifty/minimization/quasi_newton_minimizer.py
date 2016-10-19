@@ -84,18 +84,17 @@ class QuasiNewtonMinimizer(object, Loggable):
                 convergence = self.convergence_level+2
                 break
 
-            descend_direction = self._get_descend_direction(gradient,
-                                                            gradient_norm)
+            descend_direction = self._get_descend_direction(x, gradient)
 
             # compute the step length, which minimizes f_k along the
             # search direction = the gradient
-            self.line_searcher.set_coordinates(xk=x,
+            step_length, f_k = self.line_searcher.perform_line_search(
+                                               xk=x,
                                                pk=descend_direction,
                                                f_k=f_k,
                                                fprime_k=gradient,
                                                f_k_minus_1=f_k_minus_1)
             f_k_minus_1 = f_k
-            step_length, f_k = self.line_searcher.perform_line_search()
 
             # update x
             x += descend_direction*step_length

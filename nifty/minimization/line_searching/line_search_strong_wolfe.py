@@ -43,42 +43,15 @@ class LineSearchStrongWolfe(LineSearch):
         self.max_step_size = max_step_size
         self.max_iterations = int(max_iterations)
         self.max_zoom_iterations = int(max_zoom_iterations)
-
-        self.f_k_minus_1 = None
         self._last_alpha_star = 1.
 
-    def set_coordinates(self, xk, pk, f_k=None, fprime_k=None,
-                        f_k_minus_1=None):
-        """
-        Set the coordinates for a new line search.
-
-        Parameters
-        ----------
-        xk : ndarray, d2o, field
-            Starting point.
-
-        pk : ndarray, d2o, field
-            Unit vector in search direction.
-
-        f_k : float (optional)
-            Function value f(x_k).
-
-        fprime_k : ndarray, d2o, field (optional)
-            Function value fprime(xk).
-
-        f_k_minus_1 : None, float (optional)
-            Function value f(x_k-1).
-
-        """
-
-        super(LineSearchStrongWolfe, self).set_coordinates(xk=xk,
-                                                           pk=pk,
-                                                           f_k=None,
-                                                           fprime_k=None)
-
-        self.f_k_minus_1 = f_k_minus_1
-
-    def perform_line_search(self):
+    def perform_line_search(self, xk, pk, f_k=None, fprime_k=None,
+                            f_k_minus_1=None):
+        self._set_coordinates(xk=xk,
+                              pk=pk,
+                              f_k=f_k,
+                              fprime_k=fprime_k,
+                              f_k_minus_1=f_k_minus_1)
         c1 = self.c1
         c2 = self.c2
         max_step_size = self.max_step_size

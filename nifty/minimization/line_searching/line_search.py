@@ -46,6 +46,7 @@ class LineSearch(object, Loggable):
         self.pk = None
 
         self.f_k = None
+        self.f_k_minus_1 = None
         self.fprime_k = None
 
     def set_functions(self, f, fprime, f_args=()):
@@ -56,7 +57,8 @@ class LineSearch(object, Loggable):
         self.fprime = fprime
         self.f_args = f_args
 
-    def set_coordinates(self, xk, pk, f_k=None, fprime_k=None):
+    def _set_coordinates(self, xk, pk, f_k=None, fprime_k=None,
+                         f_k_minus_1=None):
         """
         Set the coordinates for a new line search.
 
@@ -89,6 +91,8 @@ class LineSearch(object, Loggable):
         else:
             self.fprime_k = fprime_k
 
+        self.f_k_minus_1 = f_k_minus_1
+
     def _phi(self, alpha):
         if alpha == 0:
             value = self.f_k
@@ -105,5 +109,6 @@ class LineSearch(object, Loggable):
         return bare_dot(gradient, self.pk)
 
     @abc.abstractmethod
-    def perform_line_search(self):
+    def perform_line_search(self, xk, pk, f_k=None, fprime_k=None,
+                            f_k_minus_1=None):
         raise NotImplementedError
