@@ -17,6 +17,12 @@ cpdef np.ndarray[np.float64_t, ndim=1] apply_kernel_along_array(np.ndarray[np.fl
         # No smoothing requested, just return the input array.
         return power[startindex:endindex]
 
+    #excluded_power = np.array([])
+    #if (exclude > 0):
+    #    distances = distances[exclude:]
+    #    excluded_power = np.copy(power[:exclude])
+    #    power = power[exclude:]
+
     if (smooth_length is None) or (smooth_length < 0):
         smooth_length = distances[1]-distances[0]
 
@@ -26,7 +32,8 @@ cpdef np.ndarray[np.float64_t, ndim=1] apply_kernel_along_array(np.ndarray[np.fl
         l = max(i-int(2*smooth_length)-1,0)
         u = min(i+int(2*smooth_length)+2,len(p_smooth))
         p_smooth[i-startindex] = GaussianKernel(power[l:u], distances[l:u], distances[i], smooth_length)
-
+    #if (exclude > 0):
+    #    p_smooth = np.r_[excluded_power,p_smooth]
     return p_smooth
 
 def getShape(a):
@@ -55,7 +62,9 @@ cpdef np.ndarray[np.float64_t, ndim=1] apply_along_axis(np.int_t axis, np.ndarra
     cdef np.int_t Ntot = np.product(outshape)
     cdef np.ndarray[np.int_t, ndim=1] holdshape = outshape
     slicedArr = arr[tuple(i.tolist())]
-    res = apply_kernel_along_array(slicedArr, startindex, endindex, distances, smooth_length)
+    print "WHUT"
+    res = apply_kernel_along_array(slicedArr, startindex, endindex, distances[0], smooth_length)
+    print "Here", res
     outshape = np.asarray(getShape(arr))
     outshape[axis] = endindex - startindex
     outarr = np.zeros(outshape, dtype=np.float64)
@@ -71,7 +80,7 @@ cpdef np.ndarray[np.float64_t, ndim=1] apply_along_axis(np.int_t axis, np.ndarra
             n -= 1
         i.put(indlist, ind)
         slicedArr = arr[tuple(i.tolist())]
-        res = apply_kernel_along_array(slicedArr, startindex, endindex, distances, smooth_length)
+        res = apply_kernel_along_array(slicedArr, startindex, endindex, distances[k], smooth_length)
         outarr[tuple(i.tolist())] = res
         k += 1
 
