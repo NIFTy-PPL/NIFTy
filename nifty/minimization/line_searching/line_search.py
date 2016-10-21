@@ -1,22 +1,8 @@
 import abc
 
-import numpy as np
-
 from keepers import Loggable
 
-
-def bare_dot(a, b):
-    try:
-        return a.dot(b, bare=True)
-    except(AttributeError, TypeError):
-        pass
-
-    try:
-        return a.vdot(b)
-    except(AttributeError):
-        pass
-
-    return np.vdot(a, b)
+from ..bare_dot import bare_dot
 
 
 class LineSearch(object, Loggable):
@@ -78,8 +64,8 @@ class LineSearch(object, Loggable):
 
         """
 
-        self.xk = xk
-        self.pk = pk
+        self.xk = xk.copy()
+        self.pk = pk.copy()
 
         if f_k is None:
             self.f_k = self.f(xk)
@@ -91,6 +77,8 @@ class LineSearch(object, Loggable):
         else:
             self.fprime_k = fprime_k
 
+        if f_k_minus_1 is not None:
+            f_k_minus_1 = f_k_minus_1.copy()
         self.f_k_minus_1 = f_k_minus_1
 
     def _phi(self, alpha):

@@ -5,6 +5,8 @@ import numpy as np
 from .quasi_newton_minimizer import QuasiNewtonMinimizer
 from .line_searching import LineSearchStrongWolfe
 
+from .bare_dot import bare_dot
+
 
 class VL_BFGS(QuasiNewtonMinimizer):
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
@@ -19,6 +21,10 @@ class VL_BFGS(QuasiNewtonMinimizer):
                                 iteration_limit=iteration_limit)
 
         self.max_history_length = max_history_length
+
+    def __call__(self, x0, f, fprime, f_args=()):
+        self._information_store = None
+        return super(VL_BFGS, self).__call__(x0, f, fprime, f_args=())
 
     def _get_descend_direction(self, x, gradient):
         # initialize the information store if it doesn't already exist
@@ -36,6 +42,9 @@ class VL_BFGS(QuasiNewtonMinimizer):
         for i in xrange(1, len(delta)):
             descend_direction += delta[i] * b[i]
 
+        norm = np.sqrt(bare_dot(descend_direction, descend_direction))
+        if norm != 1:
+            descend_direction /= norm
         return descend_direction
 
 
@@ -44,8 +53,8 @@ class InformationStore(object):
         self.max_history_length = max_history_length
         self.s = LimitedList(max_history_length)
         self.y = LimitedList(max_history_length)
-        self.last_x = x0
-        self.last_gradient = gradient
+        self.last_x = x0.copy()
+        self.last_gradient = gradient.copy()
         self.k = 0
 
         self._ss_store = {}
@@ -168,8 +177,8 @@ class InformationStore(object):
         new_y = gradient - self.last_gradient
         self.y.add(new_y)
 
-        self.last_x = x
-        self.last_gradient = gradient
+        self.last_x = x.copy()
+        self.last_gradient = gradient.copy()
 
 #
 #        k = self.k

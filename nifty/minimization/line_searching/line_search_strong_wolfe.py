@@ -10,7 +10,7 @@ class LineSearchStrongWolfe(LineSearch):
 
     def __init__(self, c1=1e-4, c2=0.9,
                  max_step_size=50, max_iterations=10,
-                 max_zoom_iterations=100):
+                 max_zoom_iterations=10):
 
         """
         Parameters
@@ -82,7 +82,6 @@ class LineSearchStrongWolfe(LineSearch):
         # start the minimization loop
         for i in xrange(max_iterations):
             phi_alpha1 = self._phi(alpha1)
-
             if alpha1 == 0:
                 self.logger.warn("Increment size became 0.")
                 alpha_star = 0.
@@ -136,6 +135,10 @@ class LineSearchStrongWolfe(LineSearch):
         # define the cubic and quadratic interpolant checks
         cubic_delta = 0.2  # cubic
         quad_delta = 0.1  # quadratic
+
+        cubic_delta = 0.0  # cubic
+        quad_delta = 0.0  # quadratic
+
 
         # initialize the most recent versions (j-1) of phi and alpha
         alpha_recent = 0

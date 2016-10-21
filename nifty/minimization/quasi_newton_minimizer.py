@@ -88,13 +88,14 @@ class QuasiNewtonMinimizer(object, Loggable):
 
             # compute the step length, which minimizes f_k along the
             # search direction = the gradient
-            step_length, f_k = self.line_searcher.perform_line_search(
+            step_length, new_f_k = self.line_searcher.perform_line_search(
                                                xk=x,
                                                pk=descend_direction,
                                                f_k=f_k,
                                                fprime_k=gradient,
                                                f_k_minus_1=f_k_minus_1)
             f_k_minus_1 = f_k
+            f_k = new_f_k
 
             # update x
             x += descend_direction*step_length
@@ -106,7 +107,8 @@ class QuasiNewtonMinimizer(object, Loggable):
                               (iteration_number, step_length, delta))
             if delta == 0:
                 convergence = self.convergence_level + 2
-                self.logger.info("Found minimum. Stopping.")
+                self.logger.info("Found minimum according to line-search. "
+                                 "Stopping.")
                 break
             elif delta < self.convergence_tolerance:
                 convergence += 1
