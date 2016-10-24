@@ -136,10 +136,6 @@ class LineSearchStrongWolfe(LineSearch):
         cubic_delta = 0.2  # cubic
         quad_delta = 0.1  # quadratic
 
-        cubic_delta = 0.0  # cubic
-        quad_delta = 0.0  # quadratic
-
-
         # initialize the most recent versions (j-1) of phi and alpha
         alpha_recent = 0
         phi_recent = phi_0
@@ -170,6 +166,7 @@ class LineSearchStrongWolfe(LineSearch):
 
             # Check if the current value of alpha_j is already sufficient
             phi_alphaj = self._phi(alpha_j)
+
             # If the first Wolfe condition is not met replace alpha_hi
             # by alpha_j
             if (phi_alphaj > phi_0 + c1*alpha_j*phiprime_0) or\

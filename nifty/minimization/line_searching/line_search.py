@@ -2,8 +2,6 @@ import abc
 
 from keepers import Loggable
 
-from ..bare_dot import bare_dot
-
 
 class LineSearch(object, Loggable):
     """
@@ -94,7 +92,7 @@ class LineSearch(object, Loggable):
         else:
             gradient = self.fprime(self.xk + self.pk*alpha, *self.f_args)
 
-        return bare_dot(gradient, self.pk)
+        return gradient.dot(self.pk)
 
     @abc.abstractmethod
     def perform_line_search(self, xk, pk, f_k=None, fprime_k=None,

@@ -5,8 +5,6 @@ import numpy as np
 from .quasi_newton_minimizer import QuasiNewtonMinimizer
 from .line_searching import LineSearchStrongWolfe
 
-from .bare_dot import bare_dot
-
 
 class VL_BFGS(QuasiNewtonMinimizer):
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
@@ -42,7 +40,7 @@ class VL_BFGS(QuasiNewtonMinimizer):
         for i in xrange(1, len(delta)):
             descend_direction += delta[i] * b[i]
 
-        norm = np.sqrt(bare_dot(descend_direction, descend_direction))
+        norm = descend_direction.norm()
         if norm != 1:
             descend_direction /= norm
         return descend_direction
