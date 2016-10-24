@@ -217,7 +217,6 @@ class FFTW(Transform):
         return val * mask
 
     def _atomic_mpi_transform(self, val, info, axes):
-
         # Apply codomain centering mask
         if reduce(lambda x, y: x + y, self.codomain.zerocenter):
             temp_val = np.copy(val)
@@ -354,6 +353,7 @@ class FFTW(Transform):
             if len(inp.shape) == 1:
                 original_shape = inp.shape
                 inp = inp.reshape(inp.shape[0], 1)
+                axes = (0, )
 
             if current_info is None:
                 transform_shape = list(inp.shape)
