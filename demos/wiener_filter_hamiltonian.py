@@ -34,6 +34,7 @@ class WienerFilterEnergy(Energy):
         return_g.val = g.val.real
         return return_g
 
+    @memo
     def D_inverse_x(self):
         return D.inverse_times(self.position)
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     minimizer = VL_BFGS(convergence_tolerance=0,
                         iteration_limit=50,
                         callback=distance_measure,
-                        max_history_length=5)
+                        max_history_length=3)
 
     m0 = Field(s_space, val=1)
 
