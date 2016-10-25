@@ -2,6 +2,8 @@ import abc
 
 from keepers import Loggable
 
+from nifty import LineEnergy
+
 
 class LineSearch(object, Loggable):
     """
@@ -26,23 +28,11 @@ class LineSearch(object, Loggable):
             derivation.
         """
 
-        self.xk = None
         self.pk = None
-
-        self.f_k = None
+        self.line_energy = None
         self.f_k_minus_1 = None
-        self.fprime_k = None
 
-    def set_functions(self, f, fprime, f_args=()):
-        assert(callable(f))
-        assert(callable(fprime))
-
-        self.f = f
-        self.fprime = fprime
-        self.f_args = f_args
-
-    def _set_coordinates(self, xk, pk, f_k=None, fprime_k=None,
-                         f_k_minus_1=None):
+    def _set_line_energy(self, energy, pk, f_k_minus_1=None):
         """
         Set the coordinates for a new line search.
 
@@ -61,38 +51,12 @@ class LineSearch(object, Loggable):
             Function value fprime(xk).
 
         """
-
-        self.xk = xk.copy()
-        self.pk = pk.copy()
-
-        if f_k is None:
-            self.f_k = self.f(xk)
-        else:
-            self.f_k = f_k
-
-        if fprime_k is None:
-            self.fprime_k = self.fprime(xk)
-        else:
-            self.fprime_k = fprime_k
-
+        self.line_energy = LineEnergy(position=0.,
+                                      energy=energy,
+                                      line_direction=pk)
         if f_k_minus_1 is not None:
             f_k_minus_1 = f_k_minus_1.copy()
         self.f_k_minus_1 = f_k_minus_1
-
-    def _phi(self, alpha):
-        if alpha == 0:
-            value = self.f_k
-        else:
-            value = self.f(self.xk + self.pk*alpha, *self.f_args)
-        return value
-
-    def _phiprime(self, alpha):
-        if alpha == 0:
-            gradient = self.fprime_k
-        else:
-            gradient = self.fprime(self.xk + self.pk*alpha, *self.f_args)
-
-        return gradient.dot(self.pk)
 
     @abc.abstractmethod
     def perform_line_search(self, xk, pk, f_k=None, fprime_k=None,

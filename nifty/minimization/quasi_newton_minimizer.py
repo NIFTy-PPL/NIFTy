@@ -26,7 +26,7 @@ class QuasiNewtonMinimizer(object, Loggable):
         self.line_searcher = line_searcher
         self.callback = callback
 
-    def __call__(self, x0, f, fprime, f_args=()):
+    def __call__(self, energy):
         """
             Runs the steepest descent minimization.
 
@@ -56,49 +56,45 @@ class QuasiNewtonMinimizer(object, Loggable):
 
         """
 
-        x = x0.copy()
-        self.line_searcher.set_functions(f=f, fprime=fprime, f_args=f_args)
-
         convergence = 0
         f_k_minus_1 = None
-        f_k = f(x)
         step_length = 0
         iteration_number = 1
 
         while True:
             if self.callback is not None:
                 try:
-                    self.callback(x, f_k, iteration_number)
+                    self.callback(energy, iteration_number)
                 except StopIteration:
                     self.logger.info("Minimization was stopped by callback "
                                      "function.")
                     break
 
-            # compute the the gradient for the current x
-            gradient = fprime(x)
+            # compute the the gradient for the current location
+            gradient = energy.gradient
             gradient_norm = gradient.dot(gradient)
 
-            # check if x is at a flat point
+            # check if position is at a flat point
             if gradient_norm == 0:
                 self.logger.info("Reached perfectly flat point. Stopping.")
                 convergence = self.convergence_level+2
                 break
 
-            descend_direction = self._get_descend_direction(x, gradient)
+            current_position = energy.position
+            descend_direction = self._get_descend_direction(current_position,
+                                                            gradient)
 
-            # compute the step length, which minimizes f_k along the
-            # search direction = the gradient
-            step_length, new_f_k = self.line_searcher.perform_line_search(
-                                               xk=x,
+            # compute the step length, which minimizes energy.value along the
+            # search direction
+            step_length, step_length = self.line_searcher.perform_line_search(
+                                               energy=energy,
                                                pk=descend_direction,
-                                               f_k=f_k,
-                                               fprime_k=gradient,
                                                f_k_minus_1=f_k_minus_1)
-            f_k_minus_1 = f_k
-            f_k = new_f_k
+            new_position = current_position + step_length * descend_direction
+            new_energy = energy.at(new_position)
 
-            # update x
-            x += descend_direction*step_length
+            f_k_minus_1 = energy.value
+            energy = new_energy
 
             # check convergence
             delta = abs(gradient).max() * (step_length/gradient_norm)
@@ -127,7 +123,7 @@ class QuasiNewtonMinimizer(object, Loggable):
 
             iteration_number += 1
 
-        return x, convergence
+        return energy, convergence
 
     @abc.abstractmethod
     def _get_descend_direction(self, gradient, gradient_norm):
