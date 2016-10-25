@@ -7,7 +7,7 @@ from nifty import LineEnergy
 
 class LineSearch(object, Loggable):
     """
-    Class for finding a step size.◙
+    Class for finding a step size.
     """
     __metaclass__ = abc.ABCMeta
 
