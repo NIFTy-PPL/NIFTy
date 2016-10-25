@@ -451,11 +451,13 @@ class FFTWTransformInfo(object):
 
         self.cmask_domain = fftw_context.get_centering_mask(
             domain.zerocenter,
+            local_shape if axes is None else
             [y for x, y in enumerate(local_shape) if x in axes],
             local_offset_Q)
 
         self.cmask_codomain = fftw_context.get_centering_mask(
             codomain.zerocenter,
+            local_shape if axes is None else
             [y for x, y in enumerate(local_shape) if x in axes],
             local_offset_Q)
 
