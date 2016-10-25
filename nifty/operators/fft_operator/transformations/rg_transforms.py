@@ -170,7 +170,9 @@ class FFTW(Transform):
         # generate a id-tuple which identifies the domain-codomain setting
         temp_id = (domain.__hash__() ^
                    (101 * codomain.__hash__()) ^
-                   (211 * transform_shape.__hash__()))
+                   (211 * transform_shape.__hash__()) ^
+                   (131 * is_local.__hash__())
+        )
 
         # generate the plan_and_info object if not already there
         if temp_id not in self.info_dict:
