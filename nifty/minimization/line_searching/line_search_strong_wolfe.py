@@ -54,8 +54,9 @@ class LineSearchStrongWolfe(LineSearch):
 
         # initialize the zero phis
         old_phi_0 = self.f_k_minus_1
-        phi_0 = self.line_energy.at(0).value
-        phiprime_0 = self.line_energy.at(0).gradient
+        energy_0 = self.line_energy.at(0)
+        phi_0 = energy_0.value
+        phiprime_0 = energy_0.gradient
 
         if phiprime_0 == 0:
             self.logger.warn("Flat gradient in search direction.")
@@ -82,11 +83,13 @@ class LineSearchStrongWolfe(LineSearch):
                 self.logger.warn("Increment size became 0.")
                 alpha_star = 0.
                 phi_star = phi_0
+                energy_star = energy_0
                 break
 
             if (phi_alpha1 > phi_0 + c1*alpha1*phiprime_0) or \
                ((phi_alpha1 >= phi_alpha0) and (i > 1)):
-                (alpha_star, phi_star) = self._zoom(alpha0, alpha1,
+                (alpha_star, phi_star, energy_star) = self._zoom(
+                                                    alpha0, alpha1,
                                                     phi_0, phiprime_0,
                                                     phi_alpha0,
                                                     phiprime_alpha0,
@@ -98,10 +101,12 @@ class LineSearchStrongWolfe(LineSearch):
             if abs(phiprime_alpha1) <= -c2*phiprime_0:
                 alpha_star = alpha1
                 phi_star = phi_alpha1
+                energy_star = energy_alpha1
                 break
 
             if phiprime_alpha1 >= 0:
-                (alpha_star, phi_star) = self._zoom(alpha1, alpha0,
+                (alpha_star, phi_star, energy_star) = self._zoom(
+                                                    alpha1, alpha0,
                                                     phi_0, phiprime_0,
                                                     phi_alpha1,
                                                     phiprime_alpha1,
@@ -119,10 +124,15 @@ class LineSearchStrongWolfe(LineSearch):
             # max_iterations was reached
             alpha_star = alpha1
             phi_star = phi_alpha1
+            energy_star = energy_alpha1
             self.logger.error("The line search algorithm did not converge.")
 
         self._last_alpha_star = alpha_star
-        return alpha_star, phi_star
+
+        # extract the full energy from the line_energy
+        energy_star = energy_star.energy
+
+        return alpha_star, phi_star, energy_star
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
               phi_lo, phiprime_lo, phi_hi, c1, c2):
@@ -176,6 +186,7 @@ class LineSearchStrongWolfe(LineSearch):
                 if abs(phiprime_alphaj) <= -c2*phiprime_0:
                     alpha_star = alpha_j
                     phi_star = phi_alphaj
+                    energy_star = energy_alphaj
                     break
                 # If not, check the sign of the slope
                 if phiprime_alphaj*delta_alpha >= 0:
@@ -188,11 +199,12 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            alpha_star, phi_star = alpha_j, phi_alphaj
+            alpha_star, phi_star, energy_star = \
+                alpha_j, phi_alphaj, energy_alphaj
             self.logger.error("The line search algorithm (zoom) did not "
                               "converge.")
 
-        return alpha_star, phi_star
+        return alpha_star, phi_star, energy_star
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):
         """

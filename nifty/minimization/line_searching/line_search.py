@@ -59,6 +59,5 @@ class LineSearch(object, Loggable):
         self.f_k_minus_1 = f_k_minus_1
 
     @abc.abstractmethod
-    def perform_line_search(self, xk, pk, f_k=None, fprime_k=None,
-                            f_k_minus_1=None):
+    def perform_line_search(self, energy, pk, f_k_minus_1=None):
         raise NotImplementedError

@@ -86,13 +86,11 @@ class QuasiNewtonMinimizer(object, Loggable):
 
             # compute the step length, which minimizes energy.value along the
             # search direction
-            step_length, step_length = self.line_searcher.perform_line_search(
+            step_length, f_k, new_energy = \
+                self.line_searcher.perform_line_search(
                                                energy=energy,
                                                pk=descend_direction,
                                                f_k_minus_1=f_k_minus_1)
-            new_position = current_position + step_length * descend_direction
-            new_energy = energy.at(new_position)
-
             f_k_minus_1 = energy.value
             energy = new_energy
 

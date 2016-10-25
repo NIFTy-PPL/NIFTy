@@ -78,17 +78,17 @@ if __name__ == "__main__":
     D = PropagatorOperator(S=S, N=N, R=R)
 
     def distance_measure(energy, iteration):
-        pass
-        #print (iteration, ((x-ss).norm()/ss.norm()).real)
+        x = energy.position
+        print (iteration, ((x-ss).norm()/ss.norm()).real)
 
     minimizer = SteepestDescent(convergence_tolerance=0,
                                 iteration_limit=50,
                                 callback=distance_measure)
 
-#    minimizer = VL_BFGS(convergence_tolerance=0,
-#                        iteration_limit=50,
-#                        callback=distance_measure,
-#                        max_history_length=5)
+    minimizer = VL_BFGS(convergence_tolerance=0,
+                        iteration_limit=50,
+                        callback=distance_measure,
+                        max_history_length=5)
 
     m0 = Field(s_space, val=1)
 
