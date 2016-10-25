@@ -40,6 +40,8 @@ from config import dependency_injector,\
 
 from d2o import distributed_data_object, d2o_librarian
 
+from energies import *
+
 from field import Field
 
 from random import Random

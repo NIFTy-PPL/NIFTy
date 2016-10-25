@@ -20,9 +20,9 @@ class VL_BFGS(QuasiNewtonMinimizer):
 
         self.max_history_length = max_history_length
 
-    def __call__(self, x0, f, fprime, f_args=()):
+    def __call__(self, energy):
         self._information_store = None
-        return super(VL_BFGS, self).__call__(x0, f, fprime, f_args=())
+        return super(VL_BFGS, self).__call__(energy)
 
     def _get_descend_direction(self, x, gradient):
         # initialize the information store if it doesn't already exist
