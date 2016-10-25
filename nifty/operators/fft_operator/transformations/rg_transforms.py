@@ -172,7 +172,7 @@ class FFTW(Transform):
                    (101 * codomain.__hash__()) ^
                    (211 * transform_shape.__hash__()) ^
                    (131 * is_local.__hash__())
-        )
+                   )
 
         # generate the plan_and_info object if not already there
         if temp_id not in self.info_dict:
@@ -449,17 +449,17 @@ class FFTWTransformInfo(object):
         if pyfftw is None:
             raise ImportError("The module pyfftw is needed but not available.")
 
-        self.cmask_domain = fftw_context.get_centering_mask(
-            domain.zerocenter,
-            local_shape if axes is None else
-            [y for x, y in enumerate(local_shape) if x in axes],
-            local_offset_Q)
+        shape = (local_shape if axes is None else
+                 [y for x, y in enumerate(local_shape) if x in axes])
+
+        self.cmask_domain = fftw_context.get_centering_mask(domain.zerocenter,
+                                                            shape,
+                                                            local_offset_Q)
 
         self.cmask_codomain = fftw_context.get_centering_mask(
-            codomain.zerocenter,
-            local_shape if axes is None else
-            [y for x, y in enumerate(local_shape) if x in axes],
-            local_offset_Q)
+                                                        codomain.zerocenter,
+                                                        shape,
+                                                        local_offset_Q)
 
         # If both domain and codomain are zero-centered the result,
         # will get a global minus. Store the sign to correct it.
