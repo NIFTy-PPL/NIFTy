@@ -248,17 +248,15 @@ class FFTW(Transform):
         # val must be numpy array or d2o with slicing distributor
         ###
 
-        local_offset_Q = False
         try:
             local_val = val.get_local_data(copy=False)
-            if axes is None or 0 in axes:
-                local_offset_Q = val.distributor.local_shape[0] % 2
         except(AttributeError):
             local_val = val
+
         current_info = self._get_transform_info(self.domain,
                                                 self.codomain,
                                                 local_shape=local_val.shape,
-                                                local_offset_Q=local_offset_Q,
+                                                local_offset_Q=False,
                                                 is_local=True,
                                                 **kwargs)
 
@@ -309,14 +307,10 @@ class FFTW(Transform):
 
     def _mpi_transform(self, val, axes, **kwargs):
 
-        if axes is None or 0 in axes:
-            local_offset_list = np.cumsum(
-                np.concatenate([[0, ], val.distributor.all_local_slices[:, 2]])
-            )
-            local_offset_Q = bool(
-                local_offset_list[val.distributor.comm.rank] % 2)
-        else:
-            local_offset_Q = False
+        local_offset_list = np.cumsum(
+            np.concatenate([[0, ], val.distributor.all_local_slices[:, 2]])
+        )
+        local_offset_Q = bool(local_offset_list[val.distributor.comm.rank] % 2)
 
         return_val = val.copy_empty(global_shape=val.shape,
                                     dtype=self.codomain.dtype)
