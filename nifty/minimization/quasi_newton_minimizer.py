@@ -56,7 +56,7 @@ class QuasiNewtonMinimizer(object, Loggable):
 
         """
 
-        x = x0
+        x = x0.copy()
         self.line_searcher.set_functions(f=f, fprime=fprime, f_args=f_args)
 
         convergence = 0
