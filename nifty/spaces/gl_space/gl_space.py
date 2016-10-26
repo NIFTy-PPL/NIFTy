@@ -3,7 +3,8 @@ from __future__ import division
 import itertools
 import numpy as np
 
-from d2o import arange, STRATEGIES as DISTRIBUTION_STRATEGIES
+import d2o
+from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc,\
@@ -154,8 +155,8 @@ class GLSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        dists = arange(start=0, stop=self.shape[0],
-                       distribution_strategy=distribution_strategy)
+        dists = d2o.arange(start=0, stop=self.shape[0],
+                           distribution_strategy=distribution_strategy)
 
         dists = dists.apply_scalar_function(
             lambda x: self._distance_array_helper(divmod(x, self.nlon)),
@@ -172,7 +173,7 @@ class GLSpace(Space):
 
         return np.arctan(numerator / denominator)
 
-    def get_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma):
         if sigma is None:
             sigma = np.sqrt(2) * np.pi
 
