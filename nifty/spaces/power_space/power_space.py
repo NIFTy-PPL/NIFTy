@@ -2,6 +2,8 @@
 
 import numpy as np
 
+import d2o
+
 from power_index_factory import PowerIndexFactory
 
 from nifty.spaces.space import Space
@@ -106,13 +108,14 @@ class PowerSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        raise NotImplementedError(
-            "There is no get_distance_array implementation for "
-            "PowerSpace.")
+        result = d2o.distributed_data_object(
+                                self.kindex,
+                                distribution_strategy=distribution_strategy)
+        return result
 
-    def get_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(
-            "There is no smoothing function for PowerSpace.")
+            "There is no fft smoothing function for PowerSpace.")
 
     # ---Added properties and methods---
 

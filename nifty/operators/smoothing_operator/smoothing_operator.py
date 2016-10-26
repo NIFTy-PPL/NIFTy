@@ -31,7 +31,7 @@ class SmoothingOperator(EndomorphicOperator):
         self.sigma = sigma
         self.log_distances = log_distances
 
-        self._direct_smoothing_width = 2.
+        self._direct_smoothing_width = 3.
 
     def _inverse_times(self, x, spaces, types):
         return self._smoothing_helper(x, spaces, inverse=True)
@@ -147,14 +147,18 @@ class SmoothingOperator(EndomorphicOperator):
         # we rely on the knowledge, that `spaces` is a tuple with length 1.
         affected_axes = x.domain_axes[spaces[0]]
 
-        axes_local_distribution_strategy = \
-            x.val.get_axes_local_distribution_strategy(axes=affected_axes)
+        if len(affected_axes) > 1:
+            raise ValueError("By this implementation only one-dimensional "
+                             "spaces can be smoothed directly.")
+
+        affected_axis = affected_axes[0]
 
         distance_array = x.domain[spaces[0]].get_distance_array(
-            distribution_strategy=axes_local_distribution_strategy)
+            distribution_strategy='not')
+        distance_array = distance_array.get_local_data(copy=False)
 
         if self.log_distances:
-            distance_array.apply_scalar_function(np.log, inplace=True)
+            np.log(distance_array, out=distance_array)
 
         # collect the local data + ghost cells
         local_data_Q = False
@@ -164,88 +168,100 @@ class SmoothingOperator(EndomorphicOperator):
         elif x.distribution_strategy in STRATEGIES['slicing']:
             # infer the local start/end based on the slicing information of
             # x's d2o. Only gets non-trivial for axis==0.
-            if 0 not in affected_axes:
+            if 0 != affected_axis:
                 local_data_Q = True
             else:
-                # we rely on the fact, that the content of x.domain_axes is
-                # sorted
-                true_starts = [x.val.distributor.local_start]
-                true_starts += [0] * (len(affected_axes) - 1)
-                true_ends = [x.val.distributor.local_end]
-                true_ends += [x.shape[i] for i in affected_axes[1:]]
+                start_index = x.val.distributor.local_start
+                start_distance = distance_array[start_index]
+                augmented_start_distance = \
+                    (start_distance - self._direct_smoothing_width*self.sigma)
+                augmented_start_index = \
+                    np.searchsorted(distance_array, augmented_start_distance)
+                true_start = start_index - augmented_start_index
+                end_index = x.val.distributor.local_end
+                end_distance = distance_array[end_index-1]
+                augmented_end_distance = \
+                    (end_distance + self._direct_smoothing_width*self.sigma)
+                augmented_end_index = \
+                    np.searchsorted(distance_array, augmented_end_distance)
+                true_end = true_start + x.val.distributor.local_length
+                augmented_slice = slice(augmented_start_index,
+                                        augmented_end_index)
 
-                augmented_start = max(0,
-                                      true_starts[0] -
-                                      self._direct_smoothing_width * self.sigma)
-                augmented_end = min(x.shape[affected_axes[0]],
-                                    true_ends[0] +
-                                    self._direct_smoothing_width * self.sigma)
-                augmented_slice = slice(augmented_start, augmented_end)
                 augmented_data = x.val.get_data(augmented_slice,
                                                 local_keys=True,
                                                 copy=False)
                 augmented_data = augmented_data.get_local_data(copy=False)
 
-                augmented_distance_array = distance_array.get_data(
-                    augmented_slice,
-                    local_keys=True,
-                    copy=False)
-                augmented_distance_array = \
-                    augmented_distance_array.get_local_data(copy=False)
+                augmented_distance_array = distance_array[augmented_slice]
 
         else:
-            raise ValueError(about._errors.cstring(
-                "ERROR: Direct smoothing not implemented for given"
-                "distribution strategy."))
+            raise ValueError("Direct smoothing not implemented for given"
+                             "distribution strategy.")
 
         if local_data_Q:
             # if the needed data resides on the nodes already, the necessary
             # are the same; no matter what the distribution strategy was.
             augmented_data = x.val.get_local_data(copy=False)
-            augmented_distance_array = \
-                distance_array.get_local_data(copy=False)
-            true_starts = [0] * len(affected_axes)
-            true_ends = [x.shape[i] for i in affected_axes]
+            augmented_distance_array = distance_array
+            true_start = 0
+            true_end = x.shape[affected_axis]
 
         # perform the convolution along the affected axes
-        local_result = augmented_data
-        for index in range(len(affected_axes)):
-            data_axis = affected_axes[index]
-            distances_axis = index
-            true_start = true_starts[index]
-            true_end = true_ends[index]
-
-            local_result = self._direct_smoothing_single_axis(
-                local_result,
-                data_axis,
-                augmented_distance_array,
-                distances_axis,
-                true_start,
-                true_end,
-                inverse)
-
+        # currently only one axis is supported
+        data_axis = affected_axes[0]
+        local_result = self._direct_smoothing_single_axis(
+                                                    augmented_data,
+                                                    data_axis,
+                                                    augmented_distance_array,
+                                                    true_start,
+                                                    true_end,
+                                                    inverse)
         result = x.copy_empty()
         result.val.set_local_data(local_result, copy=False)
         return result
 
     def _direct_smoothing_single_axis(self, data, data_axis, distances,
-                                      distances_axis, true_start, true_end,
-                                      inverse):
+                                      true_start, true_end, inverse):
         if inverse:
-            true_sigma = 1 / self.sigma
+            true_sigma = 1. / self.sigma
         else:
             true_sigma = self.sigma
 
-        if (data.dtype == np.dtype('float32')):
-            smoothed_data = su.apply_along_axis_f(data_axis, data,
-                                                  startindex=true_start,
-                                                  endindex=true_end,
-                                                  distances=distances,
-                                                  smooth_length=true_sigma)
+        if data.dtype is np.dtype('float32'):
+            distances = distances.astype(np.float32, copy=False)
+            smoothed_data = su.apply_along_axis_f(
+                                  data_axis, data,
+                                  startindex=true_start,
+                                  endindex=true_end,
+                                  distances=distances,
+                                  smooth_length=true_sigma,
+                                  smoothing_width=self._direct_smoothing_width)
+        elif data.dtype is np.dtype('float64'):
+            distances = distances.astype(np.float64, copy=False)
+            smoothed_data = su.apply_along_axis(
+                                  data_axis, data,
+                                  startindex=true_start,
+                                  endindex=true_end,
+                                  distances=distances,
+                                  smooth_length=true_sigma,
+                                  smoothing_width=self._direct_smoothing_width)
+
+        elif np.issubdtype(data.dtype, np.complexfloating):
+            real = self._direct_smoothing_single_axis(data.real,
+                                                      data_axis,
+                                                      distances,
+                                                      true_start,
+                                                      true_end, inverse)
+            imag = self._direct_smoothing_single_axis(data.imag,
+                                                      data_axis,
+                                                      distances,
+                                                      true_start,
+                                                      true_end, inverse)
+
+            return real + 1j*imag
+
         else:
-            smoothed_data = su.apply_along_axis(data_axis, data,
-                                                startindex=true_start,
-                                                endindex=true_end,
-                                                distances=distances,
-                                                smooth_length=true_sigma)
+            raise TypeError("Dtype %s not supported" % str(data.dtype))
+
         return smoothed_data

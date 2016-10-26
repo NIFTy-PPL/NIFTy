@@ -282,7 +282,7 @@ class RGSpace(Space):
         dists = np.sqrt(dists)
         return dists
 
-    def get_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma):
         if sigma is None:
             sigma = np.sqrt(2) * np.max(self.distances)
 

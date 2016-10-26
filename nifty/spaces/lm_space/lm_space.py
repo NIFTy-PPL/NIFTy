@@ -156,7 +156,7 @@ class LMSpace(Space):
 
         return dists
 
-    def get_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma):
         if sigma is None:
             sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
 
