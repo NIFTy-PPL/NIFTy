@@ -278,7 +278,7 @@ class Space(object, Loggable):
         raise NotImplementedError(
             "There is no generic distance structure for Space base class.")
 
-    def get_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(
             "There is no generic co-smoothing kernel for Space base class.")
 

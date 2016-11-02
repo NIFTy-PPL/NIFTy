@@ -39,8 +39,9 @@ setup(name="ift_nifty",
       zip_safe=False,
       ext_modules=cythonize([
           "nifty/operators/fft_operator/transformations/"
-          "lm_transformation_factory.pyx",
-          "nifty/spaces/lm_space/lm_helper.pyx"
+              "lm_transformation_factory.pyx",
+          "nifty/spaces/lm_space/lm_helper.pyx",
+          "nifty/operators/smoothing_operator/smooth_util.pyx"
       ]),
       include_dirs=[numpy.get_include()],
       dependency_links=[
