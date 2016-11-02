@@ -9,7 +9,7 @@ from keepers import Loggable
 from .line_searching import LineSearchStrongWolfe
 
 
-class QuasiNewtonMinimizer(object, Loggable):
+class QuasiNewtonMinimizer(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,

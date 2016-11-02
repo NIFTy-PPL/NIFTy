@@ -54,7 +54,7 @@ class SmoothingOperator(EndomorphicOperator):
 
     @property
     def symmetric(self):
-        return False
+        return True
 
     @property
     def unitary(self):
@@ -138,7 +138,10 @@ class SmoothingOperator(EndomorphicOperator):
 
         transformed_x.val.set_local_data(local_transformed_x, copy=False)
 
-        result = Transformator.inverse_times(transformed_x, spaces=spaces)
+        smoothed_x = Transformator.inverse_times(transformed_x, spaces=spaces)
+
+        result = x.copy_empty()
+        result.set_val(smoothed_x, copy=False)
 
         return result
 

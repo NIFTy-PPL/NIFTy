@@ -25,3 +25,4 @@ def create_power_operator(domain, power_spectrum, distribution_strategy='not'):
     power_operator = DiagonalOperator(domain, diagonal=f)
 
     return power_operator
+

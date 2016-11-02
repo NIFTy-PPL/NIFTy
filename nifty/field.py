@@ -17,7 +17,7 @@ from nifty.random import Random
 from keepers import Loggable
 
 
-class Field(object, Loggable):
+class Field(Loggable, object):
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
@@ -430,7 +430,7 @@ class Field(object, Loggable):
         if copy:
             new_val = new_val.copy()
         self._val = new_val
-        return self._val
+        return self
 
     def get_val(self, copy=False):
         if copy:
