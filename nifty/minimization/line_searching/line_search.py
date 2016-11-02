@@ -5,7 +5,7 @@ from keepers import Loggable
 from nifty import LineEnergy
 
 
-class LineSearch(object, Loggable):
+class LineSearch(Loggable, object):
     """
     Class for finding a step size.
     """

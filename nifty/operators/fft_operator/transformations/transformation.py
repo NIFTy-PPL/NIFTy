@@ -4,7 +4,7 @@ import abc
 from keepers import Loggable
 
 
-class Transformation(object, Loggable):
+class Transformation(Loggable, object):
     """
         A generic transformation which defines a static check_codomain
         method for all transforms.

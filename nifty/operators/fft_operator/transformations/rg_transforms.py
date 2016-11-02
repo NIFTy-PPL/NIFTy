@@ -10,7 +10,7 @@ from keepers import Loggable
 pyfftw = gdi.get('pyfftw')
 
 
-class Transform(object, Loggable):
+class Transform(Loggable, object):
     """
         A generic fft object without any implementation.
     """

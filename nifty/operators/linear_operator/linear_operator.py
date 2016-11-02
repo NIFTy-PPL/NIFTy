@@ -9,7 +9,7 @@ from nifty.field_types import FieldType
 import nifty.nifty_utilities as utilities
 
 
-class LinearOperator(object, Loggable):
+class LinearOperator(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):

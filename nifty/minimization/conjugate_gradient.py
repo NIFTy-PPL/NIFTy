@@ -7,7 +7,7 @@ import numpy as np
 from keepers import Loggable
 
 
-class ConjugateGradient(object, Loggable):
+class ConjugateGradient(Loggable, object):
     def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None, reset_count=None,
                  preconditioner=None, callback=None):

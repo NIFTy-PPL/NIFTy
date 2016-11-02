@@ -149,7 +149,7 @@ import numpy as np
 from keepers import Loggable
 
 
-class Space(object, Loggable):
+class Space(Loggable, object):
     """
         ..                            __             __
         ..                          /__/           /  /_

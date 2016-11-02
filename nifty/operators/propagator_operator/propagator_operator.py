@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 from nifty.minimization import ConjugateGradient
-from nifty.nifty_utilities import get_default_codomain
 from nifty.field import Field
 from nifty.operators import EndomorphicOperator,\
                             FFTOperator
@@ -45,10 +43,8 @@ class PropagatorOperator(EndomorphicOperator):
             self._domain = N.domain
             self._likelihood_times = lambda z: N.inverse_times(z)
 
-        fft_S = FFTOperator(S.domain, target=self._domain)
-        self._S_times = lambda z: fft_S(S(fft_S.inverse_times(z)))
-        self._S_inverse_times = lambda z: fft_S(S.inverse_times(
-                                          fft_S.inverse_times(z)))
+        self._S = S
+        self._fft_S = FFTOperator(self._domain, target=self._S.domain)
 
         if preconditioner is None:
             preconditioner = self._S_times
@@ -60,8 +56,6 @@ class PropagatorOperator(EndomorphicOperator):
         else:
             self.inverter = ConjugateGradient(
                                 preconditioner=self.preconditioner)
-
-        self.x0 = None
 
     # ---Mandatory properties and methods---
 
@@ -87,18 +81,44 @@ class PropagatorOperator(EndomorphicOperator):
 
     # ---Added properties and methods---
 
-    def _times(self, x, spaces, types):
-        if self.x0 is None:
-            x0 = Field(self.domain, val=0., dtype=np.complex128)
-        else:
-            x0 = self.x0
+    def _S_times(self, x, spaces=None, types=None):
+            transformed_x = self._fft_S(x,
+                                        spaces=spaces,
+                                        types=types)
+            y = self._S(transformed_x, spaces=spaces, types=types)
+            transformed_y = self._fft_S.inverse_times(y,
+                                                      spaces=spaces,
+                                                      types=types)
+            result = x.copy_empty()
+            result.set_val(transformed_y, copy=False)
+            return result
+
+    def _S_inverse_times(self, x, spaces=None, types=None):
+            transformed_x = self._fft_S(x,
+                                        spaces=spaces,
+                                        types=types)
+            y = self._S.inverse_times(transformed_x,
+                                      spaces=spaces,
+                                      types=types)
+            transformed_y = self._fft_S.inverse_times(y,
+                                                      spaces=spaces,
+                                                      types=types)
+            result = x.copy_empty()
+            result.set_val(transformed_y, copy=False)
+            return result
+
+    def _times(self, x, spaces, types, x0=None):
+        if x0 is None:
+            x0 = Field(self.domain, val=0., dtype=x.dtype)
+
         (result, convergence) = self.inverter(A=self.inverse_times,
                                               b=x,
                                               x0=x0)
-        self.x0 = result
         return result
 
     def _inverse_times(self, x, spaces, types):
-        result = self._S_inverse_times(x)
-        result += self._likelihood_times(x)
+        pre_result = self._S_inverse_times(x, spaces, types)
+        pre_result += self._likelihood_times(x)
+        result = x.copy_empty()
+        result.set_val(pre_result, copy=False)
         return result
