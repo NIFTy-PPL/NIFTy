@@ -33,7 +33,11 @@
 """
 from __future__ import division
 
+import pickle
+
 import numpy as np
+
+from keepers import Versionable
 
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
@@ -41,7 +45,7 @@ from d2o import distributed_data_object,\
 from nifty.spaces.space import Space
 
 
-class RGSpace(Space):
+class RGSpace(Versionable, Space):
     """
         ..      _____   _______
         ..    /   __/ /   _   /
@@ -102,6 +106,8 @@ class RGSpace(Space):
         fourier : bool
             Whether or not the grid represents a Fourier basis.
     """
+
+    _serializable = ('shape', 'zerocenter', 'distances', 'harmonic', 'dtype')
 
     # ---Overwritten properties and methods---
 
@@ -320,3 +326,17 @@ class RGSpace(Space):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
         return tuple(temp)
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['serialized'] = [
+            pickle.dumps(getattr(self, item)) for item in self._serializable
+        ]
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, loopback_get):
+        result = cls(
+            *[pickle.loads(item) for item in hdf5_group['serialized']])
+        return result

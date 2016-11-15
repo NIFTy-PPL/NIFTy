@@ -33,9 +33,12 @@
 """
 from __future__ import division
 
+import pickle
+
 import numpy as np
 
 import d2o
+from keepers import Versionable
 
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc, \
@@ -44,7 +47,7 @@ from nifty.config import nifty_configuration as gc, \
 hp = gdi.get('healpy')
 
 
-class HPSpace(Space):
+class HPSpace(Versionable, Space):
     """
         ..        __
         ..      /  /
@@ -93,6 +96,8 @@ class HPSpace(Space):
         vol : numpy.ndarray
             An array with one element containing the pixel size.
     """
+
+    _serializable = ('nside', 'dtype')
 
     # ---Overwritten properties and methods---
 
@@ -203,3 +208,17 @@ class HPSpace(Space):
             raise ValueError(
                 "nside must be positive and a multiple of 2.")
         return nside
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['serialized'] = [
+            pickle.dumps(getattr(self, item)) for item in self._serializable
+        ]
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, loopback_get):
+        result = cls(
+            *[pickle.loads(item) for item in hdf5_group['serialized']])
+        return result

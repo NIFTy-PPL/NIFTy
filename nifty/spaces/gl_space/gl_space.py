@@ -1,10 +1,13 @@
 from __future__ import division
 
+import pickle
+
 import itertools
 import numpy as np
 
 import d2o
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
+from keepers import Versionable
 
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc,\
@@ -16,7 +19,7 @@ gl = gdi.get('libsharp_wrapper_gl')
 GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
-class GLSpace(Space):
+class GLSpace(Versionable, Space):
     """
         ..                 __
         ..               /  /
@@ -68,6 +71,8 @@ class GLSpace(Space):
         vol : numpy.ndarray
             An array containing the pixel sizes.
     """
+
+    _serializable = ('nlat', 'nlon', 'dtype')
 
     # ---Overwritten properties and methods---
 
@@ -208,3 +213,17 @@ class GLSpace(Space):
                 self.logger.warn("nlon was set to an unrecommended value: "
                                  "nlon <> 2*nlat-1.")
         return nlon
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['serialized'] = [
+            pickle.dumps(getattr(self, item)) for item in self._serializable
+        ]
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, loopback_get):
+        result = cls(
+            *[pickle.loads(item) for item in hdf5_group['serialized']])
+        return result
