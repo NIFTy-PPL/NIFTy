@@ -11,7 +11,7 @@ class Transformation(Loggable, object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain, codomain):
+    def __init__(self, domain, codomain, module):
         if codomain is None:
             self.domain = domain
             self.codomain = self.get_codomain(domain)
