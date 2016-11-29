@@ -7,7 +7,8 @@ from nifty import RGSpace, nifty_configuration
 
 class RGRGTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        super(RGRGTransformation, self).__init__(domain, codomain)
+        super(RGRGTransformation, self).__init__(domain, codomain,
+                                                 module=module)
 
         if module is None:
             if nifty_configuration['fft_module'] == 'pyfftw':

@@ -16,7 +16,8 @@ class LMHPTransformation(SlicingTransformation):
             raise ImportError(
                 "The module libsharp is needed but not available.")
 
-        super(LMHPTransformation, self).__init__(domain, codomain, module)
+        super(LMHPTransformation, self).__init__(domain, codomain,
+                                                 module=module)
 
     # ---Mandatory properties and methods---
 
