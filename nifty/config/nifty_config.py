@@ -28,7 +28,7 @@ def _healpy_validator(use_healpy):
     if not isinstance(use_healpy, bool):
         return False
     if not use_healpy:
-        return False
+        return True
     if 'healpy' not in dependency_injector:
         return False
     healpy = dependency_injector['healpy']
