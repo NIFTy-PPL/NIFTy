@@ -1,3 +1,4 @@
+
 import numpy as np
 cimport numpy as np
 
@@ -30,12 +31,12 @@ cpdef np.ndarray[np.float32_t, ndim=1]  _buildIdx_f(np.ndarray[np
 cpdef np.ndarray[np.float32_t, ndim=1] _realify_f(np.ndarray[np.complex64_t, ndim=1] nr, np.int_t lmax):
     cdef np.ndarray resi=np.zeros([len(nr)], dtype=np.float32)
 
-    resi[0:lmax+1] = np.real(nr[0:lmax+1])
+    resi[0:lmax+1] = nr[0:lmax+1].real
 
     for i in xrange(lmax+1,len(nr),2):
         mi =  int(np.ceil(((2*lmax+1)-np.sqrt((2*lmax+1)*(2*lmax+1)-4*(i-lmax)+1))/2))
-        resi[i]=np.sqrt(2)*np.real(nr[i])*(-1)**(mi*mi)
-        resi[i+1]=np.sqrt(2)*np.imag(nr[i])*(-1)**(mi*mi)
+        resi[i]=np.sqrt(2)*(nr[i]).real*(-1)**(mi*mi)
+        resi[i+1]=np.sqrt(2)*(nr[i]).imag*(-1)**(mi*mi)
     return resi
 
 cpdef np.ndarray[np.float64_t, ndim=1]  _buildIdx(np.ndarray[np.complex128_t,
@@ -55,12 +56,12 @@ cpdef np.ndarray[np.float64_t, ndim=1]  _buildIdx(np.ndarray[np.complex128_t,
 cpdef np.ndarray[np.float64_t, ndim=1] _realify(np.ndarray[np.complex128_t, ndim=1] nr, np.int_t lmax):
     cdef np.ndarray resi=np.zeros([len(nr)], dtype=np.float64)
 
-    resi[0:lmax+1] = np.real(nr[0:lmax+1])
+    resi[0:lmax+1] = (nr[0:lmax+1]).real
 
     for i in xrange(lmax+1,len(nr),2):
         mi =  int(np.ceil(((2*lmax+1)-np.sqrt((2*lmax+1)*(2*lmax+1)-4*(i-lmax)+1))/2))
-        resi[i]=np.sqrt(2)*np.real(nr[i])*(-1)**(mi*mi)
-        resi[i+1]=np.sqrt(2)*np.imag(nr[i])*(-1)**(mi*mi)
+        resi[i]=np.sqrt(2)*(nr[i]).real*(-1)**(mi*mi)
+        resi[i+1]=np.sqrt(2)*(nr[i]).imag*(-1)**(mi*mi)
     return resi
 
 cpdef np.ndarray[np.complex64_t, ndim=1] _buildLm_f(np.ndarray[np.float32_t,
@@ -79,7 +80,7 @@ ndim=1] nr, np.int_t lmax):
 
 cpdef np.ndarray[np.complex64_t, ndim=1] _inverseRealify_f(np.ndarray[np.float32_t, ndim=1] nr, np.int_t lmax):
     cdef np.ndarray resi=np.zeros([len(nr)], dtype=np.complex64)
-    resi[0:lmax+1] = np.real(nr[0:lmax+1])
+    resi[0:lmax+1] = (nr[0:lmax+1]).real
 
     for i in xrange(lmax+1,len(nr),2):
         mi =  int(np.ceil(((2*lmax+1)-np.sqrt((2*lmax+1)*(2*lmax+1)-4*(i-lmax)+1))/2))
@@ -104,7 +105,7 @@ ndim=1] nr, np.int_t lmax):
 
 cpdef np.ndarray[np.complex128_t, ndim=1] _inverseRealify(np.ndarray[np.float64_t, ndim=1] nr, np.int_t lmax):
     cdef np.ndarray resi=np.zeros([len(nr)], dtype=np.complex128)
-    resi[0:lmax+1] = np.real(nr[0:lmax+1])
+    resi[0:lmax+1] = (nr[0:lmax+1]).real
 
     for i in xrange(lmax+1,len(nr),2):
         mi =  int(np.ceil(((2*lmax+1)-np.sqrt((2*lmax+1)*(2*lmax+1)-4*(i-lmax)+1))/2))
