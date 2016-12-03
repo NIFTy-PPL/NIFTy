@@ -3,80 +3,93 @@ import os
 
 import time
 t1 = time.time()
-import plotly.graph_objs as go
-import plotly.offline as ply
+import plotly.offline as ply_offline
+import plotly.plotly as ply
+from plotly import tools
 t2 = time.time()
 
 print ('import time', t2-t1)
 
 
-class GraphicsBase:
-    def __init__(self, graphics):
-        self.graphics = graphics
+class _PlotlyWrapper:
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def _to_plotly(self):
+        pass
 
 
-class Marker(GraphicsBase):
+class Marker(_PlotlyWrapper):
     # find symbols at: https://plot.ly/python/reference/#scatter-marker-symbol
     def __init__(self, color=None, size=None, symbol=None, opacity=None):
-        GraphicsBase.__init__(self, dict(color=color, size=size, symbol=symbol, opacity=opacity))
+        self.color = color
+        self.size = size
+        self.symbol = symbol
+        self.opacity = opacity
+
+    def _to_plotly(self):
+        return dict(color=self.color, size=self.size, symbol=self.symbol, opacity=self.opacity)
 
 
-class Line(GraphicsBase):
+class Line(_PlotlyWrapper):
     def __init__(self, color=None, width=None):
-        GraphicsBase.__init__(self, dict(color=color, width=width))
+        self.color = color
+        self.width = width
+
+    def _to_plotly(self):
+        return dict(color=self.color, width=self.width)
 
 
-class _PlotBase:
+class _PlotBase(_PlotlyWrapper):
     __metaclass__ = ABCMeta
 
     def __init__(self, label, line, marker):
         self.label = label
         self.line = line
         self.marker = marker
-        self.plotly = None
 
     @abstractmethod
-    def _init_plotly(self):
-        if self.line:
-            self.plotly.mode = 'line'
-            self.plotly.line = self.line.graphics
-        if self.marker:
-            self.plotly.mode = 'markers'
-            self.plotly.marker = self.marker.graphics
-
+    def _to_plotly(self):
+        ply_object = dict()
+        ply_object['name'] = self.label
         if self.line and self.marker:
-            self.plotly.mode = 'lines+markers'
+            ply_object['mode'] = 'lines+markers'
+            ply_object['line'] = self.line._to_plotly()
+            ply_object['marker'] = self.marker._to_plotly()
+        elif self.line:
+            ply_object['mode'] = 'markers'
+            ply_object['line'] = self.line._to_plotly()
+        elif self.marker:
+            ply_object['mode'] = 'line'
+            ply_object['marker'] = self.marker._to_plotly()
 
-    @classmethod
-    def plot(cls, plots, filename=None, title=''):
-        if not filename:
-            filename = os.path.abspath('/tmp/temp-plot.html')
-        if plots:
-            for plt in plots:
-                if type(plt) is not cls:
-                    raise Exception('Error: Plots are not of the desired type')
-        else:
-            print 'Warning: no plots given'
-        fig = dict(data=[plt.plotly for plt in plots],layout=dict(title=title))
-        ply.plot(fig, validate=False, filename=filename)
+        return ply_object
 
 
 class _Scatter2DBase(_PlotBase):
+    __metaclass__ = ABCMeta
+
     def __init__(self, x, y, label, line, marker):
         _PlotBase.__init__(self, label, line, marker)
         self.x = x
         self.y = y
-        self.PlyScaterType = None
 
-    def _init_plotly(self):
-        self.plotly = self.PlyScaterType (
-            x=self.x,
-            y=self.y
-        )
-        _PlotBase._init_plotly(self)
+    @abstractmethod
+    def _to_plotly(self):
+        ply_object = _PlotBase._to_plotly(self)
+        ply_object['x'] = self.x
+        ply_object['y'] = self.y
+
+        return ply_object
+
+class _Plot2D:
+    pass # only used as a labeling system for the plots represntation
+
+class _Plot3D:
+    pass # only used as a labeling system for the plots represntation
 
 
-class Scatter2D(_Scatter2DBase):
+class Scatter2D(_Scatter2DBase, _Plot2D):
     def __init__(self, x=None, y=None, x_start=0, x_step=1,
                  label='', line=None, marker=None, webgl=True):
         if y is None:
@@ -85,50 +98,28 @@ class Scatter2D(_Scatter2DBase):
             x = range(x_start, len(y) * x_step, x_step)
         _Scatter2DBase.__init__(self, x, y, label, line, marker)
         self.webgl = webgl
+
+
+    def _to_plotly(self):
+        ply_object = _Scatter2DBase._to_plotly(self)
         if self.webgl:
-            self.PlyScaterType = go.Scattergl
+            ply_object['type'] = 'scattergl'
         else:
-            self.PlyScaterType = go.Scatter
-        self._init_plotly()
+            ply_object['type'] = 'scatter'
 
-    @classmethod
-    def plot(cls, plots, filename=None, title='',
-             xaxis_label=None, xaxis_log=False, yaxis_label=None, yaxis_log=False):
-        if not filename:
-            filename = os.path.abspath('/tmp/temp-plot.html')
-        if plots:
-            for plt in plots:
-                if type(plt) is not cls:
-                    raise Exception('Error: Plots are not of the desired type')
-        else:
-            print 'Warning: no plots given'
-        fig = dict(data=[plt.plotly for plt in plots],
-                   layout=dict(
-                       title=title,
-                       xaxis=dict(
-                           title=xaxis_label,
-                           type='log' if xaxis_log else '',
-                           autoarange=xaxis_log
-                       ) if xaxis_label else '',
-                       yaxis=dict(
-                           title=yaxis_label,
-                           type='log' if yaxis_log else '',
-                           autoarange=yaxis_log
-                       ) if yaxis_label else ''
-                   ))
-        ply.plot(fig, validate=False, filename=filename)
+        return ply_object
 
 
-class Scatter3D(_Scatter2DBase):
+class Scatter3D(_Scatter2DBase, _Plot2D):
     def __init__(self, x, y, z, label='', line=None, marker=None):
         _Scatter2DBase.__init__(self, x, y, label, line, marker)
         self.z = z
-        self.PlyScaterType = go.Scatter3d
-        self._init_plotly()
 
-    def _init_plotly(self):
-        _Scatter2DBase._init_plotly(self)
-        self.plotly.z = self.z
+    def _to_plotly(self):
+        ply_object = _Scatter2DBase._to_plotly(self)
+        ply_object['z'] = self.z
+        ply_object['type'] = 'scatter3d'
+        return ply_object
 
 
 class ScatterMap(_PlotBase):
@@ -137,98 +128,190 @@ class ScatterMap(_PlotBase):
         self.lon = lon
         self.lat = lat
         self.projection = proj
-        self.PlyScaterType = go.Scattergeo
-        self._init_plotly()
 
-
-    def _init_plotly(self):
-        self.plotly = self.PlyScaterType(
-            lon=self.lon,
-            lat=self.lat
-        )
-        _PlotBase._init_plotly(self)
+    def _to_plotly(self):
+        ply_object = _PlotBase._to_plotly(self)
+        ply_object['type'] = 'scattergeo'
+        ply_object['lon'] = self.lon
+        ply_object['lat'] = self.lat
         if self.line:
-            self.plotly.mode = 'lines'
+            ply_object['mode'] = 'lines'
+        return ply_object
 
 
-    @classmethod
-    def plot(cls, plots, filename=None, title=''):
-        if not filename:
-            filename = os.path.abspath('/tmp/temp-plot.html')
-        if plots:
-            for plt in plots:
-                if type(plt) is not cls:
-                    raise Exception('Error: Plots are not of the desired type')
-        else:
-            print 'Warning: no plots given'
-            return
-
-        fig = go.Figure(data=[plt.plotly for plt in plots],
-                   layout=dict(
-                    title=title,
-                    height=800,
-                    geo=dict(
-                        projection=dict(type=plots[0].projection),
-                        showcoastlines=False
-                    )))
-
-        ply.plot(fig, validate=False, filename=filename)
-
-
-class HeatMap(_PlotBase):
+class HeatMap(_PlotBase, _Plot2D):
     def __init__(self, data, label='', line=None, marker=None, webgl=False, smoothing=False): # smoothing 'best', 'fast', False
-        self.data = data
         _PlotBase.__init__(self, label, line, marker)
+        self.data = data
         self.webgl = webgl
+        self.smoothing = smoothing
+
+
+    def _to_plotly(self):
+        ply_object = _PlotBase._to_plotly(self)
+        ply_object['z'] = self.data
         if self.webgl:
-            self.PlyScaterType = 'heatmapgl'
+            ply_object['type'] = 'heatmapgl'
         else:
-            self.PlyScaterType = 'heatmap'
-        self.smoothing=smoothing
-        self._init_plotly()
+            ply_object['type'] = 'heatmap'
+        ply_object['zsmooth'] = self.smoothing
+        return ply_object
 
-    def _init_plotly(self):
-        self.plotly = dict(
-            type=self.PlyScaterType,
-            z=self.data,
-            zsmooth=self.smoothing
+class Axis(_PlotlyWrapper):
+    def __init__(self, text, font='', color='', log=False):
+        self.text = text
+        self.font = font
+        self.color = color
+        self.log = log
+
+    def _to_plotly(self):
+        ply_object = dict(
+            title=self.text,
+            titlefont=dict(
+                family=self.font,
+                color=self.color
+            )
         )
-        _PlotBase._init_plotly(self)
+        if self.log:
+            ply_object['type'] = 'log'
 
-    @classmethod
-    def plot(cls, plot, filename=None, title=''):
+        return ply_object
+
+
+class Figure(_PlotlyWrapper):
+    class _BaseFigure(_PlotlyWrapper):
+        __metaclass__ = ABCMeta
+        def __init__(self, data, title):
+            self.data = data
+            self.title = title
+
+        @abstractmethod
+        def _to_plotly(self):
+            ply_object = dict(data=[plt._to_plotly() for plt in self.data], layout=dict(title=self.title))
+            return ply_object
+
+    class _2dFigure(_BaseFigure):
+        def __init__(self, data, title=None, xaxis=None, yaxis=None):
+            Figure._BaseFigure.__init__(self, data, title)
+            self.xaxis = xaxis
+            self.yaxis = yaxis
+
+        def _to_plotly(self):
+            ply_object = Figure._BaseFigure._to_plotly(self)
+            if self.xaxis:
+                ply_object['layout']['xaxis'] = self.xaxis._to_plotly()
+            if self.yaxis:
+                ply_object['layout']['yaxis'] = self.yaxis._to_plotly()
+            return ply_object
+
+    class _3dFigure(_2dFigure):
+        def __init__(self, data, title=None, xaxis=None, yaxis=None, zaxis=None):
+            Figure._2dFigure.__init__(self, data, title, xaxis, yaxis)
+            self.zaxis=zaxis
+
+        def _to_plotly(self):
+            ply_object = Figure._BaseFigure._to_plotly(self)
+            ply_object['layout']['scene'] = dict()
+            if self.xaxis:
+                ply_object['layout']['scene']['xaxis'] = self.xaxis._to_plotly()
+            if self.yaxis:
+                ply_object['layout']['scene']['yaxis'] = self.yaxis._to_plotly()
+            if self.zaxis:
+                ply_object['layout']['scene']['zaxis'] = self.zaxis._to_plotly()
+            return ply_object
+
+    class _MapFigure(_BaseFigure):
+        def __init__(self, data, title):
+            Figure._BaseFigure.__init__(self, data, title)
+
+        def _to_plotly(self):
+            ply_object = Figure._BaseFigure._to_plotly(self)
+            # print(ply_object, ply_object['layout'])
+            # ply_object['layout']['geo'] = dict(
+            #     projection=dict(type=self.data.projection),
+            #     showcoastlines=False
+            # )
+            return ply_object
+
+    def __init__(self, data, title=None, xaxis=None, yaxis=None, zaxis=None):
+        if not data:
+            raise Exception('Error: no plots given')
+
+        if type(data) != list:
+            raise Exception('Error: plots should be passed in a list')
+
+        if isinstance(data[0], _Plot2D):
+            kind = _Plot2D
+        elif isinstance(data[0], _Plot3D):
+            kind = _Plot3D
+        elif isinstance(data[0], ScatterMap):
+            kind = ScatterMap
+        else:
+            kind = None
+
+        if kind:
+            for plt in data:
+                if not isinstance(plt, kind):
+                    raise Exception(
+                        """Error: Plots are not of the right kind!
+                        Compatible types are:
+                         - Scatter2D and HeatMap
+                         - Scatter3D
+                         - ScatterMap""")
+        else:
+            raise Exception('Error: plot type unknown')
+
+        if kind == _Plot2D:
+            self.internal = Figure._2dFigure(data, title, xaxis, yaxis)
+        elif kind == _Plot3D:
+            self.internal = Figure._3dFigure(data, title, xaxis, yaxis, zaxis)
+        else:
+            self.internal = Figure._MapFigure(data, title)
+
+    def _to_plotly(self):
+        return self.internal._to_plotly()
+
+
+def plot(figure, filename=None):
+    if not filename:
+        filename = os.path.abspath('/tmp/temp-plot.html')
+    ply_offline.plot(figure._to_plotly(), filename=filename)
+
+
+def plot_image(figure, filename=None, show=False):
+    try:
         if not filename:
-            filename = os.path.abspath('/tmp/temp-plot.html')
-        if not plot:
-            print 'Warning: no plots given'
+            filename = os.path.abspath('temp-plot.jpeg')
+        ply.image.save_as(figure._to_plotly(), filename=filename)
+        if show:
+            ply.image.ishow(figure._to_plotly())
+    except:
+        raise Exception('Error: Invalid image format! Try: png, svg, jpeg, or pdf')
+# f = tools.make_subplots(rows = 2, cols=1)
 
-        fig = dict(data=[plot.plotly], layout=dict(title=title))
-        ply.plot(fig, validate=False, filename=filename)
-
-
-#test
-
-import numpy as np
-
-N = 1000
-x = np.random.randn(N)
-y = np.random.randn(N)
-z = np.random.randn(N)
-
-s = Scatter2D(y=y, label='this is label')
-s2 = Scatter2D(x=x, y=x, marker=Marker(color='red'), line=Line(width=10))
-
-Scatter2D.plot([s],'scatter',
-               title='THIS IS TITLE',
-               xaxis_label='xaxis',
-               yaxis_label='yaxis',
-               xaxis_log=True)
+# f.append_figure
 
 
-data = [[1,2,3], [1,2,3], [1,2,3]]
+# test
 #
-# HeatMap.plot(HeatMap(data, webgl=True))
+# import numpy as np
 #
-# geo = ScatterMap(x*90, y*360-180)
-# ScatterMap.plot([geo], 'map')
+# N = 1000
+# x = np.random.randn(N)
+# y = np.random.randn(N)
+# z = np.random.randn(N)
+#
+# #
+# # data = [[1,2,3], [1,2,3], [1,2,3]]
+# # h = HeatMap(data)
+# # plot(Figure([h]))
+# #
+# # s3 = Scatter3D(x, y, z)
+# # plot(Figure([s3]))
+#
+# s = Scatter2D(y=y, label='this is label')
+# s2 = Scatter2D(x=x, y=x, marker=Marker(color='red'), line=Line(width=10))
+# fig = Figure([s,s2], title='PAM', xaxis=Axis('I AM X', color='blue'))
+#
+# plot(fig)
 
