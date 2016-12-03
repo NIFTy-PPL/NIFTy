@@ -5,9 +5,6 @@ from nifty import GLSpace, LMSpace
 from slicing_transformation import SlicingTransformation
 import lm_transformation_factory as ltf
 
-import logging
-logger = logging.getLogger('NIFTy.LMGLTransformation')
-
 libsharp = gdi.get('libsharp_wrapper_gl')
 
 
@@ -20,7 +17,8 @@ class LMGLTransformation(SlicingTransformation):
             raise ImportError(
                 "The module libsharp is needed but not available.")
 
-        super(LMGLTransformation, self).__init__(domain, codomain, module)
+        super(LMGLTransformation, self).__init__(domain, codomain,
+                                                 module=module)
 
     # ---Mandatory properties and methods---
 
@@ -128,8 +126,8 @@ class LMGLTransformation(SlicingTransformation):
         elif inp.dtype == np.dtype('complex128'):
             return libsharp.alm2map(inp, **kwargs)
         else:
-            logger.debug("performing dtype conversion for libsharp "
-                         "compatibility.")
+            self.logger.debug("Performing dtype conversion for libsharp "
+                              "compatibility.")
             casted_inp = inp.astype(np.dtype('complex128'), copy=False)
             result = libsharp.alm2map(casted_inp, **kwargs)
             return result

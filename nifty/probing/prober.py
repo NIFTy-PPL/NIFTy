@@ -4,6 +4,8 @@ import abc
 
 import numpy as np
 
+from nifty.field_types import FieldType
+from nifty.spaces import Space
 from nifty.field import Field
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
@@ -12,28 +14,67 @@ from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 class Prober(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, probe_count=8, random_type='pm1',
-                 compute_variance=False):
+    def __init__(self, domain=None, field_type=None,
+                 distribution_strategy=None, probe_count=8,
+                 random_type='pm1', compute_variance=False):
 
+        self.domain = domain
+        self.field_type = field_type
+        self.distribution_strategy = distribution_strategy
         self.probe_count = probe_count
-
         self.random_type = random_type
-
         self.compute_variance = bool(compute_variance)
+
+    def _parse_domain(self, domain):
+        if domain is None:
+            domain = ()
+        elif isinstance(domain, Space):
+            domain = (domain,)
+        elif not isinstance(domain, tuple):
+            domain = tuple(domain)
+
+        for d in domain:
+            if not isinstance(d, Space):
+                raise TypeError(
+                    "Given object contains something that is not a "
+                    "nifty.space.")
+        return domain
+
+    def _parse_field_type(self, field_type):
+        if field_type is None:
+            field_type = ()
+        elif isinstance(field_type, FieldType):
+            field_type = (field_type,)
+        elif not isinstance(field_type, tuple):
+            field_type = tuple(field_type)
+
+        for ft in field_type:
+            if not isinstance(ft, FieldType):
+                raise TypeError(
+                    "Given object is not a nifty.FieldType.")
+        return field_type
 
     # ---Properties---
 
-    @abc.abstractproperty
+    @property
     def domain(self):
-        raise NotImplementedError
+        return self._domain
 
-    @abc.abstractproperty
+    @domain.setter
+    def domain(self, domain):
+        self._domain = self._parse_domain(domain)
+
+    @property
     def field_type(self):
-        raise NotImplementedError
+        return self._field_type
 
-    @abc.abstractproperty
+    @field_type.setter
+    def field_type(self, field_type):
+        self._field_type = self._parse_field_type(field_type)
+
+    @property
     def distribution_strategy(self):
-        raise NotImplementedError
+        return self._distribution_strategy
 
     @distribution_strategy.setter
     def distribution_strategy(self, distribution_strategy):
@@ -65,14 +106,14 @@ class Prober(object):
 
     # ---Probing methods---
 
-    def probing_run(self):
+    def probing_run(self, callee):
         """ controls the generation, evaluation and finalization of probes """
         sum_of_probes = 0
         sum_of_squares = 0
 
         for index in xrange(self.probe_count):
             current_probe = self.get_probe(index)
-            pre_result = self.process_probe(current_probe, index)
+            pre_result = self.process_probe(callee, current_probe, index)
             result = self.finish_probe(current_probe, pre_result)
 
             sum_of_probes += result
@@ -95,13 +136,13 @@ class Prober(object):
         uid = np.random.randint(1e18)
         return (uid, f)
 
-    def process_probe(self, probe, index):
-        return self.evaluate_probe(probe)
+    def process_probe(self, callee, probe, index):
+        """ layer of abstraction for potential result-caching/recycling """
+        return self.evaluate_probe(callee, probe[1])
 
-    @abc.abstractmethod
-    def evaluate_probe(self, probe):
+    def evaluate_probe(self, callee, probe, **kwargs):
         """ processes a probe """
-        raise NotImplementedError
+        return callee(probe, **kwargs)
 
     @abc.abstractmethod
     def finish_probe(self, probe, pre_result):
@@ -119,5 +160,5 @@ class Prober(object):
 
         return (mean_of_probes, variance)
 
-    def __call__(self):
-        return self.probe()
+    def __call__(self, callee):
+        return self.probing_run(callee)

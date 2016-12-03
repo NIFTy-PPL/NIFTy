@@ -26,7 +26,9 @@ mpl.use('Agg')
 
 from .version import __version__
 
-from logger import logger
+# initialize the logger instance
+from keepers import MPILogger
+logger = MPILogger()
 
 import dummys
 
@@ -38,11 +40,14 @@ from config import dependency_injector,\
 
 from d2o import distributed_data_object, d2o_librarian
 
+from energies import *
+
 from field import Field
 
 from random import Random
 
-from nifty_simple_math import *
+from basic_arithmetics import *
+
 from nifty_utilities import *
 
 from field_types import *
@@ -55,6 +60,6 @@ from operators import *
 
 from probing import *
 
-from demos import get_demo_dir
+from sugar import *
 
 #import pyximport; pyximport.install(pyimport = True)

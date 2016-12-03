@@ -146,8 +146,10 @@ import abc
 
 import numpy as np
 
+from keepers import Loggable
 
-class Space(object):
+
+class Space(Loggable, object):
     """
         ..                            __             __
         ..                          /__/           /  /_
@@ -272,9 +274,13 @@ class Space(object):
     def post_cast(self, x, axes=None):
         return x
 
-    def compute_k_array(self, distribution_strategy):
+    def get_distance_array(self, distribution_strategy):
         raise NotImplementedError(
-            "There is no generic k_array for Space base class.")
+            "There is no generic distance structure for Space base class.")
+
+    def get_fft_smoothing_kernel_function(self, sigma):
+        raise NotImplementedError(
+            "There is no generic co-smoothing kernel for Space base class.")
 
     def hermitian_decomposition(self, x, axes=None):
         raise NotImplementedError

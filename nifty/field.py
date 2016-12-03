@@ -14,11 +14,10 @@ from nifty.spaces.power_space import PowerSpace
 import nifty.nifty_utilities as utilities
 from nifty.random import Random
 
-import logging
-logger = logging.getLogger('NIFTy.Field')
+from keepers import Loggable
 
 
-class Field(object):
+class Field(Loggable, object):
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
@@ -116,7 +115,7 @@ class Field(object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                logger.info("Datamodel set to default!")
+                self.logger.info("Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(
@@ -309,7 +308,8 @@ class Field(object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_signal=True):
+    def power_synthesize(self, spaces=None, real_signal=True,
+                         mean=None, std=None):
         # assert that all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
@@ -356,7 +356,9 @@ class Field(object):
 
         result_list = [self.__class__.from_random(
                              'normal',
-                             result_domain,
+                             mean=mean,
+                             std=std,
+                             domain=result_domain,
                              dtype=harmonic_domain.dtype,
                              field_type=self.field_type,
                              distribution_strategy=self.distribution_strategy)
@@ -384,7 +386,7 @@ class Field(object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            logger.warn(
+            self.logger.warn(
                 "The distribution_stragey of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
@@ -392,13 +394,13 @@ class Field(object):
         # power spectrum into the appropriate places of the pindex array.
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
         local_pindex = pindex.get_local_data(copy=False)
-        local_spec = self.val.get_local_data(copy=False)
+        full_spec = self.val.get_full_data()
 
         local_blow_up = [slice(None)]*len(self.shape)
         local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
 
         # here, the power_spectrum is distributed into the new shape
-        local_rescaler = local_spec[local_blow_up]
+        local_rescaler = full_spec[local_blow_up]
 
         # apply the rescaler to the random fields
         result_val_list[0].apply_scalar_function(
@@ -428,7 +430,7 @@ class Field(object):
         if copy:
             new_val = new_val.copy()
         self._val = new_val
-        return self._val
+        return self
 
     def get_val(self, copy=False):
         if copy:
@@ -489,8 +491,10 @@ class Field(object):
         else:
             dtype = np.dtype(dtype)
 
+        casted_x = x
+
         for ind, sp in enumerate(self.domain):
-            casted_x = sp.pre_cast(x,
+            casted_x = sp.pre_cast(casted_x,
                                    axes=self.domain_axes[ind])
 
         for ind, ft in enumerate(self.field_type):

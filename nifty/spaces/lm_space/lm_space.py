@@ -11,9 +11,6 @@ from lm_helper import _distance_array_helper
 
 from d2o import arange
 
-import logging
-logger = logging.getLogger('NIFTy.LMSpace')
-
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
 
@@ -114,22 +111,6 @@ class LMSpace(Space):
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
 
-    def distance_array(self, distribution_strategy):
-        dists = arange(start=0, stop=self.shape[0],
-                       distribution_strategy=distribution_strategy)
-
-        dists = dists.apply_scalar_function(
-            lambda x: _distance_array_helper(x, self.lmax),
-            dtype=np.float)
-
-        return dists
-
-    def get_smoothing_kernel_function(self, sigma):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
-
-        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
-
     # ---Mandatory properties and methods---
 
     @property
@@ -165,6 +146,22 @@ class LMSpace(Space):
         else:
             return x.copy()
 
+    def get_distance_array(self, distribution_strategy):
+        dists = arange(start=0, stop=self.shape[0],
+                       distribution_strategy=distribution_strategy)
+
+        dists = dists.apply_scalar_function(
+            lambda x: _distance_array_helper(x, self.lmax),
+            dtype=np.float)
+
+        return dists
+
+    def get_fft_smoothing_kernel_function(self, sigma):
+        if sigma is None:
+            sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
+
+        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
+
     # ---Added properties and methods---
 
     @property
@@ -178,9 +175,8 @@ class LMSpace(Space):
     def _parse_lmax(self, lmax):
         lmax = np.int(lmax)
         if lmax < 1:
-            raise ValueError(
-                "negative lmax is not allowed.")
+            raise ValueError("Negative lmax is not allowed.")
         # exception lmax == 2 (nside == 1)
         if (lmax % 2 == 0) and (lmax > 2):
-            logger.warn("unrecommended parameter (lmax <> 2*n+1).")
+            self.logger.warn("Unrecommended parameter (lmax <> 2*n+1).")
         return lmax

@@ -4,11 +4,9 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import nifty_configuration as gc,\
-                         dependency_injector as gdi
+from nifty.config import dependency_injector as gdi
 
-MPI = gdi[gc['mpi_module']]
-hp = gdi.get('healpy')
+MPI = gdi['MPI']
 
 
 class PowerIndices(object):
