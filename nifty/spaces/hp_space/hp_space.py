@@ -97,8 +97,6 @@ class HPSpace(Versionable, Space):
             An array with one element containing the pixel size.
     """
 
-    _serializable = ('nside', 'dtype')
-
     # ---Overwritten properties and methods---
 
     def __init__(self, nside=2, dtype=np.dtype('float')):
@@ -212,13 +210,14 @@ class HPSpace(Versionable, Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group['serialized'] = [
-            pickle.dumps(getattr(self, item)) for item in self._serializable
-        ]
+        hdf5_group['nside'] = self.nside
+        hdf5_group['dtype'] = pickle.dumps(self.dtype)
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
-            *[pickle.loads(item) for item in hdf5_group['serialized']])
+            nside=hdf5_group['nside'][()],
+            dtype=pickle.loads(hdf5_group['dtype'][()])
+            )
         return result

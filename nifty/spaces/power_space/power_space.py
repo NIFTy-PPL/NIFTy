@@ -16,14 +16,11 @@ from nifty.nifty_utilities import cast_axis_to_tuple
 
 class PowerSpace(Versionable, Space):
 
-    _serializable = ('log', 'nbin', 'binbounds', 'kindex', 'rho',
-                     'pundex', 'dtype')
-
     # ---Overwritten properties and methods---
 
     def __init__(self, harmonic_domain=RGSpace((1,)),
                  distribution_strategy='not',
-                 log=False, nbin=None, binbounds=None, power_index=None,
+                 log=False, nbin=None, binbounds=None,
                  dtype=np.dtype('float')):
 
         super(PowerSpace, self).__init__(dtype)
@@ -38,13 +35,12 @@ class PowerSpace(Versionable, Space):
                 "harmonic_domain must be a harmonic space.")
         self._harmonic_domain = harmonic_domain
 
-        if power_index is None:
-            power_index = PowerIndexFactory.get_power_index(
-                            domain=self.harmonic_domain,
-                            distribution_strategy=distribution_strategy,
-                            log=log,
-                            nbin=nbin,
-                            binbounds=binbounds)
+        power_index = PowerIndexFactory.get_power_index(
+                        domain=self.harmonic_domain,
+                        distribution_strategy=distribution_strategy,
+                        log=log,
+                        nbin=nbin,
+                        binbounds=binbounds)
 
         config = power_index['config']
         self._log = config['log']
@@ -165,9 +161,13 @@ class PowerSpace(Versionable, Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group['serialized'] = [
-            pickle.dumps(getattr(self, item)) for item in self._serializable
-        ]
+        hdf5_group['log'] = self.log
+        hdf5_group['nbin'] = pickle.dumps(self.nbin)
+        hdf5_group['binbounds'] = pickle.dumps(self.binbounds)
+        hdf5_group['kindex'] = self.kindex
+        hdf5_group['rho'] = self.rho
+        hdf5_group['pundex'] = self.pundex
+        hdf5_group['dtype'] = pickle.dumps(self.dtype)
 
         return {
             'harmonic_domain': self.harmonic_domain,
@@ -177,26 +177,26 @@ class PowerSpace(Versionable, Space):
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
-        deserialized =\
-            [pickle.loads(item) for item in hdf5_group['serialized']]
+        # make an empty PowerSpace object
+        new_ps = EmptyPowerSpace()
+        # reset class
+        new_ps.__class__ = cls
+        # set all values
+        new_ps.dtype = pickle.loads(hdf5_group['dtype'][()])
+        new_ps._harmonic_domain = loopback_get('harmonic_domain')
+        new_ps._log = hdf5_group['log'][()]
+        new_ps._nbin = pickle.loads(hdf5_group['nbin'][()])
+        new_ps._binbounds = pickle.loads(hdf5_group['binbounds'][()])
 
-        dtype = deserialized[6]
-        harmonic_domain = loopback_get('harmonic_domain')
-        power_index = {
-            'config': {
-                'log': deserialized[0], 'nbin': deserialized[1],
-                'binbounds': deserialized[2]
-            },
-            'pindex': loopback_get('pindex'),
-            'kindex': deserialized[3],
-            'rho': deserialized[4],
-            'pundex': deserialized[5],
-            'k_array': loopback_get('k_array')
-        }
+        new_ps._pindex = loopback_get('pindex')
+        new_ps._kindex = hdf5_group['kindex'][:]
+        new_ps._rho = hdf5_group['rho'][:]
+        new_ps._pundex = hdf5_group['pundex'][:]
+        new_ps._k_array = loopback_get('k_array')
 
-        result = cls(
-            harmonic_domain=harmonic_domain,
-            power_index=power_index,
-            dtype=dtype
-        )
-        return result
+        return new_ps
+
+
+class EmptyPowerSpace(PowerSpace):
+    def __init__(self):
+        pass
