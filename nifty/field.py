@@ -1,5 +1,8 @@
 from __future__ import division
+import pickle
 import numpy as np
+
+from keepers import Versionable
 
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
@@ -17,7 +20,7 @@ from nifty.random import Random
 from keepers import Loggable
 
 
-class Field(Loggable, object):
+class Field(Loggable, Versionable, object):
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
@@ -887,6 +890,55 @@ class Field(Loggable, object):
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)
 
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        # pickling for nested tuples
+        hdf5_group['field_type_axes'] = pickle.dumps(self.field_type_axes)
+        hdf5_group['domain_axes'] = pickle.dumps(self.domain_axes)
+
+        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+        hdf5_group['distribution_strategy'] = self.distribution_strategy
+        hdf5_group['num_domain'] = len(self.domain)
+        hdf5_group['num_ft'] = len(self.field_type)
+
+        ret_dict = {
+            'val' : self.val
+        }
+
+        for i in range(len(self.domain)):
+            ret_dict['s_' + str(i)] = self.domain[i]
+
+        for i in range(len(self.field_type)):
+            ret_dict['ft_' + str(i)] = self.field_type[i]
+
+        return ret_dict
+
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, loopback_get):
+        # create empty field
+        new_field = EmptyField()
+        # reset class
+        new_field.__class__ = cls
+        # set values
+        temp_domain = []
+        for i in range(hdf5_group['num_domain'][()]):
+            temp_domain.append(loopback_get('s_' + str(i)))
+        new_field.domain = tuple(temp_domain)
+
+        temp_ft = []
+        for i in range(hdf5_group['num_ft'][()]):
+            temp_domain.append(loopback_get('ft_' + str(i)))
+        new_field.field_type = tuple(temp_ft)
+
+        new_field.domain_axes = pickle.loads(hdf5_group['domain_axes'][()])
+        new_field.field_type_axes = pickle.loads(hdf5_group['field_type_axes'][()])
+        new_field._val = loopback_get('val')
+        new_field.dtype = pickle.loads(hdf5_group['dtype'][()])
+        new_field.distribution_strategy = hdf5_group['distribution_strategy'][()]
+
+        return new_field
 
 class EmptyField(Field):
     def __init__(self):
