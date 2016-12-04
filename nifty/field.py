@@ -897,7 +897,7 @@ class Field(Loggable, Versionable, object):
         hdf5_group['field_type_axes'] = pickle.dumps(self.field_type_axes)
         hdf5_group['domain_axes'] = pickle.dumps(self.domain_axes)
 
-        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+        hdf5_group['dtype'] = self.dtype.name
         hdf5_group['distribution_strategy'] = self.distribution_strategy
         hdf5_group['num_domain'] = len(self.domain)
         hdf5_group['num_ft'] = len(self.field_type)
@@ -935,7 +935,7 @@ class Field(Loggable, Versionable, object):
         new_field.domain_axes = pickle.loads(hdf5_group['domain_axes'][()])
         new_field.field_type_axes = pickle.loads(hdf5_group['field_type_axes'][()])
         new_field._val = loopback_get('val')
-        new_field.dtype = pickle.loads(hdf5_group['dtype'][()])
+        new_field.dtype = np.dtype(hdf5_group['dtype'][()])
         new_field.distribution_strategy = hdf5_group['distribution_strategy'][()]
 
         return new_field

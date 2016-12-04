@@ -217,7 +217,7 @@ class GLSpace(Versionable, Space):
     def _to_hdf5(self, hdf5_group):
         hdf5_group['nlat'] = self.nlat
         hdf5_group['nlon'] = self.nlon
-        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+        hdf5_group['dtype'] = self.dtype.name
 
         return None
 
@@ -226,7 +226,7 @@ class GLSpace(Versionable, Space):
         result = cls(
             nlat=hdf5_group['nlat'][()],
             nlon=hdf5_group['nlon'][()],
-            dtype=pickle.loads(hdf5_group['dtype'][()])
+            dtype=np.dtype(hdf5_group['dtype'][()])
             )
 
         return result

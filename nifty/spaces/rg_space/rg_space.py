@@ -33,8 +33,6 @@
 """
 from __future__ import division
 
-import pickle
-
 import numpy as np
 
 from keepers import Versionable
@@ -331,7 +329,7 @@ class RGSpace(Versionable, Space):
         hdf5_group['zerocenter'] = self.zerocenter
         hdf5_group['distances'] = self.distances
         hdf5_group['harmonic'] = self.harmonic
-        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+        hdf5_group['dtype'] = self.dtype.name
 
         return None
 
@@ -342,6 +340,6 @@ class RGSpace(Versionable, Space):
             zerocenter=hdf5_group['zerocenter'][:],
             distances=hdf5_group['distances'][:],
             harmonic=hdf5_group['harmonic'][()],
-            dtype=pickle.loads(hdf5_group['dtype'][()])
+            dtype=np.dtype(hdf5_group['dtype'][()])
             )
         return result

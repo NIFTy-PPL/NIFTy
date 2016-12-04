@@ -167,7 +167,7 @@ class PowerSpace(Versionable, Space):
         hdf5_group['kindex'] = self.kindex
         hdf5_group['rho'] = self.rho
         hdf5_group['pundex'] = self.pundex
-        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+        hdf5_group['dtype'] = self.dtype.name
 
         return {
             'harmonic_domain': self.harmonic_domain,
@@ -182,7 +182,7 @@ class PowerSpace(Versionable, Space):
         # reset class
         new_ps.__class__ = cls
         # set all values
-        new_ps.dtype = pickle.loads(hdf5_group['dtype'][()])
+        new_ps.dtype = np.dtype(hdf5_group['dtype'][()])
         new_ps._harmonic_domain = loopback_get('harmonic_domain')
         new_ps._log = hdf5_group['log'][()]
         new_ps._nbin = pickle.loads(hdf5_group['nbin'][()])

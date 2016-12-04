@@ -33,8 +33,6 @@
 """
 from __future__ import division
 
-import pickle
-
 import numpy as np
 
 import d2o
@@ -211,13 +209,13 @@ class HPSpace(Versionable, Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['nside'] = self.nside
-        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+        hdf5_group['dtype'] = self.dtype.name
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
             nside=hdf5_group['nside'][()],
-            dtype=pickle.loads(hdf5_group['dtype'][()])
+            dtype=np.dtype(hdf5_group['dtype'][()])
             )
         return result
