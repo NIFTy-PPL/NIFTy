@@ -209,16 +209,13 @@ class HPSpace(Versionable, Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['nside'] = self.nside
-        # metadata
-        hdf5_group.attrs['dtype'] = self.dtype.name
-
+        hdf5_group['dtype'] = self.dtype.name
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
             nside=hdf5_group['nside'][()],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
+            dtype=np.dtype(hdf5_group['dtype'][()])
             )
-
         return result

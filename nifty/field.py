@@ -892,13 +892,12 @@ class Field(Loggable, Versionable, object):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        # metadata
-        hdf5_group.attrs['dtype'] = self.dtype.name
-        hdf5_group.attrs['distribution_strategy'] = self.distribution_strategy
-        hdf5_group.attrs['field_type_axes'] = str(self.field_type_axes)
-        hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
-        hdf5_group.attrs['num_domain'] = len(self.domain)
-        hdf5_group.attrs['num_ft'] = len(self.field_type)
+        hdf5_group['dtype'] = self.dtype.name
+        hdf5_group['distribution_strategy'] = self.distribution_strategy
+        hdf5_group['field_type_axes'] = str(self.field_type_axes)
+        hdf5_group['domain_axes'] = str(self.domain_axes)
+        hdf5_group['num_domain'] = len(self.domain)
+        hdf5_group['num_ft'] = len(self.field_type)
 
         ret_dict = {
             'val' : self.val
@@ -921,20 +920,20 @@ class Field(Loggable, Versionable, object):
         new_field.__class__ = cls
         # set values
         temp_domain = []
-        for i in range(hdf5_group.attrs['num_domain']):
+        for i in range(hdf5_group['num_domain'][()]):
             temp_domain.append(loopback_get('s_' + str(i)))
         new_field.domain = tuple(temp_domain)
 
         temp_ft = []
-        for i in range(hdf5_group.attrs['num_ft']):
+        for i in range(hdf5_group['num_ft'][()]):
             temp_domain.append(loopback_get('ft_' + str(i)))
         new_field.field_type = tuple(temp_ft)
 
-        exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
-        exec('new_field.field_type_axes = ' + hdf5_group.attrs['field_type_axes'])
+        exec('new_field.domain_axes = ' + hdf5_group['domain_axes'][()])
+        exec('new_field.field_type_axes = ' + hdf5_group['field_type_axes'][()])
         new_field._val = loopback_get('val')
-        new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
-        new_field.distribution_strategy = hdf5_group.attrs['distribution_strategy']
+        new_field.dtype = np.dtype(hdf5_group['dtype'][()])
+        new_field.distribution_strategy = hdf5_group['distribution_strategy'][()]
 
         return new_field
 

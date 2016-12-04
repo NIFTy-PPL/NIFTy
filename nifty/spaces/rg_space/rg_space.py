@@ -328,9 +328,8 @@ class RGSpace(Versionable, Space):
         hdf5_group['shape'] = self.shape
         hdf5_group['zerocenter'] = self.zerocenter
         hdf5_group['distances'] = self.distances
-        # metadata
-        hdf5_group.attrs['harmonic'] = self.harmonic
-        hdf5_group.attrs['dtype'] = self.dtype.name
+        hdf5_group['harmonic'] = self.harmonic
+        hdf5_group['dtype'] = self.dtype.name
 
         return None
 
@@ -340,7 +339,7 @@ class RGSpace(Versionable, Space):
             shape=hdf5_group['shape'][:],
             zerocenter=hdf5_group['zerocenter'][:],
             distances=hdf5_group['distances'][:],
-            harmonic=hdf5_group.attrs['harmonic'],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
+            harmonic=hdf5_group['harmonic'][()],
+            dtype=np.dtype(hdf5_group['dtype'][()])
             )
         return result

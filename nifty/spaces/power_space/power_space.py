@@ -163,11 +163,10 @@ class PowerSpace(Versionable, Space):
         hdf5_group['kindex'] = self.kindex
         hdf5_group['rho'] = self.rho
         hdf5_group['pundex'] = self.pundex
-        # metadata
-        hdf5_group.attrs['dtype'] = self.dtype.name
-        hdf5_group.attrs['log'] = self.log
-        hdf5_group.attrs['nbin'] = str(self.nbin)
-        hdf5_group.attrs['binbounds'] = str(self.binbounds)
+        hdf5_group['dtype'] = self.dtype.name
+        hdf5_group['log'] = self.log
+        hdf5_group['nbin'] = str(self.nbin)
+        hdf5_group['binbounds'] = str(self.binbounds)
 
         return {
             'harmonic_domain': self.harmonic_domain,
@@ -182,11 +181,11 @@ class PowerSpace(Versionable, Space):
         # reset class
         new_ps.__class__ = cls
         # set all values
-        new_ps.dtype = np.dtype(hdf5_group.attrs['dtype'])
+        new_ps.dtype = np.dtype(hdf5_group['dtype'][()])
         new_ps._harmonic_domain = loopback_get('harmonic_domain')
-        new_ps._log = hdf5_group.attrs['log']
-        exec('new_ps._nbin = ' + hdf5_group.attrs['nbin'])
-        exec('new_ps._binbounds = ' + hdf5_group.attrs['binbounds'])
+        new_ps._log = hdf5_group['log'][()]
+        exec('new_ps._nbin = ' + hdf5_group['nbin'][()])
+        exec('new_ps._binbounds = ' + hdf5_group['binbounds'][()])
 
         new_ps._pindex = loopback_get('pindex')
         new_ps._kindex = hdf5_group['kindex'][:]
