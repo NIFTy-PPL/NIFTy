@@ -187,13 +187,15 @@ class LMSpace(Versionable, Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['lmax'] = self.lmax
-        hdf5_group['dtype'] = self.dtype.name
+        # metadata
+        hdf5_group.attrs['dtype'] = self.dtype.name
+
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
             lmax=hdf5_group['lmax'][()],
-            dtype=np.dtype(hdf5_group['dtype'][()])
+            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
