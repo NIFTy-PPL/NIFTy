@@ -1,6 +1,9 @@
 from __future__ import division
 import numpy as np
 
+from keepers import Versionable,\
+                    Loggable
+
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
@@ -14,10 +17,8 @@ from nifty.spaces.power_space import PowerSpace
 import nifty.nifty_utilities as utilities
 from nifty.random import Random
 
-from keepers import Loggable
 
-
-class Field(Loggable, object):
+class Field(Loggable, Versionable, object):
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
@@ -886,6 +887,53 @@ class Field(Loggable, object):
                "\n- val         = " + repr(self.get_val()) + \
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group.attrs['dtype'] = self.dtype.name
+        hdf5_group.attrs['distribution_strategy'] = self.distribution_strategy
+        hdf5_group.attrs['field_type_axes'] = str(self.field_type_axes)
+        hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
+        hdf5_group['num_domain'] = len(self.domain)
+        hdf5_group['num_ft'] = len(self.field_type)
+
+        ret_dict = {'val': self.val}
+
+        for i in range(len(self.domain)):
+            ret_dict['s_' + str(i)] = self.domain[i]
+
+        for i in range(len(self.field_type)):
+            ret_dict['ft_' + str(i)] = self.field_type[i]
+
+        return ret_dict
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        # create empty field
+        new_field = EmptyField()
+        # reset class
+        new_field.__class__ = cls
+        # set values
+        temp_domain = []
+        for i in range(hdf5_group['num_domain'][()]):
+            temp_domain.append(repository.get('s_' + str(i), hdf5_group))
+        new_field.domain = tuple(temp_domain)
+
+        temp_ft = []
+        for i in range(hdf5_group['num_ft'][()]):
+            temp_domain.append(repository.get('ft_' + str(i), hdf5_group))
+        new_field.field_type = tuple(temp_ft)
+
+        exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
+        exec('new_field.field_type_axes = ' +
+             hdf5_group.attrs['field_type_axes'])
+        new_field._val = repository.get('val', hdf5_group)
+        new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
+        new_field.distribution_strategy =\
+            hdf5_group.attrs['distribution_strategy']
+
+        return new_field
 
 
 class EmptyField(Field):
