@@ -2,8 +2,6 @@ from __future__ import division
 
 import numpy as np
 
-from keepers import Versionable
-
 from nifty.spaces.space import Space
 
 from nifty.config import nifty_configuration as gc,\
@@ -17,7 +15,7 @@ gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
 
 
-class LMSpace(Versionable, Space):
+class LMSpace(Space):
     """
         ..       __
         ..     /  /
@@ -191,7 +189,7 @@ class LMSpace(Versionable, Space):
         return None
 
     @classmethod
-    def _from_hdf5(cls, hdf5_group, loopback_get):
+    def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             lmax=hdf5_group['lmax'][()],
             dtype=np.dtype(hdf5_group['dtype'][()])

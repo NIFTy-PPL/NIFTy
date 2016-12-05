@@ -5,7 +5,6 @@ import numpy as np
 
 import d2o
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
-from keepers import Versionable
 
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc,\
@@ -17,7 +16,7 @@ gl = gdi.get('libsharp_wrapper_gl')
 GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
 
 
-class GLSpace(Versionable, Space):
+class GLSpace(Space):
     """
         ..                 __
         ..               /  /
@@ -220,7 +219,7 @@ class GLSpace(Versionable, Space):
         return None
 
     @classmethod
-    def _from_hdf5(cls, hdf5_group, loopback_get):
+    def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             nlat=hdf5_group['nlat'][()],
             nlon=hdf5_group['nlon'][()],

@@ -36,7 +36,6 @@ from __future__ import division
 import numpy as np
 
 import d2o
-from keepers import Versionable
 
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc, \
@@ -45,7 +44,7 @@ from nifty.config import nifty_configuration as gc, \
 hp = gdi.get('healpy')
 
 
-class HPSpace(Versionable, Space):
+class HPSpace(Space):
     """
         ..        __
         ..      /  /
@@ -213,7 +212,7 @@ class HPSpace(Versionable, Space):
         return None
 
     @classmethod
-    def _from_hdf5(cls, hdf5_group, loopback_get):
+    def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             nside=hdf5_group['nside'][()],
             dtype=np.dtype(hdf5_group['dtype'][()])

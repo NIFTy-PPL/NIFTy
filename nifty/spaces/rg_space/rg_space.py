@@ -35,15 +35,13 @@ from __future__ import division
 
 import numpy as np
 
-from keepers import Versionable
-
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
 
 
-class RGSpace(Versionable, Space):
+class RGSpace(Space):
     """
         ..      _____   _______
         ..    /   __/ /   _   /
@@ -329,17 +327,17 @@ class RGSpace(Versionable, Space):
         hdf5_group['zerocenter'] = self.zerocenter
         hdf5_group['distances'] = self.distances
         hdf5_group['harmonic'] = self.harmonic
-        hdf5_group['dtype'] = self.dtype.name
+        hdf5_group.attrs['dtype'] = self.dtype.name
 
         return None
 
     @classmethod
-    def _from_hdf5(cls, hdf5_group, loopback_get):
+    def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             shape=hdf5_group['shape'][:],
             zerocenter=hdf5_group['zerocenter'][:],
             distances=hdf5_group['distances'][:],
             harmonic=hdf5_group['harmonic'][()],
-            dtype=np.dtype(hdf5_group['dtype'][()])
+            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
