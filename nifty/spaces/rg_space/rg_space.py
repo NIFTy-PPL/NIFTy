@@ -33,8 +33,6 @@
 """
 from __future__ import division
 
-import pickle
-
 import numpy as np
 
 from keepers import Versionable
@@ -106,8 +104,6 @@ class RGSpace(Versionable, Space):
         fourier : bool
             Whether or not the grid represents a Fourier basis.
     """
-
-    _serializable = ('shape', 'zerocenter', 'distances', 'harmonic', 'dtype')
 
     # ---Overwritten properties and methods---
 
@@ -247,7 +243,6 @@ class RGSpace(Versionable, Space):
         # prepare the distributed_data_object
         nkdict = distributed_data_object(
                         global_shape=shape,
-                        dtype=np.float128,
                         distribution_strategy=distribution_strategy)
 
         if distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
@@ -330,13 +325,21 @@ class RGSpace(Versionable, Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group['serialized'] = [
-            pickle.dumps(getattr(self, item)) for item in self._serializable
-        ]
+        hdf5_group['shape'] = self.shape
+        hdf5_group['zerocenter'] = self.zerocenter
+        hdf5_group['distances'] = self.distances
+        hdf5_group['harmonic'] = self.harmonic
+        hdf5_group['dtype'] = self.dtype.name
+
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
-            *[pickle.loads(item) for item in hdf5_group['serialized']])
+            shape=hdf5_group['shape'][:],
+            zerocenter=hdf5_group['zerocenter'][:],
+            distances=hdf5_group['distances'][:],
+            harmonic=hdf5_group['harmonic'][()],
+            dtype=np.dtype(hdf5_group['dtype'][()])
+            )
         return result

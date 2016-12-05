@@ -1,7 +1,5 @@
 from __future__ import division
 
-import pickle
-
 import itertools
 import numpy as np
 
@@ -71,8 +69,6 @@ class GLSpace(Versionable, Space):
         vol : numpy.ndarray
             An array containing the pixel sizes.
     """
-
-    _serializable = ('nlat', 'nlon', 'dtype')
 
     # ---Overwritten properties and methods---
 
@@ -217,13 +213,18 @@ class GLSpace(Versionable, Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group['serialized'] = [
-            pickle.dumps(getattr(self, item)) for item in self._serializable
-        ]
+        hdf5_group['nlat'] = self.nlat
+        hdf5_group['nlon'] = self.nlon
+        hdf5_group['dtype'] = self.dtype.name
+
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
-            *[pickle.loads(item) for item in hdf5_group['serialized']])
+            nlat=hdf5_group['nlat'][()],
+            nlon=hdf5_group['nlon'][()],
+            dtype=np.dtype(hdf5_group['dtype'][()])
+            )
+
         return result

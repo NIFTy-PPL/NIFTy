@@ -33,8 +33,6 @@
 """
 from __future__ import division
 
-import pickle
-
 import numpy as np
 
 import d2o
@@ -96,8 +94,6 @@ class HPSpace(Versionable, Space):
         vol : numpy.ndarray
             An array with one element containing the pixel size.
     """
-
-    _serializable = ('nside', 'dtype')
 
     # ---Overwritten properties and methods---
 
@@ -212,13 +208,14 @@ class HPSpace(Versionable, Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group['serialized'] = [
-            pickle.dumps(getattr(self, item)) for item in self._serializable
-        ]
+        hdf5_group['nside'] = self.nside
+        hdf5_group['dtype'] = self.dtype.name
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
-            *[pickle.loads(item) for item in hdf5_group['serialized']])
+            nside=hdf5_group['nside'][()],
+            dtype=np.dtype(hdf5_group['dtype'][()])
+            )
         return result
