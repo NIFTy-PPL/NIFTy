@@ -241,7 +241,6 @@ class RGSpace(Space):
         # prepare the distributed_data_object
         nkdict = distributed_data_object(
                         global_shape=shape,
-                        dtype=np.float128,
                         distribution_strategy=distribution_strategy)
 
         if distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
@@ -282,7 +281,7 @@ class RGSpace(Space):
         dists = np.sqrt(dists)
         return dists
 
-    def get_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma):
         if sigma is None:
             sigma = np.sqrt(2) * np.max(self.distances)
 
@@ -320,3 +319,25 @@ class RGSpace(Space):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
         return tuple(temp)
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['shape'] = self.shape
+        hdf5_group['zerocenter'] = self.zerocenter
+        hdf5_group['distances'] = self.distances
+        hdf5_group['harmonic'] = self.harmonic
+        hdf5_group.attrs['dtype'] = self.dtype.name
+
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        result = cls(
+            shape=hdf5_group['shape'][:],
+            zerocenter=hdf5_group['zerocenter'][:],
+            distances=hdf5_group['distances'][:],
+            harmonic=hdf5_group['harmonic'][()],
+            dtype=np.dtype(hdf5_group.attrs['dtype'])
+            )
+        return result

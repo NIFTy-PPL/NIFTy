@@ -1,6 +1,9 @@
 from __future__ import division
 import numpy as np
 
+from keepers import Versionable,\
+                    Loggable
+
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
@@ -14,11 +17,8 @@ from nifty.spaces.power_space import PowerSpace
 import nifty.nifty_utilities as utilities
 from nifty.random import Random
 
-import logging
-logger = logging.getLogger('NIFTy.Field')
 
-
-class Field(object):
+class Field(Loggable, Versionable, object):
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, field_type=None,
@@ -116,7 +116,7 @@ class Field(object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                logger.info("Datamodel set to default!")
+                self.logger.info("Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(
@@ -309,7 +309,8 @@ class Field(object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_signal=True):
+    def power_synthesize(self, spaces=None, real_signal=True,
+                         mean=None, std=None):
         # assert that all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
@@ -356,7 +357,9 @@ class Field(object):
 
         result_list = [self.__class__.from_random(
                              'normal',
-                             result_domain,
+                             mean=mean,
+                             std=std,
+                             domain=result_domain,
                              dtype=harmonic_domain.dtype,
                              field_type=self.field_type,
                              distribution_strategy=self.distribution_strategy)
@@ -384,7 +387,7 @@ class Field(object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            logger.warn(
+            self.logger.warn(
                 "The distribution_stragey of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
@@ -392,13 +395,13 @@ class Field(object):
         # power spectrum into the appropriate places of the pindex array.
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
         local_pindex = pindex.get_local_data(copy=False)
-        local_spec = self.val.get_local_data(copy=False)
+        full_spec = self.val.get_full_data()
 
         local_blow_up = [slice(None)]*len(self.shape)
         local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
 
         # here, the power_spectrum is distributed into the new shape
-        local_rescaler = local_spec[local_blow_up]
+        local_rescaler = full_spec[local_blow_up]
 
         # apply the rescaler to the random fields
         result_val_list[0].apply_scalar_function(
@@ -428,7 +431,7 @@ class Field(object):
         if copy:
             new_val = new_val.copy()
         self._val = new_val
-        return self._val
+        return self
 
     def get_val(self, copy=False):
         if copy:
@@ -489,8 +492,10 @@ class Field(object):
         else:
             dtype = np.dtype(dtype)
 
+        casted_x = x
+
         for ind, sp in enumerate(self.domain):
-            casted_x = sp.pre_cast(x,
+            casted_x = sp.pre_cast(casted_x,
                                    axes=self.domain_axes[ind])
 
         for ind, ft in enumerate(self.field_type):
@@ -882,6 +887,53 @@ class Field(object):
                "\n- val         = " + repr(self.get_val()) + \
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group.attrs['dtype'] = self.dtype.name
+        hdf5_group.attrs['distribution_strategy'] = self.distribution_strategy
+        hdf5_group.attrs['field_type_axes'] = str(self.field_type_axes)
+        hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
+        hdf5_group['num_domain'] = len(self.domain)
+        hdf5_group['num_ft'] = len(self.field_type)
+
+        ret_dict = {'val': self.val}
+
+        for i in range(len(self.domain)):
+            ret_dict['s_' + str(i)] = self.domain[i]
+
+        for i in range(len(self.field_type)):
+            ret_dict['ft_' + str(i)] = self.field_type[i]
+
+        return ret_dict
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        # create empty field
+        new_field = EmptyField()
+        # reset class
+        new_field.__class__ = cls
+        # set values
+        temp_domain = []
+        for i in range(hdf5_group['num_domain'][()]):
+            temp_domain.append(repository.get('s_' + str(i), hdf5_group))
+        new_field.domain = tuple(temp_domain)
+
+        temp_ft = []
+        for i in range(hdf5_group['num_ft'][()]):
+            temp_domain.append(repository.get('ft_' + str(i), hdf5_group))
+        new_field.field_type = tuple(temp_ft)
+
+        exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
+        exec('new_field.field_type_axes = ' +
+             hdf5_group.attrs['field_type_axes'])
+        new_field._val = repository.get('val', hdf5_group)
+        new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
+        new_field.distribution_strategy =\
+            hdf5_group.attrs['distribution_strategy']
+
+        return new_field
 
 
 class EmptyField(Field):

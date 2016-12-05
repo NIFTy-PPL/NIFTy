@@ -146,8 +146,11 @@ import abc
 
 import numpy as np
 
+from keepers import Loggable,\
+                    Versionable
 
-class Space(object):
+
+class Space(Versionable, Loggable, object):
     """
         ..                            __             __
         ..                          /__/           /  /_
@@ -203,12 +206,13 @@ class Space(object):
         # parse dtype
         self.dtype = np.dtype(dtype)
 
-        self._ignore_for_hash = []
+        self._ignore_for_hash = ['_global_id']
 
     def __hash__(self):
         # Extract the identifying parts from the vars(self) dict.
         result_hash = 0
-        for (key, item) in vars(self).items():
+        for key in sorted(vars(self).keys()):
+            item = vars(self)[key]
             if key in self._ignore_for_hash or key == '_ignore_for_hash':
                 continue
             result_hash ^= item.__hash__() ^ int(hash(key)/117)
@@ -272,9 +276,13 @@ class Space(object):
     def post_cast(self, x, axes=None):
         return x
 
-    def compute_k_array(self, distribution_strategy):
+    def get_distance_array(self, distribution_strategy):
         raise NotImplementedError(
-            "There is no generic k_array for Space base class.")
+            "There is no generic distance structure for Space base class.")
+
+    def get_fft_smoothing_kernel_function(self, sigma):
+        raise NotImplementedError(
+            "There is no generic co-smoothing kernel for Space base class.")
 
     def hermitian_decomposition(self, x, axes=None):
         raise NotImplementedError
@@ -284,3 +292,15 @@ class Space(object):
         string += str(type(self)) + "\n"
         string += "dtype: " + str(self.dtype) + "\n"
         return string
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group.attrs['dtype'] = self.dtype.name
+
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        result = cls(dtype=np.dtype(hdf5_group.attrs['dtype']))
+        return result

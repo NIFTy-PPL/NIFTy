@@ -60,27 +60,3 @@ class EndomorphicOperator(LinearOperator):
     @abc.abstractproperty
     def symmetric(self):
         raise NotImplementedError
-
-    def trace(self):
-        pass
-
-    def inverse_trace(self):
-        pass
-
-    def diagonal(self):
-        pass
-
-    def inverse_diagonal(self):
-        pass
-
-    def determinant(self):
-        pass
-
-    def inverse_determinant(self):
-        pass
-
-    def log_determinant(self):
-        pass
-
-    def trace_log(self):
-        pass

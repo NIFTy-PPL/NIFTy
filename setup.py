@@ -39,14 +39,15 @@ setup(name="ift_nifty",
       zip_safe=False,
       ext_modules=cythonize([
           "nifty/operators/fft_operator/transformations/"
-          "lm_transformation_factory.pyx",
-          "nifty/spaces/lm_space/lm_helper.pyx"
+              "lm_transformation_factory.pyx",
+          "nifty/spaces/lm_space/lm_helper.pyx",
+          "nifty/operators/smoothing_operator/smooth_util.pyx"
       ]),
       include_dirs=[numpy.get_include()],
       dependency_links=[
-        'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers-0.2.0',
+        'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers-0.3.5',
         'git+https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o-1.0.4'],
-      install_requires=['keepers>=0.2.0', 'd2o>=1.0.4'],
+      install_requires=['keepers>=0.3.5', 'd2o>=1.0.4'],
       package_data={'nifty.demos': ['demo_faraday_map.npy'],
                     },
       license="GPLv3",

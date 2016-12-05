@@ -2,13 +2,14 @@
 
 import abc
 
+from keepers import Loggable
 from nifty.field import Field
 from nifty.spaces import Space
 from nifty.field_types import FieldType
 import nifty.nifty_utilities as utilities
 
 
-class LinearOperator(object):
+class LinearOperator(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
@@ -70,25 +71,25 @@ class LinearOperator(object):
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)
 
-    def times(self, x, spaces=None, types=None):
+    def times(self, x, spaces=None, types=None, **kwargs):
         spaces, types = self._check_input_compatibility(x, spaces, types)
 
         if not self.implemented:
             x = x.weight(spaces=spaces)
 
-        y = self._times(x, spaces, types)
+        y = self._times(x, spaces, types, **kwargs)
         return y
 
-    def inverse_times(self, x, spaces=None, types=None):
+    def inverse_times(self, x, spaces=None, types=None, **kwargs):
         spaces, types = self._check_input_compatibility(x, spaces, types,
                                                         inverse=True)
 
-        y = self._inverse_times(x, spaces, types)
+        y = self._inverse_times(x, spaces, types, **kwargs)
         if not self.implemented:
             y = y.weight(power=-1, spaces=spaces)
         return y
 
-    def adjoint_times(self, x, spaces=None, types=None):
+    def adjoint_times(self, x, spaces=None, types=None, **kwargs):
         if self.unitary:
             return self.inverse_times(x, spaces, types)
 
@@ -97,23 +98,23 @@ class LinearOperator(object):
 
         if not self.implemented:
             x = x.weight(spaces=spaces)
-        y = self._adjoint_times(x, spaces, types)
+        y = self._adjoint_times(x, spaces, types, **kwargs)
         return y
 
-    def adjoint_inverse_times(self, x, spaces=None, types=None):
+    def adjoint_inverse_times(self, x, spaces=None, types=None, **kwargs):
         if self.unitary:
             return self.times(x, spaces, types)
 
         spaces, types = self._check_input_compatibility(x, spaces, types)
 
-        y = self._adjoint_inverse_times(x, spaces, types)
+        y = self._adjoint_inverse_times(x, spaces, types, **kwargs)
         if not self.implemented:
             y = y.weight(power=-1, spaces=spaces)
         return y
 
-    def inverse_adjoint_times(self, x, spaces=None, types=None):
+    def inverse_adjoint_times(self, x, spaces=None, types=None, **kwargs):
         if self.unitary:
-            return self.times(x, spaces, types)
+            return self.times(x, spaces, types, **kwargs)
 
         spaces, types = self._check_input_compatibility(x, spaces, types)
 

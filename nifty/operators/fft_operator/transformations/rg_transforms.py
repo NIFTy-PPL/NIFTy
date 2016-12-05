@@ -5,13 +5,12 @@ from d2o import distributed_data_object, STRATEGIES
 from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 
-import logging
-logger = logging.getLogger('NIFTy.RGTransforms')
+from keepers import Loggable
 
 pyfftw = gdi.get('pyfftw')
 
 
-class Transform(object):
+class Transform(Loggable, object):
     """
         A generic fft object without any implementation.
     """
@@ -165,24 +164,26 @@ class FFTW(Transform):
             self.centering_mask_dict[temp_id] = centering_mask
         return self.centering_mask_dict[temp_id]
 
-    def _get_transform_info(self, domain, codomain, local_shape,
+    def _get_transform_info(self, domain, codomain, axes, local_shape,
                             local_offset_Q, is_local, transform_shape=None,
                             **kwargs):
         # generate a id-tuple which identifies the domain-codomain setting
         temp_id = (domain.__hash__() ^
                    (101 * codomain.__hash__()) ^
-                   (211 * transform_shape.__hash__()))
+                   (211 * transform_shape.__hash__()) ^
+                   (131 * is_local.__hash__())
+                   )
 
         # generate the plan_and_info object if not already there
         if temp_id not in self.info_dict:
             if is_local:
                 self.info_dict[temp_id] = FFTWLocalTransformInfo(
-                    domain, codomain, local_shape,
+                    domain, codomain, axes, local_shape,
                     local_offset_Q, self, **kwargs
                 )
             else:
                 self.info_dict[temp_id] = FFTWMPITransfromInfo(
-                    domain, codomain, local_shape,
+                    domain, codomain, axes, local_shape,
                     local_offset_Q, self, transform_shape, **kwargs
                 )
 
@@ -218,7 +219,6 @@ class FFTW(Transform):
         return val * mask
 
     def _atomic_mpi_transform(self, val, info, axes):
-
         # Apply codomain centering mask
         if reduce(lambda x, y: x + y, self.codomain.zerocenter):
             temp_val = np.copy(val)
@@ -250,17 +250,16 @@ class FFTW(Transform):
         # val must be numpy array or d2o with slicing distributor
         ###
 
-        local_offset_Q = False
         try:
             local_val = val.get_local_data(copy=False)
-            if axes is None or 0 in axes:
-                local_offset_Q = val.distributor.local_shape[0] % 2
         except(AttributeError):
             local_val = val
+
         current_info = self._get_transform_info(self.domain,
                                                 self.codomain,
+                                                axes,
                                                 local_shape=local_val.shape,
-                                                local_offset_Q=local_offset_Q,
+                                                local_offset_Q=False,
                                                 is_local=True,
                                                 **kwargs)
 
@@ -297,7 +296,7 @@ class FFTW(Transform):
 
     def _repack_to_fftw_and_transform(self, val, axes, **kwargs):
         temp_val = val.copy_empty(distribution_strategy='fftw')
-        logger.info("Repacking d2o to fftw distribution strategy")
+        self.logger.info("Repacking d2o to fftw distribution strategy")
         temp_val.set_full_data(val, copy=False)
 
         # Recursive call to transform
@@ -311,14 +310,10 @@ class FFTW(Transform):
 
     def _mpi_transform(self, val, axes, **kwargs):
 
-        if axes is None or 0 in axes:
-            local_offset_list = np.cumsum(
-                np.concatenate([[0, ], val.distributor.all_local_slices[:, 2]])
-            )
-            local_offset_Q = bool(
-                local_offset_list[val.distributor.comm.rank] % 2)
-        else:
-            local_offset_Q = False
+        local_offset_list = np.cumsum(
+            np.concatenate([[0, ], val.distributor.all_local_slices[:, 2]])
+        )
+        local_offset_Q = bool(local_offset_list[val.distributor.comm.rank] % 2)
 
         return_val = val.copy_empty(global_shape=val.shape,
                                     dtype=self.codomain.dtype)
@@ -355,15 +350,20 @@ class FFTW(Transform):
             if len(inp.shape) == 1:
                 original_shape = inp.shape
                 inp = inp.reshape(inp.shape[0], 1)
+                axes = (0, )
 
             if current_info is None:
+                transform_shape = list(inp.shape)
+                transform_shape[0] = val.shape[0]
+
                 current_info = self._get_transform_info(
                     self.domain,
                     self.codomain,
+                    axes,
                     local_shape=val.local_shape,
                     local_offset_Q=local_offset_Q,
                     is_local=False,
-                    transform_shape=inp.shape,
+                    transform_shape=tuple(transform_shape),
                     **kwargs
                 )
 
@@ -444,20 +444,22 @@ class FFTW(Transform):
 
 
 class FFTWTransformInfo(object):
-    def __init__(self, domain, codomain, local_shape,
+    def __init__(self, domain, codomain, axes, local_shape,
                  local_offset_Q, fftw_context, **kwargs):
         if pyfftw is None:
             raise ImportError("The module pyfftw is needed but not available.")
 
-        self.cmask_domain = fftw_context.get_centering_mask(
-            domain.zerocenter,
-            local_shape,
-            local_offset_Q)
+        shape = (local_shape if axes is None else
+                 [y for x, y in enumerate(local_shape) if x in axes])
+
+        self.cmask_domain = fftw_context.get_centering_mask(domain.zerocenter,
+                                                            shape,
+                                                            local_offset_Q)
 
         self.cmask_codomain = fftw_context.get_centering_mask(
-            codomain.zerocenter,
-            local_shape,
-            local_offset_Q)
+                                                        codomain.zerocenter,
+                                                        shape,
+                                                        local_offset_Q)
 
         # If both domain and codomain are zero-centered the result,
         # will get a global minus. Store the sign to correct it.
@@ -491,10 +493,11 @@ class FFTWTransformInfo(object):
 
 
 class FFTWLocalTransformInfo(FFTWTransformInfo):
-    def __init__(self, domain, codomain, local_shape,
+    def __init__(self, domain, codomain, axes, local_shape,
                  local_offset_Q, fftw_context, **kwargs):
         super(FFTWLocalTransformInfo, self).__init__(domain,
                                                      codomain,
+                                                     axes,
                                                      local_shape,
                                                      local_offset_Q,
                                                      fftw_context,
@@ -510,10 +513,11 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
 
 
 class FFTWMPITransfromInfo(FFTWTransformInfo):
-    def __init__(self, domain, codomain, local_shape,
+    def __init__(self, domain, codomain, axes, local_shape,
                  local_offset_Q, fftw_context, transform_shape, **kwargs):
         super(FFTWMPITransfromInfo, self).__init__(domain,
                                                    codomain,
+                                                   axes,
                                                    local_shape,
                                                    local_offset_Q,
                                                    fftw_context,

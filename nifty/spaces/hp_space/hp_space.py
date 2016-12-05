@@ -35,6 +35,8 @@ from __future__ import division
 
 import numpy as np
 
+import d2o
+
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc, \
                          dependency_injector as gdi
@@ -169,7 +171,7 @@ class HPSpace(Space):
         -------
         dists: distributed_data_object
         """
-        dists = arange(
+        dists = d2o.arange(
             start=0, stop=self.shape[0],
             distribution_strategy=distribution_strategy
         )
@@ -183,7 +185,7 @@ class HPSpace(Space):
 
         return dists
 
-    def get_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma):
         if sigma is None:
             sigma = np.sqrt(2) * np.pi
 
@@ -201,3 +203,18 @@ class HPSpace(Space):
             raise ValueError(
                 "nside must be positive and a multiple of 2.")
         return nside
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['nside'] = self.nside
+        hdf5_group['dtype'] = self.dtype.name
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        result = cls(
+            nside=hdf5_group['nside'][()],
+            dtype=np.dtype(hdf5_group['dtype'][()])
+            )
+        return result

@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import pickle
 import numpy as np
+from keepers import Versionable
 
 
-class FieldType(object):
+class FieldType(Versionable, object):
     def __init__(self, shape, dtype):
         try:
             new_shape = tuple([int(i) for i in shape])
@@ -56,3 +58,19 @@ class FieldType(object):
 
     def post_cast(self, x, axes=None):
         return x
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['shape'] = self.shape
+        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, loopback_get):
+        result = cls(
+            hdf5_group['shape'][:],
+            pickle.loads(hdf5_group['dtype'][()])
+            )
+        return result

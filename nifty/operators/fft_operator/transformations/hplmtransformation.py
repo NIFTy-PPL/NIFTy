@@ -18,7 +18,8 @@ class HPLMTransformation(SlicingTransformation):
             raise ImportError(
                 "The module healpy is needed but not available")
 
-        super(HPLMTransformation, self).__init__(domain, codomain, module)
+        super(HPLMTransformation, self).__init__(domain, codomain,
+                                                 module=module)
 
     # ---Mandatory properties and methods---
 

@@ -9,9 +9,6 @@ from nifty.config import nifty_configuration as gc
 from nifty.field import Field
 from nifty.operators.endomorphic_operator import EndomorphicOperator
 
-import logging
-logger = logging.getLogger('NIFTy.DiagonalOperator')
-
 
 class DiagonalOperator(EndomorphicOperator):
 
@@ -119,7 +116,7 @@ class DiagonalOperator(EndomorphicOperator):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                logger.info("Datamodel set to default!")
+                self.logger.info("Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['all']:
             raise ValueError(

@@ -4,35 +4,33 @@ from rg_transforms import FFTW, GFFT
 from nifty.config import dependency_injector as gdi
 from nifty import RGSpace, nifty_configuration
 
-import logging
-logger = logging.getLogger('NIFTy.RGRGTransformation')
-
 
 class RGRGTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        super(RGRGTransformation, self).__init__(domain, codomain, module)
+        super(RGRGTransformation, self).__init__(domain, codomain,
+                                                 module=module)
 
         if module is None:
             if nifty_configuration['fft_module'] == 'pyfftw':
-                self._transform = FFTW(domain, codomain)
+                self._transform = FFTW(self.domain, self.codomain)
             elif (nifty_configuration['fft_module'] == 'gfft' or
                   nifty_configuration['fft_module'] == 'gfft_dummy'):
                 self._transform = \
-                    GFFT(domain,
-                         codomain,
+                    GFFT(self.domain,
+                         self.codomain,
                          gdi.get(nifty_configuration['fft_module']))
             else:
                 raise ValueError('ERROR: unknow default FFT module:' +
                                  nifty_configuration['fft_module'])
         else:
             if module == 'pyfftw':
-                self._transform = FFTW(domain, codomain)
+                self._transform = FFTW(self.domain, self.codomain)
             elif module == 'gfft':
                 self._transform = \
-                    GFFT(domain, codomain, gdi.get('gfft'))
+                    GFFT(self.domain, self.codomain, gdi.get('gfft'))
             elif module == 'gfft_dummy':
                 self._transform = \
-                    GFFT(domain, codomain, gdi.get('gfft_dummy'))
+                    GFFT(self.domain, self.codomain, gdi.get('gfft_dummy'))
             else:
                 raise ValueError('ERROR: unknow FFT module:' + module)
 
@@ -84,8 +82,8 @@ class RGRGTransformation(Transformation):
         cls.check_codomain(domain, new_space)
         return new_space
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, RGSpace):
             raise TypeError('ERROR: domain is not a RGSpace')
 
@@ -104,7 +102,7 @@ class RGRGTransformation(Transformation):
 
         if codomain.harmonic and not issubclass(codomain.dtype.type,
                                                 np.complexfloating):
-            logger.warn("codomain is harmonic but dtype is real.")
+            cls.logger.warn("Codomain is harmonic but dtype is real.")
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
         if not np.all(
