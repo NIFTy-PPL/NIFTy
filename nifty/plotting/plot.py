@@ -154,24 +154,27 @@ class HeatMap(_PlotBase, _Plot2D):
             ply_object['type'] = 'heatmapgl'
         else:
             ply_object['type'] = 'heatmap'
-        ply_object['zsmooth'] = self.smoothing
+        if self.smoothing:
+            ply_object['zsmooth'] = self.smoothing
         return ply_object
 
 class Axis(_PlotlyWrapper):
-    def __init__(self, text, font='', color='', log=False):
+    def __init__(self, text=None, font='', color='', log=False):
         self.text = text
         self.font = font
         self.color = color
         self.log = log
 
     def _to_plotly(self):
-        ply_object = dict(
-            title=self.text,
-            titlefont=dict(
-                family=self.font,
-                color=self.color
-            )
-        )
+        ply_object = dict()
+        if self.text:
+            ply_object.update(dict(
+                title=self.text,
+                titlefont=dict(
+                    family=self.font,
+                    color=self.color
+                )
+            ))
         if self.log:
             ply_object['type'] = 'log'
 
@@ -273,6 +276,7 @@ class Figure(_PlotlyWrapper):
 
 
 def plot(figure, filename=None):
+    print (figure._to_plotly())
     if not filename:
         filename = os.path.abspath('/tmp/temp-plot.html')
     ply_offline.plot(figure._to_plotly(), filename=filename)
@@ -293,25 +297,47 @@ def plot_image(figure, filename=None, show=False):
 
 
 # test
+
+import numpy as np
+
+N = 1000
+x = np.random.randn(N)
+y = np.random.randn(N)
+z = np.random.randn(N)
+
 #
-# import numpy as np
+# data = [[1,2,3], [1,2,3], [1,2,3]]
+# h = HeatMap(data)
+# plot(Figure([h]))
 #
-# N = 1000
-# x = np.random.randn(N)
-# y = np.random.randn(N)
-# z = np.random.randn(N)
-#
-# #
-# # data = [[1,2,3], [1,2,3], [1,2,3]]
-# # h = HeatMap(data)
-# # plot(Figure([h]))
-# #
-# # s3 = Scatter3D(x, y, z)
-# # plot(Figure([s3]))
-#
+# s3 = Scatter3D(x, y, z)
+# plot(Figure([s3]))
+
 # s = Scatter2D(y=y, label='this is label')
 # s2 = Scatter2D(x=x, y=x, marker=Marker(color='red'), line=Line(width=10))
 # fig = Figure([s,s2], title='PAM', xaxis=Axis('I AM X', color='blue'))
-#
-# plot(fig)
+import PIL
+
+import urllib, cStringIO
+import numpy as np
+
+
+
+image_url = 'https://images.plot.ly/plotly-documentation/images/heatmap-galaxy.jpg'
+f = cStringIO.StringIO(urllib.urlopen(image_url).read())
+img = PIL.Image.open(f)
+
+
+
+arr = np.array(img)
+z_data = []
+
+
+for i in range(500):
+    k = []
+    for j in range(500):
+        k.append(sum(arr[i][j]))
+    z_data.append(k)
+
+plot(Figure([HeatMap(z_data)],xaxis=Axis(log=True), yaxis=Axis(log=True)))
 
