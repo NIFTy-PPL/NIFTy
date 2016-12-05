@@ -17,7 +17,8 @@ class LMGLTransformation(SlicingTransformation):
             raise ImportError(
                 "The module libsharp is needed but not available.")
 
-        super(LMGLTransformation, self).__init__(domain, codomain, module)
+        super(LMGLTransformation, self).__init__(domain, codomain,
+                                                 module=module)
 
     # ---Mandatory properties and methods---
 
