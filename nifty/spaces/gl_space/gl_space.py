@@ -208,3 +208,22 @@ class GLSpace(Space):
                 self.logger.warn("nlon was set to an unrecommended value: "
                                  "nlon <> 2*nlat-1.")
         return nlon
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['nlat'] = self.nlat
+        hdf5_group['nlon'] = self.nlon
+        hdf5_group['dtype'] = self.dtype.name
+
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        result = cls(
+            nlat=hdf5_group['nlat'][()],
+            nlon=hdf5_group['nlon'][()],
+            dtype=np.dtype(hdf5_group['dtype'][()])
+            )
+
+        return result

@@ -180,3 +180,18 @@ class LMSpace(Space):
         if (lmax % 2 == 0) and (lmax > 2):
             self.logger.warn("Unrecommended parameter (lmax <> 2*n+1).")
         return lmax
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['lmax'] = self.lmax
+        hdf5_group['dtype'] = self.dtype.name
+        return None
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        result = cls(
+            lmax=hdf5_group['lmax'][()],
+            dtype=np.dtype(hdf5_group['dtype'][()])
+            )
+        return result

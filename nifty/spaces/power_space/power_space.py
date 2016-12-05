@@ -154,3 +154,47 @@ class PowerSpace(Space):
     @property
     def k_array(self):
         return self._k_array
+
+    # ---Serialization---
+
+    def _to_hdf5(self, hdf5_group):
+        hdf5_group['kindex'] = self.kindex
+        hdf5_group['rho'] = self.rho
+        hdf5_group['pundex'] = self.pundex
+        hdf5_group.attrs['dtype'] = self.dtype.name
+        hdf5_group['log'] = self.log
+        # Store nbin as string, since it can be None
+        hdf5_group.attrs['nbin'] = str(self.nbin)
+        hdf5_group.attrs['binbounds'] = str(self.binbounds)
+
+        return {
+            'harmonic_domain': self.harmonic_domain,
+            'pindex': self.pindex,
+            'k_array': self.k_array
+        }
+
+    @classmethod
+    def _from_hdf5(cls, hdf5_group, repository):
+        # make an empty PowerSpace object
+        new_ps = EmptyPowerSpace()
+        # reset class
+        new_ps.__class__ = cls
+        # set all values
+        new_ps.dtype = np.dtype(hdf5_group.attrs['dtype'])
+        new_ps._harmonic_domain = repository.get('harmonic_domain', hdf5_group)
+        new_ps._log = hdf5_group['log'][()]
+        exec('new_ps._nbin = ' + hdf5_group.attrs['nbin'])
+        exec('new_ps._binbounds = ' + hdf5_group.attrs['binbounds'])
+
+        new_ps._pindex = repository.get('pindex', hdf5_group)
+        new_ps._kindex = hdf5_group['kindex'][:]
+        new_ps._rho = hdf5_group['rho'][:]
+        new_ps._pundex = hdf5_group['pundex'][:]
+        new_ps._k_array = repository.get('k_array', hdf5_group)
+
+        return new_ps
+
+
+class EmptyPowerSpace(PowerSpace):
+    def __init__(self):
+        pass
