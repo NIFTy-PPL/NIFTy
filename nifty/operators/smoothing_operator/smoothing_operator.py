@@ -3,7 +3,7 @@ import numpy as np
 import nifty.nifty_utilities as utilities
 from nifty.operators.endomorphic_operator import EndomorphicOperator
 from nifty.operators.fft_operator import FFTOperator
-import smooth_util as su
+from nifty.operators.smoothing_operator import smooth_util as su
 from d2o import STRATEGIES
 
 
