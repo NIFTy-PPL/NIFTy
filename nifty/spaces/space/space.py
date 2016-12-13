@@ -149,8 +149,9 @@ import numpy as np
 from keepers import Loggable,\
                     Versionable
 
+from nifty.plotting import Plottable
 
-class Space(Versionable, Loggable, object):
+class Space(Versionable, Loggable, Plottable, object):
     """
         ..                            __             __
         ..                          /__/           /  /_
