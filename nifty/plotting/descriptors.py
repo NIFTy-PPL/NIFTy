@@ -28,7 +28,7 @@ class Axis(_PlotlyWrapper):
         self.font = font
         self.color = color
         self.log = log
-        self.aspectRatio = aspect_ratio
+        self.aspect_ratio = aspect_ratio
 
     def _to_plotly(self):
         ply_object = dict()
