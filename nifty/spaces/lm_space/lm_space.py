@@ -111,7 +111,14 @@ class LMSpace(Space):
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
 
-    # ---Mandatory properties and methods---
+    def hermitian_decomposition(self, x, axes=None):
+        hermitian_part = x.copy_empty()
+        anti_hermitian_part = x.copy_empty()
+        hermitian_part[:] = x.real
+        anti_hermitian_part[:] = x.imag
+        return (hermitian_part, anti_hermitian_part)
+
+        # ---Mandatory properties and methods---
 
     @property
     def harmonic(self):
