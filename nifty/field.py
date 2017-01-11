@@ -802,7 +802,7 @@ class Field(Loggable, Versionable, object):
         if inplace:
             working_field = self
         else:
-            working_field = self.copy_empty()
+            working_field = self.copy_empty(dtype=return_val.dtype)
 
         working_field.set_val(return_val, copy=False)
         return working_field
