@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import sys
+
 import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
-
-from nifty.config import dependency_injector as gdi
-
-MPI = gdi['MPI']
 
 
 class PowerIndices(object):
@@ -299,6 +297,9 @@ class PowerIndices(object):
             global_pundex = np.empty_like(local_pundex)
             # Store the individual pundices in the local_pundex array
             local_pundex[temp_uniqued_pindex] = local_temp_pundex
+            # Extract the MPI module from the global_pindex d2o
+            MPI_name = global_pindex.comm.__class__.__module__
+            MPI = sys.modules(MPI_name)
             # Use Allreduce to find the first occurences/smallest pundices
             global_pindex.comm.Allreduce(local_pundex,
                                          global_pundex,
