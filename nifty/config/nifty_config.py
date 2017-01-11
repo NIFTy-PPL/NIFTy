@@ -73,19 +73,13 @@ variable_default_distribution_strategy = keepers.Variable(
                                          if z == 'fftw' else True),
                               genus='str')
 
-variable_default_comm = keepers.Variable(
-                     'default_comm',
-                     ['COMM_WORLD'],
-                     lambda z: hasattr(dependency_injector['MPI'], z))
-
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
                  variables=[variable_fft_module,
                             variable_use_healpy,
                             variable_use_libsharp,
                             variable_default_field_dtype,
-                            variable_default_distribution_strategy,
-                            variable_default_comm],
+                            variable_default_distribution_strategy],
                  file_name='NIFTy.conf',
                  search_pathes=[os.path.expanduser('~') + "/.config/nifty/",
                                 os.path.expanduser('~') + "/.config/",
