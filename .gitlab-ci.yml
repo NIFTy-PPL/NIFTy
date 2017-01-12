@@ -73,6 +73,6 @@ release_image:
   services:
     - docker:dind
   script:
-    - docker login -u foxymoron -p SupernovaProgenitorsII1@3
+    - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
     - docker build -t $RELEASE_IMAGE .
     - docker push $RELEASE_IMAGE
