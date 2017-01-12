@@ -1,0 +1,78 @@
+image: ubuntu:latest
+
+stages:
+  - test
+  - release
+
+variables:
+  DOCKER_DRIVER: overlay
+  RELEASE_IMAGE: iftmpa/nifty:ci_test
+
+before_script:
+  - apt-get update
+  - >
+    apt-get install -y build-essential python python-pip python-dev git 
+    gfortran autoconf gsl-bin libgsl-dev
+  - pip install -r ci/requirements_base.txt
+  - chmod +x ci/*.sh
+
+test_min:
+  stage: test
+  script:
+    - python setup.py build_ext --inplace
+    - nosetests -vv
+
+test_mpi:
+  stage: test
+  script:
+    - apt-get install -y openmpi-bin libopenmpi-dev
+    - pip install astropy healpy mpi4py
+    - pip install git+https://github.com/mrbell/gfft
+    - ci/install_libsharp.sh
+    - python setup.py build_ext --inplace
+    - nosetests -vv
+
+test_mpi_fftw:
+  stage: test
+  script:
+    - apt-get install -y openmpi-bin libopenmpi-dev
+    - >
+      apt-get install -y libatlas-base-dev libfftw3-bin libfftw3-dev
+      libfftw3-double3 libfftw3-long3 libfftw3-mpi-dev libfftw3-mpi3
+      libfftw3-quad3 libfftw3-single3
+    - pip install astropy healpy mpi4py
+    - pip install git+https://github.com/mrbell/gfft
+    - ci/install_libsharp.sh
+    - ci/install_pyfftw.sh
+    - python setup.py build_ext --inplace
+    - nosetests -vv
+
+test_mpi_fftw_hdf5:
+  stage: test
+  script:
+    - apt-get install -y openmpi-bin libopenmpi-dev
+    - >
+      apt-get install -y libatlas-base-dev libfftw3-bin libfftw3-dev
+      libfftw3-double3 libfftw3-long3 libfftw3-mpi-dev libfftw3-mpi3
+      libfftw3-quad3 libfftw3-single3
+    - >
+      apt-get install -y libhdf5-10 libhdf5-dev libhdf5-openmpi-10
+      libhdf5-openmpi-dev hdf5-tools python-h5py
+    - pip install astropy healpy mpi4py
+    - pip install git+https://github.com/mrbell/gfft
+    - ci/install_libsharp.sh
+    - ci/install_pyfftw.sh
+    - python setup.py build_ext --inplace
+    - nosetests -vv
+
+release_image:
+  image: docker:latest
+  stage: release
+  before_script:
+    - pwd
+  services:
+    - docker:dind
+  script:
+    - docker login -u foxymoron -p SupernovaProgenitorsII1@3
+    - docker build -t $RELEASE_IMAGE .
+    - docker push $RELEASE_IMAGE
