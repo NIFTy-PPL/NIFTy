@@ -299,7 +299,7 @@ class PowerIndices(object):
             local_pundex[temp_uniqued_pindex] = local_temp_pundex
             # Extract the MPI module from the global_pindex d2o
             MPI_name = global_pindex.comm.__class__.__module__
-            MPI = sys.modules(MPI_name)
+            MPI = sys.modules[MPI_name]
             # Use Allreduce to find the first occurences/smallest pundices
             global_pindex.comm.Allreduce(local_pundex,
                                          global_pundex,
