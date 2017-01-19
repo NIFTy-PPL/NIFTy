@@ -7,7 +7,7 @@ stages:
 variables:
   DOCKER_DRIVER: overlay
   RELEASE_IMAGE_MASTER: iftmpa/nifty:dev
-  RELEASE_IMAGE_MASTER: iftmpa/nifty:$CI_BUILD_TAG
+  RELEASE_IMAGE_TAGGED: iftmpa/nifty:$CI_BUILD_TAG
 
 before_script:
   - apt-get update
