@@ -32,3 +32,5 @@ from smoothing_operator import SmoothingOperator
 from fft_operator import *
 
 from propagator_operator import PropagatorOperator
+
+from composed_operator import ComposedOperator
