@@ -6,7 +6,8 @@ stages:
 
 variables:
   DOCKER_DRIVER: overlay
-  RELEASE_IMAGE: iftmpa/nifty:ci_test
+  RELEASE_IMAGE_MASTER: iftmpa/nifty:dev
+  RELEASE_IMAGE_MASTER: iftmpa/nifty:$CI_BUILD_TAG
 
 before_script:
   - apt-get update
@@ -65,7 +66,7 @@ test_mpi_fftw_hdf5:
     - python setup.py build_ext --inplace
     - nosetests -vv
 
-release_image:
+release_image_master:
   image: docker:latest
   stage: release
   before_script:
@@ -74,5 +75,21 @@ release_image:
     - docker:dind
   script:
     - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
-    - docker build -t $RELEASE_IMAGE .
-    - docker push $RELEASE_IMAGE
+    - docker build -t $RELEASE_IMAGE_MASTER .
+    - docker push $RELEASE_IMAGE_MASTER
+  only:
+    - master
+
+release_image_tagged:
+  image: docker:latest
+  stage: release
+  before_script:
+    - pwd
+  services:
+    - docker:dind
+  script:
+    - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
+    - docker build -t $RELEASE_IMAGE_TAGGED .
+    - docker push $RELEASE_IMAGE_TAGGED
+  only:
+    - tags
