@@ -286,8 +286,9 @@ class FFTW(Transform):
 
         try:
             # Create return object and insert results inplace
+            result_dtype = np.result_type(np.complex, self.codomain.dtype)
             return_val = val.copy_empty(global_shape=val.shape,
-                                        dtype=self.codomain.dtype)
+                                        dtype=result_dtype)
             return_val.set_local_data(data=local_result, copy=False)
         except(AttributeError):
             return_val = local_result
@@ -315,8 +316,9 @@ class FFTW(Transform):
         )
         local_offset_Q = bool(local_offset_list[val.distributor.comm.rank] % 2)
 
+        result_dtype = np.result_type(np.complex, self.codomain.dtype)
         return_val = val.copy_empty(global_shape=val.shape,
-                                    dtype=self.codomain.dtype)
+                                    dtype=result_dtype)
 
         # Extract local data
         local_val = val.get_local_data(copy=False)
@@ -337,7 +339,7 @@ class FFTW(Transform):
                 if temp_val is None:
                     temp_val = np.empty_like(
                         local_val,
-                        dtype=self.codomain.dtype
+                        dtype=result_dtype
                     )
                 inp = local_val[slice_list]
 
@@ -620,11 +622,12 @@ class GFFT(Transform):
             else:
                 return_val[slice_list] = inp
 
+        result_dtype = np.result_type(np.complex, self.codomain.dtype)
         if isinstance(val, distributed_data_object):
-            new_val = val.copy_empty(dtype=self.codomain.dtype)
+            new_val = val.copy_empty(dtype=result_dtype)
             new_val.set_full_data(return_val, copy=False)
             return_val = new_val
         else:
-            return_val = return_val.astype(self.codomain.dtype, copy=False)
+            return_val = return_val.astype(result_type, copy=False)
 
         return return_val
