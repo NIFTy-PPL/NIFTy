@@ -63,6 +63,25 @@ class ComposedOperator(LinearOperator):
         return False
 
     def _times(self, x, spaces, types):
+        return self._times_helper(x, spaces, types, func='times')
+
+    def _adjoint_times(self, x, spaces, types):
+        return self._inverse_times_helper(x, spaces, types,
+                                          func='adjoint_times')
+
+    def _inverse_times(self, x, spaces, types):
+        return self._inverse_times_helper(x, spaces, types,
+                                          func='inverse_times')
+
+    def _adjoint_inverse_times(self, x, spaces, types):
+        return self._times_helper(x, spaces, types,
+                                  func='adjoint_inverse_times')
+
+    def _inverse_adjoint_times(self, x, spaces, types):
+        return self._times_helper(x, spaces, types,
+                                  func='inverse_adjoint_times')
+
+    def _times_helper(self, x, spaces, types, func):
         space_index = 0
         type_index = 0
         if spaces is None:
@@ -76,5 +95,23 @@ class ComposedOperator(LinearOperator):
             active_types = types[type_index:type_index+len(op.field_type)]
             type_index += len(op.field_type)
 
-            x = op(x, spaces=active_spaces, types=active_types)
+            x = getattr(op, func)(x, spaces=active_spaces, types=active_types)
+        return x
+
+    def _inverse_times_helper(self, x, spaces, types, func):
+        space_index = 0
+        type_index = 0
+        if spaces is None:
+            spaces = range(len(self.target))[::-1]
+        if types is None:
+            types = range(len(self.field_type_target))[::-1]
+        for op in reversed(self._operator_store):
+            active_spaces = spaces[space_index:space_index+len(op.target)]
+            space_index += len(op.target)
+
+            active_types = types[type_index:
+                                 type_index+len(op.field_type_target)]
+            type_index += len(op.field_type_target)
+
+            x = getattr(op, func)(x, spaces=active_spaces, types=active_types)
         return x
