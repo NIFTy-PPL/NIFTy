@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from nose_parameterized import parameterized
 import unittest
 
 import numpy as np
@@ -16,15 +15,8 @@ from nifty import Field,\
 from d2o import distributed_data_object,\
                 STRATEGIES
 
+from test.common import expand
 
-def custom_name_func(testcase_func, param_num, param):
-    return "%s_%s" % (
-        testcase_func.__name__,
-        parameterized.to_safe_name("_".join(str(x) for x in param.args)),
-    )
-
-expand = lambda z: parameterized.expand(z,
-                                        testcase_func_name=custom_name_func)
 np.random.seed(123)
 
 SPACES = [RGSpace((4,), dtype=np.float), RGSpace((5), dtype=np.complex)]
