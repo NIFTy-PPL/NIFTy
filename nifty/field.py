@@ -482,7 +482,7 @@ class Field(Loggable, Versionable, object):
         try:
             return reduce(lambda x, y: x * y, volume_tuple)
         except TypeError:
-            return 0
+            return 0.
 
     # ---Special unary/binary operations---
 
