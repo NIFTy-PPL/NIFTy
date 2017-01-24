@@ -6,7 +6,7 @@ import numpy as np
 from numpy.testing import assert_,\
                           assert_equal
 
-import itertools
+from itertools import product
 
 from nifty import Field,\
                   RGSpace,\
@@ -24,21 +24,23 @@ SPACE_COMBINATIONS = [SPACES[0], SPACES[1], SPACES]
 
 
 class Test_Interface(unittest.TestCase):
-    @expand([['dtype', np.dtype],
-             ['distribution_strategy', str],
-             ['domain', tuple],
-             ['field_type', tuple],
-             ['domain_axes', tuple],
-             ['field_type_axes', tuple],
-             ['val', distributed_data_object],
-             ['shape', tuple],
-             ['dim', np.int],
-             ['dof', np.int],
-             ['total_volume', np.float]])
-    def test_return_types(self, attribute, desired_type):
-        x = RGSpace(shape=(4,))
+    @expand(product(SPACE_COMBINATIONS,
+                    [['dtype', np.dtype],
+                     ['distribution_strategy', str],
+                     ['domain', tuple],
+                     ['field_type', tuple],
+                     ['domain_axes', tuple],
+                     ['field_type_axes', tuple],
+                     ['val', distributed_data_object],
+                     ['shape', tuple],
+                     ['dim', np.int],
+                     ['dof', np.int],
+                     ['total_volume', np.float]]))
+    def test_return_types(self, domain, attribute_desired_type):
+        attribute = attribute_desired_type[0]
+        desired_type = attribute_desired_type[1]
         ft = FieldArray(shape=(2,), dtype=np.complex)
-        f = Field(domain=x, field_type=ft)
+        f = Field(domain=domain, field_type=ft)
         assert_(isinstance(getattr(f, attribute), desired_type))
 
 #class Test_Initialization(unittest.TestCase):

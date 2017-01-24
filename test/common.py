@@ -7,5 +7,7 @@ def custom_name_func(testcase_func, param_num, param):
         parameterized.to_safe_name("_".join(str(x) for x in param.args)),
     )
 
-expand = lambda z: parameterized.expand(z,
-                                        testcase_func_name=custom_name_func)
+
+def expand(*args, **kwargs):
+    return parameterized.expand(*args, testcase_func_name=custom_name_func,
+                                **kwargs)
