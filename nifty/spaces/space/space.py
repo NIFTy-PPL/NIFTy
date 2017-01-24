@@ -150,8 +150,7 @@ from keepers import Loggable,\
                     Versionable
 
 
-
-class Space(Versionable, Loggable, Plottable, object):
+class Space(Versionable, Loggable, object):
     """
         ..                            __             __
         ..                          /__/           /  /_
