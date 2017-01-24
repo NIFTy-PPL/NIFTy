@@ -74,7 +74,7 @@ class LMSpace(Space):
             Pixel volume of the :py:class:`lm_space`, which is always 1.
     """
 
-    def __init__(self, lmax, dtype=np.dtype('complex128')):
+    def __init__(self, lmax, dtype=None):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -131,11 +131,12 @@ class LMSpace(Space):
     @property
     def dim(self):
         l = self.lmax
-        m = self.mmax
         # the LMSpace consist of the full triangle (including -m's!),
         # minus two little triangles if mmax < lmax
         # dim = (((2*(l+1)-1)+1)**2/4 - 2 * (l-m)(l-m+1)/2
-        return np.int((l+1)**2 - (l-m)*(l-m+1.))
+        # dim = np.int((l+1)**2 - (l-m)*(l-m+1.))
+        # We fix l == m
+        return np.int((l+1)**2)
 
     @property
     def total_volume(self):
