@@ -55,7 +55,7 @@ from spaces import *
 
 from operators import *
 
-from probing import *
+#from probing import *
 
 from sugar import *
 
