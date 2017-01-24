@@ -234,8 +234,9 @@ def cast_axis_to_tuple(axis, length):
     # shift negative indices to positive ones
     axis = tuple(item if (item >= 0) else (item + length) for item in axis)
 
+    # Deactivated this, in order to allow for the ComposedOperator
     # remove duplicate entries
-    axis = tuple(set(axis))
+    # axis = tuple(set(axis))
 
     # assert that all entries are elements in [0, length]
     for elem in axis:

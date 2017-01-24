@@ -71,7 +71,7 @@ class GLSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, nlat=2, nlon=None, dtype=np.dtype('float')):
+    def __init__(self, nlat=2, nlon=None, dtype=None):
         """
             Sets the attributes for a gl_space class instance.
 

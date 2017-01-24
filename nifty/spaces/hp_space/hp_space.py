@@ -96,7 +96,7 @@ class HPSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, nside=2, dtype=np.dtype('float')):
+    def __init__(self, nside=2, dtype=None):
         """
             Sets the attributes for a hp_space class instance.
 
