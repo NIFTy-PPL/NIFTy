@@ -18,7 +18,7 @@ class PowerSpace(Space):
     def __init__(self, harmonic_domain=RGSpace((1,)),
                  distribution_strategy='not',
                  log=False, nbin=None, binbounds=None,
-                 dtype=np.dtype('float')):
+                 dtype=None):
 
         super(PowerSpace, self).__init__(dtype)
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',

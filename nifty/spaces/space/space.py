@@ -150,7 +150,8 @@ from keepers import Loggable,\
                     Versionable
 
 
-class Space(Versionable, Loggable, object):
+
+class Space(Versionable, Loggable, Plottable, object):
     """
         ..                            __             __
         ..                          /__/           /  /_
@@ -204,7 +205,10 @@ class Space(Versionable, Loggable, object):
         """
 
         # parse dtype
-        self.dtype = np.dtype(dtype)
+        casted_dtype = np.result_type(dtype, np.float64)
+        if casted_dtype != dtype:
+            self.Logger.warning("Input dtype reset to: %s" % str(casted_dtype))
+        self.dtype = casted_dtype
 
         self._ignore_for_hash = ['_global_id']
 
