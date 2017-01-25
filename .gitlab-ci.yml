@@ -64,9 +64,7 @@ test_mpi_fftw_hdf5:
     - ci/install_libsharp.sh
     - ci/install_pyfftw.sh
     - python setup.py build_ext --inplace
-    - >
-      nosetests -vv --with-coverage --cover-package=nifty --cover-inclusive
-      --cover-branches
+    - nosetests -vv --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
