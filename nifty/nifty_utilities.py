@@ -278,3 +278,36 @@ def get_default_codomain(domain):
         return LMGLTransformation.get_codomain(domain)
     else:
         raise TypeError('ERROR: unknown domain')
+
+
+def parse_domain(domain):
+    from nifty.spaces.space import Space
+    if domain is None:
+        domain = ()
+    elif isinstance(domain, Space):
+        domain = (domain,)
+    elif not isinstance(domain, tuple):
+        domain = tuple(domain)
+
+    for d in domain:
+        if not isinstance(d, Space):
+            raise TypeError(
+                "Given object contains something that is not a "
+                "nifty.space.")
+    return domain
+
+
+def parse_field_type(field_type):
+    from nifty.field_types import FieldType
+    if field_type is None:
+        field_type = ()
+    elif isinstance(field_type, FieldType):
+        field_type = (field_type,)
+    elif not isinstance(field_type, tuple):
+        field_type = tuple(field_type)
+
+    for ft in field_type:
+        if not isinstance(ft, FieldType):
+            raise TypeError(
+                "Given object is not a nifty.FieldType.")
+    return field_type
