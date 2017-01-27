@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
+
 from nifty.minimization import ConjugateGradient
 from nifty.field import Field
 from nifty.operators import EndomorphicOperator,\
-                            FFTOperator
+                            FFTOperator,\
+                            InvertibleOperatorMixin
 
 
-class PropagatorOperator(EndomorphicOperator):
+class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
@@ -49,13 +51,8 @@ class PropagatorOperator(EndomorphicOperator):
         if preconditioner is None:
             preconditioner = self._S_times
 
-        self.preconditioner = preconditioner
-
-        if inverter is not None:
-            self.inverter = inverter
-        else:
-            self.inverter = ConjugateGradient(
-                                preconditioner=self.preconditioner)
+        super(PropagatorOperator, self).__init__(inverter=inverter,
+                                                 preconditioner=preconditioner)
 
     # ---Mandatory properties and methods---
 
@@ -106,15 +103,6 @@ class PropagatorOperator(EndomorphicOperator):
             result = x.copy_empty()
             result.set_val(transformed_y, copy=False)
             return result
-
-    def _times(self, x, spaces, types, x0=None):
-        if x0 is None:
-            x0 = Field(self.target, val=0., dtype=x.dtype)
-
-        (result, convergence) = self.inverter(A=self.inverse_times,
-                                              b=x,
-                                              x0=x0)
-        return result
 
     def _inverse_times(self, x, spaces, types):
         pre_result = self._S_inverse_times(x, spaces, types)
