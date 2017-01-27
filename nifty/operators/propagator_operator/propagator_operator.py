@@ -109,7 +109,7 @@ class PropagatorOperator(EndomorphicOperator):
 
     def _times(self, x, spaces, types, x0=None):
         if x0 is None:
-            x0 = Field(self.domain, val=0., dtype=x.dtype)
+            x0 = Field(self.target, val=0., dtype=x.dtype)
 
         (result, convergence) = self.inverter(A=self.inverse_times,
                                               b=x,
