@@ -20,7 +20,7 @@ from test.common import expand
 np.random.seed(123)
 
 SPACES = [RGSpace((4,), dtype=np.float), RGSpace((5), dtype=np.complex)]
-SPACE_COMBINATIONS = [SPACES[0], SPACES[1], SPACES]
+SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 
 
 class Test_Interface(unittest.TestCase):
