@@ -192,11 +192,9 @@ class GLSpace(Space):
     def _parse_nlat(self, nlat):
         nlat = int(nlat)
         if nlat < 2:
-            raise ValueError(
-                "nlat must be a positive number.")
+            raise ValueError("nlat must be greater than 2.")
         elif nlat % 2 != 0:
-            raise ValueError(
-                "nlat must be a multiple of 2.")
+            raise ValueError("nlat must be a multiple of 2.")
         return nlat
 
     def _parse_nlon(self, nlon):

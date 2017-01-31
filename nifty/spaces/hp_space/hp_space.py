@@ -199,9 +199,10 @@ class HPSpace(Space):
 
     def _parse_nside(self, nside):
         nside = int(nside)
-        if nside & (nside - 1) != 0 or nside < 2:
-            raise ValueError(
-                "nside must be positive and a multiple of 2.")
+        if nside < 2:
+            raise ValueError("nside must be greater than 2.")
+        elif nside % 2 != 0:
+            raise ValueError("nside must be a multiple of 2.")
         return nside
 
     # ---Serialization---
