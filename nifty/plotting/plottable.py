@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 
-class Plottable:
+class Plottable(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod

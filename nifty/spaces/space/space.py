@@ -151,6 +151,7 @@ from keepers import Loggable,\
 
 from nifty.plotting import Plottable
 
+
 class Space(Versionable, Loggable, Plottable, object):
     """
         ..                            __             __
