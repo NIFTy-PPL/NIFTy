@@ -259,7 +259,9 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
 
-        result_field = self.copy_empty(domain=result_domain)
+        result_field = self.copy_empty(
+                   domain=result_domain,
+                   distribution_strategy=power_spectrum.distribution_strategy)
         result_field.set_val(new_val=power_spectrum, copy=False)
 
         return result_field

@@ -4,8 +4,6 @@ import abc
 
 from keepers import Loggable
 from nifty.field import Field
-from nifty.spaces import Space
-from nifty.field_types import FieldType
 import nifty.nifty_utilities as utilities
 
 
@@ -16,33 +14,10 @@ class LinearOperator(Loggable, object):
         pass
 
     def _parse_domain(self, domain):
-        if domain is None:
-            domain = ()
-        elif isinstance(domain, Space):
-            domain = (domain,)
-        elif not isinstance(domain, tuple):
-            domain = tuple(domain)
-
-        for d in domain:
-            if not isinstance(d, Space):
-                raise TypeError(
-                    "Given object contains something that is not a "
-                    "nifty.space.")
-        return domain
+        return utilities.parse_domain(domain)
 
     def _parse_field_type(self, field_type):
-        if field_type is None:
-            field_type = ()
-        elif isinstance(field_type, FieldType):
-            field_type = (field_type,)
-        elif not isinstance(field_type, tuple):
-            field_type = tuple(field_type)
-
-        for ft in field_type:
-            if not isinstance(ft, FieldType):
-                raise TypeError(
-                    "Given object is not a nifty.FieldType.")
-        return field_type
+        return utilities.parse_field_type(field_type)
 
     @abc.abstractproperty
     def domain(self):

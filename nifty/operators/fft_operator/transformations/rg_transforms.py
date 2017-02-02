@@ -227,7 +227,7 @@ class FFTW(Transform):
         p = info.plan
         # Load the value into the plan
         if p.has_input:
-            p.input_array[:] = val
+            p.input_array[None] = val
         # Execute the plan
         p()
 
