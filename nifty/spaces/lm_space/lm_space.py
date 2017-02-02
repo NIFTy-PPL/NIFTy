@@ -183,7 +183,7 @@ class LMSpace(Space):
     def _parse_lmax(self, lmax):
         lmax = np.int(lmax)
         if lmax < 1:
-            raise ValueError("Negative lmax is not allowed.")
+            raise ValueError("lmax must be non-zero and positive.")
         # exception lmax == 2 (nside == 1)
         if (lmax % 2 == 0) and (lmax > 2):
             self.logger.warn("Unrecommended parameter (lmax <> 2*n+1).")
