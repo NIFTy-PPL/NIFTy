@@ -12,7 +12,8 @@ dependency_injector = keepers.DependencyInjector(
                                     'gfft',
                                     ('nifty.dummys.gfft_dummy', 'gfft_dummy'),
                                     'healpy',
-                                    'libsharp_wrapper_gl'])
+                                    'libsharp_wrapper_gl',
+                                    'plotly'])
 
 dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
 
