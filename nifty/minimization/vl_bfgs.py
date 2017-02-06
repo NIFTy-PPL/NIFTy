@@ -24,7 +24,9 @@ class VL_BFGS(QuasiNewtonMinimizer):
         self._information_store = None
         return super(VL_BFGS, self).__call__(energy)
 
-    def _get_descend_direction(self, x, gradient):
+    def _get_descend_direction(self, energy):
+        x = energy.position
+        gradient = energy.gradient
         # initialize the information store if it doesn't already exist
         try:
             self._information_store.add_new_point(x, gradient)

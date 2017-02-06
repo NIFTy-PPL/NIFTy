@@ -80,9 +80,8 @@ class QuasiNewtonMinimizer(Loggable, object):
                 convergence = self.convergence_level+2
                 break
 
-            current_position = energy.position
-            descend_direction = self._get_descend_direction(current_position,
-                                                            gradient)
+            # current position is encoded in energy object
+            descend_direction = self._get_descend_direction(energy)
 
             # compute the step length, which minimizes energy.value along the
             # search direction
@@ -124,5 +123,5 @@ class QuasiNewtonMinimizer(Loggable, object):
         return energy, convergence
 
     @abc.abstractmethod
-    def _get_descend_direction(self, gradient, gradient_norm):
+    def _get_descend_direction(self, energy):
         raise NotImplementedError
