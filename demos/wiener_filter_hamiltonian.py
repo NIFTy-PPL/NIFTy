@@ -1,8 +1,8 @@
 
 from nifty import *
 
-import plotly.offline as pl
-import plotly.graph_objs as go
+#import plotly.offline as pl
+#import plotly.graph_objs as go
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
