@@ -146,11 +146,10 @@ import abc
 
 import numpy as np
 
-from keepers import Loggable,\
-                    Versionable
+from nifty.domain_object import DomainObject
 
 
-class Space(Versionable, Loggable, object):
+class Space(DomainObject):
     """
         ..                            __             __
         ..                          /__/           /  /_
@@ -185,8 +184,6 @@ class Space(Versionable, Loggable, object):
             Pixel volume of the :py:class:`point_space`, which is always 1.
     """
 
-    __metaclass__ = abc.ABCMeta
-
     def __init__(self, dtype=np.dtype('float')):
         """
             Sets the attributes for a point_space class instance.
@@ -207,42 +204,13 @@ class Space(Versionable, Loggable, object):
         casted_dtype = np.result_type(dtype, np.float64)
         if casted_dtype != dtype:
             self.Logger.warning("Input dtype reset to: %s" % str(casted_dtype))
-        self.dtype = casted_dtype
 
-        self._ignore_for_hash = ['_global_id']
-
-    def __hash__(self):
-        # Extract the identifying parts from the vars(self) dict.
-        result_hash = 0
-        for key in sorted(vars(self).keys()):
-            item = vars(self)[key]
-            if key in self._ignore_for_hash or key == '_ignore_for_hash':
-                continue
-            result_hash ^= item.__hash__() ^ int(hash(key)/117)
-        return result_hash
-
-    def __eq__(self, x):
-        if isinstance(x, type(self)):
-            return hash(self) == hash(x)
-        else:
-            return False
-
-    def __ne__(self, x):
-        return not self.__eq__(x)
+        super(Space, self).__init__(dtype=casted_dtype)
+        self._ignore_for_hash += ['_global_id']
 
     @abc.abstractproperty
     def harmonic(self):
         raise NotImplementedError
-
-    @abc.abstractproperty
-    def shape(self):
-        raise NotImplementedError(
-            "There is no generic shape for the Space base class.")
-
-    @abc.abstractproperty
-    def dim(self):
-        raise NotImplementedError(
-            "There is no generic dim for the Space base class.")
 
     @abc.abstractproperty
     def total_volume(self):
@@ -273,12 +241,6 @@ class Space(Versionable, Loggable, object):
         """
         raise NotImplementedError
 
-    def pre_cast(self, x, axes=None):
-        return x
-
-    def post_cast(self, x, axes=None):
-        return x
-
     def get_distance_array(self, distribution_strategy):
         raise NotImplementedError(
             "There is no generic distance structure for Space base class.")
@@ -295,15 +257,3 @@ class Space(Versionable, Loggable, object):
         string += str(type(self)) + "\n"
         string += "dtype: " + str(self.dtype) + "\n"
         return string
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group.attrs['dtype'] = self.dtype.name
-
-        return None
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        result = cls(dtype=np.dtype(hdf5_group.attrs['dtype']))
-        return result

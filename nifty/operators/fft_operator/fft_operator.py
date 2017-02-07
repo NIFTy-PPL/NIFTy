@@ -33,22 +33,15 @@ class FFTOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(), field_type=(), target=None, module=None):
+    def __init__(self, domain=(), target=None, module=None):
 
         self._domain = self._parse_domain(domain)
-        self._field_type = self._parse_field_type(field_type)
 
         # Initialize domain and target
         if len(self.domain) != 1:
             raise ValueError(
                     'ERROR: TransformationOperator accepts only exactly one '
                     'space as input domain.')
-
-        if self.field_type != ():
-            raise ValueError(
-                'ERROR: TransformationOperator field-type must be an '
-                'empty tuple.'
-            )
 
         if target is None:
             target = (self.get_default_codomain(self.domain[0]), )
@@ -76,7 +69,7 @@ class FFTOperator(LinearOperator):
         self._backward_transformation = TransformationCache.create(
             backward_class, self.target[0], self.domain[0], module=module)
 
-    def _times(self, x, spaces, types):
+    def _times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
@@ -99,7 +92,7 @@ class FFTOperator(LinearOperator):
 
         return result_field
 
-    def _inverse_times(self, x, spaces, types):
+    def _inverse_times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
@@ -131,14 +124,6 @@ class FFTOperator(LinearOperator):
     @property
     def target(self):
         return self._target
-
-    @property
-    def field_type(self):
-        return self._field_type
-
-    @property
-    def field_type_target(self):
-        return self.field_type
 
     @property
     def implemented(self):
