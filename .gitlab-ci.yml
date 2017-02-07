@@ -74,8 +74,8 @@ release_image_master:
   stage: release
   before_script:
     - pwd
-  services:
-    - docker:dind
+#  services:
+#    - docker:dind
   script:
     - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
     - docker build -t $RELEASE_IMAGE_MASTER .
@@ -88,8 +88,8 @@ release_image_tagged:
   stage: release
   before_script:
     - pwd
-  services:
-    - docker:dind
+#  services:
+#    - docker:dind
   script:
     - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
     - docker build -t $RELEASE_IMAGE_TAGGED .
