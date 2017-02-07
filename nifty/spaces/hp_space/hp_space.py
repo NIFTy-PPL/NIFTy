@@ -149,7 +149,7 @@ class HPSpace(Space):
                               dtype=self.dtype)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        weight = ((4*np.pi) / (12 * self.nside**2)) ** power
+        weight = ((4 * np.pi) / (12 * self.nside**2))**power
 
         if inplace:
             x *= weight
