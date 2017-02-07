@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from keepers import Loggable
 
-class Energy(object):
+
+class Energy(Loggable, object):
     def __init__(self, position):
         self._cache = {}
         try:
