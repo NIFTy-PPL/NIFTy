@@ -9,7 +9,6 @@ from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc,\
                          dependency_injector as gdi
-import nifty.nifty_utilities as utilities
 
 gl = gdi.get('libsharp_wrapper_gl')
 
