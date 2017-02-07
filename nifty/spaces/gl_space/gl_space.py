@@ -9,7 +9,6 @@ from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc,\
                          dependency_injector as gdi
-import nifty.nifty_utilities as utilities
 
 gl = gdi.get('libsharp_wrapper_gl')
 
@@ -130,8 +129,6 @@ class GLSpace(Space):
                               dtype=self.dtype)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        axes = utilities.cast_axis_to_tuple(axes, length=1)
-
         nlon = self.nlon
         nlat = self.nlat
 
@@ -167,9 +164,9 @@ class GLSpace(Space):
     def _distance_array_helper(self, qr_tuple):
         lat = qr_tuple[0]*(np.pi/(self.nlat-1))
         lon = qr_tuple[1]*(2*np.pi/(self.nlon-1))
-        numerator = np.sqrt(np.sin(lat)**2 +
-                            (np.sin(lon) * np.cos(lat))**2)
-        denominator = np.cos(lon) * np.cos(lat)
+        numerator = np.sqrt(np.sin(lon)**2 +
+                            (np.sin(lat) * np.cos(lon))**2)
+        denominator = np.cos(lat) * np.cos(lon)
 
         return np.arctan(numerator / denominator)
 
@@ -192,11 +189,9 @@ class GLSpace(Space):
     def _parse_nlat(self, nlat):
         nlat = int(nlat)
         if nlat < 2:
-            raise ValueError(
-                "nlat must be a positive number.")
+            raise ValueError("nlat must be greater than 2.")
         elif nlat % 2 != 0:
-            raise ValueError(
-                "nlat must be a multiple of 2.")
+            raise ValueError("nlat must be a multiple of 2.")
         return nlat
 
     def _parse_nlon(self, nlon):

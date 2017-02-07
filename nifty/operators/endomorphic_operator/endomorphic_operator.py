@@ -9,51 +9,43 @@ class EndomorphicOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def inverse_times(self, x, spaces=None, types=None):
+    def inverse_times(self, x, spaces=None):
         if self.symmetric and self.unitary:
-            return self.times(x, spaces, types)
+            return self.times(x, spaces)
         else:
             return super(EndomorphicOperator, self).inverse_times(
                                                               x=x,
-                                                              spaces=spaces,
-                                                              types=types)
+                                                              spaces=spaces)
 
-    def adjoint_times(self, x, spaces=None, types=None):
+    def adjoint_times(self, x, spaces=None):
         if self.symmetric:
-            return self.times(x, spaces, types)
+            return self.times(x, spaces)
         else:
             return super(EndomorphicOperator, self).adjoint_times(
                                                                 x=x,
-                                                                spaces=spaces,
-                                                                types=types)
+                                                                spaces=spaces)
 
-    def adjoint_inverse_times(self, x, spaces=None, types=None):
+    def adjoint_inverse_times(self, x, spaces=None):
         if self.symmetric:
-            return self.inverse_times(x, spaces, types)
+            return self.inverse_times(x, spaces)
         else:
             return super(EndomorphicOperator, self).adjoint_inverse_times(
                                                                 x=x,
-                                                                spaces=spaces,
-                                                                types=types)
+                                                                spaces=spaces)
 
-    def inverse_adjoint_times(self, x, spaces=None, types=None):
+    def inverse_adjoint_times(self, x, spaces=None):
         if self.symmetric:
-            return self.inverse_times(x, spaces, types)
+            return self.inverse_times(x, spaces)
         else:
             return super(EndomorphicOperator, self).inverse_adjoint_times(
                                                                 x=x,
-                                                                spaces=spaces,
-                                                                types=types)
+                                                                spaces=spaces)
 
     # ---Mandatory properties and methods---
 
     @property
     def target(self):
         return self.domain
-
-    @property
-    def field_type_target(self):
-        return self.field_type
 
     # ---Added properties and methods---
 

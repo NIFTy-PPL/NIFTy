@@ -4,8 +4,6 @@ import abc
 
 import numpy as np
 
-from nifty.field_types import FieldType
-from nifty.spaces import Space
 from nifty.field import Field
 import nifty.nifty_utilities as utilities
 
@@ -26,12 +24,10 @@ class Prober(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain=None, field_type=None,
-                 distribution_strategy=None, probe_count=8,
+    def __init__(self, domain=None, distribution_strategy=None, probe_count=8,
                  random_type='pm1', compute_variance=False):
 
         self._domain = utilities.parse_domain(domain)
-        self._field_type = utilities.parse_field_type(field_type)
         self._distribution_strategy = \
             self._parse_distribution_strategy(distribution_strategy)
         self._probe_count = self._parse_probe_count(probe_count)
@@ -45,10 +41,6 @@ class Prober(object):
     @property
     def domain(self):
         return self._domain
-
-    @property
-    def field_type(self):
-        return self._field_type
 
     @property
     def distribution_strategy(self):
@@ -102,7 +94,6 @@ class Prober(object):
         """ a random-probe generator """
         f = Field.from_random(random_type=self.random_type,
                               domain=self.domain,
-                              field_type=self.field_type,
                               distribution_strategy=self.distribution_strategy)
         uid = np.random.randint(1e18)
         return (uid, f)

@@ -13,7 +13,7 @@ before_script:
   - apt-get update
   - >
     apt-get install -y build-essential python python-pip python-dev git 
-    gfortran autoconf gsl-bin libgsl-dev
+    gfortran autoconf gsl-bin libgsl-dev wget
   - pip install -r ci/requirements_base.txt
   - chmod +x ci/*.sh
 
@@ -58,9 +58,10 @@ test_mpi_fftw_hdf5:
       libfftw3-quad3 libfftw3-single3
     - >
       apt-get install -y libhdf5-10 libhdf5-dev libhdf5-openmpi-10
-      libhdf5-openmpi-dev hdf5-tools python-h5py
+      libhdf5-openmpi-dev hdf5-tools
     - pip install astropy healpy mpi4py
     - pip install git+https://github.com/mrbell/gfft
+    - ci/install_h5py.sh
     - ci/install_libsharp.sh
     - ci/install_pyfftw.sh
     - python setup.py build_ext --inplace
