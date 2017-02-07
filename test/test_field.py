@@ -28,9 +28,7 @@ class Test_Interface(unittest.TestCase):
                     [['dtype', np.dtype],
                      ['distribution_strategy', str],
                      ['domain', tuple],
-                     ['field_type', tuple],
                      ['domain_axes', tuple],
-                     ['field_type_axes', tuple],
                      ['val', distributed_data_object],
                      ['shape', tuple],
                      ['dim', np.int],
@@ -39,8 +37,7 @@ class Test_Interface(unittest.TestCase):
     def test_return_types(self, domain, attribute_desired_type):
         attribute = attribute_desired_type[0]
         desired_type = attribute_desired_type[1]
-        ft = FieldArray(shape=(2,), dtype=np.complex)
-        f = Field(domain=domain, field_type=ft)
+        f = Field(domain=domain)
         assert_(isinstance(getattr(f, attribute), desired_type))
 
 #class Test_Initialization(unittest.TestCase):
