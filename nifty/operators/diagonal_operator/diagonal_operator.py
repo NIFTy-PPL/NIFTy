@@ -14,11 +14,10 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(), field_type=(), implemented=True,
+    def __init__(self, domain=(), implemented=True,
                  diagonal=None, bare=False, copy=True,
                  distribution_strategy=None):
         self._domain = self._parse_domain(domain)
-        self._field_type = self._parse_field_type(field_type)
 
         self._implemented = bool(implemented)
 
@@ -34,20 +33,18 @@ class DiagonalOperator(EndomorphicOperator):
 
         self.set_diagonal(diagonal=diagonal, bare=bare, copy=copy)
 
-    def _times(self, x, spaces, types):
-        return self._times_helper(x, spaces, types,
-                                  operation=lambda z: z.__mul__)
+    def _times(self, x, spaces):
+        return self._times_helper(x, spaces, operation=lambda z: z.__mul__)
 
-    def _adjoint_times(self, x, spaces, types):
-        return self._times_helper(x, spaces, types,
+    def _adjoint_times(self, x, spaces):
+        return self._times_helper(x, spaces,
                                   operation=lambda z: z.adjoint().__mul__)
 
-    def _inverse_times(self, x, spaces, types):
-        return self._times_helper(x, spaces, types,
-                                  operation=lambda z: z.__rdiv__)
+    def _inverse_times(self, x, spaces):
+        return self._times_helper(x, spaces, operation=lambda z: z.__rdiv__)
 
-    def _adjoint_inverse_times(self, x, spaces, types):
-        return self._times_helper(x, spaces, types,
+    def _adjoint_inverse_times(self, x, spaces):
+        return self._times_helper(x, spaces,
                                   operation=lambda z: z.adjoint().__rdiv__)
 
     def diagonal(self, bare=False, copy=True):
@@ -88,10 +85,6 @@ class DiagonalOperator(EndomorphicOperator):
         return self._domain
 
     @property
-    def field_type(self):
-        return self._field_type
-
-    @property
     def implemented(self):
         return self._implemented
 
@@ -127,7 +120,6 @@ class DiagonalOperator(EndomorphicOperator):
         # use the casting functionality from Field to process `diagonal`
         f = Field(domain=self.domain,
                   val=diagonal,
-                  field_type=self.field_type,
                   distribution_strategy=self.distribution_strategy,
                   copy=copy)
 
@@ -151,10 +143,10 @@ class DiagonalOperator(EndomorphicOperator):
         # store the diagonal-field
         self._diagonal = f
 
-    def _times_helper(self, x, spaces, types, operation):
-        # if the domain and field_type match directly
+    def _times_helper(self, x, spaces, operation):
+        # if the domain matches directly
         # -> multiply the fields directly
-        if x.domain == self.domain and x.field_type == self.field_type:
+        if x.domain == self.domain:
             # here the actual multiplication takes place
             return operation(self.diagonal(copy=False))(x)
 
@@ -168,14 +160,6 @@ class DiagonalOperator(EndomorphicOperator):
         else:
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
-
-        if types is None:
-            if self.field_type != ():
-                for axes in x.field_type_axes:
-                    active_axes += axes
-        else:
-            for type_index in types:
-                active_axes += x.field_type_axes[type_index]
 
         axes_local_distribution_strategy = \
             x.val.get_axes_local_distribution_strategy(active_axes)

@@ -281,33 +281,17 @@ def get_default_codomain(domain):
 
 
 def parse_domain(domain):
-    from nifty.spaces.space import Space
+    from nifty.domain_object import DomainObject
     if domain is None:
         domain = ()
-    elif isinstance(domain, Space):
+    elif isinstance(domain, DomainObject):
         domain = (domain,)
     elif not isinstance(domain, tuple):
         domain = tuple(domain)
 
     for d in domain:
-        if not isinstance(d, Space):
+        if not isinstance(d, DomainObject):
             raise TypeError(
                 "Given object contains something that is not a "
-                "nifty.space.")
+                "instance of DomainObject-class.")
     return domain
-
-
-def parse_field_type(field_type):
-    from nifty.field_types import FieldType
-    if field_type is None:
-        field_type = ()
-    elif isinstance(field_type, FieldType):
-        field_type = (field_type,)
-    elif not isinstance(field_type, tuple):
-        field_type = tuple(field_type)
-
-    for ft in field_type:
-        if not isinstance(ft, FieldType):
-            raise TypeError(
-                "Given object is not a nifty.FieldType.")
-    return field_type

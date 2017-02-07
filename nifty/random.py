@@ -7,7 +7,7 @@ class Random(object):
     @staticmethod
     def pm1(dtype=np.dtype('int'), shape=1):
 
-        size = int(reduce(lambda x,y: x*y, shape))
+        size = int(reduce(lambda x, y: x*y, shape))
         if issubclass(dtype.type, np.complexfloating):
             x = np.array([1 + 0j, 0 + 1j, -1 + 0j, 0 - 1j], dtype=dtype)
             x = x[np.random.randint(4, high=None, size=size)]
@@ -19,7 +19,7 @@ class Random(object):
     @staticmethod
     def normal(dtype=np.dtype('float64'), shape=(1,), mean=None, std=None):
 
-        size = int(reduce(lambda x,y: x*y, shape))
+        size = int(reduce(lambda x, y: x*y, shape))
         if issubclass(dtype.type, np.complexfloating):
             x = np.empty(size, dtype=dtype)
             x.real = np.random.normal(loc=0, scale=np.sqrt(0.5), size=size)
@@ -41,7 +41,7 @@ class Random(object):
     @staticmethod
     def uniform(dtype=np.dtype('float64'), shape=1, low=0, high=1):
 
-        size = int(reduce(lambda x,y: x*y, shape))
+        size = int(reduce(lambda x, y: x*y, shape))
         if issubclass(dtype.type, np.complexfloating):
             x = np.empty(size, dtype=dtype)
             x.real = (high - low) * np.random.random(size=size) + low
