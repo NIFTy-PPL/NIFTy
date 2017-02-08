@@ -34,7 +34,10 @@ class Field(Loggable, Versionable, object):
                                 distribution_strategy=distribution_strategy,
                                 val=val)
 
-        self.set_val(new_val=val, copy=copy)
+        if val is None:
+            self._val = None
+        else:
+            self.set_val(new_val=val, copy=copy)
 
     def _parse_domain(self, domain, val=None):
         if domain is None:
@@ -406,6 +409,9 @@ class Field(Loggable, Versionable, object):
         return self
 
     def get_val(self, copy=False):
+        if self._val is None:
+            self.set_val(None)
+
         if copy:
             return self._val.copy()
         else:
@@ -413,11 +419,11 @@ class Field(Loggable, Versionable, object):
 
     @property
     def val(self):
-        return self._val
+        return self.get_val(copy=False)
 
     @val.setter
     def val(self, new_val):
-        self._val = self.cast(new_val)
+        self.set_val(new_val=new_val, copy=False)
 
     @property
     def shape(self):
