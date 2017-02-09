@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from mixin_base import MixinBase
 
-
-class TraceProberMixin(MixinBase):
-    def __init__(self):
+class TraceProberMixin(object):
+    def __init__(self, *args, **kwargs):
         self.reset()
-        super(TraceProberMixin, self).__init__()
+        super(TraceProberMixin, self).__init__(*args, **kwargs)
 
     def reset(self):
         self.__sum_of_probings = 0

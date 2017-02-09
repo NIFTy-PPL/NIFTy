@@ -2,12 +2,14 @@
 
 import pickle
 
+import numpy as np
+
 from field_type import FieldType
 
 
 class FieldArray(FieldType):
 
-    def __init__(self, dtype, shape):
+    def __init__(self, shape, dtype=np.float):
         try:
             new_shape = tuple([int(i) for i in shape])
         except TypeError:

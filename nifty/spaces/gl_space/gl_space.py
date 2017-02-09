@@ -139,8 +139,8 @@ class GLSpace(Space):
         if axes is not None:
             # reshape the weight array to match the input shape
             new_shape = np.ones(len(x.shape), dtype=np.int)
-            for index in range(len(axes)):
-                new_shape[index] = len(weight)
+            # we know len(axes) is always 1
+            new_shape[axes[0]] = len(weight)
             weight = weight.reshape(new_shape)
 
         if inplace:

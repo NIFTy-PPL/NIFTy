@@ -69,7 +69,7 @@ class FFTOperator(LinearOperator):
         self._backward_transformation = TransformationCache.create(
             backward_class, self.target[0], self.domain[0], module=module)
 
-    def _times(self, x, spaces):
+    def _times(self, x, spaces, dtype=None):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
@@ -87,12 +87,12 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.target[0]
 
-        result_field = x.copy_empty(domain=result_domain)
+        result_field = x.copy_empty(domain=result_domain, dtype=dtype)
         result_field.set_val(new_val=new_val, copy=False)
 
         return result_field
 
-    def _inverse_times(self, x, spaces):
+    def _inverse_times(self, x, spaces, dtype=None):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
@@ -110,7 +110,7 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.domain[0]
 
-        result_field = x.copy_empty(domain=result_domain)
+        result_field = x.copy_empty(domain=result_domain, dtype=dtype)
         result_field.set_val(new_val=new_val, copy=False)
 
         return result_field
