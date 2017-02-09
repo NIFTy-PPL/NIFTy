@@ -21,8 +21,9 @@ class RelaxedNewton(QuasiNewtonMinimizer):
         gradient = energy.gradient
         curvature = energy.curvature
         descend_direction = curvature.inverse_times(gradient)
-        norm = descend_direction.norm()
-        if norm != 1:
-            return descend_direction / -norm
-        else:
-            return descend_direction * -1
+        return descend_direction * -1
+        #norm = descend_direction.norm()
+#        if norm != 1:
+#            return descend_direction / -norm
+#        else:
+#            return descend_direction * -1
