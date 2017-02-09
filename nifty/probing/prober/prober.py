@@ -34,8 +34,6 @@ class Prober(object):
         self._random_type = self._parse_random_type(random_type)
         self.compute_variance = bool(compute_variance)
 
-        super(Prober, self).__init__()
-
     # ---Properties---
 
     @property
@@ -84,7 +82,7 @@ class Prober(object):
             self.finish_probe(current_probe, pre_result)
 
     def reset(self):
-        super(Prober, self).reset()
+        pass
 
     def get_probe(self, index):
         """ layer of abstraction for potential probe-caching """
@@ -107,7 +105,7 @@ class Prober(object):
         return callee(probe, **kwargs)
 
     def finish_probe(self, probe, pre_result):
-        super(Prober, self).finish_probe(probe, pre_result)
+        pass
 
     def __call__(self, callee):
         return self.probing_run(callee)

@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from mixin_base import MixinBase
 
-
-class DiagonalProberMixin(MixinBase):
-    def __init__(self):
+class DiagonalProberMixin(object):
+    def __init__(self, *args, **kwargs):
         self.reset()
-        super(DiagonalProberMixin, self).__init__()
+        super(DiagonalProberMixin, self).__init__(*args, **kwargs)
 
     def reset(self):
         self.__sum_of_probings = 0
