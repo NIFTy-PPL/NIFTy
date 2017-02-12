@@ -38,7 +38,7 @@ def get_weight_configs():
     return [
         [npzfile['w_0_x'], 1, None, False, npzfile['w_0_res']],
         [npzfile['w_0_x'], 1, None, True, npzfile['w_0_res']],
-        [npzfile['w_1_x'], 1, None, True, npzfile['w_1_res']],
+        [npzfile['w_1_x'], 1, (2,), True, npzfile['w_1_res']],
         ]
 
 

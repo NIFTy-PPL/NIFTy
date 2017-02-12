@@ -2,25 +2,12 @@ import unittest
 import numpy as np
 
 from itertools import product
-from d2o import distributed_data_object
 from types import LambdaType
 from numpy.testing import assert_, assert_raises, assert_equal
-from nifty import RGSpace, LMSpace, GLSpace, HPSpace
+from nose.plugins.skip import SkipTest
+from nifty import LMSpace, GLSpace, HPSpace
 from nifty.config import dependency_injector as di
-from test.common import expand
-
-
-def generate_spaces():
-    spaces = [RGSpace(4)]
-
-    if 'healpy' in di:
-        spaces.append(HPSpace(4))
-    if 'libsharp_wrapper_gl' in di:
-        spaces.append(GLSpace(4))
-    if 'healpy' in di or 'libsharp_wrapper_gl' in di:
-        spaces.append(LMSpace(5))
-
-    return spaces
+from test.common import expand, generate_spaces
 
 
 class SpaceInterfaceTests(unittest.TestCase):
@@ -53,6 +40,12 @@ class SpaceInterfaceTests(unittest.TestCase):
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
     def test_method_ret_type(self, space, method_expected_type):
+        # handle exceptions here
+        try:
+            getattr(
+                space, method_expected_type[0])(*method_expected_type[1:-1])
+        except NotImplementedError:
+            raise SkipTest
 
         assert_equal(
             type(getattr(
@@ -61,3 +54,10 @@ class SpaceInterfaceTests(unittest.TestCase):
             ),
             method_expected_type[-1]
         )
+
+    @expand([[space] for space in generate_spaces()])
+    def test_copy(self, space):
+        # make sure it's a deep copy
+        assert_(space is not space.copy())
+        # make sure contents are the same
+        assert_equal(space, space.copy())

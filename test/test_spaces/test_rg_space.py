@@ -3,12 +3,12 @@ from __future__ import division
 import unittest
 import numpy as np
 
-from numpy.testing import assert_, assert_equal
+from numpy.testing import assert_, assert_equal, assert_almost_equal
 from nifty import RGSpace
 from test.common import expand
 
 # [shape, zerocenter, distances, harmonic, dtype, expected]
-INIT_CONFIGS = [
+CONSTRUCTOR_CONFIGS = [
         [(8,), False, None, False, None,
             {
                 'shape': (8,),
@@ -73,27 +73,79 @@ INIT_CONFIGS = [
     ]
 
 
+def get_distance_array_configs():
+    npzfile = np.load('test/data/rg_space.npz')
+    return [
+        [(4, 4),  None, [False, False], npzfile['da_0']],
+        [(4, 4),  None, [True, True], npzfile['da_1']],
+        [(4, 4),  (12, 12), [True, True], npzfile['da_2']]
+        ]
+
+
+def get_weight_configs():
+    npzfile = np.load('test/data/rg_space.npz')
+    return [
+        [(11, 11), None, False,
+            npzfile['w_0_x'], 1, None, False, npzfile['w_0_res']],
+        [(11, 11), None, False,
+            npzfile['w_0_x'], 1, None, True, npzfile['w_0_res']],
+        [(11, 11), (1.3, 1.3), False,
+            npzfile['w_0_x'], 1, None, False, npzfile['w_1_res']],
+        [(11, 11), (1.3, 1.3), False,
+            npzfile['w_0_x'], 1, None, True, npzfile['w_1_res']],
+        [(11, 11), None, True,
+            npzfile['w_0_x'], 1, None, False, npzfile['w_2_res']],
+        [(11, 11), None, True,
+            npzfile['w_0_x'], 1, None, True, npzfile['w_2_res']],
+        [(11, 11), (1.3, 1.3), True,
+            npzfile['w_0_x'], 1, None, False, npzfile['w_3_res']],
+        [(11, 11), (1.3, 1.3), True,
+            npzfile['w_0_x'], 1, None, True, npzfile['w_3_res']]
+        ]
+
+
+def get_hermitian_configs():
+    npzfile = np.load('test/data/rg_space.npz')
+    return [
+        [npzfile['h_0_x'], None,
+            npzfile['h_0_res_real'], npzfile['h_0_res_imag']],
+        [npzfile['h_1_x'], (2,),
+            npzfile['h_1_res_real'], npzfile['h_1_res_imag']]
+    ]
+
+
 class RGSpaceInterfaceTests(unittest.TestCase):
     @expand([['distances', tuple],
             ['zerocenter', tuple]])
-    def test_properties(self, attribute, expected_type):
+    def test_property_ret_type(self, attribute, expected_type):
         x = RGSpace()
         assert_(isinstance(getattr(x, attribute), expected_type))
 
 
 class RGSpaceFunctionalityTests(unittest.TestCase):
-    @expand(INIT_CONFIGS)
+    @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, shape, zerocenter, distances,
                          harmonic, dtype, expected):
         x = RGSpace(shape, zerocenter, distances, harmonic, dtype)
         for key, value in expected.iteritems():
             assert_equal(getattr(x, key), value)
 
-    def test_hermitian_decomposition(self):
-        pass
+    @expand(get_hermitian_configs())
+    def test_hermitian_decomposition(self, x, axes, real, imag):
+        r = RGSpace(5)
+        assert_almost_equal(r.hermitian_decomposition(x, axes=axes)[0], real)
+        assert_almost_equal(r.hermitian_decomposition(x, axes=axes)[1], imag)
 
-    def test_weight(self):
-        pass
+    @expand(get_distance_array_configs())
+    def test_distance_array(self, shape, distances, zerocenter, expected):
+        r = RGSpace(shape=shape, distances=distances, zerocenter=zerocenter)
+        assert_almost_equal(r.get_distance_array('not'), expected)
 
-    def test_distance_array(self):
-        pass
+    @expand(get_weight_configs())
+    def test_weight(self, shape, distances, harmonic, x, power, axes,
+                    inplace, expected):
+        r = RGSpace(shape=shape, distances=distances, harmonic=harmonic)
+        res = r.weight(x, power, axes, inplace)
+        assert_almost_equal(res, expected)
+        if inplace:
+            assert_(x is res)

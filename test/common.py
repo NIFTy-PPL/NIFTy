@@ -1,12 +1,15 @@
 import d2o
 import numpy as np
 from nose_parameterized import parameterized
-from nifty import RGSpace, LMSpace, HPSpace, GLSpace
+from nifty import RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
+from nifty.config import dependency_injector as di
 from string import strip
 
 
 def pretty_str(obj):
     if type(obj) == list:
+        return " ".join(pretty_str(x) for x in obj)
+    if type(obj) == tuple:
         return " ".join(pretty_str(x) for x in obj)
     if type(obj) == RGSpace:
         return type(obj).__name__
@@ -15,6 +18,8 @@ def pretty_str(obj):
     elif type(obj) == HPSpace:
         return type(obj).__name__
     elif type(obj) == GLSpace:
+        return type(obj).__name__
+    elif type(obj) == PowerSpace:
         return type(obj).__name__
     elif isinstance(obj, d2o.distributed_data_object):
         return 'd2o'
@@ -40,3 +45,16 @@ def custom_name_func(testcase_func, param_num, param):
 def expand(*args, **kwargs):
     return parameterized.expand(*args, testcase_func_name=custom_name_func,
                                 **kwargs)
+
+
+def generate_spaces():
+    spaces = [RGSpace(4), PowerSpace(RGSpace((4, 4), harmonic=True))]
+
+    if 'healpy' in di:
+        spaces.append(HPSpace(4))
+    if 'libsharp_wrapper_gl' in di:
+        spaces.append(GLSpace(4))
+    if 'healpy' in di or 'libsharp_wrapper_gl' in di:
+        spaces.append(LMSpace(5))
+
+    return spaces
