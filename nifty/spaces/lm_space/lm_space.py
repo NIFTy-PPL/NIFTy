@@ -145,7 +145,6 @@ class LMSpace(Space):
 
     def copy(self):
         return self.__class__(lmax=self.lmax,
-                              mmax=self.mmax,
                               dtype=self.dtype)
 
     def weight(self, x, power=1, axes=None, inplace=False):
