@@ -127,7 +127,7 @@ class LinearOperator(Loggable, object):
             self_domain = self.target
 
         if spaces is None:
-            if self_domain != () and self_domain != x.domain:
+            if self_domain != x.domain:
                 raise ValueError(
                     "The operator's and and field's domains don't "
                     "match.")

@@ -154,9 +154,7 @@ class DiagonalOperator(EndomorphicOperator):
         # the one of x, reshape the local data of self and apply it directly
         active_axes = []
         if spaces is None:
-            if self.domain != ():
-                for axes in x.domain_axes:
-                    active_axes += axes
+            active_axes = range(len(x.shape))
         else:
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
@@ -167,6 +165,8 @@ class DiagonalOperator(EndomorphicOperator):
             local_diagonal = self._diagonal.val.get_local_data(copy=False)
         else:
             # create an array that is sub-slice compatible
+            self.logger.warn("The input field is not sub-slice compatible to "
+                             "the distribution strategy of the operator.")
             redistr_diagonal_val = self._diagonal.val.copy(
                 distribution_strategy=axes_local_distribution_strategy)
             local_diagonal = redistr_diagonal_val.get_local_data(copy=False)
