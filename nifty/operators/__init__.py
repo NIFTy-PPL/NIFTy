@@ -35,4 +35,6 @@ from invertible_operator_mixin import InvertibleOperatorMixin
 
 from propagator_operator import PropagatorOperator
 
+from propagator_operator import PropagatorOperator
+
 from composed_operator import ComposedOperator
