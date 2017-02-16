@@ -90,7 +90,7 @@ class Field(Loggable, Versionable, object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                self.logger.info("Datamodel set to default!")
+                self.logger.debug("Datamodel set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(
