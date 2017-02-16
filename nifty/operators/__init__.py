@@ -33,7 +33,7 @@ from fft_operator import *
 
 from invertible_operator_mixin import InvertibleOperatorMixin
 
-from propagator_operator import PropagatorOperator
+from projection_operator import ProjectionOperator
 
 from propagator_operator import PropagatorOperator
 
