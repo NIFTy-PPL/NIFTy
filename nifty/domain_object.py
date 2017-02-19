@@ -48,6 +48,11 @@ class DomainObject(Versionable, Loggable, object):
         raise NotImplementedError(
             "There is no generic dim for DomainObject.")
 
+    @abc.abstractmethod
+    def weight(self, x, power=1, axes=None, inplace=False):
+        raise NotImplementedError(
+            "There is no generic weight-method for DomainObject.")
+
     def pre_cast(self, x, axes=None):
         return x
 

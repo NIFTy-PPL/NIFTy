@@ -5,6 +5,13 @@ from nifty.domain_object import DomainObject
 
 class FieldType(DomainObject):
 
+    def weight(self, x, power=1, axes=None, inplace=False):
+        if inplace:
+            result = x
+        else:
+            result = x.copy()
+        return result
+
     def process(self, method_name, array, inplace=True, **kwargs):
         try:
             result_array = self.__getattr__(method_name)(array,

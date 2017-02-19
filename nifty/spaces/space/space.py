@@ -221,26 +221,6 @@ class Space(DomainObject):
     def copy(self):
         return self.__class__(dtype=self.dtype)
 
-    @abc.abstractmethod
-    def weight(self, x, power=1, axes=None, inplace=False):
-        """
-            Weights a given array of field values with the pixel volumes (not
-            the meta volumes) to a given power.
-
-            Parameters
-            ----------
-            x : numpy.ndarray
-                Array to be weighted.
-            power : float, *optional*
-                Power of the pixel volumes to be used (default: 1).
-
-            Returns
-            -------
-            y : numpy.ndarray
-                Weighted array.
-        """
-        raise NotImplementedError
-
     def get_distance_array(self, distribution_strategy):
         raise NotImplementedError(
             "There is no generic distance structure for Space base class.")
