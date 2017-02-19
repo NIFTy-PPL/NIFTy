@@ -582,9 +582,9 @@ class Field(Loggable, Versionable, object):
 
         # Compute the dot respecting the fact of discrete/continous spaces
         if bare:
-            y = self.weight(spaces=spaces, power=-1)
-        else:
             y = self
+        else:
+            y = self.weight(power=1)
 
         if spaces is None:
             x_val = x.get_val(copy=False)
