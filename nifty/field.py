@@ -288,9 +288,6 @@ class Field(Loggable, Versionable, object):
     def power_synthesize(self, spaces=None, real_signal=True,
                          mean=None, std=None):
 
-        if mean is None:
-            mean = 1.
-
         # assert that all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
