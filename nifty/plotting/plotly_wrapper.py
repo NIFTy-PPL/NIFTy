@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
-class _PlotlyWrapper:
+
+class _PlotlyWrapper(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod

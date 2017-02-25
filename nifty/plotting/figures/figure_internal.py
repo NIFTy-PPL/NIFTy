@@ -39,10 +39,10 @@ class _2dFigure(_BaseFigure):
             ply_object['layout']['scene']['aspectratio'] = dict()
         if self.xaxis:
             ply_object['layout']['xaxis'] = self.xaxis._to_plotly()
-            ply_object['layout']['scene']['aspectratio']['x'] = self.xaxis.aspect_ratio
+            # ply_object['layout']['scene']['aspectratio']['x'] = self.xaxis.aspect_ratio
         if self.yaxis:
             ply_object['layout']['yaxis'] = self.yaxis._to_plotly()
-            ply_object['layout']['scene']['aspectratio']['y'] = self.yaxis.aspect_ratio
+            # ply_object['layout']['scene']['aspectratio']['y'] = self.yaxis.aspect_ratio
         return ply_object
 
 
@@ -57,13 +57,13 @@ class _3dFigure(_2dFigure):
             ply_object['layout']['scene']['aspectratio'] = dict()
         if self.xaxis:
             ply_object['layout']['scene']['xaxis'] = self.xaxis._to_plotly()
-            ply_object['layout']['scene']['aspectratio']['x'] = self.xaxis.aspect_ratio
+            # ply_object['layout']['scene']['aspectratio']['x'] = self.xaxis.aspect_ratio
         if self.yaxis:
             ply_object['layout']['scene']['yaxis'] = self.yaxis._to_plotly()
-            ply_object['layout']['scene']['aspectratio']['y'] = self.yaxis.aspect_ratio
+            # ply_object['layout']['scene']['aspectratio']['y'] = self.yaxis.aspect_ratio
         if self.zaxis:
             ply_object['layout']['scene']['zaxis'] = self.zaxis._to_plotly()
-            ply_object['layout']['scene']['aspectratio']['z'] = self.zaxis.aspect_ratio
+            # ply_object['layout']['scene']['aspectratio']['z'] = self.zaxis.aspect_ratio
         return ply_object
 
 

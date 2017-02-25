@@ -23,12 +23,12 @@ class Line(_PlotlyWrapper):
 
 
 class Axis(_PlotlyWrapper):
-    def __init__(self, text=None, font='', color='', log=False, aspect_ratio=None):
+    def __init__(self, text=None, font='', color='', log=False, show_grid=True):
         self.text = text
         self.font = font
         self.color = color
         self.log = log
-        self.aspect_ratio = aspect_ratio
+        self.show_grid = show_grid
 
     def _to_plotly(self):
         ply_object = dict()
@@ -42,5 +42,6 @@ class Axis(_PlotlyWrapper):
             ))
         if self.log:
             ply_object['type'] = 'log'
-
+        if not self.show_grid:
+            ply_object['showgrid'] = False
         return ply_object
