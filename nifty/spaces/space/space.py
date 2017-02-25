@@ -229,7 +229,8 @@ class Space(DomainObject):
         raise NotImplementedError(
             "There is no generic co-smoothing kernel for Space base class.")
 
-    def hermitian_decomposition(self, x, axes=None):
+    def hermitian_decomposition(self, x, axes=None,
+                                preserve_gaussian_variance=False):
         raise NotImplementedError
 
     def __repr__(self):

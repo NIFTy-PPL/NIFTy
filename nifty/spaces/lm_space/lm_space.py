@@ -111,7 +111,8 @@ class LMSpace(Space):
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
 
-    def hermitian_decomposition(self, x, axes=None):
+    def hermitian_decomposition(self, x, axes=None,
+                                preserve_gaussian_variance=False):
         hermitian_part = x.copy_empty()
         anti_hermitian_part = x.copy_empty()
         hermitian_part[:] = x.real

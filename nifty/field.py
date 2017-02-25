@@ -348,10 +348,15 @@ class Field(Loggable, Versionable, object):
         if real_signal:
             result_val_list = [harmonic_domain.hermitian_decomposition(
                                     x.val,
-                                    axes=x.domain_axes[power_space_index])[0]
+                                    axes=x.domain_axes[power_space_index],
+                                    preserve_gaussian_variance=True)[0]
                                for x in result_list]
         else:
-            result_val_list = [x.val for x in result_list]
+#            # if the synthesized field is complex in signal space,
+#            # one must correct the variance here, since one draws
+#            # sqrt(twice) the power via real- and imaginary-part
+#            result_val_list = [x.val*np.sqrt(0.5) for x in result_list]
+             result_val_list = [x.val for x in result_list]
 
         # weight the random fields with the power spectrum
         # therefore get the pindex from the power space
