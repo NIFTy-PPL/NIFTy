@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from nifty.plotting.plotly_wrapper import _PlotlyWrapper
 
+
 class _BaseFigure(_PlotlyWrapper):
     __metaclass__ = ABCMeta
 
@@ -19,9 +20,9 @@ class _BaseFigure(_PlotlyWrapper):
                 scene = dict(
                     aspectmode='cube'
                 ),
-                autosize=True,
+                autosize=False,
                 width=self.width,
-                height=self.height
+                height=self.height,
             )
         )
         return ply_object
@@ -39,10 +40,21 @@ class _2dFigure(_BaseFigure):
             ply_object['layout']['scene']['aspectratio'] = dict()
         if self.xaxis:
             ply_object['layout']['xaxis'] = self.xaxis._to_plotly()
-            # ply_object['layout']['scene']['aspectratio']['x'] = self.xaxis.aspect_ratio
+        elif self.xaxis == False:
+            ply_object['layout']['xaxis'] = dict(
+                                                autorange=True,
+                                                showgrid=False,
+                                                zeroline=False,
+                                                showline=False,
+                                                autotick=True,
+                                                ticks='',
+                                                showticklabels=False
+                                            )
+
         if self.yaxis:
             ply_object['layout']['yaxis'] = self.yaxis._to_plotly()
-            # ply_object['layout']['scene']['aspectratio']['y'] = self.yaxis.aspect_ratio
+        elif self.yaxis == False:
+            ply_object['layout']['yaxis'] = dict(showline=False)
         return ply_object
 
 
@@ -57,13 +69,16 @@ class _3dFigure(_2dFigure):
             ply_object['layout']['scene']['aspectratio'] = dict()
         if self.xaxis:
             ply_object['layout']['scene']['xaxis'] = self.xaxis._to_plotly()
-            # ply_object['layout']['scene']['aspectratio']['x'] = self.xaxis.aspect_ratio
+        elif self.xaxis == False:
+            ply_object['layout']['scene']['xaxis'] = dict(showline=False)
         if self.yaxis:
             ply_object['layout']['scene']['yaxis'] = self.yaxis._to_plotly()
-            # ply_object['layout']['scene']['aspectratio']['y'] = self.yaxis.aspect_ratio
+        elif self.yaxis == False:
+            ply_object['layout']['scene']['yaxis'] = dict(showline=False)
         if self.zaxis:
             ply_object['layout']['scene']['zaxis'] = self.zaxis._to_plotly()
-            # ply_object['layout']['scene']['aspectratio']['z'] = self.zaxis.aspect_ratio
+        elif self.zaxis == False:
+            ply_object['layout']['scene']['zaxis'] = dict(showline=False)
         return ply_object
 
 

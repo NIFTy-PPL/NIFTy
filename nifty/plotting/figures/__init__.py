@@ -1,2 +1,3 @@
-from figure import Figure
-__all__ = ['Figure']
+from figure import Figure, MultiFigure
+
+__all__ = ['Figure', 'MultiFigure']

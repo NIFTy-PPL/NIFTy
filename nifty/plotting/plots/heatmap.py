@@ -36,5 +36,4 @@ def _mollview(x, xsize=800):
     extent = (0.02, 0.05, 0.96, 0.9)
     ax = PA.HpxMollweideAxes(f, extent)
     img = ax.projmap(x, nest=False, xsize=xsize)
-
     return img

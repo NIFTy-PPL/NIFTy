@@ -21,11 +21,11 @@ class Plotter(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, interactive=False, path='.', stack_subplots=False,
-                 color_scale):
+                 color_scale=None):
         self.interactive = interactive
         self.path = path
         self.stack_subplots = stack_subplots
-        self.color_scale = None
+        self.color_scale = color_scale
         self.title = 'uiae'
 
     @abc.abstractproperty
@@ -94,13 +94,12 @@ class Plotter(Loggable, object):
         if self.interactive:
             ply.iplot(figure)
         else:
-            # is there a use for ply.plot when one has no intereset in
+            pass
+            # is there a use for ply.plot when one has no interest in
             # saving a file?
 
             # -> check for different file types
             # -> store the file to disk (MPI awareness?)
-
-
 
 
 

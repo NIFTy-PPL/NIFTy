@@ -2,9 +2,12 @@ from nifty.plotting.plots.private import _Plot2D, _Plot3D
 from nifty.plotting.plots import ScatterGeoMap
 
 
-def validate_plots(data):
+def validate_plots(data, except_empty=True):
     if not data:
-        raise Exception('Error: no plots given')
+        if except_empty:
+            raise Exception('Error: no plots given')
+        else:
+            return True
 
     if type(data) != list:
         data = [data]
