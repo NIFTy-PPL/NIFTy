@@ -151,11 +151,11 @@ class Field(Loggable, Versionable, object):
 
     def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
                       real_signal=True):
-        # assert that all spaces in `self.domain` are either harmonic or
+        # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                raise AttributeError(
+                self.logger.info(
                     "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
@@ -288,11 +288,11 @@ class Field(Loggable, Versionable, object):
     def power_synthesize(self, spaces=None, real_signal=True,
                          mean=None, std=None):
 
-        # assert that all spaces in `self.domain` are either of signal-type or
+        # check if all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                raise AttributeError(
+                self.logger.info(
                     "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
@@ -352,11 +352,7 @@ class Field(Loggable, Versionable, object):
                                     preserve_gaussian_variance=True)[0]
                                for x in result_list]
         else:
-#            # if the synthesized field is complex in signal space,
-#            # one must correct the variance here, since one draws
-#            # sqrt(twice) the power via real- and imaginary-part
-#            result_val_list = [x.val*np.sqrt(0.5) for x in result_list]
-             result_val_list = [x.val for x in result_list]
+            result_val_list = [x.val for x in result_list]
 
         # weight the random fields with the power spectrum
         # therefore get the pindex from the power space
