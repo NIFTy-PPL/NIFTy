@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import pickle
-
 import numpy as np
 
 from field_type import FieldType
@@ -29,14 +27,14 @@ class FieldArray(FieldType):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['shape'] = self.shape
-        hdf5_group['dtype'] = pickle.dumps(self.dtype)
+        hdf5_group.attrs['dtype'] = self.dtype.name
 
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
         result = cls(
-            hdf5_group['shape'][:],
-            pickle.loads(hdf5_group['dtype'][()])
+            shape=hdf5_group['shape'][:],
+            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result

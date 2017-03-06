@@ -836,7 +836,10 @@ class Field(Loggable, Versionable, object):
         hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
         hdf5_group['num_domain'] = len(self.domain)
 
-        ret_dict = {'val': self.val}
+        if self._val is None:
+            ret_dict = {}
+        else:
+            ret_dict = {'val': self.val}
 
         for i in range(len(self.domain)):
             ret_dict['s_' + str(i)] = self.domain[i]
@@ -856,7 +859,12 @@ class Field(Loggable, Versionable, object):
         new_field.domain = tuple(temp_domain)
 
         exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
-        new_field._val = repository.get('val', hdf5_group)
+
+        try:
+            new_field._val = repository.get('val', hdf5_group)
+        except(KeyError):
+            new_field._val = None
+
         new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
         new_field.distribution_strategy =\
             hdf5_group.attrs['distribution_strategy']
