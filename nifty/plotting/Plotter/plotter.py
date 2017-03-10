@@ -61,7 +61,7 @@ class Plotter(Loggable, object):
         self._stack_subplots = bool(stack_subplots)
 
     @abc.abstractmethod
-    def plot(self, field, spaces=None, types=None, data_preselector=None):
+    def plot(self, field, spaces=None, types=None, slice=None):
         # if fields is a list, create a new field with appended
         # field_type = field_array and copy individual parts into the new field
 
@@ -80,7 +80,7 @@ class Plotter(Loggable, object):
         # add clipping
 
         # no_subplot
-        result_figure = self._create_individual_plot(data)
+        result_figure = self._create_individual_plot()
         # non-trivial subplots
         result_figure = tools.make_subplots(cols=2, rows='total_iterator%2 + 1',
                                             subplot_titles='iterator_index')
