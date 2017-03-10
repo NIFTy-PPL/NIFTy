@@ -60,8 +60,13 @@ class Plotter(Loggable, object):
     def stack_subplots(self, stack_subplots):
         self._stack_subplots = bool(stack_subplots)
 
-    @abc.abstractmethod
     def plot(self, field, spaces=None, types=None, slice=None):
+        data = self._get_data_from_field(field, spaces, types, slice)
+        figures = self._create_individual_plot(data)
+        self._finalize_figure(figures)
+
+    @abc.abstractmethod
+    def _get_data_from_field(self, field, spaces=None, types=None, slice=None):
         # if fields is a list, create a new field with appended
         # field_type = field_array and copy individual parts into the new field
 
@@ -74,32 +79,21 @@ class Plotter(Loggable, object):
             raise AttributeError("Given field_type(s) of input field-domain "
                                  "do not match the plotters field_type.")
 
-        # iterate over the individual slices in order to compose the figure
-        # -> make a d2o.get_full_data() (for rank==0 only?)
-
-        # add clipping
-
-        # no_subplot
-        result_figure = self._create_individual_plot()
-        # non-trivial subplots
-        result_figure = tools.make_subplots(cols=2, rows='total_iterator%2 + 1',
-                                            subplot_titles='iterator_index')
-
-        self._finalize_figure(result_figure)
+            # iterate over the individual slices in order to compose the figure
+            # -> make a d2o.get_full_data() (for rank==0 only?)
+            # add
+        return [1,2,3]
 
     def _create_individual_plot(self, data):
         pass
 
     def _finalize_figure(self, figure):
-        if self.interactive:
-            ply.iplot(figure)
-        else:
-            pass
-            # is there a use for ply.plot when one has no interest in
-            # saving a file?
+        pass
+        # is there a use for ply.plot when one has no interest in
+        # saving a file?
 
-            # -> check for different file types
-            # -> store the file to disk (MPI awareness?)
+        # -> check for different file types
+        # -> store the file to disk (MPI awareness?)
 
 
 
