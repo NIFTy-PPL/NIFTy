@@ -4,8 +4,6 @@ import abc
 
 import numpy as np
 
-from nifty.field_types import FieldType
-from nifty.spaces import Space
 from nifty.field import Field
 import nifty.nifty_utilities as utilities
 
@@ -26,29 +24,21 @@ class Prober(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, domain=None, field_type=None,
-                 distribution_strategy=None, probe_count=8,
+    def __init__(self, domain=None, distribution_strategy=None, probe_count=8,
                  random_type='pm1', compute_variance=False):
 
         self._domain = utilities.parse_domain(domain)
-        self._field_type = utilities.parse_field_type(field_type)
         self._distribution_strategy = \
             self._parse_distribution_strategy(distribution_strategy)
         self._probe_count = self._parse_probe_count(probe_count)
         self._random_type = self._parse_random_type(random_type)
         self.compute_variance = bool(compute_variance)
 
-        super(Prober, self).__init__()
-
     # ---Properties---
 
     @property
     def domain(self):
         return self._domain
-
-    @property
-    def field_type(self):
-        return self._field_type
 
     @property
     def distribution_strategy(self):
@@ -92,7 +82,7 @@ class Prober(object):
             self.finish_probe(current_probe, pre_result)
 
     def reset(self):
-        super(Prober, self).reset()
+        pass
 
     def get_probe(self, index):
         """ layer of abstraction for potential probe-caching """
@@ -102,7 +92,6 @@ class Prober(object):
         """ a random-probe generator """
         f = Field.from_random(random_type=self.random_type,
                               domain=self.domain,
-                              field_type=self.field_type,
                               distribution_strategy=self.distribution_strategy)
         uid = np.random.randint(1e18)
         return (uid, f)
@@ -116,7 +105,7 @@ class Prober(object):
         return callee(probe, **kwargs)
 
     def finish_probe(self, probe, pre_result):
-        super(Prober, self).finish_probe(probe, pre_result)
+        pass
 
     def __call__(self, callee):
         return self.probing_run(callee)

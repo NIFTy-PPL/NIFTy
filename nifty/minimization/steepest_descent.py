@@ -4,8 +4,8 @@ from .quasi_newton_minimizer import QuasiNewtonMinimizer
 
 
 class SteepestDescent(QuasiNewtonMinimizer):
-    def _get_descend_direction(self, x, gradient):
-        descend_direction = gradient
+    def _get_descend_direction(self, energy):
+        descend_direction = energy.gradient
         norm = descend_direction.norm()
         if norm != 1:
             return descend_direction / -norm

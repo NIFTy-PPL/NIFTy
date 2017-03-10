@@ -9,9 +9,8 @@ from d2o import distributed_data_object,\
 
 from nifty.config import nifty_configuration as gc
 
-from nifty.field_types import FieldType
+from nifty.domain_object import DomainObject
 
-from nifty.spaces.space import Space
 from nifty.spaces.power_space import PowerSpace
 
 import nifty.nifty_utilities as utilities
@@ -21,31 +20,24 @@ from nifty.random import Random
 class Field(Loggable, Versionable, object):
     # ---Initialization methods---
 
-    def __init__(self, domain=None, val=None, dtype=None, field_type=None,
+    def __init__(self, domain=None, val=None, dtype=None,
                  distribution_strategy=None, copy=False):
 
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
 
-        self.field_type = self._parse_field_type(field_type, val=val)
-
-        try:
-            start = len(reduce(lambda x, y: x+y, self.domain_axes))
-        except TypeError:
-            start = 0
-        self.field_type_axes = self._get_axes_tuple(self.field_type,
-                                                    start=start)
-
         self.dtype = self._infer_dtype(dtype=dtype,
                                        val=val,
-                                       domain=self.domain,
-                                       field_type=self.field_type)
+                                       domain=self.domain)
 
         self.distribution_strategy = self._parse_distribution_strategy(
                                 distribution_strategy=distribution_strategy,
                                 val=val)
 
-        self.set_val(new_val=val, copy=copy)
+        if val is None:
+            self._val = None
+        else:
+            self.set_val(new_val=val, copy=copy)
 
     def _parse_domain(self, domain, val=None):
         if domain is None:
@@ -53,33 +45,17 @@ class Field(Loggable, Versionable, object):
                 domain = val.domain
             else:
                 domain = ()
-        elif isinstance(domain, Space):
+        elif isinstance(domain, DomainObject):
             domain = (domain,)
         elif not isinstance(domain, tuple):
             domain = tuple(domain)
 
         for d in domain:
-            if not isinstance(d, Space):
+            if not isinstance(d, DomainObject):
                 raise TypeError(
                     "Given domain contains something that is not a "
-                    "nifty.space.")
+                    "DomainObject instance.")
         return domain
-
-    def _parse_field_type(self, field_type, val=None):
-        if field_type is None:
-            if isinstance(val, Field):
-                field_type = val.field_type
-            else:
-                field_type = ()
-        elif isinstance(field_type, FieldType):
-            field_type = (field_type,)
-        elif not isinstance(field_type, tuple):
-            field_type = tuple(field_type)
-        for ft in field_type:
-            if not isinstance(ft, FieldType):
-                raise TypeError(
-                    "Given object is not a nifty.FieldType.")
-        return field_type
 
     def _get_axes_tuple(self, things_with_shape, start=0):
         i = start
@@ -92,7 +68,7 @@ class Field(Loggable, Versionable, object):
             axes_list += [tuple(l)]
         return tuple(axes_list)
 
-    def _infer_dtype(self, dtype, val, domain, field_type):
+    def _infer_dtype(self, dtype, val, domain):
         if dtype is None:
             if isinstance(val, Field) or \
                isinstance(val, distributed_data_object):
@@ -102,8 +78,6 @@ class Field(Loggable, Versionable, object):
             dtype_tuple = (np.dtype(dtype),)
         if domain is not None:
             dtype_tuple += tuple(np.dtype(sp.dtype) for sp in domain)
-        if field_type is not None:
-            dtype_tuple += tuple(np.dtype(ft.dtype) for ft in field_type)
 
         dtype = reduce(lambda x, y: np.result_type(x, y), dtype_tuple)
 
@@ -116,7 +90,7 @@ class Field(Loggable, Versionable, object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                self.logger.info("Datamodel set to default!")
+                self.logger.debug("distribution_strategy set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(
@@ -127,10 +101,10 @@ class Field(Loggable, Versionable, object):
     # ---Factory methods---
 
     @classmethod
-    def from_random(cls, random_type, domain=None, dtype=None, field_type=None,
+    def from_random(cls, random_type, domain=None, dtype=None,
                     distribution_strategy=None, **kwargs):
         # create a initially empty field
-        f = cls(domain=domain, dtype=dtype, field_type=field_type,
+        f = cls(domain=domain, dtype=dtype,
                 distribution_strategy=distribution_strategy)
 
         # now use the processed input in terms of f in order to parse the
@@ -177,11 +151,11 @@ class Field(Loggable, Versionable, object):
 
     def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
                       real_signal=True):
-        # assert that all spaces in `self.domain` are either harmonic or
+        # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                raise AttributeError(
+                self.logger.info(
                     "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
@@ -313,11 +287,12 @@ class Field(Loggable, Versionable, object):
 
     def power_synthesize(self, spaces=None, real_signal=True,
                          mean=None, std=None):
-        # assert that all spaces in `self.domain` are either of signal-type or
+
+        # check if all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                raise AttributeError(
+                self.logger.info(
                     "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
@@ -363,7 +338,6 @@ class Field(Loggable, Versionable, object):
                              std=std,
                              domain=result_domain,
                              dtype=harmonic_domain.dtype,
-                             field_type=self.field_type,
                              distribution_strategy=self.distribution_strategy)
                        for x in result_list]
 
@@ -374,7 +348,8 @@ class Field(Loggable, Versionable, object):
         if real_signal:
             result_val_list = [harmonic_domain.hermitian_decomposition(
                                     x.val,
-                                    axes=x.domain_axes[power_space_index])[0]
+                                    axes=x.domain_axes[power_space_index],
+                                    preserve_gaussian_variance=True)[0]
                                for x in result_list]
         else:
             result_val_list = [x.val for x in result_list]
@@ -436,6 +411,9 @@ class Field(Loggable, Versionable, object):
         return self
 
     def get_val(self, copy=False):
+        if self._val is None:
+            self.set_val(None)
+
         if copy:
             return self._val.copy()
         else:
@@ -443,17 +421,15 @@ class Field(Loggable, Versionable, object):
 
     @property
     def val(self):
-        return self._val
+        return self.get_val(copy=False)
 
     @val.setter
     def val(self, new_val):
-        self._val = self.cast(new_val)
+        self.set_val(new_val=new_val, copy=False)
 
     @property
     def shape(self):
-        shape_tuple = ()
-        shape_tuple += tuple(sp.shape for sp in self.domain)
-        shape_tuple += tuple(ft.shape for ft in self.field_type)
+        shape_tuple = tuple(sp.shape for sp in self.domain)
         try:
             global_shape = reduce(lambda x, y: x + y, shape_tuple)
         except TypeError:
@@ -463,9 +439,7 @@ class Field(Loggable, Versionable, object):
 
     @property
     def dim(self):
-        dim_tuple = ()
-        dim_tuple += tuple(sp.dim for sp in self.domain)
-        dim_tuple += tuple(ft.dim for ft in self.field_type)
+        dim_tuple = tuple(sp.dim for sp in self.domain)
         try:
             return reduce(lambda x, y: x * y, dim_tuple)
         except TypeError:
@@ -500,19 +474,11 @@ class Field(Loggable, Versionable, object):
             casted_x = sp.pre_cast(casted_x,
                                    axes=self.domain_axes[ind])
 
-        for ind, ft in enumerate(self.field_type):
-            casted_x = ft.pre_cast(casted_x,
-                                   axes=self.field_type_axes[ind])
-
         casted_x = self._actual_cast(casted_x, dtype=dtype)
 
         for ind, sp in enumerate(self.domain):
             casted_x = sp.post_cast(casted_x,
                                     axes=self.domain_axes[ind])
-
-        for ind, ft in enumerate(self.field_type):
-            casted_x = ft.post_cast(casted_x,
-                                    axes=self.field_type_axes[ind])
 
         return casted_x
 
@@ -530,19 +496,16 @@ class Field(Loggable, Versionable, object):
         return_x.set_full_data(x, copy=False)
         return return_x
 
-    def copy(self, domain=None, dtype=None, field_type=None,
-             distribution_strategy=None):
+    def copy(self, domain=None, dtype=None, distribution_strategy=None):
         copied_val = self.get_val(copy=True)
         new_field = self.copy_empty(
                                 domain=domain,
                                 dtype=dtype,
-                                field_type=field_type,
                                 distribution_strategy=distribution_strategy)
         new_field.set_val(new_val=copied_val, copy=False)
         return new_field
 
-    def copy_empty(self, domain=None, dtype=None, field_type=None,
-                   distribution_strategy=None):
+    def copy_empty(self, domain=None, dtype=None, distribution_strategy=None):
         if domain is None:
             domain = self.domain
         else:
@@ -553,11 +516,6 @@ class Field(Loggable, Versionable, object):
         else:
             dtype = np.dtype(dtype)
 
-        if field_type is None:
-            field_type = self.field_type
-        else:
-            field_type = self._parse_field_type(field_type)
-
         if distribution_strategy is None:
             distribution_strategy = self.distribution_strategy
 
@@ -565,10 +523,6 @@ class Field(Loggable, Versionable, object):
         try:
             for i in xrange(len(self.domain)):
                 if self.domain[i] is not domain[i]:
-                    fast_copyable = False
-                    break
-            for i in xrange(len(self.field_type)):
-                if self.field_type[i] is not field_type[i]:
                     fast_copyable = False
                     break
         except IndexError:
@@ -580,7 +534,6 @@ class Field(Loggable, Versionable, object):
         else:
             new_field = Field(domain=domain,
                               dtype=dtype,
-                              field_type=field_type,
                               distribution_strategy=distribution_strategy)
         return new_field
 
@@ -605,10 +558,9 @@ class Field(Loggable, Versionable, object):
 
         new_val = self.get_val(copy=False)
 
+        spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
             spaces = range(len(self.domain))
-        else:
-            spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
 
         for ind, sp in enumerate(self.domain):
             if ind in spaces:
@@ -620,19 +572,11 @@ class Field(Loggable, Versionable, object):
         new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
-    def dot(self, x=None, bare=False):
-        if isinstance(x, Field):
-            try:
-                assert len(x.domain) == len(self.domain)
-                for index in xrange(len(self.domain)):
-                    assert x.domain[index] == self.domain[index]
-                for index in xrange(len(self.field_type)):
-                    assert x.field_type[index] == self.field_type[index]
-            except AssertionError:
-                raise ValueError(
-                    "domains are incompatible.")
-            # extract the data from x and try to dot with this
-            x = x.get_val(copy=False)
+    def dot(self, x=None, spaces=None, bare=False):
+
+        if not isinstance(x, Field):
+            raise ValueError("The dot-partner must be an instance of " +
+                             "the NIFTy field class")
 
         # Compute the dot respecting the fact of discrete/continous spaces
         if bare:
@@ -640,14 +584,21 @@ class Field(Loggable, Versionable, object):
         else:
             y = self.weight(power=1)
 
-        y = y.get_val(copy=False)
-
-        # Cast the input in order to cure dtype and shape differences
-        x = self.cast(x)
-
-        dotted = x.conjugate() * y
-
-        return dotted.sum()
+        if spaces is None:
+            x_val = x.get_val(copy=False)
+            y_val = y.get_val(copy=False)
+            result = (x_val.conjugate() * y_val).sum()
+            return result
+        else:
+            # create a diagonal operator which is capable of taking care of the
+            # axes-matching
+            from nifty.operators.diagonal_operator import DiagonalOperator
+            diagonal = y.val.conjugate()
+            diagonalOperator = DiagonalOperator(domain=y.domain,
+                                                diagonal=diagonal,
+                                                copy=False)
+            dotted = diagonalOperator(x, spaces=spaces)
+            return dotted.sum(spaces=spaces)
 
     def norm(self, q=2):
         """
@@ -707,22 +658,15 @@ class Field(Loggable, Versionable, object):
         return_field.set_val(new_val, copy=False)
         return return_field
 
-    def _contraction_helper(self, op, spaces, types):
+    def _contraction_helper(self, op, spaces):
         # build a list of all axes
         if spaces is None:
             spaces = xrange(len(self.domain))
         else:
             spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
 
-        if types is None:
-            types = xrange(len(self.field_type))
-        else:
-            types = utilities.cast_axis_to_tuple(types, len(self.field_type))
+        axes_list = tuple(self.domain_axes[sp_index] for sp_index in spaces)
 
-        axes_list = ()
-        axes_list += tuple(self.domain_axes[sp_index] for sp_index in spaces)
-        axes_list += tuple(self.field_type_axes[ft_index] for
-                           ft_index in types)
         try:
             axes_list = reduce(lambda x, y: x+y, axes_list)
         except TypeError:
@@ -739,47 +683,44 @@ class Field(Loggable, Versionable, object):
             return_domain = tuple(self.domain[i]
                                   for i in xrange(len(self.domain))
                                   if i not in spaces)
-            return_field_type = tuple(self.field_type[i]
-                                      for i in xrange(len(self.field_type))
-                                      if i not in types)
+
             return_field = Field(domain=return_domain,
                                  val=data,
-                                 field_type=return_field_type,
                                  copy=False)
             return return_field
 
-    def sum(self, spaces=None, types=None):
-        return self._contraction_helper('sum', spaces, types)
+    def sum(self, spaces=None):
+        return self._contraction_helper('sum', spaces)
 
-    def prod(self, spaces=None, types=None):
-        return self._contraction_helper('prod', spaces, types)
+    def prod(self, spaces=None):
+        return self._contraction_helper('prod', spaces)
 
-    def all(self, spaces=None, types=None):
-        return self._contraction_helper('all', spaces, types)
+    def all(self, spaces=None):
+        return self._contraction_helper('all', spaces)
 
-    def any(self, spaces=None, types=None):
-        return self._contraction_helper('any', spaces, types)
+    def any(self, spaces=None):
+        return self._contraction_helper('any', spaces)
 
-    def min(self, spaces=None, types=None):
-        return self._contraction_helper('min', spaces, types)
+    def min(self, spaces=None):
+        return self._contraction_helper('min', spaces)
 
-    def nanmin(self, spaces=None, types=None):
-        return self._contraction_helper('nanmin', spaces, types)
+    def nanmin(self, spaces=None):
+        return self._contraction_helper('nanmin', spaces)
 
-    def max(self, spaces=None, types=None):
-        return self._contraction_helper('max', spaces, types)
+    def max(self, spaces=None):
+        return self._contraction_helper('max', spaces)
 
-    def nanmax(self, spaces=None, types=None):
-        return self._contraction_helper('nanmax', spaces, types)
+    def nanmax(self, spaces=None):
+        return self._contraction_helper('nanmax', spaces)
 
-    def mean(self, spaces=None, types=None):
-        return self._contraction_helper('mean', spaces, types)
+    def mean(self, spaces=None):
+        return self._contraction_helper('mean', spaces)
 
-    def var(self, spaces=None, types=None):
-        return self._contraction_helper('var', spaces, types)
+    def var(self, spaces=None):
+        return self._contraction_helper('var', spaces)
 
-    def std(self, spaces=None, types=None):
-        return self._contraction_helper('std', spaces, types)
+    def std(self, spaces=None):
+        return self._contraction_helper('std', spaces)
 
     # ---General binary methods---
 
@@ -790,9 +731,6 @@ class Field(Loggable, Versionable, object):
                 assert len(other.domain) == len(self.domain)
                 for index in xrange(len(self.domain)):
                     assert other.domain[index] == self.domain[index]
-                assert len(other.field_type) == len(self.field_type)
-                for index in xrange(len(self.field_type)):
-                    assert other.field_type[index] == self.field_type[index]
             except AssertionError:
                 raise ValueError(
                     "domains are incompatible.")
@@ -895,18 +833,16 @@ class Field(Loggable, Versionable, object):
     def _to_hdf5(self, hdf5_group):
         hdf5_group.attrs['dtype'] = self.dtype.name
         hdf5_group.attrs['distribution_strategy'] = self.distribution_strategy
-        hdf5_group.attrs['field_type_axes'] = str(self.field_type_axes)
         hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
         hdf5_group['num_domain'] = len(self.domain)
-        hdf5_group['num_ft'] = len(self.field_type)
 
-        ret_dict = {'val': self.val}
+        if self._val is None:
+            ret_dict = {}
+        else:
+            ret_dict = {'val': self.val}
 
         for i in range(len(self.domain)):
             ret_dict['s_' + str(i)] = self.domain[i]
-
-        for i in range(len(self.field_type)):
-            ret_dict['ft_' + str(i)] = self.field_type[i]
 
         return ret_dict
 
@@ -922,15 +858,13 @@ class Field(Loggable, Versionable, object):
             temp_domain.append(repository.get('s_' + str(i), hdf5_group))
         new_field.domain = tuple(temp_domain)
 
-        temp_ft = []
-        for i in range(hdf5_group['num_ft'][()]):
-            temp_domain.append(repository.get('ft_' + str(i), hdf5_group))
-        new_field.field_type = tuple(temp_ft)
-
         exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
-        exec('new_field.field_type_axes = ' +
-             hdf5_group.attrs['field_type_axes'])
-        new_field._val = repository.get('val', hdf5_group)
+
+        try:
+            new_field._val = repository.get('val', hdf5_group)
+        except(KeyError):
+            new_field._val = None
+
         new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
         new_field.distribution_strategy =\
             hdf5_group.attrs['distribution_strategy']

@@ -14,7 +14,7 @@ class InvertibleOperatorMixin(object):
             self.__inverter = ConjugateGradient(
                                         preconditioner=self.__preconditioner)
 
-    def _times(self, x, spaces, types, x0=None):
+    def _times(self, x, spaces, x0=None):
         if x0 is None:
             x0 = Field(self.target, val=0., dtype=x.dtype)
 
@@ -23,7 +23,7 @@ class InvertibleOperatorMixin(object):
                                                 x0=x0)
         return result
 
-    def _adjoint_times(self, x, spaces, types, x0=None):
+    def _adjoint_times(self, x, spaces, x0=None):
         if x0 is None:
             x0 = Field(self.domain, val=0., dtype=x.dtype)
 
@@ -32,7 +32,7 @@ class InvertibleOperatorMixin(object):
                                                 x0=x0)
         return result
 
-    def _inverse_times(self, x, spaces, types, x0=None):
+    def _inverse_times(self, x, spaces, x0=None):
         if x0 is None:
             x0 = Field(self.domain, val=0., dtype=x.dtype)
 
@@ -41,7 +41,7 @@ class InvertibleOperatorMixin(object):
                                                 x0=x0)
         return result
 
-    def _adjoint_inverse_times(self, x, spaces, types, x0=None):
+    def _adjoint_inverse_times(self, x, spaces, x0=None):
         if x0 is None:
             x0 = Field(self.target, val=0., dtype=x.dtype)
 
@@ -50,6 +50,6 @@ class InvertibleOperatorMixin(object):
                                                 x0=x0)
         return result
 
-    def _inverse_adjoint_times(self, x, spaces, types):
+    def _inverse_adjoint_times(self, x, spaces):
         raise NotImplementedError(
             "no generic instance method 'inverse_adjoint_times'.")

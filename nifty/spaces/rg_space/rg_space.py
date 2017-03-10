@@ -152,7 +152,8 @@ class RGSpace(Space):
         self._distances = self._parse_distances(distances)
         self._zerocenter = self._parse_zerocenter(zerocenter)
 
-    def hermitian_decomposition(self, x, axes=None):
+    def hermitian_decomposition(self, x, axes=None,
+                                preserve_gaussian_variance=False):
         # compute the hermitian part
         flipped_x = self._hermitianize_inverter(x, axes=axes)
         flipped_x = flipped_x.conjugate()
@@ -162,7 +163,38 @@ class RGSpace(Space):
 
         # use subtraction since it is faster than flipping another time
         anti_hermitian_part = (x-hermitian_part)/1j
+
+        if preserve_gaussian_variance:
+            hermitian_part, anti_hermitian_part = \
+                self._hermitianize_correct_variance(hermitian_part,
+                                                    anti_hermitian_part,
+                                                    axes=axes)
+
         return (hermitian_part, anti_hermitian_part)
+
+    def _hermitianize_correct_variance(self, hermitian_part,
+                                       anti_hermitian_part, axes):
+        # Correct the variance by multiplying sqrt(2)
+        hermitian_part = hermitian_part * np.sqrt(2)
+        anti_hermitian_part = anti_hermitian_part * np.sqrt(2)
+
+        # The fixed points of the point inversion must not be avaraged.
+        # Hence one must divide out the sqrt(2) again
+        # -> Get the middle index of the array
+        mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
+        dimensions = mid_index.size
+        # Use ndindex to iterate over all combinations of zeros and the
+        # mid_index in order to correct all fixed points.
+        if axes is None:
+            axes = xrange(dimensions)
+
+        ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
+        ndlist = tuple(ndlist)
+        for i in np.ndindex(ndlist):
+            temp_index = tuple(i * mid_index)
+            hermitian_part[temp_index] /= np.sqrt(2)
+            anti_hermitian_part[temp_index] /= np.sqrt(2)
+        return hermitian_part, anti_hermitian_part
 
     def _hermitianize_inverter(self, x, axes):
         # calculate the number of dimensions the input array has

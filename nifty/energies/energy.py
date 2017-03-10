@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
+from keepers import Loggable
 
-class Energy(object):
+
+class Energy(Loggable, object):
     def __init__(self, position):
         self._cache = {}
         try:
@@ -12,6 +14,14 @@ class Energy(object):
 
     def at(self, position):
         return self.__class__(position)
+
+    @property
+    def position(self):
+        return self._position
+
+    @position.setter
+    def position(self, position):
+        self._position = position
 
     @property
     def value(self):

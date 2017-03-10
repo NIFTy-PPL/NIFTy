@@ -16,23 +16,12 @@ class LinearOperator(Loggable, object):
     def _parse_domain(self, domain):
         return utilities.parse_domain(domain)
 
-    def _parse_field_type(self, field_type):
-        return utilities.parse_field_type(field_type)
-
     @abc.abstractproperty
     def domain(self):
         raise NotImplementedError
 
     @abc.abstractproperty
     def target(self):
-        raise NotImplementedError
-
-    @abc.abstractproperty
-    def field_type(self):
-        raise NotImplementedError
-
-    @abc.abstractproperty
-    def field_type_target(self):
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -46,86 +35,83 @@ class LinearOperator(Loggable, object):
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)
 
-    def times(self, x, spaces=None, types=None, **kwargs):
-        spaces, types = self._check_input_compatibility(x, spaces, types)
+    def times(self, x, spaces=None, **kwargs):
+        spaces = self._check_input_compatibility(x, spaces)
 
         if not self.implemented:
             x = x.weight(spaces=spaces)
 
-        y = self._times(x, spaces, types, **kwargs)
+        y = self._times(x, spaces, **kwargs)
         return y
 
-    def inverse_times(self, x, spaces=None, types=None, **kwargs):
-        spaces, types = self._check_input_compatibility(x, spaces, types,
-                                                        inverse=True)
+    def inverse_times(self, x, spaces=None, **kwargs):
+        spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
-        y = self._inverse_times(x, spaces, types, **kwargs)
+        y = self._inverse_times(x, spaces, **kwargs)
         if not self.implemented:
             y = y.weight(power=-1, spaces=spaces)
         return y
 
-    def adjoint_times(self, x, spaces=None, types=None, **kwargs):
+    def adjoint_times(self, x, spaces=None, **kwargs):
         if self.unitary:
-            return self.inverse_times(x, spaces, types)
+            return self.inverse_times(x, spaces)
 
-        spaces, types = self._check_input_compatibility(x, spaces, types,
-                                                        inverse=True)
+        spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
         if not self.implemented:
             x = x.weight(spaces=spaces)
-        y = self._adjoint_times(x, spaces, types, **kwargs)
+        y = self._adjoint_times(x, spaces, **kwargs)
         return y
 
-    def adjoint_inverse_times(self, x, spaces=None, types=None, **kwargs):
+    def adjoint_inverse_times(self, x, spaces=None, **kwargs):
         if self.unitary:
-            return self.times(x, spaces, types)
+            return self.times(x, spaces)
 
-        spaces, types = self._check_input_compatibility(x, spaces, types)
+        spaces = self._check_input_compatibility(x, spaces)
 
-        y = self._adjoint_inverse_times(x, spaces, types, **kwargs)
+        y = self._adjoint_inverse_times(x, spaces, **kwargs)
         if not self.implemented:
             y = y.weight(power=-1, spaces=spaces)
         return y
 
-    def inverse_adjoint_times(self, x, spaces=None, types=None, **kwargs):
+    def inverse_adjoint_times(self, x, spaces=None, **kwargs):
         if self.unitary:
-            return self.times(x, spaces, types, **kwargs)
+            return self.times(x, spaces, **kwargs)
 
-        spaces, types = self._check_input_compatibility(x, spaces, types)
+        spaces = self._check_input_compatibility(x, spaces)
 
-        y = self._inverse_adjoint_times(x, spaces, types)
+        y = self._inverse_adjoint_times(x, spaces)
         if not self.implemented:
             y = y.weight(power=-1, spaces=spaces)
         return y
 
-    def _times(self, x, spaces, types):
+    def _times(self, x, spaces):
         raise NotImplementedError(
             "no generic instance method 'times'.")
 
-    def _adjoint_times(self, x, spaces, types):
+    def _adjoint_times(self, x, spaces):
         raise NotImplementedError(
             "no generic instance method 'adjoint_times'.")
 
-    def _inverse_times(self, x, spaces, types):
+    def _inverse_times(self, x, spaces):
         raise NotImplementedError(
             "no generic instance method 'inverse_times'.")
 
-    def _adjoint_inverse_times(self, x, spaces, types):
+    def _adjoint_inverse_times(self, x, spaces):
         raise NotImplementedError(
             "no generic instance method 'adjoint_inverse_times'.")
 
-    def _inverse_adjoint_times(self, x, spaces, types):
+    def _inverse_adjoint_times(self, x, spaces):
         raise NotImplementedError(
             "no generic instance method 'inverse_adjoint_times'.")
 
-    def _check_input_compatibility(self, x, spaces, types, inverse=False):
+    def _check_input_compatibility(self, x, spaces, inverse=False):
         if not isinstance(x, Field):
             raise ValueError(
                 "supplied object is not a `nifty.Field`.")
 
         # sanitize the `spaces` and `types` input
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
-        types = utilities.cast_axis_to_tuple(types, len(x.field_type))
 
         # if the operator's domain is set to something, there are two valid
         # cases:
@@ -137,13 +123,11 @@ class LinearOperator(Loggable, object):
 
         if not inverse:
             self_domain = self.domain
-            self_field_type = self.field_type
         else:
             self_domain = self.target
-            self_field_type = self.field_type_target
 
         if spaces is None:
-            if self_domain != () and self_domain != x.domain:
+            if self_domain != x.domain:
                 raise ValueError(
                     "The operator's and and field's domains don't "
                     "match.")
@@ -154,19 +138,7 @@ class LinearOperator(Loggable, object):
                         "The operator's and and field's domains don't "
                         "match.")
 
-        if types is None:
-            if self_field_type != () and self_field_type != x.field_type:
-                raise ValueError(
-                    "The operator's and and field's field_types don't "
-                    "match.")
-        else:
-            for i, field_type_index in enumerate(types):
-                if x.field_type[field_type_index] != self_field_type[i]:
-                    raise ValueError(
-                        "The operator's and and field's field_type "
-                        "don't match.")
-
-        return (spaces, types)
+        return spaces
 
     def __repr__(self):
         return str(self.__class__)

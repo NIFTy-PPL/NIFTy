@@ -31,6 +31,7 @@ class LineSearch(Loggable, object):
         self.pk = None
         self.line_energy = None
         self.f_k_minus_1 = None
+        self.prefered_initial_step_size = None
 
     def _set_line_energy(self, energy, pk, f_k_minus_1=None):
         """

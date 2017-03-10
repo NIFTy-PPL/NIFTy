@@ -111,7 +111,8 @@ class LMSpace(Space):
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
 
-    def hermitian_decomposition(self, x, axes=None):
+    def hermitian_decomposition(self, x, axes=None,
+                                preserve_gaussian_variance=False):
         hermitian_part = x.copy_empty()
         anti_hermitian_part = x.copy_empty()
         hermitian_part[:] = x.real
@@ -193,14 +194,14 @@ class LMSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['lmax'] = self.lmax
-        hdf5_group['dtype'] = self.dtype.name
+        hdf5_group.attrs['dtype'] = self.dtype.name
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             lmax=hdf5_group['lmax'][()],
-            dtype=np.dtype(hdf5_group['dtype'][()])
+            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
 

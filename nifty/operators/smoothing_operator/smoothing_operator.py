@@ -9,11 +9,9 @@ from d2o import STRATEGIES
 
 class SmoothingOperator(EndomorphicOperator):
     # ---Overwritten properties and methods---
-    def __init__(self, domain=(), field_type=(), sigma=0,
-                 log_distances=False):
+    def __init__(self, domain=(), sigma=0, log_distances=False):
 
         self._domain = self._parse_domain(domain)
-        self._field_type = self._parse_field_type(field_type)
 
         if len(self.domain) != 1:
             raise ValueError(
@@ -22,31 +20,21 @@ class SmoothingOperator(EndomorphicOperator):
                 'space as input domain.'
             )
 
-        if self.field_type != ():
-            raise ValueError(
-                'ERROR: SmoothOperator field-type must be an '
-                'empty tuple.'
-            )
-
         self.sigma = sigma
         self.log_distances = log_distances
 
         self._direct_smoothing_width = 3.
 
-    def _inverse_times(self, x, spaces, types):
+    def _inverse_times(self, x, spaces):
         return self._smoothing_helper(x, spaces, inverse=True)
 
-    def _times(self, x, spaces, types):
+    def _times(self, x, spaces):
         return self._smoothing_helper(x, spaces, inverse=False)
 
     # ---Mandatory properties and methods---
     @property
     def domain(self):
         return self._domain
-
-    @property
-    def field_type(self):
-        return self._field_type
 
     @property
     def implemented(self):
