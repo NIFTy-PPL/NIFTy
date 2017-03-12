@@ -1,6 +1,7 @@
 from nifty.plotting.plots.private import _Scatter2DBase
+from nifty.plotting.plots.private import _Plot3D, _Plot2D
 
-class Scatter2D(_Scatter2DBase):
+class Scatter2D(_Scatter2DBase, _Plot2D):
     def __init__(self, x=None, y=None, x_start=0, x_step=1,
                  label='', line=None, marker=None, webgl=True):
         if y is None:
@@ -21,7 +22,7 @@ class Scatter2D(_Scatter2DBase):
         return ply_object
 
 
-class Scatter3D(_Scatter2DBase):
+class Scatter3D(_Scatter2DBase, _Plot3D):
     def __init__(self, x, y, z, label='', line=None, marker=None):
         _Scatter2DBase.__init__(self, x, y, label, line, marker)
         self.z = z

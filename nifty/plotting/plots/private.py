@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from nifty.plotting.plotly_wrapper import _PlotlyWrapper
+from nifty.plotting.descriptors import Marker
 
 class _PlotBase(_PlotlyWrapper):
     __metaclass__ = ABCMeta
@@ -8,6 +9,8 @@ class _PlotBase(_PlotlyWrapper):
         self.label = label
         self.line = line
         self.marker = marker
+        if not line and not marker:
+            self.marker = Marker()
 
     @abstractmethod
     def _to_plotly(self):
@@ -18,10 +21,10 @@ class _PlotBase(_PlotlyWrapper):
             ply_object['line'] = self.line._to_plotly()
             ply_object['marker'] = self.marker._to_plotly()
         elif self.line:
-            ply_object['mode'] = 'markers'
+            ply_object['mode'] = 'line'
             ply_object['line'] = self.line._to_plotly()
         elif self.marker:
-            ply_object['mode'] = 'line'
+            ply_object['mode'] = 'markers'
             ply_object['marker'] = self.marker._to_plotly()
 
         return ply_object

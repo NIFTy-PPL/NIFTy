@@ -8,7 +8,7 @@ class _BaseFigure(_PlotlyWrapper):
     def __init__(self, data, title, width, height):
         self.data = data
         self.title = title
-        self.width = width
+        self.width = width if width else 800
         self.height = height
 
     @abstractmethod
@@ -20,7 +20,7 @@ class _BaseFigure(_PlotlyWrapper):
                 scene = dict(
                     aspectmode='cube'
                 ),
-                autosize=False,
+                # autosize=False,
                 width=self.width,
                 height=self.height,
             )

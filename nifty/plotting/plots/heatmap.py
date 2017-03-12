@@ -1,18 +1,19 @@
-from nifty.plotting.plots.private import _PlotBase, _Plot2D
+from nifty.plotting.plots.private import _Plot2D
+from nifty.plotting.plotly_wrapper import _PlotlyWrapper
+
 import healpy.projaxes as PA
 import healpy.pixelfunc as pixelfunc
 
 
-class HeatMap(_PlotBase, _Plot2D):
-    def __init__(self, data, label='', line=None, marker=None, webgl=False,
+class HeatMap(_PlotlyWrapper, _Plot2D):
+    def __init__(self, data, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
-        _PlotBase.__init__(self, label, line, marker)
         self.data = data
         self.webgl = webgl
         self.smoothing = smoothing
 
     def _to_plotly(self):
-        ply_object = _PlotBase._to_plotly(self)
+        ply_object = dict()
         ply_object['z'] = self.data
         if self.webgl:
             ply_object['type'] = 'heatmapgl'
@@ -24,9 +25,9 @@ class HeatMap(_PlotBase, _Plot2D):
 
 
 class MollweideHeatmap(HeatMap):
-    def __init__(self, data, label='', line=None, marker=None, webgl=False,
+    def __init__(self, data, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
-        HeatMap.__init__(self, _mollview(data), label, line, marker, webgl, smoothing)
+        HeatMap.__init__(self, _mollview(data), webgl, smoothing)
 
 
 def _mollview(x, xsize=800):
