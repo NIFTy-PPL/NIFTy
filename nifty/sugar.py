@@ -8,12 +8,14 @@ from nifty import PowerSpace,\
 __all__ = ['create_power_operator']
 
 
-def create_power_operator(domain, power_spectrum, distribution_strategy='not'):
+def create_power_operator(domain, power_spectrum, dtype=None,
+                          distribution_strategy='not'):
     if not domain.harmonic:
         fft = FFTOperator(domain)
         domain = fft.target[0]
 
     power_domain = PowerSpace(domain,
+                              dtype=dtype,
                               distribution_strategy=distribution_strategy)
 
     fp = Field(power_domain,
