@@ -131,10 +131,9 @@ class GLSpace(Space):
     def weight(self, x, power=1, axes=None, inplace=False):
         nlon = self.nlon
         nlat = self.nlat
-
+        vol = gl.vol(nlat) ** power
         weight = np.array(list(itertools.chain.from_iterable(
-            itertools.repeat(x ** power, nlon)
-            for x in gl.vol(nlat))))
+                          itertools.repeat(x, nlon) for x in vol)))
 
         if axes is not None:
             # reshape the weight array to match the input shape
