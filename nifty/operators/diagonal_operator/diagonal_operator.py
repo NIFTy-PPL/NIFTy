@@ -90,10 +90,15 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def symmetric(self):
+        if self._symmetric is None:
+            self._symmetric = (self._diagonal.val.imag == 0).all()
         return self._symmetric
 
     @property
     def unitary(self):
+        if self._unitary is None:
+            self._unitary = (self._diagonal.val *
+                             self._diagonal.val.conjugate() == 1).all()
         return self._unitary
 
     # ---Added properties and methods---
@@ -134,11 +139,11 @@ class DiagonalOperator(EndomorphicOperator):
             # Otherwise, inplace weightening would change the external field
             f.weight(inplace=copy, power=-1)
 
-        # check if the operator is symmetric:
-        self._symmetric = (f.val.imag == 0).all()
+        # Reset the symmetric property:
+        self._symmetric = None
 
-        # check if the operator is unitary:
-        self._unitary = (f.val * f.val.conjugate() == 1).all()
+        # Reset the unitarity property
+        self._unitary = None
 
         # store the diagonal-field
         self._diagonal = f
@@ -154,9 +159,7 @@ class DiagonalOperator(EndomorphicOperator):
         # the one of x, reshape the local data of self and apply it directly
         active_axes = []
         if spaces is None:
-            if self.domain != ():
-                for axes in x.domain_axes:
-                    active_axes += axes
+            active_axes = range(len(x.shape))
         else:
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
@@ -167,6 +170,8 @@ class DiagonalOperator(EndomorphicOperator):
             local_diagonal = self._diagonal.val.get_local_data(copy=False)
         else:
             # create an array that is sub-slice compatible
+            self.logger.warn("The input field is not sub-slice compatible to "
+                             "the distribution strategy of the operator.")
             redistr_diagonal_val = self._diagonal.val.copy(
                 distribution_strategy=axes_local_distribution_strategy)
             local_diagonal = redistr_diagonal_val.get_local_data(copy=False)

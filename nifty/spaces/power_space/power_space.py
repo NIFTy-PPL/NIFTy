@@ -73,7 +73,7 @@ class PowerSpace(Space):
     @property
     def total_volume(self):
         # every power-pixel has a volume of 1
-        return reduce(lambda x, y: x*y, self.pindex.shape)
+        return float(reduce(lambda x, y: x*y, self.pindex.shape))
 
     def copy(self):
         distribution_strategy = self.pindex.distribution_strategy
@@ -85,14 +85,8 @@ class PowerSpace(Space):
                               dtype=self.dtype)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        total_shape = x.shape
-
-        axes = cast_axis_to_tuple(axes, len(total_shape))
-        if len(axes) != 1:
-            raise ValueError(
-                "axes must be of length 1.")
-
-        reshaper = [1, ] * len(total_shape)
+        reshaper = [1, ] * len(x.shape)
+        # we know len(axes) is always 1
         reshaper[axes[0]] = self.shape[0]
 
         weight = self.rho.reshape(reshaper)
@@ -179,8 +173,9 @@ class PowerSpace(Space):
         new_ps = EmptyPowerSpace()
         # reset class
         new_ps.__class__ = cls
+        # call instructor so that classes are properly setup
+        super(PowerSpace, new_ps).__init__(np.dtype(hdf5_group.attrs['dtype']))
         # set all values
-        new_ps.dtype = np.dtype(hdf5_group.attrs['dtype'])
         new_ps._harmonic_domain = repository.get('harmonic_domain', hdf5_group)
         new_ps._log = hdf5_group['log'][()]
         exec('new_ps._nbin = ' + hdf5_group.attrs['nbin'])
@@ -191,6 +186,8 @@ class PowerSpace(Space):
         new_ps._rho = hdf5_group['rho'][:]
         new_ps._pundex = hdf5_group['pundex'][:]
         new_ps._k_array = repository.get('k_array', hdf5_group)
+        new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',
+                                   '_k_array']
 
         return new_ps
 

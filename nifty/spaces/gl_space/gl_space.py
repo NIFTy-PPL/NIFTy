@@ -131,10 +131,9 @@ class GLSpace(Space):
     def weight(self, x, power=1, axes=None, inplace=False):
         nlon = self.nlon
         nlat = self.nlat
-
+        vol = gl.vol(nlat) ** power
         weight = np.array(list(itertools.chain.from_iterable(
-            itertools.repeat(x ** power, nlon)
-            for x in gl.vol(nlat))))
+                          itertools.repeat(x, nlon) for x in vol)))
 
         if axes is not None:
             # reshape the weight array to match the input shape
@@ -209,7 +208,7 @@ class GLSpace(Space):
     def _to_hdf5(self, hdf5_group):
         hdf5_group['nlat'] = self.nlat
         hdf5_group['nlon'] = self.nlon
-        hdf5_group['dtype'] = self.dtype.name
+        hdf5_group.attrs['dtype'] = self.dtype.name
 
         return None
 
@@ -218,7 +217,7 @@ class GLSpace(Space):
         result = cls(
             nlat=hdf5_group['nlat'][()],
             nlon=hdf5_group['nlon'][()],
-            dtype=np.dtype(hdf5_group['dtype'][()])
+            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
 
         return result

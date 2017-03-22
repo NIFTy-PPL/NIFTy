@@ -90,7 +90,7 @@ class Field(Loggable, Versionable, object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                self.logger.info("Datamodel set to default!")
+                self.logger.debug("distribution_strategy set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(
@@ -151,11 +151,11 @@ class Field(Loggable, Versionable, object):
 
     def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
                       real_signal=True):
-        # assert that all spaces in `self.domain` are either harmonic or
+        # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                raise AttributeError(
+                self.logger.info(
                     "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
@@ -287,11 +287,12 @@ class Field(Loggable, Versionable, object):
 
     def power_synthesize(self, spaces=None, real_signal=True,
                          mean=None, std=None):
-        # assert that all spaces in `self.domain` are either of signal-type or
+
+        # check if all spaces in `self.domain` are either of signal-type or
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                raise AttributeError(
+                self.logger.info(
                     "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 
@@ -347,7 +348,8 @@ class Field(Loggable, Versionable, object):
         if real_signal:
             result_val_list = [harmonic_domain.hermitian_decomposition(
                                     x.val,
-                                    axes=x.domain_axes[power_space_index])[0]
+                                    axes=x.domain_axes[power_space_index],
+                                    preserve_gaussian_variance=True)[0]
                                for x in result_list]
         else:
             result_val_list = [x.val for x in result_list]
@@ -556,10 +558,9 @@ class Field(Loggable, Versionable, object):
 
         new_val = self.get_val(copy=False)
 
+        spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
             spaces = range(len(self.domain))
-        else:
-            spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
 
         for ind, sp in enumerate(self.domain):
             if ind in spaces:
@@ -571,17 +572,11 @@ class Field(Loggable, Versionable, object):
         new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
-    def dot(self, x=None, bare=False):
-        if isinstance(x, Field):
-            try:
-                assert len(x.domain) == len(self.domain)
-                for index in xrange(len(self.domain)):
-                    assert x.domain[index] == self.domain[index]
-            except AssertionError:
-                raise ValueError(
-                    "domains are incompatible.")
-            # extract the data from x and try to dot with this
-            x = x.get_val(copy=False)
+    def dot(self, x=None, spaces=None, bare=False):
+
+        if not isinstance(x, Field):
+            raise ValueError("The dot-partner must be an instance of " +
+                             "the NIFTy field class")
 
         # Compute the dot respecting the fact of discrete/continous spaces
         if bare:
@@ -589,14 +584,21 @@ class Field(Loggable, Versionable, object):
         else:
             y = self.weight(power=1)
 
-        y = y.get_val(copy=False)
-
-        # Cast the input in order to cure dtype and shape differences
-        x = self.cast(x)
-
-        dotted = x.conjugate() * y
-
-        return dotted.sum()
+        if spaces is None:
+            x_val = x.get_val(copy=False)
+            y_val = y.get_val(copy=False)
+            result = (x_val.conjugate() * y_val).sum()
+            return result
+        else:
+            # create a diagonal operator which is capable of taking care of the
+            # axes-matching
+            from nifty.operators.diagonal_operator import DiagonalOperator
+            diagonal = y.val.conjugate()
+            diagonalOperator = DiagonalOperator(domain=y.domain,
+                                                diagonal=diagonal,
+                                                copy=False)
+            dotted = diagonalOperator(x, spaces=spaces)
+            return dotted.sum(spaces=spaces)
 
     def norm(self, q=2):
         """
@@ -834,7 +836,10 @@ class Field(Loggable, Versionable, object):
         hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
         hdf5_group['num_domain'] = len(self.domain)
 
-        ret_dict = {'val': self.val}
+        if self._val is None:
+            ret_dict = {}
+        else:
+            ret_dict = {'val': self.val}
 
         for i in range(len(self.domain)):
             ret_dict['s_' + str(i)] = self.domain[i]
@@ -854,7 +859,12 @@ class Field(Loggable, Versionable, object):
         new_field.domain = tuple(temp_domain)
 
         exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
-        new_field._val = repository.get('val', hdf5_group)
+
+        try:
+            new_field._val = repository.get('val', hdf5_group)
+        except(KeyError):
+            new_field._val = None
+
         new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
         new_field.distribution_strategy =\
             hdf5_group.attrs['distribution_strategy']

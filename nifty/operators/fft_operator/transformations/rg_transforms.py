@@ -592,6 +592,7 @@ class GFFT(Transform):
 
         # Array for storing the result
         return_val = None
+        result_dtype = np.result_type(np.complex, self.codomain.dtype)
 
         for slice_list in utilities.get_slice_list(temp_inp.shape, axes):
 
@@ -601,7 +602,7 @@ class GFFT(Transform):
             else:
                 # initialize the return_val object if needed
                 if return_val is None:
-                    return_val = np.empty_like(temp_inp)
+                    return_val = np.empty_like(temp_inp, dtype=result_dtype)
                 inp = temp_inp[slice_list]
 
             inp = self.fft_machine.gfft(
@@ -622,12 +623,11 @@ class GFFT(Transform):
             else:
                 return_val[slice_list] = inp
 
-        result_dtype = np.result_type(np.complex, self.codomain.dtype)
         if isinstance(val, distributed_data_object):
             new_val = val.copy_empty(dtype=result_dtype)
             new_val.set_full_data(return_val, copy=False)
             return_val = new_val
         else:
-            return_val = return_val.astype(result_type, copy=False)
+            return_val = return_val.astype(result_dtype, copy=False)
 
         return return_val
