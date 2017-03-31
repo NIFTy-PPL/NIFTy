@@ -263,6 +263,19 @@ Alternatively, a private or user specific installation can be done by:
 
     pip install --user ift_nifty
 
+### Running the tests
+
+In oder to run the tests one needs two additional packages:
+
+    pip install nose
+    pip install parameterized
+    
+Afterwards the tests (including a coverage report) are run using the following 
+command in the repository root:
+    
+    nosetests --exe --cover-html
+
+
 ### First Steps
 
 For a quickstart, you can browse through the [informal
