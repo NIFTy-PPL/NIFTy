@@ -21,9 +21,6 @@ CONSTRUCTOR_CONFIGS = [
             }],
         [0, None, None, {
             'error': ValueError
-            }],
-        [5, None, None, {
-            'error': ValueError
             }]
     ]
 
