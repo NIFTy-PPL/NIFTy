@@ -38,3 +38,6 @@ from projection_operator import ProjectionOperator
 from propagator_operator import PropagatorOperator
 
 from composed_operator import ComposedOperator
+
+from response_operator import ResponseOperator
+
