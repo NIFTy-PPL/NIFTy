@@ -553,6 +553,10 @@ class GFFT(Transform):
         if fft_module is None:
             fft_module = gdi['gfft_dummy']
 
+        # GFFT only works for domains with an even number of pixels per axis
+        if np.any(np.array(domain.shape) % 2):
+            raise AttributeError("GFFT needs an even number of pixels per "
+                                 "axis of domain. Got: %s" % str(domain.shape))
         self.domain = domain
         self.codomain = codomain
         self.fft_machine = fft_module
