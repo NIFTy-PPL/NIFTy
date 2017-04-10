@@ -44,7 +44,6 @@ class ResponseOperator(LinearOperator):
     def _times(self, x, spaces):
         res = self._kernel.times(x)
         res = self._exposure * res
-        res = res.weight(power=1)
         # removing geometric information
         return Field(self._target, val=res.val)
 
@@ -52,5 +51,6 @@ class ResponseOperator(LinearOperator):
         # setting correct spaces
         res = x*self._exposure
         res = Field(self.domain, val=res.val)
+        res = res.weight(power=-1)
         res = self._kernel.adjoint_times(res)
         return res
