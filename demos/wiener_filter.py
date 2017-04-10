@@ -1,17 +1,16 @@
 
 from nifty import *
-import plotly.offline as pl
-import plotly.graph_objs as go
+#import plotly.offline as pl
+#import plotly.graph_objs as go
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.rank
 
-np.random.seed(42)
 
 if __name__ == "__main__":
 
-    distribution_strategy = 'not'
+    distribution_strategy = 'fftw'
 
     # Setting up the geometry
     s_space = RGSpace([512, 512], dtype=np.float64)
@@ -51,8 +50,8 @@ if __name__ == "__main__":
     d_data = d.val.get_full_data().real
     m_data = m.val.get_full_data().real
     ss_data = ss.val.get_full_data().real
-    if rank == 0:
-       pl.plot([go.Heatmap(z=d_data)], filename='data.html')
-       pl.plot([go.Heatmap(z=m_data)], filename='map.html')
-       pl.plot([go.Heatmap(z=ss_data)], filename='map_orig.html')
+#    if rank == 0:
+#        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
+#        pl.plot([go.Heatmap(z=m_data)], filename='map.html')
+#        pl.plot([go.Heatmap(z=ss_data)], filename='map_orig.html')
 #
