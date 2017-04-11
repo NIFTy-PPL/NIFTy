@@ -1,7 +1,8 @@
 from nifty import Field,\
-    FieldArray,\
-    SmoothingOperator,\
-    LinearOperator
+                  FieldArray, \
+from nifty.operators.linear_operator import LinearOperator
+from nifty.operators.smoothing_operator import SmoothingOperator
+
 import numpy as np
 
 class ResponseOperator(LinearOperator):
