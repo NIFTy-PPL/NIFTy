@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     #setting response operator parameters
     length_convolution = .025
-    exposure = 2000.
+    exposure = 1.
 
 
 
