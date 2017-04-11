@@ -1,5 +1,5 @@
 from nifty import Field,\
-                  FieldArray, \
+                  FieldArray
 from nifty.operators.linear_operator import LinearOperator
 from nifty.operators.smoothing_operator import SmoothingOperator
 
