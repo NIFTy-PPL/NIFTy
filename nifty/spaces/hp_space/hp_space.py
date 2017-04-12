@@ -1,10 +1,7 @@
-# NIFTY (Numerical Information Field Theory) has been developed at the
-# Max-Planck-Institute for Astrophysics.
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
 #
-# Copyright (C) 2015 Max-Planck-Society
-#
-# Author: Marco Selig
-# Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
+# Author: Theo Steininger
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,25 +10,11 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-"""
-    ..                  __   ____   __
-    ..                /__/ /   _/ /  /_
-    ..      __ ___    __  /  /_  /   _/  __   __
-    ..    /   _   | /  / /   _/ /  /   /  / /  /
-    ..   /  / /  / /  / /  /   /  /_  /  /_/  /
-    ..  /__/ /__/ /__/ /__/    \___/  \___   /  lm
-    ..                               /______/
-
-    NIFTY submodule for grids on the two-sphere.
-
-"""
-from __future__ import division
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 
