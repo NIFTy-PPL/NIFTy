@@ -37,10 +37,7 @@ CONSTRUCTOR_CONFIGS = [
             'total_volume': 4 * np.pi,
             'dtype': np.dtype('float64')
             }],
-        [1, None, None, {
-            'error': ValueError
-            }],
-        [5, None, None, {
+        [0, None, None, {
             'error': ValueError
             }]
     ]

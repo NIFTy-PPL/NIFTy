@@ -205,10 +205,9 @@ class GLSpace(Space):
 
     def _parse_nlat(self, nlat):
         nlat = int(nlat)
-        if nlat < 2:
-            raise ValueError("nlat must be greater than 2.")
-        elif nlat % 2 != 0:
-            raise ValueError("nlat must be a multiple of 2.")
+        if nlat < 1:
+            raise ValueError(
+                "nlat must be a positive number.")
         return nlat
 
     def _parse_nlon(self, nlon):
@@ -216,9 +215,8 @@ class GLSpace(Space):
             nlon = 2 * self.nlat - 1
         else:
             nlon = int(nlon)
-            if nlon != 2 * self.nlat - 1:
-                self.logger.warn("nlon was set to an unrecommended value: "
-                                 "nlon <> 2*nlat-1.")
+            if nlon < 1:
+                raise ValueError("nlon must be a positive number.")
         return nlon
 
     # ---Serialization---
