@@ -42,12 +42,12 @@ class ResponseOperator(LinearOperator):
     def _times(self, x, spaces):
         res = self._kernel.times(x)
         res = self._exposure * res
-        return Field(self._target, val=res.val)
+        return Field(self._target, val=res.val, dtype=np.float64)
 
     def _adjoint_times(self, x, spaces):
         # setting correct spaces
         res = x*self._exposure
-        res = Field(self.domain, val=res.val)
+        res = Field(self.domain, val=res.val, dtype=np.float64)
         res = res.weight(power=-1)
         res = self._kernel.adjoint_times(res)
         return res
