@@ -25,8 +25,6 @@ import keepers
 # Setup the dependency injector
 dependency_injector = keepers.DependencyInjector(
                                    [('mpi4py.MPI', 'MPI'),
-                                    'gfft',
-                                    ('nifty.dummys.gfft_dummy', 'gfft_dummy'),
                                     'healpy',
                                     'libsharp_wrapper_gl'])
 
@@ -36,8 +34,9 @@ dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
 # Initialize the variables
 variable_fft_module = keepers.Variable(
                                'fft_module',
-                               ['pyfftw', 'gfft', 'gfft_dummy'],
-                               lambda z: z in dependency_injector)
+                               ['fftw', 'numpy'],
+                               lambda z: (('pyfftw' in dependency_injector)
+                                          if z == 'fftw' else True))
 
 
 def _healpy_validator(use_healpy):
@@ -97,11 +96,10 @@ nifty_configuration = keepers.get_Configuration(
                             variable_default_field_dtype,
                             variable_default_distribution_strategy],
                  file_name='NIFTy.conf',
-                 search_pathes=[os.path.expanduser('~') + "/.config/nifty/",
-                                os.path.expanduser('~') + "/.config/",
-                                './'])
+                 search_paths=[os.path.expanduser('~') + "/.config/nifty/",
+                               os.path.expanduser('~') + "/.config/",
+                               './'])
 
-########
 ########
 
 try:

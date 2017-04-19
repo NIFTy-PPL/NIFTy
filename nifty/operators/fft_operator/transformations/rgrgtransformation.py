@@ -18,8 +18,7 @@
 
 import numpy as np
 from transformation import Transformation
-from rg_transforms import FFTW, GFFT
-from nifty.config import dependency_injector as gdi
+from rg_transforms import FFTW, NUMPYFFT
 from nifty import RGSpace, nifty_configuration
 
 
@@ -29,26 +28,18 @@ class RGRGTransformation(Transformation):
                                                  module=module)
 
         if module is None:
-            if nifty_configuration['fft_module'] == 'pyfftw':
+            if nifty_configuration['fft_module'] == 'fftw':
                 self._transform = FFTW(self.domain, self.codomain)
-            elif (nifty_configuration['fft_module'] == 'gfft' or
-                  nifty_configuration['fft_module'] == 'gfft_dummy'):
-                self._transform = \
-                    GFFT(self.domain,
-                         self.codomain,
-                         gdi.get(nifty_configuration['fft_module']))
+            elif nifty_configuration['fft_module'] == 'numpy':
+                self._transform = NUMPYFFT(self.domain, self.codomain)
             else:
                 raise ValueError('ERROR: unknow default FFT module:' +
                                  nifty_configuration['fft_module'])
         else:
-            if module == 'pyfftw':
+            if module == 'fftw':
                 self._transform = FFTW(self.domain, self.codomain)
-            elif module == 'gfft':
-                self._transform = \
-                    GFFT(self.domain, self.codomain, gdi.get('gfft'))
-            elif module == 'gfft_dummy':
-                self._transform = \
-                    GFFT(self.domain, self.codomain, gdi.get('gfft_dummy'))
+            elif module == 'numpy':
+                self._transform = NUMPYFFT(self.domain, self.codomain)
             else:
                 raise ValueError('ERROR: unknow FFT module:' + module)
 
