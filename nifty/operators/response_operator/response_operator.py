@@ -1,25 +1,38 @@
 from nifty import Field,\
-                  FieldArray
-from nifty.operators.linear_operator import LinearOperator
-from nifty.operators.smoothing_operator import SmoothingOperator
-
+    FieldArray,\
+    LinearOperator,\
+    SmoothingOperator,\
+    ComposedOperator
 import numpy as np
 
 class ResponseOperator(LinearOperator):
 
     def __init__(self, domain,
-                 sigma=1., exposure=1., implemented=True,
+                 sigma=[1.], exposure=1., implemented=True,
                  unitary=False):
 
         self._domain = self._parse_domain(domain)
-        self._target = self._parse_domain(FieldArray(self._domain[0].shape,
+
+        shapes = len(self._domain)*[None]
+        shape_target = []
+        for ii in xrange(len(shapes)):
+            shapes[ii] = self._domain[ii].shape
+            shape_target = np.append(shape_target, self._domain[ii].shape)
+
+        self._target = self._parse_domain(FieldArray(shape_target,
                                       dtype=np.float64))
         self._sigma = sigma
         self._implemented = implemented
         self._unitary = unitary
 
-        self._kernel = SmoothingOperator(self._domain,
-                                        sigma=self._sigma)
+
+        self._kernel = len(self._domain)*[None]
+
+        for ii in xrange(len(self._kernel)):
+            self._kernel[ii] = SmoothingOperator(self._domain[ii],
+                                        sigma=self._sigma[ii])
+
+        self._composed_kernel = ComposedOperator(self._kernel)
 
         self._exposure = exposure
 
@@ -40,14 +53,16 @@ class ResponseOperator(LinearOperator):
         return self._unitary
 
     def _times(self, x, spaces):
-        res = self._kernel.times(x)
+        res = self._composed_kernel.times(x)
         res = self._exposure * res
-        return Field(self._target, val=res.val, dtype=np.float64)
+        # res = res.weight(power=1)
+        # removing geometric information
+        return Field(self._target, val=res.val)
 
     def _adjoint_times(self, x, spaces):
         # setting correct spaces
         res = x*self._exposure
-        res = Field(self.domain, val=res.val, dtype=np.float64)
+        res = Field(self.domain, val=res.val)
         res = res.weight(power=-1)
-        res = self._kernel.adjoint_times(res)
+        res = self._composed_kernel.adjoint_times(res, spaces)
         return res

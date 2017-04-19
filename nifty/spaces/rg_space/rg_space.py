@@ -270,7 +270,8 @@ class RGSpace(Space):
         # prepare the distributed_data_object
         nkdict = distributed_data_object(
                         global_shape=shape,
-                        distribution_strategy=distribution_strategy)
+                        distribution_strategy=distribution_strategy,
+                        dtype=np.float64)
 
         if distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
             # get the node's individual slice of the first dimension
