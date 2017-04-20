@@ -86,6 +86,7 @@ class HPLMTransformation(SlicingTransformation):
     def _transformation_of_slice(self, inp, **kwargs):
         lmax = self.codomain.lmax
         mmax = lmax
+        nside= self.domain.nside
 
         sjob=pyHealpix.sharpjob_d()
         sjob.set_Healpix_geometry(nside)

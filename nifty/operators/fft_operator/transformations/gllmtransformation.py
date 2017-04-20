@@ -69,7 +69,7 @@ class GLLMTransformation(SlicingTransformation):
         else:
             return_dtype = np.float64
 
-        result = LMSpace(lmax=lmax, mmax=mmax, dtype=return_dtype)
+        result = LMSpace(lmax=lmax, dtype=return_dtype)
         cls.check_codomain(domain, result)
         return result
 
@@ -109,7 +109,7 @@ class GLLMTransformation(SlicingTransformation):
         mmax = self.codomain.mmax
 
         sjob=pyHealpix.sharpjob_d()
-        sjob.set_Gauss_geometry(nlat,nlot)
+        sjob.set_Gauss_geometry(nlat,nlon)
         sjob.set_triangular_alm_info(lmax,mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
 

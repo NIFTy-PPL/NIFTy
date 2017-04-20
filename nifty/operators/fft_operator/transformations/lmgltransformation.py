@@ -115,7 +115,7 @@ class LMGLTransformation(SlicingTransformation):
         mmax = self.domain.mmax
 
         sjob=pyHealpix.sharpjob_d()
-        sjob.set_Gauss_geometry(nlat,nlot)
+        sjob.set_Gauss_geometry(nlat,nlon)
         sjob.set_triangular_alm_info(lmax,mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal, resultImag] = [ltf.buildLm(x, lmax=lmax)
