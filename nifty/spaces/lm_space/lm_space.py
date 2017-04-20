@@ -22,13 +22,7 @@ import numpy as np
 
 from nifty.spaces.space import Space
 
-from nifty.config import nifty_configuration as gc,\
-                         dependency_injector as gdi
-
 from d2o import arange
-
-gl = gdi.get('libsharp_wrapper_gl')
-hp = gdi.get('healpy')
 
 def _distance_array_helper(index_array, lmax):
     u=2*lmax+1
@@ -55,9 +49,6 @@ class LMSpace(Space):
         lmax : int
             Maximum :math:`\ell`-value up to which the spherical harmonics
             coefficients are to be used.
-        mmax : int, *optional*
-            Maximum :math:`m`-value up to which the spherical harmonics
-            coefficients are to be used (default: `lmax`).
         dtype : numpy.dtype, *optional*
             Data type of the field values (default: numpy.complex128).
 
@@ -85,16 +76,8 @@ class LMSpace(Space):
 
         Attributes
         ----------
-        para : numpy.ndarray
-            One-dimensional array containing the two numbers `lmax` and
-            `mmax`.
         dtype : numpy.dtype
             Data type of the field values.
-        discrete : bool
-            Parameter captioning the fact that an :py:class:`lm_space` is
-            always discrete.
-        vol : numpy.ndarray
-            Pixel volume of the :py:class:`lm_space`, which is always 1.
     """
 
     def __init__(self, lmax, dtype=None):
@@ -106,9 +89,6 @@ class LMSpace(Space):
             lmax : int
                 Maximum :math:`\ell`-value up to which the spherical harmonics
                 coefficients are to be used.
-            mmax : int, *optional*
-                Maximum :math:`m`-value up to which the spherical harmonics
-                coefficients are to be used (default: `lmax`).
             dtype : numpy.dtype, *optional*
                 Data type of the field values (default: numpy.complex128).
 
@@ -116,20 +96,7 @@ class LMSpace(Space):
             -------
             None.
 
-            Raises
-            ------
-            ImportError
-                If neither the libsharp_wrapper_gl nor the healpy module are
-                available.
-            ValueError
-                If input `nside` is invaild.
-
         """
-
-        # check imports
-        if not gc['use_libsharp'] and not gc['use_healpy']:
-            raise ImportError(
-                "neither libsharp_wrapper_gl nor healpy activated.")
 
         super(LMSpace, self).__init__(dtype)
         self._lmax = self._parse_lmax(lmax)
@@ -155,7 +122,7 @@ class LMSpace(Space):
     @property
     def dim(self):
         l = self.lmax
-        # the LMSpace consist of the full triangle (including -m's!),
+        # the LMSpace consists of the full triangle (including -m's!),
         # minus two little triangles if mmax < lmax
         # dim = (((2*(l+1)-1)+1)**2/4 - 2 * (l-m)(l-m+1)/2
         # dim = np.int((l+1)**2 - (l-m)*(l-m+1.))
@@ -188,9 +155,6 @@ class LMSpace(Space):
         return dists
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi / (self.lmax + 1)
-
         return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
 
     # ---Added properties and methods---
@@ -205,11 +169,8 @@ class LMSpace(Space):
 
     def _parse_lmax(self, lmax):
         lmax = np.int(lmax)
-        if lmax < 1:
-            raise ValueError("lmax must be non-zero and positive.")
-        # exception lmax == 2 (nside == 1)
-        if (lmax % 2 == 0) and (lmax > 2):
-            self.logger.warn("Unrecommended parameter (lmax <> 2*n+1).")
+        if lmax < 0:
+            raise ValueError("lmax must be >=0.")
         return lmax
 
     # ---Serialization---

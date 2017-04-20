@@ -24,7 +24,7 @@ from slicing_transformation import SlicingTransformation
 
 import lm_transformation_factory as ltf
 
-hp = gdi.get('healpy')
+pyHealpix = gdi.get('pyHealpix')
 
 
 class HPLMTransformation(SlicingTransformation):
@@ -32,9 +32,9 @@ class HPLMTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
-        if 'healpy' not in gdi:
+        if 'pyHealpix' not in gdi:
             raise ImportError(
-                "The module healpy is needed but not available")
+                "The module pyHealpix is needed but not available")
 
         super(HPLMTransformation, self).__init__(domain, codomain,
                                                  module=module)
@@ -62,7 +62,7 @@ class HPLMTransformation(SlicingTransformation):
             raise TypeError(
                 "domain needs to be a HPSpace")
 
-        lmax = 3 * domain.nside - 1
+        lmax = 2 * domain.nside
 
         result = LMSpace(lmax=lmax, dtype=np.dtype('float64'))
         cls.check_codomain(domain, result)
@@ -81,24 +81,17 @@ class HPLMTransformation(SlicingTransformation):
         nside = domain.nside
         lmax = codomain.lmax
 
-        if 3 * nside - 1 != lmax:
-            raise ValueError(
-                'ERROR: codomain has 3*nside-1 != lmax.')
-
         return None
 
     def _transformation_of_slice(self, inp, **kwargs):
         lmax = self.codomain.lmax
         mmax = lmax
 
+        sjob=pyHealpix.sharpjob_d()
+        sjob.set_Healpix_geometry(nside)
+        sjob.set_triangular_alm_info(lmax,mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal, resultImag] = [hp.map2alm(x.astype(np.float64,
-                                                            copy=False),
-                                                   lmax=lmax,
-                                                   mmax=mmax,
-                                                   pol=True,
-                                                   use_weights=False,
-                                                   **kwargs)
+            [resultReal, resultImag] = [sjob.map2alm(x)
                                         for x in (inp.real, inp.imag)]
 
             [resultReal, resultImag] = [ltf.buildIdx(x, lmax=lmax)
@@ -107,9 +100,7 @@ class HPLMTransformation(SlicingTransformation):
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = hp.map2alm(inp.astype(np.float64, copy=False),
-                                lmax=lmax, mmax=mmax, pol=True,
-                                use_weights=False)
+            result = sjob.map2alm(inp)
             result = ltf.buildIdx(result, lmax=lmax)
 
         return result

@@ -25,13 +25,7 @@ import d2o
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
-from nifty.config import nifty_configuration as gc,\
-                         dependency_injector as gdi
-
-gl = gdi.get('libsharp_wrapper_gl')
-
-GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
-
+from nifty.config import dependency_injector as gdi
 
 class GLSpace(Space):
     """
@@ -59,11 +53,6 @@ class GLSpace(Space):
         hp_space : A class for the HEALPix discretization of the sphere [#]_.
         lm_space : A class for spherical harmonic components.
 
-        Notes
-        -----
-        Only real-valued fields on the two-sphere are supported, i.e.
-        `dtype` has to be either numpy.float64 or numpy.float32.
-
         References
         ----------
         .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
@@ -75,20 +64,13 @@ class GLSpace(Space):
 
         Attributes
         ----------
-        para : numpy.ndarray
-            One-dimensional array containing the two numbers `nlat` and `nlon`.
         dtype : numpy.dtype
             Data type of the field values.
-        discrete : bool
-            Whether or not the underlying space is discrete, always ``False``
-            for spherical spaces.
-        vol : numpy.ndarray
-            An array containing the pixel sizes.
     """
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, nlat=2, nlon=None, dtype=None):
+    def __init__(self, nlat, nlon=None, dtype=None):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -107,16 +89,10 @@ class GLSpace(Space):
 
             Raises
             ------
-            ImportError
-                If the libsharp_wrapper_gl module is not available.
             ValueError
-                If input `nlat` is invaild.
+                If input `nlat` is invalid.
 
         """
-        # check imports
-        if not gc['use_libsharp']:
-            raise ImportError(
-                "libsharp_wrapper_gl not available or not loaded.")
 
         super(GLSpace, self).__init__(dtype)
 
@@ -147,9 +123,10 @@ class GLSpace(Space):
                               dtype=self.dtype)
 
     def weight(self, x, power=1, axes=None, inplace=False):
+        pyHealpix = gdi.get('pyHealpix')
         nlon = self.nlon
         nlat = self.nlat
-        vol = gl.vol(nlat) ** power
+        vol = pyHealpix.GL_weights(nlat,nlon) ** power
         weight = np.array(list(itertools.chain.from_iterable(
                           itertools.repeat(x, nlon) for x in vol)))
 
@@ -169,29 +146,12 @@ class GLSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        dists = d2o.arange(start=0, stop=self.shape[0],
-                           distribution_strategy=distribution_strategy)
-
-        dists = dists.apply_scalar_function(
-            lambda x: self._distance_array_helper(divmod(x, self.nlon)),
-            dtype=np.float)
-
-        return dists
-
-    def _distance_array_helper(self, qr_tuple):
-        lat = qr_tuple[0]*(np.pi/(self.nlat-1))
-        lon = qr_tuple[1]*(2*np.pi/(self.nlon-1))
-        numerator = np.sqrt(np.sin(lon)**2 +
-                            (np.sin(lat) * np.cos(lon))**2)
-        denominator = np.cos(lat) * np.cos(lon)
-
-        return np.arctan(numerator / denominator)
+        raise NotImplementedError \
+            ("get_distance_array only works on spaces with a zero point.")
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi
-
-        return lambda x: np.exp((-0.5 * x**2) / sigma**2)
+        raise NotImplementedError \
+            ("get_fft_smoothing_kernel not supported by this space.")
 
     # ---Added properties and methods---
 

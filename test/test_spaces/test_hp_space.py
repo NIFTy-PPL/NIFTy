@@ -21,7 +21,6 @@ import numpy as np
 
 from numpy.testing import assert_, assert_equal, assert_raises,\
                           assert_almost_equal
-from nose.plugins.skip import SkipTest
 from nifty import HPSpace
 from nifty.config import dependency_injector as di
 from test.common import expand
@@ -37,9 +36,22 @@ CONSTRUCTOR_CONFIGS = [
             'dtype': np.dtype('float64')
             }],
         [5, None, {
-            'error': ValueError
+            'nside': 5,
+            'harmonic': False,
+            'shape': (300,),
+            'dim': 300,
+            'total_volume': 4 * np.pi,
+            'dtype': np.dtype('float64')
             }],
         [1, None, {
+            'nside': 1,
+            'harmonic': False,
+            'shape': (12,),
+            'dim': 12,
+            'total_volume': 4 * np.pi,
+            'dtype': np.dtype('float64')
+            }],
+        [0, None, {
             'error': ValueError
             }]
     ]
@@ -62,34 +74,25 @@ def get_weight_configs():
 class HPSpaceInterfaceTests(unittest.TestCase):
     @expand([['nside', int]])
     def test_property_ret_type(self, attribute, expected_type):
-        try:
-            x = HPSpace()
-        except ImportError:
-            raise SkipTest
+        x = HPSpace(2)
         assert_(isinstance(getattr(x, attribute), expected_type))
 
 
 class HPSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, nside, dtype, expected):
-        if 'healpy' not in di:
-            raise SkipTest
+        if 'error' in expected:
+            with assert_raises(expected['error']):
+                HPSpace(nside, dtype)
         else:
-            if 'error' in expected:
-                with assert_raises(expected['error']):
-                    HPSpace(nside, dtype)
-            else:
-                h = HPSpace(nside, dtype)
-                for key, value in expected.iteritems():
-                    assert_equal(getattr(h, key), value)
+            h = HPSpace(nside, dtype)
+            for key, value in expected.iteritems():
+                assert_equal(getattr(h, key), value)
 
     @expand(get_weight_configs())
     def test_weight(self, x, power, axes, inplace, expected):
-        if 'healpy' not in di:
-            raise SkipTest
-        else:
-            h = HPSpace(2)
-            res = h.weight(x, power, axes, inplace)
-            assert_almost_equal(res, expected)
-            if inplace:
-                assert_(x is res)
+        h = HPSpace(2)
+        res = h.weight(x, power, axes, inplace)
+        assert_almost_equal(res, expected)
+        if inplace:
+            assert_(x is res)

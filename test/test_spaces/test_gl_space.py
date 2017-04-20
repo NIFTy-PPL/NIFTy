@@ -69,31 +69,24 @@ class GLSpaceInterfaceTests(unittest.TestCase):
     @expand([['nlat', int],
             ['nlon', int]])
     def test_property_ret_type(self, attribute, expected_type):
-        try:
-            g = GLSpace()
-        except ImportError:
-            raise SkipTest
+        g = GLSpace(2)
         assert_(isinstance(getattr(g, attribute), expected_type))
 
 
 class GLSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, nlat, nlon, dtype, expected):
-        if 'libsharp_wrapper_gl' not in di:
-            raise SkipTest
+        if 'error' in expected:
+            with assert_raises(expected['error']):
+                GLSpace(nlat, nlon, dtype)
         else:
-            if 'error' in expected:
-                with assert_raises(expected['error']):
-                    GLSpace(nlat, nlon, dtype)
-            else:
-                g = GLSpace(nlat, nlon, dtype)
-                for key, value in expected.iteritems():
-                    assert_equal(getattr(g, key), value)
+            g = GLSpace(nlat, nlon, dtype)
+            for key, value in expected.iteritems():
+                assert_equal(getattr(g, key), value)
 
     @expand(get_weight_configs())
-    @unittest.expectedFailure
     def test_weight(self, x, power, axes, inplace, expected):
-        if 'libsharp_wrapper_gl' not in di:
+        if 'pyHealpix' not in di:
             raise SkipTest
         else:
             g = GLSpace(2)

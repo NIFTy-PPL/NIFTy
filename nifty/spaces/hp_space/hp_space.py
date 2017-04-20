@@ -21,11 +21,6 @@ import numpy as np
 import d2o
 
 from nifty.spaces.space import Space
-from nifty.config import nifty_configuration as gc, \
-                         dependency_injector as gdi
-
-hp = gdi.get('healpy')
-
 
 class HPSpace(Space):
     """
@@ -41,19 +36,15 @@ class HPSpace(Space):
 
         Parameters
         ----------
-        nside : int
+        nside :
             Resolution parameter for the HEALPix discretization, resulting in
-            ``12*nside**2`` pixels.
+            ``12*nside**2`` pixels. Must be positive.
 
         See Also
         --------
         gl_space : A class for the Gauss-Legendre discretization of the
             sphere [#]_.
         lm_space : A class for spherical harmonic components.
-
-        Notes
-        -----
-        Only powers of two are allowed for `nside`.
 
         References
         ----------
@@ -66,20 +57,13 @@ class HPSpace(Space):
 
         Attributes
         ----------
-        para : numpy.ndarray
-            Array containing the number `nside`.
         dtype : numpy.dtype
             Data type of the field values, which is always numpy.float64.
-        discrete : bool
-            Whether or not the underlying space is discrete, always ``False``
-            for spherical spaces.
-        vol : numpy.ndarray
-            An array with one element containing the pixel size.
     """
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, nside=2, dtype=None):
+    def __init__(self, nside, dtype=None):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -87,7 +71,7 @@ class HPSpace(Space):
             ----------
             nside : int
                 Resolution parameter for the HEALPix discretization, resulting
-                in ``12*nside**2`` pixels.
+                in ``12*nside**2`` pixels. Must be positive.
 
             Returns
             -------
@@ -95,15 +79,10 @@ class HPSpace(Space):
 
             Raises
             ------
-            ImportError
-                If the healpy module is not available.
             ValueError
-                If input `nside` is invaild.
+                If input `nside` is invalid.
 
         """
-        # check imports
-        if not gc['use_healpy']:
-            raise ImportError("healpy not available or not loaded.")
 
         super(HPSpace, self).__init__(dtype)
 
@@ -143,36 +122,12 @@ class HPSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        """
-        Calculates distance from center to all the points on the sphere
-
-        Parameters
-        ----------
-        distribution_strategy: Result d2o's distribution strategy
-
-        Returns
-        -------
-        dists: distributed_data_object
-        """
-        dists = d2o.arange(
-            start=0, stop=self.shape[0],
-            distribution_strategy=distribution_strategy
-        )
-
-        # translate distances to 3D unit vectors on a sphere,
-        # extract the first entry (simulates the scalar product with (1,0,0))
-        # and apply arccos
-        dists = dists.apply_scalar_function(
-                    lambda z: np.arccos(hp.pix2vec(self.nside, z)[0]),
-                    dtype=np.float)
-
-        return dists
+        raise NotImplementedError \
+            ("get_distance_array only works on spaces with a zero point.")
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi
-
-        return lambda x: np.exp((-0.5 * x**2) / sigma**2)
+        raise NotImplementedError \
+            ("get_fft_smoothing_kernel not supported by this space.")
 
     # ---Added properties and methods---
 
@@ -182,10 +137,8 @@ class HPSpace(Space):
 
     def _parse_nside(self, nside):
         nside = int(nside)
-        if nside < 2:
-            raise ValueError("nside must be greater than 2.")
-        elif nside % 2 != 0:
-            raise ValueError("nside must be a multiple of 2.")
+        if nside < 1:
+            raise ValueError("nside must be >=1.")
         return nside
 
     # ---Serialization---

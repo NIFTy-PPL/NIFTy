@@ -23,7 +23,7 @@ from nifty import GLSpace, LMSpace
 from slicing_transformation import SlicingTransformation
 import lm_transformation_factory as ltf
 
-libsharp = gdi.get('libsharp_wrapper_gl')
+pyHealpix = gdi.get('pyHealpix')
 
 
 class LMGLTransformation(SlicingTransformation):
@@ -31,9 +31,9 @@ class LMGLTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
-        if 'libsharp_wrapper_gl' not in gdi:
+        if 'pyHealpix' not in gdi:
             raise ImportError(
-                "The module libsharp is needed but not available.")
+                "The module pyHealpix is needed but not available.")
 
         super(LMGLTransformation, self).__init__(domain, codomain,
                                                  module=module)
@@ -114,38 +114,20 @@ class LMGLTransformation(SlicingTransformation):
         lmax = self.domain.lmax
         mmax = self.domain.mmax
 
+        sjob=pyHealpix.sharpjob_d()
+        sjob.set_Gauss_geometry(nlat,nlot)
+        sjob.set_triangular_alm_info(lmax,mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal, resultImag] = [ltf.buildLm(x, lmax=lmax)
                                         for x in (inp.real, inp.imag)]
 
-            [resultReal, resultImag] = [self.libsharpAlm2Map(x,
-                                                             nlat=nlat,
-                                                             nlon=nlon,
-                                                             lmax=lmax,
-                                                             mmax=mmax,
-                                                             cl=False,
-                                                             **kwargs)
+            [resultReal, resultImag] = [sjob.alm2map(x)
                                         for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
             result = ltf.buildLm(inp, lmax=lmax)
-            result = self.libsharpAlm2Map(result, nlat=nlat, nlon=nlon,
-                                          lmax=lmax, mmax=mmax, cl=False)
+            result = sjob.alm2map(result)
 
         return result
-
-    # ---Added properties and methods---
-
-    def libsharpAlm2Map(self, inp, **kwargs):
-        if inp.dtype == np.dtype('complex64'):
-            return libsharp.alm2map_f(inp, **kwargs)
-        elif inp.dtype == np.dtype('complex128'):
-            return libsharp.alm2map(inp, **kwargs)
-        else:
-            self.logger.debug("Performing dtype conversion for libsharp "
-                              "compatibility.")
-            casted_inp = inp.astype(np.dtype('complex128'), copy=False)
-            result = libsharp.alm2map(casted_inp, **kwargs)
-            return result

@@ -25,11 +25,9 @@ import keepers
 # Setup the dependency injector
 dependency_injector = keepers.DependencyInjector(
                                    [('mpi4py.MPI', 'MPI'),
-                                    'healpy',
-                                    'libsharp_wrapper_gl'])
+                                    'pyHealpix'])
 
 dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
-
 
 # Initialize the variables
 variable_fft_module = keepers.Variable(
@@ -38,34 +36,22 @@ variable_fft_module = keepers.Variable(
                                lambda z: (('pyfftw' in dependency_injector)
                                           if z == 'fftw' else True))
 
-
-def _healpy_validator(use_healpy):
-    if not isinstance(use_healpy, bool):
+def _pyHealpix_validator(use_pyHealpix):
+    if not isinstance(use_pyHealpix, bool):
         return False
-    if not use_healpy:
+    if not use_pyHealpix:
         return True
-    if 'healpy' not in dependency_injector:
+    if 'pyHealpix' not in dependency_injector:
         return False
-    healpy = dependency_injector['healpy']
-    if lv(healpy.__version__) < lv('1.8.1'):
-        return False
+    pyHealpix = dependency_injector['pyHealpix']
     return True
 
 
-variable_use_healpy = keepers.Variable(
-                          'use_healpy',
+variable_use_pyHealpix = keepers.Variable(
+                          'use_pyHealpix',
                           [True, False],
-                          _healpy_validator,
+                          _pyHealpix_validator,
                           genus='boolean')
-
-variable_use_libsharp = keepers.Variable(
-                         'use_libsharp',
-                         [True, False],
-                         lambda z: (('libsharp_wrapper_gl' in
-                                     dependency_injector)
-                                    if z else True) and isinstance(z, bool),
-                         genus='boolean')
-
 
 def _dtype_validator(dtype):
     try:
@@ -91,8 +77,7 @@ variable_default_distribution_strategy = keepers.Variable(
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
                  variables=[variable_fft_module,
-                            variable_use_healpy,
-                            variable_use_libsharp,
+                            variable_use_pyHealpix,
                             variable_default_field_dtype,
                             variable_default_distribution_strategy],
                  file_name='NIFTy.conf',

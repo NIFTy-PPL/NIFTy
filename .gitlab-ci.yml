@@ -12,8 +12,8 @@ variables:
 before_script:
   - apt-get update
   - >
-    apt-get install -y build-essential python python-pip python-dev git 
-    gfortran autoconf gsl-bin libgsl-dev wget
+    apt-get install -y build-essential python python-pip python-dev git
+    autoconf gsl-bin libgsl-dev wget python-numpy cython
   - pip install -r ci/requirements_base.txt
   - chmod +x ci/*.sh
 
@@ -26,10 +26,8 @@ test_min:
 test_mpi:
   stage: test
   script:
-    - apt-get install -y openmpi-bin libopenmpi-dev
-    - pip install astropy healpy mpi4py
-    - pip install git+https://github.com/mrbell/gfft
-    - ci/install_libsharp.sh
+    - apt-get install -y openmpi-bin libopenmpi-dev python-mpi4py
+    - ci/install_pyHealpix.sh
     - python setup.py build_ext --inplace
     - nosetests -vv
 
@@ -40,11 +38,8 @@ test_mpi_fftw:
     - >
       apt-get install -y libatlas-base-dev libfftw3-bin libfftw3-dev
       libfftw3-double3 libfftw3-long3 libfftw3-mpi-dev libfftw3-mpi3
-      libfftw3-quad3 libfftw3-single3
-    - pip install astropy healpy mpi4py
-    - pip install git+https://github.com/mrbell/gfft
-    - ci/install_libsharp.sh
-    - ci/install_pyfftw.sh
+      libfftw3-quad3 libfftw3-single3 python-mpi4py python-pyfftw
+    - ci/install_pyHealpix.sh
     - python setup.py build_ext --inplace
     - nosetests -vv
 
@@ -58,12 +53,8 @@ test_mpi_fftw_hdf5:
       libfftw3-quad3 libfftw3-single3
     - >
       apt-get install -y libhdf5-10 libhdf5-dev libhdf5-openmpi-10
-      libhdf5-openmpi-dev hdf5-tools
-    - pip install astropy healpy mpi4py
-    - pip install git+https://github.com/mrbell/gfft
-    - ci/install_h5py.sh
-    - ci/install_libsharp.sh
-    - ci/install_pyfftw.sh
+      libhdf5-openmpi-dev hdf5-tools python-mpi4py python-pyfftw python-h5py
+    - ci/install_pyHealpix.sh
     - python setup.py build_ext --inplace
     - nosetests -vv --with-coverage --cover-package=nifty --cover-branches
     - >

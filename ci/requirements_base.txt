@@ -1,8 +1,5 @@
-numpy
-scipy
-cython
 nose
-nose-parameterized
+parameterized
 coverage
 git+https://gitlab.mpcdf.mpg.de/ift/mpi_dummy.git
 git+https://gitlab.mpcdf.mpg.de/ift/keepers.git
