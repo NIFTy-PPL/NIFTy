@@ -29,7 +29,7 @@ class PowerIndices(object):
         """
             Returns an instance of the PowerIndices class. Given the shape and
             the density of a underlying rectangular grid it provides the user
-            with the pindex, kindex, rho and pundex. The indices are bined
+            with the pindex, kindex, rho and pundex. The indices are binned
             according to the supplied parameter scheme. If wanted, computed
             results are stored for future reuse.
 
@@ -41,8 +41,6 @@ class PowerIndices(object):
             dgrid : tuple, list, ndarray
                 Array-like object which specifies the step-width of the
                 underlying grid
-            zerocenter : boolean, tuple/list/ndarray of boolean *optional*
-                Specifies which dimensions are zerocentered. (default:False)
             log : bool *optional*
                 Flag specifying if the binning of the default indices is
                 performed on logarithmic scale.
@@ -57,7 +55,7 @@ class PowerIndices(object):
 
         # Compute the global k_array
         self.k_array = self.domain.get_distance_array(distribution_strategy)
-        # Initialize the dictonary which stores all individual index-dicts
+        # Initialize the dictionary which stores all individual index-dicts
         self.global_dict = {}
         # Set self.default_parameters
         self.set_default(config_dict={'log': log,

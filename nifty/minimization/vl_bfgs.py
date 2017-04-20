@@ -76,9 +76,6 @@ class InformationStore(object):
         self._ss_store = {}
         self._sy_store = {}
         self._yy_store = {}
-        self._sgrad_store = {}
-        self._ygrad_store = {}
-        self._gradgrad_store = None
 
 #        self.dot_matrix = {}
 

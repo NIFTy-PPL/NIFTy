@@ -61,7 +61,6 @@ class LineSearchStrongWolfe(LineSearch):
         self.max_step_size = max_step_size
         self.max_iterations = int(max_iterations)
         self.max_zoom_iterations = int(max_zoom_iterations)
-        self._last_alpha_star = 1.
 
     def perform_line_search(self, energy, pk, f_k_minus_1=None):
         self._set_line_energy(energy, pk, f_k_minus_1=f_k_minus_1)
@@ -146,8 +145,6 @@ class LineSearchStrongWolfe(LineSearch):
             phi_star = phi_alpha1
             energy_star = energy_alpha1
             self.logger.error("The line search algorithm did not converge.")
-
-        self._last_alpha_star = alpha_star
 
         # extract the full energy from the line_energy
         energy_star = energy_star.energy

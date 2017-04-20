@@ -18,8 +18,6 @@
 
 import unittest
 
-from nifty import dependency_injector as di
-
 from numpy.testing import assert_equal
 from keepers import Repository
 from test.common import expand, generate_spaces
