@@ -637,7 +637,10 @@ class NUMPYFFT(Transform):
             local_val = self._apply_mask(temp_val, mask, axes)
 
         # perform the transformation
-        result_val = np.fft.fftn(local_val, axes=axes)
+        if self.codomain.harmonic:
+            result_val = np.fft.fftn(local_val, axes=axes)
+        else:
+            result_val = np.fft.ifftn(local_val, axes=axes)
 
         # Apply domain centering mask
         if reduce(lambda x, y: x + y, self.domain.zerocenter):
