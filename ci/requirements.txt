@@ -4,7 +4,7 @@ cython
 astropy
 healpy
 mpi4py
-ipython
+ipython==5.3.0
 nose
 nose-parameterized
 git+https://gitlab.mpcdf.mpg.de/ift/mpi_dummy.git
