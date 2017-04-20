@@ -299,13 +299,13 @@ class RGSpace(Space):
 
         dists = ((np.float128(0) + cords[0] - shape[0] // 2) * dk[0])**2
         # apply zerocenterQ shift
-        if self.zerocenter[0] == False:
-            dists = np.fft.fftshift(dists)
+        if not self.zerocenter[0]:
+            dists = np.fft.ifftshift(dists)
         # only save the individual slice
         dists = dists[slice_of_first_dimension]
         for ii in range(1, len(shape)):
             temp = ((cords[ii] - shape[ii] // 2) * dk[ii])**2
-            if self.zerocenter[ii] == False:
+            if not self.zerocenter[ii]:
                 temp = np.fft.fftshift(temp)
             dists = dists + temp
         dists = np.sqrt(dists)
