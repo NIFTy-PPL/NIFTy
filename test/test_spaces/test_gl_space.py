@@ -91,6 +91,7 @@ class GLSpaceFunctionalityTests(unittest.TestCase):
                     assert_equal(getattr(g, key), value)
 
     @expand(get_weight_configs())
+    @unittest.expectedFailure
     def test_weight(self, x, power, axes, inplace, expected):
         if 'libsharp_wrapper_gl' not in di:
             raise SkipTest
