@@ -22,6 +22,7 @@ import numpy as np
 from numpy.testing import assert_,\
                           assert_equal, \
                           assert_allclose
+from nifty.config import dependency_injector as di
 
 from nifty import Field,\
                   RGSpace,\
@@ -31,6 +32,8 @@ from nifty import Field,\
                   RGRGTransformation, \
                   LMGLTransformation, \
                   FFTOperator
+
+from nose.plugins.skip import SkipTest
 
 class Misc_Tests(unittest.TestCase):
     def test_RG_distance_1D(self):
@@ -43,7 +46,7 @@ class Misc_Tests(unittest.TestCase):
 
     def test_RG_distance_2D(self):
       for dim1 in [10,11]:
-        for dim2 in [9, 28]:
+        for dim2 in [9,28]:
           for zc1 in [False,True]:
             for zc2 in [False,True]:
               for d in [0.1,1,3.7]:
@@ -81,6 +84,8 @@ class Misc_Tests(unittest.TestCase):
                       assert_allclose(inp.val, out.val)
 
     def test_sht(self):
+        if 'pyHealpix' not in di:
+            raise SkipTest
         for lm in [0,3,6,11,30]:
             for tp in [np.float64,np.complex128,np.float32,np.complex64]:
                 a = LMSpace(lmax=lm)
