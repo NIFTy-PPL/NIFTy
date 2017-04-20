@@ -25,12 +25,17 @@ from nifty.spaces.space import Space
 from nifty.config import nifty_configuration as gc,\
                          dependency_injector as gdi
 
-from lm_helper import _distance_array_helper
-
 from d2o import arange
 
 gl = gdi.get('libsharp_wrapper_gl')
 hp = gdi.get('healpy')
+
+def _distance_array_helper(index_array, lmax):
+    u=2*lmax+1
+    index_half=(index_array+np.minimum(lmax,index_array)+1)//2
+    m = (np.ceil((u - np.sqrt(u*u - 8 * (index_half - lmax))) / 2)).astype(int)
+    res = (index_half - m * (u - m) // 2).astype(np.float64)
+    return res
 
 
 class LMSpace(Space):
