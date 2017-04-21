@@ -20,9 +20,9 @@ import numpy as np
 from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
-import lm_transformation_factory as ltf
+import lm_transformation_factory
 
-hp = gdi.get('healpy')
+pyHealpix = gdi.get('pyHealpix')
 
 
 class LMHPTransformation(SlicingTransformation):
@@ -30,9 +30,9 @@ class LMHPTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
-        if gdi.get('healpy') is None:
+        if gdi.get('pyHealpix') is None:
             raise ImportError(
-                "The module libsharp is needed but not available.")
+                "The module pyHealpix is needed but not available.")
 
         super(LMHPTransformation, self).__init__(domain, codomain,
                                                  module=module)
@@ -62,61 +62,48 @@ class LMHPTransformation(SlicingTransformation):
                    Distributed on the Sphere", *ApJ* 622..759G.
         """
         if not isinstance(domain, LMSpace):
-            raise TypeError(
-                'ERROR: domain needs to be a LMSpace')
+            raise TypeError("domain needs to be a LMSpace.")
 
-        nside = (domain.lmax + 1) // 3
-        result = HPSpace(nside=nside)
-        cls.check_codomain(domain, result)
+        nside = np.max(domain.lmax//2, 1)
+        result = HPSpace(nside=nside, dtype=domain.dtype)
         return result
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, LMSpace):
-            raise TypeError(
-                'ERROR: domain is not a LMSpace')
+            raise TypeError("domain is not a LMSpace.")
 
         if not isinstance(codomain, HPSpace):
-            raise TypeError(
-                'ERROR: codomain must be a HPSpace.')
+            raise TypeError("codomain must be a HPSpace.")
 
         nside = codomain.nside
         lmax = domain.lmax
 
-        if 3*nside - 1 != lmax:
-            raise ValueError(
-                'ERROR: codomain has 3*nside -1 != lmax.')
+        if lmax != 2*nside:
+            cls.Logger.warn("Unrecommended: lmax != 2*nside.")
 
-        return None
+        super(LMHPTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
         nside = self.codomain.nside
         lmax = self.domain.lmax
         mmax = lmax
 
+        sjob = pyHealpix.sharpjob_d()
+        sjob.set_Healpix_geometry(nside)
+        sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal, resultImag] = [ltf.buildLm(x, lmax=lmax)
-                                        for x in (inp.real, inp.imag)]
+            [resultReal,
+             resultImag] = [lm_transformation_factory.buildLm(x, lmax=lmax)
+                            for x in (inp.real, inp.imag)]
 
-            [resultReal, resultImag] = [hp.alm2map(x.astype(np.complex128,
-                                                            copy=False),
-                                                   nside,
-                                                   lmax=lmax,
-                                                   mmax=mmax,
-                                                   pixwin=False,
-                                                   fwhm=0.0,
-                                                   sigma=None,
-                                                   pol=True,
-                                                   inplace=False,
-                                                   **kwargs)
+            [resultReal, resultImag] = [sjob.alm2map(x)
                                         for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = ltf.buildLm(inp, lmax=lmax)
-            result = hp.alm2map(result.astype(np.complex128, copy=False),
-                                nside, lmax=lmax, mmax=mmax, pixwin=False,
-                                fwhm=0.0, sigma=None, pol=True, inplace=False)
+            result = lm_transformation_factory.buildLm(inp, lmax=lmax)
+            result = sjob.alm2map(result)
 
         return result
