@@ -53,23 +53,42 @@ CONSTRUCTOR_CONFIGS = [
     ]
 
 
+def _distance_array_helper(index_arr, lmax):
+    if index_arr <= lmax:
+        index_half = index_arr
+    else:
+        if (index_arr - lmax) % 2 == 0:
+            index_half = (index_arr + lmax)/2
+        else:
+            index_half = (index_arr + lmax + 1)/2
+
+    m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 -
+                 8*(index_half - lmax)))/2).astype(int)
+
+    return index_half - m*(2*lmax + 1 - m)//2
+
+
 def get_distance_array_configs():
-    npzfile = np.load('test/data/lm_space.npz')
-    return [[5, None, npzfile['da_0']]]
+    da_0 = [_distance_array_helper(idx, 5) for idx in np.arange(36)]
+    return [[5, None, da_0]]
 
 
 def get_weight_configs():
-    npzfile = np.load('test/data/lm_space.npz')
+    np.random.seed(42)
+    w_0_x = np.random.rand(32, 16, 6)
     return [
-        [npzfile['w_0_x'], 1, None, False, npzfile['w_0_res']],
-        [npzfile['w_0_x'], 1, None, True, npzfile['w_0_res']]
+        [w_0_x, 1, None, False, w_0_x],
+        [w_0_x.copy(), 1, None,  True, w_0_x]
         ]
 
 
 def get_hermitian_configs():
-    npzfile = np.load('test/data/lm_space.npz')
+    np.random.seed(42)
+    h_0_res_real = np.random.rand(32, 16, 6).astype(np.complex128)
+    h_0_res_imag = np.random.rand(32, 16, 6).astype(np.complex128)
+    h_0_x = h_0_res_real + h_0_res_imag * 1j
     return [
-        [npzfile['h_0_x'], npzfile['h_0_res_real'], npzfile['h_0_res_imag']]
+        [h_0_x, h_0_res_real, h_0_res_imag]
     ]
 
 
