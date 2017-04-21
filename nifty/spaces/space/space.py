@@ -147,48 +147,10 @@ from nifty.domain_object import DomainObject
 
 
 class Space(DomainObject):
-    """
-        ..                            __             __
-        ..                          /__/           /  /_
-        ..      ______    ______    __   __ ___   /   _/
-        ..    /   _   | /   _   | /  / /   _   | /  /
-        ..   /  /_/  / /  /_/  / /  / /  / /  / /  /_
-        ..  /   ____/  \______/ /__/ /__/ /__/  \___/  space class
-        .. /__/
-
-        NIFTY subclass for unstructured spaces.
-
-        Unstructured spaces are lists of values without any geometrical
-        information.
-
-        Parameters
-        ----------
-        num : int
-            Number of points.
-        dtype : numpy.dtype, *optional*
-            Data type of the field values (default: None).
-
-        Attributes
-        ----------
-        para : numpy.ndarray
-            Array containing the number of points.
-        dtype : numpy.dtype
-            Data type of the field values.
-        discrete : bool
-            Parameter captioning the fact that a :py:class:`point_space` is
-            always discrete.
-        vol : numpy.ndarray
-            Pixel volume of the :py:class:`point_space`, which is always 1.
-    """
-
     def __init__(self, dtype=np.dtype('float')):
         """
-            Sets the attributes for a point_space class instance.
-
             Parameters
             ----------
-            num : int
-                Number of points.
             dtype : numpy.dtype, *optional*
                 Data type of the field values (default: numpy.float64).
 

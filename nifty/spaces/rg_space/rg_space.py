@@ -306,7 +306,7 @@ class RGSpace(Space):
         for ii in range(1, len(shape)):
             temp = ((cords[ii] - shape[ii] // 2) * dk[ii])**2
             if not self.zerocenter[ii]:
-                temp = np.fft.fftshift(temp)
+                temp = np.fft.ifftshift(temp)
             dists = dists + temp
         dists = np.sqrt(dists)
         return dists

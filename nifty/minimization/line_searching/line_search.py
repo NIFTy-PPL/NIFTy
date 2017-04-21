@@ -46,7 +46,6 @@ class LineSearch(Loggable, object):
             derivation.
         """
 
-        self.pk = None
         self.line_energy = None
         self.f_k_minus_1 = None
         self.prefered_initial_step_size = None

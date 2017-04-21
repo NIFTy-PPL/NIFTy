@@ -26,24 +26,15 @@ __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
            'conjugate']
 
 
-def _math_helper(x, function, inplace=False):
+def _math_helper(x, function):
     if isinstance(x, Field):
-        if inplace:
-            x.val.apply_scalar_function(function, inplace=True)
-            result = x
-        else:
-            result_val = x.val.apply_scalar_function(function)
-            result = x.copy_empty(dtype=result_val.dtype)
-            result.val = result_val
-
+        result_val = x.val.apply_scalar_function(function)
+        result = x.copy_empty(dtype=result_val.dtype)
+        result.val = result_val
     elif isinstance(x, distributed_data_object):
-        result = x.apply_scalar_function(function, inplace=inplace)
-
+        result = x.apply_scalar_function(function, inplace=False)
     else:
         result = function(np.asarray(x))
-        if inplace:
-            x[:] = result
-            result = x
 
     return result
 

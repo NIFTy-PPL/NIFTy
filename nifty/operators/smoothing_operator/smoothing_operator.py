@@ -33,7 +33,6 @@ class SmoothingOperator(EndomorphicOperator):
 
         if len(self.domain) != 1:
             raise ValueError(
-
                 'ERROR: SmoothOperator accepts only exactly one '
                 'space as input domain.'
             )
