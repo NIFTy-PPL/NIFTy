@@ -50,21 +50,21 @@ CONSTRUCTOR_CONFIGS = [
             }]
     ]
 
+
 def _distance_array_helper(index_arr, lmax):
     if index_arr <= lmax:
         index_half = index_arr
     else:
         if (index_arr - lmax) % 2 == 0:
-            index_half = (index_arr + lmax) / 2
+            index_half = (index_arr + lmax)/2
         else:
-            index_half = (index_arr + lmax + 1) / 2
+            index_half = (index_arr + lmax + 1)/2
 
-    m = (
-            np.ceil(((2 * lmax + 1) - np.sqrt((2 * lmax + 1)**2 -
-                    8 * (index_half - lmax))) / 2)
-        ).astype(int)
+    m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 -
+                 8*(index_half - lmax)))/2).astype(int)
 
-    return index_half - m * (2 * lmax + 1 - m) // 2
+    return index_half - m*(2*lmax + 1 - m)//2
+
 
 def get_distance_array_configs():
     da_0 = [_distance_array_helper(idx, 5) for idx in np.arange(36)]
@@ -79,6 +79,7 @@ def get_weight_configs():
         [w_0_x.copy(), 1, None,  True, w_0_x]
         ]
 
+
 def get_hermitian_configs():
     np.random.seed(42)
     h_0_res_real = np.random.rand(32, 16, 6).astype(np.complex128)
@@ -87,6 +88,7 @@ def get_hermitian_configs():
     return [
         [h_0_x, h_0_res_real, h_0_res_imag]
     ]
+
 
 class LMSpaceInterfaceTests(unittest.TestCase):
     @expand([['lmax', int],

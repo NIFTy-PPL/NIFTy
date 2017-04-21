@@ -18,9 +18,8 @@
 
 import numpy as np
 
-import d2o
-
 from nifty.spaces.space import Space
+
 
 class HPSpace(Space):
     """
@@ -122,12 +121,10 @@ class HPSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        raise NotImplementedError \
-            ("get_distance_array only works on spaces with a zero point.")
+        raise NotImplementedError
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        raise NotImplementedError \
-            ("get_fft_smoothing_kernel not supported by this space.")
+        raise NotImplementedError
 
     # ---Added properties and methods---
 
