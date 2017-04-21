@@ -31,10 +31,8 @@ def _math_helper(x, function):
         result_val = x.val.apply_scalar_function(function)
         result = x.copy_empty(dtype=result_val.dtype)
         result.val = result_val
-
     elif isinstance(x, distributed_data_object):
         result = x.apply_scalar_function(function, inplace=False)
-
     else:
         result = function(np.asarray(x))
 
