@@ -4,7 +4,7 @@ FROM ubuntu:latest
 RUN \
     apt-get update && \
     apt-get install -y build-essential python python-pip python-dev git \
-    autoconf gsl-bin libgsl-dev python-matplotlib openmpi-bin \
+    autoconf gsl-bin libgsl-dev openmpi-bin wget \
     libopenmpi-dev libatlas-base-dev libfftw3-bin libfftw3-dev \
     libfftw3-double3 libfftw3-long3 libfftw3-mpi-dev libfftw3-mpi3 \
     libfftw3-quad3 libfftw3-single3 libhdf5-10 libhdf5-dev \
@@ -13,7 +13,6 @@ RUN \
 # python dependencies
 ADD ci/requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade -r /tmp/requirements.txt
-RUN pip install mpi4py
 
 # install pyHealpix, pyfftw and h5py
 ADD ci/install_pyHealpix.sh /tmp/install_pyHealpix.sh

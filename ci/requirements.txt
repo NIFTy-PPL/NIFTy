@@ -1,4 +1,8 @@
 numpy
+cython
+mpi4py
+matplotlib
+ipython
 nose
 parameterized
 coverage
