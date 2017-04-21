@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from distutils.version import LooseVersion as lv
 
 import numpy as np
 import keepers
@@ -36,22 +35,6 @@ variable_fft_module = keepers.Variable(
                                lambda z: (('pyfftw' in dependency_injector)
                                           if z == 'fftw' else True))
 
-def _pyHealpix_validator(use_pyHealpix):
-    if not isinstance(use_pyHealpix, bool):
-        return False
-    if not use_pyHealpix:
-        return True
-    if 'pyHealpix' not in dependency_injector:
-        return False
-    pyHealpix = dependency_injector['pyHealpix']
-    return True
-
-
-variable_use_pyHealpix = keepers.Variable(
-                          'use_pyHealpix',
-                          [True, False],
-                          _pyHealpix_validator,
-                          genus='boolean')
 
 def _dtype_validator(dtype):
     try:
@@ -69,7 +52,7 @@ variable_default_field_dtype = keepers.Variable(
 
 variable_default_distribution_strategy = keepers.Variable(
                               'default_distribution_strategy',
-                              ['fftw', 'equal'],
+                              ['fftw', 'equal', 'not'],
                               lambda z: (('pyfftw' in dependency_injector)
                                          if z == 'fftw' else True),
                               genus='str')
@@ -77,7 +60,6 @@ variable_default_distribution_strategy = keepers.Variable(
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
                  variables=[variable_fft_module,
-                            variable_use_pyHealpix,
                             variable_default_field_dtype,
                             variable_default_distribution_strategy],
                  file_name='NIFTy.conf',
