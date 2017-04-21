@@ -46,7 +46,7 @@ CONSTRUCTOR_CONFIGS = [
 
 def get_weight_configs():
     np.random.seed(42)
-    wgt=[ 2.0943951,  2.0943951]
+    wgt = [2.0943951,  2.0943951]
     # for GLSpace(nlat=2, nlon=3)
     weight_0 = np.array(list(itertools.chain.from_iterable(
         itertools.repeat(x, 3) for x in wgt)))
@@ -70,30 +70,37 @@ class GLSpaceInterfaceTests(unittest.TestCase):
             ['nlon', int]])
     def test_property_ret_type(self, attribute, expected_type):
         try:
-            g = GLSpace()
+            g = GLSpace(2)
         except ImportError:
             raise SkipTest
-        assert_(isinstance(getattr(g, attribute), expected_type))
+        else:
+            assert_(isinstance(getattr(g, attribute), expected_type))
 
 
 class GLSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, nlat, nlon, dtype, expected):
-        if 'libsharp_wrapper_gl' not in di:
+        try:
+            g = GLSpace(4)
+        except ImportError:
             raise SkipTest
+
+        if 'error' in expected:
+            with assert_raises(expected['error']):
+                GLSpace(nlat, nlon, dtype)
         else:
-            if 'error' in expected:
-                with assert_raises(expected['error']):
-                    GLSpace(nlat, nlon, dtype)
-            else:
-                g = GLSpace(nlat, nlon, dtype)
-                for key, value in expected.iteritems():
-                    assert_equal(getattr(g, key), value)
+            g = GLSpace(nlat, nlon, dtype)
+            for key, value in expected.iteritems():
+                assert_equal(getattr(g, key), value)
 
     @expand(get_weight_configs())
-    @unittest.expectedFailure
     def test_weight(self, x, power, axes, inplace, expected):
-        if 'libsharp_wrapper_gl' not in di:
+        try:
+            g = GLSpace(4)
+        except ImportError:
+            raise SkipTest
+
+        if 'pyHealpix' not in di:
             raise SkipTest
         else:
             g = GLSpace(2)

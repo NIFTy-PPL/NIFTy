@@ -66,13 +66,13 @@ def expand(*args, **kwargs):
 
 
 def generate_spaces():
-    spaces = [RGSpace(4), PowerSpace(RGSpace((4, 4), harmonic=True))]
-
-    if 'healpy' in di:
-        spaces.append(HPSpace(4))
-    if 'libsharp_wrapper_gl' in di:
+    spaces = [RGSpace(4), PowerSpace(RGSpace((4, 4), harmonic=True)),
+              LMSpace(5), HPSpace(4)]
+    if 'pyHealpix' in di:
         spaces.append(GLSpace(4))
-    if 'healpy' in di or 'libsharp_wrapper_gl' in di:
-        spaces.append(LMSpace(5))
+    return spaces
 
+
+def generate_harmonic_spaces():
+    spaces = [RGSpace(4, harmonic=True), LMSpace(5)]
     return spaces

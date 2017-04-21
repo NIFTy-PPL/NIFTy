@@ -218,7 +218,6 @@ def get_hermitian_configs():
     ]
 
 
-
 class RGSpaceInterfaceTests(unittest.TestCase):
     @expand([['distances', tuple],
             ['zerocenter', tuple]])

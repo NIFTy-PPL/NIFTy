@@ -22,24 +22,12 @@ import numpy as np
 from itertools import product
 from types import LambdaType
 from numpy.testing import assert_, assert_raises, assert_equal
-from nose.plugins.skip import SkipTest
 from nifty import LMSpace, GLSpace, HPSpace
 from nifty.config import dependency_injector as di
-from test.common import expand, generate_spaces
+from test.common import expand, generate_spaces, generate_harmonic_spaces
 
 
 class SpaceInterfaceTests(unittest.TestCase):
-    def test_dependency_handling(self):
-        if 'healpy' not in di and 'libsharp_wrapper_gl' not in di:
-            with assert_raises(ImportError):
-                LMSpace(5)
-        elif 'healpy' not in di:
-            with assert_raises(ImportError):
-                HPSpace(4)
-        elif 'libsharp_wrapper_gl' not in di:
-            with assert_raises(ImportError):
-                GLSpace(4)
-
     @expand(product(generate_spaces(), [['dtype', np.dtype],
                     ['harmonic', bool],
                     ['shape', tuple],
@@ -53,17 +41,13 @@ class SpaceInterfaceTests(unittest.TestCase):
             ), attr_expected_type[1])
         )
 
-    @expand(product(generate_spaces(), [
+    @expand(product(generate_harmonic_spaces(), [
         ['get_fft_smoothing_kernel_function', None, LambdaType],
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
     def test_method_ret_type(self, space, method_expected_type):
-        # handle exceptions here
-        try:
-            getattr(
-                space, method_expected_type[0])(*method_expected_type[1:-1])
-        except NotImplementedError:
-            raise SkipTest
+        getattr(
+            space, method_expected_type[0])(*method_expected_type[1:-1])
 
         assert_equal(
             type(getattr(
