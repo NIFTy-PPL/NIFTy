@@ -24,13 +24,6 @@ from nifty.spaces.space import Space
 
 from d2o import arange
 
-def _distance_array_helper(index_array, lmax):
-    u=2*lmax+1
-    index_half=(index_array+np.minimum(lmax,index_array)+1)//2
-    m = (np.ceil((u - np.sqrt(u*u - 8 * (index_half - lmax))) / 2)).astype(int)
-    res = (index_half - m * (u - m) // 2).astype(np.float64)
-    return res
-
 
 class LMSpace(Space):
     """
@@ -149,10 +142,18 @@ class LMSpace(Space):
                        distribution_strategy=distribution_strategy)
 
         dists = dists.apply_scalar_function(
-            lambda x: _distance_array_helper(x, self.lmax),
+            lambda x: self._distance_array_helper(x, self.lmax),
             dtype=np.float)
 
         return dists
+
+    @staticmethod
+    def _distance_array_helper(index_array, lmax):
+        u = 2*lmax + 1
+        index_half = (index_array+np.minimum(lmax, index_array)+1)//2
+        m = (np.ceil((u - np.sqrt(u*u - 8*(index_half - lmax)))/2)).astype(int)
+        res = (index_half - m*(u - m)//2).astype(np.float64)
+        return res
 
     def get_fft_smoothing_kernel_function(self, sigma):
         return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
