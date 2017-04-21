@@ -20,7 +20,7 @@ import numpy as np
 from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
-import lm_transformation_factory as ltf
+import lm_transformation_factory
 
 pyHealpix = gdi.get('pyHealpix')
 
@@ -62,40 +62,40 @@ class LMHPTransformation(SlicingTransformation):
                    Distributed on the Sphere", *ApJ* 622..759G.
         """
         if not isinstance(domain, LMSpace):
-            raise TypeError(
-                'ERROR: domain needs to be a LMSpace')
+            raise TypeError("domain needs to be a LMSpace.")
 
-        nside = np.max(domain.lmax // 2,1)
-        result = HPSpace(nside=nside)
-        cls.check_codomain(domain, result)
+        nside = np.max(domain.lmax//2, 1)
+        result = HPSpace(nside=nside, dtype=domain.dtype)
         return result
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, LMSpace):
-            raise TypeError(
-                'ERROR: domain is not a LMSpace')
+            raise TypeError("domain is not a LMSpace.")
 
         if not isinstance(codomain, HPSpace):
-            raise TypeError(
-                'ERROR: codomain must be a HPSpace.')
+            raise TypeError("codomain must be a HPSpace.")
 
         nside = codomain.nside
         lmax = domain.lmax
 
-        return None
+        if lmax != 2*nside:
+            cls.Logger.warn("Unrecommended: lmax != 2*nside.")
+
+        super(LMHPTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
         nside = self.codomain.nside
         lmax = self.domain.lmax
         mmax = lmax
 
-        sjob=pyHealpix.sharpjob_d()
+        sjob = pyHealpix.sharpjob_d()
         sjob.set_Healpix_geometry(nside)
-        sjob.set_triangular_alm_info(lmax,mmax)
+        sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal, resultImag] = [ltf.buildLm(x, lmax=lmax)
-                                        for x in (inp.real, inp.imag)]
+            [resultReal,
+             resultImag] = [lm_transformation_factory.buildLm(x, lmax=lmax)
+                            for x in (inp.real, inp.imag)]
 
             [resultReal, resultImag] = [sjob.alm2map(x)
                                         for x in [resultReal, resultImag]]
@@ -103,7 +103,7 @@ class LMHPTransformation(SlicingTransformation):
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = ltf.buildLm(inp, lmax=lmax)
+            result = lm_transformation_factory.buildLm(inp, lmax=lmax)
             result = sjob.alm2map(result)
 
         return result
