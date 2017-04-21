@@ -58,16 +58,14 @@ def _distance_array_helper(index_arr, lmax):
         index_half = index_arr
     else:
         if (index_arr - lmax) % 2 == 0:
-            index_half = (index_arr + lmax) / 2
+            index_half = (index_arr + lmax)/2
         else:
-            index_half = (index_arr + lmax + 1) / 2
+            index_half = (index_arr + lmax + 1)/2
 
-    m = (
-            np.ceil(((2 * lmax + 1) - np.sqrt((2 * lmax + 1)**2 -
-                    8 * (index_half - lmax))) / 2)
-        ).astype(int)
+    m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 -
+                 8*(index_half - lmax)))/2).astype(int)
 
-    return index_half - m * (2 * lmax + 1 - m) // 2
+    return index_half - m*(2*lmax + 1 - m)//2
 
 
 def get_distance_array_configs():
