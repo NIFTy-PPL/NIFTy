@@ -2,7 +2,7 @@ numpy
 cython
 mpi4py
 matplotlib
-ipython
+ipython==5.3.0
 nose
 parameterized
 coverage
