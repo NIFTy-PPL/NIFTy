@@ -67,11 +67,12 @@ def expand(*args, **kwargs):
 
 def generate_spaces():
     spaces = [RGSpace(4), PowerSpace(RGSpace((4, 4), harmonic=True)),
-              LMSpace(5), HPSpace(4), GLSpace(4)]
-
+              LMSpace(5), HPSpace(4)]
+    if 'pyHealpix' in di:
+        spaces.append(GLSpace(4))
     return spaces
 
-def generate_harmonic_spaces():
-    spaces = [RGSpace(4),LMSpace(5)]
 
+def generate_harmonic_spaces():
+    spaces = [RGSpace(4, harmonic=True), LMSpace(5)]
     return spaces
