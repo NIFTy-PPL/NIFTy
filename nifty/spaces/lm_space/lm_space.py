@@ -102,7 +102,7 @@ class LMSpace(Space):
         anti_hermitian_part[:] = x.imag
         return (hermitian_part, anti_hermitian_part)
 
-        # ---Mandatory properties and methods---
+    # ---Mandatory properties and methods---
 
     @property
     def harmonic(self):
