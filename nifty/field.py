@@ -131,7 +131,7 @@ class Field(Loggable, Versionable, object):
                                                        f=f,
                                                        **kwargs)
 
-        # extract the distributed_dato_object from f and apply the appropriate
+        # extract the distributed_data_object from f and apply the appropriate
         # random number generator to it
         sample = f.get_val(copy=False)
         generator_function = getattr(Random, random_type)
@@ -596,7 +596,7 @@ class Field(Loggable, Versionable, object):
             raise ValueError("The dot-partner must be an instance of " +
                              "the NIFTy field class")
 
-        # Compute the dot respecting the fact of discrete/continous spaces
+        # Compute the dot respecting the fact of discrete/continuous spaces
         if bare:
             y = self
         else:

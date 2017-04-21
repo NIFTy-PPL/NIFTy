@@ -24,8 +24,6 @@ from .version import __version__
 from keepers import MPILogger
 logger = MPILogger()
 
-import dummys
-
 # it is important to import config before d2o such that NIFTy is able to
 # pre-create d2o's configuration object with the corrected path
 from config import dependency_injector,\
@@ -55,5 +53,3 @@ from operators import *
 from probing import *
 
 from sugar import *
-
-#import pyximport; pyximport.install(pyimport = True)

@@ -555,11 +555,6 @@ class NUMPYFFT(Transform):
     """
         The numpy fft pendant of a fft object.
 
-        Parameters
-        ----------
-        fft_module_name : String
-            Switch between the gfft module used: 'gfft' and 'gfft_dummy'
-
     """
 
     def transform(self, val, axes, **kwargs):

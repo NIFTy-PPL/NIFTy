@@ -54,7 +54,7 @@ class RGRGTransformation(Transformation):
             ----------
             domain: RGSpace
                 Space for which a codomain is to be generated
-            cozerocenter : {bool, numpy.ndarray}, *optional*
+            zerocenter : {bool, numpy.ndarray}, *optional*
                 Whether or not the grid is zerocentered for each axis or not
                 (default: None).
 
@@ -66,7 +66,7 @@ class RGRGTransformation(Transformation):
         if not isinstance(domain, RGSpace):
             raise TypeError('ERROR: domain needs to be a RGSpace')
 
-        # parse the cozerocenter input
+        # parse the zerocenter input
         if zerocenter is None:
             zerocenter = domain.zerocenter
         # if the input is something scalar, cast it to a boolean
