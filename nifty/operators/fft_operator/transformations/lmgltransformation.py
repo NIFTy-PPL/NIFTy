@@ -108,7 +108,7 @@ class LMGLTransformation(SlicingTransformation):
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal,
              resultImag] = [lm_transformation_factory.buildLm(x, lmax=lmax)
-                                        for x in (inp.real, inp.imag)]
+                            for x in (inp.real, inp.imag)]
 
             [resultReal, resultImag] = [sjob.alm2map(x)
                                         for x in [resultReal, resultImag]]

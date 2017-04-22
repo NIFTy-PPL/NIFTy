@@ -105,7 +105,7 @@ class GLLMTransformation(SlicingTransformation):
 
             [resultReal,
              resultImag] = [lm_transformation_factory.buildIdx(x, lmax=lmax)
-                                        for x in [resultReal, resultImag]]
+                            for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
         else:
