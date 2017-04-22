@@ -77,8 +77,6 @@ class InformationStore(object):
         self._sy_store = {}
         self._yy_store = {}
 
-#        self.dot_matrix = {}
-
     @property
     def history_length(self):
         return min(self.k, self.max_history_length)
@@ -192,48 +190,6 @@ class InformationStore(object):
 
         self.last_x = x.copy()
         self.last_gradient = gradient.copy()
-
-#
-#        k = self.k
-#        m = self.actual_history_length
-#        big_m = self.history_length
-#
-#        # compute dot products
-#        for i in xrange(k-1, k-m-1, -1):
-#            # new_s with s
-#            key = (big_m+m, big_m+1+i)
-#            self.dot_matrix[key] = new_s.dot(self.s[i])
-#
-#            # new_s with y
-#            key = (big_m+m, i+1)
-#            self.dot_matrix[key] = new_s.dot(self.y[i])
-#
-#            # new_y with s
-#            if i != k-1:
-#                key = (big_m+1+i, k)
-#                self.dot_matrix[key] = new_y.dot(self.s[i])
-#
-#            # new_y with y
-#            # actually key = (i+1, k) but the convention is that the first
-#            # index is larger than the second one
-#            key = (k, i+1)
-#            self.dot_matrix[key] = new_y.dot(self.y[i])
-#
-#            # gradient with s
-#            key = (big_m+1+i, 0)
-#            self.dot_matrix[key] = gradient.dot(self.s[i])
-#
-#            # gradient with y
-#            key = (i+1, 0)
-#            self.dot_matrix[key] = gradient.dot(self.y[i])
-#
-#        # gradient with gradient
-#        key = (0, 0)
-#        self.dot_matrix[key] = gradient.dot(gradient)
-#
-#        self.last_x = x
-#        self.last_gradient = gradient
-#
 
 
 class LimitedList(object):

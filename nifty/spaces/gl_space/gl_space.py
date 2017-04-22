@@ -21,11 +21,11 @@ from __future__ import division
 import itertools
 import numpy as np
 
-import d2o
-from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
-
 from nifty.spaces.space import Space
 from nifty.config import dependency_injector as gdi
+
+pyHealpix = gdi.get('pyHealpix')
+
 
 class GLSpace(Space):
     """
@@ -93,6 +93,9 @@ class GLSpace(Space):
                 If input `nlat` is invalid.
 
         """
+        if 'pyHealpix' not in gdi:
+            raise ImportError(
+                "The module pyHealpix is needed but not available.")
 
         super(GLSpace, self).__init__(dtype)
 
@@ -123,10 +126,9 @@ class GLSpace(Space):
                               dtype=self.dtype)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        pyHealpix = gdi.get('pyHealpix')
         nlon = self.nlon
         nlat = self.nlat
-        vol = pyHealpix.GL_weights(nlat,nlon) ** power
+        vol = pyHealpix.GL_weights(nlat, nlon) ** power
         weight = np.array(list(itertools.chain.from_iterable(
                           itertools.repeat(x, nlon) for x in vol)))
 
@@ -146,12 +148,10 @@ class GLSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        raise NotImplementedError \
-            ("get_distance_array only works on spaces with a zero point.")
+        raise NotImplementedError
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        raise NotImplementedError \
-            ("get_fft_smoothing_kernel not supported by this space.")
+        raise NotImplementedError
 
     # ---Added properties and methods---
 

@@ -22,7 +22,7 @@ from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
 
-import lm_transformation_factory as ltf
+import lm_transformation_factory
 
 pyHealpix = gdi.get('pyHealpix')
 
@@ -59,49 +59,50 @@ class HPLMTransformation(SlicingTransformation):
         """
 
         if not isinstance(domain, HPSpace):
-            raise TypeError(
-                "domain needs to be a HPSpace")
+            raise TypeError("domain needs to be a HPSpace")
 
-        lmax = 2 * domain.nside
+        lmax = 2*domain.nside
 
-        result = LMSpace(lmax=lmax, dtype=np.dtype('float64'))
-        cls.check_codomain(domain, result)
+        result = LMSpace(lmax=lmax, dtype=domain.dtype)
         return result
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, HPSpace):
-            raise TypeError(
-                'ERROR: domain is not a HPSpace')
+            raise TypeError("domain is not a HPSpace")
 
         if not isinstance(codomain, LMSpace):
-            raise TypeError(
-                'ERROR: codomain must be a LMSpace.')
+            raise TypeError("codomain must be a LMSpace.")
 
-        nside = domain.nside
         lmax = codomain.lmax
+        nside = domain.nside
 
-        return None
+        if lmax != 2*nside:
+            cls.Logger.warn("Unrecommended: lmax != 2*nside.")
+
+        super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
+        nside = self.domain.nside
         lmax = self.codomain.lmax
         mmax = lmax
         nside= self.domain.nside
 
-        sjob=pyHealpix.sharpjob_d()
+        sjob = pyHealpix.sharpjob_d()
         sjob.set_Healpix_geometry(nside)
-        sjob.set_triangular_alm_info(lmax,mmax)
+        sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal, resultImag] = [sjob.map2alm(x)
                                         for x in (inp.real, inp.imag)]
 
-            [resultReal, resultImag] = [ltf.buildIdx(x, lmax=lmax)
-                                        for x in [resultReal, resultImag]]
+            [resultReal,
+             resultImag] = [lm_transformation_factory.buildIdx(x, lmax=lmax)
+                            for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
             result = sjob.map2alm(inp)
-            result = ltf.buildIdx(result, lmax=lmax)
+            result = lm_transformation_factory.buildIdx(result, lmax=lmax)
 
         return result

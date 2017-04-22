@@ -46,7 +46,7 @@ CONSTRUCTOR_CONFIGS = [
 
 def get_weight_configs():
     np.random.seed(42)
-    wgt=[ 2.0943951,  2.0943951]
+    wgt = [2.0943951,  2.0943951]
     # for GLSpace(nlat=2, nlon=3)
     weight_0 = np.array(list(itertools.chain.from_iterable(
         itertools.repeat(x, 3) for x in wgt)))
@@ -69,13 +69,22 @@ class GLSpaceInterfaceTests(unittest.TestCase):
     @expand([['nlat', int],
             ['nlon', int]])
     def test_property_ret_type(self, attribute, expected_type):
-        g = GLSpace(2)
-        assert_(isinstance(getattr(g, attribute), expected_type))
+        try:
+            g = GLSpace(2)
+        except ImportError:
+            raise SkipTest
+        else:
+            assert_(isinstance(getattr(g, attribute), expected_type))
 
 
 class GLSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, nlat, nlon, dtype, expected):
+        try:
+            g = GLSpace(4)
+        except ImportError:
+            raise SkipTest
+
         if 'error' in expected:
             with assert_raises(expected['error']):
                 GLSpace(nlat, nlon, dtype)
@@ -86,6 +95,11 @@ class GLSpaceFunctionalityTests(unittest.TestCase):
 
     @expand(get_weight_configs())
     def test_weight(self, x, power, axes, inplace, expected):
+        try:
+            g = GLSpace(4)
+        except ImportError:
+            raise SkipTest
+
         if 'pyHealpix' not in di:
             raise SkipTest
         else:

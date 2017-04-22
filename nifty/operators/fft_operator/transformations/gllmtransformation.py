@@ -21,7 +21,7 @@ import numpy as np
 from nifty.config import dependency_injector as gdi
 from nifty import GLSpace, LMSpace
 from slicing_transformation import SlicingTransformation
-import lm_transformation_factory as ltf
+import lm_transformation_factory
 
 pyHealpix = gdi.get('pyHealpix')
 
@@ -58,30 +58,21 @@ class GLLMTransformation(SlicingTransformation):
         """
 
         if not isinstance(domain, GLSpace):
-            raise TypeError(
-                "domain needs to be a GLSpace")
+            raise TypeError("domain needs to be a GLSpace")
 
         nlat = domain.nlat
         lmax = nlat - 1
-        mmax = nlat - 1
-        if domain.dtype == np.dtype('float32'):
-            return_dtype = np.float32
-        else:
-            return_dtype = np.float64
 
-        result = LMSpace(lmax=lmax, dtype=return_dtype)
-        cls.check_codomain(domain, result)
+        result = LMSpace(lmax=lmax, dtype=domain.dtype)
         return result
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, GLSpace):
-            raise TypeError(
-                "domain is not a GLSpace")
+            raise TypeError("domain is not a GLSpace")
 
         if not isinstance(codomain, LMSpace):
-            raise TypeError(
-                "codomain must be a LMSpace.")
+            raise TypeError("codomain must be a LMSpace.")
 
         nlat = domain.nlat
         nlon = domain.nlon
@@ -89,18 +80,15 @@ class GLLMTransformation(SlicingTransformation):
         mmax = codomain.mmax
 
         if lmax != mmax:
-            raise ValueError(
-                'ERROR: codomain has lmax != mmax.')
+            cls.Logger.warn("Unrecommended: codomain has lmax != mmax.")
 
         if lmax != nlat - 1:
-            raise ValueError(
-                'ERROR: codomain has lmax != nlat - 1.')
+            cls.Logger.warn("Unrecommended: codomain has lmax != nlat - 1.")
 
-        if nlon != 2 * nlat - 1:
-            raise ValueError(
-                'ERROR: domain has nlon != 2 * nlat - 1.')
+        if nlon != 2*nlat - 1:
+            cls.Logger.warn("Unrecommended: domain has nlon != 2*nlat - 1.")
 
-        return None
+        super(GLLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
         nlat = self.domain.nlat
@@ -108,20 +96,20 @@ class GLLMTransformation(SlicingTransformation):
         lmax = self.codomain.lmax
         mmax = self.codomain.mmax
 
-        sjob=pyHealpix.sharpjob_d()
-        sjob.set_Gauss_geometry(nlat,nlon)
-        sjob.set_triangular_alm_info(lmax,mmax)
+        sjob = pyHealpix.sharpjob_d()
+        sjob.set_Gauss_geometry(nlat, nlon)
+        sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-
             [resultReal, resultImag] = [sjob.map2alm(x)
                                         for x in (inp.real, inp.imag)]
 
-            [resultReal, resultImag] = [ltf.buildIdx(x, lmax=lmax)
+            [resultReal,
+             resultImag] = [lm_transformation_factory.buildIdx(x, lmax=lmax)
                                         for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
         else:
             result = sjob.map2alm(inp)
-            result = ltf.buildIdx(result, lmax=lmax)
+            result = lm_transformation_factory.buildIdx(result, lmax=lmax)
 
         return result

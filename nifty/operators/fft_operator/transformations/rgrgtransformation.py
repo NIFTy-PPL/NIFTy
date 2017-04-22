@@ -64,7 +64,7 @@ class RGRGTransformation(Transformation):
                 A compatible codomain.
         """
         if not isinstance(domain, RGSpace):
-            raise TypeError('ERROR: domain needs to be a RGSpace')
+            raise TypeError("domain needs to be a RGSpace")
 
         # parse the zerocenter input
         if zerocenter is None:
@@ -78,40 +78,33 @@ class RGRGTransformation(Transformation):
         # calculate the initialization parameters
         distances = 1 / (np.array(domain.shape) *
                          np.array(domain.distances))
-        if dtype is None:
-            # create a definitely complex dtype from the dtype of domain
-            one = domain.dtype.type(1)
-            dtype = np.dtype(type(one + 1j))
 
         new_space = RGSpace(domain.shape,
                             zerocenter=zerocenter,
                             distances=distances,
                             harmonic=(not domain.harmonic),
-                            dtype=dtype)
+                            dtype=domain.dtype)
+
+        # better safe than sorry
         cls.check_codomain(domain, new_space)
         return new_space
 
     @classmethod
     def check_codomain(cls, domain, codomain):
         if not isinstance(domain, RGSpace):
-            raise TypeError('ERROR: domain is not a RGSpace')
-
-        if codomain is None:
-            return False
+            raise TypeError("domain is not a RGSpace")
 
         if not isinstance(codomain, RGSpace):
-            return False
+            raise TypeError("domain is not a RGSpace")
 
         if not np.all(np.array(domain.shape) ==
                       np.array(codomain.shape)):
-            return False
+            raise AttributeError("The shapes of domain and codomain must be "
+                                 "identical.")
 
         if domain.harmonic == codomain.harmonic:
-            return False
-
-        if codomain.harmonic and not issubclass(codomain.dtype.type,
-                                                np.complexfloating):
-            cls.logger.warn("Codomain is harmonic but dtype is real.")
+            raise AttributeError("domain.harmonic and codomain.harmonic must "
+                                 "not be the same.")
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
         if not np.all(
@@ -119,9 +112,10 @@ class RGRGTransformation(Transformation):
                         np.array(domain.distances) *
                         np.array(codomain.distances) - 1) <
                 10**-7):
-            return False
+            raise AttributeError("The grid-distances of domain and codomain "
+                                 "do not match.")
 
-        return True
+        super(RGRGTransformation, cls).check_codomain(domain, codomain)
 
     def transform(self, val, axes=None, **kwargs):
         """

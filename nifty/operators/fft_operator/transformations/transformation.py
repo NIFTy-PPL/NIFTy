@@ -18,6 +18,8 @@
 
 import abc
 
+import numpy as np
+
 from keepers import Loggable
 
 
@@ -41,9 +43,11 @@ class Transformation(Loggable, object):
     def get_codomain(cls, domain, dtype=None, zerocenter=None):
         raise NotImplementedError
 
-    @staticmethod
-    def check_codomain(domain, codomain):
-        raise NotImplementedError
+    @classmethod
+    def check_codomain(cls, domain, codomain):
+        if np.dtype(domain.dtype) != np.dtype(codomain.dtype):
+            cls.Logger.warn("Unrecommended: domain and codomain don't have "
+                            "the same dtype.")
 
     def transform(self, val, axes=None, **kwargs):
         raise NotImplementedError
