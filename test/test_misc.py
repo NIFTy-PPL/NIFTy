@@ -31,6 +31,7 @@ from nifty import Field,\
                   FieldArray, \
                   RGRGTransformation, \
                   LMGLTransformation, \
+                  LMHPTransformation, \
                   FFTOperator
 
 from nose.plugins.skip import SkipTest
@@ -103,3 +104,15 @@ class Misc_Tests(unittest.TestCase):
                 inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=tp)
                 out = fft.inverse_times(fft.times(inp))
                 assert_allclose(inp.val, out.val)
+
+    def test_sht2(self):
+        if 'pyHealpix' not in di:
+            raise SkipTest
+        for lm in [128,256]:
+            for tp in [np.float64,np.complex128,np.float32,np.complex64]:
+                a = LMSpace(lmax=lm)
+                b = LMHPTransformation.get_codomain(a)
+                fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
+                inp = Field.from_random(domain=a,random_type='normal',std=1,mean=0,dtype=tp)
+                out = fft.inverse_times(fft.times(inp))
+                assert_allclose(inp.val, out.val,rtol=1e-3,atol=1e-3)
