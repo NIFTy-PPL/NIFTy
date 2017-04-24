@@ -197,3 +197,6 @@ class GLSpace(Space):
             )
 
         return result
+
+    def plot(self):
+        pass
