@@ -1,3 +1,21 @@
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from __future__ import division
 import numpy as np
 
@@ -113,7 +131,7 @@ class Field(Loggable, Versionable, object):
                                                        f=f,
                                                        **kwargs)
 
-        # extract the distributed_dato_object from f and apply the appropriate
+        # extract the distributed_data_object from f and apply the appropriate
         # random number generator to it
         sample = f.get_val(copy=False)
         generator_function = getattr(Random, random_type)
@@ -458,7 +476,7 @@ class Field(Loggable, Versionable, object):
         try:
             return reduce(lambda x, y: x * y, volume_tuple)
         except TypeError:
-            return 0
+            return 0.
 
     # ---Special unary/binary operations---
 
@@ -578,7 +596,7 @@ class Field(Loggable, Versionable, object):
             raise ValueError("The dot-partner must be an instance of " +
                              "the NIFTy field class")
 
-        # Compute the dot respecting the fact of discrete/continous spaces
+        # Compute the dot respecting the fact of discrete/continuous spaces
         if bare:
             y = self
         else:

@@ -1,4 +1,20 @@
-# -*- coding: utf-8 -*-
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 
@@ -60,11 +76,6 @@ class InformationStore(object):
         self._ss_store = {}
         self._sy_store = {}
         self._yy_store = {}
-        self._sgrad_store = {}
-        self._ygrad_store = {}
-        self._gradgrad_store = None
-
-#        self.dot_matrix = {}
 
     @property
     def history_length(self):
@@ -179,48 +190,6 @@ class InformationStore(object):
 
         self.last_x = x.copy()
         self.last_gradient = gradient.copy()
-
-#
-#        k = self.k
-#        m = self.actual_history_length
-#        big_m = self.history_length
-#
-#        # compute dot products
-#        for i in xrange(k-1, k-m-1, -1):
-#            # new_s with s
-#            key = (big_m+m, big_m+1+i)
-#            self.dot_matrix[key] = new_s.dot(self.s[i])
-#
-#            # new_s with y
-#            key = (big_m+m, i+1)
-#            self.dot_matrix[key] = new_s.dot(self.y[i])
-#
-#            # new_y with s
-#            if i != k-1:
-#                key = (big_m+1+i, k)
-#                self.dot_matrix[key] = new_y.dot(self.s[i])
-#
-#            # new_y with y
-#            # actually key = (i+1, k) but the convention is that the first
-#            # index is larger than the second one
-#            key = (k, i+1)
-#            self.dot_matrix[key] = new_y.dot(self.y[i])
-#
-#            # gradient with s
-#            key = (big_m+1+i, 0)
-#            self.dot_matrix[key] = gradient.dot(self.s[i])
-#
-#            # gradient with y
-#            key = (i+1, 0)
-#            self.dot_matrix[key] = gradient.dot(self.y[i])
-#
-#        # gradient with gradient
-#        key = (0, 0)
-#        self.dot_matrix[key] = gradient.dot(gradient)
-#
-#        self.last_x = x
-#        self.last_gradient = gradient
-#
 
 
 class LimitedList(object):

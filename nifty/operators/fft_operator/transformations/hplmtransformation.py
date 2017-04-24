@@ -1,12 +1,30 @@
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import numpy as np
 
 from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
 
-import lm_transformation_factory as ltf
+import lm_transformation_factory
 
-hp = gdi.get('healpy')
+pyHealpix = gdi.get('pyHealpix')
 
 
 class HPLMTransformation(SlicingTransformation):
@@ -14,9 +32,9 @@ class HPLMTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
-        if 'healpy' not in gdi:
+        if 'pyHealpix' not in gdi:
             raise ImportError(
-                "The module healpy is needed but not available")
+                "The module pyHealpix is needed but not available")
 
         super(HPLMTransformation, self).__init__(domain, codomain,
                                                  module=module)
@@ -41,57 +59,49 @@ class HPLMTransformation(SlicingTransformation):
         """
 
         if not isinstance(domain, HPSpace):
-            raise TypeError(
-                "domain needs to be a HPSpace")
+            raise TypeError("domain needs to be a HPSpace")
 
-        lmax = 3 * domain.nside - 1
+        lmax = 2*domain.nside
 
-        result = LMSpace(lmax=lmax, dtype=np.dtype('float64'))
-        cls.check_codomain(domain, result)
+        result = LMSpace(lmax=lmax, dtype=domain.dtype)
         return result
 
-    @staticmethod
-    def check_codomain(domain, codomain):
+    @classmethod
+    def check_codomain(cls, domain, codomain):
         if not isinstance(domain, HPSpace):
-            raise TypeError(
-                'ERROR: domain is not a HPSpace')
+            raise TypeError("domain is not a HPSpace")
 
         if not isinstance(codomain, LMSpace):
-            raise TypeError(
-                'ERROR: codomain must be a LMSpace.')
+            raise TypeError("codomain must be a LMSpace.")
 
-        nside = domain.nside
         lmax = codomain.lmax
+        nside = domain.nside
 
-        if 3 * nside - 1 != lmax:
-            raise ValueError(
-                'ERROR: codomain has 3*nside-1 != lmax.')
+        if lmax != 2*nside:
+            cls.Logger.warn("Unrecommended: lmax != 2*nside.")
 
-        return None
+        super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
+        nside = self.domain.nside
         lmax = self.codomain.lmax
         mmax = lmax
 
+        sjob = pyHealpix.sharpjob_d()
+        sjob.set_Healpix_geometry(nside)
+        sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal, resultImag] = [hp.map2alm(x.astype(np.float64,
-                                                            copy=False),
-                                                   lmax=lmax,
-                                                   mmax=mmax,
-                                                   pol=True,
-                                                   use_weights=False,
-                                                   **kwargs)
+            [resultReal, resultImag] = [sjob.map2alm(x)
                                         for x in (inp.real, inp.imag)]
 
-            [resultReal, resultImag] = [ltf.buildIdx(x, lmax=lmax)
-                                        for x in [resultReal, resultImag]]
+            [resultReal,
+             resultImag] = [lm_transformation_factory.buildIdx(x, lmax=lmax)
+                            for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = hp.map2alm(inp.astype(np.float64, copy=False),
-                                lmax=lmax, mmax=mmax, pol=True,
-                                use_weights=False)
-            result = ltf.buildIdx(result, lmax=lmax)
+            result = sjob.map2alm(inp)
+            result = lm_transformation_factory.buildIdx(result, lmax=lmax)
 
         return result

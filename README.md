@@ -38,36 +38,26 @@ certain grids, **fields** that are defined on spaces, and **operators**
 that apply to fields.
 
 -   [Spaces](http://www.mpa-garching.mpg.de/ift/nifty/space.html)
-    -   `point_space` - unstructured list of points
     -   `rg_space` - *n*-dimensional regular Euclidean grid
     -   `lm_space` - spherical harmonics
     -   `gl_space` - Gauss-Legendre grid on the 2-sphere
     -   `hp_space` - [HEALPix](http://sourceforge.net/projects/healpix/)
         grid on the 2-sphere
-    -   `nested_space` - arbitrary product of grids
 -   [Fields](http://www.mpa-garching.mpg.de/ift/nifty/field.html)
     -   `field` - generic class for (discretized) fields
 
 <!-- -->
 
-    field.cast_domain   field.hat           field.power        field.smooth
-    field.conjugate     field.inverse_hat   field.pseudo_dot   field.tensor_dot
-    field.dim           field.norm          field.set_target   field.transform
-    field.dot           field.plot          field.set_val      field.weight
+    field.conjugate     field.dim          field.norm
+    field.dot           field.set_val      field.weight
 
 -   [Operators](http://www.mpa-garching.mpg.de/ift/nifty/operator.html)
     -   `diagonal_operator` - purely diagonal matrices in a specified
         basis
     -   `projection_operator` - projections onto subsets of a specified
         basis
-    -   `vecvec_operator` - matrices derived from the outer product of a
-        vector
-    -   `response_operator` - exemplary responses that include a
-        convolution, masking and projection
     -   `propagator_operator` - information propagator in Wiener filter
         theory
-    -   `explicit_operator` - linear operators with an explicit matrix
-        representation
     -   (and more)
 -   (and more)
 
@@ -81,19 +71,7 @@ Installation
 
 -   [Python](http://www.python.org/) (v2.7.x)
     -   [NumPy](http://www.numpy.org/)
-    -   [SciPy](http://www.scipy.org/)
     -   [Cython](http://cython.org/)
-    -   [matplotlib](http://matplotlib.org/)
--   [GFFT](https://github.com/mrbell/gfft) (v0.1.0) - Generalized Fast
-    Fourier Transformations for Python - **optional**
--   [HEALPy](https://github.com/healpy/healpy) (v1.8.1 without openmp) -
-    A Python wrapper for
-    [HEALPix](http://sourceforge.net/projects/healpix/) -**optional,
-    only needed for spherical spaces**
--   [libsharp-wrapper](https://github.com/mselig/libsharp-wrapper)
-    (v0.1.2 without openmp) - A Python wrapper for the
-    [libsharp](http://sourceforge.net/projects/libsharp/) library
-    -**optional, only needed for spherical spaces**
 
 ### Download
 
@@ -112,57 +90,35 @@ Starting with a fresh Ubuntu installation move to a folder like
 
 -   Install basic packages like python, python-dev, gsl and others:
 
-        sudo apt-get install curl git autoconf 
-        sudo apt-get install python-dev python-pip gsl-bin libgsl0-dev libfreetype6-dev libpng-dev  libatlas-base-dev gfortran 
+        sudo apt-get install curl git autoconf
+        sudo apt-get install python-dev python-pip gsl-bin libgsl0-dev libfreetype6-dev libpng-dev libatlas-base-dev
 
--   Install matplotlib:
+-   Using pip install numpy etc...:
 
-        sudo apt-get install python-matplotlib
+        sudo pip install numpy cython
 
--   Using pip install numpy, scipy, etc...:
+-   Install pyHealpix:
 
-        sudo pip install numpy scipy cython pyfits healpy
-
--   Now install the 'non-standard' dependencies. First of all gfft:
-
-        curl -LOk https://github.com/mrbell/gfft/tarball/master 
-        tar -xzf master 
-        cd mrbell-gfft* 
-        sudo python setup.py install 
-        cd ..
-
--   Libsharp:
-
-        git clone http://git.code.sf.net/p/libsharp/code libsharp-code 
-        cd libsharp-code 
-        sudo autoconf 
-        ./configure --enable-pic --disable-openmp 
-        sudo make 
-        cd ..
-
--   Libsharpwrapper:
-
-        git clone http://github.com/mselig/libsharp-wrapper.git libsharp-wrapper 
-        cd libsharp-wrapper 
-        sudo python setup.py build_ext 
-        sudo python setup.py install 
+        git clone https://gitlab.mpcdf.mpg.de/mtr/pyHealpix.git
+        cd pyHealpix
+        autoreconf -i && ./configure && sudo make install
         cd ..
 
 -   Finally, NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
         cd nifty
-        sudo python setup.py install 
-        cd .. 
+        sudo python setup.py install
+        cd ..
 
-### Installation on a linux cluster
+### Installation on a Linux cluster
 
 This is for you if you want to install NIFTy on a HPC machine or cluster
 that is hosted by your university or institute. Most of the dependencies
 will most likely already be there, but you won't have superuser
-priviledges. In this case, instead:
+privileges. In this case, instead of:
 
-    sudo python setup.py install 
+    sudo python setup.py install
 
 use:
 
@@ -175,82 +131,40 @@ or:
 in the instruction above. This will install the python packages into
 your local user directory.
 
+For pyHealpix, use:
+
+    git clone https://gitlab.mpcdf.mpg.de/mtr/pyHealpix.git
+    cd pyHealpix
+    autoreconf -i && ./configure --prefix=$HOME/.local && make install
+    cd ..
+
 ### Installation on OS X 10.11
 
-We advice to install the following packages in the order as they appear
+We advise to install the following packages in the order as they appear
 below. We strongly recommend to install all needed packages via
 MacPorts. Please be aware that not all packages are available on
 MacPorts, missing ones need to be installed manually. It may also be
 mentioned that one should only use one package manager, as multiple ones
 may cause trouble.
 
--   Install basic packages python, scipy, matplotlib and cython:
+-   Install basic packages numpy and cython:
 
         sudo port install py27-numpy
-        sudo port install py27-scipy
-        sudo port install py27-matplotlib
         sudo port install py27-cython
 
--   Install gfft. **Depending where you installed GSL you may need to
-    change the path in setup.py!**:
+-   Install pyHealpix:
 
-        sudo port install gsl
-        git clone https://github.com/mrbell/gfft.git}{https://github.com/mrbell/gfft.git
-        sudo python setup.py install
-
--   Install healpy:
-
-        sudo port install py27-pyfits
-        git clone https://github.com/healpy/healpy.git
-        cd healpy 
-        sudo python setup.py install
-        cd ..
-
--   Install libsharp and therefore autoconf, automake and libtool.
-    Installations instructions for libsharp may be found here:
-    <https://sourceforge.net/p/libsharp/code/ci/master/tree/>:
-
-        curl -OL http://ftpmirror.gnu.org/autoconf/autoconf-2.69.tar.gz
-        tar -xzf autoconf-2.69.tar.gz 
-        cd autoconf-2.69
-        ./configure && make && sudo make install
-        cd ..
-
-        curl -OL http://ftpmirror.gnu.org/automake/automake-1.14.tar.gz
-        tar -xzf automake-1.14.tar.gz
-        cd automake-1.14
-        ./configure && make && sudo make install
-        cd ..
-
-        curl -OL http://ftpmirror.gnu.org/libtool/libtool-2.4.2.tar.gz
-        tar -xzf libtool-2.4.2.tar.gz
-        cd libtool-2.4.2
-        ./configure && make && sudo make install
-        cd ..
-
-        git clone http://git.code.sf.net/p/libsharp/code libsharp-code 
-        cd libsharp-code 
-        sudo autoconf 
-        ./configure --enable-pic --disable-openmp 
-        sudo make 
-        cd ..
-
--   Install libsharp-wrapper. **Adopt the path of the libsharp
-    installation in setup.py** :
-
-        sudo port install gcc
-        sudo port select gcc  mp-gcc5
-        git clone https://github.com/mselig/libsharp-wrapper.git
-        cd libsharp-wrapper
-        sudo python setup.py install
+        git clone https://gitlab.mpcdf.mpg.de/mtr/pyHealpix.git
+        cd pyHealpix
+        autoreconf -i && ./configure && sudo make install
         cd ..
 
 -   Install NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
         cd nifty
-        sudo python setup.py install 
-        cd .. 
+        sudo python setup.py install
+        cd ..
 
 ### Installation using pypi
 
@@ -263,13 +177,26 @@ Alternatively, a private or user specific installation can be done by:
 
     pip install --user ift_nifty
 
+### Running the tests
+
+In oder to run the tests one needs two additional packages:
+
+    pip install nose
+    pip install parameterized
+
+Afterwards the tests (including a coverage report) are run using the following
+command in the repository root:
+
+    nosetests --exe --cover-html
+
+
 ### First Steps
 
 For a quickstart, you can browse through the [informal
 introduction](http://www.mpa-garching.mpg.de/ift/nifty/start.html) or
 dive into NIFTY by running one of the demonstrations, e.g.:
 
-    >>> run -m nifty.demos.demo_wf1
+    python demos/wiener_filter.py
 
 Acknowledgement
 ---------------
