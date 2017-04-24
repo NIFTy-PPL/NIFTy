@@ -37,6 +37,8 @@ from d2o import distributed_data_object,\
 
 from nifty.spaces.space import Space
 
+import nifty.plotting as plt
+
 
 class RGSpace(Space):
     """
@@ -371,3 +373,8 @@ class RGSpace(Space):
             dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
+
+    def plot(self):
+        n_dimensions = len(self._shape)
+        # if n_dimensions == 1:
+        #     fig = plt.figures.Figure(data=self.distances)

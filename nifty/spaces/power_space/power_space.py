@@ -209,6 +209,9 @@ class PowerSpace(Space):
         return new_ps
 
 
+    def plot(self):
+        pass
+
 class EmptyPowerSpace(PowerSpace):
     def __init__(self):
         pass

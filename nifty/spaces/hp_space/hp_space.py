@@ -152,3 +152,6 @@ class HPSpace(Space):
             dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
+
+    def plot(self):
+        pass
