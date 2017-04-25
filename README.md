@@ -99,7 +99,7 @@ Starting with a fresh Ubuntu installation move to a folder like
 
 -   Install pyHealpix:
 
-        git clone https://gitlab.mpcdf.mpg.de/mtr/pyHealpix.git
+        git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
         autoreconf -i && ./configure && sudo make install
         cd ..
@@ -133,7 +133,7 @@ your local user directory.
 
 For pyHealpix, use:
 
-    git clone https://gitlab.mpcdf.mpg.de/mtr/pyHealpix.git
+    git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
     cd pyHealpix
     autoreconf -i && ./configure --prefix=$HOME/.local && make install
     cd ..
@@ -154,7 +154,7 @@ may cause trouble.
 
 -   Install pyHealpix:
 
-        git clone https://gitlab.mpcdf.mpg.de/mtr/pyHealpix.git
+        git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
         autoreconf -i && ./configure && sudo make install
         cd ..
