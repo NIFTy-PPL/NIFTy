@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
 from nifty import dependency_injector as gdi
-from heat_map import HeatMap
+from heatmap import Heatmap
 
 pylab = gdi.get('pylab')
 healpy = gdi.get('healpy')
 
 
-class Mollweide(HeatMap):
+class Mollweide(Heatmap):
     def __init__(self, data, label='', line=None, marker=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
         if 'pylab' not in gdi:
