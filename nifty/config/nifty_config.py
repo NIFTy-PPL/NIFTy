@@ -17,16 +17,23 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+from distutils.version import LooseVersion as lv
 
 import numpy as np
 import keepers
 
+__all__ = ['dependency_injector', 'nifty_configuration']
+
 # Setup the dependency injector
 dependency_injector = keepers.DependencyInjector(
                                    [('mpi4py.MPI', 'MPI'),
-                                    'pyHealpix'])
+                                    'pyHealpix',
+                                    'plotly'])
 
 dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
+
+dependency_injector.register('healpy',
+                             lambda z: lv(z.__version__) >= lv('1.8.1'))
 
 # Initialize the variables
 variable_fft_module = keepers.Variable(
@@ -36,7 +43,7 @@ variable_fft_module = keepers.Variable(
                                           if z == 'fftw' else True))
 
 
-def _dtype_validator(dtype):
+def dtype_validator(dtype):
     try:
         np.dtype(dtype)
     except(TypeError):
@@ -47,7 +54,7 @@ def _dtype_validator(dtype):
 variable_default_field_dtype = keepers.Variable(
                               'default_field_dtype',
                               ['float'],
-                              _dtype_validator,
+                              dtype_validator,
                               genus='str')
 
 variable_default_distribution_strategy = keepers.Variable(
