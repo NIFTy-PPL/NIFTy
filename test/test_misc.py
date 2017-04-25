@@ -36,6 +36,15 @@ from nifty import Field,\
 
 from nose.plugins.skip import SkipTest
 
+def _harmonic_type(itp):
+    otp=itp
+    if otp==np.float64:
+        otp=np.complex128
+    elif otp==np.float32:
+        otp=np.complex64
+    return otp
+
+
 class Misc_Tests(unittest.TestCase):
     def test_RG_distance_1D(self):
         for dim1 in [10,11]:
@@ -63,7 +72,7 @@ class Misc_Tests(unittest.TestCase):
                         for itp in [np.float64,np.complex128,np.float32,np.complex64]:
                             a = RGSpace(dim1, zerocenter=zc1, distances=d)
                             b = RGRGTransformation.get_codomain(a, zerocenter=zc2)
-                            fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=itp)
+                            fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp))
                             inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
                             out = fft.inverse_times(fft.times(inp))
                             assert_allclose(inp.val, out.val)
@@ -79,7 +88,7 @@ class Misc_Tests(unittest.TestCase):
                     for itp in [np.float64,np.complex128,np.float32,np.complex64]:
                       a = RGSpace([dim1,dim2], zerocenter=[zc1,zc2], distances=d)
                       b = RGRGTransformation.get_codomain(a, zerocenter=[zc3,zc4])
-                      fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=itp)
+                      fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp))
                       inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
                       out = fft.inverse_times(fft.times(inp))
                       assert_allclose(inp.val, out.val)
