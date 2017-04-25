@@ -1,3 +1,5 @@
+from matplotlib_init import *
+
 from descriptors import *
 from plots import *
 from figures import *

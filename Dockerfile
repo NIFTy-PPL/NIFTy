@@ -8,7 +8,8 @@ RUN \
     libopenmpi-dev libatlas-base-dev libfftw3-bin libfftw3-dev \
     libfftw3-double3 libfftw3-long3 libfftw3-mpi-dev libfftw3-mpi3 \
     libfftw3-quad3 libfftw3-single3 libhdf5-10 libhdf5-dev \
-    libhdf5-openmpi-10 libhdf5-openmpi-dev hdf5-tools
+    libhdf5-openmpi-10 libhdf5-openmpi-dev hdf5-tools \
+	python-tk
 
 # python dependencies
 ADD ci/requirements.txt /tmp/requirements.txt

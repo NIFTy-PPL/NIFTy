@@ -2,15 +2,19 @@
 
 import numpy as np
 
-from plotly.tools import make_subplots
+from nifty import dependency_injector as gdi
 
 from figure_base import FigureBase
 from figure_3D import Figure3D
+
+plotly = gdi.get('plotly')
 
 
 class MultiFigure(FigureBase):
     def __init__(self, rows, columns, subfigures=None,
                  title=None, width=None, height=None):
+        if 'plotly' not in gdi:
+            raise ImportError("The module plotly is needed but not available.")
         super(MultiFigure, self).__init__(title, width, height)
         self.subfigures = np.empty((rows, columns), dtype=np.object)
         self.subfigures[:] = subfigures
@@ -36,7 +40,8 @@ class MultiFigure(FigureBase):
         specs_setter = \
             lambda z: {'is_3d': True} if isinstance(z, Figure3D) else {}
         sub_specs = np.vectorize(specs_setter)(sub_specs)
-        multi_figure_plotly_object = make_subplots(self.rows,
+        multi_figure_plotly_object = plotly.tools.make_subplots(
+                                                   self.rows,
                                                    self.columns,
                                                    subplot_titles=sub_titles,
                                                    specs=sub_specs)

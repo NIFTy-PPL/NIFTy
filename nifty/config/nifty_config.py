@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from distutils.version import LooseVersion as lv
 
 import numpy as np
 import keepers
@@ -28,12 +27,11 @@ __all__ = ['dependency_injector', 'nifty_configuration']
 dependency_injector = keepers.DependencyInjector(
                                    [('mpi4py.MPI', 'MPI'),
                                     'pyHealpix',
-                                    'plotly'])
+                                    'plotly',
+                                    'pylab',
+                                    'healpy'])
 
 dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
-
-dependency_injector.register('healpy',
-                             lambda z: lv(z.__version__) >= lv('1.8.1'))
 
 # Initialize the variables
 variable_fft_module = keepers.Variable(
