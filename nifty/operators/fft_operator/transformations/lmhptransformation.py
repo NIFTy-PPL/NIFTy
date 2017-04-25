@@ -64,7 +64,7 @@ class LMHPTransformation(SlicingTransformation):
         if not isinstance(domain, LMSpace):
             raise TypeError("domain needs to be a LMSpace.")
 
-        nside = max((domain.lmax+1) // 2, 1)
+        nside = max((domain.lmax + 1)//2, 1)
         result = HPSpace(nside=nside, dtype=domain.dtype)
         return result
 
@@ -94,13 +94,13 @@ class LMHPTransformation(SlicingTransformation):
              resultImag] = [lm_transformation_factory.buildLm(x, lmax=lmax)
                             for x in (inp.real, inp.imag)]
 
-            [resultReal, resultImag] = [pyHealpix.alm2map(x,lmax,mmax,nside)
+            [resultReal, resultImag] = [pyHealpix.alm2map(x, lmax, mmax, nside)
                                         for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
             result = lm_transformation_factory.buildLm(inp, lmax=lmax)
-            result = pyHealpix.alm2map(result,lmax,mmax,nside)
+            result = pyHealpix.alm2map(result, lmax, mmax, nside)
 
         return result

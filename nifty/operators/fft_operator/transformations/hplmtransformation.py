@@ -83,14 +83,13 @@ class HPLMTransformation(SlicingTransformation):
         super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
-        nside = self.domain.nside
         lmax = self.codomain.lmax
         mmax = lmax
-        nside= self.domain.nside
 
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal, resultImag] = [pyHealpix.map2alm_iter(x,lmax,mmax,3)
-                                        for x in (inp.real, inp.imag)]
+            [resultReal,
+             resultImag] = [pyHealpix.map2alm_iter(x, lmax, mmax, 3)
+                            for x in (inp.real, inp.imag)]
 
             [resultReal,
              resultImag] = [lm_transformation_factory.buildIdx(x, lmax=lmax)
@@ -99,7 +98,7 @@ class HPLMTransformation(SlicingTransformation):
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = pyHealpix.map2alm_iter(inp,lmax,mmax,3)
+            result = pyHealpix.map2alm_iter(inp, lmax, mmax, 3)
             result = lm_transformation_factory.buildIdx(result, lmax=lmax)
 
         return result

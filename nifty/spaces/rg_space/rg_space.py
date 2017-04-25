@@ -251,7 +251,7 @@ class RGSpace(Space):
 
         cords = np.ogrid[inds]
 
-        dists = ((np.float64(0) + cords[0] - shape[0] // 2) * dk[0])**2
+        dists = ((cords[0] - shape[0]//2)*dk[0])**2
         # apply zerocenterQ shift
         if not self.zerocenter[0]:
             dists = np.fft.ifftshift(dists)
