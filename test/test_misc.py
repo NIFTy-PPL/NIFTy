@@ -44,6 +44,33 @@ def _harmonic_type(itp):
         otp=np.complex64
     return otp
 
+def _sub_fft1D(module):
+    for dim1 in [10,11]:
+        for zc1 in [False,True]:
+            for zc2 in [False,True]:
+                for d in [0.1,1,3.7]:
+                    for itp in [np.float64,np.complex128,np.float32,np.complex64]:
+                        a = RGSpace(dim1, zerocenter=zc1, distances=d)
+                        b = RGRGTransformation.get_codomain(a, zerocenter=zc2)
+                        fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp),module=module)
+                        inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
+                        out = fft.inverse_times(fft.times(inp))
+                        assert_allclose(inp.val, out.val)
+def _sub_fft2D(module):
+  for dim1 in [10,11]:
+    for dim2 in [9,12]:
+      for zc1 in [False,True]:
+        for zc2 in [False,True]:
+          for zc3 in [False,True]:
+            for zc4 in [False,True]:
+              for d in [0.1,1,3.7]:
+                for itp in [np.float64,np.complex128,np.float32,np.complex64]:
+                  a = RGSpace([dim1,dim2], zerocenter=[zc1,zc2], distances=d)
+                  b = RGRGTransformation.get_codomain(a, zerocenter=[zc3,zc4])
+                  fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp),module=module)
+                  inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
+                  out = fft.inverse_times(fft.times(inp))
+                  assert_allclose(inp.val, out.val)
 
 class Misc_Tests(unittest.TestCase):
     def test_RG_distance_1D(self):
@@ -64,34 +91,19 @@ class Misc_Tests(unittest.TestCase):
                 res = foo.get_distance_array('not')
                 assert_equal(res[zc1*(dim1//2),zc2*(dim2//2)],0.)
 
-    def test_fft1D(self):
-        for dim1 in [10,11]:
-            for zc1 in [False,True]:
-                for zc2 in [False,True]:
-                    for d in [0.1,1,3.7]:
-                        for itp in [np.float64,np.complex128,np.float32,np.complex64]:
-                            a = RGSpace(dim1, zerocenter=zc1, distances=d)
-                            b = RGRGTransformation.get_codomain(a, zerocenter=zc2)
-                            fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp))
-                            inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
-                            out = fft.inverse_times(fft.times(inp))
-                            assert_allclose(inp.val, out.val)
+    def test_fft1D_numpy(self):
+        _sub_fft1D("numpy")
+    def test_fft1D_pyfftw(self):
+        if 'pyfftw' not in di:
+            raise SkipTest
+        _sub_fft1D("fftw")
 
-    def test_fft2D(self):
-      for dim1 in [10,11]:
-        for dim2 in [9,12]:
-          for zc1 in [False,True]:
-            for zc2 in [False,True]:
-              for zc3 in [False,True]:
-                for zc4 in [False,True]:
-                  for d in [0.1,1,3.7]:
-                    for itp in [np.float64,np.complex128,np.float32,np.complex64]:
-                      a = RGSpace([dim1,dim2], zerocenter=[zc1,zc2], distances=d)
-                      b = RGRGTransformation.get_codomain(a, zerocenter=[zc3,zc4])
-                      fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp))
-                      inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
-                      out = fft.inverse_times(fft.times(inp))
-                      assert_allclose(inp.val, out.val)
+    def test_fft2D_numpy(self):
+        _sub_fft2D("numpy")
+    def test_fft2D_pyfftw(self):
+        if 'pyfftw' not in di:
+            raise SkipTest
+        _sub_fft2D("fftw")
 
     def test_sht(self):
         if 'pyHealpix' not in di:
