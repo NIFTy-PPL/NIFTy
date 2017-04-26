@@ -25,13 +25,13 @@ class _PowerIndexFactory(object):
 
     def get_power_index(self, domain, distribution_strategy,
                         log=False, nbin=None, binbounds=None):
-        current_hash = domain.__hash__() ^ (111*hash(distribution_strategy))
+        key=(domain,distribution_strategy)
 
-        if current_hash not in self.power_indices_storage:
-            self.power_indices_storage[current_hash] = \
+        if key not in self.power_indices_storage:
+            self.power_indices_storage[key] = \
                 PowerIndices(domain, distribution_strategy,
                              log=log, nbin=nbin, binbounds=binbounds)
-        power_indices = self.power_indices_storage[current_hash]
+        power_indices = self.power_indices_storage[key]
         power_index = power_indices.get_index_dict(log=log,
                                                    nbin=nbin,
                                                    binbounds=binbounds)

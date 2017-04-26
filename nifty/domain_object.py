@@ -43,7 +43,14 @@ class DomainObject(Versionable, Loggable, object):
 
     def __eq__(self, x):
         if isinstance(x, type(self)):
-            return hash(self) == hash(x)
+            for key in vars(self).keys():
+                item1 = vars(self)[key]
+                if key in self._ignore_for_hash or key == '_ignore_for_hash':
+                    continue
+                item2 = vars(x)[key]
+                if item1 != item2:
+                    return False
+            return True
         else:
             return False
 
