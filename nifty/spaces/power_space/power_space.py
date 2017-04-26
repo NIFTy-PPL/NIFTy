@@ -120,8 +120,7 @@ class PowerSpace(Space):
     def get_distance_array(self, distribution_strategy):
         result = d2o.distributed_data_object(
                                 self.kindex,
-                                distribution_strategy=distribution_strategy,
-                                dtype=np.float64)
+                                distribution_strategy=distribution_strategy)
         return result
 
     def get_fft_smoothing_kernel_function(self, sigma):
