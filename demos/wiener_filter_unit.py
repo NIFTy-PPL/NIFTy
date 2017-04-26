@@ -78,8 +78,6 @@ if __name__ == "__main__":
     length_convolution = .025
     exposure = 1.
 
-
-
     # calculating parameters
     k_0 = 4. / (2 * np.pi * lambda_s)
     a_s = sigma_s ** 2. * lambda_s * total_volume
