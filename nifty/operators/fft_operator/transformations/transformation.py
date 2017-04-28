@@ -45,9 +45,7 @@ class Transformation(Loggable, object):
 
     @classmethod
     def check_codomain(cls, domain, codomain):
-        if np.dtype(domain.dtype) != np.dtype(codomain.dtype):
-            cls.Logger.warn("Unrecommended: domain and codomain don't have "
-                            "the same dtype.")
+        pass
 
     def transform(self, val, axes=None, **kwargs):
         raise NotImplementedError

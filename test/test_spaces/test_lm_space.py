@@ -25,27 +25,25 @@ from d2o import distributed_data_object
 from nifty import LMSpace
 from test.common import expand
 
-# [lmax, dtype, expected]
+# [lmax, expected]
 CONSTRUCTOR_CONFIGS = [
-        [5, None, {
+        [5, {
             'lmax': 5,
             'mmax': 5,
             'shape': (36,),
             'harmonic': True,
             'dim': 36,
             'total_volume': 36.0,
-            'dtype': np.dtype('float64')
             }],
-        [7, np.dtype('float64'), {
+        [7, {
             'lmax': 7,
             'mmax': 7,
             'shape': (64,),
             'harmonic': True,
             'dim': 64,
             'total_volume': 64.0,
-            'dtype': np.dtype('float64')
             }],
-        [-1, None, {
+        [-1, {
             'error': ValueError
             }]
     ]
@@ -68,7 +66,7 @@ def _distance_array_helper(index_arr, lmax):
 
 def get_distance_array_configs():
     da_0 = [_distance_array_helper(idx, 5) for idx in np.arange(36)]
-    return [[5, None, da_0]]
+    return [[5, da_0]]
 
 
 def get_weight_configs():
@@ -101,12 +99,12 @@ class LMSpaceInterfaceTests(unittest.TestCase):
 
 class LMSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, lmax, dtype, expected):
+    def test_constructor(self, lmax, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
-                LMSpace(lmax, dtype)
+                LMSpace(lmax)
         else:
-            l = LMSpace(lmax, dtype)
+            l = LMSpace(lmax)
             for key, value in expected.iteritems():
                 assert_equal(getattr(l, key), value)
 
@@ -129,6 +127,6 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
             assert_(x is res)
 
     @expand(get_distance_array_configs())
-    def test_distance_array(self, lmax, dtype, expected):
-        l = LMSpace(lmax, dtype)
+    def test_distance_array(self, lmax, expected):
+        l = LMSpace(lmax)
         assert_almost_equal(l.get_distance_array('not').data, expected)

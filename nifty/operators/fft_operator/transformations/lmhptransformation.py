@@ -65,7 +65,7 @@ class LMHPTransformation(SlicingTransformation):
             raise TypeError("domain needs to be a LMSpace.")
 
         nside = max((domain.lmax + 1)//2, 1)
-        result = HPSpace(nside=nside, dtype=domain.dtype)
+        result = HPSpace(nside=nside)
         return result
 
     @classmethod

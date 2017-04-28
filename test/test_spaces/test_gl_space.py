@@ -27,18 +27,17 @@ from nifty import GLSpace
 from nifty.config import dependency_injector as di
 from test.common import expand
 
-# [nlat, nlon, dtype, expected]
+# [nlat, nlon, expected]
 CONSTRUCTOR_CONFIGS = [
-        [2, None, None, {
+        [2, None, {
             'nlat': 2,
             'nlon': 3,
             'harmonic': False,
             'shape': (6,),
             'dim': 6,
-            'total_volume': 4 * np.pi,
-            'dtype': np.dtype('float64')
+            'total_volume': 4 * np.pi
             }],
-        [0, None, None, {
+        [0, None, {
             'error': ValueError
             }]
     ]
@@ -79,7 +78,7 @@ class GLSpaceInterfaceTests(unittest.TestCase):
 
 class GLSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, nlat, nlon, dtype, expected):
+    def test_constructor(self, nlat, nlon, expected):
         try:
             g = GLSpace(4)
         except ImportError:
@@ -87,9 +86,9 @@ class GLSpaceFunctionalityTests(unittest.TestCase):
 
         if 'error' in expected:
             with assert_raises(expected['error']):
-                GLSpace(nlat, nlon, dtype)
+                GLSpace(nlat, nlon)
         else:
-            g = GLSpace(nlat, nlon, dtype)
+            g = GLSpace(nlat, nlon)
             for key, value in expected.iteritems():
                 assert_equal(getattr(g, key), value)
 

@@ -35,14 +35,13 @@ from test.common import expand
 
 np.random.seed(123)
 
-SPACES = [RGSpace((4,), dtype=np.float), RGSpace((5), dtype=np.complex)]
+SPACES = [RGSpace((4,)), RGSpace((5))]
 SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 
 
 class Test_Interface(unittest.TestCase):
     @expand(product(SPACE_COMBINATIONS,
-                    [['dtype', np.dtype],
-                     ['distribution_strategy', str],
+                    [['distribution_strategy', str],
                      ['domain', tuple],
                      ['domain_axes', tuple],
                      ['val', distributed_data_object],

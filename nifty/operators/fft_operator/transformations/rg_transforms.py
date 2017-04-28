@@ -312,7 +312,7 @@ class FFTW(Transform):
 
         try:
             # Create return object and insert results inplace
-            result_dtype = np.result_type(np.complex, self.codomain.dtype)
+            result_dtype = np.complex
             return_val = val.copy_empty(global_shape=val.shape,
                                         dtype=result_dtype)
             return_val.set_local_data(data=local_result, copy=False)
@@ -341,7 +341,7 @@ class FFTW(Transform):
             np.concatenate([[0, ], val.distributor.all_local_slices[:, 2]])
         )
         local_offset_Q = bool(local_offset_list[val.distributor.comm.rank] % 2)
-        result_dtype = np.result_type(np.complex, self.codomain.dtype)
+        result_dtype = np.complex
         return_val = val.copy_empty(global_shape=val.shape,
                                     dtype=result_dtype)
 
@@ -583,7 +583,7 @@ class NUMPYFFT(Transform):
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
-        result_dtype = np.result_type(np.complex, self.codomain.dtype)
+        result_dtype = np.complex
         return_val = val.copy_empty(global_shape=val.shape,
                                     dtype=result_dtype)
 

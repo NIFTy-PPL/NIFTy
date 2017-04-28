@@ -69,7 +69,7 @@ class LMGLTransformation(SlicingTransformation):
         nlat = domain.lmax + 1
         nlon = domain.lmax*2 + 1
 
-        result = GLSpace(nlat=nlat, nlon=nlon, dtype=domain.dtype)
+        result = GLSpace(nlat=nlat, nlon=nlon)
         return result
 
     @classmethod

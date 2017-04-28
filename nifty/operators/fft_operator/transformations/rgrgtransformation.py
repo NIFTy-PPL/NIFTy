@@ -44,7 +44,7 @@ class RGRGTransformation(Transformation):
                 raise ValueError('ERROR: unknow FFT module:' + module)
 
     @classmethod
-    def get_codomain(cls, domain, dtype=None, zerocenter=None):
+    def get_codomain(cls, domain, zerocenter=None):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  either a shifted grid or a Fourier conjugate
@@ -82,8 +82,7 @@ class RGRGTransformation(Transformation):
         new_space = RGSpace(domain.shape,
                             zerocenter=zerocenter,
                             distances=distances,
-                            harmonic=(not domain.harmonic),
-                            dtype=domain.dtype)
+                            harmonic=(not domain.harmonic))
 
         # better safe than sorry
         cls.check_codomain(domain, new_space)

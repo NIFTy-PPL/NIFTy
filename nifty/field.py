@@ -94,8 +94,6 @@ class Field(Loggable, Versionable, object):
             dtype_tuple = (np.dtype(gc['default_field_dtype']),)
         else:
             dtype_tuple = (np.dtype(dtype),)
-        if domain is not None:
-            dtype_tuple += tuple(np.dtype(sp.dtype) for sp in domain)
 
         dtype = reduce(lambda x, y: np.result_type(x, y), dtype_tuple)
 
@@ -345,7 +343,7 @@ class Field(Loggable, Versionable, object):
         # create random samples: one or two, depending on whether the
         # power spectrum is real or complex
 
-        if issubclass(power_domain.dtype.type, np.complexfloating):
+        if issubclass(self.dtype.type, np.complexfloating):
             result_list = [None, None]
         else:
             result_list = [None]
@@ -355,7 +353,7 @@ class Field(Loggable, Versionable, object):
                              mean=mean,
                              std=std,
                              domain=result_domain,
-                             dtype=harmonic_domain.dtype,
+                             dtype=self.dtype,
                              distribution_strategy=self.distribution_strategy)
                        for x in result_list]
 
@@ -403,7 +401,7 @@ class Field(Loggable, Versionable, object):
                                             lambda x: x * local_rescaler.real,
                                             inplace=True)
 
-        if issubclass(power_domain.dtype.type, np.complexfloating):
+        if issubclass(self.dtype.type, np.complexfloating):
             result_val_list[1].apply_scalar_function(
                                             lambda x: x * local_rescaler.imag,
                                             inplace=True)
@@ -412,7 +410,7 @@ class Field(Loggable, Versionable, object):
         [x.set_val(new_val=y, copy=False) for x, y in
             zip(result_list, result_val_list)]
 
-        if issubclass(power_domain.dtype.type, np.complexfloating):
+        if issubclass(self.dtype.type, np.complexfloating):
             result = result_list[0] + 1j*result_list[1]
         else:
             result = result_list[0]

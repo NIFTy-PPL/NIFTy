@@ -42,8 +42,6 @@ class LMSpace(Space):
         lmax : int
             Maximum :math:`\ell`-value up to which the spherical harmonics
             coefficients are to be used.
-        dtype : numpy.dtype, *optional*
-            Data type of the field values (default: numpy.complex128).
 
         See Also
         --------
@@ -66,14 +64,9 @@ class LMSpace(Space):
         .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
                harmonic transforms revisited";
                `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-
-        Attributes
-        ----------
-        dtype : numpy.dtype
-            Data type of the field values.
     """
 
-    def __init__(self, lmax, dtype=None):
+    def __init__(self, lmax):
         """
             Sets the attributes for an lm_space class instance.
 
@@ -82,8 +75,6 @@ class LMSpace(Space):
             lmax : int
                 Maximum :math:`\ell`-value up to which the spherical harmonics
                 coefficients are to be used.
-            dtype : numpy.dtype, *optional*
-                Data type of the field values (default: numpy.complex128).
 
             Returns
             -------
@@ -91,7 +82,7 @@ class LMSpace(Space):
 
         """
 
-        super(LMSpace, self).__init__(dtype)
+        super(LMSpace, self).__init__()
         self._lmax = self._parse_lmax(lmax)
 
     def hermitian_decomposition(self, x, axes=None,
@@ -125,11 +116,10 @@ class LMSpace(Space):
     @property
     def total_volume(self):
         # the individual pixels have a fixed volume of 1.
-        return np.float(self.dim)
+        return np.float64(self.dim)
 
     def copy(self):
-        return self.__class__(lmax=self.lmax,
-                              dtype=self.dtype)
+        return self.__class__(lmax=self.lmax)
 
     def weight(self, x, power=1, axes=None, inplace=False):
         if inplace:
@@ -143,7 +133,7 @@ class LMSpace(Space):
 
         dists = dists.apply_scalar_function(
             lambda x: self._distance_array_helper(x, self.lmax),
-            dtype=np.float)
+            dtype=np.float64)
 
         return dists
 
@@ -178,14 +168,12 @@ class LMSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['lmax'] = self.lmax
-        hdf5_group.attrs['dtype'] = self.dtype.name
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             lmax=hdf5_group['lmax'][()],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
 

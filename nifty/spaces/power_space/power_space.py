@@ -33,10 +33,9 @@ class PowerSpace(Space):
 
     def __init__(self, harmonic_domain=RGSpace((1,)),
                  distribution_strategy='not',
-                 log=False, nbin=None, binbounds=None,
-                 dtype=None):
+                 log=False, nbin=None, binbounds=None):
 
-        super(PowerSpace, self).__init__(dtype)
+        super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',
                                   '_k_array']
 
@@ -97,8 +96,7 @@ class PowerSpace(Space):
                               distribution_strategy=distribution_strategy,
                               log=self.log,
                               nbin=self.nbin,
-                              binbounds=self.binbounds,
-                              dtype=self.dtype)
+                              binbounds=self.binbounds)
 
     def weight(self, x, power=1, axes=None, inplace=False):
         reshaper = [1, ] * len(x.shape)
@@ -171,7 +169,6 @@ class PowerSpace(Space):
         hdf5_group['kindex'] = self.kindex
         hdf5_group['rho'] = self.rho
         hdf5_group['pundex'] = self.pundex
-        hdf5_group.attrs['dtype'] = self.dtype.name
         hdf5_group['log'] = self.log
         # Store nbin as string, since it can be None
         hdf5_group.attrs['nbin'] = str(self.nbin)
@@ -190,7 +187,7 @@ class PowerSpace(Space):
         # reset class
         new_ps.__class__ = cls
         # call instructor so that classes are properly setup
-        super(PowerSpace, new_ps).__init__(np.dtype(hdf5_group.attrs['dtype']))
+        super(PowerSpace, new_ps).__init__()
         # set all values
         new_ps._harmonic_domain = repository.get('harmonic_domain', hdf5_group)
         new_ps._log = hdf5_group['log'][()]

@@ -27,8 +27,7 @@ from keepers import Loggable,\
 class DomainObject(Versionable, Loggable, object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, dtype):
-        self._dtype = np.dtype(dtype)
+    def __init__(self):
         self._ignore_for_hash = []
 
     def __hash__(self):
@@ -49,10 +48,6 @@ class DomainObject(Versionable, Loggable, object):
 
     def __ne__(self, x):
         return not self.__eq__(x)
-
-    @property
-    def dtype(self):
-        return self._dtype
 
     @abc.abstractproperty
     def shape(self):
@@ -78,10 +73,9 @@ class DomainObject(Versionable, Loggable, object):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group.attrs['dtype'] = self.dtype.name
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
-        result = cls(dtype=np.dtype(hdf5_group.attrs['dtype']))
+        result = cls()
         return result
