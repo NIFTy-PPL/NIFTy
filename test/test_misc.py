@@ -43,6 +43,7 @@ def _harmonic_type(itp):
     elif otp==np.float32:
         otp=np.complex64
     return otp
+
 def _get_rtol(tp):
     if (tp==np.float64) or (tp==np.complex128):
         return 1e-10
