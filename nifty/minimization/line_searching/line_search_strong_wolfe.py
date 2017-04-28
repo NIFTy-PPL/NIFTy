@@ -1,3 +1,21 @@
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import numpy as np
 
 from .line_search import LineSearch
@@ -43,7 +61,6 @@ class LineSearchStrongWolfe(LineSearch):
         self.max_step_size = max_step_size
         self.max_iterations = int(max_iterations)
         self.max_zoom_iterations = int(max_zoom_iterations)
-        self._last_alpha_star = 1.
 
     def perform_line_search(self, energy, pk, f_k_minus_1=None):
         self._set_line_energy(energy, pk, f_k_minus_1=f_k_minus_1)
@@ -128,8 +145,6 @@ class LineSearchStrongWolfe(LineSearch):
             phi_star = phi_alpha1
             energy_star = energy_alpha1
             self.logger.error("The line search algorithm did not converge.")
-
-        self._last_alpha_star = alpha_star
 
         # extract the full energy from the line_energy
         energy_star = energy_star.energy

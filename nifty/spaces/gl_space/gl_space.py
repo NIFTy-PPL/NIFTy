@@ -1,18 +1,30 @@
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from __future__ import division
 
 import itertools
 import numpy as np
 
-import d2o
-from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
-
 from nifty.spaces.space import Space
-from nifty.config import nifty_configuration as gc,\
-                         dependency_injector as gdi
+from nifty.config import dependency_injector as gdi
 
-gl = gdi.get('libsharp_wrapper_gl')
-
-GL_DISTRIBUTION_STRATEGIES = DISTRIBUTION_STRATEGIES['global']
+pyHealpix = gdi.get('pyHealpix')
 
 
 class GLSpace(Space):
@@ -41,11 +53,6 @@ class GLSpace(Space):
         hp_space : A class for the HEALPix discretization of the sphere [#]_.
         lm_space : A class for spherical harmonic components.
 
-        Notes
-        -----
-        Only real-valued fields on the two-sphere are supported, i.e.
-        `dtype` has to be either numpy.float64 or numpy.float32.
-
         References
         ----------
         .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
@@ -57,20 +64,13 @@ class GLSpace(Space):
 
         Attributes
         ----------
-        para : numpy.ndarray
-            One-dimensional array containing the two numbers `nlat` and `nlon`.
         dtype : numpy.dtype
             Data type of the field values.
-        discrete : bool
-            Whether or not the underlying space is discrete, always ``False``
-            for spherical spaces.
-        vol : numpy.ndarray
-            An array containing the pixel sizes.
     """
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, nlat=2, nlon=None, dtype=None):
+    def __init__(self, nlat, nlon=None, dtype=None):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -89,16 +89,13 @@ class GLSpace(Space):
 
             Raises
             ------
-            ImportError
-                If the libsharp_wrapper_gl module is not available.
             ValueError
-                If input `nlat` is invaild.
+                If input `nlat` is invalid.
 
         """
-        # check imports
-        if not gc['use_libsharp']:
+        if 'pyHealpix' not in gdi:
             raise ImportError(
-                "libsharp_wrapper_gl not available or not loaded.")
+                "The module pyHealpix is needed but not available.")
 
         super(GLSpace, self).__init__(dtype)
 
@@ -131,10 +128,9 @@ class GLSpace(Space):
     def weight(self, x, power=1, axes=None, inplace=False):
         nlon = self.nlon
         nlat = self.nlat
-
+        vol = pyHealpix.GL_weights(nlat, nlon) ** power
         weight = np.array(list(itertools.chain.from_iterable(
-            itertools.repeat(x ** power, nlon)
-            for x in gl.vol(nlat))))
+                          itertools.repeat(x, nlon) for x in vol)))
 
         if axes is not None:
             # reshape the weight array to match the input shape
@@ -152,29 +148,10 @@ class GLSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        dists = d2o.arange(start=0, stop=self.shape[0],
-                           distribution_strategy=distribution_strategy)
-
-        dists = dists.apply_scalar_function(
-            lambda x: self._distance_array_helper(divmod(x, self.nlon)),
-            dtype=np.float)
-
-        return dists
-
-    def _distance_array_helper(self, qr_tuple):
-        lat = qr_tuple[0]*(np.pi/(self.nlat-1))
-        lon = qr_tuple[1]*(2*np.pi/(self.nlon-1))
-        numerator = np.sqrt(np.sin(lon)**2 +
-                            (np.sin(lat) * np.cos(lon))**2)
-        denominator = np.cos(lat) * np.cos(lon)
-
-        return np.arctan(numerator / denominator)
+        raise NotImplementedError
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        if sigma is None:
-            sigma = np.sqrt(2) * np.pi
-
-        return lambda x: np.exp((-0.5 * x**2) / sigma**2)
+        raise NotImplementedError
 
     # ---Added properties and methods---
 
@@ -188,10 +165,9 @@ class GLSpace(Space):
 
     def _parse_nlat(self, nlat):
         nlat = int(nlat)
-        if nlat < 2:
-            raise ValueError("nlat must be greater than 2.")
-        elif nlat % 2 != 0:
-            raise ValueError("nlat must be a multiple of 2.")
+        if nlat < 1:
+            raise ValueError(
+                "nlat must be a positive number.")
         return nlat
 
     def _parse_nlon(self, nlon):
@@ -199,9 +175,8 @@ class GLSpace(Space):
             nlon = 2 * self.nlat - 1
         else:
             nlon = int(nlon)
-            if nlon != 2 * self.nlat - 1:
-                self.logger.warn("nlon was set to an unrecommended value: "
-                                 "nlon <> 2*nlat-1.")
+            if nlon < 1:
+                raise ValueError("nlon must be a positive number.")
         return nlon
 
     # ---Serialization---

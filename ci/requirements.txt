@@ -1,12 +1,12 @@
 numpy
-scipy
 cython
-astropy
-healpy
 mpi4py
-ipython
+matplotlib
+plotly
+ipython==5.3.0
 nose
-nose-parameterized
+parameterized
+coverage
 git+https://gitlab.mpcdf.mpg.de/ift/mpi_dummy.git
 git+https://gitlab.mpcdf.mpg.de/ift/keepers.git
 git+https://gitlab.mpcdf.mpg.de/ift/D2O.git

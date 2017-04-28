@@ -1,3 +1,20 @@
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 
@@ -38,33 +55,25 @@ class FFTOperator(LinearOperator):
     def __init__(self, domain=(), target=None, module=None,
                  domain_dtype=None, target_dtype=None):
 
-        self._domain = self._parse_domain(domain)
-
         # Initialize domain and target
+
+        self._domain = self._parse_domain(domain)
         if len(self.domain) != 1:
-            raise ValueError(
-                    'ERROR: TransformationOperator accepts only exactly one '
-                    'space as input domain.')
+            raise ValueError("TransformationOperator accepts only exactly one "
+                             "space as input domain.")
 
         if target is None:
             target = (self.get_default_codomain(self.domain[0]), )
         self._target = self._parse_domain(target)
+        if len(self.target) != 1:
+            raise ValueError("TransformationOperator accepts only exactly one "
+                             "space as output target.")
 
         # Create transformation instances
-        try:
-            forward_class = self.transformation_dictionary[
+        forward_class = self.transformation_dictionary[
                 (self.domain[0].__class__, self.target[0].__class__)]
-        except KeyError:
-            raise ValueError(
-                "No forward transformation for domain-target pair "
-                "found.")
-        try:
-            backward_class = self.transformation_dictionary[
+        backward_class = self.transformation_dictionary[
                 (self.target[0].__class__, self.domain[0].__class__)]
-        except KeyError:
-            raise ValueError(
-                "No backward transformation for domain-target pair "
-                "found.")
 
         self._forward_transformation = TransformationCache.create(
             forward_class, self.domain[0], self.target[0], module=module)

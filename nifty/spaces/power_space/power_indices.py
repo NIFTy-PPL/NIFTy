@@ -1,4 +1,20 @@
-# -*- coding: utf-8 -*-
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 
@@ -13,7 +29,7 @@ class PowerIndices(object):
         """
             Returns an instance of the PowerIndices class. Given the shape and
             the density of a underlying rectangular grid it provides the user
-            with the pindex, kindex, rho and pundex. The indices are bined
+            with the pindex, kindex, rho and pundex. The indices are binned
             according to the supplied parameter scheme. If wanted, computed
             results are stored for future reuse.
 
@@ -25,8 +41,6 @@ class PowerIndices(object):
             dgrid : tuple, list, ndarray
                 Array-like object which specifies the step-width of the
                 underlying grid
-            zerocenter : boolean, tuple/list/ndarray of boolean *optional*
-                Specifies which dimensions are zerocentered. (default:False)
             log : bool *optional*
                 Flag specifying if the binning of the default indices is
                 performed on logarithmic scale.
@@ -41,7 +55,7 @@ class PowerIndices(object):
 
         # Compute the global k_array
         self.k_array = self.domain.get_distance_array(distribution_strategy)
-        # Initialize the dictonary which stores all individual index-dicts
+        # Initialize the dictionary which stores all individual index-dicts
         self.global_dict = {}
         # Set self.default_parameters
         self.set_default(config_dict={'log': log,

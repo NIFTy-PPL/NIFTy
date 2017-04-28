@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
 
-class _PlotlyWrapper(object):
+class PlotlyWrapper(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def _to_plotly(self):
-        pass
+    def to_plotly(self):
+        return {}

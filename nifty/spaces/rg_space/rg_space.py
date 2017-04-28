@@ -1,23 +1,20 @@
-# NIFTY (Numerical Information Field Theory) has been developed at the
-# Max-Planck-Institute for Astrophysics.
-##
-# Copyright (C) 2015 Max-Planck-Society
-##
-# Author: Marco Selig
-# Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
-##
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-##
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
-##
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
 # You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
     ..                  __   ____   __
@@ -303,14 +300,14 @@ class RGSpace(Space):
 
         dists = ((np.float128(0) + cords[0] - shape[0] // 2) * dk[0])**2
         # apply zerocenterQ shift
-        if self.zerocenter[0] == False:
-            dists = np.fft.fftshift(dists)
+        if not self.zerocenter[0]:
+            dists = np.fft.ifftshift(dists)
         # only save the individual slice
         dists = dists[slice_of_first_dimension]
         for ii in range(1, len(shape)):
             temp = ((cords[ii] - shape[ii] // 2) * dk[ii])**2
-            if self.zerocenter[ii] == False:
-                temp = np.fft.fftshift(temp)
+            if not self.zerocenter[ii]:
+                temp = np.fft.ifftshift(temp)
             dists = dists + temp
         dists = np.sqrt(dists)
         return dists

@@ -1,23 +1,20 @@
-# NIFTY (Numerical Information Field Theory) has been developed at the
-# Max-Planck-Institute for Astrophysics.
-##
-# Copyright (C) 2013 Max-Planck-Society
-##
-# Author: Marco Selig
-# Project homepage: <http://www.mpa-garching.mpg.de/ift/nifty/>
-##
+# NIFTy
+# Copyright (C) 2017  Theo Steininger
+#
+# Author: Theo Steininger
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-##
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-# See the GNU General Public License for more details.
-##
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
 # You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
     ..                  __   ____   __
@@ -150,48 +147,10 @@ from nifty.domain_object import DomainObject
 
 
 class Space(DomainObject):
-    """
-        ..                            __             __
-        ..                          /__/           /  /_
-        ..      ______    ______    __   __ ___   /   _/
-        ..    /   _   | /   _   | /  / /   _   | /  /
-        ..   /  /_/  / /  /_/  / /  / /  / /  / /  /_
-        ..  /   ____/  \______/ /__/ /__/ /__/  \___/  space class
-        .. /__/
-
-        NIFTY subclass for unstructured spaces.
-
-        Unstructured spaces are lists of values without any geometrical
-        information.
-
-        Parameters
-        ----------
-        num : int
-            Number of points.
-        dtype : numpy.dtype, *optional*
-            Data type of the field values (default: None).
-
-        Attributes
-        ----------
-        para : numpy.ndarray
-            Array containing the number of points.
-        dtype : numpy.dtype
-            Data type of the field values.
-        discrete : bool
-            Parameter captioning the fact that a :py:class:`point_space` is
-            always discrete.
-        vol : numpy.ndarray
-            Pixel volume of the :py:class:`point_space`, which is always 1.
-    """
-
     def __init__(self, dtype=np.dtype('float')):
         """
-            Sets the attributes for a point_space class instance.
-
             Parameters
             ----------
-            num : int
-                Number of points.
             dtype : numpy.dtype, *optional*
                 Data type of the field values (default: numpy.float64).
 
