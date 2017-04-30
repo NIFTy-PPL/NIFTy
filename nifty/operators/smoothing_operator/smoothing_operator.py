@@ -58,7 +58,7 @@ class SmoothingOperator(EndomorphicOperator):
         return True
 
     @property
-    def symmetric(self):
+    def self_adjoint(self):
         return True
 
     @property
