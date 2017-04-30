@@ -105,10 +105,10 @@ class DiagonalOperator(EndomorphicOperator):
         return self._implemented
 
     @property
-    def symmetric(self):
-        if self._symmetric is None:
-            self._symmetric = (self._diagonal.val.imag == 0).all()
-        return self._symmetric
+    def self_adjoint(self):
+        if self._self_adjoint is None:
+            self._self_adjoint = (self._diagonal.val.imag == 0).all()
+        return self._self_adjoint
 
     @property
     def unitary(self):
@@ -155,8 +155,8 @@ class DiagonalOperator(EndomorphicOperator):
             # Otherwise, inplace weightening would change the external field
             f.weight(inplace=copy, power=-1)
 
-        # Reset the symmetric property:
-        self._symmetric = None
+        # Reset the self_adjoint property:
+        self._self_adjoint = None
 
         # Reset the unitarity property
         self._unitary = None
