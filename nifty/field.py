@@ -363,15 +363,12 @@ class Field(Loggable, Versionable, object):
         if real_signal:
             for power_space_index in spaces:
                 harmonic_domain = result_domain[power_space_index]
-                result_val_list = \
-                    [harmonic_domain.hermitian_decomposition(
-                            result_val_list[0],
-                            axes=result_list[0].domain_axes[power_space_index],
-                            preserve_gaussian_variance=True)[0],
-                     harmonic_domain.hermitian_decomposition(
-                            result_val_list[1],
-                            axes=result_list[1].domain_axes[power_space_index],
-                            preserve_gaussian_variance=True)[1]]
+                result_val_list = [harmonic_domain.hermitian_decomposition(
+                                    result_val,
+                                    axes=result.domain_axes[power_space_index],
+                                    preserve_gaussian_variance=True)[0]
+                                   for (result, result_val)
+                                   in zip(result_list, result_val_list)]
 
         # store the result into the fields
         [x.set_val(new_val=y, copy=False) for x, y in
