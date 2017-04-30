@@ -141,8 +141,6 @@ from __future__ import division
 
 import abc
 
-import numpy as np
-
 from nifty.domain_object import DomainObject
 
 

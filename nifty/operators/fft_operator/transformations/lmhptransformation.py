@@ -20,7 +20,7 @@ import numpy as np
 from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
-import lm_transformation_factory
+import lm_transformation_helper
 
 pyHealpix = gdi.get('pyHealpix')
 
@@ -30,12 +30,17 @@ class LMHPTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
+        if module is None:
+            module = 'pyHealpix'
+
+        if module != 'pyHealpix':
+            raise ValueError("Unsupported SHT module.")
+
         if gdi.get('pyHealpix') is None:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
 
-        super(LMHPTransformation, self).__init__(domain, codomain,
-                                                 module=module)
+        super(LMHPTransformation, self).__init__(domain, codomain, module)
 
     # ---Mandatory properties and methods---
 
@@ -85,13 +90,18 @@ class LMHPTransformation(SlicingTransformation):
         super(LMHPTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
+        if inp.dtype not in (np.float, np.complex):
+            self.logger.warn("The input array has dtype: %s. The FFT will "
+                             "be performed at double precision." %
+                             str(inp.dtype))
+
         nside = self.codomain.nside
         lmax = self.domain.lmax
         mmax = lmax
 
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal,
-             resultImag] = [lm_transformation_factory.buildLm(x, lmax=lmax)
+             resultImag] = [lm_transformation_helper.buildLm(x, lmax=lmax)
                             for x in (inp.real, inp.imag)]
 
             [resultReal, resultImag] = [pyHealpix.alm2map(x, lmax, mmax, nside)
@@ -100,7 +110,7 @@ class LMHPTransformation(SlicingTransformation):
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = lm_transformation_factory.buildLm(inp, lmax=lmax)
+            result = lm_transformation_helper.buildLm(inp, lmax=lmax)
             result = pyHealpix.alm2map(result, lmax, mmax, nside)
 
         return result

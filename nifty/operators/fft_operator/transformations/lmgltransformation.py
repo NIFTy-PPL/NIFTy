@@ -21,7 +21,7 @@ from nifty.config import dependency_injector as gdi
 from nifty import GLSpace, LMSpace
 
 from slicing_transformation import SlicingTransformation
-import lm_transformation_factory
+import lm_transformation_helper
 
 pyHealpix = gdi.get('pyHealpix')
 
@@ -31,12 +31,17 @@ class LMGLTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
+        if module is None:
+            module = 'pyHealpix'
+
+        if module != 'pyHealpix':
+            raise ValueError("Unsupported SHT module.")
+
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
 
-        super(LMGLTransformation, self).__init__(domain, codomain,
-                                                 module=module)
+        super(LMGLTransformation, self).__init__(domain, codomain, module)
 
     # ---Mandatory properties and methods---
 
@@ -97,6 +102,11 @@ class LMGLTransformation(SlicingTransformation):
         super(LMGLTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
+        if inp.dtype not in (np.float, np.complex):
+            self.logger.warn("The input array has dtype: %s. The FFT will "
+                             "be performed at double precision." %
+                             str(inp.dtype))
+
         nlat = self.codomain.nlat
         nlon = self.codomain.nlon
         lmax = self.domain.lmax
@@ -107,7 +117,7 @@ class LMGLTransformation(SlicingTransformation):
         sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal,
-             resultImag] = [lm_transformation_factory.buildLm(x, lmax=lmax)
+             resultImag] = [lm_transformation_helper.buildLm(x, lmax=lmax)
                             for x in (inp.real, inp.imag)]
 
             [resultReal, resultImag] = [sjob.alm2map(x)
@@ -116,7 +126,7 @@ class LMGLTransformation(SlicingTransformation):
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = lm_transformation_factory.buildLm(inp, lmax=lmax)
+            result = lm_transformation_helper.buildLm(inp, lmax=lmax)
             result = sjob.alm2map(result)
 
         return result

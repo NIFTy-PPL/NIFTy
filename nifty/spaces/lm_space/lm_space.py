@@ -176,7 +176,3 @@ class LMSpace(Space):
             lmax=hdf5_group['lmax'][()],
             )
         return result
-
-
-    def plot(self):
-        pass

@@ -18,8 +18,6 @@
 
 import abc
 
-import numpy as np
-
 from keepers import Loggable
 
 
@@ -40,7 +38,7 @@ class Transformation(Loggable, object):
             self.codomain = codomain
 
     @classmethod
-    def get_codomain(cls, domain, dtype=None, zerocenter=None):
+    def get_codomain(cls, domain):
         raise NotImplementedError
 
     @classmethod

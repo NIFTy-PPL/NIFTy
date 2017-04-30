@@ -24,7 +24,6 @@ from power_index_factory import PowerIndexFactory
 
 from nifty.spaces.space import Space
 from nifty.spaces.rg_space import RGSpace
-from nifty.nifty_utilities import cast_axis_to_tuple
 
 
 class PowerSpace(Space):
@@ -200,13 +199,10 @@ class PowerSpace(Space):
         new_ps._pundex = hdf5_group['pundex'][:]
         new_ps._k_array = repository.get('k_array', hdf5_group)
         new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',
-                                   '_k_array']
+                                    '_k_array']
 
         return new_ps
 
-
-    def plot(self):
-        pass
 
 class EmptyPowerSpace(PowerSpace):
     def __init__(self):

@@ -18,8 +18,6 @@
 
 import abc
 
-import numpy as np
-
 from keepers import Loggable,\
                     Versionable
 

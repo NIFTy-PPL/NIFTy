@@ -24,8 +24,7 @@ from nifty import RGSpace, nifty_configuration
 
 class RGRGTransformation(Transformation):
     def __init__(self, domain, codomain=None, module=None):
-        super(RGRGTransformation, self).__init__(domain, codomain,
-                                                 module=module)
+        super(RGRGTransformation, self).__init__(domain, codomain, module)
 
         if module is None:
             if nifty_configuration['fft_module'] == 'fftw':
@@ -33,7 +32,7 @@ class RGRGTransformation(Transformation):
             elif nifty_configuration['fft_module'] == 'numpy':
                 self._transform = NUMPYFFT(self.domain, self.codomain)
             else:
-                raise ValueError('ERROR: unknow default FFT module:' +
+                raise ValueError('Unsupported default FFT module:' +
                                  nifty_configuration['fft_module'])
         else:
             if module == 'fftw':
@@ -41,7 +40,7 @@ class RGRGTransformation(Transformation):
             elif module == 'numpy':
                 self._transform = NUMPYFFT(self.domain, self.codomain)
             else:
-                raise ValueError('ERROR: unknow FFT module:' + module)
+                raise ValueError('Unsupported FFT module:' + module)
 
     @classmethod
     def get_codomain(cls, domain, zerocenter=None):

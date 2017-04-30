@@ -45,8 +45,7 @@ class Field(Loggable, Versionable, object):
         self.domain_axes = self._get_axes_tuple(self.domain)
 
         self.dtype = self._infer_dtype(dtype=dtype,
-                                       val=val,
-                                       domain=self.domain)
+                                       val=val)
 
         self.distribution_strategy = self._parse_distribution_strategy(
                                 distribution_strategy=distribution_strategy,
@@ -86,16 +85,17 @@ class Field(Loggable, Versionable, object):
             axes_list += [tuple(l)]
         return tuple(axes_list)
 
-    def _infer_dtype(self, dtype, val, domain):
+    def _infer_dtype(self, dtype, val):
         if dtype is None:
-            if isinstance(val, Field) or \
-               isinstance(val, distributed_data_object):
+            try:
                 dtype = val.dtype
-            dtype_tuple = (np.dtype(gc['default_field_dtype']),)
+            except AttributeError:
+                if val is not None:
+                    dtype = np.result_type(val)
+                else:
+                    dtype = np.dtype(gc['default_field_dtype'])
         else:
-            dtype_tuple = (np.dtype(dtype),)
-
-        dtype = reduce(lambda x, y: np.result_type(x, y), dtype_tuple)
+            dtype = np.dtype(dtype)
 
         return dtype
 

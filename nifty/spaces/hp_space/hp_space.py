@@ -145,6 +145,3 @@ class HPSpace(Space):
             nside=hdf5_group['nside'][()],
             )
         return result
-
-    def plot(self):
-        pass
