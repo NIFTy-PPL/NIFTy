@@ -312,9 +312,8 @@ class FFTW(Transform):
 
         try:
             # Create return object and insert results inplace
-            result_dtype = np.result_type(np.complex, self.codomain.dtype)
             return_val = val.copy_empty(global_shape=val.shape,
-                                        dtype=result_dtype)
+                                        dtype=np.complex)
             return_val.set_local_data(data=local_result, copy=False)
         except(AttributeError):
             return_val = local_result
@@ -341,9 +340,8 @@ class FFTW(Transform):
             np.concatenate([[0, ], val.distributor.all_local_slices[:, 2]])
         )
         local_offset_Q = bool(local_offset_list[val.distributor.comm.rank] % 2)
-        result_dtype = np.result_type(np.complex, self.codomain.dtype)
         return_val = val.copy_empty(global_shape=val.shape,
-                                    dtype=result_dtype)
+                                    dtype=np.complex)
 
         # Extract local data
         local_val = val.get_local_data(copy=False)
@@ -364,7 +362,7 @@ class FFTW(Transform):
                 if temp_val is None:
                     temp_val = np.empty_like(
                         local_val,
-                        dtype=result_dtype
+                        dtype=np.complex
                     )
                 inp = local_val[slice_list]
 
@@ -438,6 +436,11 @@ class FFTW(Transform):
         if axes is not None and \
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
+
+        if val.dtype not in (np.float, np.complex):
+            self.logger.warn("The input array has dtype: %s. The FFT will "
+                             "be performed at double precision." %
+                             str(val.dtype))
 
         # If the input is a numpy array we transform it locally
         if not isinstance(val, distributed_data_object):
@@ -583,9 +586,13 @@ class NUMPYFFT(Transform):
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
-        result_dtype = np.result_type(np.complex, self.codomain.dtype)
+        if val.dtype not in (np.float, np.complex):
+            self.logger.warn("The input array has dtype: %s. The FFT will "
+                             "be performed at double precision." %
+                             str(val.dtype))
+
         return_val = val.copy_empty(global_shape=val.shape,
-                                    dtype=result_dtype)
+                                    dtype=np.complex)
 
         if (axes is None) or (0 in axes) or \
            (val.distribution_strategy not in STRATEGIES['slicing']):

@@ -21,7 +21,7 @@ import numpy as np
 from nifty.config import dependency_injector as gdi
 from nifty import GLSpace, LMSpace
 from slicing_transformation import SlicingTransformation
-import lm_transformation_factory
+import lm_transformation_helper
 
 pyHealpix = gdi.get('pyHealpix')
 
@@ -31,12 +31,17 @@ class GLLMTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
+        if module is None:
+            module = 'pyHealpix'
+
+        if module != 'pyHealpix':
+            raise ValueError("Unsupported SHT module.")
+
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
 
-        super(GLLMTransformation, self).__init__(domain, codomain,
-                                                 module=module)
+        super(GLLMTransformation, self).__init__(domain, codomain, module)
 
     # ---Mandatory properties and methods---
 
@@ -63,7 +68,7 @@ class GLLMTransformation(SlicingTransformation):
         nlat = domain.nlat
         lmax = nlat - 1
 
-        result = LMSpace(lmax=lmax, dtype=domain.dtype)
+        result = LMSpace(lmax=lmax)
         return result
 
     @classmethod
@@ -91,6 +96,11 @@ class GLLMTransformation(SlicingTransformation):
         super(GLLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
+        if inp.dtype not in (np.float, np.complex):
+            self.logger.warn("The input array has dtype: %s. The FFT will "
+                             "be performed at double precision." %
+                             str(inp.dtype))
+
         nlat = self.domain.nlat
         nlon = self.domain.nlon
         lmax = self.codomain.lmax
@@ -104,12 +114,12 @@ class GLLMTransformation(SlicingTransformation):
                                         for x in (inp.real, inp.imag)]
 
             [resultReal,
-             resultImag] = [lm_transformation_factory.buildIdx(x, lmax=lmax)
+             resultImag] = [lm_transformation_helper.buildIdx(x, lmax=lmax)
                             for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
         else:
             result = sjob.map2alm(inp)
-            result = lm_transformation_factory.buildIdx(result, lmax=lmax)
+            result = lm_transformation_helper.buildIdx(result, lmax=lmax)
 
         return result
