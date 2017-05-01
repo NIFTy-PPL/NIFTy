@@ -31,15 +31,14 @@ def create_power_operator(domain, power_spectrum, dtype=None,
         domain = fft.target[0]
 
     power_domain = PowerSpace(domain,
-                              dtype=dtype,
                               distribution_strategy=distribution_strategy)
 
     fp = Field(power_domain,
-               val=power_spectrum,
+               val=power_spectrum,dtype=dtype,
                distribution_strategy=distribution_strategy)
 
     f = fp.power_synthesize(mean=1, std=0, real_signal=False)
 
-    power_operator = DiagonalOperator(domain, diagonal=f)
+    power_operator = DiagonalOperator(domain, diagonal=f, bare=True)
 
     return power_operator

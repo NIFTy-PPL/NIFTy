@@ -45,8 +45,7 @@ class Field(Loggable, Versionable, object):
         self.domain_axes = self._get_axes_tuple(self.domain)
 
         self.dtype = self._infer_dtype(dtype=dtype,
-                                       val=val,
-                                       domain=self.domain)
+                                       val=val)
 
         self.distribution_strategy = self._parse_distribution_strategy(
                                 distribution_strategy=distribution_strategy,
@@ -86,18 +85,19 @@ class Field(Loggable, Versionable, object):
             axes_list += [tuple(l)]
         return tuple(axes_list)
 
-    def _infer_dtype(self, dtype, val, domain):
+    def _infer_dtype(self, dtype, val):
         if dtype is None:
-            if isinstance(val, Field) or \
-               isinstance(val, distributed_data_object):
+            try:
                 dtype = val.dtype
-            dtype_tuple = (np.dtype(gc['default_field_dtype']),)
+            except AttributeError:
+                try:
+                    if val is None:
+                        raise TypeError
+                    dtype = np.result_type(val)
+                except(TypeError):
+                    dtype = np.dtype(gc['default_field_dtype'])
         else:
-            dtype_tuple = (np.dtype(dtype),)
-        if domain is not None:
-            dtype_tuple += tuple(np.dtype(sp.dtype) for sp in domain)
-
-        dtype = reduce(lambda x, y: np.result_type(x, y), dtype_tuple)
+            dtype = np.dtype(dtype)
 
         return dtype
 
@@ -303,59 +303,41 @@ class Field(Loggable, Versionable, object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_signal=True,
+    def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
                          mean=None, std=None):
-
-        # check if all spaces in `self.domain` are either of signal-type or
-        # power_space instances
-        for sp in self.domain:
-            if not sp.harmonic and not isinstance(sp, PowerSpace):
-                self.logger.info(
-                    "Field has a space in `domain` which is neither "
-                    "harmonic nor a PowerSpace.")
 
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
+
         if spaces is None:
-            if len(self.domain) == 1:
-                spaces = (0,)
-            else:
-                raise ValueError(
-                    "Field has multiple spaces as domain "
-                    "but `spaces` is None.")
+            spaces = range(len(self.domain))
 
-        if len(spaces) == 0:
-            raise ValueError(
-                "No space for synthesis specified.")
-        elif len(spaces) > 1:
-            raise ValueError(
-                "Conversion of only one space at a time is allowed.")
-
-        power_space_index = spaces[0]
-        power_domain = self.domain[power_space_index]
-        if not isinstance(power_domain, PowerSpace):
-            raise ValueError(
-                "A PowerSpace is needed for field synthetization.")
+        for power_space_index in spaces:
+            power_space = self.domain[power_space_index]
+            if not isinstance(power_space, PowerSpace):
+                raise ValueError("A PowerSpace is needed for field "
+                                 "synthetization.")
 
         # create the result domain
         result_domain = list(self.domain)
-        harmonic_domain = power_domain.harmonic_domain
-        result_domain[power_space_index] = harmonic_domain
+        for power_space_index in spaces:
+            power_space = self.domain[power_space_index]
+            harmonic_domain = power_space.harmonic_domain
+            result_domain[power_space_index] = harmonic_domain
 
         # create random samples: one or two, depending on whether the
         # power spectrum is real or complex
-
-        if issubclass(power_domain.dtype.type, np.complexfloating):
-            result_list = [None, None]
-        else:
+        if real_power:
             result_list = [None]
+        else:
+            result_list = [None, None]
 
         result_list = [self.__class__.from_random(
                              'normal',
                              mean=mean,
                              std=std,
                              domain=result_domain,
-                             dtype=harmonic_domain.dtype,
+                             dtype=np.complex,
                              distribution_strategy=self.distribution_strategy)
                        for x in result_list]
 
@@ -363,18 +345,51 @@ class Field(Loggable, Versionable, object):
         # processing without killing the fields.
         # if the signal-space field should be real, hermitianize the field
         # components
+
+        spec = self.val.get_full_data()
+        for power_space_index in spaces:
+            spec = self._spec_to_rescaler(spec, result_list, power_space_index)
+        local_rescaler = spec
+
+        result_val_list = [x.val for x in result_list]
+
+        # apply the rescaler to the random fields
+        result_val_list[0].apply_scalar_function(
+                                            lambda x: x * local_rescaler.real,
+                                            inplace=True)
+
+        if not real_power:
+            result_val_list[1].apply_scalar_function(
+                                            lambda x: x * local_rescaler.imag,
+                                            inplace=True)
+
         if real_signal:
-            result_val_list = [harmonic_domain.hermitian_decomposition(
-                                    x.val,
-                                    axes=x.domain_axes[power_space_index],
+            for power_space_index in spaces:
+                harmonic_domain = result_domain[power_space_index]
+                result_val_list = [harmonic_domain.hermitian_decomposition(
+                                    result_val,
+                                    axes=result.domain_axes[power_space_index],
                                     preserve_gaussian_variance=True)[0]
-                               for x in result_list]
+                                   for (result, result_val)
+                                   in zip(result_list, result_val_list)]
+
+        # store the result into the fields
+        [x.set_val(new_val=y, copy=False) for x, y in
+            zip(result_list, result_val_list)]
+
+        if real_power:
+            result = result_list[0]
         else:
-            result_val_list = [x.val for x in result_list]
+            result = result_list[0] + 1j*result_list[1]
+
+        return result
+
+    def _spec_to_rescaler(self, spec, result_list, power_space_index):
+        power_space = self.domain[power_space_index]
 
         # weight the random fields with the power spectrum
         # therefore get the pindex from the power space
-        pindex = power_domain.pindex
+        pindex = power_space.pindex
         # take the local data from pindex. This data must be compatible to the
         # local data of the field given the slice of the PowerSpace
         local_distribution_strategy = \
@@ -390,34 +405,12 @@ class Field(Loggable, Versionable, object):
         # power spectrum into the appropriate places of the pindex array.
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
         local_pindex = pindex.get_local_data(copy=False)
-        full_spec = self.val.get_full_data()
 
         local_blow_up = [slice(None)]*len(self.shape)
         local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
-
         # here, the power_spectrum is distributed into the new shape
-        local_rescaler = full_spec[local_blow_up]
-
-        # apply the rescaler to the random fields
-        result_val_list[0].apply_scalar_function(
-                                            lambda x: x * local_rescaler.real,
-                                            inplace=True)
-
-        if issubclass(power_domain.dtype.type, np.complexfloating):
-            result_val_list[1].apply_scalar_function(
-                                            lambda x: x * local_rescaler.imag,
-                                            inplace=True)
-
-        # store the result into the fields
-        [x.set_val(new_val=y, copy=False) for x, y in
-            zip(result_list, result_val_list)]
-
-        if issubclass(power_domain.dtype.type, np.complexfloating):
-            result = result_list[0] + 1j*result_list[1]
-        else:
-            result = result_list[0]
-
-        return result
+        local_rescaler = spec[local_blow_up]
+        return local_rescaler
 
     # ---Properties---
 

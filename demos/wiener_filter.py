@@ -10,10 +10,10 @@ rank = comm.rank
 
 if __name__ == "__main__":
 
-    distribution_strategy = 'fftw'
+    distribution_strategy = 'not'
 
     # Setting up the geometry
-    s_space = RGSpace([512, 512], dtype=np.float64)
+    s_space = RGSpace([512, 512])
     fft = FFTOperator(s_space)
     h_space = fft.target[0]
     p_space = PowerSpace(h_space, distribution_strategy=distribution_strategy)
@@ -54,4 +54,3 @@ if __name__ == "__main__":
 #        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
 #        pl.plot([go.Heatmap(z=m_data)], filename='map.html')
 #        pl.plot([go.Heatmap(z=ss_data)], filename='map_orig.html')
-#
