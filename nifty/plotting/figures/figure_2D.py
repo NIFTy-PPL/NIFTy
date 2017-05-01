@@ -7,6 +7,7 @@ from nifty.plotting.plots import Heatmap, Mollweide
 class Figure2D(FigureFromPlot):
     def __init__(self, plots, title=None, width=None, height=None,
                  xaxis=None, yaxis=None):
+        super(Figure2D, self).__init__(plots, title, width, height)
 
         # TODO: add sanitization of plots input
         if isinstance(plots[0], Heatmap) and not width and not height:
@@ -45,7 +46,7 @@ class Figure2D(FigureFromPlot):
                                                 showticklabels=False
                                             )
         if self.yaxis:
-            plotly_object['layout']['yaxis'] = self.yaxis._to_plotly()
+            plotly_object['layout']['yaxis'] = self.yaxis.to_plotly()
         elif not self.yaxis:
             plotly_object['layout']['yaxis'] = dict(showline=False)
 

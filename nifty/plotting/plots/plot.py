@@ -2,13 +2,15 @@
 
 from abc import abstractmethod
 from nifty.plotting.plotly_wrapper import PlotlyWrapper
-
+from nifty.plotting.descriptors import Marker
 
 class Plot(PlotlyWrapper):
     def __init__(self, label, line, marker):
         self.label = label
         self.line = line
         self.marker = marker
+        if not self.line and not self.marker:
+            self.marker = Marker()
 
     @abstractmethod
     def to_plotly(self):
@@ -19,10 +21,10 @@ class Plot(PlotlyWrapper):
             ply_object['line'] = self.line.to_plotly()
             ply_object['marker'] = self.marker.to_plotly()
         elif self.line:
-            ply_object['mode'] = 'markers'
+            ply_object['mode'] = 'line'
             ply_object['line'] = self.line.to_plotly()
         elif self.marker:
-            ply_object['mode'] = 'line'
+            ply_object['mode'] = 'markers'
             ply_object['marker'] = self.marker.to_plotly()
 
         return ply_object
