@@ -90,9 +90,11 @@ class Field(Loggable, Versionable, object):
             try:
                 dtype = val.dtype
             except AttributeError:
-                if val is not None:
+                try:
+                    if val is None:
+                        raise TypeError
                     dtype = np.result_type(val)
-        else:
+                except(TypeError):
                     dtype = np.dtype(gc['default_field_dtype'])
         else:
             dtype = np.dtype(dtype)
@@ -306,6 +308,9 @@ class Field(Loggable, Versionable, object):
 
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
+
+        if spaces is None:
+            spaces = range(len(self.domain))
 
         for power_space_index in spaces:
             power_space = self.domain[power_space_index]
