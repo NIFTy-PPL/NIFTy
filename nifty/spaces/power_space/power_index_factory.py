@@ -25,7 +25,7 @@ class _PowerIndexFactory(object):
 
     def get_power_index(self, domain, distribution_strategy,
                         log=False, nbin=None, binbounds=None):
-        key=(domain,distribution_strategy)
+        key = (domain, distribution_strategy)
 
         if key not in self.power_indices_storage:
             self.power_indices_storage[key] = \

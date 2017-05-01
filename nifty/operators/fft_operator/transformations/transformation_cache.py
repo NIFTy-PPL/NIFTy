@@ -22,7 +22,7 @@ class _TransformationCache(object):
         self.cache = {}
 
     def create(self, transformation_class, domain, codomain, module):
-        key = (domain,codomain,module)
+        key = (domain, codomain, module)
         if key not in self.cache:
             self.cache[key] = transformation_class(domain, codomain, module)
 
