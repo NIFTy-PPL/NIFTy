@@ -157,7 +157,6 @@ class Space(DomainObject):
         """
 
         super(Space, self).__init__()
-        self._ignore_for_hash += ['_global_id']
 
     @abc.abstractproperty
     def harmonic(self):
