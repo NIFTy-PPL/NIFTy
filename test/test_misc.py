@@ -44,6 +44,12 @@ def _harmonic_type(itp):
         otp=np.complex64
     return otp
 
+def _get_rtol(tp):
+    if (tp==np.float64) or (tp==np.complex128):
+        return 1e-10
+    else:
+        return 1e-5
+
 
 class Misc_Tests(unittest.TestCase):
     def test_RG_distance_1D(self):
@@ -70,12 +76,13 @@ class Misc_Tests(unittest.TestCase):
                 for zc2 in [False,True]:
                     for d in [0.1,1,3.7]:
                         for itp in [np.float64,np.complex128,np.float32,np.complex64]:
+                            tol=_get_rtol(itp)
                             a = RGSpace(dim1, zerocenter=zc1, distances=d)
                             b = RGRGTransformation.get_codomain(a, zerocenter=zc2)
                             fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp))
                             inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
                             out = fft.inverse_times(fft.times(inp))
-                            assert_allclose(inp.val, out.val)
+                            assert_allclose(inp.val, out.val,rtol=tol,atol=tol)
 
     def test_fft2D(self):
       for dim1 in [10,11]:
@@ -86,24 +93,26 @@ class Misc_Tests(unittest.TestCase):
                 for zc4 in [False,True]:
                   for d in [0.1,1,3.7]:
                     for itp in [np.float64,np.complex128,np.float32,np.complex64]:
+                      tol=_get_rtol(itp)
                       a = RGSpace([dim1,dim2], zerocenter=[zc1,zc2], distances=d)
                       b = RGRGTransformation.get_codomain(a, zerocenter=[zc3,zc4])
                       fft = FFTOperator(domain=a, target=b, domain_dtype=itp, target_dtype=_harmonic_type(itp))
                       inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=itp)
                       out = fft.inverse_times(fft.times(inp))
-                      assert_allclose(inp.val, out.val)
+                      assert_allclose(inp.val, out.val,rtol=tol,atol=tol)
 
     def test_sht(self):
         if 'pyHealpix' not in di:
             raise SkipTest
         for lm in [0,3,6,11,30]:
             for tp in [np.float64,np.complex128,np.float32,np.complex64]:
+                tol=_get_rtol(tp)
                 a = LMSpace(lmax=lm)
                 b = LMGLTransformation.get_codomain(a)
                 fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
                 inp = Field.from_random(domain=a,random_type='normal',std=7,mean=3,dtype=tp)
                 out = fft.inverse_times(fft.times(inp))
-                assert_allclose(inp.val, out.val)
+                assert_allclose(inp.val, out.val,rtol=tol,atol=tol)
 
     def test_sht2(self):
         if 'pyHealpix' not in di:
