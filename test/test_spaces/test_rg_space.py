@@ -25,65 +25,59 @@ from numpy.testing import assert_, assert_equal, assert_almost_equal
 from nifty import RGSpace
 from test.common import expand
 
-# [shape, zerocenter, distances, harmonic, dtype, expected]
+# [shape, zerocenter, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [
-        [(8,), False, None, False, None,
+        [(8,), False, None, False,
             {
                 'shape': (8,),
                 'zerocenter': (False,),
                 'distances': (0.125,),
                 'harmonic': False,
-                'dtype': np.dtype('float'),
                 'dim': 8,
                 'total_volume': 1.0
             }],
-        [(8,), True, None, False, None,
+        [(8,), True, None, False,
             {
                 'shape': (8,),
                 'zerocenter': (True,),
                 'distances': (0.125,),
                 'harmonic': False,
-                'dtype': np.dtype('float'),
                 'dim': 8,
                 'total_volume': 1.0
             }],
-        [(8,), False, None, True, None,
+        [(8,), False, None, True,
             {
                 'shape': (8,),
                 'zerocenter': (False,),
                 'distances': (1.0,),
                 'harmonic': True,
-                'dtype': np.dtype('complex'),
                 'dim': 8,
                 'total_volume': 8.0
             }],
-        [(8,), False, (12,), True, None,
+        [(8,), False, (12,), True,
             {
                 'shape': (8,),
                 'zerocenter': (False,),
                 'distances': (12.0,),
                 'harmonic': True,
-                'dtype': np.dtype('complex'),
                 'dim': 8,
                 'total_volume': 96.0
             }],
-        [(11, 11), (False, True), None, False, None,
+        [(11, 11), (False, True), None, False,
             {
                 'shape': (11, 11),
                 'zerocenter': (False, True),
                 'distances': (1/11, 1/11),
                 'harmonic': False,
-                'dtype': np.dtype('float'),
                 'dim': 121,
                 'total_volume': 1.0
             }],
-        [(11, 11), True, (1.3, 1.3), True, None,
+        [(11, 11), True, (1.3, 1.3), True,
             {
                 'shape': (11, 11),
                 'zerocenter': (True, True),
                 'distances': (1.3, 1.3),
                 'harmonic': True,
-                'dtype': np.dtype('complex'),
                 'dim': 121,
                 'total_volume': 204.49
             }]
@@ -229,8 +223,8 @@ class RGSpaceInterfaceTests(unittest.TestCase):
 class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, shape, zerocenter, distances,
-                         harmonic, dtype, expected):
-        x = RGSpace(shape, zerocenter, distances, harmonic, dtype)
+                         harmonic, expected):
+        x = RGSpace(shape, zerocenter, distances, harmonic)
         for key, value in expected.iteritems():
             assert_equal(getattr(x, key), value)
 

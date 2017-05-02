@@ -83,12 +83,14 @@ class FFTOperator(LinearOperator):
 
         # Store the dtype information
         if domain_dtype is None:
-            self.domain_dtype = None
+            self.logger.info("Setting domain_dtype to np.float.")
+            self.domain_dtype = np.float
         else:
             self.domain_dtype = np.dtype(domain_dtype)
 
         if target_dtype is None:
-            self.target_dtype = None
+            self.logger.info("Setting target_dtype to np.complex.")
+            self.target_dtype = np.complex
         else:
             self.target_dtype = np.dtype(target_dtype)
 

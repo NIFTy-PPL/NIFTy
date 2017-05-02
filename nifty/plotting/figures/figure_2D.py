@@ -11,7 +11,7 @@ class Figure2D(FigureFromPlot):
 
         # TODO: add sanitization of plots input
         if isinstance(plots[0], Heatmap) and not width and not height:
-            (x, y) = self.plots[0].data.shape
+            (x, y) = plots[0].data.shape
 
             if x > y:
                 width = 500
@@ -19,7 +19,7 @@ class Figure2D(FigureFromPlot):
             else:
                 height = 500
                 width = int(500 * y / x)
-            if isinstance(self.plots[0], Mollweide):
+            if isinstance(plots[0], Mollweide):
                 if not xaxis:
                     xaxis = False
                 if not yaxis:

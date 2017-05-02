@@ -37,8 +37,6 @@ from d2o import distributed_data_object,\
 
 from nifty.spaces.space import Space
 
-import nifty.plotting as plt
-
 
 class RGSpace(Space):
     """
@@ -50,84 +48,36 @@ class RGSpace(Space):
 
         NIFTY subclass for spaces of regular Cartesian grids.
 
-        Parameters
+        Attributes
         ----------
-        num : {int, numpy.ndarray}
-            Number of gridpoints or numbers of gridpoints along each axis.
-        naxes : int, *optional*
-            Number of axes (default: None).
+        harmonic : bool
+            Whether or not the grid represents a Fourier basis.
         zerocenter : {bool, numpy.ndarray}, *optional*
             Whether the Fourier zero-mode is located in the center of the grid
             (or the center of each axis speparately) or not (default: True).
-        hermitian : bool, *optional*
-            Whether the fields living in the space follow hermitian symmetry or
-            not (default: True).
-        purelyreal : bool, *optional*
-            Whether the field values are purely real (default: True).
-        dist : {float, numpy.ndarray}, *optional*
+        distances : {float, numpy.ndarray}, *optional*
             Distance between two grid points along each axis (default: None).
-        fourier : bool, *optional*
-            Whether the space represents a Fourier or a position grid
-            (default: False).
-
-        Notes
-        -----
-        Only even numbers of grid points per axis are supported.
-        The basis transformations between position `x` and Fourier mode `k`
-        rely on (inverse) fast Fourier transformations using the
-        :math:`exp(2 \pi i k^\dagger x)`-formulation.
-
-        Attributes
-        ----------
-        para : numpy.ndarray
-            One-dimensional array containing information on the axes of the
-            space in the following form: The first entries give the grid-points
-            along each axis in reverse order; the next entry is 0 if the
-            fields defined on the space are purely real-valued, 1 if they are
-            hermitian and complex, and 2 if they are not hermitian, but
-            complex-valued; the last entries hold the information on whether
-            the axes are centered on zero or not, containing a one for each
-            zero-centered axis and a zero for each other one, in reverse order.
-        dtype : numpy.dtype
-            Data type of the field values for a field defined on this space,
-            either ``numpy.float64`` or ``numpy.complex128``.
-        discrete : bool
-            Whether or not the underlying space is discrete, always ``False``
-            for regular grids.
-        vol : numpy.ndarray
-            One-dimensional array containing the distances between two grid
-            points along each axis, in reverse order. By default, the total
-            length of each axis is assumed to be one.
-        fourier : bool
-            Whether or not the grid represents a Fourier basis.
     """
 
     # ---Overwritten properties and methods---
 
     def __init__(self, shape=(1,), zerocenter=False, distances=None,
-                 harmonic=False, dtype=None):
+                 harmonic=False):
         """
             Sets the attributes for an rg_space class instance.
 
             Parameters
             ----------
-            num : {int, numpy.ndarray}
+            shape : {int, numpy.ndarray}
                 Number of gridpoints or numbers of gridpoints along each axis.
-            naxes : int, *optional*
-                Number of axes (default: None).
             zerocenter : {bool, numpy.ndarray}, *optional*
                 Whether the Fourier zero-mode is located in the center of the
                 grid (or the center of each axis speparately) or not
                 (default: False).
-            hermitian : bool, *optional*
-                Whether the fields living in the space follow hermitian
-                symmetry or not (default: True).
-            purelyreal : bool, *optional*
-                Whether the field values are purely real (default: True).
-            dist : {float, numpy.ndarray}, *optional*
+            distances : {float, numpy.ndarray}, *optional*
                 Distance between two grid points along each axis
                 (default: None).
-            fourier : bool, *optional*
+            harmonic : bool, *optional*
                 Whether the space represents a Fourier or a position grid
                 (default: False).
 
@@ -137,13 +87,7 @@ class RGSpace(Space):
         """
         self._harmonic = bool(harmonic)
 
-        if dtype is None:
-            if self.harmonic:
-                dtype = np.dtype('complex')
-            else:
-                dtype = np.dtype('float')
-
-        super(RGSpace, self).__init__(dtype)
+        super(RGSpace, self).__init__()
 
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
@@ -175,7 +119,7 @@ class RGSpace(Space):
         hermitian_part = hermitian_part * np.sqrt(2)
         anti_hermitian_part = anti_hermitian_part * np.sqrt(2)
 
-        # The fixed points of the point inversion must not be avaraged.
+        # The fixed points of the point inversion must not be averaged.
         # Hence one must divide out the sqrt(2) again
         # -> Get the middle index of the array
         mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
@@ -243,8 +187,7 @@ class RGSpace(Space):
         return self.__class__(shape=self.shape,
                               zerocenter=self.zerocenter,
                               distances=self.distances,
-                              harmonic=self.harmonic,
-                              dtype=self.dtype)
+                              harmonic=self.harmonic)
 
     def weight(self, x, power=1, axes=None, inplace=False):
         weight = reduce(lambda x, y: x*y, self.distances)**power
@@ -271,7 +214,7 @@ class RGSpace(Space):
         shape = self.shape
         # prepare the distributed_data_object
         nkdict = distributed_data_object(
-                        global_shape=shape,
+                        global_shape=shape, dtype=np.float64,
                         distribution_strategy=distribution_strategy)
 
         if distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
@@ -298,7 +241,7 @@ class RGSpace(Space):
 
         cords = np.ogrid[inds]
 
-        dists = ((np.float128(0) + cords[0] - shape[0] // 2) * dk[0])**2
+        dists = ((cords[0] - shape[0]//2)*dk[0])**2
         # apply zerocenterQ shift
         if not self.zerocenter[0]:
             dists = np.fft.ifftshift(dists)
@@ -338,11 +281,11 @@ class RGSpace(Space):
     def _parse_distances(self, distances):
         if distances is None:
             if self.harmonic:
-                temp = np.ones_like(self.shape, dtype=np.float)
+                temp = np.ones_like(self.shape, dtype=np.float64)
             else:
-                temp = 1 / np.array(self.shape, dtype=np.float)
+                temp = 1 / np.array(self.shape, dtype=np.float64)
         else:
-            temp = np.empty(len(self.shape), dtype=np.float)
+            temp = np.empty(len(self.shape), dtype=np.float64)
             temp[:] = distances
         return tuple(temp)
 
@@ -358,7 +301,6 @@ class RGSpace(Space):
         hdf5_group['zerocenter'] = self.zerocenter
         hdf5_group['distances'] = self.distances
         hdf5_group['harmonic'] = self.harmonic
-        hdf5_group.attrs['dtype'] = self.dtype.name
 
         return None
 
@@ -369,11 +311,5 @@ class RGSpace(Space):
             zerocenter=hdf5_group['zerocenter'][:],
             distances=hdf5_group['distances'][:],
             harmonic=hdf5_group['harmonic'][()],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
-
-    def plot(self):
-        n_dimensions = len(self._shape)
-        # if n_dimensions == 1:
-        #     fig = plt.figures.Figure(data=self.distances)

@@ -26,7 +26,7 @@ class EndomorphicOperator(LinearOperator):
     # ---Overwritten properties and methods---
 
     def inverse_times(self, x, spaces=None):
-        if self.symmetric and self.unitary:
+        if self.self_adjoint and self.unitary:
             return self.times(x, spaces)
         else:
             return super(EndomorphicOperator, self).inverse_times(
@@ -34,7 +34,7 @@ class EndomorphicOperator(LinearOperator):
                                                               spaces=spaces)
 
     def adjoint_times(self, x, spaces=None):
-        if self.symmetric:
+        if self.self_adjoint:
             return self.times(x, spaces)
         else:
             return super(EndomorphicOperator, self).adjoint_times(
@@ -42,7 +42,7 @@ class EndomorphicOperator(LinearOperator):
                                                                 spaces=spaces)
 
     def adjoint_inverse_times(self, x, spaces=None):
-        if self.symmetric:
+        if self.self_adjoint:
             return self.inverse_times(x, spaces)
         else:
             return super(EndomorphicOperator, self).adjoint_inverse_times(
@@ -50,7 +50,7 @@ class EndomorphicOperator(LinearOperator):
                                                                 spaces=spaces)
 
     def inverse_adjoint_times(self, x, spaces=None):
-        if self.symmetric:
+        if self.self_adjoint:
             return self.inverse_times(x, spaces)
         else:
             return super(EndomorphicOperator, self).inverse_adjoint_times(
@@ -66,5 +66,5 @@ class EndomorphicOperator(LinearOperator):
     # ---Added properties and methods---
 
     @abc.abstractproperty
-    def symmetric(self):
+    def self_adjoint(self):
         raise NotImplementedError

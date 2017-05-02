@@ -21,6 +21,7 @@ import unittest
 from numpy.testing import assert_equal
 from keepers import Repository
 from test.common import expand, generate_spaces
+import os
 
 try:
     import h5py
@@ -44,3 +45,7 @@ if h5py_available:
             self._repo.commit()
 
             assert_equal(space, self._repo.get('space'))
+
+        @classmethod
+        def tearDownClass(cls):
+            os.remove('test.h5')

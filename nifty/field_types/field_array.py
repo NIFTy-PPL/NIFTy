@@ -16,20 +16,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy as np
-
 from field_type import FieldType
 
 
 class FieldArray(FieldType):
 
-    def __init__(self, shape, dtype=np.float):
+    def __init__(self, shape):
         try:
             new_shape = tuple([int(i) for i in shape])
         except TypeError:
             new_shape = (int(shape), )
         self._shape = new_shape
-        super(FieldArray, self).__init__(dtype=dtype)
+        super(FieldArray, self).__init__()
 
     @property
     def shape(self):
@@ -43,14 +41,9 @@ class FieldArray(FieldType):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['shape'] = self.shape
-        hdf5_group.attrs['dtype'] = self.dtype.name
-
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, loopback_get):
-        result = cls(
-            shape=hdf5_group['shape'][:],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
-            )
+        result = cls(shape=hdf5_group['shape'][:])
         return result

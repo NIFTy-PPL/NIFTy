@@ -141,31 +141,22 @@ from __future__ import division
 
 import abc
 
-import numpy as np
-
 from nifty.domain_object import DomainObject
 
 
 class Space(DomainObject):
-    def __init__(self, dtype=np.dtype('float')):
+    def __init__(self):
         """
             Parameters
             ----------
-            dtype : numpy.dtype, *optional*
-                Data type of the field values (default: numpy.float64).
+            None.
 
             Returns
             -------
             None.
         """
 
-        # parse dtype
-        casted_dtype = np.result_type(dtype, np.float64)
-        if casted_dtype != dtype:
-            self.Logger.warning("Input dtype reset to: %s" % str(casted_dtype))
-
-        super(Space, self).__init__(dtype=casted_dtype)
-        self._ignore_for_hash += ['_global_id']
+        super(Space, self).__init__()
 
     @abc.abstractproperty
     def harmonic(self):
@@ -178,7 +169,7 @@ class Space(DomainObject):
 
     @abc.abstractmethod
     def copy(self):
-        return self.__class__(dtype=self.dtype)
+        return self.__class__()
 
     def get_distance_array(self, distribution_strategy):
         raise NotImplementedError(
@@ -195,5 +186,4 @@ class Space(DomainObject):
     def __repr__(self):
         string = ""
         string += str(type(self)) + "\n"
-        string += "dtype: " + str(self.dtype) + "\n"
         return string

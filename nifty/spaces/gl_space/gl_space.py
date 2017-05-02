@@ -45,8 +45,6 @@ class GLSpace(Space):
             Number of latitudinal bins, or rings.
         nlon : int, *optional*
             Number of longitudinal bins (default: ``2*nlat - 1``).
-        dtype : numpy.dtype, *optional*
-            Data type of the field values (default: numpy.float64).
 
         See Also
         --------
@@ -62,15 +60,11 @@ class GLSpace(Space):
                High-Resolution Discretization and Fast Analysis of Data
                Distributed on the Sphere", *ApJ* 622..759G.
 
-        Attributes
-        ----------
-        dtype : numpy.dtype
-            Data type of the field values.
     """
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, nlat, nlon=None, dtype=None):
+    def __init__(self, nlat, nlon=None):
         """
             Sets the attributes for a gl_space class instance.
 
@@ -80,8 +74,6 @@ class GLSpace(Space):
                 Number of latitudinal bins, or rings.
             nlon : int, *optional*
                 Number of longitudinal bins (default: ``2*nlat - 1``).
-            dtype : numpy.dtype, *optional*
-                Data type of the field values (default: numpy.float64).
 
             Returns
             -------
@@ -97,7 +89,7 @@ class GLSpace(Space):
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
 
-        super(GLSpace, self).__init__(dtype)
+        super(GLSpace, self).__init__()
 
         self._nlat = self._parse_nlat(nlat)
         self._nlon = self._parse_nlon(nlon)
@@ -122,8 +114,7 @@ class GLSpace(Space):
 
     def copy(self):
         return self.__class__(nlat=self.nlat,
-                              nlon=self.nlon,
-                              dtype=self.dtype)
+                              nlon=self.nlon)
 
     def weight(self, x, power=1, axes=None, inplace=False):
         nlon = self.nlon
@@ -184,7 +175,6 @@ class GLSpace(Space):
     def _to_hdf5(self, hdf5_group):
         hdf5_group['nlat'] = self.nlat
         hdf5_group['nlon'] = self.nlon
-        hdf5_group.attrs['dtype'] = self.dtype.name
 
         return None
 
@@ -193,10 +183,6 @@ class GLSpace(Space):
         result = cls(
             nlat=hdf5_group['nlat'][()],
             nlon=hdf5_group['nlon'][()],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
 
         return result
-
-    def plot(self):
-        pass
