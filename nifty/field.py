@@ -245,8 +245,14 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
 
+        if real_signal:
+            result_dtype = np.complex
+        else:
+            result_dtype = np.float
+
         result_field = self.copy_empty(
                    domain=result_domain,
+                   dtype=result_dtype,
                    distribution_strategy=power_spectrum.distribution_strategy)
         result_field.set_val(new_val=power_spectrum, copy=False)
 
