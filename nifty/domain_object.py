@@ -26,7 +26,8 @@ class DomainObject(Versionable, Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
-        self._ignore_for_hash = []
+        # _global_id is used in the Versioning module from keepers
+        self._ignore_for_hash = ['_global_id']
 
     def __hash__(self):
         # Extract the identifying parts from the vars(self) dict.
