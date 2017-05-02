@@ -210,16 +210,10 @@ class Field(Loggable, Versionable, object):
             self.val.get_axes_local_distribution_strategy(
                 self.domain_axes[space_index])
 
-        if real_signal:
-            power_dtype = np.dtype('complex')
-        else:
-            power_dtype = np.dtype('float')
-
         harmonic_domain = self.domain[space_index]
         power_domain = PowerSpace(harmonic_domain=harmonic_domain,
                                   distribution_strategy=distribution_strategy,
-                                  log=log, nbin=nbin, binbounds=binbounds,
-                                  dtype=power_dtype)
+                                  log=log, nbin=nbin, binbounds=binbounds)
 
         # extract pindex and rho from power_domain
         pindex = power_domain.pindex
