@@ -1,7 +1,7 @@
-from nifty.plotting.plots.plot import Plot
+from scatter_plot import ScatterPlot
 
 
-class Geo(Plot):
+class Geo(ScatterPlot):
     def __init__(self, lon, lat, label='', line=None, marker=None,
                  proj='mollweide'):
         """

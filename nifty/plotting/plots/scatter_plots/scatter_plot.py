@@ -4,7 +4,8 @@ from abc import abstractmethod
 from nifty.plotting.plotly_wrapper import PlotlyWrapper
 from nifty.plotting.descriptors import Marker
 
-class Plot(PlotlyWrapper):
+
+class ScatterPlot(PlotlyWrapper):
     def __init__(self, label, line, marker):
         self.label = label
         self.line = line

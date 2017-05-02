@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from abc import abstractmethod
-from nifty.plotting.plots.plot import Plot
+from scatter_plot import ScatterPlot
 
 
-class Cartesian(Plot):
+class Cartesian(ScatterPlot):
     def __init__(self, x, y, label, line, marker):
         super(Cartesian, self).__init__(label, line, marker)
         self.x = x
