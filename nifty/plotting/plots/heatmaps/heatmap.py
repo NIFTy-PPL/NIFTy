@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
 
-from nifty.plotting.plots.plot import Plot
+from nifty.plotting.plotly_wrapper import PlotlyWrapper
 
 
-class Heatmap(Plot):
-    def __init__(self, data, label='', line=None, marker=None, webgl=False,
+class Heatmap(PlotlyWrapper):
+    def __init__(self, data, color_map=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
-        super(Heatmap, self).__init__(label, line, marker)
         self.data = data
+        self.color_map = color_map
         self.webgl = webgl
         self.smoothing = smoothing
 
     def to_plotly(self):
-        plotly_object = super(Heatmap, self).to_plotly()
+        plotly_object = dict()
         plotly_object['z'] = self.data
+        plotly_object['showscale'] = False
+        if self.color_map:
+            plotly_object['colorscale'] = self.color_map.to_plotly()
+            plotly_object['colorbar'] = dict(title=self.color_map.name, x=0.42)
         if self.webgl:
             plotly_object['type'] = 'heatmapgl'
         else:
