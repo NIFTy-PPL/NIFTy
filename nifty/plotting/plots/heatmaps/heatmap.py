@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 
 from nifty.plotting.plotly_wrapper import PlotlyWrapper
-
+import numpy as np
 
 class Heatmap(PlotlyWrapper):
     def __init__(self, data, color_map=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
-        self.data = data
+        if isinstance(data, list):
+            self.data = np.zeros((data[0].shape))
+            for arr in data:
+                self.data = np.add(self.data, arr)
+        else:
+            self.data = data
         self.color_map = color_map
         self.webgl = webgl
         self.smoothing = smoothing
