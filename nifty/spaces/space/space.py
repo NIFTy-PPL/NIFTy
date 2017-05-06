@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import division
+"""from __future__ import division
 
 import abc
 
@@ -24,17 +24,43 @@ from nifty.domain_object import DomainObject
 
 
 class Space(DomainObject):
-    def __init__(self):
-        """
+    """The abstract base class for all NIFTy spaces.
+
+    An instance of a space contains information about the manifolds geometry
+    and enhances the functionality of DomainObject by methods that are needed
+    for powerspectrum analysis and smoothing.
+
             Parameters
             ----------
-            None.
+    None
 
-            Returns
-            -------
-            None.
+    Attributes
+    ----------
+    dim : np.int
+        Total number of dimensionality, i.e. the number of pixels.
+    harmonic : bool
+        Specifies whether the space is a signal or harmonic space.
+    total_volume : np.float
+        The total volume of the space.
+    shape : tuple of np.ints
+        The shape of the space's data array.
+
+    Raises
+    ------
+    TypeError
+        Raised if instantiated directly.
+
+    Notes
+    -----
+    `Space` is an abstract base class. In order to allow for instantiation the
+    methods `get_distance_array`, `total_volume` and `copy` must be implemented
+    as well as the abstract methods inherited from `DomainObject`.
+
+    See Also
+    --------
+    distributor
         """
-
+    def __init__(self):
         super(Space, self).__init__()
 
     @abc.abstractproperty
