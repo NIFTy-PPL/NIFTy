@@ -31,17 +31,20 @@ class MultiFigure(FigureBase):
 
     def to_plotly(self):
         title_extractor = lambda z: z.title if z else ""
-        sub_titles = tuple(np.vectorize(title_extractor)(self.subfigures.flatten()))
+        sub_titles = \
+            tuple(np.vectorize(title_extractor)(self.subfigures.flatten()))
 
-        specs_setter = lambda z: {'is_3d': True} if isinstance(z, Figure3D) else {}
-        sub_specs = list(map(list, np.vectorize(specs_setter)(self.subfigures)))
+        specs_setter = \
+            lambda z: {'is_3d': True} if isinstance(z, Figure3D) else {}
+        sub_specs = \
+            list(map(list, np.vectorize(specs_setter)(self.subfigures)))
 
         multi_figure_plotly_object = plotly.tools.make_subplots(
                                                    self.rows,
                                                    self.columns,
                                                    subplot_titles=sub_titles,
                                                    specs=sub_specs)
-        #TODO resolve bug with titles and 3D subplots
+        # TODO resolve bug with titles and 3D subplots
         for index, fig in np.ndenumerate(self.subfigures):
             if fig:
                 for plot in fig.plots:
