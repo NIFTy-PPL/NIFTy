@@ -60,7 +60,7 @@ class HPSpace(Space):
 
     def __init__(self, nside):
         """
-            Sets the attributes for a hp_space class instance.
+            Sets the attributes for a HPSpace class instance.
 
             Parameters
             ----------
