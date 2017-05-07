@@ -28,7 +28,7 @@ from test.common import expand, generate_spaces, generate_harmonic_spaces
 
 
 class SpaceInterfaceTests(unittest.TestCase):
-    @expand(product(generate_spaces(), [['dtype', np.dtype],
+    @expand(product(generate_spaces(), [
                     ['harmonic', bool],
                     ['shape', tuple],
                     ['dim', int],

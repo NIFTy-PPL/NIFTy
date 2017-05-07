@@ -54,15 +54,11 @@ class HPSpace(Space):
                harmonic transforms revisited";
                `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
 
-        Attributes
-        ----------
-        dtype : numpy.dtype
-            Data type of the field values, which is always numpy.float64.
     """
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, nside, dtype=None):
+    def __init__(self, nside):
         """
             Sets the attributes for a hp_space class instance.
 
@@ -83,7 +79,7 @@ class HPSpace(Space):
 
         """
 
-        super(HPSpace, self).__init__(dtype)
+        super(HPSpace, self).__init__()
 
         self._nside = self._parse_nside(nside)
 
@@ -106,8 +102,7 @@ class HPSpace(Space):
         return 4 * np.pi
 
     def copy(self):
-        return self.__class__(nside=self.nside,
-                              dtype=self.dtype)
+        return self.__class__(nside=self.nside)
 
     def weight(self, x, power=1, axes=None, inplace=False):
         weight = ((4 * np.pi) / (12 * self.nside**2))**power
@@ -142,16 +137,11 @@ class HPSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['nside'] = self.nside
-        hdf5_group.attrs['dtype'] = self.dtype.name
         return None
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             nside=hdf5_group['nside'][()],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
-
-    def plot(self):
-        pass

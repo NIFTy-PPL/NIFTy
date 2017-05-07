@@ -24,33 +24,30 @@ from numpy.testing import assert_, assert_equal, assert_raises,\
 from nifty import HPSpace
 from test.common import expand
 
-# [nside, dtype, expected]
+# [nside, expected]
 CONSTRUCTOR_CONFIGS = [
-        [2, None, {
+        [2, {
             'nside': 2,
             'harmonic': False,
             'shape': (48,),
             'dim': 48,
             'total_volume': 4 * np.pi,
-            'dtype': np.dtype('float64')
             }],
-        [5, None, {
+        [5, {
             'nside': 5,
             'harmonic': False,
             'shape': (300,),
             'dim': 300,
             'total_volume': 4 * np.pi,
-            'dtype': np.dtype('float64')
             }],
-        [1, None, {
+        [1, {
             'nside': 1,
             'harmonic': False,
             'shape': (12,),
             'dim': 12,
             'total_volume': 4 * np.pi,
-            'dtype': np.dtype('float64')
             }],
-        [0, None, {
+        [0, {
             'error': ValueError
             }]
     ]
@@ -79,12 +76,12 @@ class HPSpaceInterfaceTests(unittest.TestCase):
 
 class HPSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, nside, dtype, expected):
+    def test_constructor(self, nside, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
-                HPSpace(nside, dtype)
+                HPSpace(nside)
         else:
-            h = HPSpace(nside, dtype)
+            h = HPSpace(nside)
             for key, value in expected.iteritems():
                 assert_equal(getattr(h, key), value)
 

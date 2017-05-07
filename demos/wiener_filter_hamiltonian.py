@@ -53,10 +53,10 @@ class WienerFilterEnergy(Energy):
 
 if __name__ == "__main__":
 
-    distribution_strategy = 'fftw'
+    distribution_strategy = 'not'
 
     # Set up spaces and fft transformation
-    s_space = RGSpace([512, 512], dtype=np.float)
+    s_space = RGSpace([512, 512])
     fft = FFTOperator(s_space)
     h_space = fft.target[0]
     p_space = PowerSpace(h_space, distribution_strategy=distribution_strategy)
