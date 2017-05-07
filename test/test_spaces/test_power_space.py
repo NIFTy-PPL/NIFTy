@@ -29,11 +29,11 @@ from types import NoneType
 from test.common import expand
 
 # [harmonic_domain, distribution_strategy,
-#  log, nbin, binbounds, dtype, expected]
+#  log, nbin, binbounds, expected]
 CONSTRUCTOR_CONFIGS = [
-    [1, 'not', False, None, None, None, {'error': ValueError}],
-    [RGSpace((8,)), 'not', False, None, None, None, {'error': ValueError}],
-    [RGSpace((8,), harmonic=True), 'not', False, None, None, None, {
+    [1, 'not', False, None, None, {'error': ValueError}],
+    [RGSpace((8,)), 'not', False, None, None, {'error': ValueError}],
+    [RGSpace((8,), harmonic=True), 'not', False, None, None, {
         'harmonic': True,
         'shape': (5,),
         'dim': 5,
@@ -47,9 +47,8 @@ CONSTRUCTOR_CONFIGS = [
         'rho': np.array([1, 2, 2, 2, 1]),
         'pundex': np.array([0, 1, 2, 3, 4]),
         'k_array': np.array([0., 1., 2., 3., 4., 3., 2., 1.]),
-        'dtype': np.dtype('float64')
         }],
-    [RGSpace((8,), harmonic=True), 'not', True, None, None, None, {
+    [RGSpace((8,), harmonic=True), 'not', True, None, None, {
         'harmonic': True,
         'shape': (2,),
         'dim': 2,
@@ -64,7 +63,6 @@ CONSTRUCTOR_CONFIGS = [
         'pundex': np.array([0, 1]),
         'k_array': np.array([0., 2.28571429, 2.28571429, 2.28571429,
                              2.28571429, 2.28571429, 2.28571429, 2.28571429]),
-        'dtype': np.dtype('float64')
         }],
     ]
 
@@ -115,18 +113,16 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, harmonic_domain, distribution_strategy, log,
-                         nbin, binbounds, dtype, expected):
+                         nbin, binbounds, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_domain=harmonic_domain,
                            distribution_strategy=distribution_strategy,
-                           log=log, nbin=nbin, binbounds=binbounds,
-                           dtype=dtype)
+                           log=log, nbin=nbin, binbounds=binbounds)
         else:
             p = PowerSpace(harmonic_domain=harmonic_domain,
                            distribution_strategy=distribution_strategy,
-                           log=log, nbin=nbin, binbounds=binbounds,
-                           dtype=dtype)
+                           log=log, nbin=nbin, binbounds=binbounds)
             for key, value in expected.iteritems():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)

@@ -112,5 +112,5 @@ class ProjectionOperator(EndomorphicOperator):
         return self._unitary
 
     @property
-    def symmetric(self):
+    def self_adjoint(self):
         return True

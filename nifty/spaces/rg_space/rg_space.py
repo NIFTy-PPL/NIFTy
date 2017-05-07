@@ -37,8 +37,6 @@ from d2o import distributed_data_object,\
 
 from nifty.spaces.space import Space
 
-import nifty.plotting as plt
-
 
 class RGSpace(Space):
     """
@@ -52,9 +50,6 @@ class RGSpace(Space):
 
         Attributes
         ----------
-        dtype : numpy.dtype
-            Data type of the field values for a field defined on this space,
-            either ``numpy.float64`` or ``numpy.complex128``.
         harmonic : bool
             Whether or not the grid represents a Fourier basis.
         zerocenter : {bool, numpy.ndarray}, *optional*
@@ -67,7 +62,7 @@ class RGSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, shape=(1,), zerocenter=False, distances=None,
-                 harmonic=False, dtype=None):
+                 harmonic=False):
         """
             Sets the attributes for an rg_space class instance.
 
@@ -92,13 +87,7 @@ class RGSpace(Space):
         """
         self._harmonic = bool(harmonic)
 
-        if dtype is None:
-            if self.harmonic:
-                dtype = np.dtype('complex')
-            else:
-                dtype = np.dtype('float')
-
-        super(RGSpace, self).__init__(dtype)
+        super(RGSpace, self).__init__()
 
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
@@ -198,8 +187,7 @@ class RGSpace(Space):
         return self.__class__(shape=self.shape,
                               zerocenter=self.zerocenter,
                               distances=self.distances,
-                              harmonic=self.harmonic,
-                              dtype=self.dtype)
+                              harmonic=self.harmonic)
 
     def weight(self, x, power=1, axes=None, inplace=False):
         weight = reduce(lambda x, y: x*y, self.distances)**power
@@ -293,11 +281,11 @@ class RGSpace(Space):
     def _parse_distances(self, distances):
         if distances is None:
             if self.harmonic:
-                temp = np.ones_like(self.shape, dtype=np.float)
+                temp = np.ones_like(self.shape, dtype=np.float64)
             else:
-                temp = 1 / np.array(self.shape, dtype=np.float)
+                temp = 1 / np.array(self.shape, dtype=np.float64)
         else:
-            temp = np.empty(len(self.shape), dtype=np.float)
+            temp = np.empty(len(self.shape), dtype=np.float64)
             temp[:] = distances
         return tuple(temp)
 
@@ -313,7 +301,6 @@ class RGSpace(Space):
         hdf5_group['zerocenter'] = self.zerocenter
         hdf5_group['distances'] = self.distances
         hdf5_group['harmonic'] = self.harmonic
-        hdf5_group.attrs['dtype'] = self.dtype.name
 
         return None
 
@@ -324,11 +311,5 @@ class RGSpace(Space):
             zerocenter=hdf5_group['zerocenter'][:],
             distances=hdf5_group['distances'][:],
             harmonic=hdf5_group['harmonic'][()],
-            dtype=np.dtype(hdf5_group.attrs['dtype'])
             )
         return result
-
-    def plot(self):
-        n_dimensions = len(self._shape)
-        # if n_dimensions == 1:
-        #     fig = plt.figures.Figure(data=self.distances)

@@ -22,7 +22,7 @@ from nifty.config import dependency_injector as gdi
 from nifty import HPSpace, LMSpace
 from slicing_transformation import SlicingTransformation
 
-import lm_transformation_factory
+import lm_transformation_helper
 
 pyHealpix = gdi.get('pyHealpix')
 
@@ -32,12 +32,17 @@ class HPLMTransformation(SlicingTransformation):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, codomain=None, module=None):
+        if module is None:
+            module = 'pyHealpix'
+
+        if module != 'pyHealpix':
+            raise ValueError("Unsupported SHT module.")
+
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available")
 
-        super(HPLMTransformation, self).__init__(domain, codomain,
-                                                 module=module)
+        super(HPLMTransformation, self).__init__(domain, codomain, module)
 
     # ---Mandatory properties and methods---
 
@@ -63,7 +68,7 @@ class HPLMTransformation(SlicingTransformation):
 
         lmax = 2*domain.nside
 
-        result = LMSpace(lmax=lmax, dtype=domain.dtype)
+        result = LMSpace(lmax=lmax)
         return result
 
     @classmethod
@@ -83,6 +88,11 @@ class HPLMTransformation(SlicingTransformation):
         super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
+        if inp.dtype not in (np.float, np.complex):
+            self.logger.warn("The input array has dtype: %s. The FFT will "
+                             "be performed at double precision." %
+                             str(inp.dtype))
+
         lmax = self.codomain.lmax
         mmax = lmax
 
@@ -92,13 +102,13 @@ class HPLMTransformation(SlicingTransformation):
                             for x in (inp.real, inp.imag)]
 
             [resultReal,
-             resultImag] = [lm_transformation_factory.buildIdx(x, lmax=lmax)
+             resultImag] = [lm_transformation_helper.buildIdx(x, lmax=lmax)
                             for x in [resultReal, resultImag]]
 
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
             result = pyHealpix.map2alm_iter(inp, lmax, mmax, 3)
-            result = lm_transformation_factory.buildIdx(result, lmax=lmax)
+            result = lm_transformation_helper.buildIdx(result, lmax=lmax)
 
         return result
