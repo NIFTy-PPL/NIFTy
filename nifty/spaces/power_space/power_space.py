@@ -116,7 +116,7 @@ class PowerSpace(Space):
 
     def get_distance_array(self, distribution_strategy):
         result = d2o.distributed_data_object(
-                                self.kindex,
+                                self.kindex, dtype=np.float64,
                                 distribution_strategy=distribution_strategy)
         return result
 
