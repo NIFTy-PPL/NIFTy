@@ -80,7 +80,7 @@ class Misc_Tests(unittest.TestCase):
                           target_dtype=_harmonic_type(itp), module=module)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=itp)
-        out = fft.inverse_times(fft.times(inp))
+        out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
     @expand(product(["numpy", "fftw"], [10, 11], [9, 12], [False, True],
@@ -96,7 +96,7 @@ class Misc_Tests(unittest.TestCase):
                           target_dtype=_harmonic_type(itp), module=module)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=itp)
-        out = fft.inverse_times(fft.times(inp))
+        out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
     @expand(product([0, 3, 6, 11, 30],
@@ -110,7 +110,7 @@ class Misc_Tests(unittest.TestCase):
         fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=tp)
-        out = fft.inverse_times(fft.times(inp))
+        out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
     @expand(product([128, 256],
@@ -123,5 +123,5 @@ class Misc_Tests(unittest.TestCase):
         fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
         inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
                                 dtype=tp)
-        out = fft.inverse_times(fft.times(inp))
-        assert_allclose(inp.val, out.val, rtol=1e-3, atol=1e-3)
+        out = fft.adjoint_times(fft.times(inp))
+        assert_allclose(inp.val, out.val, rtol=1e-3, atol=1e-1)

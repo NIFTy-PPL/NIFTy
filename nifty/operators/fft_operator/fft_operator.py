@@ -40,7 +40,7 @@ class FFTOperator(LinearOperator):
     default_codomain_dictionary = {RGSpace: RGSpace,
                                    HPSpace: LMSpace,
                                    GLSpace: LMSpace,
-                                   LMSpace: HPSpace,
+                                   LMSpace: GLSpace,
                                    }
 
     transformation_dictionary = {(RGSpace, RGSpace): RGRGTransformation,
@@ -52,7 +52,7 @@ class FFTOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(), target=None, module=None,
+    def __init__(self, domain, target=None, module=None,
                  domain_dtype=None, target_dtype=None):
 
         # Initialize domain and target
@@ -81,6 +81,8 @@ class FFTOperator(LinearOperator):
         self._backward_transformation = TransformationCache.create(
             backward_class, self.target[0], self.domain[0], module=module)
 
+        #MR FIXME: these defaults do not work for SHTs as they are currently
+        #   implemented. Should have either float or complex on both sides.
         # Store the dtype information
         if domain_dtype is None:
             self.logger.info("Setting domain_dtype to np.float.")
@@ -118,7 +120,7 @@ class FFTOperator(LinearOperator):
 
         return result_field
 
-    def _inverse_times(self, x, spaces):
+    def _adjoint_times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
@@ -158,7 +160,7 @@ class FFTOperator(LinearOperator):
 
     @property
     def unitary(self):
-        return True
+        return False
 
     # ---Added properties and methods---
 
