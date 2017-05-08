@@ -83,6 +83,10 @@ class FFTOperator(LinearOperator):
 
         #MR FIXME: these defaults do not work for SHTs as they are currently
         #   implemented. Should have either float or complex on both sides.
+        #   It would be great if this could be harmonized in some way.
+        #   The simplest (and maybe safest, but expensive) solution would be
+        #   to allow only complex-valued fields on both sides of an FFT between
+        #   RGSpaces.
         # Store the dtype information
         if domain_dtype is None:
             self.logger.info("Setting domain_dtype to np.float.")
