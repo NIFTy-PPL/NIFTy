@@ -76,7 +76,7 @@ class EndomorphicOperator(LinearOperator):
         Parameters
         ----------
         x : NIFTY.Field
-            applies the Operator to the given Field
+            the input Field on which the operator acts on
         spaces : integer (default: None)
             defines on which space of the given Field the Operator acts
         **kwargs
