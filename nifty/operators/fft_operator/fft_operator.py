@@ -226,10 +226,6 @@ class FFTOperator(LinearOperator):
         return self._target
 
     @property
-    def implemented(self):
-        return True
-
-    @property
     def unitary(self):
         return False
 
