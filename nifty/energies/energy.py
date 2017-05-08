@@ -20,6 +20,46 @@ from keepers import Loggable
 
 
 class Energy(Loggable, object):
+    """ The Energy object provides the structure required for minimization schemes.
+
+    It is the abstract implementation of a scalar function with its gradient and curvature at some position.
+
+    Parameters
+    ----------
+    position : Field
+        The parameter of the scalar function and its first and second derivative.
+
+    Attributes
+    ----------
+    position : Field
+        The Field location in parameter space where value, gradient and curvature is evaluated.
+    value : float
+        The evaluation of the energy functional at given position.
+    gradient : Field
+        The gradient at given position in parameter direction.
+    curvature : InvertibleOperator
+        An implicit operator encoding the curvature at given position.
+
+    Raises
+    ------
+    NotImplementedError
+        Raised if
+            * value, gradient or curvature is called
+    AttributeError
+        Raised if
+            * copying of the position fails
+
+    Notes
+    -----
+    The Energy object gives the blueprint how to formulate the model in order to apply
+    various inference schemes. The functions value, gradient and curvature have to be
+    implemented according to the concrete inference problem.
+
+    Memorizing the evaluations of some quantities minimizes the computational effort
+    for multiple calls.
+
+
+    """
     def __init__(self, position):
         self._cache = {}
         try:
@@ -29,6 +69,19 @@ class Energy(Loggable, object):
         self.position = position
 
     def at(self, position):
+        """ Initializes and returns new Energy object at new position.
+
+        Parameters
+        ----------
+        position : Field
+            Parameter for the new Energy object.
+
+        Returns
+        -------
+        out : Energy
+            Energy object at new position.
+
+        """
         return self.__class__(position)
 
     @property
