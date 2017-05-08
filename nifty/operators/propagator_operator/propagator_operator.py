@@ -23,6 +23,55 @@ from nifty.operators import EndomorphicOperator,\
 
 class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
+    """NIFTY Propagator Operator D.
+    The propagator operator D, is known from the Wiener Filter.
+    Its inverse functional form might look like:
+    D = (S^(-1) + M)^(-1)
+    D = (S^(-1) + N^(-1))^(-1)
+    D = (S^(-1) + R^(\dagger) N^(-1) R)^(-1)
+
+    Parameters
+    ----------
+        S : LinearOperator
+            Covariance of the signal prior.
+        M : LinearOperator
+            Likelihood contribution.
+        R : LinearOperator
+            Response operator translating signal to (noiseless) data.
+        N : LinearOperator
+            Covariance of the noise prior or the likelihood, respectively.
+        inverter : class to invert explicitly defined operators
+            (default:ConjugateGradient)
+        preconditioner : Field
+            numerical preconditioner to speed up convergence
+
+    Attributes
+    ----------
+
+    Raises
+    ------
+
+    Notes
+    -----
+
+    Examples
+    --------
+    >>> x_space = RGSpace(4)
+    >>> k_space = RGRGTransformation.get_codomain(x_space)
+    >>> f = Field(x_space, val=[2, 4, 6, 8])
+    >>> S = create_power_operator(k_space, spec=1)
+    >>> N = DiagonalOperaor(f.domain, diag=1)
+    >>> D = PropagatorOperator(S=S, N=N) # D^{-1} = S^{-1} + N^{-1}
+    >>> D(f).val
+    <distributed_data_object>
+    array([ 1.,  2.,  3.,  4.]
+
+    See Also
+    --------
+    Scientific reference
+    https://arxiv.org/abs/0806.3474
+    """
+
     # ---Overwritten properties and methods---
 
     def __init__(self, S=None, M=None, R=None, N=None, inverter=None,
