@@ -36,18 +36,12 @@ class ProjectionOperator(EndomorphicOperator):
 
     Attributes
     ----------
-    domain : NIFTy.space
-        The NIFTy.space in which the operator is defined.
-    unitary : Boolean
-        Indicates whether the operator is unitary or not.
-    self_adjoint : boolean
-        Indicates whether the operator is self_adjoint or not
 
     Raises
     ------
     TypeError
         Raised if
-            * if porjection_field is not a NIFTy.Field
+            * if projection_field is not a NIFTy.Field
 
     Notes
     -----
