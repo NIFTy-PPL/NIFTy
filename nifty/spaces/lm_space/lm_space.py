@@ -43,18 +43,16 @@ class LMSpace(Space):
             Maximum :math:`\ell`-value up to which the spherical harmonics
             coefficients are to be used.
 
+
+        Notes:
+        ------
+        This implementation implicitly sets the mmax parameter to lmax.
+
         See Also
         --------
         hp_space : A class for the HEALPix discretization of the sphere [#]_.
         gl_space : A class for the Gauss-Legendre discretization of the
             sphere [#]_.
-
-        Notes
-        -----
-        Hermitian symmetry, i.e. :math:`a_{\ell -m} = \overline{a}_{\ell m}` is
-        always assumed for the spherical harmonics components, i.e. only fields
-        on the two-sphere with real-valued representations in position space
-        can be handled.
 
         References
         ----------

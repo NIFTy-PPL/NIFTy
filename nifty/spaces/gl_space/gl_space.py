@@ -43,8 +43,8 @@ class GLSpace(Space):
         ----------
         nlat : int
             Number of latitudinal bins, or rings.
-        nlon : int, *optional*
-            Number of longitudinal bins (default: ``2*nlat - 1``).
+        nlon : int
+            Number of longitudinal bins.
 
         See Also
         --------
@@ -83,6 +83,8 @@ class GLSpace(Space):
             ------
             ValueError
                 If input `nlat` is invalid.
+            ImportError
+                If the pyHealpix module is not available
 
         """
         if 'pyHealpix' not in gdi:

@@ -2,7 +2,6 @@
 
 # -*- coding: utf-8 -*-
 
-from abc import abstractmethod
 from figure_base import FigureBase
 
 
@@ -11,7 +10,6 @@ class FigureFromPlot(FigureBase):
         super(FigureFromPlot, self).__init__(title, width, height)
         self.plots = plots
 
-    @abstractmethod
     def to_plotly(self):
         data = [plt.to_plotly() for plt in self.plots]
         layout = {'title': self.title,

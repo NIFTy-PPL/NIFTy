@@ -52,31 +52,37 @@ class RGSpace(Space):
         ----------
         harmonic : bool
             Whether or not the grid represents a Fourier basis.
-        zerocenter : {bool, numpy.ndarray}, *optional*
+        zerocenter : {bool, numpy.ndarray}
             Whether the Fourier zero-mode is located in the center of the grid
-            (or the center of each axis speparately) or not (default: True).
-        distances : {float, numpy.ndarray}, *optional*
+            (or the center of each axis speparately) or not.
+            MR FIXME: this also does something if the space is not harmonic!
+        distances : {float, numpy.ndarray}
             Distance between two grid points along each axis (default: None).
     """
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, shape=(1,), zerocenter=False, distances=None,
+    def __init__(self, shape, zerocenter=False, distances=None,
                  harmonic=False):
         """
-            Sets the attributes for an rg_space class instance.
+            Sets the attributes for an RGSpace class instance.
 
             Parameters
             ----------
             shape : {int, numpy.ndarray}
-                Number of gridpoints or numbers of gridpoints along each axis.
+                Number of grid points or numbers of gridpoints along each axis.
             zerocenter : {bool, numpy.ndarray}, *optional*
                 Whether the Fourier zero-mode is located in the center of the
                 grid (or the center of each axis speparately) or not
+                MR FIXME: this also does something if the space is not harmonic!
                 (default: False).
             distances : {float, numpy.ndarray}, *optional*
                 Distance between two grid points along each axis
                 (default: None).
+                If distances==None:
+                    if harmonic==True, all distances will be set to 1
+                    if harmonic==False, the distance along each axis will be
+                      set to the inverse of the number of points along that axis
             harmonic : bool, *optional*
                 Whether the space represents a Fourier or a position grid
                 (default: False).
@@ -202,6 +208,8 @@ class RGSpace(Space):
         """
             Calculates an n-dimensional array with its entries being the
             lengths of the k-vectors from the zero point of the grid.
+            MR FIXME: Since this is about k-vectors, it might make sense to
+            throw NotImplementedError if harmonic==False.
 
             Parameters
             ----------
