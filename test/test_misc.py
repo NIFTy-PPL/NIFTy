@@ -26,9 +26,8 @@ from nifty.config import dependency_injector as di
 from nifty import Field,\
     RGSpace,\
     LMSpace,\
-    RGRGTransformation, \
-    LMGLTransformation, \
-    LMHPTransformation, \
+    HPSpace,\
+    GLSpace,\
     FFTOperator
 
 from itertools import product
@@ -75,7 +74,7 @@ class Misc_Tests(unittest.TestCase):
             raise SkipTest
         tol = _get_rtol(itp)
         a = RGSpace(dim1, zerocenter=zc1, distances=d)
-        b = RGRGTransformation.get_codomain(a, zerocenter=zc2)
+        b = RGSpace(dim1, zerocenter=zc2,distances=1./(dim1*d),harmonic=True)
         fft = FFTOperator(domain=a, target=b, domain_dtype=itp,
                           target_dtype=_harmonic_type(itp), module=module)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
@@ -85,13 +84,15 @@ class Misc_Tests(unittest.TestCase):
 
     @expand(product(["numpy", "fftw"], [10, 11], [9, 12], [False, True],
                     [False, True], [False, True], [False, True], [0.1, 1, 3.7],
+                    [0.4, 1, 2.7],
                     [np.float64, np.complex128, np.float32, np.complex64]))
-    def test_fft2D(self, module, dim1, dim2, zc1, zc2, zc3, zc4, d, itp):
+    def test_fft2D(self, module, dim1, dim2, zc1, zc2, zc3, zc4, d1, d2, itp):
         if module == "fftw" and "pyfftw" not in di:
             raise SkipTest
         tol = _get_rtol(itp)
-        a = RGSpace([dim1, dim2], zerocenter=[zc1, zc2], distances=d)
-        b = RGRGTransformation.get_codomain(a, zerocenter=[zc3, zc4])
+        a = RGSpace([dim1, dim2], zerocenter=[zc1, zc2], distances=[d1,d2])
+        b = RGSpace([dim1, dim2], zerocenter=[zc3, zc4],
+                    distances=[1./(dim1*d1),1./(dim2*d2)],harmonic=True)
         fft = FFTOperator(domain=a, target=b, domain_dtype=itp,
                           target_dtype=_harmonic_type(itp), module=module)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
@@ -106,7 +107,7 @@ class Misc_Tests(unittest.TestCase):
             raise SkipTest
         tol = _get_rtol(tp)
         a = LMSpace(lmax=lm)
-        b = LMGLTransformation.get_codomain(a)
+        b = GLSpace(nlat=lm+1)
         fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=tp)
@@ -119,7 +120,7 @@ class Misc_Tests(unittest.TestCase):
         if 'pyHealpix' not in di:
             raise SkipTest
         a = LMSpace(lmax=lm)
-        b = LMHPTransformation.get_codomain(a)
+        b = HPSpace(nside=lm//2)
         fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
         inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
                                 dtype=tp)
