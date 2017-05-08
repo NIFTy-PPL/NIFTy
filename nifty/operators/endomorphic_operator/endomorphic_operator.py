@@ -35,15 +35,11 @@ class EndomorphicOperator(LinearOperator):
 
     Attributes
     ----------
-    domain : NIFTy.space
-        The NIFTy.space in which the operator is defined.
     target : NIFTy.space
         The NIFTy.space in which the outcome of the operator lives.
         As the Operator is endomorphic this is the same as its domain.
     self_adjoint : boolean
         Indicates whether the operator is self_adjoint or not.
-    unitary: boolean
-        Indicates whether the operator is unitary or not.
 
     Raises
     ------
