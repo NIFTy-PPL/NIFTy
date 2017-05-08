@@ -102,10 +102,6 @@ class ProjectionOperator(EndomorphicOperator):
         return self._projection_field.domain
 
     @property
-    def implemented(self):
-        return True
-
-    @property
     def unitary(self):
         if self._unitary is None:
             self._unitary = (self._projection_field.val == 1).all()

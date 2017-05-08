@@ -41,10 +41,6 @@ class LinearOperator(Loggable, object):
         raise NotImplementedError
 
     @abc.abstractproperty
-    def implemented(self):
-        raise NotImplementedError
-
-    @abc.abstractproperty
     def unitary(self):
         raise NotImplementedError
 
@@ -54,9 +50,6 @@ class LinearOperator(Loggable, object):
     def times(self, x, spaces=None, **kwargs):
         spaces = self._check_input_compatibility(x, spaces)
 
-        if not self.implemented:
-            x = x.weight(spaces=spaces)
-
         y = self._times(x, spaces, **kwargs)
         return y
 
@@ -64,8 +57,6 @@ class LinearOperator(Loggable, object):
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
         y = self._inverse_times(x, spaces, **kwargs)
-        if not self.implemented:
-            y = y.weight(power=-1, spaces=spaces)
         return y
 
     def adjoint_times(self, x, spaces=None, **kwargs):
@@ -74,8 +65,6 @@ class LinearOperator(Loggable, object):
 
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
-        if not self.implemented:
-            x = x.weight(spaces=spaces)
         y = self._adjoint_times(x, spaces, **kwargs)
         return y
 
@@ -86,8 +75,6 @@ class LinearOperator(Loggable, object):
         spaces = self._check_input_compatibility(x, spaces)
 
         y = self._adjoint_inverse_times(x, spaces, **kwargs)
-        if not self.implemented:
-            y = y.weight(power=-1, spaces=spaces)
         return y
 
     def inverse_adjoint_times(self, x, spaces=None, **kwargs):
@@ -97,8 +84,6 @@ class LinearOperator(Loggable, object):
         spaces = self._check_input_compatibility(x, spaces)
 
         y = self._inverse_adjoint_times(x, spaces)
-        if not self.implemented:
-            y = y.weight(power=-1, spaces=spaces)
         return y
 
     def _times(self, x, spaces):
