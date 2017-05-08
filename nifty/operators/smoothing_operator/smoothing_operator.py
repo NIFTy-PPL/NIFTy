@@ -143,7 +143,7 @@ class SmoothingOperator(EndomorphicOperator):
 
         transformed_x.val.set_local_data(local_transformed_x, copy=False)
 
-        smoothed_x = Transformator.adjoint_times(transformed_x, spaces=spaces)
+        smoothed_x = Transformator.inverse_times(transformed_x, spaces=spaces)
 
         result = x.copy_empty()
         result.set_val(smoothed_x, copy=False)
