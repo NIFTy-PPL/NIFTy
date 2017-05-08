@@ -30,12 +30,10 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(), implemented=True,
+    def __init__(self, domain=(),
                  diagonal=None, bare=False, copy=True,
                  distribution_strategy=None):
         self._domain = self._parse_domain(domain)
-
-        self._implemented = bool(implemented)
 
         if distribution_strategy is None:
             if isinstance(diagonal, distributed_data_object):
@@ -101,10 +99,6 @@ class DiagonalOperator(EndomorphicOperator):
         return self._domain
 
     @property
-    def implemented(self):
-        return self._implemented
-
-    @property
     def self_adjoint(self):
         if self._self_adjoint is None:
             self._self_adjoint = (self._diagonal.val.imag == 0).all()
@@ -144,16 +138,12 @@ class DiagonalOperator(EndomorphicOperator):
                   distribution_strategy=self.distribution_strategy,
                   copy=copy)
 
-        # weight if the given values were `bare` and `implemented` is True
+        # weight if the given values were `bare` is True
         # do inverse weightening if the other way around
-        if bare and self.implemented:
+        if bare:
             # If `copy` is True, we won't change external data by weightening
             # Otherwise, inplace weightening would change the external field
             f.weight(inplace=copy)
-        elif not bare and not self.implemented:
-            # If `copy` is True, we won't change external data by weightening
-            # Otherwise, inplace weightening would change the external field
-            f.weight(inplace=copy, power=-1)
 
         # Reset the self_adjoint property:
         self._self_adjoint = None
