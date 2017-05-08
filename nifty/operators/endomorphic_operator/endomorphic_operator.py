@@ -28,7 +28,7 @@ class EndomorphicOperator(LinearOperator):
     LinearOperator. Domain and target are the same in any EndomorphicOperator.
     Prominent other specific operator subclasses, in NIFTy are
     (e.g. DiagonalOperator, SmoothingOperator,
-    PropagatorOperator).
+    PropagatorOperator, ProjectionOperator).
 
     Parameters
     ----------
@@ -41,7 +41,9 @@ class EndomorphicOperator(LinearOperator):
         The NIFTy.space in which the outcome of the operator lives.
         As the Operator is endomorphic this is the same as its domain.
     self_adjoint : boolean
-        Indicates whether the operator is self_adjoint or not
+        Indicates whether the operator is self_adjoint or not.
+    unitary: boolean
+        Indicates whether the operator is unitary or not.
 
     Raises
     ------
@@ -59,7 +61,7 @@ class EndomorphicOperator(LinearOperator):
     See Also
     --------
     DiagonalOperator, SmoothingOperator,
-    PropagatorOperator
+    PropagatorOperator, ProjectionOperator
 
     """
 
