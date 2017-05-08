@@ -57,14 +57,3 @@ class MultiFigure(FigureBase):
                                                     title=self.title)
 
         return multi_figure_plotly_object
-
-
-    @staticmethod
-    def from_figures_cols(figures, cols=2, title=None, width=None, height=None):
-        multi_figure = MultiFigure((len(figures) + cols -1)/cols , cols, title, width, height)
-        for i in range(len(figures)):
-            multi_figure.add_subfigure(figures[i], i/cols, i%cols)
-
-        return multi_figure
-
-
