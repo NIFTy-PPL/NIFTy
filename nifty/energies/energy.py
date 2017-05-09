@@ -22,23 +22,24 @@ from keepers import Loggable
 class Energy(Loggable, object):
     """ The Energy object provides the structure required for minimization schemes.
 
-    It is the abstract implementation of a scalar function with its gradient and curvature at some position.
+   The implementation of a scalar function with its gradient and curvature at some position.
 
     Parameters
     ----------
-    position : Field
+    position : Field, float
         The parameter of the scalar function and its first and second derivative.
 
     Attributes
     ----------
-    position : Field
+    position : Field, float
         The Field location in parameter space where value, gradient and curvature is evaluated.
     value : float
         The evaluation of the energy functional at given position.
-    gradient : Field
+    gradient : Field, float
         The gradient at given position in parameter direction.
-    curvature : InvertibleOperator
-        An implicit operator encoding the curvature at given position.
+    curvature : callable
+        A positive semi-definite operator or function describing the curvature of the potential
+        at given position.
 
     Raises
     ------
@@ -57,7 +58,6 @@ class Energy(Loggable, object):
 
     Memorizing the evaluations of some quantities minimizes the computational effort
     for multiple calls.
-
 
     """
     def __init__(self, position):
@@ -87,10 +87,6 @@ class Energy(Loggable, object):
     @property
     def position(self):
         return self._position
-
-    @position.setter
-    def position(self, position):
-        self._position = position
 
     @property
     def value(self):

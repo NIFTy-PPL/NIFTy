@@ -21,6 +21,21 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class RelaxedNewton(QuasiNewtonMinimizer):
+    """ A implementation of the relaxed Newton minimization scheme.
+    The relaxed Newton minimization exploits gradient and curvature information to
+    propose a step. A linesearch optimizes along this direction.
+
+    Parameter
+    ---------
+    line_searcher : LineSearch,
+        An implementation of a line-search algorithm.
+    callback :
+    convergence_tolerance : float,
+        Specifies the
+    convergence_level :
+    iteration_limit :
+
+    """
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None):
