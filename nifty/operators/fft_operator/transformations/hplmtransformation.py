@@ -83,7 +83,7 @@ class HPLMTransformation(SlicingTransformation):
         nside = domain.nside
 
         if lmax != 2*nside:
-            cls.Logger.warn("Unrecommended: lmax != 2*nside.")
+            cls.logger.warn("Unrecommended: lmax != 2*nside.")
 
         super(HPLMTransformation, cls).check_codomain(domain, codomain)
 

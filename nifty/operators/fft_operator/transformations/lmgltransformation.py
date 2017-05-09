@@ -91,13 +91,13 @@ class LMGLTransformation(SlicingTransformation):
         mmax = domain.mmax
 
         if lmax != mmax:
-            cls.Logger.warn("Unrecommended: codomain has lmax != mmax.")
+            cls.logger.warn("Unrecommended: codomain has lmax != mmax.")
 
         if nlat != lmax + 1:
-            cls.Logger.warn("Unrecommended: codomain has nlat != lmax + 1.")
+            cls.logger.warn("Unrecommended: codomain has nlat != lmax + 1.")
 
         if nlon != 2*lmax + 1:
-            cls.Logger.warn("Unrecommended: domain has nlon != 2*lmax + 1.")
+            cls.logger.warn("Unrecommended: domain has nlon != 2*lmax + 1.")
 
         super(LMGLTransformation, cls).check_codomain(domain, codomain)
 
