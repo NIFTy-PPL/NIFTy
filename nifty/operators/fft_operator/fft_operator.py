@@ -34,13 +34,79 @@ from transformations import RGRGTransformation,\
 
 
 class FFTOperator(LinearOperator):
+    """ Transforms between a pair of position and harmonic domains.
+    Possible domain pairs are
+      - a harmonic and a non-harmonic RGSpace (with matching distances)
+      - a HPSpace and a LMSpace
+      - a GLSpace and a LMSpace
+    Within a domain pair, both orderings are possible.
 
+    The operator provides a "times" and an "adjoint_times" operation.
+    For a pair of RGSpaces, the "adjoint_times" operation is equivalent to
+    "inverse_times"; for the sphere-related domains this is not the case, since
+    the operator matrix is not square.
+
+    Parameters
+    ----------
+
+    domain: Space or single-element tuple of Spaces
+        The domain of the data that is input by "times" and output by
+        "adjoint_times".
+
+    target: Space  or single-element tuple of Spaces (optional)
+        The domain of the data that is output by "times" and input by
+        "adjoint_times".
+        If omitted, a co-domain will be chosen automatically.
+        Whenever "domain" is an RGSpace, the codomain (and its parameters) are
+        uniquely determined (except for "zerocenter").
+        For GLSpace, HPSpace, and LMSpace, a sensible (but not unique) co-domain
+        is chosen that should work satisfactorily in most situations,
+        but for full control, the user should explicitly specify a codomain.
+    module: String (optional)
+        Software module employed for carrying out the transform operations.
+        For RGSpace pairs this can be "numpy" or "fftw", where "numpy" is always
+        available, but "fftw" offers higher performance and parallelization.
+        For sphere-related domains, only "pyHealpix" is available.
+        If omitted, "fftw" is selected for RGSpaces if available, else "numpy";
+        on the sphere the default is (unsurprisingly) "pyHealpix".
+    domain_dtype: data type (optional)
+        Data type of the fields that go into "times" and come out of
+        "adjoint_times". Default is "numpy.complex".
+    target_dtype: data type (optional)
+        Data type of the fields that go into "adjoint_times" and come out of
+        "times". Default is "numpy.complex".
+        (MR: Wouldn't it make sense to specify data types
+        only to "times" and "adjoint_times"? Does the operator itself really
+        need to know this, or only the individual call?)
+
+    Attributes
+    ----------
+
+    domain: Tuple of Spaces (with one entry)
+        The domain of the data that is input by "times" and output by
+        "adjoint_times".
+    target: Tuple of Spaces (with one entry)
+        The domain of the data that is output by "times" and input by
+        "adjoint_times".
+    unitary: bool
+        Returns True if the operator is unitary (currently only the case if
+        the domain and codomain are RGSpaces), else False.
+
+    Raises
+    ------
+
+    ValueError:
+        if "domain" or "target" are not of the proper type.
+    """
     # ---Class attributes---
+
+    # Domains for which FFTOperator is unitary
+    unitary_list = (RGSpace,)
 
     default_codomain_dictionary = {RGSpace: RGSpace,
                                    HPSpace: LMSpace,
                                    GLSpace: LMSpace,
-                                   LMSpace: HPSpace,
+                                   LMSpace: GLSpace,
                                    }
 
     transformation_dictionary = {(RGSpace, RGSpace): RGRGTransformation,
@@ -52,7 +118,7 @@ class FFTOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(), target=None, module=None,
+    def __init__(self, domain, target=None, module=None,
                  domain_dtype=None, target_dtype=None):
 
         # Initialize domain and target
@@ -83,8 +149,8 @@ class FFTOperator(LinearOperator):
 
         # Store the dtype information
         if domain_dtype is None:
-            self.logger.info("Setting domain_dtype to np.float.")
-            self.domain_dtype = np.float
+            self.logger.info("Setting domain_dtype to np.complex.")
+            self.domain_dtype = np.complex
         else:
             self.domain_dtype = np.dtype(domain_dtype)
 
@@ -118,7 +184,7 @@ class FFTOperator(LinearOperator):
 
         return result_field
 
-    def _inverse_times(self, x, spaces):
+    def _adjoint_times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
@@ -154,12 +220,39 @@ class FFTOperator(LinearOperator):
 
     @property
     def unitary(self):
-        return True
+        return type(self.domain[0]) in self.unitary_list
 
     # ---Added properties and methods---
 
     @classmethod
     def get_default_codomain(cls, domain):
+        """ Returns a codomain to the given domain.
+
+        Parameters
+        ----------
+
+        domain: Space
+            An instance of RGSpace, HPSpace, GLSpace or LMSpace.
+
+        Returns
+        -------
+
+        target: Space
+            A (more or less perfect) counterpart to "domain" with respect
+            to a FFT operation.
+            Whenever "domain" is an RGSpace, the codomain (and its parameters)
+            are uniquely determined (except for "zerocenter").
+            For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
+            co-domain is chosen that should work satisfactorily in most
+            situations. For full control however, the user should not rely on
+            this method.
+
+        Raises
+        ------
+
+        ValueError:
+            if no default codomain is defined for "domain".
+        """
         domain_class = domain.__class__
         try:
             codomain_class = cls.default_codomain_dictionary[domain_class]

@@ -130,7 +130,7 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
     def _likelihood_times(self, x, spaces=None):
         transformed_x = self._fft_S.times(x, spaces=spaces)
         y = self._likelihood(transformed_x)
-        transformed_y = self._fft_S.inverse_times(y, spaces=spaces)
+        transformed_y = self._fft_S.adjoint_times(y, spaces=spaces)
         result = x.copy_empty()
         result.set_val(transformed_y, copy=False)
         return result
