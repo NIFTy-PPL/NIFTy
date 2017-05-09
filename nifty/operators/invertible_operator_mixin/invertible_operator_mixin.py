@@ -22,6 +22,45 @@ from nifty.field import Field
 
 
 class InvertibleOperatorMixin(object):
+
+    """NIFTY to invert implicit defined operators.
+    To invert the application of a given implicitly defined operator on a field,
+    this class gives the necessary functionality. Inheriting functionality from
+    this class provides you with the inverse to the given implicitly definied
+    application of the operator on a field. (e.g. .inverse_times vs. .times
+    and .adjoint_times vs. .adjoint_inverse_times)
+
+    Parameters
+    ----------
+    inverter : Minimization object
+        Defines the object how to minimize the functional
+        (default: ConjugateGradient)
+
+    preconditioner : LinearOperator
+        Preconditions the minimizaion problem
+        (further details see any good text book about conjugate gradient)
+
+    Attributes
+    ----------
+
+    Raises
+    ------
+
+    Notes
+    -----
+
+    Examples
+    --------
+    most promiment see PropagatorOperator class
+
+    See Also
+    --------
+    EndomorphicOperator, ProjectionOperator,
+    DiagonalOperator, SmoothingOperator, ResponseOperator,
+    PropagatorOperator, ComposedOperator
+
+    """
+
     def __init__(self, inverter=None, preconditioner=None, *args, **kwargs):
         self.__preconditioner = preconditioner
         if inverter is not None:
