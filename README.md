@@ -75,11 +75,14 @@ Installation
 
 ### Download
 
-The latest release is tagged **v1.0.7** and is available as a source
-package at [](https://gitlab.mpcdf.mpg.de/ift/NIFTy/tags). The current
-version can be obtained by cloning the repository:
+The current version of Nifty3 can be obtained by cloning the repository:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
+
+and switching to the "master" branch:
+
+    cd NIFTy
+    git checkout master
 
 ### Installation on Ubuntu
 
@@ -91,52 +94,33 @@ Starting with a fresh Ubuntu installation move to a folder like
 -   Install basic packages like python, python-dev, gsl and others:
 
         sudo apt-get install curl git autoconf
-        sudo apt-get install python-dev python-pip gsl-bin libgsl0-dev libfreetype6-dev libpng-dev libatlas-base-dev
+        sudo apt-get install python-dev python-pip gsl-bin libgsl0-dev libfreetype6-dev libpng-dev libatlas-base-dev python-numpy cython
 
--   Using pip install numpy etc...:
-
-        sudo pip install numpy cython
+    (MR: do we really need all of those? I would have expected something like "git autoconf python-dev python-pip python-numpy cython")
 
 -   Install pyHealpix:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
-        autoreconf -i && ./configure && make -j4 && sudo make install
+        autoreconf -i && ./configure --prefix=$HOME/.local && make -j4 && make install
         cd ..
 
 -   Finally, NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        cd nifty
-        sudo python setup.py install
+        cd NIFTy
+        git checkout master
+        python setup.py install --user
         cd ..
 
-### Installation on a Linux cluster
+### Installation on Linux systems in general
 
-This is for you if you want to install NIFTy on a HPC machine or cluster
-that is hosted by your university or institute. Most of the dependencies
-will most likely already be there, but you won't have superuser
-privileges. In this case, instead of:
-
-    sudo python setup.py install
-
-use:
-
-    python setup.py install --user
-
-or:
-
-    python setup.py install --install-lib=/SOMEWHERE
-
-in the instruction above. This will install the python packages into
-your local user directory.
-
-For pyHealpix, use:
-
-    git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
-    cd pyHealpix
-    autoreconf -i && ./configure --prefix=$HOME/.local && make -j4 && make install
-    cd ..
+Since all the "unconventional" packages (i.e. pyHealpix and NIFTy) listed in the
+section above are installed
+within the home directory of the user, the installation instructions for these
+should also work on any Linux machine where you do not have root access.
+In this case you have to ensure with your system administrators that the
+"standard" dependencies (python, numpy, etc.) are installed system-wide.
 
 ### Installation on OS X 10.11
 
@@ -159,14 +143,22 @@ may cause trouble.
         autoreconf -i && ./configure --prefix=`python-config --prefix` && make -j4 && sudo make install
         cd ..
 
+    (The third command installs the package system-wide. User-specific
+    installation would be preferrable, but we haven't found a simple recipe yet
+    how to determine the installation prefix ...)
+
 -   Install NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        cd nifty
-        sudo python setup.py install
+        cd NIFTy
+        git checkout master
+        python setup.py install --user
         cd ..
 
 ### Installation using pypi
+
+(MR: I'm not sure whether this approach works ... pyHealpix is not registered
+with pypi and I'm not sure ir can be.)
 
 NIFTY can be installed using [PyPI](https://pypi.python.org/pypi) and
 **pip** by running the following command:
