@@ -104,7 +104,7 @@ class QuasiNewtonMinimizer(Loggable, object):
 
         Returns
         -------
-        x : field
+        x : Field
             Latest `energy` of the minimization.
         convergence : integer
             Latest convergence level indicating whether the minimization
