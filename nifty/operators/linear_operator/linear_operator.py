@@ -25,7 +25,6 @@ import nifty.nifty_utilities as utilities
 
 
 class LinearOperator(Loggable, object):
-    __metaclass__ = NiftyMeta
 
     """NIFTY base class for linear operators.
     The base NIFTY operator class is an abstract class from which
@@ -58,7 +57,7 @@ class LinearOperator(Loggable, object):
 
     Notes
     -----
-    All Operators wihtin NIFty are linear and must therefore be a subclasses of the
+    All Operators wihtin NIFTy are linear and must therefore be a subclasses of the
     LinearOperator. A LinearOperator must have the attributes domain, target
     and unitary to be properly defined.
 
@@ -74,7 +73,7 @@ class LinearOperator(Loggable, object):
 
     """
 
-    __metaclass__ = abc.ABCMeta
+    __metaclass__ = NiftyMeta
 
     def __init__(self):
         pass
@@ -84,14 +83,45 @@ class LinearOperator(Loggable, object):
 
     @abc.abstractproperty
     def domain(self):
+        """
+        domain : NIFTy.space
+            The NIFTy.space in which the operator is defined.
+            Every operator which inherits from the abstract LinearOperator
+            base class must have this attribute.
+
+        Notes :
+             is an abstractbaseclass.abstractproperty
+             (https://docs.python.org/2/library/abc.html)
+        """
         raise NotImplementedError
 
     @abc.abstractproperty
     def target(self):
+        """
+        target : NIFTy.space
+            The NIFTy.space on which the processed (output) Field lives.
+            Every operator which inherits from the abstract LinearOperator
+            base class must have this attribute.
+
+        Notes :
+             is an abstractbaseclass.abstractproperty
+             (https://docs.python.org/2/library/abc.html)
+        """
         raise NotImplementedError
 
     @abc.abstractproperty
     def unitary(self):
+        """
+        unitary : boolean
+            States whether the Operator is unitary or not.
+            Every Operator which inherits from the abstract LinearOperator
+            base class must have this attribute.
+
+        Notes :
+             is an abstractbaseclass.abstractproperty
+             (https://docs.python.org/2/library/abc.html)
+
+        """
         raise NotImplementedError
 
     def __call__(self, *args, **kwargs):
