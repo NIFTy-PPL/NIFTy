@@ -23,7 +23,6 @@ class ResponseOperator(LinearOperator):
         self._target = self._parse_domain(FieldArray(shape_target))
         self._sigma = sigma
         self._exposure = exposure
-        self._implemented = implemented
         self._unitary = unitary
 
 
