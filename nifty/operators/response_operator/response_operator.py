@@ -9,7 +9,7 @@ from nifty.operators.diagonal_operator import DiagonalOperator
 class ResponseOperator(LinearOperator):
 
     def __init__(self, domain,
-                 sigma=[1.], exposure=[1.], implemented=True,
+                 sigma=[1.], exposure=[1.],
                  unitary=False):
 
         self._domain = self._parse_domain(domain)
@@ -53,10 +53,6 @@ class ResponseOperator(LinearOperator):
     @property
     def target(self):
         return self._target
-
-    @property
-    def implemented(self):
-        return self._implemented
 
     @property
     def unitary(self):
