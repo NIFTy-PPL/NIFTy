@@ -54,10 +54,6 @@ class SmoothingOperator(EndomorphicOperator):
         return self._domain
 
     @property
-    def implemented(self):
-        return True
-
-    @property
     def self_adjoint(self):
         return True
 

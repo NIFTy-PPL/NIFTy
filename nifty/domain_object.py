@@ -17,13 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import abc
+from nifty.nifty_meta import NiftyMeta
 
 from keepers import Loggable,\
                     Versionable
 
 
 class DomainObject(Versionable, Loggable, object):
-    __metaclass__ = abc.ABCMeta
+    __metaclass__ = NiftyMeta
 
     def __init__(self):
         # _global_id is used in the Versioning module from keepers

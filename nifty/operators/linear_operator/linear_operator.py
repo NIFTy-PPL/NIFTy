@@ -82,9 +82,6 @@ class LinearOperator(Loggable, object):
 
     @abc.abstractproperty
     def domain(self):
-        """
-        asdff
-        """
         raise NotImplementedError
 
     @abc.abstractproperty
