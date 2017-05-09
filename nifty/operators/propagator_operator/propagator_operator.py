@@ -50,6 +50,9 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
     Raises
     ------
+    ValueError
+        is raised if
+            * neither N nor M is given
 
     Notes
     -----
