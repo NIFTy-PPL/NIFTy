@@ -280,6 +280,21 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def distribution_strategy(self):
+        """
+        distribution_strategy : string
+            Defines the way how the diagonal operator is distributed
+            among the nodes.
+            Popoular ones are:
+                'fftw'
+                'all'
+                'local'
+                'slicing'
+                'not'
+                'hdf5'
+
+        Notes :
+            https://arxiv.org/abs/1606.05385
+        """
         return self._distribution_strategy
 
     def _parse_distribution_strategy(self, distribution_strategy, val):
