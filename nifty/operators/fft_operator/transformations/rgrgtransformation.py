@@ -23,6 +23,9 @@ from nifty import RGSpace, nifty_configuration
 
 
 class RGRGTransformation(Transformation):
+
+    # ---Overwritten properties and methods---
+
     def __init__(self, domain, codomain=None, module=None):
         super(RGRGTransformation, self).__init__(domain, codomain, module)
 
@@ -41,6 +44,12 @@ class RGRGTransformation(Transformation):
                 self._transform = NUMPYFFT(self.domain, self.codomain)
             else:
                 raise ValueError('Unsupported FFT module:' + module)
+
+    # ---Mandatory properties and methods---
+
+    @property
+    def unitary(self):
+        return True
 
     @classmethod
     def get_codomain(cls, domain, zerocenter=None):
