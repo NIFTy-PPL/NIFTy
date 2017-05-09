@@ -26,6 +26,57 @@ from d2o import STRATEGIES
 
 
 class SmoothingOperator(EndomorphicOperator):
+
+    """NIFTY class for smoothing operators.
+    The NIFTy SmoothingOperator smooths Fields, with a given kernel length.
+    Fields which are not living over a PowerSpace are smoothed
+    via a gaussian convolution. Fields living over the PowerSpace are directly smoothed.
+
+    Parameters
+    ----------
+    domain : NIFTy.Space
+        The Space on which the operator acts
+    sigma : float
+        Sets the length of the Gaussian convolution kernel
+    log_distances : boolean
+        States whether the convolution happens on the logarithmic grid or not.
+
+    Attributes
+    ----------
+    sigma : float
+        Sets the length of the Gaussian convolution kernel
+    log_distances : boolean
+        States whether the convolution happens on the logarithmic grid or not.
+
+    Raises
+    ------
+    ValueError
+        Raised if
+            * the given domain inherits more than one space. The
+              SmoothingOperator acts only on one Space.
+
+    Notes
+    -----
+
+    Examples
+    --------
+    >>> x = RGSpace(5)
+    >>> S = SmoothingOperator(x, sigma=1.)
+    >>> f = Field(x, val=[1,2,3,4,5])
+    >>> S.times(f).val
+    <distributed_data_object>
+    array([ 3.,  3.,  3.,  3.,  3.])
+
+    See Also
+    --------
+    DiagonalOperator, SmoothingOperator,
+    PropagatorOperator, ProjectionOperator,
+    ComposedOperator
+
+    """
+
+
+
     # ---Overwritten properties and methods---
     def __init__(self, domain=(), sigma=0, log_distances=False):
 
