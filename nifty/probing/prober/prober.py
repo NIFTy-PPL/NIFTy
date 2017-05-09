@@ -16,8 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import abc
-
 import numpy as np
 
 from nifty.field import Field
@@ -37,8 +35,6 @@ class Prober(object):
     https://rhettinger.wordpress.com/2011/05/26/super-considered-super/
 
     """
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, domain=None, distribution_strategy=None, probe_count=8,
                  random_type='pm1', compute_variance=False):
