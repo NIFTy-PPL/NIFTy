@@ -26,6 +26,54 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class QuasiNewtonMinimizer(Loggable, object):
+    """A Class used by other minimization methods to find local minimum.
+    
+    Quasi-Newton methods are used to find local minima or maxima of a function
+    by approximating the Jacobian or Hessian matrix at every iteration. The 
+    class performs general steps(gets the gradient, descend direction, step 
+    size and checks the conergence) which can be used then by a specific 
+    minimization method.
+    
+    Parameters
+    ----------
+    line_searcher : callable
+        Function which finds the step size into the descent direction. (default:
+        LineSearchStrongWolfe())
+    callback : function, *optional*
+        Function f(energy, iteration_number) specified by the user to print 
+        iteration number and energy value at every iteration step. It accepts 
+        a function(energy) and integer(iteration_number). (default: None)
+    convergence_tolerance : scalar
+        Tolerance specifying convergence. (default: 1E-4)
+    convergence_level : integer
+        Number of times the tolerance should be undershot before
+        exiting. (default: 3)
+    iteration_limit : integer *optional*
+        Maximum number of iterations performed. (default: None)
+    
+    Attributes
+    ----------
+    convergence_tolerance : float
+        Tolerance specifying convergence.
+    convergence_level : float
+        Number of times the tolerance should be undershot before
+        exiting.
+    iteration_limit : integer
+        Maximum number of iterations performed.
+    line_searcher : callable
+        Function which finds the step size into the descent direction
+    callback : function
+        Function f(energy, iteration_number) specified by the user to print 
+        iteration number and energy value at every iteration step. It accepts 
+        a function(energy) and integer(iteration_number).
+    
+    Raises
+    ------
+    StopIteration
+        Raised if
+            *callback function does not match the specified form.
+    """    
+    
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
@@ -43,33 +91,34 @@ class QuasiNewtonMinimizer(Loggable, object):
         self.callback = callback
 
     def __call__(self, energy):
-        """
-            Runs the steepest descent minimization.
+        """Runs the minimization on the provided Energy class.
 
-            Parameters
-            ----------
-            x0 : field
-                Starting guess for the minimization.
-            alpha : scalar, *optional*
-                Starting step width to be multiplied with normalized gradient
-                (default: 1).
-            tol : scalar, *optional*
-                Tolerance specifying convergence; measured by maximal change in
-                `x` (default: 1E-4).
-            clevel : integer, *optional*
-                Number of times the tolerance should be undershot before
-                exiting (default: 8).
-            self.iteration_limit : integer, *optional*
-                Maximum number of iterations performed (default: 100,000).
+        Accepts the NIFTY Energy class which describes our system and it runs 
+        the minimization to find the minimum/maximum of the system.
+        
+        Parameters
+        ----------
+        energy : Energy object
+           Energy object provided by the user from which we can calculate the 
+           energy, gradient and curvature at a specific point.
 
-            Returns
-            -------
-            x : field
-                Latest `x` of the minimization.
-            convergence : integer
-                Latest convergence level indicating whether the minimization
-                has converged or not.
-
+        Returns
+        -------
+        x : field
+            Latest `energy` of the minimization.
+        convergence : integer
+            Latest convergence level indicating whether the minimization
+            has converged or not.
+        
+        Note
+        ----
+        It stops the minimization if:
+            *callback function does not match the specified form.
+            *a perfectly flat point is reached.
+            *according to line-search the minimum is found.
+            *target convergence level is reached.
+            *iteration limit is reached.
+            
         """
 
         convergence = 0
