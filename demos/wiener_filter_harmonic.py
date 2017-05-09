@@ -85,7 +85,7 @@ if __name__ == "__main__":
     a_s = sigma_s ** 2. * lambda_s * total_volume
 
     # creation of spaces
-    x1 = RGSpace(npix, distances=total_volume / npix,
+    x1 = RGSpace([npix,npix], distances=total_volume / npix,
                  zerocenter=False)
     k1 = RGRGTransformation.get_codomain(x1)
     p1 = PowerSpace(harmonic_domain=k1, log=False)
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
     # drawing a random field
     sk = p_field.power_synthesize(real_signal=True, mean=0.)
-    s = Fft_op.inverse_times(sk)
+    s = Fft_op.adjoint_times(sk)
 
     signal_to_noise = 1
     N_op = DiagonalOperator(R_op.target, diagonal=s.var()/signal_to_noise, bare=True)
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     mk = D(j)
 
-    m = Fft_op.inverse_times(mk)
+    m = Fft_op.adjoint_times(mk)
 
     z={}
     z["signal"] = s
