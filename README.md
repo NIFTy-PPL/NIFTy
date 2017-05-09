@@ -158,7 +158,7 @@ may cause trouble.
 ### Installation using pypi
 
 (MR: I'm not sure whether this approach works ... pyHealpix is not registered
-with pypi and I'm not sure ir can be.)
+with pypi and I'm not sure it can be.)
 
 NIFTY can be installed using [PyPI](https://pypi.python.org/pypi) and
 **pip** by running the following command:
