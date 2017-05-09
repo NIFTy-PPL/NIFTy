@@ -148,8 +148,9 @@ class LineSearchStrongWolfe(LineSearch):
 
         # extract the full energy from the line_energy
         energy_star = energy_star.energy
-
-        return alpha_star, phi_star, energy_star
+        length_direction = pk.norm
+        step_length = alpha_star * length_direction
+        return step_length, phi_star, energy_star
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
               phi_lo, phiprime_lo, phi_hi, c1, c2):

@@ -26,7 +26,7 @@ from keepers import Loggable
 from .line_searching import LineSearchStrongWolfe
 
 
-class QuasiNewtonMinimizer(Loggable, object):
+class DescentMinimizer(Loggable, object):
     __metaclass__ = NiftyMeta
 
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
