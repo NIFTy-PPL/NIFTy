@@ -71,12 +71,11 @@ class FFTOperator(LinearOperator):
         on the sphere the default is (unsurprisingly) "pyHealpix".
     domain_dtype: data type (optional)
         Data type of the fields that go into "times" and come out of
-        "adjoint_times". Default is "numpy.float".
+        "adjoint_times". Default is "numpy.complex".
     target_dtype: data type (optional)
         Data type of the fields that go into "adjoint_times" and come out of
         "times". Default is "numpy.complex".
-        (MR: I feel this is not really a good idea, since it makes no sense for
-        SHTs. Also, wouldn't it make sense to specify data types
+        (MR: Wouldn't it make sense to specify data types
         only to "times" and "adjoint_times"? Does the operator itself really
         need to know this, or only the individual call?)
 
@@ -90,11 +89,8 @@ class FFTOperator(LinearOperator):
         The domain of the data that is output by "times" and input by
         "adjoint_times".
     unitary: bool
-        Returns False.
-        This is strictly speaking a lie, because FFTOperators on RGSpaces are
-        in fact unitary ... but if we return True in this case, then
-        LinearOperator will call _inverse_times instead of _adjoint_times, which
-        does not exist. This needs some more work.
+        Returns True if the operator is unitary (currently only the case if
+        the domain and codomain are RGSpaces), else False.
 
     Raises
     ------
@@ -103,6 +99,9 @@ class FFTOperator(LinearOperator):
         if "domain" or "target" are not of the proper type.
     """
     # ---Class attributes---
+
+    # Domains for which FFTOperator is unitary
+    unitary_list = (RGSpace,)
 
     default_codomain_dictionary = {RGSpace: RGSpace,
                                    HPSpace: LMSpace,
@@ -156,8 +155,8 @@ class FFTOperator(LinearOperator):
         #   RGSpaces.
         # Store the dtype information
         if domain_dtype is None:
-            self.logger.info("Setting domain_dtype to np.float.")
-            self.domain_dtype = np.float
+            self.logger.info("Setting domain_dtype to np.complex.")
+            self.domain_dtype = np.complex
         else:
             self.domain_dtype = np.dtype(domain_dtype)
 
@@ -227,7 +226,7 @@ class FFTOperator(LinearOperator):
 
     @property
     def unitary(self):
-        return False
+        return type(self.domain[0]) in self.unitary_list
 
     # ---Added properties and methods---
 

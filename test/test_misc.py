@@ -126,3 +126,35 @@ class Misc_Tests(unittest.TestCase):
                                 dtype=tp)
         out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=1e-3, atol=1e-1)
+
+    @expand(product([128, 256],
+                    [np.float64, np.complex128, np.float32, np.complex64]))
+    def test_dotsht(self, lm, tp):
+        if 'pyHealpix' not in di:
+            raise SkipTest
+        tol = _get_rtol(tp)
+        a = LMSpace(lmax=lm)
+        b = GLSpace(nlat=lm+1)
+        fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
+        inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
+                                dtype=tp)
+        out = fft.times(inp)
+        v1=np.sqrt(out.dot(out))
+        v2=np.sqrt(inp.dot(fft.adjoint_times(out)))
+        assert_allclose(v1,v2, rtol=tol, atol=tol)
+
+    @expand(product([128, 256],
+                    [np.float64, np.complex128, np.float32, np.complex64]))
+    def test_dotsht2(self, lm, tp):
+        if 'pyHealpix' not in di:
+            raise SkipTest
+        tol = _get_rtol(tp)
+        a = LMSpace(lmax=lm)
+        b = HPSpace(nside=lm//2)
+        fft = FFTOperator(domain=a, target=b, domain_dtype=tp, target_dtype=tp)
+        inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
+                                dtype=tp)
+        out = fft.times(inp)
+        v1=np.sqrt(out.dot(out))
+        v2=np.sqrt(inp.dot(fft.adjoint_times(out)))
+        assert_allclose(v1,v2, rtol=tol, atol=tol)

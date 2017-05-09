@@ -57,34 +57,49 @@ class LinearOperator(Loggable, object):
     def inverse_times(self, x, spaces=None, **kwargs):
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
-        y = self._inverse_times(x, spaces, **kwargs)
+        try:
+            y = self._inverse_times(x, spaces, **kwargs)
+        except(NotImplementedError):
+            if (self.unitary):
+                y = self._adjoint_times(x, spaces, **kwargs)
+            else:
+                raise
         return y
 
     def adjoint_times(self, x, spaces=None, **kwargs):
-        if self.unitary:
-            return self.inverse_times(x, spaces)
-
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
-        y = self._adjoint_times(x, spaces, **kwargs)
+        try:
+            y = self._adjoint_times(x, spaces, **kwargs)
+        except(NotImplementedError):
+            if (self.unitary):
+                y = self._inverse_times(x, spaces, **kwargs)
+            else:
+                raise
         return y
 
     def adjoint_inverse_times(self, x, spaces=None, **kwargs):
-        if self.unitary:
-            return self.times(x, spaces)
-
         spaces = self._check_input_compatibility(x, spaces)
 
-        y = self._adjoint_inverse_times(x, spaces, **kwargs)
+        try:
+            y = self._adjoint_inverse_times(x, spaces, **kwargs)
+        except(NotImplementedError):
+            if self.unitary:
+                y = self._times(x, spaces, **kwargs)
+            else:
+                raise
         return y
 
     def inverse_adjoint_times(self, x, spaces=None, **kwargs):
-        if self.unitary:
-            return self.times(x, spaces, **kwargs)
-
         spaces = self._check_input_compatibility(x, spaces)
 
-        y = self._inverse_adjoint_times(x, spaces)
+        try:
+            y = self._inverse_adjoint_times(x, spaces, **kwargs)
+        except(NotImplementedError):
+            if self.unitary:
+                y = self._times(x, spaces, **kwargs)
+            else:
+                raise
         return y
 
     def _times(self, x, spaces):
