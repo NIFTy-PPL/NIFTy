@@ -8,9 +8,51 @@ from nifty.operators.diagonal_operator import DiagonalOperator
 
 class ResponseOperator(LinearOperator):
 
+    """NIFTy ResponseOperator (example)
+    This NIFTy ResponseOperator provides the user with an example how a
+    ResponseOperator can look like. It smoothes and exposes a field. The
+    outcome of the Operator is geometrically not ordered as typical data
+    set are.
+
+    Parameters
+    ----------
+    domain : NIFTy.Space (list of NIFTy.Space)
+        The domains on which the operator lives. Either one space or a list
+        of spaces
+    sigma : list(np.float)
+        Defines the smoothing length of the operator for each space it lives on
+    exposure : list(np.float)
+        Defines the exposure of the operator for each space it lives on
+
+
+    Attributes
+    ----------
+
+    Raises
+    ------
+    ValueError:
+        raised if:
+            * len of sigma-list and exposure-list are not equal
+
+    Notes
+    -----
+
+    Examples
+    --------
+    >>> x1 = RGSpace(5)
+    >>> x2 = RGSpace(10)
+    >>> R = ResponseOperator(domain=(x1,x2), sigma=[.5, .25],
+                             exposure=[2.,3.])
+    >>> f = Field((x1,x2), val=4.)
+    >>> R.times(f)
+
+    See Also
+    --------
+
+    """
+
     def __init__(self, domain,
-                 sigma=[1.], exposure=[1.],
-                 unitary=False):
+                 sigma=[1.], exposure=[1.]):
 
         self._domain = self._parse_domain(domain)
 
@@ -23,8 +65,6 @@ class ResponseOperator(LinearOperator):
         self._target = self._parse_domain(FieldArray(shape_target))
         self._sigma = sigma
         self._exposure = exposure
-        self._unitary = unitary
-
 
         self._kernel = len(self._domain)*[None]
 
@@ -55,7 +95,7 @@ class ResponseOperator(LinearOperator):
 
     @property
     def unitary(self):
-        return self._unitary
+        return False
 
     def _times(self, x, spaces):
         res = self._composed_kernel.times(x, spaces)
