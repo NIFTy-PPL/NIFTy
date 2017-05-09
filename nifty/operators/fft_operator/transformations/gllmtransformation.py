@@ -45,6 +45,10 @@ class GLLMTransformation(SlicingTransformation):
 
     # ---Mandatory properties and methods---
 
+    @property
+    def unitary(self):
+        return False
+
     @classmethod
     def get_codomain(cls, domain):
         """
