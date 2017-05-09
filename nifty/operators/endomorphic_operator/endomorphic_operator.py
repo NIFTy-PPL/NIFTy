@@ -198,4 +198,14 @@ class EndomorphicOperator(LinearOperator):
 
     @abc.abstractproperty
     def self_adjoint(self):
+        """
+        self_adjoint : boolean
+            States whether the Operator is self_adjoint or not
+            Every operator which inherits from the abstract EndomorphicOperator
+            class must have this attribute.
+
+        Notes :
+             is an abstractbaseclass.abstractproperty
+             (https://docs.python.org/2/library/abc.html)
+        """
         raise NotImplementedError
