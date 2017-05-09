@@ -20,14 +20,21 @@ from .energy import Energy
 
 
 class LineEnergy(Energy):
-    """A Energy object restricting an underlying Energy along some descent direction.
-    Given some Energy and descent direction, its position is parametrized by a scalar
+    """A Energy object restricting an underlying Energy along only some line direction.
+    Given some Energy and line direction, its position is parametrized by a scalar
     step size along the descent direction.
 
     Parameters
     ----------
     position : float
         The step length parameter along the given line direction.
+    energy : Energy
+        The Energy object which will be restricted along the given line direction
+    line_direction : Field, float
+        Line direction restricting the Energy.
+    zero_point :  Field, float
+        Fixing the zero point of the line restriction. Used to memorize this position in new
+        initializations (default : None)
 
     Attributes
     ----------
@@ -40,10 +47,22 @@ class LineEnergy(Energy):
     curvature : callable
         A positive semi-definite operator or function describing the curvature of the potential
         at given position.
-    line_direction : field
+    line_direction : Field
         Direction along which the movement is restricted. Does not have to be normalized.
     energy : Energy
         The underlying Energy at the resulting position along the line according to the step length.
+
+    Raises
+    ------
+    NotImplementedError
+        Raised if
+            * value, gradient or curvature of the attribute energy is not implemented.
+
+    Notes
+    -----
+    The LineEnergy is used in minimization schemes in order to determine the step size along
+    some descent direction using a line search. It describes an underlying Energy which is restricted
+    along one direction, only requiring the step size parameter to determine a new position.
 
 
     """
@@ -59,6 +78,19 @@ class LineEnergy(Energy):
         self.energy = energy.at(position=position_on_line)
 
     def at(self, position):
+        """ Initializes and returns new LineEnergy object at new position, memorizing the zero point.
+
+        Parameters
+        ----------
+        position : float
+            Parameter for the new position.
+
+        Returns
+        -------
+        out : LineEnergy
+            LineEnergy object at new position with same zero point.
+
+        """
         return self.__class__(position,
                               self.energy,
                               self.line_direction,
