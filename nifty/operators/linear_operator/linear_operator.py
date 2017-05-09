@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import abc
+from nifty.nifty_meta import NiftyMeta
 
 from keepers import Loggable
 from nifty.field import Field
@@ -24,7 +25,7 @@ import nifty.nifty_utilities as utilities
 
 
 class LinearOperator(Loggable, object):
-    __metaclass__ = abc.ABCMeta
+    __metaclass__ = NiftyMeta
 
     def __init__(self):
         pass
