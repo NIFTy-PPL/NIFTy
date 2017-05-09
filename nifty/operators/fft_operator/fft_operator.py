@@ -58,10 +58,10 @@ class FFTOperator(LinearOperator):
         "adjoint_times".
         If omitted, a co-domain will be chosen automatically.
         Whenever "domain" is an RGSpace, the codomain (and its parameters) are
-        uniquely determined. For GLSpace, HPSpace, and LMSpace, a sensible
-        (but not unique) co-domain is chosen that should work satisfactorily in
-        most situations, but for full control, the user should explicitly
-        specify a codomain.
+        uniquely determined (except for "zerocenter").
+        For GLSpace, HPSpace, and LMSpace, a sensible (but not unique) co-domain
+        is chosen that should work satisfactorily in most situations,
+        but for full control, the user should explicitly specify a codomain.
     module: String (optional)
         Software module employed for carrying out the transform operations.
         For RGSpace pairs this can be "numpy" or "fftw", where "numpy" is always
@@ -241,10 +241,11 @@ class FFTOperator(LinearOperator):
             A (more or less perfect) counterpart to "domain" with respect
             to a FFT operation.
             Whenever "domain" is an RGSpace, the codomain (and its parameters)
-            are uniquely determined. For GLSpace, HPSpace, and LMSpace, a
-            sensible (but not unique) co-domain is chosen that should work
-            satisfactorily in most situations. For full control however, the
-            user should not rely on this method.
+            are uniquely determined (except for "zerocenter").
+            For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
+            co-domain is chosen that should work satisfactorily in most
+            situations. For full control however, the user should not rely on
+            this method.
 
         Raises
         ------
