@@ -24,7 +24,7 @@ from nifty import LineEnergy
 
 
 class LineSearch(Loggable, object):
-    """Class for finding a step size.
+    """Class for determining the optimal step size along some descent direction.
     
     Initialize the line search procedure which can be used by a specific line
     search method. Its finds the step size in a specific direction in the

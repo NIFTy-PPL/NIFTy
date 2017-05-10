@@ -51,12 +51,26 @@ class RelaxedNewton(QuasiNewtonMinimizer):
         self.line_searcher.prefered_initial_step_size = 1.
 
     def _get_descend_direction(self, energy):
+        """ Calculates the descent direction according to a Newton scheme.
+        The descent direction is determined by weighting the gradient at the
+        current parameter position with the inverse local curvature, provided by the
+        Energy object.
+
+        Parameters
+        ----------
+        energy : Energy
+            The energy object providing implementations of the to be minimized function,
+            its gradient and curvature.
+
+        Returns
+        -------
+        out : Field
+           Returns the descent direction with proposed step length. In a quadratic
+            potential this corresponds to the optimal step.
+
+        """
         gradient = energy.gradient
         curvature = energy.curvature
         descend_direction = curvature.inverse_times(gradient)
         return descend_direction * -1
-        #norm = descend_direction.norm()
-#        if norm != 1:
-#            return descend_direction / -norm
-#        else:
-#            return descend_direction * -1
+

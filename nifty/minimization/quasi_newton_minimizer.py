@@ -26,18 +26,16 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class QuasiNewtonMinimizer(Loggable, object):
-    """A Class used by other minimization methods to find local minimum.
+    """A class used by other minimization methods to find a local minimum.
     
-    Quasi-Newton methods are used to find local minima or maxima of a function
-    by approximating the Jacobian or Hessian matrix at every iteration. The 
-    class performs general steps(gets the gradient, descend direction, step 
-    size and checks the conergence) which can be used then by a specific 
-    minimization method.
+    Descent minimization methods are used to find a local minimum of a scalar function
+    by following a descent direction. This class implements the minimization procedure,
+    the descent direction has to be implemented separately.
     
     Parameters
     ----------
     line_searcher : callable
-        Function which finds the step size into the descent direction. (default:
+        Function which finds the step size in descent direction. (default:
         LineSearchStrongWolfe())
     callback : function, *optional*
         Function f(energy, iteration_number) specified by the user to print 
@@ -94,7 +92,7 @@ class QuasiNewtonMinimizer(Loggable, object):
         """Runs the minimization on the provided Energy class.
 
         Accepts the NIFTY Energy class which describes our system and it runs 
-        the minimization to find the minimum/maximum of the system.
+        the minimization to find the minimum of the system.
         
         Parameters
         ----------
@@ -104,7 +102,7 @@ class QuasiNewtonMinimizer(Loggable, object):
 
         Returns
         -------
-        x : field
+        x : Field
             Latest `energy` of the minimization.
         convergence : integer
             Latest convergence level indicating whether the minimization
