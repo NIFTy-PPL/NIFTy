@@ -86,29 +86,25 @@ class LinearOperator(Loggable, object):
                 raise
         return y
 
+    # If the operator supports inverse() then the inverse adjoint is identical
+    # to the adjoint inverse. We provide both names for convenience.
     def adjoint_inverse_times(self, x, spaces=None, **kwargs):
         spaces = self._check_input_compatibility(x, spaces)
 
         try:
             y = self._adjoint_inverse_times(x, spaces, **kwargs)
         except(NotImplementedError):
-            if self.unitary:
-                y = self._times(x, spaces, **kwargs)
-            else:
-                raise
+            try:
+                y = self._inverse_adjoint_times(x, spaces, **kwargs)
+            except(NotImplementedError):
+                if self.unitary:
+                    y = self._times(x, spaces, **kwargs)
+                else:
+                    raise
         return y
 
     def inverse_adjoint_times(self, x, spaces=None, **kwargs):
-        spaces = self._check_input_compatibility(x, spaces)
-
-        try:
-            y = self._inverse_adjoint_times(x, spaces, **kwargs)
-        except(NotImplementedError):
-            if self.unitary:
-                y = self._times(x, spaces, **kwargs)
-            else:
-                raise
-        return y
+        return adjoint_inverse_times(x, spaces, **kwargs)
 
     def _times(self, x, spaces):
         raise NotImplementedError(
