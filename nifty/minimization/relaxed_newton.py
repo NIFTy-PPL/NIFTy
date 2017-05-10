@@ -31,9 +31,11 @@ class RelaxedNewton(QuasiNewtonMinimizer):
         An implementation of a line-search algorithm.
     callback :
     convergence_tolerance : float,
-        Specifies the
-    convergence_level :
-    iteration_limit :
+        Specifies the required accuracy for convergence. (default : 10e-4)
+    convergence_level : integer
+        Specifies the demanded level of convergence. (default : 3)
+    iteration_limit : integer
+        Limiting the maximum number of steps. (default : None)
 
     """
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
