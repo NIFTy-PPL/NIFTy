@@ -62,7 +62,8 @@ class RGSpace(Space):
             If distances==None:
                 if harmonic==True, all distances will be set to 1
                 if harmonic==False, the distance along each axis will be
-                  set to the inverse of the number of points along that axis
+                      set to the inverse of the number of points along that
+                      axis.
         harmonic : bool, *optional*
             Whether the space represents a grid in position or harmonic space.
             (default: False).

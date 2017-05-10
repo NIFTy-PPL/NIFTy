@@ -34,10 +34,10 @@ def create_power_operator(domain, power_spectrum, dtype=None,
                               distribution_strategy=distribution_strategy)
 
     fp = Field(power_domain,
-               val=power_spectrum,dtype=dtype,
+               val=power_spectrum, dtype=dtype,
                distribution_strategy=distribution_strategy)
 
-    f = fp.power_synthesize(mean=1, std=0, real_signal=False)
+    f = fp.power_synthesize(mean=1, std=0, decompose_power=False)
 
     power_operator = DiagonalOperator(domain, diagonal=f, bare=True)
 

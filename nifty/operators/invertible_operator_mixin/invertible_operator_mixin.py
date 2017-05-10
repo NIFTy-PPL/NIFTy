@@ -29,6 +29,7 @@ class InvertibleOperatorMixin(object):
         else:
             self.__inverter = ConjugateGradient(
                                         preconditioner=self.__preconditioner)
+        super(InvertibleOperatorMixin, self).__init__(*args, **kwargs)
 
     def _times(self, x, spaces, x0=None):
         if x0 is None:
