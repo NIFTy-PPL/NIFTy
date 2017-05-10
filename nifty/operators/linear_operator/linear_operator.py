@@ -239,6 +239,8 @@ class LinearOperator(Loggable, object):
                 raise
         return y
 
+    # If the operator supports inverse() then the inverse adjoint is identical
+    # to the adjoint inverse. We provide both names for convenience.
     def adjoint_inverse_times(self, x, spaces=None, **kwargs):
         """ Applies the adjoint-inverse Operator to a given Field.
 
@@ -313,6 +315,13 @@ class LinearOperator(Loggable, object):
                 y = self._times(x, spaces, **kwargs)
             else:
                 raise
+            try:
+                y = self._inverse_adjoint_times(x, spaces, **kwargs)
+            except(NotImplementedError):
+                if self.unitary:
+                    y = self._times(x, spaces, **kwargs)
+                else:
+                    raise
         return y
 
     def _times(self, x, spaces):
