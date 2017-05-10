@@ -112,7 +112,8 @@ class FFTOperator(LinearOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, target=None, module=None,
-                 domain_dtype=None, target_dtype=None):
+                 domain_dtype=None, target_dtype=None, default_spaces=None):
+        super(FFTOperator, self).__init__(default_spaces)
 
         # Initialize domain and target
 

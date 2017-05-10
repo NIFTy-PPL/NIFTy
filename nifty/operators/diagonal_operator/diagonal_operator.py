@@ -30,9 +30,10 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(),
-                 diagonal=None, bare=False, copy=True,
-                 distribution_strategy=None):
+    def __init__(self, domain=(), diagonal=None, bare=False, copy=True,
+                 distribution_strategy=None, default_spaces=None):
+        super(DiagonalOperator, self).__init__(default_spaces)
+
         self._domain = self._parse_domain(domain)
 
         if distribution_strategy is None:
