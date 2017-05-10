@@ -21,7 +21,9 @@ from nifty.operators.linear_operator import LinearOperator
 
 class ComposedOperator(LinearOperator):
     # ---Overwritten properties and methods---
-    def __init__(self, operators):
+    def __init__(self, operators, default_spaces=None):
+        super(ComposedOperator, self).__init__(default_spaces)
+
         self._operator_store = ()
         for op in operators:
             if not isinstance(op, LinearOperator):
