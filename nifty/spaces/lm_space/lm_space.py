@@ -43,16 +43,18 @@ class LMSpace(Space):
             Maximum :math:`\ell`-value up to which the spherical harmonics
             coefficients are to be used.
 
-
-        Notes:
-        ------
-        This implementation implicitly sets the mmax parameter to lmax.
-
         See Also
         --------
         hp_space : A class for the HEALPix discretization of the sphere [#]_.
         gl_space : A class for the Gauss-Legendre discretization of the
             sphere [#]_.
+
+        Notes
+        -----
+        Hermitian symmetry, i.e. :math:`a_{\ell -m} = \overline{a}_{\ell m}` is
+        always assumed for the spherical harmonics components, i.e. only fields
+        on the two-sphere with real-valued representations in position space
+        can be handled.
 
         References
         ----------
@@ -77,6 +79,11 @@ class LMSpace(Space):
             Returns
             -------
             None.
+            
+            Raises
+            ------
+            ValueError
+                If lmax is negative.
 
         """
 
@@ -117,15 +124,65 @@ class LMSpace(Space):
         return np.float64(self.dim)
 
     def copy(self):
+        """Returns a copied version of this LMSpace.
+			
+        Returns
+        -------
+		LMSpace : A copy of this object.
+        """
         return self.__class__(lmax=self.lmax)
 
     def weight(self, x, power=1, axes=None, inplace=False):
+        """ Weights a field living on this space with a specified amount of volume-weights.
+
+		Weights hereby refer to integration weights, as they appear in discretized integrals.
+		Per default, this function mutliplies each bin of the field x by its volume, which lets
+		it behave like a density (top form). All volume-weights are 1, thus nothing happens.
+        Parameters
+        ----------
+        x : Field
+            A field with this space as domain to be weighted.
+        power : int, *optional*
+            The power to which the volume-weight is raised. It does nothing.
+            (default: 1). 
+        axes : {int, tuple}, *optional*
+            This should not be used. It does nothing.
+        inplace : bool, *optional*
+            If this is True, the weighting is done on the values of x,
+			if it is False, x is not modified and this method returns a 
+			weighted copy of x
+            (default: False).
+
+        Returns
+        -------
+		Field
+			x or a copy of x.
+            
+        """ 
         if inplace:
             return x
         else:
             return x.copy()
 
     def get_distance_array(self, distribution_strategy):
+     """Returns the distance of the bins to zero.
+        
+        Calculates an 2-dimensional array with its entries being the
+        lengths of the k-vectors from the zero point of the grid.
+
+        Parameters
+        ----------
+        distribution_strategy : 
+        
+        Returns
+        -------
+        nkdict : distributed_data_object
+        
+        Raises
+        ------
+        ValueError
+            The distribution_strategy is neither slicing nor not.
+        """
         dists = arange(start=0, stop=self.shape[0],
                        distribution_strategy=distribution_strategy)
 
@@ -144,6 +201,7 @@ class LMSpace(Space):
         return res
 
     def get_fft_smoothing_kernel_function(self, sigma):
+        # FIXME why x(x+1) ? add reference to paper!
         return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
 
     # ---Added properties and methods---

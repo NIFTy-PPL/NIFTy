@@ -16,12 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
+
 import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
-
-from d2o.config import dependency_injector as d2o_di
-from d2o.config import configuration as d2o_config
 
 
 class PowerIndices(object):
@@ -313,7 +312,8 @@ class PowerIndices(object):
             # Store the individual pundices in the local_pundex array
             local_pundex[temp_uniqued_pindex] = local_temp_pundex
             # Extract the MPI module from the global_pindex d2o
-            MPI = d2o_di[d2o_config['mpi_module']]
+            MPI_name = global_pindex.comm.__class__.__module__
+            MPI = sys.modules[MPI_name]
             # Use Allreduce to find the first occurences/smallest pundices
             global_pindex.comm.Allreduce(local_pundex,
                                          global_pundex,

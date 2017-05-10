@@ -43,8 +43,8 @@ class GLSpace(Space):
         ----------
         nlat : int
             Number of latitudinal bins, or rings.
-        nlon : int
-            Number of longitudinal bins.
+        nlon : int, *optional*
+            Number of longitudinal bins (default: ``2*nlat - 1``).
 
         See Also
         --------
@@ -82,9 +82,7 @@ class GLSpace(Space):
             Raises
             ------
             ValueError
-                If input `nlat` is invalid.
-            ImportError
-                If the pyHealpix module is not available
+                If input `nlat` or `nlon` is invalid.
 
         """
         if 'pyHealpix' not in gdi:
@@ -100,6 +98,12 @@ class GLSpace(Space):
 
     @property
     def harmonic(self):
+        """True if this can be regarded as a harmonic space.
+        Returns
+        -------
+        bool : False
+            Always returns False as the GLSpace cannot be regarded as harmonic space.
+        """
         return False
 
     @property
@@ -119,6 +123,39 @@ class GLSpace(Space):
                               nlon=self.nlon)
 
     def weight(self, x, power=1, axes=None, inplace=False):
+        """ Weights a field living on this space with a specified amount of volume-weights.
+
+        Weights hereby refer to integration weights, as they appear in discretized integrals.
+        Per default, this function mutliplies each bin of the field x by its volume, which lets
+        it behave like a density (top form). However, different powers of the volume can be applied
+        with the power parameter. If only certain axes are specified via the axes parameter,
+        the weights are only applied with respect to these dimensions, yielding an object that
+        behaves like a lower degree form.
+        Parameters
+        ----------
+        x : Field
+            A field with this space as domain to be weighted.
+        power : int, *optional*
+            The power to which the volume-weight is raised.
+            (default: 1).
+        axes : {int, tuple}, *optional*
+            Specifies for which axes the weights should be applied.
+            (default: None).
+            If axes==None:
+                weighting is applied with respect to all axes
+        inplace : bool, *optional*
+            If this is True, the weighting is done on the values of x,
+            if it is False, x is not modified and this method returns a 
+            weighted copy of x
+            (default: False).
+
+        Returns
+        -------
+        Field
+            A weighted version of x, with volume-weights raised to power.
+            
+        """
+        
         nlon = self.nlon
         nlat = self.nlat
         vol = pyHealpix.GL_weights(nlat, nlon) ** power
@@ -141,9 +178,23 @@ class GLSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
+        """This should not be used, it just raises an error when called.
+        
+        Raises
+        ------
+        NotImplementedError
+            Always when called.
+        """
         raise NotImplementedError
 
     def get_fft_smoothing_kernel_function(self, sigma):
+        """This should not be used, it just raises an error when called.
+        
+        Raises
+        ------
+        NotImplementedError
+            Always when called.
+        """
         raise NotImplementedError
 
     # ---Added properties and methods---

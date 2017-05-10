@@ -101,6 +101,24 @@ class RGSpace(Space):
 
     def hermitian_decomposition(self, x, axes=None,
                                 preserve_gaussian_variance=False):
+        """Separates the hermitian and antihermitian part of a field.
+        
+        This is a function which is called by the field in order to separate itself for 
+        each of its domains. 
+        
+        Parameters
+        ----------
+        x: Field
+            Field to be decomposed.
+        axes: {int, tuple}, *optional*
+            Specifies which indices of the field belongs to this RGSpace. If None, it 
+            takes the first dimensions of the field.
+            (default: None)
+        preserve_gaussian_variance: bool, *optional*
+            
+            (default: False)
+        
+        """
         # compute the hermitian part
         flipped_x = self._hermitianize_inverter(x, axes=axes)
         flipped_x = flipped_x.conjugate()
@@ -190,12 +208,50 @@ class RGSpace(Space):
         return self.dim * reduce(lambda x, y: x*y, self.distances)
 
     def copy(self):
+        """Returns a copied version of this RGSpace.
+			
+        Returns
+        -------
+		RGSpace : A copy of this object.
+        """
         return self.__class__(shape=self.shape,
                               zerocenter=self.zerocenter,
                               distances=self.distances,
                               harmonic=self.harmonic)
 
     def weight(self, x, power=1, axes=None, inplace=False):
+        """ Weights a field living on this space with a specified amount of volume-weights.
+
+		Weights hereby refer to integration weights, as they appear in discretized integrals.
+		Per default, this function mutliplies each bin of the field x by its volume, which lets
+		it behave like a density (top form). However, different powers of the volume can be applied
+		with the power parameter. If only certain axes are specified via the axes parameter,
+		the weights are only applied with respect to these dimensions, yielding an object that
+		behaves like a lower degree form.
+        Parameters
+        ----------
+        x : Field
+            A field with this space as domain to be weighted.
+        power : int, *optional*
+            The power to which the volume-weight is raised.
+            (default: 1).
+        axes : {int, tuple}, *optional*
+            Specifies for which axes the weights should be applied.
+            (default: None).
+            If axes==None:
+                weighting is applied with respect to all axes
+        inplace : bool, *optional*
+            If this is True, the weighting is done on the values of x,
+			if it is False, x is not modified and this method returns a 
+			weighted copy of x
+            (default: False).
+
+        Returns
+        -------
+		Field
+			A weighted version of x, with volume-weights raised to power.
+            
+        """
         weight = reduce(lambda x, y: x*y, self.distances)**power
         if inplace:
             x *= weight
@@ -205,19 +261,25 @@ class RGSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        """
-            Calculates an n-dimensional array with its entries being the
-            lengths of the k-vectors from the zero point of the grid.
-            MR FIXME: Since this is about k-vectors, it might make sense to
-            throw NotImplementedError if harmonic==False.
+        """Returns the distance of the bins to zero.
+        
+        Calculates an n-dimensional array with its entries being the
+        lengths of the k-vectors from the zero point of the grid.
+        MR FIXME: Since this is about k-vectors, it might make sense to
+        throw NotImplementedError if harmonic==False.
 
-            Parameters
-            ----------
-            None : All information is taken from the parent object.
+        Parameters
+        ----------
+        None : All information is taken from the parent object.
 
-            Returns
-            -------
-            nkdict : distributed_data_object
+        Returns
+        -------
+        nkdict : distributed_data_object
+        
+        Raises
+        ------
+        ValueError
+            The distribution_strategy is neither slicing nor not.
         """
         shape = self.shape
         # prepare the distributed_data_object
@@ -263,11 +325,12 @@ class RGSpace(Space):
         dists = np.sqrt(dists)
         return dists
 
-    def get_fft_smoothing_kernel_function(self, sigma):
+    def get_fft_smoothing_kernel_function(self, sigma): 
+    
         if sigma is None:
             sigma = np.sqrt(2) * np.max(self.distances)
 
-        return lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
+        return lambda x: np.exp(-0.5 * np.pi**2 * x**2 * sigma**2)
 
     # ---Added properties and methods---
 

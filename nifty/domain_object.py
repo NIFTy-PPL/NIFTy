@@ -40,6 +40,15 @@ class DomainObject(Versionable, Loggable, object):
         return result_hash
 
     def __eq__(self, x):
+        """Checks if this domain_object represents the same thing as another domain_object.
+        Parameters
+        ----------
+        x: domain_object
+            The domain_object it is compared to.
+        Returns
+        -------
+        bool : True if they this and x represent the same thing.
+        """
         if isinstance(x, type(self)):
             for key in vars(self).keys():
                 item1 = vars(self)[key]
@@ -57,23 +66,76 @@ class DomainObject(Versionable, Loggable, object):
 
     @abc.abstractproperty
     def shape(self):
+        """Returns the shape of the underlying array-like object.
+        Returns
+        -------
+        (int, tuple) : A tuple representing the shape of the underlying array-like object
+        Raises
+        ------
+        NotImplementedError : If it is called for an abstract class, all non-abstract child-classes should
+        implement this.
+        """
         raise NotImplementedError(
             "There is no generic shape for DomainObject.")
 
     @abc.abstractproperty
     def dim(self):
+        """Returns the number of pixel-dimensions the object has.
+        Returns
+        -------
+        int : An Integer representing the number of pixels the discretized space has.
+        Raises
+        ------
+        NotImplementedError : If it is called for an abstract class, all non-abstract child-classes should
+        implement this.
+        """
         raise NotImplementedError(
             "There is no generic dim for DomainObject.")
 
     @abc.abstractmethod
     def weight(self, x, power=1, axes=None, inplace=False):
+        """ Weights a field living on this domain with a specified amount of volume-weights.
+
+        Weights hereby refer to integration weights, as they appear in discretized integrals.
+        Per default, this function mutliplies each bin of the field x by its volume, which lets
+        it behave like a density (top form). However, different powers of the volume can be applied
+        with the power parameter. The axes parameter specifies which of the field indices represent this
+        domain.
+        Parameters
+        ----------
+        x : Field
+            A field with this space as domain to be weighted.
+        power : int, *optional*
+            The power to which the volume-weight is raised.
+            (default: 1).
+        axes : {int, tuple}, *optional*
+            Specifies the axes of x which represent this domain.
+            (default: None).
+            If axes==None:
+                weighting is applied with respect to all axes
+        inplace : bool, *optional*
+            If this is True, the weighting is done on the values of x,
+            if it is False, x is not modified and this method returns a 
+            weighted copy of x
+            (default: False).
+        Returns
+        -------
+        Field
+            A weighted version of x, with volume-weights raised to power.
+        Raises
+        ------
+        NotImplementedError : If it is called for an abstract class, all non-abstract child-classes should
+        implement this.
+        """
         raise NotImplementedError(
             "There is no generic weight-method for DomainObject.")
 
     def pre_cast(self, x, axes=None):
+        # FIXME This does nothing and non of the children override this. Why does this exist?!
         return x
 
     def post_cast(self, x, axes=None):
+        # FIXME This does nothing and non of the children override this. Why does this exist?!
         return x
 
     # ---Serialization---
