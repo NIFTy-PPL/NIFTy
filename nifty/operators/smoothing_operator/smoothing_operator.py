@@ -45,12 +45,9 @@ def smoothingHelper (x,sigma,dxmax=None):
     nval: integer array of the same size as x
         nval[i] is the number of indices to consider when computing the
         smoothed value at grid index i.
-        The indices go from ibegin[i] (included) to ibegin[i]+nval[i](excluded).
-    wgt0: integer array of the same size as x
-        cumulative sum of nval
-    wgt: float array with sum(nval) entries containing the normalized smoothing
-        weights.
-        The weights for grid point i start at wgt[wgt0[i]].
+    wgt: list with the same number of entries as x
+        wgt[i] is an array with nval[i] entries containing the
+        normalized smoothing weights.
     """
 
     if dxmax==None:
@@ -60,22 +57,19 @@ def smoothingHelper (x,sigma,dxmax=None):
 
     ibegin=np.searchsorted(x,x-dxmax)
     nval=np.searchsorted(x,x+dxmax)-ibegin
-    wgt0=np.empty(x.size,dtype=np.int)
-    wgt0[0]=0
-    wgt0[1:x.size]=np.cumsum(nval[0:x.size-1])
 
-    wgt=np.empty(nval.sum(),dtype=np.float64)
+    wgt=[]
     expfac=1./(2.*sigma*sigma)
     for i in range(x.size):
         t=x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
         t=np.exp(-t*t*expfac)
         t*=1./np.sum(t)
-        wgt[wgt0[i]:wgt0[i]+nval[i]]=t
+        wgt.append(t)
 
-    return ibegin,nval,wgt0,wgt
+    return ibegin,nval,wgt
 
 def apply_kernel_along_array(power, startindex, endindex, distances,
-    smooth_length, smoothing_width,ibegin,nval,wgt0,wgt):
+    smooth_length, smoothing_width,ibegin,nval,wgt):
 
     if smooth_length == 0.0:
         return power[startindex:endindex]
@@ -83,7 +77,7 @@ def apply_kernel_along_array(power, startindex, endindex, distances,
     p_smooth = np.empty(endindex-startindex, dtype=np.float64)
 
     for i in xrange(startindex, endindex):
-        p_smooth[i-startindex]=np.sum(power[ibegin[i]:ibegin[i]+nval[i]]*wgt[wgt0[i]:wgt0[i]+nval[i]])
+        p_smooth[i-startindex]=np.sum(power[ibegin[i]:ibegin[i]+nval[i]]*wgt[i])
 
     return p_smooth
 
@@ -99,7 +93,7 @@ def apply_along_axis(axis, arr, startindex, endindex, distances,
     if (axis >= nd):
         raise ValueError("axis must be less than arr.ndim; axis=%d, rank=%d."
             % (axis, nd))
-    ibegin,nval,wgt0,wgt=smoothingHelper(distances,smooth_length,smooth_length*smoothing_width)
+    ibegin,nval,wgt=smoothingHelper(distances,smooth_length,smooth_length*smoothing_width)
 
     ind = np.zeros(nd-1, dtype=np.int)
     i = np.zeros(nd, dtype=object)
@@ -120,7 +114,7 @@ def apply_along_axis(axis, arr, startindex, endindex, distances,
                                    endindex,
                                    distances,
                                    smooth_length,
-                                   smoothing_width, ibegin,nval,wgt0,wgt)
+                                   smoothing_width, ibegin,nval,wgt)
 
     outshape = np.asarray(getShape(arr))
     outshape[axis] = endindex - startindex
@@ -142,7 +136,7 @@ def apply_along_axis(axis, arr, startindex, endindex, distances,
                                        endindex,
                                        distances,
                                        smooth_length,
-                                       smoothing_width,ibegin,nval,wgt0,wgt)
+                                       smoothing_width,ibegin,nval,wgt)
         outarr[tuple(i.tolist())] = res
         k += 1
 
