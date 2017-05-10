@@ -38,7 +38,7 @@ CONSTRUCTOR_CONFIGS = [
         'shape': (5,),
         'dim': 5,
         'total_volume': 8.0,
-        'harmonic_domain': RGSpace((8,), harmonic=True),
+        'harmonic_partner': RGSpace((8,), harmonic=True),
         'logarithmic': False,
         'nbin': None,
         'binbounds': None,
