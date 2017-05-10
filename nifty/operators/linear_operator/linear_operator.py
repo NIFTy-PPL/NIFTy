@@ -75,8 +75,8 @@ class LinearOperator(Loggable, object):
 
     __metaclass__ = NiftyMeta
 
-    def __init__(self):
-        pass
+    def __init__(self, default_spaces=None):
+        self.default_spaces = default_spaces
 
     def _parse_domain(self, domain):
         return utilities.parse_domain(domain)
@@ -123,6 +123,14 @@ class LinearOperator(Loggable, object):
 
         """
         raise NotImplementedError
+
+    @property
+    def default_spaces(self):
+        return self._default_spaces
+
+    @default_spaces.setter
+    def default_spaces(self, spaces):
+        self._default_spaces = utilities.cast_axis_to_tuple(spaces)
 
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)
@@ -331,6 +339,9 @@ class LinearOperator(Loggable, object):
         if not isinstance(x, Field):
             raise ValueError(
                 "supplied object is not a `nifty.Field`.")
+
+        if spaces is None:
+            spaces = self.default_spaces
 
         # sanitize the `spaces` and `types` input
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))

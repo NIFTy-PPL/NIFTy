@@ -44,6 +44,10 @@ class LMHPTransformation(SlicingTransformation):
 
     # ---Mandatory properties and methods---
 
+    @property
+    def unitary(self):
+        return False
+
     @classmethod
     def get_codomain(cls, domain):
         """
@@ -85,7 +89,7 @@ class LMHPTransformation(SlicingTransformation):
         lmax = domain.lmax
 
         if lmax != 2*nside:
-            cls.Logger.warn("Unrecommended: lmax != 2*nside.")
+            cls.logger.warn("Unrecommended: lmax != 2*nside.")
 
         super(LMHPTransformation, cls).check_codomain(domain, codomain)
 

@@ -78,7 +78,9 @@ class SmoothingOperator(EndomorphicOperator):
 
 
     # ---Overwritten properties and methods---
-    def __init__(self, domain=(), sigma=0, log_distances=False):
+    def __init__(self, domain=(), sigma=0, log_distances=False,
+                 default_spaces=None):
+        super(SmoothingOperator, self).__init__(default_spaces)
 
         self._domain = self._parse_domain(domain)
 

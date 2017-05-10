@@ -34,8 +34,9 @@ from transformations import RGRGTransformation,\
 
 
 class FFTOperator(LinearOperator):
-    """ Transforms between a pair of position and harmonic domains.
-    Possible domain pairs are
+    """Transforms between a pair of position and harmonic domains.
+
+    Built-in domain pairs are
       - a harmonic and a non-harmonic RGSpace (with matching distances)
       - a HPSpace and a LMSpace
       - a GLSpace and a LMSpace
@@ -48,40 +49,34 @@ class FFTOperator(LinearOperator):
 
     Parameters
     ----------
-
     domain: Space or single-element tuple of Spaces
         The domain of the data that is input by "times" and output by
         "adjoint_times".
-
-    target: Space  or single-element tuple of Spaces (optional)
+    target: Space or single-element tuple of Spaces (optional)
         The domain of the data that is output by "times" and input by
         "adjoint_times".
         If omitted, a co-domain will be chosen automatically.
         Whenever "domain" is an RGSpace, the codomain (and its parameters) are
         uniquely determined (except for "zerocenter").
-        For GLSpace, HPSpace, and LMSpace, a sensible (but not unique) co-domain
-        is chosen that should work satisfactorily in most situations,
+        For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
+        co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
     module: String (optional)
         Software module employed for carrying out the transform operations.
-        For RGSpace pairs this can be "numpy" or "fftw", where "numpy" is always
-        available, but "fftw" offers higher performance and parallelization.
-        For sphere-related domains, only "pyHealpix" is available.
-        If omitted, "fftw" is selected for RGSpaces if available, else "numpy";
-        on the sphere the default is (unsurprisingly) "pyHealpix".
+        For RGSpace pairs this can be "numpy" or "fftw", where "numpy" is
+        always available, but "fftw" offers higher performance and
+        parallelization. For sphere-related domains, only "pyHealpix" is
+        available. If omitted, "fftw" is selected for RGSpaces if available,
+        else "numpy"; on the sphere the default is "pyHealpix".
     domain_dtype: data type (optional)
         Data type of the fields that go into "times" and come out of
         "adjoint_times". Default is "numpy.complex".
     target_dtype: data type (optional)
         Data type of the fields that go into "adjoint_times" and come out of
         "times". Default is "numpy.complex".
-        (MR: Wouldn't it make sense to specify data types
-        only to "times" and "adjoint_times"? Does the operator itself really
-        need to know this, or only the individual call?)
 
     Attributes
     ----------
-
     domain: Tuple of Spaces (with one entry)
         The domain of the data that is input by "times" and output by
         "adjoint_times".
@@ -94,14 +89,12 @@ class FFTOperator(LinearOperator):
 
     Raises
     ------
-
     ValueError:
         if "domain" or "target" are not of the proper type.
-    """
-    # ---Class attributes---
 
-    # Domains for which FFTOperator is unitary
-    unitary_list = (RGSpace,)
+    """
+
+    # ---Class attributes---
 
     default_codomain_dictionary = {RGSpace: RGSpace,
                                    HPSpace: LMSpace,
@@ -119,7 +112,8 @@ class FFTOperator(LinearOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain, target=None, module=None,
-                 domain_dtype=None, target_dtype=None):
+                 domain_dtype=None, target_dtype=None, default_spaces=None):
+        super(FFTOperator, self).__init__(default_spaces)
 
         # Initialize domain and target
 
@@ -220,23 +214,22 @@ class FFTOperator(LinearOperator):
 
     @property
     def unitary(self):
-        return type(self.domain[0]) in self.unitary_list
+        return (self._forward_transformation.unitary and
+                self._backward_transformation.unitary)
 
     # ---Added properties and methods---
 
     @classmethod
     def get_default_codomain(cls, domain):
-        """ Returns a codomain to the given domain.
+        """Returns a codomain to the given domain.
 
         Parameters
         ----------
-
         domain: Space
             An instance of RGSpace, HPSpace, GLSpace or LMSpace.
 
         Returns
         -------
-
         target: Space
             A (more or less perfect) counterpart to "domain" with respect
             to a FFT operation.
@@ -249,9 +242,9 @@ class FFTOperator(LinearOperator):
 
         Raises
         ------
-
         ValueError:
             if no default codomain is defined for "domain".
+
         """
         domain_class = domain.__class__
         try:

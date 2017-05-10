@@ -168,7 +168,7 @@ class Field(Loggable, Versionable, object):
     # ---Powerspectral methods---
 
     def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
-                      real_signal=True):
+                      decompose_power=False):
         # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
@@ -219,7 +219,7 @@ class Field(Loggable, Versionable, object):
         pindex = power_domain.pindex
         rho = power_domain.rho
 
-        if real_signal:
+        if decompose_power:
             hermitian_part, anti_hermitian_part = \
                 harmonic_domain.hermitian_decomposition(
                                             self.val,
@@ -245,7 +245,7 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
 
-        if real_signal:
+        if decompose_power:
             result_dtype = np.complex
         else:
             result_dtype = np.float
@@ -303,8 +303,8 @@ class Field(Loggable, Versionable, object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=None, std=None):
+    def power_synthesize(self, spaces=None, real_power=True,
+                         real_signal=False, mean=None, std=None):
 
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))

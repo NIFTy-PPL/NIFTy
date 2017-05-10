@@ -45,6 +45,10 @@ class GLLMTransformation(SlicingTransformation):
 
     # ---Mandatory properties and methods---
 
+    @property
+    def unitary(self):
+        return False
+
     @classmethod
     def get_codomain(cls, domain):
         """
@@ -85,13 +89,13 @@ class GLLMTransformation(SlicingTransformation):
         mmax = codomain.mmax
 
         if lmax != mmax:
-            cls.Logger.warn("Unrecommended: codomain has lmax != mmax.")
+            cls.logger.warn("Unrecommended: codomain has lmax != mmax.")
 
         if lmax != nlat - 1:
-            cls.Logger.warn("Unrecommended: codomain has lmax != nlat - 1.")
+            cls.logger.warn("Unrecommended: codomain has lmax != nlat - 1.")
 
         if nlon != 2*nlat - 1:
-            cls.Logger.warn("Unrecommended: domain has nlon != 2*nlat - 1.")
+            cls.logger.warn("Unrecommended: domain has nlon != 2*nlat - 1.")
 
         super(GLLMTransformation, cls).check_codomain(domain, codomain)
 
