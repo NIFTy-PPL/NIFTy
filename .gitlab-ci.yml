@@ -13,7 +13,7 @@ before_script:
   - apt-get update
   - >
     apt-get install -y build-essential python python-pip python-dev git
-    autoconf gsl-bin libgsl-dev wget python-numpy cython
+    autoconf gsl-bin libgsl-dev wget python-numpy
   - pip install --upgrade -r ci/requirements_base.txt
   - chmod +x ci/*.sh
 

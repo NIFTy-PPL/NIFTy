@@ -30,7 +30,7 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_domain=RGSpace((1,)),
+    def __init__(self, harmonic_domain,
                  distribution_strategy='not',
                  log=False, nbin=None, binbounds=None):
 

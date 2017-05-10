@@ -21,13 +21,136 @@ import numpy as np
 import nifty.nifty_utilities as utilities
 from nifty.operators.endomorphic_operator import EndomorphicOperator
 from nifty.operators.fft_operator import FFTOperator
-from nifty.operators.smoothing_operator import smooth_util as su
+#from nifty.operators.smoothing_operator import smooth_util as su
 from d2o import STRATEGIES
 
+def smoothingHelper (x,sigma,dxmax=None):
+    """ Performs the precomputations for Gaussian smoothing on a 1D irregular grid.
+
+    Parameters
+    ----------
+    x: 1D floating point array or list containing the individual grid positions.
+        Points must be given in ascending order.
+
+    sigma: The sigma of the Gaussian with which the function living on x should
+        be smoothed, in the same units as x.
+    dxmax: (optional) The maximum distance up to which smoothing is performed,
+        in the same units as x. Default is 3.01*sigma.
+
+    Returns
+    -------
+    ibegin: integer array of the same size as x
+        ibegin[i] is the minimum grid index to consider when computing the
+        smoothed value at grid index i
+    nval: integer array of the same size as x
+        nval[i] is the number of indices to consider when computing the
+        smoothed value at grid index i.
+        The indices go from ibegin[i] (included) to ibegin[i]+nval[i](excluded).
+    wgt0: integer array of the same size as x
+        cumulative sum of nval
+    wgt: float array with sum(nval) entries containing the normalized smoothing
+        weights.
+        The weights for grid point i start at wgt[wgt0[i]].
+    """
+
+    if dxmax==None:
+        dxmax=3.01*sigma
+
+    x=np.asarray(x)
+
+    ibegin=np.searchsorted(x,x-dxmax)
+    nval=np.searchsorted(x,x+dxmax)-ibegin
+    wgt0=np.empty(x.size,dtype=np.int)
+    wgt0[0]=0
+    wgt0[1:x.size]=np.cumsum(nval[0:x.size-1])
+
+    wgt=np.empty(nval.sum(),dtype=np.float64)
+    expfac=1./(2.*sigma*sigma)
+    for i in range(x.size):
+        t=x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
+        t=np.exp(-t*t*expfac)
+        t*=1./np.sum(t)
+        wgt[wgt0[i]:wgt0[i]+nval[i]]=t
+
+    return ibegin,nval,wgt0,wgt
+
+def apply_kernel_along_array(power, startindex, endindex, distances,
+    smooth_length, smoothing_width,ibegin,nval,wgt0,wgt):
+
+    if smooth_length == 0.0:
+        return power[startindex:endindex]
+
+    p_smooth = np.empty(endindex-startindex, dtype=np.float64)
+
+    for i in xrange(startindex, endindex):
+        p_smooth[i-startindex]=np.sum(power[ibegin[i]:ibegin[i]+nval[i]]*wgt[wgt0[i]:wgt0[i]+nval[i]])
+
+    return p_smooth
+
+def getShape(a):
+    return tuple(a.shape)
+
+def apply_along_axis(axis, arr, startindex, endindex, distances,
+    smooth_length, smoothing_width):
+
+    nd = arr.ndim
+    if axis < 0:
+        axis += nd
+    if (axis >= nd):
+        raise ValueError("axis must be less than arr.ndim; axis=%d, rank=%d."
+            % (axis, nd))
+    ibegin,nval,wgt0,wgt=smoothingHelper(distances,smooth_length,smooth_length*smoothing_width)
+
+    ind = np.zeros(nd-1, dtype=np.int)
+    i = np.zeros(nd, dtype=object)
+    shape = getShape(arr)
+    indlist = np.asarray(range(nd))
+    indlist = np.delete(indlist,axis)
+    i[axis] = slice(None, None)
+    outshape = np.asarray(shape).take(indlist)
+
+    i.put(indlist, ind)
+
+    Ntot =np.product(outshape)
+    holdshape = outshape
+    slicedArr = arr[tuple(i.tolist())]
+
+    res = apply_kernel_along_array(slicedArr,
+                                   startindex,
+                                   endindex,
+                                   distances,
+                                   smooth_length,
+                                   smoothing_width, ibegin,nval,wgt0,wgt)
+
+    outshape = np.asarray(getShape(arr))
+    outshape[axis] = endindex - startindex
+    outarr = np.zeros(outshape, dtype=np.float64)
+    outarr[tuple(i.tolist())] = res
+    k = 1
+    while k < Ntot:
+        # increment the index
+        ind[nd-1] += 1
+        n = -1
+        while (ind[n] >= holdshape[n]) and (n > (1-nd)):
+            ind[n-1] += 1
+            ind[n] = 0
+            n -= 1
+        i.put(indlist, ind)
+        slicedArr = arr[tuple(i.tolist())]
+        res = apply_kernel_along_array(slicedArr,
+                                       startindex,
+                                       endindex,
+                                       distances,
+                                       smooth_length,
+                                       smoothing_width,ibegin,nval,wgt0,wgt)
+        outarr[tuple(i.tolist())] = res
+        k += 1
+
+    return outarr
 
 class SmoothingOperator(EndomorphicOperator):
     # ---Overwritten properties and methods---
-    def __init__(self, domain=(), sigma=0, log_distances=False,
+    def __init__(self, domain, sigma, log_distances=False,
                  default_spaces=None):
         super(SmoothingOperator, self).__init__(default_spaces)
 
@@ -234,9 +357,10 @@ class SmoothingOperator(EndomorphicOperator):
         else:
             true_sigma = self.sigma
 
+        #MR: do not split for complex arrays!
         if data.dtype is np.dtype('float32'):
             distances = distances.astype(np.float32, copy=False)
-            smoothed_data = su.apply_along_axis_f(
+            smoothed_data = apply_along_axis(
                                   data_axis, data,
                                   startindex=true_start,
                                   endindex=true_end,
@@ -245,7 +369,7 @@ class SmoothingOperator(EndomorphicOperator):
                                   smoothing_width=self._direct_smoothing_width)
         elif data.dtype is np.dtype('float64'):
             distances = distances.astype(np.float64, copy=False)
-            smoothed_data = su.apply_along_axis(
+            smoothed_data = apply_along_axis(
                                   data_axis, data,
                                   startindex=true_start,
                                   endindex=true_end,
