@@ -20,21 +20,14 @@ plotly.offline.init_notebook_mode()
 class Plotter(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, interactive=False, path='.', stack_subplots=False,
-                 color_scale=None):
+    def __init__(self, interactive=False, path='.', title=""):
         self.interactive = interactive
         self.path = path
-        self.stack_subplots = stack_subplots
-        self.color_scale = color_scale
-        self.title = 'uiae'
+        self.title = str(title)
 
     @abc.abstractproperty
     def domain(self):
         return (Space,)
-
-    @abc.abstractproperty
-    def field_type(self):
-        return (FieldType,)
 
     @property
     def interactive(self):
@@ -52,32 +45,20 @@ class Plotter(Loggable, object):
     def path(self, new_path):
         self._path = os.path.normpath(new_path)
 
-    @property
-    def stack_subplots(self):
-        return self._stack_subplots
-
-    @stack_subplots.setter
-    def stack_subplots(self, stack_subplots):
-        self._stack_subplots = bool(stack_subplots)
-
-    def plot(self, field, spaces=None, types=None, slice=None):
-        data = self._get_data_from_field(field, spaces, types, slice)
+    def plot(self, fields, spaces=None,  slice=None):
+        # `fields` can contain one or more fields
+        # if multiple fields are supplied -> stack the plots
+        data = self._get_data_from_field(fields, spaces, slice)
         figures = self._create_individual_plot(data)
         self._finalize_figure(figures)
 
     @abc.abstractmethod
-    def _get_data_from_field(self, field, spaces=None, types=None, slice=None):
-        # if fields is a list, create a new field with appended
-        # field_type = field_array and copy individual parts into the new field
+    def _get_data_from_field(self, field, spaces=None, slice=None):
 
         spaces = utilities.cast_axis_to_tuple(spaces, len(field.domain))
-        types = utilities.cast_axis_to_tuple(types, len(field.field_type))
         if field.domain[spaces] != self.domain:
             raise AttributeError("Given space(s) of input field-domain do not "
                                  "match the plotters domain.")
-        if field.field_type[spaces] != self.field_type:
-            raise AttributeError("Given field_type(s) of input field-domain "
-                                 "do not match the plotters field_type.")
 
             # iterate over the individual slices in order to compose the figure
             # -> make a d2o.get_full_data() (for rank==0 only?)
