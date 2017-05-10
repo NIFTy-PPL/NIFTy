@@ -81,7 +81,7 @@ class SmoothingOperator(EndomorphicOperator):
         self._log_distances = bool(log_distances)
 
     @staticmethod
-    def smoothingHelper (x,sigma,dxmax=None):
+    def _precompute (x,sigma,dxmax=None):
         """ Performs the precomputations for Gaussian smoothing on a 1D irregular grid.
 
         Parameters
@@ -126,7 +126,7 @@ class SmoothingOperator(EndomorphicOperator):
         return ibegin,nval,wgt
 
     @staticmethod
-    def apply_kernel_along_array(power, startindex, endindex, distances,
+    def _apply_kernel_along_array(power, startindex, endindex, distances,
         smooth_length, smoothing_width,ibegin,nval,wgt):
 
         if smooth_length == 0.0:
@@ -140,11 +140,11 @@ class SmoothingOperator(EndomorphicOperator):
         return p_smooth
 
     @staticmethod
-    def getShape(a):
+    def _getShape(a):
         return tuple(a.shape)
 
     @staticmethod
-    def apply_along_axis(axis, arr, startindex, endindex, distances,
+    def _apply_along_axis(axis, arr, startindex, endindex, distances,
         smooth_length, smoothing_width):
 
         nd = arr.ndim
@@ -153,11 +153,11 @@ class SmoothingOperator(EndomorphicOperator):
         if (axis >= nd):
             raise ValueError("axis must be less than arr.ndim; axis=%d, rank=%d."
                 % (axis, nd))
-        ibegin,nval,wgt=SmoothingOperator.smoothingHelper(distances,smooth_length,smooth_length*smoothing_width)
+        ibegin,nval,wgt=SmoothingOperator._precompute(distances,smooth_length,smooth_length*smoothing_width)
 
         ind = np.zeros(nd-1, dtype=np.int)
         i = np.zeros(nd, dtype=object)
-        shape = SmoothingOperator.getShape(arr)
+        shape = SmoothingOperator._getShape(arr)
         indlist = np.asarray(range(nd))
         indlist = np.delete(indlist,axis)
         i[axis] = slice(None, None)
@@ -169,14 +169,14 @@ class SmoothingOperator(EndomorphicOperator):
         holdshape = outshape
         slicedArr = arr[tuple(i.tolist())]
 
-        res = SmoothingOperator.apply_kernel_along_array(slicedArr,
+        res = SmoothingOperator._apply_kernel_along_array(slicedArr,
                                        startindex,
                                        endindex,
                                        distances,
                                        smooth_length,
                                        smoothing_width, ibegin,nval,wgt)
 
-        outshape = np.asarray(SmoothingOperator.getShape(arr))
+        outshape = np.asarray(SmoothingOperator._getShape(arr))
         outshape[axis] = endindex - startindex
         outarr = np.zeros(outshape, dtype=np.float64)
         outarr[tuple(i.tolist())] = res
@@ -191,7 +191,7 @@ class SmoothingOperator(EndomorphicOperator):
                 n -= 1
             i.put(indlist, ind)
             slicedArr = arr[tuple(i.tolist())]
-            res = SmoothingOperator.apply_kernel_along_array(slicedArr,
+            res = SmoothingOperator._apply_kernel_along_array(slicedArr,
                                            startindex,
                                            endindex,
                                            distances,
@@ -356,7 +356,7 @@ class SmoothingOperator(EndomorphicOperator):
             true_sigma = self.sigma
 
         distances = distances.astype(np.float64, copy=False)
-        smoothed_data = SmoothingOperator.apply_along_axis(
+        smoothed_data = SmoothingOperator._apply_along_axis(
                               data_axis, data,
                               startindex=true_start,
                               endindex=true_end,
