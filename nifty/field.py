@@ -167,8 +167,8 @@ class Field(Loggable, Versionable, object):
 
     # ---Powerspectral methods---
 
-    def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
-                      real_signal=True):
+    def power_analyze(self, spaces=None, logarithmic=False, nbin=None, binbounds=None,
+                      decompose_power=False):
         # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
@@ -210,18 +210,18 @@ class Field(Loggable, Versionable, object):
             self.val.get_axes_local_distribution_strategy(
                 self.domain_axes[space_index])
 
-        harmonic_domain = self.domain[space_index]
-        power_domain = PowerSpace(harmonic_domain=harmonic_domain,
+        harmonic_partner = self.domain[space_index]
+        power_domain = PowerSpace(harmonic_partner=harmonic_partner,
                                   distribution_strategy=distribution_strategy,
-                                  log=log, nbin=nbin, binbounds=binbounds)
+                                  logarithmic=logarithmic, nbin=nbin, binbounds=binbounds)
 
         # extract pindex and rho from power_domain
         pindex = power_domain.pindex
         rho = power_domain.rho
 
-        if real_signal:
+        if decompose_power:
             hermitian_part, anti_hermitian_part = \
-                harmonic_domain.hermitian_decomposition(
+                harmonic_partner.hermitian_decomposition(
                                             self.val,
                                             axes=self.domain_axes[space_index])
 
@@ -245,7 +245,7 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
 
-        if real_signal:
+        if decompose_power:
             result_dtype = np.complex
         else:
             result_dtype = np.float
@@ -303,8 +303,8 @@ class Field(Loggable, Versionable, object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=None, std=None):
+    def power_synthesize(self, spaces=None, real_power=True,
+                         real_signal=False, mean=None, std=None):
 
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
@@ -322,8 +322,8 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         for power_space_index in spaces:
             power_space = self.domain[power_space_index]
-            harmonic_domain = power_space.harmonic_domain
-            result_domain[power_space_index] = harmonic_domain
+            harmonic_partner = power_space.harmonic_partner
+            result_domain[power_space_index] = harmonic_partner
 
         # create random samples: one or two, depending on whether the
         # power spectrum is real or complex
@@ -365,8 +365,8 @@ class Field(Loggable, Versionable, object):
 
         if real_signal:
             for power_space_index in spaces:
-                harmonic_domain = result_domain[power_space_index]
-                result_val_list = [harmonic_domain.hermitian_decomposition(
+                harmonic_partner = result_domain[power_space_index]
+                result_val_list = [harmonic_partner.hermitian_decomposition(
                                     result_val,
                                     axes=result.domain_axes[power_space_index],
                                     preserve_gaussian_variance=True)[0]

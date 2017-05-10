@@ -101,7 +101,7 @@ Starting with a fresh Ubuntu installation move to a folder like
 
         git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
-        autoreconf -i && ./configure && sudo make install
+        autoreconf -i && ./configure && make -j4 && sudo make install
         cd ..
 
 -   Finally, NIFTy:
@@ -135,7 +135,7 @@ For pyHealpix, use:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
     cd pyHealpix
-    autoreconf -i && ./configure --prefix=$HOME/.local && make install
+    autoreconf -i && ./configure --prefix=$HOME/.local && make -j4 && make install
     cd ..
 
 ### Installation on OS X 10.11
@@ -156,7 +156,7 @@ may cause trouble.
 
         git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
-        autoreconf -i && ./configure && sudo make install
+        autoreconf -i && ./configure --prefix=`python-config --prefix` && make -j4 && sudo make install
         cd ..
 
 -   Install NIFTy:

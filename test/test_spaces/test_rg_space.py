@@ -216,7 +216,7 @@ class RGSpaceInterfaceTests(unittest.TestCase):
     @expand([['distances', tuple],
             ['zerocenter', tuple]])
     def test_property_ret_type(self, attribute, expected_type):
-        x = RGSpace()
+        x = RGSpace(1)
         assert_(isinstance(getattr(x, attribute), expected_type))
 
 
