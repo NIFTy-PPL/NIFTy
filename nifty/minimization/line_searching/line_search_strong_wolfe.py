@@ -22,37 +22,49 @@ from .line_search import LineSearch
 
 
 class LineSearchStrongWolfe(LineSearch):
-    """
-    Class for finding a step size that satisfies the strong Wolfe conditions.
+    """Class for finding a step size that satisfies the strong Wolfe conditions.
+    
+    Algorithm contains two stages. It begins whit a trial step length and it 
+    keeps increasing the it until it finds an acceptable step length or an
+    interval. In the second stage the Zoom algorithm is performed which 
+    decreases the size of the interval until an acceptable step length is found.  
+    
+    Parameters
+    ----------
+    c1 : scalar 
+        Parameter for Armijo condition rule. (Default: 1e-4)
+    c2 : scalar
+        Parameter for curvature condition rule. (Default: 0.9)
+    max_step_size : scalar
+        Maximum step allowed in to be made in the descent direction. 
+        (Default: 50)
+    max_iterations : integer
+        Maximum number of iterations performed by the line search algorithm.
+        (Default: 10)
+    max_zoom_iterations : integer
+        Maximum number of iterations performed by the zoom algorithm. 
+        (Default: 10)
+        
+    Attributes
+    ----------
+    c1 : float
+        Parameter for Armijo condition rule.
+    c2 : float
+        Parameter for curvature condition rule.
+    max_step_size : scalar
+        Maximum step allowed in to be made in the descent direction. 
+    max_iterations : integer
+        Maximum number of iterations performed by the line search algorithm.
+    max_zoom_iterations : integer
+        Maximum number of iterations performed by the zoom algorithm.
+
+        
     """
 
     def __init__(self, c1=1e-4, c2=0.9,
                  max_step_size=50, max_iterations=10,
                  max_zoom_iterations=10):
 
-        """
-        Parameters
-        ----------
-
-        f : callable f(x, *args)
-            Objective function.
-
-        fprime : callable f'(x, *args)
-            Objective functions gradient.
-
-        f_args : tuple (optional)
-            Additional arguments passed to objective function and its
-            derivation.
-
-        c1 : float (optional)
-            Parameter for Armijo condition rule.
-
-        c2 : float (optional)
-            Parameter for curvature condition rule.
-
-        max_step_size : float (optional)
-            Maximum step size
-        """
 
         super(LineSearchStrongWolfe, self).__init__()
 
@@ -63,6 +75,24 @@ class LineSearchStrongWolfe(LineSearch):
         self.max_zoom_iterations = int(max_zoom_iterations)
 
     def perform_line_search(self, energy, pk, f_k_minus_1=None):
+        """Performs the first stage of the algorithm.
+        
+        Its starts with a trial step size and it keeps increasing it until it 
+        satisfy the strong Wolf conditions.
+        
+        Parameters
+        ----------
+        energy : Energy object
+            Energy object from which we will calculate the energy and the
+            gradient at a specific point.
+        pk : Field
+            Unit vector pointing into the search direction.
+        f_k_minus_1 : float
+            Value of the function (energy) which will be minimized at the k-1 
+            iteration of the line search procedure. (Default: None)
+
+        """        
+        
         self._set_line_energy(energy, pk, f_k_minus_1=f_k_minus_1)
         c1 = self.c1
         c2 = self.c2

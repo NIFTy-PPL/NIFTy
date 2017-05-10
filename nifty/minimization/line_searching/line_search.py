@@ -57,14 +57,13 @@ class LineSearch(Loggable, object):
         Parameters
         ----------
         energy : Energy object
-            Energy object from which we can calculate the 
-           energy, gradient and curvature at a specific point.        
+            Energy object from which we can calculate the energy, gradient and
+            curvature at a specific point.        
         pk : Field
-            Unit vector in search direction.
-
-        f_k_minus_1 : float *optional*
-            Value of the field at the k-1 iteration of the line search 
-            procedure.
+            Unit vector pointing into the search direction.
+        f_k_minus_1 : float
+            Value of the fuction (energy) which will be minimized at the k-1 
+            iteration of the line search procedure. (Default: None)
             
         """
         self.line_energy = LineEnergy(position=0.,
