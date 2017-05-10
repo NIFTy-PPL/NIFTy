@@ -168,7 +168,7 @@ class Field(Loggable, Versionable, object):
     # ---Powerspectral methods---
 
     def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
-                      real_signal=True):
+                      real_signal=False):
         # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
@@ -303,7 +303,7 @@ class Field(Loggable, Versionable, object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
+    def power_synthesize(self, spaces=None, real_power=True, real_signal=False,
                          mean=None, std=None):
 
         # check if the `spaces` input is valid
