@@ -41,17 +41,37 @@ class MultiFigure(FigureBase):
                                                    self.columns,
                                                    subplot_titles=sub_titles,
                                                    specs=sub_specs)
+
+        multi_figure_plotly_object['layout'].update(height=self.height,
+                                                    width=self.width,
+                                                    title=self.title)
+
         #TODO resolve bug with titles and 3D subplots
+
+        i = 1
         for index, fig in np.ndenumerate(self.subfigures):
             if fig:
                 for plot in fig.plots:
                     multi_figure_plotly_object.append_trace(plot.to_plotly(),
                                                             index[0]+1,
                                                             index[1]+1)
+                    if isinstance(fig, Figure3D):
+                        scene = dict()
+                        if fig.xaxis:
+                            scene['xaxis'] = fig.xaxis.to_plotly()
+                        if fig.yaxis:
+                            scene['yaxis'] = fig.yaxis.to_plotly()
+                        if fig.zaxis:
+                            scene['zaxis'] = fig.zaxis.to_plotly()
 
-        multi_figure_plotly_object['layout'].update(height=self.height,
-                                                    width=self.width,
-                                                    title=self.title)
+                        multi_figure_plotly_object['layout']['scene'+str(i)] = scene
+                    else:
+                        if fig.xaxis:
+                            multi_figure_plotly_object['layout']['xaxis'+str(i)] = fig.xaxis.to_plotly()
+                        if fig.yaxis:
+                            multi_figure_plotly_object['layout']['yaxis'+str(i)] = fig.yaxis.to_plotly()
+
+                    i += 1
 
         return multi_figure_plotly_object
 
