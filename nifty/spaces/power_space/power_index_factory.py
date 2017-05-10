@@ -30,7 +30,9 @@ class _PowerIndexFactory(object):
         if key not in self.power_indices_storage:
             self.power_indices_storage[key] = \
                 PowerIndices(domain, distribution_strategy,
-                             logarithmic=logarithmic, nbin=nbin, binbounds=binbounds)
+                             logarithmic=logarithmic,
+                             nbin=nbin,
+                             binbounds=binbounds)
         power_indices = self.power_indices_storage[key]
         power_index = power_indices.get_index_dict(logarithmic=logarithmic,
                                                    nbin=nbin,

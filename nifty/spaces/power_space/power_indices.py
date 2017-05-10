@@ -113,7 +113,8 @@ class PowerIndices(object):
             return self._cast_config_helper(**temp_config_dict)
         else:
             defaults = self.default_parameters
-            temp_logarithmic = kwargs.get("logarithmic", defaults['logarithmic'])
+            temp_logarithmic = kwargs.get("logarithmic",
+                                          defaults['logarithmic'])
             temp_nbin = kwargs.get("nbin", defaults['nbin'])
             temp_binbounds = kwargs.get("binbounds", defaults['binbounds'])
 

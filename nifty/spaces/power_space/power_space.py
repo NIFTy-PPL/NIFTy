@@ -27,45 +27,55 @@ from nifty.spaces.rg_space import RGSpace
 
 
 class PowerSpace(Space):
+    """ NIFTY class for spaces of power spectra.
+
+    Parameters
+    ----------
+    harmonic_partner : Space
+        The harmonic Space of which this is the power space.
+    distribution_strategy : str *optional*
+        The distribution strategy used for the distributed_data_objects
+        derived from this PowerSpace, e.g. the pindex.
+        (default : 'not')
+    logarithmic : bool *optional*
+        True if logarithmic binning should be used (default : False).
+    nbin : {int, None} *optional*
+        The number of bins that should be used for power spectrum binning
+        (default : None).
+        if nbin == None, then nbin is set to the length of kindex.
+    binbounds :  {list, array-like} *optional*
+        Array-like inner boundaries of the used bins of the default
+        indices.
+        (default : None)
+        if binbounds == None :
+            Calculates the bounds from the kindex while applying the
+            logarithmic and nbin keywords.
+
+    Attributes
+    ----------
+    pindex : distributed_data_object
+        TODO add description
+    kindex : numpy.ndarray
+        TODO add description
+    pundex : numpy.ndarray
+        TODO add description
+    rho : numpy.ndarray
+        The amount of k-modes that get mapped to one power bin is given by
+        rho.
+
+
+    Notes
+    -----
+    A power space is the result of a projection of a harmonic space where
+    k-modes of equal length get mapped to one power index.
+
+    """
 
     # ---Overwritten properties and methods---
 
     def __init__(self, harmonic_partner=RGSpace((1,)),
                  distribution_strategy='not',
                  logarithmic=False, nbin=None, binbounds=None):
-        """Sets the attributes for a PowerSpace class instance.
-
-            Parameters
-            ----------
-            harmonic_partner : Space
-                The harmonic Space of which this is the power space.
-            distribution_strategy : str *optional*
-                The distribution strategy of a d2o-object represeting a field over this PowerSpace.
-                (default : 'not')
-            logarithmic : bool *optional*
-                True if logarithmic binning should be used.
-                (default : False)
-            nbin : {int, None} *optional*
-                The number of bins this space has.
-                (default : None) if nbin == None : It takes the nbin from its harmonic_partner
-            binbounds :  {list, array} *optional*
-                Array-like inner boundaries of the used bins of the default
-                indices.
-                (default : None) if binbounds == None : Calculates the bounds from the kindex and corrects for logartihmic scale 
-            Notes
-            -----
-            A power space is the result of a projection of a harmonic space where multiple k-modes get mapped to one power index.
-            This can be regarded as a response operator :math:`R` going from harmonic space to power space. 
-            An array giving this map is stored in pindex (array which says in which power box a k-mode gets projected)
-            An array for the adjoint of :math:`R` is given by kindex, which is an array of arrays stating which k-mode got mapped to a power index
-            The a right-inverse to :math:`R` is given by the pundex which is an array giving one k-mode that maps to a power bin for every power bin.
-            The amount of k-modes that get mapped to one power bin is given by rho. This is :math:`RR^\dagger` in the language of this projection operator            
-            Returns
-            -------
-            None.
-
-        """
-        #FIXME: default probably not working for log and normal scale
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',
                                   '_k_array']
@@ -97,22 +107,28 @@ class PowerSpace(Space):
         self._k_array = power_index['k_array']
 
     def pre_cast(self, x, axes):
-        """Casts power spectra to discretized power spectra.
-        
-        This function takes an array or a function. If it is an array it does nothing,
-        otherwise it intepretes the function as power spectrum and evaluates it at every
-        k-mode.
+        """ Casts power spectrum functions to discretized power spectra.
+
+        This function takes an array or a function. If it is an array it does
+        nothing, otherwise it interpretes the function as power spectrum and
+        evaluates it at every k-mode.
+
         Parameters
         ----------
         x : {array-like, function array-like -> array-like}
-            power spectrum given either in discretized form or implicitly as a function
-        axes : {tuple, int} *optional*
-            does nothing
-            (default : None)
+            power spectrum given either in discretized form or implicitly as a
+            function
+        axes : tuple of ints
+            Specifies the axes of x which correspond to this space. For
+            explicifying the power spectrum function, this is ignored.
+
         Returns
         -------
-        array-like : discretized power spectrum
+        array-like
+            discretized power spectrum
+
         """
+
         if callable(x):
             return x(self.kindex)
         else:
@@ -176,86 +192,60 @@ class PowerSpace(Space):
 
     @property
     def harmonic_partner(self):
-        """Returns the Space of which this is the power space.
-        Returns
-        -------
-        Space : The harmonic Space of which this is the power space.
+        """ Returns the Space of which this is the power space.
         """
         return self._harmonic_partner
 
     @property
     def logarithmic(self):
-        """Returns a True if logarithmic binning is used.
-        Returns
-        -------
-        Bool : True if for this PowerSpace logarithmic binning is used.
+        """ Returns True if logarithmic binning is used.
         """
         return self._logarithmic
 
     @property
     def nbin(self):
-        """Returns the number of power bins.
-        Returns
-        -------
-        int : The number of bins this space has.
+        """ Returns the number of power bins if specfied during initialization.
         """
         return self._nbin
 
     @property
     def binbounds(self):
-        """ Inner boundaries of the used bins of the default
-                indices.
-        Returns
-        -------
-        {list, array} : the inner boundaries of the used bins in the used scale, as they were
-        set in __init__ or computed.
+        """ Inner boundaries of the used bins if specfied during initialization.
         """
-        # FIXME check wether this returns something sensible if 'None' was set in __init__
         return self._binbounds
 
     @property
     def pindex(self):
-    """Index of the Fourier grid points that belong to a specific power index
-    Returns
-    -------
-        distributed_data_object : Index of the Fourier grid points in a distributed_data_object.
-    """
+        """ A distributed_data_objects having the shape of the harmonic partner
+        space containing the indices of the power bin a pixel belongs to.
+        """
         return self._pindex
 
     @property
     def kindex(self):
-    """Array of all k-vector lengths.
-    Returns
-    -------
-        ndarray : Array which states for each k-mode which power index it maps to (adjoint to pindex)
-    """
+        """ Sorted array of all k-modes.
+        """
         return self._kindex
 
     @property
     def rho(self):
-    """Degeneracy factor of the individual k-vectors.
-    
-    ndarray : Array stating how many k-modes are mapped to one power index for every power index
-    """
+        """Degeneracy factor of the individual k-vectors.
+        """
         return self._rho
 
     @property
     def pundex(self):
-    """List of one k-mode per power bin which is in the bin.
-    Returns
-    -------
-    array-like : An array for which the n-th entry is an example one k-mode which belongs to the n-th power bin
-    """
+        """ An array for which the n-th entry gives the flat index of the
+        first occurence of a k-vector with length==kindex[n] in the
+        k_array.
+        """
         return self._pundex
 
     @property
     def k_array(self):
-    """This contains distances to zero for every k-mode of the harmonic partner.
-    
-    Returns
-    -------
-    array-like : An array containing distances to the zero mode for every k-mode of the harmonic partner.
-    """
+        """ An array containing distances to the grid center (i.e. zero-mode)
+        for every k-mode in the grid of the harmonic partner space.
+        """
         return self._k_array
 
     # ---Serialization---
@@ -284,7 +274,8 @@ class PowerSpace(Space):
         # call instructor so that classes are properly setup
         super(PowerSpace, new_ps).__init__()
         # set all values
-        new_ps._harmonic_partner = repository.get('harmonic_partner', hdf5_group)
+        new_ps._harmonic_partner = repository.get('harmonic_partner',
+                                                  hdf5_group)
         new_ps._logarithmic = hdf5_group['logarithmic'][()]
         exec('new_ps._nbin = ' + hdf5_group.attrs['nbin'])
         exec('new_ps._binbounds = ' + hdf5_group.attrs['binbounds'])

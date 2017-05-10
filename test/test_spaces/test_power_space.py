@@ -29,7 +29,7 @@ from types import NoneType
 from test.common import expand
 
 # [harmonic_domain, distribution_strategy,
-#  log, nbin, binbounds, expected]
+#  logarithmic, nbin, binbounds, expected]
 CONSTRUCTOR_CONFIGS = [
     [1, 'not', False, None, None, {'error': ValueError}],
     [RGSpace((8,)), 'not', False, None, None, {'error': ValueError}],
@@ -95,7 +95,7 @@ def get_weight_configs():
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
         ['harmonic_domain', Space],
-        ['log', bool],
+        ['logarithmic', bool],
         ['nbin', (int, NoneType)],
         ['binbounds', (list, NoneType)],
         ['pindex', distributed_data_object],
@@ -112,17 +112,19 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, harmonic_domain, distribution_strategy, log,
-                         nbin, binbounds, expected):
+    def test_constructor(self, harmonic_domain, distribution_strategy,
+                         logarithmic, nbin, binbounds, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_domain=harmonic_domain,
                            distribution_strategy=distribution_strategy,
-                           log=log, nbin=nbin, binbounds=binbounds)
+                           logarithmic=logarithmic, nbin=nbin,
+                           binbounds=binbounds)
         else:
             p = PowerSpace(harmonic_domain=harmonic_domain,
                            distribution_strategy=distribution_strategy,
-                           log=log, nbin=nbin, binbounds=binbounds)
+                           logarithmic=logarithmic, nbin=nbin,
+                           binbounds=binbounds)
             for key, value in expected.iteritems():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)
