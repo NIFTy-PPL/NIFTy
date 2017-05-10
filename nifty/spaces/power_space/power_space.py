@@ -96,7 +96,7 @@ class PowerSpace(Space):
         self._pundex = power_index['pundex']
         self._k_array = power_index['k_array']
 
-    def pre_cast(self, x, axes=None):
+    def pre_cast(self, x, axes):
         """Casts power spectra to discretized power spectra.
         
         This function takes an array or a function. If it is an array it does nothing,

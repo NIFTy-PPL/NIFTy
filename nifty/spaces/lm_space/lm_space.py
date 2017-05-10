@@ -43,16 +43,20 @@ class LMSpace(Space):
             Maximum :math:`\ell`-value up to which the spherical harmonics
             coefficients are to be used.
 
-
-        Notes:
-        ------
-        This implementation implicitly sets the mmax parameter to lmax.
-
         See Also
         --------
         hp_space : A class for the HEALPix discretization of the sphere [#]_.
         gl_space : A class for the Gauss-Legendre discretization of the
             sphere [#]_.
+
+        Raises
+        ------
+        ValueError
+            If given lmax is negative.
+
+        Notes
+        -----
+            This implementation implicitly sets the mmax parameter to lmax.
 
         References
         ----------
@@ -65,21 +69,6 @@ class LMSpace(Space):
     """
 
     def __init__(self, lmax):
-        """
-            Sets the attributes for a lm_space class instance.
-
-            Parameters
-            ----------
-            lmax : int
-                Maximum :math:`\ell`-value up to which the spherical harmonics
-                coefficients are to be used.
-
-            Returns
-            -------
-            None.
-
-        """
-
         super(LMSpace, self).__init__()
         self._lmax = self._parse_lmax(lmax)
 
@@ -144,16 +133,32 @@ class LMSpace(Space):
         return res
 
     def get_fft_smoothing_kernel_function(self, sigma):
+        # FIXME why x(x+1) ? add reference to paper!
         return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
 
     # ---Added properties and methods---
 
     @property
     def lmax(self):
+        """ Returns the maximal :math:`l` value of any spherical harmonics
+        :math:`Y_{lm}` that is represented in this Space.
+        """
         return self._lmax
 
     @property
     def mmax(self):
+        """ Returns the maximal :math:`m` value of any spherical harmonic
+        :math:`Y_{lm}` that is represented in this Space. As :math:`m` goes
+        from :math:`-l` to :math:`l` for every :math:`l` this just returns the
+        same as lmax.
+
+        See Also
+        --------
+        lmax : Returns the maximal :math:`l`-value of the spherical harmonics
+            being used.
+
+        """
+
         return self._lmax
 
     def _parse_lmax(self, lmax):
