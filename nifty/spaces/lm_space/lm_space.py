@@ -124,65 +124,15 @@ class LMSpace(Space):
         return np.float64(self.dim)
 
     def copy(self):
-        """Returns a copied version of this LMSpace.
-			
-        Returns
-        -------
-		LMSpace : A copy of this object.
-        """
         return self.__class__(lmax=self.lmax)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        """ Weights a field living on this space with a specified amount of volume-weights.
-
-		Weights hereby refer to integration weights, as they appear in discretized integrals.
-		Per default, this function mutliplies each bin of the field x by its volume, which lets
-		it behave like a density (top form). All volume-weights are 1, thus nothing happens.
-        Parameters
-        ----------
-        x : Field
-            A field with this space as domain to be weighted.
-        power : int, *optional*
-            The power to which the volume-weight is raised. It does nothing.
-            (default: 1). 
-        axes : {int, tuple}, *optional*
-            This should not be used. It does nothing.
-        inplace : bool, *optional*
-            If this is True, the weighting is done on the values of x,
-			if it is False, x is not modified and this method returns a 
-			weighted copy of x
-            (default: False).
-
-        Returns
-        -------
-		Field
-			x or a copy of x.
-            
-        """ 
         if inplace:
             return x
         else:
             return x.copy()
 
     def get_distance_array(self, distribution_strategy):
-     """Returns the distance of the bins to zero.
-        
-        Calculates an 2-dimensional array with its entries being the
-        lengths of the k-vectors from the zero point of the grid.
-
-        Parameters
-        ----------
-        distribution_strategy : 
-        
-        Returns
-        -------
-        nkdict : distributed_data_object
-        
-        Raises
-        ------
-        ValueError
-            The distribution_strategy is neither slicing nor not.
-        """
         dists = arange(start=0, stop=self.shape[0],
                        distribution_strategy=distribution_strategy)
 
@@ -208,10 +158,24 @@ class LMSpace(Space):
 
     @property
     def lmax(self):
+        """Returns the maximal :math:`l`-value of the spherical harmonics being used.
+        Returns
+        -------
+        int : maximal :math:`l` value of any spherical harmonic :math:`Y_{lm}` that is represented in this Space.
+        """
         return self._lmax
 
     @property
     def mmax(self):
+        """Returns the maximal :math:`m`-value of the spherical harmonics being used.
+        See Also
+        --------
+        lmax : Returns the maximal :math:`l`-value of the spherical harmonics being used.
+        Returns
+        -------
+        int : maximal :math:`m` value of any spherical harmonic :math:`Y_{lm}` that is represented in this Space.
+        As :math:`m` goes from :math:`-l` to :math:`l` for every :math:`l` this just returns the same as lmax.
+        """
         return self._lmax
 
     def _parse_lmax(self, lmax):

@@ -102,42 +102,9 @@ class HPSpace(Space):
         return 4 * np.pi
 
     def copy(self):
-        """Returns a copied version of this HPSpace.
-			
-        Returns
-        -------
-		HPSpace : A copy of this object.
-        """
         return self.__class__(nside=self.nside)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        """ Weights a field living on this space with a specified amount of volume-weights.
-
-		Weights hereby refer to integration weights, as they appear in discretized integrals.
-		Per default, this function mutliplies each bin of the field x by its volume, which lets
-		it behave like a density (top form). However, different powers of the volume can be applied
-		with the power parameter.
-        Parameters
-        ----------
-        x : Field
-            A field with this space as domain to be weighted.
-        power : int, *optional*
-            The power to which the volume-weight is raised.
-            (default: 1).
-        axes : {int, tuple}, *optional*
-            This should not be used. It does nothing.
-        inplace : bool, *optional*
-            If this is True, the weighting is done on the values of x,
-			if it is False, x is not modified and this method returns a 
-			weighted copy of x
-            (default: False).
-
-        Returns
-        -------
-		Field
-			A weighted version of x, with volume-weights raised to power.
-            
-        """    
 
         weight = ((4 * np.pi) / (12 * self.nside**2))**power
 
@@ -150,29 +117,20 @@ class HPSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        """This should not be used, it just raises an error when called.
-        
-        Raises
-        ------
-        NotImplementedError
-            Always when called.
-        """
         raise NotImplementedError
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        """This should not be used, it just raises an error when called.
-        
-        Raises
-        ------
-        NotImplementedError
-            Always when called.
-        """
         raise NotImplementedError
 
     # ---Added properties and methods---
 
     @property
     def nside(self):
+        """Returns the nside of the corresponding HEALPix pixelization.
+        Returns
+        -------
+        int : the nside of the corresponding HEALPix pixelization. The total number of pixels is 12*nside**2
+        """
         return self._nside
 
     def _parse_nside(self, nside):

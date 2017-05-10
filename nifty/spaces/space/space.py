@@ -160,6 +160,16 @@ class Space(DomainObject):
 
     @abc.abstractproperty
     def harmonic(self):
+        """Returns True if this Space can be regarded as a harmonic space.
+        
+        Returns
+        -------
+        bool : True if can be regarded as a harmonic space to another space. False otherwise
+        Raises
+        ------
+        NotImplementedError : If it is called for an abstract class, all non-abstract child-classes should
+        implement this.        
+        """
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -247,7 +257,7 @@ class Space(DomainObject):
             Specifies the axes of x which represent this domain.
             (default: None).
             If axes==None:
-                weighting is applied with respect to all axes
+                Assumes the axes to be the fields first axes
         preserve_gaussian_variance : bool *optional*
             FIXME: figure out what this does
         Returns

@@ -131,11 +131,43 @@ class DomainObject(Versionable, Loggable, object):
             "There is no generic weight-method for DomainObject.")
 
     def pre_cast(self, x, axes=None):
-        # FIXME This does nothing and non of the children override this. Why does this exist?!
+        """Casting operations that are done before fields are initialized.
+        Parameters
+        ----------
+        x : {array-like, castable}
+            an array-like object or anything that can be cast to arrays. Examples are Floating Point Numbers 
+            (which will get cast to a constant array) and functions (which will get evaluated on the field positions)
+        axes : {int, tuple}, *optional*
+            Specifies the axes of x which represent this domain.
+            (default: None).
+            If axes==None:
+                Assumes the axes to be the fields first axes
+        Returns
+        -------
+        {array-like, castable} : Processed input where casting that needs Space-specific knowledge (for example where points are) was performed.
+        Currently always returns x unless for a power spectrum is given to a PowerSpace, where this spectrum is evaluated at the power indices.
+        """
         return x
 
     def post_cast(self, x, axes=None):
-        # FIXME This does nothing and non of the children override this. Why does this exist?!
+        """Casting operations that are done after fields are initialized.
+        Parameters
+        ----------
+        x : {array-like, castable}
+            an array-like object or anything that can be cast to arrays.
+        axes : {int, tuple}, *optional*
+            Specifies the axes of x which represent this domain.
+            (default: None).
+            If axes==None:
+                Assumes the axes to be the fields first axes
+        See Also
+        --------
+        pre_cast : Casting operations that are done before fields are initialized.
+        Returns
+        -------
+        array-like : Processed input where casting that needs Space-specific knowledge (for example where points are) was performed.
+        Currently always returns x unchanged.
+        """
         return x
 
     # ---Serialization---
