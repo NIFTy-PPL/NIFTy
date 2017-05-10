@@ -66,7 +66,7 @@ class LMSpace(Space):
 
     def __init__(self, lmax):
         """
-            Sets the attributes for an lm_space class instance.
+            Sets the attributes for a lm_space class instance.
 
             Parameters
             ----------

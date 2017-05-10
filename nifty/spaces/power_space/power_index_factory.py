@@ -24,15 +24,15 @@ class _PowerIndexFactory(object):
         self.power_indices_storage = {}
 
     def get_power_index(self, domain, distribution_strategy,
-                        log=False, nbin=None, binbounds=None):
+                        logarithmic=False, nbin=None, binbounds=None):
         key = (domain, distribution_strategy)
 
         if key not in self.power_indices_storage:
             self.power_indices_storage[key] = \
                 PowerIndices(domain, distribution_strategy,
-                             log=log, nbin=nbin, binbounds=binbounds)
+                             logarithmic=logarithmic, nbin=nbin, binbounds=binbounds)
         power_indices = self.power_indices_storage[key]
-        power_index = power_indices.get_index_dict(log=log,
+        power_index = power_indices.get_index_dict(logarithmic=logarithmic,
                                                    nbin=nbin,
                                                    binbounds=binbounds)
         return power_index
