@@ -40,7 +40,7 @@ class QuasiNewtonMinimizer(Loggable, object):
     callback : function, *optional*
         Function f(energy, iteration_number) specified by the user to print 
         iteration number and energy value at every iteration step. It accepts 
-        a function(energy) and integer(iteration_number). (default: None)
+        an Energy object(energy) and integer(iteration_number). (default: None)
     convergence_tolerance : scalar
         Tolerance specifying convergence. (default: 1E-4)
     convergence_level : integer
@@ -63,7 +63,7 @@ class QuasiNewtonMinimizer(Loggable, object):
     callback : function
         Function f(energy, iteration_number) specified by the user to print 
         iteration number and energy value at every iteration step. It accepts 
-        a function(energy) and integer(iteration_number).
+        an Energy object(energy) and integer(iteration_number).
     
     Raises
     ------
@@ -102,7 +102,7 @@ class QuasiNewtonMinimizer(Loggable, object):
 
         Returns
         -------
-        x : Field
+        energy : Energy object
             Latest `energy` of the minimization.
         convergence : integer
             Latest convergence level indicating whether the minimization
