@@ -28,8 +28,8 @@ from nifty import PowerSpace, RGSpace, Space
 from types import NoneType
 from test.common import expand
 
-# [harmonic_domain, distribution_strategy,
-#  log, nbin, binbounds, expected]
+# [harmonic_partner, distribution_strategy,
+#  logarithmic, nbin, binbounds, expected]
 CONSTRUCTOR_CONFIGS = [
     [1, 'not', False, None, None, {'error': ValueError}],
     [RGSpace((8,)), 'not', False, None, None, {'error': ValueError}],
@@ -38,8 +38,8 @@ CONSTRUCTOR_CONFIGS = [
         'shape': (5,),
         'dim': 5,
         'total_volume': 8.0,
-        'harmonic_domain': RGSpace((8,), harmonic=True),
-        'log': False,
+        'harmonic_partner': RGSpace((8,), harmonic=True),
+        'logarithmic': False,
         'nbin': None,
         'binbounds': None,
         'pindex': distributed_data_object([0, 1, 2, 3, 4, 3, 2, 1]),
@@ -53,8 +53,8 @@ CONSTRUCTOR_CONFIGS = [
         'shape': (2,),
         'dim': 2,
         'total_volume': 8.0,
-        'harmonic_domain': RGSpace((8,), harmonic=True),
-        'log': True,
+        'harmonic_partner': RGSpace((8,), harmonic=True),
+        'logarithmic': True,
         'nbin': None,
         'binbounds': None,
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
@@ -94,8 +94,8 @@ def get_weight_configs():
 
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
-        ['harmonic_domain', Space],
-        ['log', bool],
+        ['harmonic_partner', Space],
+        ['logarithmic', bool],
         ['nbin', (int, NoneType)],
         ['binbounds', (list, NoneType)],
         ['pindex', distributed_data_object],
@@ -112,17 +112,19 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, harmonic_domain, distribution_strategy, log,
-                         nbin, binbounds, expected):
+    def test_constructor(self, harmonic_partner, distribution_strategy,
+                         logarithmic, nbin, binbounds, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
-                PowerSpace(harmonic_domain=harmonic_domain,
+                PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           log=log, nbin=nbin, binbounds=binbounds)
+                           logarithmic=logarithmic, nbin=nbin,
+                           binbounds=binbounds)
         else:
-            p = PowerSpace(harmonic_domain=harmonic_domain,
+            p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           log=log, nbin=nbin, binbounds=binbounds)
+                           logarithmic=logarithmic, nbin=nbin,
+                           binbounds=binbounds)
             for key, value in expected.iteritems():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)
@@ -130,14 +132,14 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
                     assert_equal(getattr(p, key), value)
 
     @expand(get_distance_array_configs())
-    def test_distance_array(self, harmonic_domain, expected):
-        p = PowerSpace(harmonic_domain=harmonic_domain)
+    def test_distance_array(self, harmonic_partner, expected):
+        p = PowerSpace(harmonic_partner=harmonic_partner)
         assert_almost_equal(p.get_distance_array('not'), expected)
 
     @expand(get_weight_configs())
-    def test_weight(self, harmonic_domain, x, power, axes,
+    def test_weight(self, harmonic_partner, x, power, axes,
                     inplace, expected):
-        p = PowerSpace(harmonic_domain=harmonic_domain)
+        p = PowerSpace(harmonic_partner=harmonic_partner)
         res = p.weight(x, power, axes, inplace)
         assert_almost_equal(res, expected)
         if inplace:
