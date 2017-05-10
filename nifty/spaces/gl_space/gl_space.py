@@ -46,6 +46,13 @@ class GLSpace(Space):
         nlon : int, *optional*
             Number of longitudinal bins (default: ``2*nlat - 1``).
 
+        Raises
+        ------
+        ValueError
+            If input `nlat` or `nlon` is invalid.
+        ImportError
+            If the pyHealpix module is not available
+
         See Also
         --------
         hp_space : A class for the HEALPix discretization of the sphere [#]_.
@@ -65,26 +72,6 @@ class GLSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, nlat, nlon=None):
-        """
-            Sets the attributes for a gl_space class instance.
-
-            Parameters
-            ----------
-            nlat : int
-                Number of latitudinal bins, or rings.
-            nlon : int, *optional*
-                Number of longitudinal bins (default: ``2*nlat - 1``).
-
-            Returns
-            -------
-            None
-
-            Raises
-            ------
-            ValueError
-                If input `nlat` or `nlon` is invalid.
-
-        """
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
@@ -139,43 +126,26 @@ class GLSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        """This should not be used, it just raises an error when called.
-        
-        Raises
-        ------
-        NotImplementedError
-            Always when called.
-        """
         raise NotImplementedError
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        """This should not be used, it just raises an error when called.
-        
-        Raises
-        ------
-        NotImplementedError
-            Always when called.
-        """
         raise NotImplementedError
 
     # ---Added properties and methods---
 
     @property
     def nlat(self):
-        """Number of latitudinal bins.
-        Returns
-        -------
-        int : Number of latitudinal bins (or rings) that are used in the pixelization
+        """ Number of latitudinal bins (or rings) that are used for this
+        pixelization.
         """
+
         return self._nlat
 
     @property
     def nlon(self):
-        """Number of longditudinal bins.
-        Returns
-        -------
-        int : Number of longditudinal bins that are used in the pixelization
+        """ Number of longditudinal bins that are used for this pixelization.
         """
+
         return self._nlon
 
     def _parse_nlat(self, nlat):

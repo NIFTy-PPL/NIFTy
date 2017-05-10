@@ -40,15 +40,20 @@ class DomainObject(Versionable, Loggable, object):
         return result_hash
 
     def __eq__(self, x):
-        """Checks if this domain_object represents the same thing as another domain_object.
+        """ Checks if two domain_objects are equal.
+
         Parameters
         ----------
         x: domain_object
-            The domain_object it is compared to.
+            The domain_object `self` is compared to.
+
         Returns
         -------
-        bool : True if they this and x represent the same thing.
+        bool
+            True if `self` and x describe the same manifold.
+
         """
+
         if isinstance(x, type(self)):
             for key in vars(self).keys():
                 item1 = vars(self)[key]
@@ -66,108 +71,137 @@ class DomainObject(Versionable, Loggable, object):
 
     @abc.abstractproperty
     def shape(self):
-        """Returns the shape of the underlying array-like object.
+        """ Returns the shape of the underlying array-like object.
+
         Returns
         -------
-        (int, tuple) : A tuple representing the shape of the underlying array-like object
+        tuple of ints
+            The shape of the underlying array-like object.
+
         Raises
         ------
-        NotImplementedError : If it is called for an abstract class, all non-abstract child-classes should
-        implement this.
+        NotImplementedError
+            If called for this abstract class.
+
         """
+
         raise NotImplementedError(
             "There is no generic shape for DomainObject.")
 
     @abc.abstractproperty
     def dim(self):
-        """Returns the number of pixel-dimensions the object has.
+        """ Returns the number of pixel-dimensions the object has.
+
         Returns
         -------
-        int : An Integer representing the number of pixels the discretized space has.
+        int
+            An Integer representing the number of pixels the discretized
+            manifold has.
+
         Raises
         ------
-        NotImplementedError : If it is called for an abstract class, all non-abstract child-classes should
-        implement this.
+        NotImplementedError
+            If called for this abstract class.
+
         """
+
         raise NotImplementedError(
             "There is no generic dim for DomainObject.")
 
     @abc.abstractmethod
     def weight(self, x, power=1, axes=None, inplace=False):
-        """ Weights a field living on this domain with a specified amount of volume-weights.
+        """ Weights the field on this domain with the space's volume-weights.
 
-        Weights hereby refer to integration weights, as they appear in discretized integrals.
-        Per default, this function mutliplies each bin of the field x by its volume, which lets
-        it behave like a density (top form). However, different powers of the volume can be applied
-        with the power parameter. The axes parameter specifies which of the field indices represent this
-        domain.
+        Weights hereby refer to integration weights, as they appear in
+        discretized integrals. Per default, this function mutliplies each bin
+        of the field x by its volume, which lets it behave like a density
+        (top form). However, different powers of the volume can be applied
+        with the power parameter. The axes parameter specifies which of the
+        field array's indices correspond to this domain.
+
         Parameters
         ----------
-        x : Field
-            A field with this space as domain to be weighted.
+        x : distributed_data_object
+            The fields data array.
         power : int, *optional*
-            The power to which the volume-weight is raised.
-            (default: 1).
+            The power to which the volume-weight is raised (default: 1).
         axes : {int, tuple}, *optional*
-            Specifies the axes of x which represent this domain.
+            Specifies the axes of x which represent this domain
             (default: None).
             If axes==None:
                 weighting is applied with respect to all axes
         inplace : bool, *optional*
             If this is True, the weighting is done on the values of x,
-            if it is False, x is not modified and this method returns a 
-            weighted copy of x
-            (default: False).
+            if it is False, x is not modified and this method returns a
+            weighted copy of x (default: False).
+
         Returns
         -------
-        Field
-            A weighted version of x, with volume-weights raised to power.
+        distributed_data_object
+            A weighted version of x, with volume-weights raised to the
+            given power.
+
         Raises
         ------
-        NotImplementedError : If it is called for an abstract class, all non-abstract child-classes should
-        implement this.
+        NotImplementedError
+            If called for this abstract class.
+
         """
         raise NotImplementedError(
             "There is no generic weight-method for DomainObject.")
 
-    def pre_cast(self, x, axes=None):
-        """Casting operations that are done before fields are initialized.
-        Parameters
-        ----------
-        x : {array-like, castable}
-            an array-like object or anything that can be cast to arrays. Examples are Floating Point Numbers 
-            (which will get cast to a constant array) and functions (which will get evaluated on the field positions)
-        axes : {int, tuple}, *optional*
-            Specifies the axes of x which represent this domain.
-            (default: None).
-            If axes==None:
-                Assumes the axes to be the fields first axes
-        Returns
-        -------
-        {array-like, castable} : Processed input where casting that needs Space-specific knowledge (for example where points are) was performed.
-        Currently always returns x unless for a power spectrum is given to a PowerSpace, where this spectrum is evaluated at the power indices.
-        """
-        return x
+    def pre_cast(self, x, axes):
+        """ Casts input for Field.val before Field performs the cast.
 
-    def post_cast(self, x, axes=None):
-        """Casting operations that are done after fields are initialized.
         Parameters
         ----------
         x : {array-like, castable}
             an array-like object or anything that can be cast to arrays.
-        axes : {int, tuple}, *optional*
-            Specifies the axes of x which represent this domain.
-            (default: None).
-            If axes==None:
-                Assumes the axes to be the fields first axes
-        See Also
-        --------
-        pre_cast : Casting operations that are done before fields are initialized.
+        axes : tuple of ints
+            Specifies the axes of x which correspond to this domain.
+
         Returns
         -------
-        array-like : Processed input where casting that needs Space-specific knowledge (for example where points are) was performed.
-        Currently always returns x unchanged.
+        {array-like, castable}
+            Processed input where casting that needs Space-specific knowledge
+            (for example location of pixels on the manifold) was performed.
+
+
+        See Also
+        --------
+        post_cast
+
+        Notes
+        -----
+            Usually returns x, except if a power spectrum is given to a
+            PowerSpace, where this spectrum is evaluated at the power indices.
+
         """
+
+        return x
+
+    def post_cast(self, x, axes):
+        """ Performs casting operations that are done after Field's cast.
+
+        Parameters
+        ----------
+        x : {array-like, castable}
+            an array-like object or anything that can be cast to arrays.
+        axes : tuple of ints
+            Specifies the axes of x which correspond to this domain.
+
+        See Also
+        --------
+        pre_cast
+
+        Returns
+        -------
+        distributed_data_object
+            Processed input where casting that needs Space-specific knowledge
+            (for example location of pixels on the manifold) was performed.
+
+        """
+
         return x
 
     # ---Serialization---

@@ -64,7 +64,7 @@ class PowerSpace(Space):
         self._pundex = power_index['pundex']
         self._k_array = power_index['k_array']
 
-    def pre_cast(self, x, axes=None):
+    def pre_cast(self, x, axes):
         if callable(x):
             return x(self.kindex)
         else:
