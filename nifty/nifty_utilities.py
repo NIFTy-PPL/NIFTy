@@ -19,6 +19,7 @@
 import numpy as np
 from itertools import product
 
+
 def get_slice_list(shape, axes):
     """
     Helper function which generates slice list(s) to traverse over all
@@ -65,8 +66,7 @@ def get_slice_list(shape, axes):
         return
 
 
-
-def cast_axis_to_tuple(axis, length):
+def cast_axis_to_tuple(axis, length=None):
     if axis is None:
         return None
     try:
@@ -78,16 +78,17 @@ def cast_axis_to_tuple(axis, length):
             raise TypeError(
                 "Could not convert axis-input to tuple of ints")
 
-    # shift negative indices to positive ones
-    axis = tuple(item if (item >= 0) else (item + length) for item in axis)
+    if length is not None:
+        # shift negative indices to positive ones
+        axis = tuple(item if (item >= 0) else (item + length) for item in axis)
 
-    # Deactivated this, in order to allow for the ComposedOperator
-    # remove duplicate entries
-    # axis = tuple(set(axis))
+        # Deactivated this, in order to allow for the ComposedOperator
+        # remove duplicate entries
+        # axis = tuple(set(axis))
 
-    # assert that all entries are elements in [0, length]
-    for elem in axis:
-        assert (0 <= elem < length)
+        # assert that all entries are elements in [0, length]
+        for elem in axis:
+            assert (0 <= elem < length)
 
     return axis
 

@@ -48,16 +48,36 @@ class RGSpace(Space):
 
         NIFTY subclass for spaces of regular Cartesian grids.
 
+        Parameters
+        ----------
+        shape : {int, numpy.ndarray}
+            Number of grid points or numbers of gridpoints along each axis.
+        zerocenter : {bool, numpy.ndarray}, *optional*
+            Whether x==0 (or k==0, respectively) is located in the center of
+            the grid (or the center of each axis speparately) or not.
+            (default: False).
+        distances : {float, numpy.ndarray}, *optional*
+            Distance between two grid points along each axis
+            (default: None).
+            If distances==None:
+                if harmonic==True, all distances will be set to 1
+                if harmonic==False, the distance along each axis will be
+                      set to the inverse of the number of points along that
+                      axis.
+        harmonic : bool, *optional*
+            Whether the space represents a grid in position or harmonic space.
+            (default: False).
+
         Attributes
         ----------
         harmonic : bool
-            Whether or not the grid represents a Fourier basis.
-        zerocenter : {bool, numpy.ndarray}
-            Whether the Fourier zero-mode is located in the center of the grid
-            (or the center of each axis speparately) or not.
-            MR FIXME: this also does something if the space is not harmonic!
-        distances : {float, numpy.ndarray}
-            Distance between two grid points along each axis (default: None).
+            Whether or not the grid represents a position or harmonic space.
+        zerocenter : tuple of bool
+            Whether x==0 (or k==0, respectively) is located in the center of
+            the grid (or the center of each axis speparately) or not.
+        distances : tuple of floats
+            Distance between two grid points along the correpsonding axis.
+
     """
 
     # ---Overwritten properties and methods---
@@ -67,25 +87,7 @@ class RGSpace(Space):
         """
             Sets the attributes for an RGSpace class instance.
 
-            Parameters
-            ----------
-            shape : {int, numpy.ndarray}
-                Number of grid points or numbers of gridpoints along each axis.
-            zerocenter : {bool, numpy.ndarray}, *optional*
-                Whether the Fourier zero-mode is located in the center of the
-                grid (or the center of each axis speparately) or not
-                MR FIXME: this also does something if the space is not harmonic!
-                (default: False).
-            distances : {float, numpy.ndarray}, *optional*
-                Distance between two grid points along each axis
-                (default: None).
-                If distances==None:
-                    if harmonic==True, all distances will be set to 1
-                    if harmonic==False, the distance along each axis will be
-                      set to the inverse of the number of points along that axis
-            harmonic : bool, *optional*
-                Whether the space represents a Fourier or a position grid
-                (default: False).
+
 
             Returns
             -------
@@ -205,20 +207,21 @@ class RGSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        """
-            Calculates an n-dimensional array with its entries being the
-            lengths of the k-vectors from the zero point of the grid.
-            MR FIXME: Since this is about k-vectors, it might make sense to
-            throw NotImplementedError if harmonic==False.
+        """ Calculates an n-dimensional array with its entries being the
+        lengths of the vectors from the zero point of the grid.
 
-            Parameters
-            ----------
-            None : All information is taken from the parent object.
+        Parameters
+        ----------
+        distribution_strategy : str
+            The distribution_strategy which shall be used the returned
+            distributed_data_object.
 
-            Returns
-            -------
-            nkdict : distributed_data_object
+        Returns
+        -------
+        distributed_data_object
+            A d2o containing the distances
         """
+
         shape = self.shape
         # prepare the distributed_data_object
         nkdict = distributed_data_object(
@@ -264,19 +267,36 @@ class RGSpace(Space):
         return dists
 
     def get_fft_smoothing_kernel_function(self, sigma):
+
         if sigma is None:
             sigma = np.sqrt(2) * np.max(self.distances)
 
-        return lambda x: np.exp(-2. * np.pi**2 * x**2 * sigma**2)
+        return lambda x: np.exp(-0.5 * np.pi**2 * x**2 * sigma**2)
 
     # ---Added properties and methods---
 
     @property
     def distances(self):
+        """Distance between two grid points along each axis. It is a tuple
+        of positive floating point numbers with the n-th entry giving the
+        distances of grid points along the n-th dimension.
+        """
+
         return self._distances
 
     @property
     def zerocenter(self):
+        """Returns True if grid points lie symmetrically around zero
+
+        Returns
+        -------
+        bool
+            True if the grid points are centered around the 0 grid point. This
+            option is most common for harmonic spaces (where both conventions
+            are used) but may be used for position spaces, too.
+
+        """
+
         return self._zerocenter
 
     def _parse_shape(self, shape):

@@ -27,8 +27,8 @@ import nifty.nifty_utilities as utilities
 class LinearOperator(Loggable, object):
     __metaclass__ = NiftyMeta
 
-    def __init__(self):
-        pass
+    def __init__(self, default_spaces=None):
+        self.default_spaces = default_spaces
 
     def _parse_domain(self, domain):
         return utilities.parse_domain(domain)
@@ -45,6 +45,14 @@ class LinearOperator(Loggable, object):
     def unitary(self):
         raise NotImplementedError
 
+    @property
+    def default_spaces(self):
+        return self._default_spaces
+
+    @default_spaces.setter
+    def default_spaces(self, spaces):
+        self._default_spaces = utilities.cast_axis_to_tuple(spaces)
+
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)
 
@@ -57,35 +65,46 @@ class LinearOperator(Loggable, object):
     def inverse_times(self, x, spaces=None, **kwargs):
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
-        y = self._inverse_times(x, spaces, **kwargs)
+        try:
+            y = self._inverse_times(x, spaces, **kwargs)
+        except(NotImplementedError):
+            if (self.unitary):
+                y = self._adjoint_times(x, spaces, **kwargs)
+            else:
+                raise
         return y
 
     def adjoint_times(self, x, spaces=None, **kwargs):
-        if self.unitary:
-            return self.inverse_times(x, spaces)
-
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
-        y = self._adjoint_times(x, spaces, **kwargs)
+        try:
+            y = self._adjoint_times(x, spaces, **kwargs)
+        except(NotImplementedError):
+            if (self.unitary):
+                y = self._inverse_times(x, spaces, **kwargs)
+            else:
+                raise
         return y
 
+    # If the operator supports inverse() then the inverse adjoint is identical
+    # to the adjoint inverse. We provide both names for convenience.
     def adjoint_inverse_times(self, x, spaces=None, **kwargs):
-        if self.unitary:
-            return self.times(x, spaces)
-
         spaces = self._check_input_compatibility(x, spaces)
 
-        y = self._adjoint_inverse_times(x, spaces, **kwargs)
+        try:
+            y = self._adjoint_inverse_times(x, spaces, **kwargs)
+        except(NotImplementedError):
+            try:
+                y = self._inverse_adjoint_times(x, spaces, **kwargs)
+            except(NotImplementedError):
+                if self.unitary:
+                    y = self._times(x, spaces, **kwargs)
+                else:
+                    raise
         return y
 
     def inverse_adjoint_times(self, x, spaces=None, **kwargs):
-        if self.unitary:
-            return self.times(x, spaces, **kwargs)
-
-        spaces = self._check_input_compatibility(x, spaces)
-
-        y = self._inverse_adjoint_times(x, spaces)
-        return y
+        return adjoint_inverse_times(x, spaces, **kwargs)
 
     def _times(self, x, spaces):
         raise NotImplementedError(
@@ -111,6 +130,9 @@ class LinearOperator(Loggable, object):
         if not isinstance(x, Field):
             raise ValueError(
                 "supplied object is not a `nifty.Field`.")
+
+        if spaces is None:
+            spaces = self.default_spaces
 
         # sanitize the `spaces` and `types` input
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))

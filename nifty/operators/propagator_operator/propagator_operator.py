@@ -26,7 +26,7 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, S=None, M=None, R=None, N=None, inverter=None,
-                 preconditioner=None):
+                 preconditioner=None, default_spaces=None):
         """
             Sets the standard operator properties and `codomain`, `_A1`, `_A2`,
             and `RN` if required.
@@ -66,7 +66,8 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
             preconditioner = self._S_times
 
         super(PropagatorOperator, self).__init__(inverter=inverter,
-                                                 preconditioner=preconditioner)
+                                                 preconditioner=preconditioner,
+                                                 default_spaces=default_spaces)
 
     # ---Mandatory properties and methods---
 
