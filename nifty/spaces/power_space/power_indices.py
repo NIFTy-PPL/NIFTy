@@ -26,21 +26,20 @@ from d2o.config import configuration as d2o_config
 
 class PowerIndices(object):
     """Computes helpful quantities to deal with power spectra.
-    
-    Given the shape and the density of a underlying rectangular grid this 
+
+    Given the shape and the density of a underlying rectangular grid this
     class provides the user
     with the pindex, kindex, rho and pundex. The indices are binned
     according to the supplied parameter scheme. If wanted, computed
     results are stored for future reuse.
 
-    Attributes
+    Parameters
     ----------
-    shape : tuple, list, ndarray
-        Array-like object which specifies the shape of the underlying
-        rectangular grid
-    dgrid : tuple, list, ndarray
-        Array-like object which specifies the step-width of the
-        underlying grid
+    domain : NIFTy harmonic space
+        The space for which the power indices get computed
+    distribution_strategy : str
+        The distribution_strategy that will be used for the k_array and pindex
+        distributed_data_object.
     logarithmic : bool *optional*
         Flag specifying if the binning of the default indices is
         performed on logarithmic scale.

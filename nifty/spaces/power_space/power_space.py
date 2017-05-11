@@ -59,7 +59,7 @@ class PowerSpace(Space):
     kindex : numpy.ndarray
         Sorted array of all k-modes.
     pundex : numpy.ndarray
-        Flat index of the first occurence of a k-vector with length==kindex[n] 
+        Flat index of the first occurence of a k-vector with length==kindex[n]
         in the k_array.
     rho : numpy.ndarray
         The amount of k-modes that get mapped to one power bin is given by
@@ -105,10 +105,7 @@ class PowerSpace(Space):
                         nbin=nbin,
                         binbounds=binbounds)
 
-        config = power_index['config']
-        self._logarithmic = config['logarithmic']
-        self._nbin = config['nbin']
-        self._binbounds = config['binbounds']
+        self._config = power_index['config']
 
         self._pindex = power_index['pindex']
         self._kindex = power_index['kindex']
@@ -207,22 +204,11 @@ class PowerSpace(Space):
         return self._harmonic_partner
 
     @property
-    def logarithmic(self):
-        """ Returns True if logarithmic binning is used.
+    def config(self):
+        """ Returns the configuration which was used for `logarithmic`, `nbin`
+        and `binbounds` during initialization.
         """
-        return self._logarithmic
-
-    @property
-    def nbin(self):
-        """ Returns the number of power bins if specfied during initialization.
-        """
-        return self._nbin
-
-    @property
-    def binbounds(self):
-        """ Inner boundaries of the used bins if specfied during initialization.
-        """
-        return self._binbounds
+        return self._config
 
     @property
     def pindex(self):

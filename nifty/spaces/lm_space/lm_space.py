@@ -37,6 +37,12 @@ class LMSpace(Space):
         NIFTY subclass for spherical harmonics components, for representations
         of fields on the two-sphere.
 
+        Parameters
+        ----------
+        lmax : int
+            The maximal :math:`l` value of any spherical harmonics
+            :math:`Y_{lm}` that is represented in this Space.
+
         Attributes
         ----------
         lmax : int
