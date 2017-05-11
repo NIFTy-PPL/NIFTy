@@ -168,7 +168,7 @@ class PowerSpace(Space):
 
         weight = self.rho.reshape(reshaper)
         if power != 1:
-            weight = weight ** power
+            weight = weight ** np.float(power)
 
         if inplace:
             x *= weight

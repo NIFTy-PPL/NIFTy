@@ -106,7 +106,7 @@ class GLSpace(Space):
     def weight(self, x, power=1, axes=None, inplace=False):
         nlon = self.nlon
         nlat = self.nlat
-        vol = pyHealpix.GL_weights(nlat, nlon) ** power
+        vol = pyHealpix.GL_weights(nlat, nlon) ** np.float(power)
         weight = np.array(list(itertools.chain.from_iterable(
                           itertools.repeat(x, nlon) for x in vol)))
 
