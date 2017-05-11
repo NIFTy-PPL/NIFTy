@@ -43,8 +43,15 @@ class GLSpace(Space):
         ----------
         nlat : int
             Number of latitudinal bins, or rings.
-        nlon : int
-            Number of longitudinal bins.
+        nlon : int, *optional*
+            Number of longitudinal bins (default: ``2*nlat - 1``).
+
+        Raises
+        ------
+        ValueError
+            If input `nlat` or `nlon` is invalid.
+        ImportError
+            If the pyHealpix module is not available
 
         See Also
         --------
@@ -65,28 +72,6 @@ class GLSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, nlat, nlon=None):
-        """
-            Sets the attributes for a gl_space class instance.
-
-            Parameters
-            ----------
-            nlat : int
-                Number of latitudinal bins, or rings.
-            nlon : int, *optional*
-                Number of longitudinal bins (default: ``2*nlat - 1``).
-
-            Returns
-            -------
-            None
-
-            Raises
-            ------
-            ValueError
-                If input `nlat` is invalid.
-            ImportError
-                If the pyHealpix module is not available
-
-        """
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
@@ -121,7 +106,7 @@ class GLSpace(Space):
     def weight(self, x, power=1, axes=None, inplace=False):
         nlon = self.nlon
         nlat = self.nlat
-        vol = pyHealpix.GL_weights(nlat, nlon) ** power
+        vol = pyHealpix.GL_weights(nlat, nlon) ** np.float(power)
         weight = np.array(list(itertools.chain.from_iterable(
                           itertools.repeat(x, nlon) for x in vol)))
 
@@ -150,10 +135,17 @@ class GLSpace(Space):
 
     @property
     def nlat(self):
+        """ Number of latitudinal bins (or rings) that are used for this
+        pixelization.
+        """
+
         return self._nlat
 
     @property
     def nlon(self):
+        """ Number of longditudinal bins that are used for this pixelization.
+        """
+
         return self._nlon
 
     def _parse_nlat(self, nlat):

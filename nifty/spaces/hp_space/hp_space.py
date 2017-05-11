@@ -39,6 +39,11 @@ class HPSpace(Space):
             Resolution parameter for the HEALPix discretization, resulting in
             ``12*nside**2`` pixels. Must be positive.
 
+        Raises
+        ------
+        ValueError
+            If given `nside` < 1.
+
         See Also
         --------
         gl_space : A class for the Gauss-Legendre discretization of the
@@ -59,26 +64,6 @@ class HPSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, nside):
-        """
-            Sets the attributes for a HPSpace class instance.
-
-            Parameters
-            ----------
-            nside : int
-                Resolution parameter for the HEALPix discretization, resulting
-                in ``12*nside**2`` pixels. Must be positive.
-
-            Returns
-            -------
-            None
-
-            Raises
-            ------
-            ValueError
-                If input `nside` is invalid.
-
-        """
-
         super(HPSpace, self).__init__()
 
         self._nside = self._parse_nside(nside)
@@ -105,7 +90,8 @@ class HPSpace(Space):
         return self.__class__(nside=self.nside)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        weight = ((4 * np.pi) / (12 * self.nside**2))**power
+
+        weight = ((4 * np.pi) / (12 * self.nside**2)) ** np.float(power)
 
         if inplace:
             x *= weight
@@ -125,6 +111,9 @@ class HPSpace(Space):
 
     @property
     def nside(self):
+        """ Returns the nside of the corresponding HEALPix pixelization.
+        The total number of pixels is 12*nside**2
+        """
         return self._nside
 
     def _parse_nside(self, nside):
