@@ -77,43 +77,43 @@ class DiagonalOperator_Tests(unittest.TestCase):
         tt = D.adjoint_inverse_times(rand1)
         assert_equal(tt.domain[0], space)
 
-    @expand(product(spaces, [True, False], [True, False]))
-    def test_diagonal(self, space, bare, copy):
+    @expand(product(spaces, [True, False]))
+    def test_diagonal(self, space, copy):
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
-        diag_op = D.diagonal(bare=bare)
+        D = DiagonalOperator(space, diagonal=diag, copy=copy)
+        diag_op = D.diagonal()
         assert_allclose(diag.val.get_full_data(), diag_op.val.get_full_data())
 
-    @expand(product(spaces, [True, False], [True, False]))
-    def test_inverse(self, space, bare, copy):
+    @expand(product(spaces, [True, False]))
+    def test_inverse(self, space, copy):
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
-        diag_op = D.inverse_diagonal(bare=bare)
+        D = DiagonalOperator(space, diagonal=diag, copy=copy)
+        diag_op = D.inverse_diagonal()
         assert_allclose(1./diag.val.get_full_data(), diag_op.val.get_full_data())
 
-    @expand(product(spaces, [True, False], [True, False]))
-    def test_trace(self, space, bare, copy):
+    @expand(product(spaces, [True, False]))
+    def test_trace(self, space, copy):
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
-        trace_op = D.trace(bare=bare)
+        D = DiagonalOperator(space, diagonal=diag, copy=copy)
+        trace_op = D.trace()
         assert_allclose(trace_op, np.sum(diag.val.get_full_data()))
 
-    @expand(product(spaces, [True, False], [True, False]))
-    def test_inverse_trace(self, space, bare, copy):
+    @expand(product(spaces, [True, False]))
+    def test_inverse_trace(self, space, copy):
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
-        trace_op = D.inverse_trace(bare=bare)
+        D = DiagonalOperator(space, diagonal=diag, copy=copy)
+        trace_op = D.inverse_trace()
         assert_allclose(trace_op, np.sum(1./diag.val.get_full_data()))
 
-    @expand(product(spaces, [True, False], [True, False]))
-    def test_trace_log(self, space, bare, copy):
+    @expand(product(spaces, [True, False]))
+    def test_trace_log(self, space, copy):
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
+        D = DiagonalOperator(space, diagonal=diag, copy=copy)
         trace_log = D.trace_log()
         assert_allclose(trace_log, np.log(np.sum(diag.val.get_full_data())))
 
-    @expand(product(spaces, [True, False], [True, False]))
-    def test_determinant(self, space, bare, copy):
+    @expand(product(spaces, [True, False]))
+    def test_determinant(self, space, copy):
         diag = Field.from_random('normal', domain=space)
         D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
         det = D.determinant()
