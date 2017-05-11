@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .quasi_newton_minimizer import QuasiNewtonMinimizer
+from .descent_minimizer import DescentMinimizer
 
 
-class SteepestDescent(QuasiNewtonMinimizer):
+class SteepestDescent(DescentMinimizer):
     def _get_descend_direction(self, energy):
         descend_direction = energy.gradient
         norm = descend_direction.norm()
