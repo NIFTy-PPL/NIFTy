@@ -132,8 +132,15 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                            distribution_strategy=distribution_strategy,
                            logarithmic=logarithmic, nbin=nbin,
                            binbounds=binbounds)
-        assert_equal(p.pindex.flatten()[p.pundex],np.arange(p.dim),err_msg='pundex is not right-inverse of pindex!')
-
+        assert_equal(p.pindex.flatten()[p.pundex],np.arange(p.dim),
+            err_msg='pundex is not right-inverse of pindex!')
+        
+    @expand(CONSISTENCY_CONFIGS)
+    def test_rhopindexConsistency(self, harmonic_partner, distribution_strategy,
+                         binbounds, nbin,logarithmic):
+        assert_equal(p.pindex.flatten().bincount(), p.rho,
+            err_msg='rho is not equal to pindex degeneracy')
+                         
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
     def test_constructor(self, harmonic_partner, distribution_strategy,
