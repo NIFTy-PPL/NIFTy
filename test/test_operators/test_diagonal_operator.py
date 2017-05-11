@@ -6,26 +6,15 @@ from numpy.testing import assert_equal,\
     assert_approx_equal
 
 from nifty import Field,\
-    RGSpace,\
-    LMSpace,\
-    HPSpace,\
-    GLSpace,\
     DiagonalOperator
 
-
+from test.common import generate_spaces
 
 from itertools import product
 from test.common import expand
 
-def _get_spaces():
-    rg_space = RGSpace(20)
-    hp_space = HPSpace(nside=6)
-    lm_space = LMSpace(lmax=10)
-    gl_space = GLSpace(nlat=6, nlon=10)
-    return [rg_space, hp_space, lm_space, gl_space]
-
 class DiagonalOperator_Tests(unittest.TestCase):
-    spaces = _get_spaces()
+    spaces = generate_spaces()
 
     @expand(product(spaces, [True, False], [True, False]))
     def test_property(self, space, bare, copy):
