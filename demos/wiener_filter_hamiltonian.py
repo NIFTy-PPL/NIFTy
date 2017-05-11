@@ -107,7 +107,7 @@ if __name__ == "__main__":
 #                        callback=distance_measure,
 #                        max_history_length=3)
 
-    m0 = Field(s_space, val=1)
+    m0 = Field(s_space, val=1.)
 
     energy = WienerFilterEnergy(position=m0, D=D, j=j)
 

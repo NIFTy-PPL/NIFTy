@@ -46,6 +46,10 @@ class HPLMTransformation(SlicingTransformation):
 
     # ---Mandatory properties and methods---
 
+    @property
+    def unitary(self):
+        return False
+
     @classmethod
     def get_codomain(cls, domain):
         """
@@ -83,7 +87,7 @@ class HPLMTransformation(SlicingTransformation):
         nside = domain.nside
 
         if lmax != 2*nside:
-            cls.Logger.warn("Unrecommended: lmax != 2*nside.")
+            cls.logger.warn("Unrecommended: lmax != 2*nside.")
 
         super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
@@ -98,7 +102,7 @@ class HPLMTransformation(SlicingTransformation):
 
         if issubclass(inp.dtype.type, np.complexfloating):
             [resultReal,
-             resultImag] = [pyHealpix.map2alm_iter(x, lmax, mmax, 3)
+             resultImag] = [pyHealpix.map2alm(x, lmax, mmax)
                             for x in (inp.real, inp.imag)]
 
             [resultReal,
@@ -108,7 +112,7 @@ class HPLMTransformation(SlicingTransformation):
             result = self._combine_complex_result(resultReal, resultImag)
 
         else:
-            result = pyHealpix.map2alm_iter(inp, lmax, mmax, 3)
+            result = pyHealpix.map2alm(inp, lmax, mmax)
             result = lm_transformation_helper.buildIdx(result, lmax=lmax)
 
         return result

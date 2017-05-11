@@ -37,6 +37,10 @@ class Transformation(Loggable, object):
             self.domain = domain
             self.codomain = codomain
 
+    @abc.abstractproperty
+    def unitary(self):
+        raise NotImplementedError
+
     @classmethod
     def get_codomain(cls, domain):
         raise NotImplementedError
