@@ -38,7 +38,15 @@ class GLSpace(Space):
         .. /______/
 
         NIFTY subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
-            
+
+        Parameters
+        ----------
+        nlat : int
+            Number of latitudinal bins (or rings) that are used for this
+            pixelization.
+        nlon : int, *optional*
+            Number of longditudinal bins that are used for this pixelization.
+
         Attributes
         ----------
         dim : np.int
@@ -48,7 +56,7 @@ class GLSpace(Space):
         nlat : int
             Number of latitudinal bins (or rings) that are used for this
             pixelization.
-        nlon : int, *optional*
+        nlon : int
             Number of longditudinal bins that are used for this pixelization.
         total_volume : np.float
             The total volume of the space.
@@ -115,7 +123,7 @@ class GLSpace(Space):
     def weight(self, x, power=1, axes=None, inplace=False):
         nlon = self.nlon
         nlat = self.nlat
-        vol = pyHealpix.GL_weights(nlat, nlon) ** power
+        vol = pyHealpix.GL_weights(nlat, nlon) ** np.float(power)
         weight = np.array(list(itertools.chain.from_iterable(
                           itertools.repeat(x, nlon) for x in vol)))
 
