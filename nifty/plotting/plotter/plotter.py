@@ -5,6 +5,8 @@ import os
 
 import numpy as np
 
+import d2o
+
 from keepers import Loggable
 
 from nifty.config import dependency_injector as gdi
@@ -22,9 +24,8 @@ try:
 except AttributeError:
     pass
 
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.rank
+rank = d2o.config.dependency_injector[
+        d2o.configuration['mpi_module']].COMM_WORLD.rank
 
 
 class Plotter(Loggable, object):
