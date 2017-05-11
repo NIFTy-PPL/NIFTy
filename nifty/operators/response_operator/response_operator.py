@@ -58,7 +58,9 @@ class ResponseOperator(LinearOperator):
     """
 
     def __init__(self, domain,
-                 sigma=[1.], exposure=[1.]):
+                 sigma=[1.], exposure=[1.],
+                 default_spaces=None):
+        super(ResponseOperator, self).__init__(default_spaces)
 
         self._domain = self._parse_domain(domain)
 

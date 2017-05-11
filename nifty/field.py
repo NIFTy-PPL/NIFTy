@@ -304,7 +304,7 @@ class Field(Loggable, Versionable, object):
         return result_obj
 
     def power_synthesize(self, spaces=None, real_power=True,
-                         real_signal=False, mean=None, std=None):
+                         decompose_power=False, mean=None, std=None):
 
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
@@ -363,7 +363,7 @@ class Field(Loggable, Versionable, object):
                                             lambda x: x * local_rescaler.imag,
                                             inplace=True)
 
-        if real_signal:
+        if decompose_power:
             for power_space_index in spaces:
                 harmonic_domain = result_domain[power_space_index]
                 result_val_list = [harmonic_domain.hermitian_decomposition(
