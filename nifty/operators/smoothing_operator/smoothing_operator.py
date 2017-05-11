@@ -132,10 +132,11 @@ class SmoothingOperator(EndomorphicOperator):
         if smooth_length == 0.0:
             return power[startindex:endindex]
 
-        p_smooth = np.empty(endindex-startindex, dtype=power.dtype)
-
+        p_smooth = np.zeros(endindex-startindex, dtype=power.dtype)
         for i in xrange(startindex, endindex):
-            p_smooth[i-startindex]=np.sum(power[ibegin[i]:ibegin[i]+nval[i]]*wgt[i])
+            imin=max(startindex,ibegin[i])
+            imax=min(endindex,ibegin[i]+nval[i])
+            p_smooth[imin:imax]+=power[i]*wgt[i][imin-ibegin[i]:imax-imin+ibegin[i]]
 
         return p_smooth
 
@@ -168,7 +169,6 @@ class SmoothingOperator(EndomorphicOperator):
         Ntot =np.product(outshape)
         holdshape = outshape
         slicedArr = arr[tuple(i.tolist())]
-
         res = SmoothingOperator._apply_kernel_along_array(slicedArr,
                                        startindex,
                                        endindex,
