@@ -72,7 +72,8 @@ class PowerSpace(Space):
         The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
-
+    binbounds : {array-like, None}
+        Inner bounds of the bins, None if they were not specified in the init.
 
     Notes
     -----
@@ -221,6 +222,9 @@ class PowerSpace(Space):
     @property
     def binbounds(self):
         """ Inner boundaries of the used bins if specfied during initialization.
+        Notes
+        -----
+        Returns None if binbounds were not specified.
         """
         return self._binbounds
 

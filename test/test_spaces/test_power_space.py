@@ -28,6 +28,17 @@ from nifty import PowerSpace, RGSpace, Space
 from types import NoneType
 from test.common import expand
 
+
+HARMONIC_SPACES = [RGSpace((8,), harmonic=True), RGSpace((7,8), harmonic=True), RGSpace((5,5), harmonic=True), RGSpace((4,5,7), harmonic=True),
+LMSpace(6),LMSpace(9)]
+
+BINNINGS = product([None], [None, 3,4], [True, False]) + product([0.,1.3],[None],[False])
+
+
+#Try all sensible kinds of combinations of spaces, distributuion strategy and 
+#binning parameters
+CONSISTENCY_CONFIGS = product(HARMONIC_SPACES, ["not", "equal", "fftw", "freeform"], BINNINGS)
+
 # [harmonic_partner, distribution_strategy,
 #  logarithmic, nbin, binbounds, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -110,25 +121,17 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
         assert_(isinstance(getattr(p, attribute), expected_type))
 
 class PowerSpaceConsistencyCheck(unittest.TestCase):
-    @expand(CONSTRUCTOR_CONFIGS)
+    @expand(CONSISTENCY_CONFIGS)
     def test_pipundexInversion(self, harmonic_partner, distribution_strategy,
-                         logarithmic, nbin, binbounds, expected):
-        #expected will not be used TODO: write expandproduct to use for this
-        if 'error' in expected:
-            with assert_raises(expected['error']):
-                PowerSpace(harmonic_partner=harmonic_partner,
+                         binbounds, nbin,logarithmic):
+        p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
                            logarithmic=logarithmic, nbin=nbin,
                            binbounds=binbounds)
-        else:
-            p = PowerSpace(harmonic_partner=harmonic_partner,
-                           distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
-            assert_equal(p.pindex[p.pundex],np.arange(p.dim),err_msg='pundex is not right-inverse of pindex!')
+        assert_equal(p.pindex[p.pundex],np.arange(p.dim),err_msg='pundex is not right-inverse of pindex!')
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
-    @expand(CONSTRUCTOR_CONFIGS)
+    @expand(CONSISTENCY_CONFIGS)
     def test_constructor(self, harmonic_partner, distribution_strategy,
                          logarithmic, nbin, binbounds, expected):
         if 'error' in expected:
