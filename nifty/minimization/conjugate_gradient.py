@@ -23,32 +23,60 @@ from keepers import Loggable
 
 
 class ConjugateGradient(Loggable, object):
+    """Implementation of the Conjugate Gradient scheme.
+    
+    It is an iterative method for solving a linear system of equations:
+                                    Ax = b
+    
+    SUGESTED LITERATURE:
+        Thomas V. Mikosch et al., "Numerical Optimization", Second Edition, 
+        2006, Springer-Verlag New York
+        
+    Parameters
+    ----------
+    convergence_tolerance : scalar
+        Tolerance specifying convergence. (default: 1E-4)
+    convergence_level : integer
+        Number of times the tolerance should be undershot before exiting. 
+        (default: 3)
+    iteration_limit : integer *optional*
+        Maximum number of iterations performed. (default: None)
+    reset_count : integer, *optional*
+        Number of iterations after which to restart; i.e., forget previous
+        conjugated directions. (default: None)
+    preconditioner : function *optional*
+        The user can provide a function which transforms the variables of the 
+        system to make the convarge more favorable.(default: None)
+    callback : function, *optional*
+        Function f(energy, iteration_number) specified by the user to print 
+        iteration number and energy value at every iteration step. It accepts 
+        an Energy object(energy) and integer(iteration_number). (default: None)
+
+    Attributes
+    ----------
+    convergence_tolerance : float
+        Tolerance specifying convergence.
+    convergence_level : float
+        Number of times the tolerance should be undershot before exiting.
+    iteration_limit : integer
+        Maximum number of iterations performed.
+    reset_count : integer
+        Number of iterations after which to restart; i.e., forget previous
+        conjugated directions.
+    preconditioner : function
+        The user can provide a function which transforms the variables of the 
+        system to make the convarge more favorable.
+    callback : function
+        Function f(energy, iteration_number) specified by the user to print 
+        iteration number and energy value at every iteration step. It accepts 
+        an Energy object(energy) and integer(iteration_number).
+    
+    """    
+    
     def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None, reset_count=None,
                  preconditioner=None, callback=None):
-        """
-            Initializes the conjugate_gradient and sets the attributes (except
-            for `x`).
 
-            Parameters
-            ----------
-            A : {operator, function}
-                Operator `A` applicable to a field.
-            b : field
-                Resulting field of the operation `A(x)`.
-            W : {operator, function}, *optional*
-                Operator `W` that is a preconditioner on `A` and is applicable to a
-                field (default: None).
-            spam : function, *optional*
-                Callback function which is given the current `x` and iteration
-                counter each iteration (default: None).
-            reset : integer, *optional*
-                Number of iterations after which to restart; i.e., forget previous
-                conjugated directions (default: sqrt(b.dim)).
-            note : bool, *optional*
-                Indicates whether notes are printed or not (default: False).
-
-        """
         self.convergence_tolerance = np.float(convergence_tolerance)
         self.convergence_level = np.float(convergence_level)
 
@@ -67,31 +95,26 @@ class ConjugateGradient(Loggable, object):
         self.callback = callback
 
     def __call__(self, A, b, x0):
+        """Runs the conjugate gradient minimization.
+
+        Parameters
+        ----------
+        A : Operator
+            Operator `A` applicable to a Field.
+        b : Field
+            Resulting Field of the operation `A(x)`.
+        x0 : Field
+            Starting guess for the minimization.
+
+        Returns
+        -------
+        x : Field
+            Latest `x` of the minimization.
+        convergence : integer
+            Latest convergence level indicating whether the minimization
+            has converged or not.
+
         """
-            Runs the conjugate gradient minimization.
-
-            Parameters
-            ----------
-            x0 : field, *optional*
-                Starting guess for the minimization.
-            tol : scalar, *optional*
-                Tolerance specifying convergence; measured by current relative
-                residual (default: 1E-4).
-            clevel : integer, *optional*
-                Number of times the tolerance should be undershot before
-                exiting (default: 1).
-            limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.dim).
-
-            Returns
-            -------
-            x : field
-                Latest `x` of the minimization.
-            convergence : integer
-                Latest convergence level indicating whether the minimization
-                has converged or not.
-
-            """
         r = b - A(x0)
         d = self.preconditioner(r)
         previous_gamma = r.dot(d)
