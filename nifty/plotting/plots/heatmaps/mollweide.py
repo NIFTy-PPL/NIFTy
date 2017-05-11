@@ -8,7 +8,7 @@ healpy = gdi.get('healpy')
 
 
 class Mollweide(Heatmap):
-    def __init__(self, data, label='', line=None, marker=None, webgl=False,
+    def __init__(self, data, color_map=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
         if 'pylab' not in gdi:
             raise ImportError("The module pylab is needed but not available.")
@@ -16,8 +16,7 @@ class Mollweide(Heatmap):
             raise ImportError("The module healpy is needed but not available.")
 
         data = self._mollview(data)
-        super(Mollweide, self).__init__(data, label, line, marker, webgl,
-                                        smoothing)
+        super(Mollweide, self).__init__(data, color_map, webgl, smoothing)
 
     def _mollview(self, x, xsize=800):
         x = healpy.pixelfunc.ma_to_array(x)

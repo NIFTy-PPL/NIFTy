@@ -27,7 +27,9 @@ class ProjectionOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, projection_field):
+    def __init__(self, projection_field, default_spaces=None):
+        super(ProjectionOperator, self).__init__(default_spaces)
+
         if not isinstance(projection_field, Field):
             raise TypeError("The projection_field must be a NIFTy-Field"
                             "instance.")
@@ -100,10 +102,6 @@ class ProjectionOperator(EndomorphicOperator):
     @property
     def domain(self):
         return self._projection_field.domain
-
-    @property
-    def implemented(self):
-        return True
 
     @property
     def unitary(self):

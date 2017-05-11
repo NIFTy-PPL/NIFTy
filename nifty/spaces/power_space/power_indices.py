@@ -16,16 +16,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
-
 import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
+from d2o.config import dependency_injector as d2o_di
+from d2o.config import configuration as d2o_config
+
 
 class PowerIndices(object):
     def __init__(self, domain, distribution_strategy,
-                 log=False, nbin=None, binbounds=None):
+                 logarithmic=False, nbin=None, binbounds=None):
         """
             Returns an instance of the PowerIndices class. Given the shape and
             the density of a underlying rectangular grid it provides the user
@@ -41,7 +42,7 @@ class PowerIndices(object):
             dgrid : tuple, list, ndarray
                 Array-like object which specifies the step-width of the
                 underlying grid
-            log : bool *optional*
+            logarithmic : bool *optional*
                 Flag specifying if the binning of the default indices is
                 performed on logarithmic scale.
             nbin : integer *optional*
@@ -58,7 +59,7 @@ class PowerIndices(object):
         # Initialize the dictionary which stores all individual index-dicts
         self.global_dict = {}
         # Set self.default_parameters
-        self.set_default(config_dict={'log': log,
+        self.set_default(config_dict={'logarithmic': logarithmic,
                                       'nbin': nbin,
                                       'binbounds': binbounds})
 
@@ -87,7 +88,7 @@ class PowerIndices(object):
 
             Parameters
             ----------
-            log : bool
+            logarithmic : bool
                 Flag specifying if the binning is performed on logarithmic
                 scale.
             nbin : integer
@@ -112,24 +113,25 @@ class PowerIndices(object):
             return self._cast_config_helper(**temp_config_dict)
         else:
             defaults = self.default_parameters
-            temp_log = kwargs.get("log", defaults['log'])
+            temp_logarithmic = kwargs.get("logarithmic",
+                                          defaults['logarithmic'])
             temp_nbin = kwargs.get("nbin", defaults['nbin'])
             temp_binbounds = kwargs.get("binbounds", defaults['binbounds'])
 
-            return self._cast_config_helper(log=temp_log,
+            return self._cast_config_helper(logarithmic=temp_logarithmic,
                                             nbin=temp_nbin,
                                             binbounds=temp_binbounds)
 
-    def _cast_config_helper(self, log, nbin, binbounds):
+    def _cast_config_helper(self, logarithmic, nbin, binbounds):
         """
             internal helper function which sets the defaults for the
             _cast_config function
         """
 
         try:
-            temp_log = bool(log)
+            temp_logarithmic = bool(logarithmic)
         except(TypeError):
-            temp_log = False
+            temp_logarithmic = False
 
         try:
             temp_nbin = int(nbin)
@@ -141,7 +143,7 @@ class PowerIndices(object):
         except(TypeError):
             temp_binbounds = None
 
-        temp_dict = {"log": temp_log,
+        temp_dict = {"logarithmic": temp_logarithmic,
                      "nbin": temp_nbin,
                      "binbounds": temp_binbounds}
         return temp_dict
@@ -157,7 +159,7 @@ class PowerIndices(object):
             store : bool
                 Flag specifying if  the calculated index dictionary should be
                 stored in the global_dict for future use.
-            log : bool
+            logarithmic : bool
                 Flag specifying if the binning is performed on logarithmic
                 scale.
             nbin : integer
@@ -209,7 +211,7 @@ class PowerIndices(object):
         """
         # if no binning is requested, compute the indices, build the dict,
         # and return it straight.
-        if not config_dict["log"] and config_dict["nbin"] is None and \
+        if not config_dict["logarithmic"] and config_dict["nbin"] is None and \
                 config_dict["binbounds"] is None:
             (temp_pindex, temp_kindex, temp_rho, temp_pundex) =\
                 self._compute_indices(self.k_array)
@@ -221,7 +223,7 @@ class PowerIndices(object):
             # Get the unbinned indices
             temp_unbinned_indices = self.get_index_dict(nbin=None,
                                                         binbounds=None,
-                                                        log=False,
+                                                        logarithmic=False,
                                                         store=False)
             # Bin them
             (temp_pindex, temp_kindex, temp_rho, temp_pundex) = \
@@ -312,8 +314,7 @@ class PowerIndices(object):
             # Store the individual pundices in the local_pundex array
             local_pundex[temp_uniqued_pindex] = local_temp_pundex
             # Extract the MPI module from the global_pindex d2o
-            MPI_name = global_pindex.comm.__class__.__module__
-            MPI = sys.modules[MPI_name]
+            MPI = d2o_di[d2o_config['mpi_module']]
             # Use Allreduce to find the first occurences/smallest pundices
             global_pindex.comm.Allreduce(local_pundex,
                                          global_pundex,
@@ -344,7 +345,7 @@ class PowerIndices(object):
                 Array of all k-vector lengths.
             rho : ndarray
                 Degeneracy factor of the individual k-vectors.
-            log : bool
+            logarithmic : bool
                 Flag specifying if the binning is performed on logarithmic
                 scale.
             nbin : integer
@@ -361,7 +362,7 @@ class PowerIndices(object):
         """
         # Cast the given config
         temp_config_dict = self._cast_config(**kwargs)
-        log = temp_config_dict['log']
+        logarithmic = temp_config_dict['logarithmic']
         nbin = temp_config_dict['nbin']
         binbounds = temp_config_dict['binbounds']
 
@@ -375,9 +376,9 @@ class PowerIndices(object):
             binbounds = np.sort(binbounds)
         # equal binning
         else:
-            if(log is None):
-                log = False
-            if(log):
+            if(logarithmic is None):
+                logarithmic = False
+            if(logarithmic):
                 k = np.r_[0, np.log(kindex[1:])]
             else:
                 k = kindex
@@ -391,7 +392,7 @@ class PowerIndices(object):
                 dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
             binbounds = np.r_[0.5 * (3 * k[1] - k[2]),
                               0.5 * (k[1] + k[2]) + dk * np.arange(nbin - 2)]
-            if(log):
+            if(logarithmic):
                 binbounds = np.exp(binbounds)
         # reordering
         reorder = np.searchsorted(binbounds, kindex)

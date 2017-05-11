@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from nifty.nifty_meta import NiftyMeta
+
 from keepers import Loggable
 
 
@@ -60,6 +62,9 @@ class Energy(Loggable, object):
     for multiple calls.
 
     """
+
+	__metaclass__ = NiftyMeta
+
     def __init__(self, position):
         self._cache = {}
         try:

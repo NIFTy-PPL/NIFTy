@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import abc
+from nifty.nifty_meta import NiftyMeta
 
 import numpy as np
 
@@ -70,9 +71,10 @@ class QuasiNewtonMinimizer(Loggable, object):
     StopIteration
         Raised if
             *callback function does not match the specified form.
+
     """    
     
-    __metaclass__ = abc.ABCMeta
+    __metaclass__ = NiftyMeta
 
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,

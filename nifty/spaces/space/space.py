@@ -16,129 +16,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-    ..                  __   ____   __
-    ..                /__/ /   _/ /  /_
-    ..      __ ___    __  /  /_  /   _/  __   __
-    ..    /   _   | /  / /   _/ /  /   /  / /  /
-    ..   /  / /  / /  / /  /   /  /_  /  /_/  /
-    ..  /__/ /__/ /__/ /__/    \___/  \___   /  core
-    ..                               /______/
-
-    .. The NIFTY project homepage is http://www.mpa-garching.mpg.de/ift/nifty/
-
-    NIFTY [#]_, "Numerical Information Field Theory", is a versatile
-    library designed to enable the development of signal inference algorithms
-    that operate regardless of the underlying spatial grid and its resolution.
-    Its object-oriented framework is written in Python, although it accesses
-    libraries written in Cython, C++, and C for efficiency.
-
-    NIFTY offers a toolkit that abstracts discretized representations of
-    continuous spaces, fields in these spaces, and operators acting on fields
-    into classes. Thereby, the correct normalization of operations on fields is
-    taken care of automatically without concerning the user. This allows for an
-    abstract formulation and programming of inference algorithms, including
-    those derived within information field theory. Thus, NIFTY permits its user
-    to rapidly prototype algorithms in 1D and then apply the developed code in
-    higher-dimensional settings of real world problems. The set of spaces on
-    which NIFTY operates comprises point sets, n-dimensional regular grids,
-    spherical spaces, their harmonic counterparts, and product spaces
-    constructed as combinations of those.
-
-    References
-    ----------
-    .. [#] Selig et al., "NIFTY -- Numerical Information Field Theory --
-        a versatile Python library for signal inference",
-        `A&A, vol. 554, id. A26 <http://dx.doi.org/10.1051/0004-6361/201321236>`_,
-        2013; `arXiv:1301.4499 <http://www.arxiv.org/abs/1301.4499>`_
-
-    Class & Feature Overview
-    ------------------------
-    The NIFTY library features three main classes: **spaces** that represent
-    certain grids, **fields** that are defined on spaces, and **operators**
-    that apply to fields.
-
-    .. Overview of all (core) classes:
-    ..
-    .. - switch
-    .. - notification
-    .. - _about
-    .. - random
-    .. - space
-    ..     - point_space
-    ..     - rg_space
-    ..     - lm_space
-    ..     - gl_space
-    ..     - hp_space
-    ..     - nested_space
-    .. - field
-    .. - operator
-    ..     - diagonal_operator
-    ..         - power_operator
-    ..     - projection_operator
-    ..     - vecvec_operator
-    ..     - response_operator
-    .. - probing
-    ..     - trace_probing
-    ..     - diagonal_probing
-
-    Overview of the main classes and functions:
-
-    .. automodule:: nifty
-
-    - :py:class:`space`
-        - :py:class:`point_space`
-        - :py:class:`rg_space`
-        - :py:class:`lm_space`
-        - :py:class:`gl_space`
-        - :py:class:`hp_space`
-        - :py:class:`nested_space`
-    - :py:class:`field`
-    - :py:class:`operator`
-        - :py:class:`diagonal_operator`
-            - :py:class:`power_operator`
-        - :py:class:`projection_operator`
-        - :py:class:`vecvec_operator`
-        - :py:class:`response_operator`
-
-        .. currentmodule:: nifty.nifty_tools
-
-        - :py:class:`invertible_operator`
-        - :py:class:`propagator_operator`
-
-        .. currentmodule:: nifty.nifty_explicit
-
-        - :py:class:`explicit_operator`
-
-    .. automodule:: nifty
-
-    - :py:class:`probing`
-        - :py:class:`trace_probing`
-        - :py:class:`diagonal_probing`
-
-        .. currentmodule:: nifty.nifty_explicit
-
-        - :py:class:`explicit_probing`
-
-    .. currentmodule:: nifty.nifty_tools
-
-    - :py:class:`conjugate_gradient`
-    - :py:class:`steepest_descent`
-
-    .. currentmodule:: nifty.nifty_explicit
-
-    - :py:func:`explicify`
-
-    .. currentmodule:: nifty.nifty_power
-
-    - :py:func:`weight_power`,
-      :py:func:`smooth_power`,
-      :py:func:`infer_power`,
-      :py:func:`interpolate_power`
-
-"""
-from __future__ import division
-
 import abc
 
 from nifty.domain_object import DomainObject
@@ -146,41 +23,181 @@ from nifty.domain_object import DomainObject
 
 class Space(DomainObject):
     def __init__(self):
-        """
-            Parameters
-            ----------
-            None.
+        """ The abstract base class for all NIFTy spaces.
 
-            Returns
-            -------
-            None.
+        An instance of a space contains information about the manifolds
+        geometry and enhances the functionality of DomainObject by methods that
+        are needed for powerspectrum analysis and smoothing.
+
+        Parameters
+        ----------
+        None
+
+        Attributes
+        ----------
+        dim : np.int
+            Total number of dimensionality, i.e. the number of pixels.
+        harmonic : bool
+            Specifies whether the space is a signal or harmonic space.
+        total_volume : np.float
+            The total volume of the space.
+        shape : tuple of np.ints
+            The shape of the space's data array.
+
+        Raises
+        ------
+        TypeError
+            Raised if instantiated directly.
+
+        Notes
+        -----
+        `Space` is an abstract base class. In order to allow for instantiation
+        the methods `get_distance_array`, `total_volume` and `copy` must be
+        implemented as well as the abstract methods inherited from
+        `DomainObject`.
+
         """
 
         super(Space, self).__init__()
 
     @abc.abstractproperty
     def harmonic(self):
+        """ Returns True if this space is a harmonic space.
+
+        Raises
+        ------
+        NotImplementedError
+            If called for this abstract class.
+
+        """
+
         raise NotImplementedError
 
     @abc.abstractproperty
     def total_volume(self):
+        """ Returns the total volume of the space.
+
+        Returns
+        -------
+        float
+            A real number representing the sum of all pixel volumes.
+
+        Raises
+        ------
+        NotImplementedError
+            If called for this abstract class.
+
+        """
         raise NotImplementedError(
             "There is no generic volume for the Space base class.")
 
     @abc.abstractmethod
     def copy(self):
+        """ Returns a copy of this Space instance.
+
+        Returns
+        -------
+        Space
+            A copy of this instance.
+
+        """
+
         return self.__class__()
 
     def get_distance_array(self, distribution_strategy):
+        """ The distances of the pixel to zero.
+
+        This returns an array that gives for each pixel its distance to the
+        center of the manifolds grid.
+
+        Parameters
+        ----------
+        distribution_strategy : str
+            The distribution_strategy which shall be used the returned
+            distributed_data_object.
+
+        Returns
+        -------
+        distributed_data_object
+            A d2o containing the distances
+
+        Raises
+        ------
+        NotImplementedError
+            If called for this abstract class.
+
+        """
+
         raise NotImplementedError(
             "There is no generic distance structure for Space base class.")
 
     def get_fft_smoothing_kernel_function(self, sigma):
+        """ This method returns a smoothing kernel function.
+
+        This method, which is only implemented for harmonic spaces, helps
+        smoothing fields that live in a position space that has this space as
+        its harmonic space. The returned function multiplies field values of a
+        field with a zero centered Gaussian which corresponds to a convolution
+        with a Gaussian kernel and sigma standard deviation in position space.
+
+        Parameters
+        ----------
+        sigma : float
+            A real number representing a physical scale on which the smoothing
+            takes place. The smoothing is defined with respect to the real
+            physical field and points that are closer together than one sigma
+            are blurred together. Mathematically sigma is the standard
+            deviation of a convolution with a normalized, zero-centered
+            Gaussian that takes place in position space.
+
+        Returns
+        -------
+        function (array-like -> array-like)
+            A smoothing operation that multiplies values with a Gaussian
+            kernel.
+
+        Raises
+        ------
+        NotImplementedError :
+            If called for this abstract class.
+
+        """
+
         raise NotImplementedError(
             "There is no generic co-smoothing kernel for Space base class.")
 
-    def hermitian_decomposition(self, x, axes=None,
+    def hermitian_decomposition(self, x, axes,
                                 preserve_gaussian_variance=False):
+        """ Decomposes x into its hermitian and anti-hermitian constituents.
+
+        This method decomposes a field's array x into its hermitian and
+        antihermitian part, which corresponds to  real and imaginary part
+        in a corresponding harmonic partner space. This is an internal function
+        that is mainly used for power-synthesizing and -analyzing Fields.
+
+        Parameters
+        ----------
+        x : distributed_data_object
+            The field's val object.
+        axes : tuple of ints
+            Specifies the axes of x which correspond to this space.
+
+        preserve_gaussian_variance : bool *optional*
+            FIXME: figure out what this does
+
+        Returns
+        -------
+        (distributed_data_object, distributed_data_object)
+            A tuple of two distributed_data_objects, the first being the
+            hermitian and the second the anti-hermitian part of x.
+
+        Raises
+        ------
+        NotImplementedError
+            If called for this abstract class.
+
+        """
+
         raise NotImplementedError
 
     def __repr__(self):
