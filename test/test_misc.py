@@ -76,7 +76,7 @@ class Misc_Tests(unittest.TestCase):
             raise SkipTest
         tol = _get_rtol(itp)
         a = RGSpace(dim1, zerocenter=zc1, distances=d)
-        b = RGSpace(dim1, zerocenter=zc2,distances=1./(dim1*d),harmonic=True)
+        b = RGSpace(dim1, zerocenter=zc2, distances=1./(dim1*d), harmonic=True)
         fft = FFTOperator(domain=a, target=b, domain_dtype=itp,
                           target_dtype=_harmonic_type(itp), module=module)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
@@ -92,9 +92,9 @@ class Misc_Tests(unittest.TestCase):
         if module == "fftw" and "pyfftw" not in di:
             raise SkipTest
         tol = _get_rtol(itp)
-        a = RGSpace([dim1, dim2], zerocenter=[zc1, zc2], distances=[d1,d2])
+        a = RGSpace([dim1, dim2], zerocenter=[zc1, zc2], distances=[d1, d2])
         b = RGSpace([dim1, dim2], zerocenter=[zc3, zc4],
-                    distances=[1./(dim1*d1),1./(dim2*d2)],harmonic=True)
+                    distances=[1./(dim1*d1), 1./(dim2*d2)], harmonic=True)
         fft = FFTOperator(domain=a, target=b, domain_dtype=itp,
                           target_dtype=_harmonic_type(itp), module=module)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
@@ -141,9 +141,9 @@ class Misc_Tests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
                                 dtype=tp)
         out = fft.times(inp)
-        v1=np.sqrt(out.dot(out))
-        v2=np.sqrt(inp.dot(fft.adjoint_times(out)))
-        assert_allclose(v1,v2, rtol=tol, atol=tol)
+        v1 = np.sqrt(out.dot(out))
+        v2 = np.sqrt(inp.dot(fft.adjoint_times(out)))
+        assert_allclose(v1, v2, rtol=tol, atol=tol)
 
     @expand(product([128, 256],
                     [np.float64, np.complex128, np.float32, np.complex64]))
@@ -157,19 +157,19 @@ class Misc_Tests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
                                 dtype=tp)
         out = fft.times(inp)
-        v1=np.sqrt(out.dot(out))
-        v2=np.sqrt(inp.dot(fft.adjoint_times(out)))
-        assert_allclose(v1,v2, rtol=tol, atol=tol)
+        v1 = np.sqrt(out.dot(out))
+        v2 = np.sqrt(inp.dot(fft.adjoint_times(out)))
+        assert_allclose(v1, v2, rtol=tol, atol=tol)
 
-    @expand(product([100,200],[False,True],[0.,1.,3.7],
-        [np.float64,np.complex128]))
+    @expand(product([100, 200], [False, True], [0., 1.,  3.7],
+                    [np.float64, np.complex128]))
     def test_smooth(self, sz, log, sigma, tp):
         tol = _get_rtol(tp)
-        sp=RGSpace(sz,harmonic=True)
-        ps=PowerSpace(sp,nbin=sz,logarithmic=log)
-        smo=SmoothingOperator(ps,sigma=sigma)
+        sp = RGSpace(sz, harmonic=True)
+        ps = PowerSpace(sp, nbin=sz, logarithmic=log)
+        smo = SmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
-        out=smo(inp)
-        inp=inp.val.get_full_data()
-        assert_allclose(inp.sum(),out.sum(), rtol=tol, atol=tol)
+        out = smo(inp)
+        inp = inp.val.get_full_data()
+        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
