@@ -16,11 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .quasi_newton_minimizer import QuasiNewtonMinimizer
+from .descent_minimizer import DescentMinimizer
 from .line_searching import LineSearchStrongWolfe
 
 
-class RelaxedNewton(QuasiNewtonMinimizer):
+class RelaxedNewton(DescentMinimizer):
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None):
@@ -38,8 +38,3 @@ class RelaxedNewton(QuasiNewtonMinimizer):
         curvature = energy.curvature
         descend_direction = curvature.inverse_times(gradient)
         return descend_direction * -1
-        #norm = descend_direction.norm()
-#        if norm != 1:
-#            return descend_direction / -norm
-#        else:
-#            return descend_direction * -1
