@@ -132,7 +132,7 @@ class SmoothingOperator(EndomorphicOperator):
         if smooth_length == 0.0:
             return power[startindex:endindex]
 
-        p_smooth = np.empty(endindex-startindex, dtype=np.float64)
+        p_smooth = np.empty(endindex-startindex, dtype=power.dtype)
 
         for i in xrange(startindex, endindex):
             p_smooth[i-startindex]=np.sum(power[ibegin[i]:ibegin[i]+nval[i]]*wgt[i])
@@ -178,7 +178,7 @@ class SmoothingOperator(EndomorphicOperator):
 
         outshape = np.asarray(SmoothingOperator._getShape(arr))
         outshape[axis] = endindex - startindex
-        outarr = np.zeros(outshape, dtype=np.float64)
+        outarr = np.zeros(outshape, dtype=arr.dtype)
         outarr[tuple(i.tolist())] = res
         k = 1
         while k < Ntot:
@@ -355,7 +355,6 @@ class SmoothingOperator(EndomorphicOperator):
         else:
             true_sigma = self.sigma
 
-        distances = distances.astype(np.float64, copy=False)
         smoothed_data = SmoothingOperator._apply_along_axis(
                               data_axis, data,
                               startindex=true_start,

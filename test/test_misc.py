@@ -28,7 +28,9 @@ from nifty import Field,\
     LMSpace,\
     HPSpace,\
     GLSpace,\
-    FFTOperator
+    PowerSpace,\
+    FFTOperator,\
+    SmoothingOperator
 
 from itertools import product
 from test.common import expand
@@ -158,3 +160,16 @@ class Misc_Tests(unittest.TestCase):
         v1=np.sqrt(out.dot(out))
         v2=np.sqrt(inp.dot(fft.adjoint_times(out)))
         assert_allclose(v1,v2, rtol=tol, atol=tol)
+
+    @expand(product([100,200],[False,True],[0.,1.,3.7],
+        [np.float64,np.complex128]))
+    def test_smooth(self, sz, log, sigma, tp):
+        tol = _get_rtol(tp)
+        sp=RGSpace(sz,harmonic=True)
+        ps=PowerSpace(sp,nbin=sz,logarithmic=log)
+        smo=SmoothingOperator(ps,sigma=sigma)
+        inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
+                                dtype=tp)
+        out=smo(inp)
+        inp=inp.val.get_full_data()
+        assert_allclose(inp.sum(),out.sum(), rtol=tol, atol=tol)
