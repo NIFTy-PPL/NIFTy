@@ -23,6 +23,7 @@ from nifty.operators.endomorphic_operator import EndomorphicOperator
 from nifty.operators.fft_operator import FFTOperator
 from d2o import STRATEGIES
 
+
 class SmoothingOperator(EndomorphicOperator):
     # ---Overwritten properties and methods---
     def __init__(self, domain, sigma, log_distances=False,
@@ -80,18 +81,18 @@ class SmoothingOperator(EndomorphicOperator):
         self._log_distances = bool(log_distances)
 
     @staticmethod
-    def _precompute (x,sigma,dxmax=None):
+    def _precompute(x, sigma, dxmax=None):
         """ Performs the precomputations for Gaussian smoothing on a 1D irregular grid.
 
         Parameters
         ----------
-        x: 1D floating point array or list containing the individual grid positions.
-            Points must be given in ascending order.
+        x: 1D floating point array or list containing the individual grid
+            positions. Points must be given in ascending order.
 
-        sigma: The sigma of the Gaussian with which the function living on x should
-            be smoothed, in the same units as x.
-        dxmax: (optional) The maximum distance up to which smoothing is performed,
-            in the same units as x. Default is 3.01*sigma.
+        sigma: The sigma of the Gaussian with which the function living on x
+            should be smoothed, in the same units as x.
+        dxmax: (optional) The maximum distance up to which smoothing is
+            performed, in the same units as x. Default is 3.01*sigma.
 
         Returns
         -------
@@ -106,36 +107,38 @@ class SmoothingOperator(EndomorphicOperator):
             normalized smoothing weights.
         """
 
-        if dxmax==None:
-            dxmax=3.01*sigma
+        if dxmax is None:
+            dxmax = 3.01*sigma
 
-        x=np.asarray(x)
+        x = np.asarray(x)
 
-        ibegin=np.searchsorted(x,x-dxmax)
-        nval=np.searchsorted(x,x+dxmax)-ibegin
+        ibegin = np.searchsorted(x, x-dxmax)
+        nval = np.searchsorted(x, x+dxmax) - ibegin
 
-        wgt=[]
-        expfac=1./(2.*sigma*sigma)
+        wgt = []
+        expfac = 1. / (2. * sigma*sigma)
         for i in range(x.size):
-            t=x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
-            t=np.exp(-t*t*expfac)
-            t*=1./np.sum(t)
+            t = x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
+            t = np.exp(-t*t*expfac)
+            t *= 1./np.sum(t)
             wgt.append(t)
 
-        return ibegin,nval,wgt
+        return ibegin, nval, wgt
 
     @staticmethod
-    def _apply_kernel_along_array(power, startindex, endindex, distances,
-        smooth_length, smoothing_width,ibegin,nval,wgt):
+    def _apply_kernel_along_array(
+            power, startindex, endindex, distances, smooth_length,
+            smoothing_width, ibegin, nval, wgt):
 
         if smooth_length == 0.0:
             return power[startindex:endindex]
 
         p_smooth = np.zeros(endindex-startindex, dtype=power.dtype)
         for i in xrange(startindex, endindex):
-            imin=max(startindex,ibegin[i])
-            imax=min(endindex,ibegin[i]+nval[i])
-            p_smooth[imin:imax]+=power[i]*wgt[i][imin-ibegin[i]:imax-imin+ibegin[i]]
+            imin = max(startindex, ibegin[i])
+            imax = min(endindex, ibegin[i]+nval[i])
+            p_smooth[imin:imax] += (power[i] *
+                                    wgt[i][imin-ibegin[i]:imax-imin+ibegin[i]])
 
         return p_smooth
 
@@ -145,35 +148,34 @@ class SmoothingOperator(EndomorphicOperator):
 
     @staticmethod
     def _apply_along_axis(axis, arr, startindex, endindex, distances,
-        smooth_length, smoothing_width):
+                          smooth_length, smoothing_width):
 
         nd = arr.ndim
         if axis < 0:
             axis += nd
         if (axis >= nd):
-            raise ValueError("axis must be less than arr.ndim; axis=%d, rank=%d."
+            raise ValueError(
+                "axis must be less than arr.ndim; axis=%d, rank=%d."
                 % (axis, nd))
-        ibegin,nval,wgt=SmoothingOperator._precompute(distances,smooth_length,smooth_length*smoothing_width)
+        ibegin, nval, wgt = SmoothingOperator._precompute(
+                distances, smooth_length, smooth_length*smoothing_width)
 
         ind = np.zeros(nd-1, dtype=np.int)
         i = np.zeros(nd, dtype=object)
         shape = SmoothingOperator._getShape(arr)
         indlist = np.asarray(range(nd))
-        indlist = np.delete(indlist,axis)
+        indlist = np.delete(indlist, axis)
         i[axis] = slice(None, None)
         outshape = np.asarray(shape).take(indlist)
 
         i.put(indlist, ind)
 
-        Ntot =np.product(outshape)
+        Ntot = np.product(outshape)
         holdshape = outshape
         slicedArr = arr[tuple(i.tolist())]
-        res = SmoothingOperator._apply_kernel_along_array(slicedArr,
-                                       startindex,
-                                       endindex,
-                                       distances,
-                                       smooth_length,
-                                       smoothing_width, ibegin,nval,wgt)
+        res = SmoothingOperator._apply_kernel_along_array(
+                    slicedArr, startindex, endindex, distances,
+                    smooth_length, smoothing_width, ibegin, nval, wgt)
 
         outshape = np.asarray(SmoothingOperator._getShape(arr))
         outshape[axis] = endindex - startindex
@@ -190,12 +192,9 @@ class SmoothingOperator(EndomorphicOperator):
                 n -= 1
             i.put(indlist, ind)
             slicedArr = arr[tuple(i.tolist())]
-            res = SmoothingOperator._apply_kernel_along_array(slicedArr,
-                                           startindex,
-                                           endindex,
-                                           distances,
-                                           smooth_length,
-                                           smoothing_width,ibegin,nval,wgt)
+            res = SmoothingOperator._apply_kernel_along_array(
+                    slicedArr, startindex, endindex, distances,
+                    smooth_length, smoothing_width, ibegin, nval, wgt)
             outarr[tuple(i.tolist())] = res
             k += 1
 
