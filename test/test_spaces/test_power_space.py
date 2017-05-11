@@ -31,8 +31,18 @@ from itertools import product, chain
 #needed to check wether fftw is available
 from d2o.config import dependency_injector as gdi
 
-HARMONIC_SPACES = [RGSpace((8,), harmonic=True), RGSpace((7,8), harmonic=True), RGSpace((5,5), harmonic=True), RGSpace((4,5,7), harmonic=True),
-LMSpace(6),LMSpace(9)]
+HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
+    RGSpace((7,), harmonic=True,zerocenter=True), 
+    RGSpace((8,), harmonic=True,zerocenter=True), 
+    RGSpace((7,8), harmonic=True), 
+    RGSpace((7,8), harmonic=True, zerocenter=True),
+    RGSpace((6,6), harmonic=True, zerocenter=True),
+    RGSpace((7,5), harmonic=True, zerocenter=True),
+    RGSpace((5,5), harmonic=True), 
+    RGSpace((4,5,7), harmonic=True),
+    RGSpace((4,5,7), harmonic=True, zerocenter=True),
+    LMSpace(6),
+    LMSpace(9)]
 
 
 #Try all sensible kinds of combinations of spaces, distributuion strategy and 
