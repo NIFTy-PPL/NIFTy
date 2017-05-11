@@ -110,7 +110,7 @@ class DiagonalOperator_Tests(unittest.TestCase):
         diag = Field.from_random('normal', domain=space)
         D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
         trace_log = D.trace_log()
-        assert_allclose(trace_log, np.log(np.sum(diag)))
+        assert_allclose(trace_log, np.log(np.sum(diag.val.get_full_data())))
 
     @expand(product(spaces, [True, False], [True, False]))
     def test_determinant(self, space, bare, copy):

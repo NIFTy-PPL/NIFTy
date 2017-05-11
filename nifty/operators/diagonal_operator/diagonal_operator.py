@@ -197,7 +197,6 @@ class DiagonalOperator(EndomorphicOperator):
         See Also
         --------
         """
-        return self.inverse_diagonal(bare=bare, copy=False).sum()
         return self.inverse_diagonal(bare=bare).sum()
 
     def trace_log(self):
