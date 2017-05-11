@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-
-from nifty.plotting.plotly_wrapper import PlotlyWrapper
 import numpy as np
+
+from nifty.plotting.colormap import Colormap
+from nifty.plotting.plotly_wrapper import PlotlyWrapper
+
 
 class Heatmap(PlotlyWrapper):
     def __init__(self, data, color_map=None, webgl=False,
@@ -12,9 +14,18 @@ class Heatmap(PlotlyWrapper):
                 self.data = np.add(self.data, arr)
         else:
             self.data = data
+
+        if color_map is not None:
+            if not isinstance(color_map, Colormap):
+                raise TypeError("Provided color_map must be an instance of "
+                                "the NIFTy Colormap class.")
         self.color_map = color_map
         self.webgl = webgl
         self.smoothing = smoothing
+
+    @property
+    def figure_dimension(self):
+        return 2
 
     def to_plotly(self):
         plotly_object = dict()
