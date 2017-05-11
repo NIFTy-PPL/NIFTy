@@ -54,14 +54,24 @@ class PowerSpace(Space):
     Attributes
     ----------
     pindex : distributed_data_object
-        TODO add description
+        This holds the information which pixel of the harmonic partner gets
+        mapped to which power bin
     kindex : numpy.ndarray
-        TODO add description
+        Sorted array of all k-modes.
     pundex : numpy.ndarray
-        TODO add description
+        Flat index of the first occurence of a k-vector with length==kindex[n] 
+        in the k_array.
     rho : numpy.ndarray
         The amount of k-modes that get mapped to one power bin is given by
         rho.
+    dim : np.int
+        Total number of dimensionality, i.e. the number of pixels.
+    harmonic : bool
+        Specifies whether the space is a signal or harmonic space.
+    total_volume : np.float
+        The total volume of the space.
+    shape : tuple of np.ints
+        The shape of the space's data array.
 
 
     Notes
@@ -216,7 +226,7 @@ class PowerSpace(Space):
 
     @property
     def pindex(self):
-        """ A distributed_data_objects having the shape of the harmonic partner
+        """ A distributed_data_object having the shape of the harmonic partner
         space containing the indices of the power bin a pixel belongs to.
         """
         return self._pindex

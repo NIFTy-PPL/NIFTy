@@ -37,7 +37,7 @@ class LMSpace(Space):
         NIFTY subclass for spherical harmonics components, for representations
         of fields on the two-sphere.
 
-        Parameters
+        Attributes
         ----------
         lmax : int
             The maximal :math:`l` value of any spherical harmonics
@@ -45,6 +45,14 @@ class LMSpace(Space):
         mmax : int
             The maximal :math:`m` value of any spherical harmonic
             :math:`Y_{lm}` that is represented in this Space.
+        dim : np.int
+            Total number of dimensionality, i.e. the number of pixels.
+        harmonic : bool
+            Specifies whether the space is a signal or harmonic space.
+        total_volume : np.float
+            The total volume of the space.
+        shape : tuple of np.ints
+            The shape of the space's data array.
 
         See Also
         --------
