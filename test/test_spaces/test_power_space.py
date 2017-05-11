@@ -27,6 +27,7 @@ from numpy.testing import assert_, assert_equal, assert_almost_equal,\
 from nifty import PowerSpace, RGSpace, Space, LMSpace
 from types import NoneType
 from test.common import expand
+from itertools import product
 
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True), RGSpace((7,8), harmonic=True), RGSpace((5,5), harmonic=True), RGSpace((4,5,7), harmonic=True),
