@@ -273,11 +273,6 @@ class LinearOperator(Loggable, object):
         try:
             y = self._adjoint_inverse_times(x, spaces, **kwargs)
         except(NotImplementedError):
-            if self.unitary:
-                y = self._times(x, spaces, **kwargs)
-            else:
-                raise
-        return y
 
     def inverse_adjoint_times(self, x, spaces=None, **kwargs):
         """ Applies the inverse-adjoint Operator to a given Field.
@@ -303,9 +298,6 @@ class LinearOperator(Loggable, object):
        --------
 
         """
-        if self.unitary:
-            return self.times(x, spaces, **kwargs)
-
         spaces = self._check_input_compatibility(x, spaces)
 
         try:
@@ -323,6 +315,9 @@ class LinearOperator(Loggable, object):
                 else:
                     raise
         return y
+
+    def inverse_adjoint_times(self, x, spaces=None, **kwargs):
+        return adjoint_inverse_times(x, spaces, **kwargs)
 
     def _times(self, x, spaces):
         raise NotImplementedError(

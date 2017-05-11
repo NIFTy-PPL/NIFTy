@@ -174,7 +174,7 @@ class FFTOperator(LinearOperator):
 
         result_field = x.copy_empty(domain=result_domain,
                                     dtype=self.target_dtype)
-        result_field.set_val(new_val=new_val, copy=False)
+        result_field.set_val(new_val=new_val, copy=True)
 
         return result_field
 
@@ -198,7 +198,7 @@ class FFTOperator(LinearOperator):
 
         result_field = x.copy_empty(domain=result_domain,
                                     dtype=self.domain_dtype)
-        result_field.set_val(new_val=new_val, copy=False)
+        result_field.set_val(new_val=new_val, copy=True)
 
         return result_field
 
