@@ -28,7 +28,8 @@ from nifty import PowerSpace, RGSpace, Space, LMSpace
 from types import NoneType
 from test.common import expand
 from itertools import product, chain
-
+#needed to check wether fftw is available
+from d20.config import dependency_injector as gdi
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True), RGSpace((7,8), harmonic=True), RGSpace((5,5), harmonic=True), RGSpace((4,5,7), harmonic=True),
 LMSpace(6),LMSpace(9)]
@@ -36,8 +37,10 @@ LMSpace(6),LMSpace(9)]
 
 #Try all sensible kinds of combinations of spaces, distributuion strategy and 
 #binning parameters
-CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw"], [None], [None, 3,4], [True, False])
-CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw"], [[0.,1.3]],[None],[False])
+_maybe_fftw = ["fftw"] if ('pyfftw' in gdi) else []
+
+CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, ["not", "equal"] + _maybe_fftw, [None], [None, 3,4], [True, False])
+CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, ["not", "equal"] + _maybe_fftw, [[0.,1.3]],[None],[False])
 CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT, CONSISTENCY_CONFIGS_EXPLICIT)
 
 # [harmonic_partner, distribution_strategy,
