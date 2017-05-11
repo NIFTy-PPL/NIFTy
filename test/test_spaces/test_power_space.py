@@ -29,7 +29,7 @@ from types import NoneType
 from test.common import expand
 from itertools import product, chain
 #needed to check wether fftw is available
-from d20.config import dependency_injector as gdi
+from d2o.config import dependency_injector as gdi
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True), RGSpace((7,8), harmonic=True), RGSpace((5,5), harmonic=True), RGSpace((4,5,7), harmonic=True),
 LMSpace(6),LMSpace(9)]
