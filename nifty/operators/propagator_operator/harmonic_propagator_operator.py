@@ -136,7 +136,7 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
         return result
 
     def _inverse_times(self, x, spaces):
-        pre_result = self._S.times(x, spaces)
+        pre_result = self._S.inverse_times(x, spaces)
         pre_result += self._likelihood_times(x)
         result = x.copy_empty()
         result.set_val(pre_result, copy=False)
