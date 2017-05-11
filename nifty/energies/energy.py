@@ -63,7 +63,7 @@ class Energy(Loggable, object):
 
     """
 
-	__metaclass__ = NiftyMeta
+    __metaclass__ = NiftyMeta
 
     def __init__(self, position):
         self._cache = {}
