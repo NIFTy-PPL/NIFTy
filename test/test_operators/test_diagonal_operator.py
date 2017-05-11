@@ -51,7 +51,7 @@ class DiagonalOperator_Tests(unittest.TestCase):
         diag = Field.from_random('normal', domain=space)
         D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
         tt = D.times(rand1)
-        assert_equal(tt.domainp[0], space)
+        assert_equal(tt.domain[0], space)
 
     @expand(product(spaces, [True, False], [True, False]))
     def test_adjoint_times(self, space, bare, copy):
