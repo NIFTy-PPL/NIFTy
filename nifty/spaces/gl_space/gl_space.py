@@ -42,9 +42,26 @@ class GLSpace(Space):
         Parameters
         ----------
         nlat : int
-            Number of latitudinal bins, or rings.
+            Number of latitudinal bins (or rings) that are used for this
+            pixelization.
         nlon : int, *optional*
-            Number of longitudinal bins (default: ``2*nlat - 1``).
+            Number of longditudinal bins that are used for this pixelization.
+
+        Attributes
+        ----------
+        dim : np.int
+            Total number of dimensionality, i.e. the number of pixels.
+        harmonic : bool
+            Specifies whether the space is a signal or harmonic space.
+        nlat : int
+            Number of latitudinal bins (or rings) that are used for this
+            pixelization.
+        nlon : int
+            Number of longditudinal bins that are used for this pixelization.
+        total_volume : np.float
+            The total volume of the space.
+        shape : tuple of np.ints
+            The shape of the space's data array.
 
         Raises
         ------

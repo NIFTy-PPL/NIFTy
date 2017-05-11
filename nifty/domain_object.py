@@ -24,6 +24,21 @@ from keepers import Loggable,\
 
 
 class DomainObject(Versionable, Loggable, object):
+    """The abstract class that can be used as a domain for a field.
+
+    This holds all the information and functionality a field needs to know
+    about its domain and how the data of the field are stored.
+
+    Attributes
+    ----------
+    dim : int
+        Number of pixel-dimensions of the underlying data object.
+    shape : tuple
+        Shape of the array that stores the degrees of freedom for any field
+        on this domain.
+
+    """
+
     __metaclass__ = NiftyMeta
 
     def __init__(self):
