@@ -150,20 +150,6 @@ may cause trouble.
         python setup.py install --user
         cd ..
 
-### Installation using pypi
-
-(MR: I'm not sure whether this approach works ... pyHealpix is not registered
-with pypi and I'm not sure it can be.)
-
-NIFTY can be installed using [PyPI](https://pypi.python.org/pypi) and
-**pip** by running the following command:
-
-    pip install ift_nifty
-
-Alternatively, a private or user specific installation can be done by:
-
-    pip install --user ift_nifty
-
 ### Running the tests
 
 In oder to run the tests one needs two additional packages:
