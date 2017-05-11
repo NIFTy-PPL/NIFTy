@@ -213,7 +213,6 @@ class DiagonalOperator(EndomorphicOperator):
         See Also
         --------
         """
-        log_diagonal = self.diagonal(copy=False).apply_scalar_function(np.log)
         log_diagonal = nifty_log(self.diagonal(copy=False))
         return log_diagonal.sum()
 
@@ -224,6 +223,7 @@ class DiagonalOperator(EndomorphicOperator):
         ----------
         Returns
         -------
+        out : scalar
         out : scalar
             the determinant of the Operator
 
