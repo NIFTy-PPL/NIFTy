@@ -20,6 +20,22 @@ from .quasi_newton_minimizer import QuasiNewtonMinimizer
 
 
 class SteepestDescent(QuasiNewtonMinimizer):
+    """Implementation of the steepest descent minimization scheme.
+    
+    It uses the gradient of the minimized function to get to the minimum.    
+    
+    Parameters
+    ----------
+    energy : Energy object
+        The energy object providing implementations of the to be minimized
+        function and gradient.
+    
+    Returns
+    -------
+    descend_direction : Field
+        Returns the descent direction.
+    
+    """
     def _get_descend_direction(self, energy):
         descend_direction = energy.gradient
         norm = descend_direction.norm()

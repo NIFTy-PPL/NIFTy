@@ -28,7 +28,7 @@ class ConjugateGradient(Loggable, object):
     It is an iterative method for solving a linear system of equations:
                                     Ax = b
     
-    SUGESTED LITERATURE:
+    SUGGESTED LITERATURE:
         Thomas V. Mikosch et al., "Numerical Optimization", Second Edition, 
         2006, Springer-Verlag New York
         
@@ -46,7 +46,7 @@ class ConjugateGradient(Loggable, object):
         conjugated directions. (default: None)
     preconditioner : function *optional*
         The user can provide a function which transforms the variables of the 
-        system to make the convarge more favorable.(default: None)
+        system to make the converge more favorable.(default: None)
     callback : function, *optional*
         Function f(energy, iteration_number) specified by the user to print 
         iteration number and energy value at every iteration step. It accepts 
@@ -65,7 +65,7 @@ class ConjugateGradient(Loggable, object):
         conjugated directions.
     preconditioner : function
         The user can provide a function which transforms the variables of the 
-        system to make the convarge more favorable.
+        system to make the converge more favorable.
     callback : function
         Function f(energy, iteration_number) specified by the user to print 
         iteration number and energy value at every iteration step. It accepts 

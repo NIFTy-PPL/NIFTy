@@ -29,7 +29,10 @@ class RelaxedNewton(QuasiNewtonMinimizer):
     ---------
     line_searcher : LineSearch,
         An implementation of a line-search algorithm.
-    callback :
+    callback : function, *optional*
+        Function f(energy, iteration_number) specified by the user to print 
+        iteration number and energy value at every iteration step. It accepts 
+        an Energy object(energy) and integer(iteration_number). (default: None)
     convergence_tolerance : float,
         Specifies the required accuracy for convergence. (default : 10e-4)
     convergence_level : integer
