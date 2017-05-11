@@ -164,9 +164,9 @@ class PowerSpace(Space):
         distribution_strategy = self.pindex.distribution_strategy
         return self.__class__(harmonic_partner=self.harmonic_partner,
                               distribution_strategy=distribution_strategy,
-                              logarithmic=self.logarithmic,
-                              nbin=self.nbin,
-                              binbounds=self.binbounds)
+                              logarithmic=self.config["logarithmic"],
+                              nbin=self.config["nbin"],
+                              binbounds=self.config["binbounds"])
 
     def weight(self, x, power=1, axes=None, inplace=False):
         reshaper = [1, ] * len(x.shape)
@@ -248,9 +248,9 @@ class PowerSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['kindex'] = self.kindex
-        hdf5_group['rho'] = self.rho
-        hdf5_group['pundex'] = self.pundex
-        hdf5_group['logarithmic'] = self.logarithmic
+        hdf5_group['rho'] = self.config["rho"]
+        hdf5_group['pundex'] = self.config["pundex"]
+        hdf5_group['logarithmic'] = self.config["logarithmic"]
         # Store nbin as string, since it can be None
         hdf5_group.attrs['nbin'] = str(self.nbin)
         hdf5_group.attrs['binbounds'] = str(self.binbounds)
@@ -272,9 +272,11 @@ class PowerSpace(Space):
         # set all values
         new_ps._harmonic_partner = repository.get('harmonic_partner',
                                                   hdf5_group)
-        new_ps._logarithmic = hdf5_group['logarithmic'][()]
-        exec('new_ps._nbin = ' + hdf5_group.attrs['nbin'])
-        exec('new_ps._binbounds = ' + hdf5_group.attrs['binbounds'])
+
+        new_ps.config = {}
+        new_ps.config['logarithmic'] = hdf5_group['logarithmic'][()]
+        exec("new_ps.config['nbin'] = " + hdf5_group.attrs['nbin'])
+        exec("new_ps.config['binbounds'] = " + hdf5_group.attrs['binbounds'])
 
         new_ps._pindex = repository.get('pindex', hdf5_group)
         new_ps._kindex = hdf5_group['kindex'][:]

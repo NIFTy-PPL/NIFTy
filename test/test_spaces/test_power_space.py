@@ -95,7 +95,7 @@ def get_weight_configs():
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
         ['harmonic_partner', Space],
-        ['config', dict]
+        ['config', dict],
         ['pindex', distributed_data_object],
         ['kindex', np.ndarray],
         ['rho', np.ndarray],
