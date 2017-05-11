@@ -72,8 +72,9 @@ class PowerSpace(Space):
         The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
-    binbounds : {array-like, None}
-        Inner bounds of the bins, None if they were not specified in the init.
+    config : {logarithmic, nbin, binbounds}
+        Dictionary storing the values for `logarithmic`, `nbin`, and
+        `binbounds` that were used during initialization.
 
     Notes
     -----
