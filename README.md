@@ -38,25 +38,25 @@ certain grids, **fields** that are defined on spaces, and **operators**
 that apply to fields.
 
 -   [Spaces](http://www.mpa-garching.mpg.de/ift/nifty/space.html)
-    -   `rg_space` - *n*-dimensional regular Euclidean grid
-    -   `lm_space` - spherical harmonics
-    -   `gl_space` - Gauss-Legendre grid on the 2-sphere
-    -   `hp_space` - [HEALPix](http://sourceforge.net/projects/healpix/)
+    -   `RGSpace` - *n*-dimensional regular Euclidean grid
+    -   `LMSpace` - spherical harmonics
+    -   `GLSpace` - Gauss-Legendre grid on the 2-sphere
+    -   `HPSpace` - [HEALPix](http://sourceforge.net/projects/healpix/)
         grid on the 2-sphere
 -   [Fields](http://www.mpa-garching.mpg.de/ift/nifty/field.html)
-    -   `field` - generic class for (discretized) fields
+    -   `Field` - generic class for (discretized) fields
 
 <!-- -->
 
-    field.conjugate     field.dim          field.norm
-    field.dot           field.set_val      field.weight
+    Field.conjugate     Field.dim          Field.norm
+    Field.dot           Field.set_val      Field.weight
 
 -   [Operators](http://www.mpa-garching.mpg.de/ift/nifty/operator.html)
-    -   `diagonal_operator` - purely diagonal matrices in a specified
+    -   `DiagonalOperator` - purely diagonal matrices in a specified
         basis
-    -   `projection_operator` - projections onto subsets of a specified
+    -   `ProjectionOperator` - projections onto subsets of a specified
         basis
-    -   `propagator_operator` - information propagator in Wiener filter
+    -   `PropagatorOperator` - information propagator in Wiener filter
         theory
     -   (and more)
 -   (and more)
