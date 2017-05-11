@@ -33,12 +33,12 @@ from itertools import product, chain
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True), RGSpace((7,8), harmonic=True), RGSpace((5,5), harmonic=True), RGSpace((4,5,7), harmonic=True),
 LMSpace(6),LMSpace(9)]
 
-BINNINGS = chain(product([None], [None, 3,4], [True, False]), product([0.,1.3],[None],[False]))
-
 
 #Try all sensible kinds of combinations of spaces, distributuion strategy and 
 #binning parameters
-CONSISTENCY_CONFIGS = product(HARMONIC_SPACES, ["not", "equal", "fftw", "freeform"], BINNINGS)
+CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw", "freeform"], [None], [None, 3,4], [True, False])
+CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw", "freeform"], [[0.,1.3]],[None],[False])
+CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT, CONSISTENCY_CONFIGS_EXPLICIT)
 
 # [harmonic_partner, distribution_strategy,
 #  logarithmic, nbin, binbounds, expected]
