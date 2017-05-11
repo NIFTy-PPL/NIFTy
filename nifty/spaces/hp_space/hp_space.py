@@ -32,12 +32,20 @@ class HPSpace(Space):
         ..           /__/
 
         NIFTY subclass for HEALPix discretizations of the two-sphere [#]_.
-
-        Parameters
+      
+        Attributes
         ----------
-        nside :
-            Resolution parameter for the HEALPix discretization, resulting in
-            ``12*nside**2`` pixels. Must be positive.
+        dim : np.int
+            Total number of dimensionality, i.e. the number of pixels.
+        harmonic : bool
+            Specifies whether the space is a signal or harmonic space.
+        nside : int
+            The corresponding HEALPix pixelization. The total number of pixels 
+            is 12*nside**2.
+        total_volume : np.float
+            The total volume of the space.
+        shape : tuple of np.ints
+            The shape of the space's data array.
 
         Raises
         ------
