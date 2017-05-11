@@ -36,8 +36,8 @@ LMSpace(6),LMSpace(9)]
 
 #Try all sensible kinds of combinations of spaces, distributuion strategy and 
 #binning parameters
-CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw", "freeform"], [None], [None, 3,4], [True, False])
-CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw", "freeform"], [[0.,1.3]],[None],[False])
+CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw"], [None], [None, 3,4], [True, False])
+CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, ["not", "equal", "fftw"], [[0.,1.3]],[None],[False])
 CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT, CONSISTENCY_CONFIGS_EXPLICIT)
 
 # [harmonic_partner, distribution_strategy,
