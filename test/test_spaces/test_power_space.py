@@ -109,6 +109,16 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
         p = PowerSpace(r)
         assert_(isinstance(getattr(p, attribute), expected_type))
 
+class PowerSpaceConsistencyCheck(unittest.TestCase):
+    @expand(CONSTRUCTOR_CONFIGS)
+    def test_pipundexInversion(self, harmonic_partner, distribution_strategy,
+                         logarithmic, nbin, binbounds, expected):
+        #expected will not be used TODO: write expandproduct to use for this
+        p = PowerSpace(harmonic_partner=harmonic_partner,
+                           distribution_strategy=distribution_strategy,
+                           logarithmic=logarithmic, nbin=nbin,
+                           binbounds=binbounds)
+        assert_equal(p.pindex[p.pundex],np.arange(p.dim),err_msg='pundex is not right-inverse of pindex!')
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
