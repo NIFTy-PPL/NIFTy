@@ -40,8 +40,11 @@ class LMSpace(Space):
         Parameters
         ----------
         lmax : int
-            Maximum :math:`\ell`-value up to which the spherical harmonics
-            coefficients are to be used.
+            The maximal :math:`l` value of any spherical harmonics
+            :math:`Y_{lm}` that is represented in this Space.
+        mmax : int
+            The maximal :math:`m` value of any spherical harmonic
+            :math:`Y_{lm}` that is represented in this Space.
 
         See Also
         --------
