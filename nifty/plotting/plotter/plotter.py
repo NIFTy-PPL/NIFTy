@@ -5,21 +5,22 @@ import os
 
 import numpy as np
 
-import plotly
-import plotly.offline as plotly_offline
-
-
 from keepers import Loggable
+
+from nifty.config import dependency_injector as gdi
 
 from nifty.spaces.space import Space
 from nifty.field import Field
 import nifty.nifty_utilities as utilities
 
-from nifty.plotting.figures import Figure2D,\
-                                   Figure3D,\
-                                   MultiFigure
+from nifty.plotting.figures import MultiFigure
 
-plotly.offline.init_notebook_mode()
+plotly = gdi.get('plotly')
+
+try:
+    plotly.offline.init_notebook_mode()
+except AttributeError:
+    pass
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -30,6 +31,8 @@ class Plotter(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, interactive=False, path='.', title=""):
+        if 'plotly' not in gdi:
+            raise ImportError("The module plotly is needed but not available.")
         self.interactive = interactive
         self.path = path
         self.title = str(title)
@@ -120,5 +123,5 @@ class Plotter(Loggable, object):
         else:
             final_figure = figures[0]
 
-        plotly_offline.plot(final_figure.to_plotly(),
+        plotly.offline.plot(final_figure.to_plotly(),
                             filename=os.path.join(self.path, self.title))
