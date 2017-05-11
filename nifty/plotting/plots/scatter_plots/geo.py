@@ -1,3 +1,4 @@
+
 from scatter_plot import ScatterPlot
 
 
@@ -12,6 +13,10 @@ class Geo(ScatterPlot):
         self.lon = lon
         self.lat = lat
         self.projection = proj
+
+    @property
+    def figure_dimension(self):
+        return 2
 
     def _to_plotly(self):
         plotly_object = super(Geo, self).to_plotly()
