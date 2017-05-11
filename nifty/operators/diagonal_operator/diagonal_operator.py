@@ -21,6 +21,7 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
+from nifty.basic_arithmetics import log as nifty_log
 from nifty.config import nifty_configuration as gc
 from nifty.field import Field
 from nifty.operators.endomorphic_operator import EndomorphicOperator
@@ -160,6 +161,7 @@ class DiagonalOperator(EndomorphicOperator):
         --------
         """
         return 1/self.diagonal(bare=bare, copy=False)
+        return 1./self.diagonal(bare=bare, copy=False)
 
     def trace(self, bare=False):
         """ Returns the trace the operator.
@@ -196,6 +198,7 @@ class DiagonalOperator(EndomorphicOperator):
         --------
         """
         return self.inverse_diagonal(bare=bare, copy=False).sum()
+        return self.inverse_diagonal(bare=bare).sum()
 
     def trace_log(self):
         """ Returns the trave-log of the operator.
@@ -211,6 +214,7 @@ class DiagonalOperator(EndomorphicOperator):
         --------
         """
         log_diagonal = self.diagonal(copy=False).apply_scalar_function(np.log)
+        log_diagonal = nifty_log(self.diagonal(copy=False))
         return log_diagonal.sum()
 
     def determinant(self):
