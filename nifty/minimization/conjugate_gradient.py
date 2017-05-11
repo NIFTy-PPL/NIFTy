@@ -91,7 +91,7 @@ class ConjugateGradient(Loggable, object):
                 Latest convergence level indicating whether the minimization
                 has converged or not.
 
-            """
+        """
         r = b - A(x0)
         d = self.preconditioner(r)
         previous_gamma = r.dot(d)

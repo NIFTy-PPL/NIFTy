@@ -198,7 +198,7 @@ class RGSpace(Space):
                               harmonic=self.harmonic)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        weight = reduce(lambda x, y: x*y, self.distances)**power
+        weight = reduce(lambda x, y: x*y, self.distances) ** np.float(power)
         if inplace:
             x *= weight
             result_x = x
