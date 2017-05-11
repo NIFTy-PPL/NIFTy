@@ -24,9 +24,34 @@ import numpy as np
 from d2o import distributed_data_object
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
-from nifty import PowerSpace, RGSpace, Space
+from nifty import PowerSpace, RGSpace, Space, LMSpace
 from types import NoneType
 from test.common import expand
+from itertools import product, chain
+#needed to check wether fftw is available
+from d2o.config import dependency_injector as gdi
+
+HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
+    RGSpace((7,), harmonic=True,zerocenter=True), 
+    RGSpace((8,), harmonic=True,zerocenter=True), 
+    RGSpace((7,8), harmonic=True), 
+    RGSpace((7,8), harmonic=True, zerocenter=True),
+    RGSpace((6,6), harmonic=True, zerocenter=True),
+    RGSpace((7,5), harmonic=True, zerocenter=True),
+    RGSpace((5,5), harmonic=True), 
+    RGSpace((4,5,7), harmonic=True),
+    RGSpace((4,5,7), harmonic=True, zerocenter=True),
+    LMSpace(6),
+    LMSpace(9)]
+
+
+#Try all sensible kinds of combinations of spaces, distributuion strategy and 
+#binning parameters
+_maybe_fftw = ["fftw"] if ('pyfftw' in gdi) else []
+
+CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES, ["not", "equal"] + _maybe_fftw, [None], [None, 3,4], [True, False])
+CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES, ["not", "equal"] + _maybe_fftw, [[0.,1.3]],[None],[False])
+CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT, CONSISTENCY_CONFIGS_EXPLICIT)
 
 # [harmonic_partner, distribution_strategy,
 #  logarithmic, nbin, binbounds, expected]
@@ -103,9 +128,25 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
         p = PowerSpace(r)
         assert_(isinstance(getattr(p, attribute), expected_type))
 
-
+class PowerSpaceConsistencyCheck(unittest.TestCase):
+    @expand(CONSISTENCY_CONFIGS)
+    def test_pipundexInversion(self, harmonic_partner, distribution_strategy,
+                         binbounds, nbin,logarithmic):
+        p = PowerSpace(harmonic_partner=harmonic_partner,
+                           distribution_strategy=distribution_strategy,
+                           logarithmic=logarithmic, nbin=nbin,
+                           binbounds=binbounds)
+        assert_equal(p.pindex.flatten()[p.pundex],np.arange(p.dim),
+            err_msg='pundex is not right-inverse of pindex!')
+        
+    @expand(CONSISTENCY_CONFIGS)
+    def test_rhopindexConsistency(self, harmonic_partner, distribution_strategy,
+                         binbounds, nbin,logarithmic):
+        assert_equal(p.pindex.flatten().bincount(), p.rho,
+            err_msg='rho is not equal to pindex degeneracy')
+                         
 class PowerSpaceFunctionalityTest(unittest.TestCase):
-    @expand(CONSTRUCTOR_CONFIGS)
+    @expand(CONSISTENCY_CONFIGS)
     def test_constructor(self, harmonic_partner, distribution_strategy,
                          logarithmic, nbin, binbounds, expected):
         if 'error' in expected:
