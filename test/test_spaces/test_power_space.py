@@ -24,7 +24,7 @@ import numpy as np
 from d2o import distributed_data_object
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
-from nifty import PowerSpace, RGSpace, Space
+from nifty import PowerSpace, RGSpace, Space, LMSpace
 from types import NoneType
 from test.common import expand
 
