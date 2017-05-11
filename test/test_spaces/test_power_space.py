@@ -129,7 +129,7 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                            distribution_strategy=distribution_strategy,
                            logarithmic=logarithmic, nbin=nbin,
                            binbounds=binbounds)
-        assert_equal(p.pindex[p.pundex],np.arange(p.dim),err_msg='pundex is not right-inverse of pindex!')
+        assert_equal(p.pindex.flatten()[p.pundex],np.arange(p.dim),err_msg='pundex is not right-inverse of pindex!')
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
