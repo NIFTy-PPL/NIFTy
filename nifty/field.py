@@ -223,19 +223,6 @@ class Field(Loggable, Versionable, object):
         return dtype
 
     def _parse_distribution_strategy(self, distribution_strategy, val):
-        """ Sets a distribution strategy which the underlying D2O then uses.
-
-        Parameters
-        ----------
-        distribution_strategy : all supported distribution strategies
-            The distribution strategy the new d2o should have.
-        val : Field or D2O
-            Can infere the distribution strategy from another given object.
-        
-        Returns
-        -------
-        out : distribution_strategy
-        """
         if distribution_strategy is None:
             if isinstance(val, distributed_data_object):
                 distribution_strategy = val.distribution_strategy
@@ -306,30 +293,6 @@ class Field(Loggable, Versionable, object):
 
     @staticmethod
     def _parse_random_arguments(random_type, f, **kwargs):
-        """ Processes the arguments given to a unified nomenclature.
-
-        Parameters
-        ----------
-        random_type : String
-            'pm1', 'normal', 'uniform'
-        
-        f : not used! FIXME: delete or use!
-        
-        Raise
-        -----
-        KeyError
-            Raised if
-                *the given randomtype is not 'pm1', 'normal' or 'uniform'
-        
-        Returns
-        -------
-        out : The generated random arguments.
-
-        See Also
-        --------
-        from_random
-
-        """
         if random_type == "pm1":
             random_arguments = {}
 
@@ -495,31 +458,6 @@ class Field(Loggable, Versionable, object):
         return result_field
 
     def _calculate_power_spectrum(self, x, pindex, rho, axes=None):
-        """ Calculates the powerspectrum of the given Field x.
-
-        Parameters
-        ----------
-        x : Field
-            The Field of which the power spectrum shall be calculated
-        
-        pindex : distributed_data_object
-        
-        rho : numpy.array
-        
-        axes : tuple
-            Used if only a subspace of the whole field is analysed.
-            Coresponds to the 'spaces' keyword in power_analyse.
-        
-        Returns
-        -------
-        out : distributed_data_object
-            The output object. Contains the power spectrum.
-
-        See Also
-        --------
-        power_analyze
-
-        """
         fieldabs = abs(x)
         fieldabs **= 2
 
@@ -541,40 +479,6 @@ class Field(Loggable, Versionable, object):
         return power_spectrum
 
     def _shape_up_pindex(self, pindex, target_shape, target_strategy, axes):
-        """ Makes the pindex array have the right size.
-        
-        If the 'spaces' keyword is used in power_analyze this method also
-        shapes the pindex array the right way.
-        
-        Parameters
-        ----------
-        pindex : distributed_data_object
-            
-        
-        target_shape : tuple
-            
-        
-        target_strategy : a global distribution_strategy
-            
-        
-        axes : tuple
-            
-        Raise
-        -----
-        ValueError
-            Raised if
-                *A wrong distribution strategy of the pindex is provided.
-        
-        Returns
-        -------
-        out : distributed_data_object
-            The output object. 
-
-        See Also
-        --------
-        _calculate_power_spectrum
-
-        """
         if pindex.distribution_strategy not in \
                 DISTRIBUTION_STRATEGIES['global']:
             raise ValueError("pindex's distribution strategy must be "
@@ -726,32 +630,6 @@ class Field(Loggable, Versionable, object):
         return result
 
     def _spec_to_rescaler(self, spec, result_list, power_space_index):
-        """ Transforms a 1D power spectrum to a 2D Field.
-        
-        This happens in order to make it applicable to a random Field by mere 
-        pointwise multiplication.
-
-        Parameters
-        ----------
-        spec : numpy.array
-            Has the power spectrum stored in it.
-        
-        result_list : Field
-            Used to infere the local_distribution_strategy
-        
-        power_space_index :
-            Basically the 'spaces' keyword
-        
-        Returns
-        -------
-        out : Field
-            The output object. The power spectrum in 2D.
-
-        See Also
-        --------
-        power_synthesize
-
-        """
         power_space = self.domain[power_space_index]
 
         # weight the random fields with the power spectrum
@@ -973,27 +851,6 @@ class Field(Loggable, Versionable, object):
         return casted_x
 
     def _actual_cast(self, x, dtype=None):
-        """ Takes an x and makes a d2o out of it.
-        
-        Here the actual d2o is created for the cast() method.
-
-        Parameters
-        ----------
-        x : array_like, Field
-            The shape of x and 'self' must allready match.
-        dtype : type
-            The datatpye the returned d2o shall have.
-        
-        Returns
-        -------
-        out : distributed_data_object
-            The output object.
-
-        See Also
-        --------
-        cast
-
-        """
         if isinstance(x, Field):
             x = x.get_val()
 
@@ -1008,7 +865,7 @@ class Field(Loggable, Versionable, object):
         return return_x
 
     def copy(self, domain=None, dtype=None, distribution_strategy=None):
-        """ Retruns a full copy of the Field.
+        """ Returns a full copy of the Field.
         
         If no keyword arguments are given, the returned object will be an
         identical copy of the original Field. By explicit specification one is
@@ -1106,18 +963,6 @@ class Field(Loggable, Versionable, object):
         return new_field
 
     def _fast_copy_empty(self):
-        """ Creates an empty Field with the same properties as 'self'.
-        
-        Returns
-        -------
-        out : Field
-            The output object.
-
-        See Also
-        --------
-        fast_copy
-
-        """
         # make an empty field
         new_field = EmptyField()
         # repair its class
@@ -1297,21 +1142,6 @@ class Field(Loggable, Versionable, object):
         return return_field
 
     def _contraction_helper(self, op, spaces):
-        """ Used for contraction operations like sum, norms, mean, std...
-
-        Parameters
-        ----------
-        op : callable
-
-        spaces : 
-            The subspace on which the contraction should be carried out.
-        
-        Returns
-        -------
-        out : float
-            The result of the operation performed on the values stored in 'self'
-
-        """
         # build a list of all axes
         if spaces is None:
             spaces = xrange(len(self.domain))
@@ -1378,26 +1208,6 @@ class Field(Loggable, Versionable, object):
     # ---General binary methods---
 
     def _binary_helper(self, other, op, inplace=False):
-        """ Used for various binary operations like +, -, *, /, **, *=, +=,...
-
-        _binary_helper checks whether `other` has the same domain as 'self'.
-
-        Parameters
-        ----------
-        other : scalar, array-like
-        
-        op : callable
-        
-        inplace : boolean
-            If the result shall be saved in the data array of `self`. Used for
-            +=, -=, etc...
-        Returns
-        -------
-        out : Field
-            The Field containing the computation's result.
-            Equals `self` if `inplace is True`.
-
-        """
         # if other is a field, make sure that the domains match
         if isinstance(other, Field):
             try:
