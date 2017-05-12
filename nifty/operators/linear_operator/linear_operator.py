@@ -104,7 +104,7 @@ class LinearOperator(Loggable, object):
         return y
 
     def inverse_adjoint_times(self, x, spaces=None, **kwargs):
-        return adjoint_inverse_times(x, spaces, **kwargs)
+        return self.adjoint_inverse_times(x, spaces, **kwargs)
 
     def _times(self, x, spaces):
         raise NotImplementedError(
