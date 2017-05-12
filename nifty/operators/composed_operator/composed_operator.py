@@ -20,6 +20,57 @@ from nifty.operators.linear_operator import LinearOperator
 
 
 class ComposedOperator(LinearOperator):
+
+    """NIFTY class for composed operators.
+    The  NIFTY composed operator class inherits multiple Operators of various kinds acting on
+    a Field living over a product space.
+
+    Parameters
+    ----------
+    Operators : tuple(NIFTy.LinearOperators)
+        Contains the list of LinearOperators.
+
+    Attributes
+    ----------
+    domain : NIFTy.space
+        The NIFTy.space in which the operator is defined.
+    target : NIFTy.space
+        The NIFTy.space in which the outcome of the operator lives
+
+
+    Raises
+    ------
+    TypeError
+        Raised if
+            * the elements of the operator list is not an instance of the
+              LinearOperator-baseclass
+
+    Notes
+    -----
+    Very usefull in case one has to transform a NIFTy.Field living over the product space. (see example below)
+
+    Examples
+    --------
+    Minimal example of transforming a Field living on two domains into its harmonic space.
+
+    >>> x1 = RGSpace(5)
+    >>> x2 = RGSpace(10)
+    >>> k1 = RGRGTransformation.get_codomain(x1)
+    >>> k2 = RGRGTransformation.get_codomain(x2)
+    >>> FFT1 = FFTOperator(domain=x1, target=k1, domain_dtype=np.float64, target_dtype=np.complex128)
+    >>> FFT2 = FFTOperator(domain=x2, target=k2, domain_dtype=np.float64, target_dtype=np.complex128)
+    >>> FFT = ComposedOperator((FFT1, FFT2)
+    >>> f = Field.from_random('normal', domain=(x1,x2))
+    >>> FFT.times(f)
+
+    See Also
+    --------
+    EndomorphicOperator, ProjectionOperator,
+    DiagonalOperator, SmoothingOperator, ResponseOperator,
+    PropagatorOperator, ComposedOperator
+
+    """
+
     # ---Overwritten properties and methods---
     def __init__(self, operators, default_spaces=None):
         super(ComposedOperator, self).__init__(default_spaces)

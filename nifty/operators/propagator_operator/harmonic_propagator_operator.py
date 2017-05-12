@@ -21,14 +21,16 @@ from nifty.operators import EndomorphicOperator,\
                             InvertibleOperatorMixin
 
 
-class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
+class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
-    """NIFTY Propagator Operator D.
+    """NIFTY Harmonic Propagator Operator D.
     The propagator operator D, is known from the Wiener Filter.
     Its inverse functional form might look like:
     D = (S^(-1) + M)^(-1)
     D = (S^(-1) + N^(-1))^(-1)
     D = (S^(-1) + R^(\dagger) N^(-1) R)^(-1)
+    In contrast to the PropagatorOperator the inference is done in the
+    harmonic space.
 
     Parameters
     ----------
@@ -59,15 +61,6 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
     Examples
     --------
-    >>> x_space = RGSpace(4)
-    >>> k_space = RGRGTransformation.get_codomain(x_space)
-    >>> f = Field(x_space, val=[2, 4, 6, 8])
-    >>> S = create_power_operator(k_space, spec=1)
-    >>> N = DiagonalOperaor(f.domain, diag=1)
-    >>> D = PropagatorOperator(S=S, N=N) # D^{-1} = S^{-1} + N^{-1}
-    >>> D(f).val
-    <distributed_data_object>
-    array([ 1.,  2.,  3.,  4.]
 
     See Also
     --------
@@ -78,7 +71,7 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, S=None, M=None, R=None, N=None, inverter=None,
-                 preconditioner=None, default_spaces=None):
+                 preconditioner=None):
         """
             Sets the standard operator properties and `codomain`, `_A1`, `_A2`,
             and `RN` if required.
@@ -96,30 +89,28 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
         """
         # infer domain, and target
+        # infer domain, and target
         if M is not None:
-            self._domain = M.domain
-            self._likelihood_times = M.times
+            self._codomain = M.domain
+            self._likelihood = M.times
 
         elif N is None:
             raise ValueError("Either M or N must be given!")
 
         elif R is not None:
-            self._domain = R.domain
-            self._likelihood_times = \
+            self._codomain = R.domain
+            self._likelihood = \
                 lambda z: R.adjoint_times(N.inverse_times(R.times(z)))
         else:
-            self._domain = N.domain
-            self._likelihood_times = lambda z: N.inverse_times(z)
+            self._codomain = N.domain
+            self._likelihood = lambda z: N.inverse_times(z)
 
+        self._domain = S.domain
         self._S = S
-        self._fft_S = FFTOperator(self._domain, target=self._S.domain)
+        self._fft_S = FFTOperator(self._domain, target=self._codomain)
 
-        if preconditioner is None:
-            preconditioner = self._S_times
-
-        super(PropagatorOperator, self).__init__(inverter=inverter,
-                                                 preconditioner=preconditioner,
-                                                 default_spaces=default_spaces)
+        super(HarmonicPropagatorOperator, self).__init__(inverter=inverter,
+                                                 preconditioner=preconditioner)
 
     # ---Mandatory properties and methods---
 
@@ -136,25 +127,16 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
         return False
 
     # ---Added properties and methods---
-
-    def _S_times(self, x, spaces=None):
-            transformed_x = self._fft_S(x, spaces=spaces)
-            y = self._S(transformed_x, spaces=spaces)
-            transformed_y = self._fft_S.inverse_times(y, spaces=spaces)
-            result = x.copy_empty()
-            result.set_val(transformed_y, copy=False)
-            return result
-
-    def _S_inverse_times(self, x, spaces=None):
-            transformed_x = self._fft_S(x, spaces=spaces)
-            y = self._S.inverse_times(transformed_x, spaces=spaces)
-            transformed_y = self._fft_S.inverse_times(y, spaces=spaces)
-            result = x.copy_empty()
-            result.set_val(transformed_y, copy=False)
-            return result
+    def _likelihood_times(self, x, spaces=None):
+        transformed_x = self._fft_S.times(x, spaces=spaces)
+        y = self._likelihood(transformed_x)
+        transformed_y = self._fft_S.adjoint_times(y, spaces=spaces)
+        result = x.copy_empty()
+        result.set_val(transformed_y, copy=False)
+        return result
 
     def _inverse_times(self, x, spaces):
-        pre_result = self._S_inverse_times(x, spaces)
+        pre_result = self._S.times(x, spaces)
         pre_result += self._likelihood_times(x)
         result = x.copy_empty()
         result.set_val(pre_result, copy=False)

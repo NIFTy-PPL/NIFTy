@@ -23,9 +23,71 @@ from nifty.operators.linear_operator import LinearOperator
 
 class EndomorphicOperator(LinearOperator):
 
+    """NIFTY class for endomorphic operators.
+    The  NIFTY EndomorphicOperator class is a class derived from the
+    LinearOperator. Domain and target are the same in any EndomorphicOperator.
+    Prominent other specific operator subclasses, in NIFTy are
+    (e.g. DiagonalOperator, SmoothingOperator,
+    PropagatorOperator, ProjectionOperator).
+
+    Parameters
+    ----------
+
+    Attributes
+    ----------
+    target : NIFTy.space
+        The NIFTy.space in which the outcome of the operator lives.
+        As the Operator is endomorphic this is the same as its domain.
+    self_adjoint : boolean
+        Indicates whether the operator is self_adjoint or not.
+
+    Raises
+    ------
+    NotImplementedError
+        Raised if
+            * self_adjoint is not defined
+
+    Notes
+    -----
+
+    Examples
+    --------
+
+
+    See Also
+    --------
+    DiagonalOperator, SmoothingOperator,
+    PropagatorOperator, ProjectionOperator
+
+    """
+
+
     # ---Overwritten properties and methods---
 
     def inverse_times(self, x, spaces=None):
+        """ Applies the inverse-Operator to a given Field.
+
+        Operator and Field have to live over the same domain.
+
+        Parameters
+        ----------
+        x : NIFTY.Field
+            the input Field on which the operator acts on
+        spaces : integer (default: None)
+            defines on which space of the given Field the Operator acts
+        **kwargs
+           Additional keyword arguments get passed to the used copy_empty
+           routine.
+
+        Returns
+        -------
+        out : NIFTy.Field
+            the processed Field living on the domain space
+
+        See Also
+       --------
+
+        """
         if self.self_adjoint and self.unitary:
             return self.times(x, spaces)
         else:
@@ -34,6 +96,29 @@ class EndomorphicOperator(LinearOperator):
                                                               spaces=spaces)
 
     def adjoint_times(self, x, spaces=None):
+        """ Applies the adjoint-Operator to a given Field.
+
+        Operator and Field have to live over the same domain.
+
+        Parameters
+        ----------
+        x : NIFTY.Field
+            applies the Operator to the given Field
+        spaces : integer (default: None)
+            defines on which space of the given Field the Operator acts
+        **kwargs
+           Additional keyword arguments get passed to the used copy_empty
+           routine.
+
+        Returns
+        -------
+        out : NIFTy.Field
+            the processed Field living on the domain space
+
+        See Also
+       --------
+
+        """
         if self.self_adjoint:
             return self.times(x, spaces)
         else:
@@ -42,6 +127,29 @@ class EndomorphicOperator(LinearOperator):
                                                                 spaces=spaces)
 
     def adjoint_inverse_times(self, x, spaces=None):
+        """ Applies the adjoint-inverse-Operator to a given Field.
+
+        Operator and Field have to live over the same domain.
+
+        Parameters
+        ----------
+        x : NIFTY.Field
+            applies the Operator to the given Field
+        spaces : integer (default: None)
+            defines on which space of the given Field the Operator acts
+        **kwargs
+           Additional keyword arguments get passed to the used copy_empty
+           routine.
+
+        Returns
+        -------
+        out : NIFTy.Field
+            the processed Field living on the domain space
+
+        See Also
+       --------
+
+        """
         if self.self_adjoint:
             return self.inverse_times(x, spaces)
         else:
@@ -50,6 +158,29 @@ class EndomorphicOperator(LinearOperator):
                                                                 spaces=spaces)
 
     def inverse_adjoint_times(self, x, spaces=None):
+        """ Applies the inverse-adjoint-Operator to a given Field.
+
+        Operator and Field have to live over the same domain.
+
+        Parameters
+        ----------
+        x : NIFTY.Field
+            applies the Operator to the given Field
+        spaces : integer (default: None)
+            defines on which space of the given Field the Operator acts
+        **kwargs
+           Additional keyword arguments get passed to the used copy_empty
+           routine.
+
+        Returns
+        -------
+        out : NIFTy.Field
+            the processed Field living on the domain space
+
+        See Also
+       --------
+
+        """
         if self.self_adjoint:
             return self.inverse_times(x, spaces)
         else:
@@ -67,4 +198,14 @@ class EndomorphicOperator(LinearOperator):
 
     @abc.abstractproperty
     def self_adjoint(self):
+        """
+        self_adjoint : boolean
+            States whether the Operator is self_adjoint or not
+            Every operator which inherits from the abstract EndomorphicOperator
+            class must have this attribute.
+
+        Notes :
+             is an abstractbaseclass.abstractproperty
+             (https://docs.python.org/2/library/abc.html)
+        """
         raise NotImplementedError
