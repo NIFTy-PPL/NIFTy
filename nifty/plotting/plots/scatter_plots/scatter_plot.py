@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from abc import abstractmethod
+import abc
 from nifty.plotting.plotly_wrapper import PlotlyWrapper
-from nifty.plotting.descriptors import Marker
+from nifty.plotting.descriptors import Marker,\
+                                       Line
 
 
 class ScatterPlot(PlotlyWrapper):
@@ -12,8 +13,13 @@ class ScatterPlot(PlotlyWrapper):
         self.marker = marker
         if not self.line and not self.marker:
             self.marker = Marker()
+            self.line = Line()
 
-    @abstractmethod
+    @abc.abstractproperty
+    def figure_dimension(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def to_plotly(self):
         ply_object = dict()
         ply_object['name'] = self.label

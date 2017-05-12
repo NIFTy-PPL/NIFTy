@@ -13,8 +13,9 @@ class Colormap(PlotlyWrapper):
             #TODO: implement validation
             pass
 
+    # no discontinuities only
     @staticmethod
-    def from_matplotlib_colormap_internal(name, mpl_cmap): # no discontinuities only
+    def from_matplotlib_colormap_internal(name, mpl_cmap):
         red = [(c[0], c[2]) for c in mpl_cmap['red']]
         green = [(c[0], c[2]) for c in mpl_cmap['green']]
         blue = [(c[0], c[2]) for c in mpl_cmap['blue']]
@@ -40,7 +41,8 @@ class Colormap(PlotlyWrapper):
                 green_val = self.green[g][1]
                 g += 1
             else:
-                slope = (self.green[g][1] - prev_g) / (self.green[g][0] - prev_split)
+                slope = ((self.green[g][1] - prev_g) /
+                         (self.green[g][0] - prev_split))
                 y = prev_g - slope * prev_split
                 green_val = slope * next_split + y
 
@@ -48,11 +50,16 @@ class Colormap(PlotlyWrapper):
                 blue_val = self.blue[b][1]
                 b += 1
             else:
-                slope = (self.blue[b][1] - prev_b) / (self.blue[b][0] - prev_split)
+                slope = ((self.blue[b][1] - prev_b) /
+                         (self.blue[b][0] - prev_split))
                 y = prev_r - slope * prev_split
                 blue_val = slope * next_split + y
 
-            prev_split, prev_r, prev_g, prev_b = next_split, red_val, green_val, blue_val
+            prev_split = next_split
+            prev_r = red_val
+            prev_g = green_val
+            prev_b = blue_val
+
             converted.append([next_split,
                               'rgb(' +
                               str(int(red_val*255)) + "," +

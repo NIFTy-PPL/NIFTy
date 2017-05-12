@@ -76,7 +76,15 @@ class RGSpace(Space):
             Whether x==0 (or k==0, respectively) is located in the center of
             the grid (or the center of each axis speparately) or not.
         distances : tuple of floats
-            Distance between two grid points along the correpsonding axis.
+            Distance between two grid points along the correponding axis.
+        dim : np.int
+            Total number of dimensionality, i.e. the number of pixels.
+        harmonic : bool
+            Specifies whether the space is a signal or harmonic space.
+        total_volume : np.float
+            The total volume of the space.
+        shape : tuple of np.ints
+            The shape of the space's data array.
 
     """
 
@@ -286,7 +294,7 @@ class RGSpace(Space):
 
     @property
     def zerocenter(self):
-        """Returns True if grid points lie symmetrically around zero
+        """Returns True if grid points lie symmetrically around zero.
 
         Returns
         -------

@@ -50,8 +50,8 @@ from spaces import *
 
 from operators import *
 
-from plotting import *
-
 from probing import *
 
 from sugar import *
+
+import plotting
