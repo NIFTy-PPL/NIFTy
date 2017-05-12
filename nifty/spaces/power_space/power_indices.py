@@ -25,32 +25,32 @@ from d2o.config import configuration as d2o_config
 
 
 class PowerIndices(object):
+    """Computes helpful quantities to deal with power spectra.
+
+    Given the shape and the density of a underlying rectangular grid this
+    class provides the user
+    with the pindex, kindex, rho and pundex. The indices are binned
+    according to the supplied parameter scheme. If wanted, computed
+    results are stored for future reuse.
+
+    Parameters
+    ----------
+    domain : NIFTy harmonic space
+        The space for which the power indices get computed
+    distribution_strategy : str
+        The distribution_strategy that will be used for the k_array and pindex
+        distributed_data_object.
+    logarithmic : bool *optional*
+        Flag specifying if the binning of the default indices is
+        performed on logarithmic scale.
+    nbin : integer *optional*
+        Number of used bins for the binning of the default indices.
+    binbounds : {list, array}
+        Array-like inner boundaries of the used bins of the default
+        indices.
+    """
     def __init__(self, domain, distribution_strategy,
                  logarithmic=False, nbin=None, binbounds=None):
-        """
-            Returns an instance of the PowerIndices class. Given the shape and
-            the density of a underlying rectangular grid it provides the user
-            with the pindex, kindex, rho and pundex. The indices are binned
-            according to the supplied parameter scheme. If wanted, computed
-            results are stored for future reuse.
-
-            Parameters
-            ----------
-            shape : tuple, list, ndarray
-                Array-like object which specifies the shape of the underlying
-                rectangular grid
-            dgrid : tuple, list, ndarray
-                Array-like object which specifies the step-width of the
-                underlying grid
-            logarithmic : bool *optional*
-                Flag specifying if the binning of the default indices is
-                performed on logarithmic scale.
-            nbin : integer *optional*
-                Number of used bins for the binning of the default indices.
-            binbounds : {list, array}
-                Array-like inner boundaries of the used bins of the default
-                indices.
-        """
         self.domain = domain
         self.distribution_strategy = distribution_strategy
 

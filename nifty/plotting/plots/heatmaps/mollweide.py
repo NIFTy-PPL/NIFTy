@@ -14,8 +14,10 @@ class Mollweide(Heatmap):
             raise ImportError("The module pylab is needed but not available.")
         if 'healpy' not in gdi:
             raise ImportError("The module healpy is needed but not available.")
-
-        data = self._mollview(data)
+        if isinstance(data, list):
+            data = [self._mollview(d) for d in data]
+        else:
+            data = self._mollview(data)
         super(Mollweide, self).__init__(data, color_map, webgl, smoothing)
 
     def _mollview(self, x, xsize=800):
