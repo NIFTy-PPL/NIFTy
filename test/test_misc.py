@@ -161,12 +161,49 @@ class Misc_Tests(unittest.TestCase):
         v2 = np.sqrt(inp.dot(fft.adjoint_times(out)))
         assert_allclose(v1, v2, rtol=tol, atol=tol)
 
+    @expand(product([100, 200], [1, 0.4], [0., 1.,  3.7],
+                    [np.float64, np.complex128]))
+    def test_smooth_regular1(self, sz, d, sigma, tp):
+        tol = _get_rtol(tp)
+        sp = RGSpace(sz, harmonic=True, distances=d)
+        smo = SmoothingOperator(sp, sigma=sigma)
+        inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
+                                dtype=tp)
+        out = smo(inp)
+        inp = inp.val.get_full_data()
+        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
+
+    @expand(product([10, 15], [7, 10], [1, 0.4], [2, 0.3], [0., 1.,  3.7],
+                    [np.float64, np.complex128]))
+    def test_smooth_regular2(self, sz1, sz2, d1, d2, sigma, tp):
+        tol = _get_rtol(tp)
+        sp = RGSpace([sz1, sz2], distances=[d1, d2], harmonic=True)
+        smo = SmoothingOperator(sp, sigma=sigma)
+        inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
+                                dtype=tp)
+        out = smo(inp)
+        inp = inp.val.get_full_data()
+        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
+
     @expand(product([100, 200], [False, True], [0., 1.,  3.7],
                     [np.float64, np.complex128]))
-    def test_smooth(self, sz, log, sigma, tp):
+    def test_smooth_irregular1(self, sz, log, sigma, tp):
         tol = _get_rtol(tp)
         sp = RGSpace(sz, harmonic=True)
         ps = PowerSpace(sp, nbin=sz, logarithmic=log)
+        smo = SmoothingOperator(ps, sigma=sigma)
+        inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
+                                dtype=tp)
+        out = smo(inp)
+        inp = inp.val.get_full_data()
+        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
+
+    @expand(product([10, 15], [7, 10], [False, True], [0., 1.,  3.7],
+                    [np.float64, np.complex128]))
+    def test_smooth_irregular2(self, sz1, sz2, log, sigma, tp):
+        tol = _get_rtol(tp)
+        sp = RGSpace([sz1, sz2], harmonic=True)
+        ps = PowerSpace(sp, logarithmic=log)
         smo = SmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
