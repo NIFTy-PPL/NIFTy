@@ -17,3 +17,4 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from propagator_operator import PropagatorOperator
+from harmonic_propagator_operator import HarmonicPropagatorOperator
