@@ -22,23 +22,23 @@ from nifty.field import Field
 
 
 class InvertibleOperatorMixin(object):
+    """ Mixin class to invert implicit defined operators.
 
-    """NIFTY to invert implicit defined operators.
-    To invert the application of a given implicitly defined operator on a field,
-    this class gives the necessary functionality. Inheriting functionality from
-    this class provides you with the inverse to the given implicitly definied
-    application of the operator on a field. (e.g. .inverse_times vs. .times
-    and .adjoint_times vs. .adjoint_inverse_times)
+    To invert the application of a given implicitly defined operator on a
+    field, this class gives the necessary functionality. Inheriting
+    functionality from this class provides the derived class with the inverse
+    to the given implicitly definied application of the operator on a field.
+    (e.g. .inverse_times vs. .times and
+    .adjoint_times vs. .adjoint_inverse_times)
 
     Parameters
     ----------
-    inverter : Minimization object
-        Defines the object how to minimize the functional
+    inverter : Inverter
+        An instance of an Inverter class.
         (default: ConjugateGradient)
 
     preconditioner : LinearOperator
         Preconditions the minimizaion problem
-        (further details see any good text book about conjugate gradient)
 
     Attributes
     ----------
@@ -51,13 +51,11 @@ class InvertibleOperatorMixin(object):
 
     Examples
     --------
-    most promiment see PropagatorOperator class
+    The PropagatorOperator inherits from InvertibleOperatorMixin.
 
     See Also
     --------
-    EndomorphicOperator, ProjectionOperator,
-    DiagonalOperator, SmoothingOperator, ResponseOperator,
-    PropagatorOperator, ComposedOperator
+    PropagatorOperator
 
     """
 

@@ -29,7 +29,7 @@ def plot_maps(x, name):
 
     elif shape == 2:
         for ii in xrange(len(x)):
-            py.plot([go.Heatmap(z=x[keys[ii]].val.get_full_data())], filename=keys[ii])
+            py.plot([go.Heatmap(z=x[keys[ii]].val.get_full_data().real)], filename=keys[ii])
     else:
         raise TypeError("Only 1D and 2D field plots are supported")
 
@@ -85,13 +85,14 @@ if __name__ == "__main__":
     a_s = sigma_s ** 2. * lambda_s * total_volume
 
     # creation of spaces
-    # x1 = RGSpace([npix,npix], distances=total_volume / npix,
-    #              zerocenter=False)
-    # k1 = RGRGTransformation.get_codomain(x1)
-
-    x1 = HPSpace(64)
+#    x1 = RGSpace([npix,npix], distances=total_volume / npix,
+#                 zerocenter=False)
+#    k1 = RGRGTransformation.get_codomain(x1)
+    x1 = HPSpace(32)
     k1 = HPLMTransformation.get_codomain(x1)
-    p1 = PowerSpace(harmonic_domain=k1, log=False)
+
+    p1 = PowerSpace(harmonic_partner=k1, logarithmic=False)
+
 
     # creating Power Operator with given spectrum
     spec = (lambda k: a_s / (1 + (k / k_0) ** 2) ** 2)
@@ -99,15 +100,14 @@ if __name__ == "__main__":
     S_op = create_power_operator(k1, spec)
 
     # creating FFT-Operator and Response-Operator with Gaussian convolution
-    # adjust dtype_target probperly
     Fft_op = FFTOperator(domain=x1, target=k1,
                         domain_dtype=np.float64,
-                        target_dtype=np.float64)
+                        target_dtype=np.complex128)
     R_op = ResponseOperator(x1, sigma=[length_convolution],
                             exposure=[exposure])
 
     # drawing a random field
-    sk = p_field.power_synthesize(decompose_power=True, mean=0.)
+    sk = p_field.power_synthesize(real_signal=True, mean=0.)
     s = Fft_op.adjoint_times(sk)
 
     signal_to_noise = 1
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     n = Field.from_random(domain=R_op.target,
                           random_type='normal',
                           std=s.std()/np.sqrt(signal_to_noise),
-                          mean=0)
+                          mean=0.)
 
     d = R_op(s) + n
 
@@ -127,12 +127,13 @@ if __name__ == "__main__":
 
     m = Fft_op.adjoint_times(mk)
 
-    # z={}
-    # z["signal"] = s
-    # z["reconstructed_map"] = m
-    # z["data"] = d
-    # z["lambda"] = R_op(s)
-    #
-    # plot_maps(z, "Wiener_filter.html")
+#    z={}
+#    z["signal"] = s
+#    z["reconstructed_map"] = m
+#    z["data"] = d
+#    z["lambda"] = R_op(s)
+#    z["j"] = j
+#
+#    plot_maps(z, "Wiener_filter.html")
 
 

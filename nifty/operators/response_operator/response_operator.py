@@ -7,8 +7,8 @@ from nifty.operators.composed_operator import ComposedOperator
 from nifty.operators.diagonal_operator import DiagonalOperator
 
 class ResponseOperator(LinearOperator):
+    """ NIFTy ResponseOperator (example)
 
-    """NIFTy ResponseOperator (example)
     This NIFTy ResponseOperator provides the user with an example how a
     ResponseOperator can look like. It smoothes and exposes a field. The
     outcome of the Operator is geometrically not ordered as typical data
@@ -16,7 +16,7 @@ class ResponseOperator(LinearOperator):
 
     Parameters
     ----------
-    domain : NIFTy.Space (list of NIFTy.Space)
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
         The domains on which the operator lives. Either one space or a list
         of spaces
     sigma : list(np.float)
@@ -58,7 +58,9 @@ class ResponseOperator(LinearOperator):
     """
 
     def __init__(self, domain,
-                 sigma=[1.], exposure=[1.]):
+                 sigma=[1.], exposure=[1.],
+                 default_spaces=None):
+        super(ResponseOperator, self).__init__(default_spaces)
 
         self._domain = self._parse_domain(domain)
 
@@ -76,20 +78,20 @@ class ResponseOperator(LinearOperator):
 
         for ii in xrange(len(self._kernel)):
             self._kernel[ii] = SmoothingOperator(self._domain[ii],
-                                        sigma=self._sigma[ii])
+                                                 sigma=self._sigma[ii])
 
         self._composed_kernel = ComposedOperator(self._kernel)
 
-
         self._exposure_op = len(self._domain)*[None]
-        if len(self._exposure_op)!= len(self._kernel):
-            raise ValueError("Definition of kernel and exposure do not suit each other")
+        if len(self._exposure_op) != len(self._kernel):
+            raise ValueError("Definition of kernel and exposure do not suit "
+                             "each other")
         else:
             for ii in xrange(len(self._exposure_op)):
-                self._exposure_op[ii] = DiagonalOperator(self._domain[ii],
-                                                      diagonal=self._exposure[ii])
+                self._exposure_op[ii] = DiagonalOperator(
+                                                self._domain[ii],
+                                                diagonal=self._exposure[ii])
             self._composed_exposure = ComposedOperator(self._exposure_op)
-
 
     @property
     def domain(self):
