@@ -24,6 +24,45 @@ from nifty.operators.endomorphic_operator import EndomorphicOperator
 
 
 class ProjectionOperator(EndomorphicOperator):
+    """ NIFTY class for projection operators.
+
+    The NIFTY ProjectionOperator class is a class derived from the
+    EndomorphicOperator.
+
+    Parameters
+    ----------
+    projection_field : Field
+        Field on which the operator projects
+
+    Attributes
+    ----------
+
+    Raises
+    ------
+    TypeError
+        Raised if
+            * if projection_field is not a Field
+
+    Notes
+    -----
+
+
+    Examples
+    --------
+    >>> x_space = RGSpace(5)
+    >>> f1 = Field(x_space, val=3.)
+    >>> f2 = Field(x_space, val=5.)
+    >>> P = ProjectionOperator(f1)
+    >>> res = P.times(f2)
+    >>> res.val
+    <distributed_data_object>
+    array([ 225.,  225.,  225.,  225.,  225.])
+
+    See Also
+    --------
+    EndomorphicOperator
+
+    """
 
     # ---Overwritten properties and methods---
 
