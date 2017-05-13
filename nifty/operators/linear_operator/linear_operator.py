@@ -211,8 +211,6 @@ class LinearOperator(Loggable, object):
                 raise
         return y
 
-    # If the operator supports inverse() then the inverse adjoint is identical
-    # to the adjoint inverse. We provide both names for convenience.
     def adjoint_inverse_times(self, x, spaces=None):
         """ Applies the adjoint-inverse Operator to a given Field.
 
@@ -230,9 +228,15 @@ class LinearOperator(Loggable, object):
         out : Field
             The processed Field living on the target-domain.
 
+        Notes
+        -----
+        If the operator has an `inverse` then the inverse adjoint is identical
+        to the adjoint inverse. We provide both names for convenience.
+
+        See Also
+        --------
+
         """
-        if self.unitary:
-            return self.times(x, spaces)
 
         spaces = self._check_input_compatibility(x, spaces)
 
@@ -246,28 +250,6 @@ class LinearOperator(Loggable, object):
         return y
 
     def inverse_adjoint_times(self, x, spaces=None):
-        """ Applies the inverse-adjoint Operator to a given Field.
-
-        If the operator supports inverse() then the inverse-adjoint is
-        identical to the adjoint-inverse. Both names are provided for
-        convenience.
-
-        Operator and Field have to live over the same domain.
-
-        Parameters
-        ----------
-        x : Field
-            applies the Operator to the given Field
-        spaces : tuple of ints
-            defines on which space of the given Field the Operator acts
-
-        Returns
-        -------
-        out : Field
-            The processed Field living on the target-domain.
-
-        """
-
         return self.adjoint_inverse_times(x, spaces)
 
     def _times(self, x, spaces):

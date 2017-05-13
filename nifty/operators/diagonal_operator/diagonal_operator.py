@@ -157,7 +157,7 @@ class DiagonalOperator(EndomorphicOperator):
         out : Field
             The inverse of the diagonal of the Operator.
 
-        """
+        """        
         return 1./self.diagonal(bare=bare, copy=False)
 
     def trace(self, bare=False):
@@ -209,6 +209,7 @@ class DiagonalOperator(EndomorphicOperator):
 
         Returns
         -------
+        out : scalar
         out : scalar
             the determinant of the Operator
 
