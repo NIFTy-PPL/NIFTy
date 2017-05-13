@@ -24,14 +24,14 @@ from nifty.operators.endomorphic_operator import EndomorphicOperator
 
 
 class ProjectionOperator(EndomorphicOperator):
+    """ NIFTY class for projection operators.
 
-    """NIFTY class for projection operators.
-    The  NIFTY PorjectionOperator class is a class derived from the
-    EndomorphicOperator. It projects
+    The NIFTY ProjectionOperator class is a class derived from the
+    EndomorphicOperator.
 
     Parameters
     ----------
-    projection_field : NIFTy.Field
+    projection_field : Field
         Field on which the operator projects
 
     Attributes
@@ -41,7 +41,7 @@ class ProjectionOperator(EndomorphicOperator):
     ------
     TypeError
         Raised if
-            * if projection_field is not a NIFTy.Field
+            * if projection_field is not a Field
 
     Notes
     -----
@@ -62,8 +62,8 @@ class ProjectionOperator(EndomorphicOperator):
     --------
     EndomorphicOperator
 
-
     """
+
     # ---Overwritten properties and methods---
 
     def __init__(self, projection_field, default_spaces=None):
