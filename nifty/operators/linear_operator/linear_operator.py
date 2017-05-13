@@ -25,27 +25,28 @@ import nifty.nifty_utilities as utilities
 
 
 class LinearOperator(Loggable, object):
-
     """NIFTY base class for linear operators.
+
     The base NIFTY operator class is an abstract class from which
     other specific operator subclasses, including those preimplemented
     in NIFTY (e.g. the EndomorphicOperator, ProjectionOperator,
     DiagonalOperator, SmoothingOperator, ResponseOperator,
-    PropagatorOperator, ComposedOperator) must be derived.
+    PropagatorOperator, ComposedOperator) are derived.
 
     Parameters
     ----------
-
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
 
     Attributes
     ----------
-    domain : NIFTy.space
-        The NIFTy.space in which the operator is defined.
-    target : NIFTy.space
-        The NIFTy.space in which the outcome of the operator lives
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain in which the Operators result lives.
     unitary : boolean
-        Indicates whether the operator is unitary or not
-
+        Indicates whether the Operator is unitary or not.
 
     Raises
     ------
@@ -57,13 +58,9 @@ class LinearOperator(Loggable, object):
 
     Notes
     -----
-    All Operators wihtin NIFTy are linear and must therefore be a subclasses of the
-    LinearOperator. A LinearOperator must have the attributes domain, target
-    and unitary to be properly defined.
-
-    Examples
-    --------
-
+    All Operators wihtin NIFTy are linear and must therefore be a subclasses of
+    the LinearOperator. A LinearOperator must have the attributes domain,
+    target and unitary to be properly defined.
 
     See Also
     --------
@@ -84,29 +81,25 @@ class LinearOperator(Loggable, object):
     @abc.abstractproperty
     def domain(self):
         """
-        domain : NIFTy.space
-            The NIFTy.space in which the operator is defined.
-            Every operator which inherits from the abstract LinearOperator
+        domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+            The domain on which the Operator's input Field lives.
+            Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
 
-        Notes :
-             is an abstractbaseclass.abstractproperty
-             (https://docs.python.org/2/library/abc.html)
         """
+
         raise NotImplementedError
 
     @abc.abstractproperty
     def target(self):
         """
-        target : NIFTy.space
-            The NIFTy.space on which the processed (output) Field lives.
-            Every operator which inherits from the abstract LinearOperator
+        target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+            The domain on which the Operator's output Field lives.
+            Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
 
-        Notes :
-             is an abstractbaseclass.abstractproperty
-             (https://docs.python.org/2/library/abc.html)
         """
+
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -117,11 +110,8 @@ class LinearOperator(Loggable, object):
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
 
-        Notes :
-             is an abstractbaseclass.abstractproperty
-             (https://docs.python.org/2/library/abc.html)
-
         """
+
         raise NotImplementedError
 
     @property
@@ -135,134 +125,110 @@ class LinearOperator(Loggable, object):
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)
 
-    def times(self, x, spaces=None, **kwargs):
+    def times(self, x, spaces=None):
         """ Applies the Operator to a given Field.
 
         Operator and Field have to live over the same domain.
 
         Parameters
         ----------
-        x : NIFTY.Field
-            applies the Operator to the given Field
-        spaces : integer (default: None)
-            defines on which space of the given Field the Operator acts
-        **kwargs
-           Additional keyword arguments get passed to the used copy_empty
-           routine.
+        x : Field
+            The input Field.
+        spaces : tuple of ints
+            Defines on which space(s) of the given Field the Operator acts.
 
         Returns
         -------
-        out : NIFTy.Field
-            the processed Field living on the target space
-
-        See Also
-       --------
+        out : Field
+            The processed Field living on the target-domain.
 
         """
 
         spaces = self._check_input_compatibility(x, spaces)
-
-        y = self._times(x, spaces, **kwargs)
+        y = self._times(x, spaces)
         return y
 
-    def inverse_times(self, x, spaces=None, **kwargs):
+    def inverse_times(self, x, spaces=None):
         """ Applies the inverse-Operator to a given Field.
 
         Operator and Field have to live over the same domain.
 
         Parameters
         ----------
-        x : NIFTY.Field
-            applies the Operator to the given Field
-        spaces : integer (default: None)
-            defines on which space of the given Field the Operator acts
-        **kwargs
-           Additional keyword arguments get passed to the used copy_empty
-           routine.
+        x : Field
+            The input Field.
+        spaces : tuple of ints
+            Defines on which space(s) of the given Field the Operator acts.
 
         Returns
         -------
-        out : NIFTy.Field
-            the processed Field living on the target space
-
-        See Also
-       --------
+        out : Field
+            The processed Field living on the target-domain.
 
         """
 
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
         try:
-            y = self._inverse_times(x, spaces, **kwargs)
+            y = self._inverse_times(x, spaces)
         except(NotImplementedError):
             if (self.unitary):
-                y = self._adjoint_times(x, spaces, **kwargs)
+                y = self._adjoint_times(x, spaces)
             else:
                 raise
         return y
 
-    def adjoint_times(self, x, spaces=None, **kwargs):
+    def adjoint_times(self, x, spaces=None):
         """ Applies the adjoint-Operator to a given Field.
 
         Operator and Field have to live over the same domain.
 
         Parameters
         ----------
-        x : NIFTY.Field
+        x : Field
             applies the Operator to the given Field
-        spaces : integer (default: None)
+        spaces : tuple of ints
             defines on which space of the given Field the Operator acts
-        **kwargs
-           Additional keyword arguments get passed to the used copy_empty
-           routine.
 
         Returns
         -------
-        out : NIFTy.Field
-            the processed Field living on the target space
-
-        See Also
-       --------
+        out : Field
+            The processed Field living on the target-domain.
 
         """
+
         if self.unitary:
             return self.inverse_times(x, spaces)
 
         spaces = self._check_input_compatibility(x, spaces, inverse=True)
 
         try:
-            y = self._adjoint_times(x, spaces, **kwargs)
+            y = self._adjoint_times(x, spaces)
         except(NotImplementedError):
             if (self.unitary):
-                y = self._inverse_times(x, spaces, **kwargs)
+                y = self._inverse_times(x, spaces)
             else:
                 raise
         return y
 
     # If the operator supports inverse() then the inverse adjoint is identical
     # to the adjoint inverse. We provide both names for convenience.
-    def adjoint_inverse_times(self, x, spaces=None, **kwargs):
+    def adjoint_inverse_times(self, x, spaces=None):
         """ Applies the adjoint-inverse Operator to a given Field.
 
         Operator and Field have to live over the same domain.
 
         Parameters
         ----------
-        x : NIFTY.Field
+        x : Field
             applies the Operator to the given Field
-        spaces : integer (default: None)
+        spaces : tuple of ints
             defines on which space of the given Field the Operator acts
-        **kwargs
-           Additional keyword arguments get passed to the used copy_empty
-           routine.
 
         Returns
         -------
-        out : NIFTy.Field
-            the processed Field living on the target space
-
-        See Also
-       --------
+        out : Field
+            The processed Field living on the target-domain.
 
         """
         if self.unitary:
@@ -271,58 +237,38 @@ class LinearOperator(Loggable, object):
         spaces = self._check_input_compatibility(x, spaces)
 
         try:
-            y = self._adjoint_inverse_times(x, spaces, **kwargs)
+            y = self._adjoint_inverse_times(x, spaces)
         except(NotImplementedError):
             if self.unitary:
-                y = self._times(x, spaces, **kwargs)
+                y = self._times(x, spaces)
             else:
                 raise
         return y
 
-    def inverse_adjoint_times(self, x, spaces=None, **kwargs):
+    def inverse_adjoint_times(self, x, spaces=None):
         """ Applies the inverse-adjoint Operator to a given Field.
+
+        If the operator supports inverse() then the inverse-adjoint is
+        identical to the adjoint-inverse. Both names are provided for
+        convenience.
 
         Operator and Field have to live over the same domain.
 
         Parameters
         ----------
-        x : NIFTY.Field
+        x : Field
             applies the Operator to the given Field
-        spaces : integer (default: None)
+        spaces : tuple of ints
             defines on which space of the given Field the Operator acts
-        **kwargs
-           Additional keyword arguments get passed to the used copy_empty
-           routine.
 
         Returns
         -------
-        out : NIFTy.Field
-            the processed Field living on the target space
-
-        See Also
-       --------
+        out : Field
+            The processed Field living on the target-domain.
 
         """
-        if self.unitary:
-            return self.times(x, spaces, **kwargs)
 
-        spaces = self._check_input_compatibility(x, spaces)
-
-        try:
-            y = self._inverse_adjoint_times(x, spaces, **kwargs)
-        except(NotImplementedError):
-            if self.unitary:
-                y = self._times(x, spaces, **kwargs)
-            else:
-                raise
-            try:
-                y = self._inverse_adjoint_times(x, spaces, **kwargs)
-            except(NotImplementedError):
-                if self.unitary:
-                    y = self._times(x, spaces, **kwargs)
-                else:
-                    raise
-        return y
+        return self.adjoint_inverse_times(x, spaces)
 
     def _times(self, x, spaces):
         raise NotImplementedError(
@@ -347,7 +293,7 @@ class LinearOperator(Loggable, object):
     def _check_input_compatibility(self, x, spaces, inverse=False):
         if not isinstance(x, Field):
             raise ValueError(
-                "supplied object is not a `nifty.Field`.")
+                "supplied object is not a `Field`.")
 
         if spaces is None:
             spaces = self.default_spaces

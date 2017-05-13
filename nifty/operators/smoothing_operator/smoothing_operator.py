@@ -26,15 +26,16 @@ from d2o import STRATEGIES
 
 
 class SmoothingOperator(EndomorphicOperator):
+    """ NIFTY class for smoothing operators.
 
-    """NIFTY class for smoothing operators.
     The NIFTy SmoothingOperator smooths Fields, with a given kernel length.
     Fields which are not living over a PowerSpace are smoothed
-    via a gaussian convolution. Fields living over the PowerSpace are directly smoothed.
+    via a gaussian convolution. Fields living over the PowerSpace are directly
+    smoothed.
 
     Parameters
     ----------
-    domain : NIFTy.Space
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
         The Space on which the operator acts
     sigma : float
         Sets the length of the Gaussian convolution kernel
@@ -74,8 +75,6 @@ class SmoothingOperator(EndomorphicOperator):
     ComposedOperator
 
     """
-
-
 
     # ---Overwritten properties and methods---
     def __init__(self, domain=(), sigma=0, log_distances=False,
@@ -191,8 +190,6 @@ class SmoothingOperator(EndomorphicOperator):
             local_transformed_x *= local_kernel
 
         transformed_x.val.set_local_data(local_transformed_x, copy=False)
-
-#to be discussed tomorrow!!!
 
         smoothed_x = Transformator.adjoint_times(transformed_x, spaces=spaces)
 

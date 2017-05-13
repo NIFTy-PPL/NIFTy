@@ -22,8 +22,8 @@ from nifty.operators import EndomorphicOperator,\
 
 
 class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
+    """ NIFTY Propagator Operator D.
 
-    """NIFTY Propagator Operator D.
     The propagator operator D, is known from the Wiener Filter.
     Its inverse functional form might look like:
     D = (S^(-1) + M)^(-1)
@@ -73,6 +73,7 @@ class PropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
     --------
     Scientific reference
     https://arxiv.org/abs/0806.3474
+
     """
 
     # ---Overwritten properties and methods---
