@@ -50,9 +50,21 @@ class DiagonalOperator(EndomorphicOperator):
         setting the prober distribution_strategy of the
         diagonal (default : None). In case diagonal is d2o-object or Field,
         their distribution_strategy is used as a fallback.
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
 
     Attributes
     ----------
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain in which the outcome of the operator lives. As the Operator
+        is endomorphic this is the same as its domain.
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
+    self_adjoint : boolean
+        Indicates whether the operator is self_adjoint or not.
     distribution_strategy : string
         Defines the distribution_strategy of the distributed_data_object
         in which the diagonal entries are stored in.
