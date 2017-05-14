@@ -5,6 +5,8 @@ from numpy.testing import assert_equal,\
     assert_approx_equal
 
 from nifty import Field,\
+    RGSpace,\
+    PowerSpace,\
     SmoothingOperator
 
 from test.common import generate_spaces
@@ -13,7 +15,7 @@ from itertools import product
 from test.common import expand
 
 class SmoothingOperator_Tests(unittest.TestCase):
-    spaces = generate_spaces()
+    spaces = [RGSpace(100), PowerSpace(RGSpace((40, 40), harmonic=True))]
 
     @expand(product(spaces, [0., .5, 5.], [True, False]))
     def test_property(self, space, sigma, log_distances):
