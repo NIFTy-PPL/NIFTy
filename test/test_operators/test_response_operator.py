@@ -1,12 +1,10 @@
 import unittest
 
-from numpy.testing import assert_equal,\
-    assert_allclose,\
-    assert_approx_equal
+from numpy.testing import assert_approx_equal
 
 from nifty import Field,\
     RGSpace,\
-    ResponseOperator,\
+    ResponseOperator
 
 from itertools import product
 from test.common import expand
