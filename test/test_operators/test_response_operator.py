@@ -9,7 +9,7 @@ from nifty import Field,\
 from itertools import product
 from test.common import expand
 
-class SmoothingOperator_Tests(unittest.TestCase):
+class ResponseOperator_Tests(unittest.TestCase):
     spaces = [RGSpace(100)]
 
     @expand(product(spaces, [0.,  5., 1.], [0., 1., .33] ))
