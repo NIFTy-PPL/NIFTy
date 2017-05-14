@@ -36,8 +36,7 @@ class ResponseOperator(LinearOperator):
         is endomorphic this is the same as its domain.
     unitary : boolean
         Indicates whether the Operator is unitary or not.
-    self_adjoint : boolean
-        Indicates whether the operator is self_adjoint or not.
+
 
     Raises
     ------
