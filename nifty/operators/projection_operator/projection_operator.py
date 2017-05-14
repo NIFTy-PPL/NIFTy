@@ -33,9 +33,21 @@ class ProjectionOperator(EndomorphicOperator):
     ----------
     projection_field : Field
         Field on which the operator projects
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
 
     Attributes
     ----------
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain in which the outcome of the operator lives. As the Operator
+        is endomorphic this is the same as its domain.
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
+    self_adjoint : boolean
+        Indicates whether the operator is self_adjoint or not.
 
     Raises
     ------
