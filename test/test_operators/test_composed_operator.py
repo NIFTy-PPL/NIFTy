@@ -16,7 +16,7 @@ from test.common import expand
 class ComposedOperator_Tests(unittest.TestCase):
     spaces = generate_spaces()
 
-    @expand(product([spaces, spaces]))
+    @expand(product([spaces], [spaces]))
     def test_property(self, space1, space2):
         rand1 = Field.from_random('normal', domain=space1)
         rand2 = Field.from_random('normal', domain=space2)
@@ -28,7 +28,7 @@ class ComposedOperator_Tests(unittest.TestCase):
         if op.unitary != False:
             raise ValueError
 
-    @expand(product([spaces, spaces]))
+    @expand(product([spaces],[spaces]))
     def test_times_adjoint_times(self, space1, space2):
         diag1 = Field.from_random('normal', domain=space1)
         diag2 = Field.from_random('normal', domain=space2)
@@ -44,7 +44,7 @@ class ComposedOperator_Tests(unittest.TestCase):
         tt2 = rand1.dot(op.adjoint_times(rand2))
         assert_approx_equal(tt1, tt2)
 
-    @expand(product([spaces, spaces]))
+    @expand(product([spaces], [spaces]))
     def test_times_inverse_times(self, space1, space2):
         diag1 = Field.from_random('normal', domain=space1)
         diag2 = Field.from_random('normal', domain=space2)
