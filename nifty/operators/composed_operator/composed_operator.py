@@ -28,6 +28,10 @@ class ComposedOperator(LinearOperator):
     ----------
     operators : tuple of NIFTy Operators
         The tuple of LinearOperators.
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
+
 
     Attributes
     ----------
@@ -35,6 +39,8 @@ class ComposedOperator(LinearOperator):
         The NIFTy.space in which the operator is defined.
     target : tuple of DomainObjects, i.e. Spaces and FieldTypes
         The NIFTy.space in which the outcome of the operator lives
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
 
     Raises
     ------
