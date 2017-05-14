@@ -35,15 +35,28 @@ class SmoothingOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
-        The Space on which the operator acts
+    domain : DomainObject, i.e. Space or FieldType
+        The Space on which the operator acts. The SmoothingOperator
+        can only live on one space or FieldType
     sigma : float
         Sets the length of the Gaussian convolution kernel
     log_distances : boolean
         States whether the convolution happens on the logarithmic grid or not.
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
 
     Attributes
     ----------
+    domain : DomainObject, i.e. Space or FieldType
+        The domain on which the Operator's input Field lives.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain in which the outcome of the operator lives. As the Operator
+        is endomorphic this is the same as its domain.
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
+    self_adjoint : boolean
+        Indicates whether the operator is self_adjoint or not.
     sigma : float
         Sets the length of the Gaussian convolution kernel
     log_distances : boolean
