@@ -37,7 +37,6 @@ class ResponseOperator(LinearOperator):
     unitary : boolean
         Indicates whether the Operator is unitary or not.
 
-
     Raises
     ------
     ValueError:
