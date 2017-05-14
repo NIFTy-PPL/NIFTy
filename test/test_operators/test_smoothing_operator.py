@@ -40,7 +40,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
         tt2 = rand2.dot(op.adjoint_times(rand1))
         assert_approx_equal(tt1, tt2)
 
-    @expand(product(spaces, [0., .5, 5.], [True, False]))
+    @expand(product(spaces, [0., .5, 5.], [False]))
     def test_times(self, space, sigma, log_distances):
         op = SmoothingOperator(space, sigma=sigma,
                               log_distances=log_distances)
