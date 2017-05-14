@@ -1,8 +1,6 @@
 import unittest
 
-from numpy.testing import assert_equal,\
-    assert_allclose,\
-    assert_approx_equal
+from numpy.testing import assert_approx_equal
 
 from nifty import Field,\
     RGSpace,\
@@ -11,7 +9,7 @@ from nifty import Field,\
 from itertools import product
 from test.common import expand
 
-class SmoothingOperator_Tests(unittest.TestCase):
+class ResponseOperator_Tests(unittest.TestCase):
     spaces = [RGSpace(100)]
 
     @expand(product(spaces, [0.,  5., 1.], [0., 1., .33] ))
