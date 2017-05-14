@@ -6,7 +6,7 @@ from numpy.testing import assert_equal,\
 
 from nifty import Field,\
     RGSpace,\
-    ResponseOperator,\
+    ResponseOperator
 
 from itertools import product
 from test.common import expand
