@@ -67,3 +67,13 @@ class SmoothingOperator_Tests(unittest.TestCase):
         tt1 = op.times(op.inverse_times(rand1))
         assert_allclose(rand1.val.get_full_data(), tt1.val.get_full_data(),
                         rtol=1e-4)
+
+    @expand(product(spaces, [0., .5, 5.], [True, False]))
+    def test_times(self, space, sigma, log_distances):
+        op = SmoothingOperator(space, sigma=sigma,
+                              log_distances=log_distances)
+        rand1 = Field(space, val=0.)
+        rand1.val[0] = 1.
+        tt1 = op.inverse_times(op.times(rand1))
+        assert_allclose(rand1.val.get_full_data(), tt1.val.get_full_data(),
+                        rtol=1e-4)
