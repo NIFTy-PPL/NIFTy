@@ -23,7 +23,6 @@ import d2o
 from power_index_factory import PowerIndexFactory
 
 from nifty.spaces.space import Space
-from nifty.spaces.rg_space import RGSpace
 
 
 class PowerSpace(Space):
@@ -54,15 +53,27 @@ class PowerSpace(Space):
     Attributes
     ----------
     pindex : distributed_data_object
-        TODO add description
+        This holds the information which pixel of the harmonic partner gets
+        mapped to which power bin
     kindex : numpy.ndarray
-        TODO add description
+        Sorted array of all k-modes.
     pundex : numpy.ndarray
-        TODO add description
+        Flat index of the first occurence of a k-vector with length==kindex[n]
+        in the k_array.
     rho : numpy.ndarray
         The amount of k-modes that get mapped to one power bin is given by
         rho.
-
+    dim : np.int
+        Total number of dimensionality, i.e. the number of pixels.
+    harmonic : bool
+        Specifies whether the space is a signal or harmonic space.
+    total_volume : np.float
+        The total volume of the space.
+    shape : tuple of np.ints
+        The shape of the space's data array.
+    config : {logarithmic, nbin, binbounds}
+        Dictionary storing the values for `logarithmic`, `nbin`, and
+        `binbounds` that were used during initialization.
 
     Notes
     -----
@@ -73,7 +84,7 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_partner=RGSpace((1,)),
+    def __init__(self, harmonic_partner,
                  distribution_strategy='not',
                  logarithmic=False, nbin=None, binbounds=None):
         super(PowerSpace, self).__init__()
@@ -95,10 +106,7 @@ class PowerSpace(Space):
                         nbin=nbin,
                         binbounds=binbounds)
 
-        config = power_index['config']
-        self._logarithmic = config['logarithmic']
-        self._nbin = config['nbin']
-        self._binbounds = config['binbounds']
+        self._config = power_index['config']
 
         self._pindex = power_index['pindex']
         self._kindex = power_index['kindex']
@@ -157,9 +165,9 @@ class PowerSpace(Space):
         distribution_strategy = self.pindex.distribution_strategy
         return self.__class__(harmonic_partner=self.harmonic_partner,
                               distribution_strategy=distribution_strategy,
-                              logarithmic=self.logarithmic,
-                              nbin=self.nbin,
-                              binbounds=self.binbounds)
+                              logarithmic=self.config["logarithmic"],
+                              nbin=self.config["nbin"],
+                              binbounds=self.config["binbounds"])
 
     def weight(self, x, power=1, axes=None, inplace=False):
         reshaper = [1, ] * len(x.shape)
@@ -168,7 +176,7 @@ class PowerSpace(Space):
 
         weight = self.rho.reshape(reshaper)
         if power != 1:
-            weight = weight ** power
+            weight = weight ** np.float(power)
 
         if inplace:
             x *= weight
@@ -197,26 +205,15 @@ class PowerSpace(Space):
         return self._harmonic_partner
 
     @property
-    def logarithmic(self):
-        """ Returns True if logarithmic binning is used.
+    def config(self):
+        """ Returns the configuration which was used for `logarithmic`, `nbin`
+        and `binbounds` during initialization.
         """
-        return self._logarithmic
-
-    @property
-    def nbin(self):
-        """ Returns the number of power bins if specfied during initialization.
-        """
-        return self._nbin
-
-    @property
-    def binbounds(self):
-        """ Inner boundaries of the used bins if specfied during initialization.
-        """
-        return self._binbounds
+        return self._config
 
     @property
     def pindex(self):
-        """ A distributed_data_objects having the shape of the harmonic partner
+        """ A distributed_data_object having the shape of the harmonic partner
         space containing the indices of the power bin a pixel belongs to.
         """
         return self._pindex
@@ -252,9 +249,9 @@ class PowerSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['kindex'] = self.kindex
-        hdf5_group['rho'] = self.rho
-        hdf5_group['pundex'] = self.pundex
-        hdf5_group['logarithmic'] = self.logarithmic
+        hdf5_group['rho'] = self.config["rho"]
+        hdf5_group['pundex'] = self.config["pundex"]
+        hdf5_group['logarithmic'] = self.config["logarithmic"]
         # Store nbin as string, since it can be None
         hdf5_group.attrs['nbin'] = str(self.nbin)
         hdf5_group.attrs['binbounds'] = str(self.binbounds)
@@ -276,9 +273,11 @@ class PowerSpace(Space):
         # set all values
         new_ps._harmonic_partner = repository.get('harmonic_partner',
                                                   hdf5_group)
-        new_ps._logarithmic = hdf5_group['logarithmic'][()]
-        exec('new_ps._nbin = ' + hdf5_group.attrs['nbin'])
-        exec('new_ps._binbounds = ' + hdf5_group.attrs['binbounds'])
+
+        new_ps.config = {}
+        new_ps.config['logarithmic'] = hdf5_group['logarithmic'][()]
+        exec("new_ps.config['nbin'] = " + hdf5_group.attrs['nbin'])
+        exec("new_ps.config['binbounds'] = " + hdf5_group.attrs['binbounds'])
 
         new_ps._pindex = repository.get('pindex', hdf5_group)
         new_ps._kindex = hdf5_group['kindex'][:]

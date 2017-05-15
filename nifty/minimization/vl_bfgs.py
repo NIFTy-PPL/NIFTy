@@ -18,11 +18,11 @@
 
 import numpy as np
 
-from .quasi_newton_minimizer import QuasiNewtonMinimizer
+from .descent_minimizer import DescentMinimizer
 from .line_searching import LineSearchStrongWolfe
 
 
-class VL_BFGS(QuasiNewtonMinimizer):
+class VL_BFGS(DescentMinimizer):
     """Implementation of the Vector-free L-BFGS minimization scheme.
     
     Find the descent direction by using the inverse Hessian.

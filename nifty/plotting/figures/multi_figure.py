@@ -31,29 +31,46 @@ class MultiFigure(FigureBase):
 
     def to_plotly(self):
         title_extractor = lambda z: z.title if z else ""
-        sub_titles = \
-            tuple(np.vectorize(title_extractor)(self.subfigures.flatten()))
+        sub_titles = tuple(np.vectorize(title_extractor)(self.subfigures.flatten()))
 
-        specs_setter = \
-            lambda z: {'is_3d': True} if isinstance(z, Figure3D) else {}
-        sub_specs = \
-            list(map(list, np.vectorize(specs_setter)(self.subfigures)))
+        specs_setter = lambda z: {'is_3d': True} if isinstance(z, Figure3D) else {}
+        sub_specs = list(map(list, np.vectorize(specs_setter)(self.subfigures)))
 
         multi_figure_plotly_object = plotly.tools.make_subplots(
                                                    self.rows,
                                                    self.columns,
                                                    subplot_titles=sub_titles,
                                                    specs=sub_specs)
-        # TODO resolve bug with titles and 3D subplots
+
+        multi_figure_plotly_object['layout'].update(height=self.height,
+                                                    width=self.width,
+                                                    title=self.title)
+
+        #TODO resolve bug with titles and 3D subplots
+
+        i = 1
         for index, fig in np.ndenumerate(self.subfigures):
             if fig:
                 for plot in fig.plots:
                     multi_figure_plotly_object.append_trace(plot.to_plotly(),
                                                             index[0]+1,
                                                             index[1]+1)
+                    if isinstance(fig, Figure3D):
+                        scene = dict()
+                        if fig.xaxis:
+                            scene['xaxis'] = fig.xaxis.to_plotly()
+                        if fig.yaxis:
+                            scene['yaxis'] = fig.yaxis.to_plotly()
+                        if fig.zaxis:
+                            scene['zaxis'] = fig.zaxis.to_plotly()
 
-        multi_figure_plotly_object['layout'].update(height=self.height,
-                                                    width=self.width,
-                                                    title=self.title)
+                        multi_figure_plotly_object['layout']['scene'+str(i)] = scene
+                    else:
+                        if fig.xaxis:
+                            multi_figure_plotly_object['layout']['xaxis'+str(i)] = fig.xaxis.to_plotly()
+                        if fig.yaxis:
+                            multi_figure_plotly_object['layout']['yaxis'+str(i)] = fig.yaxis.to_plotly()
+
+                    i += 1
 
         return multi_figure_plotly_object

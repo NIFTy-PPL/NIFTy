@@ -20,6 +20,65 @@ from nifty.operators.linear_operator import LinearOperator
 
 
 class ComposedOperator(LinearOperator):
+    """ NIFTY class for composed operators.
+
+    The  NIFTY composed operator class combines multiple linear operators.
+
+    Parameters
+    ----------
+    operators : tuple of NIFTy Operators
+        The tuple of LinearOperators.
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
+
+
+    Attributes
+    ----------
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The NIFTy.space in which the operator is defined.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The NIFTy.space in which the outcome of the operator lives
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
+
+    Raises
+    ------
+    TypeError
+        Raised if
+            * an element of the operator list is not an instance of the
+              LinearOperator-baseclass.
+
+    Notes
+    -----
+    Very usefull in case one has to transform a Field living over a product
+    space (see example below).
+
+    Examples
+    --------
+    Minimal example of transforming a Field living on two domains into its
+    harmonic space.
+
+    >>> x1 = RGSpace(5)
+    >>> x2 = RGSpace(10)
+    >>> k1 = RGRGTransformation.get_codomain(x1)
+    >>> k2 = RGRGTransformation.get_codomain(x2)
+    >>> FFT1 = FFTOperator(domain=x1, target=k1,
+                           domain_dtype=np.float64, target_dtype=np.complex128)
+    >>> FFT2 = FFTOperator(domain=x2, target=k2,
+                           domain_dtype=np.float64, target_dtype=np.complex128)
+    >>> FFT = ComposedOperator((FFT1, FFT2)
+    >>> f = Field.from_random('normal', domain=(x1,x2))
+    >>> FFT.times(f)
+
+    See Also
+    --------
+    EndomorphicOperator, ProjectionOperator,
+    DiagonalOperator, SmoothingOperator, ResponseOperator,
+    PropagatorOperator, ComposedOperator
+
+    """
+
     # ---Overwritten properties and methods---
     def __init__(self, operators, default_spaces=None):
         super(ComposedOperator, self).__init__(default_spaces)

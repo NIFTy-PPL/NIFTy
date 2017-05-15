@@ -22,6 +22,49 @@ from nifty.operators.linear_operator import LinearOperator
 
 
 class EndomorphicOperator(LinearOperator):
+    """ NIFTY class for endomorphic operators.
+
+    The  NIFTY EndomorphicOperator class is a class derived from the
+    LinearOperator. By definition, domain and target are the same in
+    EndomorphicOperator.
+
+    Parameters
+    ----------
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
+
+    Attributes
+    ----------
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain in which the outcome of the operator lives. As the Operator
+        is endomorphic this is the same as its domain.
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
+    self_adjoint : boolean
+        Indicates whether the operator is self_adjoint or not.
+
+    Raises
+    ------
+    NotImplementedError
+        Raised if
+            * self_adjoint is not defined
+
+    Notes
+    -----
+
+    Examples
+    --------
+
+
+    See Also
+    --------
+    DiagonalOperator, SmoothingOperator,
+    PropagatorOperator, ProjectionOperator
+
+    """
 
     # ---Overwritten properties and methods---
 
@@ -67,4 +110,7 @@ class EndomorphicOperator(LinearOperator):
 
     @abc.abstractproperty
     def self_adjoint(self):
+        """ States whether the Operator is self_adjoint or not.
+        """
+
         raise NotImplementedError

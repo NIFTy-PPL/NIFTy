@@ -26,7 +26,7 @@ from keepers import Loggable
 from .line_searching import LineSearchStrongWolfe
 
 
-class QuasiNewtonMinimizer(Loggable, object):
+class DescentMinimizer(Loggable, object):
     """A class used by other minimization methods to find a local minimum.
     
     Descent minimization methods are used to find a local minimum of a scalar function

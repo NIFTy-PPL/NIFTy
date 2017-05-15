@@ -18,7 +18,6 @@
 
 from setuptools import setup, find_packages
 
-from Cython.Build import cythonize
 import numpy
 
 exec(open('nifty/version.py').read())
@@ -33,9 +32,6 @@ setup(name="ift_nifty",
       packages=find_packages(),
       package_dir={"nifty": "nifty"},
       zip_safe=False,
-      ext_modules=cythonize([
-          "nifty/operators/smoothing_operator/smooth_util.pyx"
-      ]),
       include_dirs=[numpy.get_include()],
       dependency_links=[
         'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers-0.3.7',

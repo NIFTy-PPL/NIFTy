@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .quasi_newton_minimizer import QuasiNewtonMinimizer
+from .descent_minimizer import DescentMinimizer
 
 
-class SteepestDescent(QuasiNewtonMinimizer):
+class SteepestDescent(DescentMinimizer):
     """Implementation of the steepest descent minimization scheme.
     
     It uses the gradient of the minimized function to get to the minimum.    

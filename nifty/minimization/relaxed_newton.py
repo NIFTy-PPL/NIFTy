@@ -16,11 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from .quasi_newton_minimizer import QuasiNewtonMinimizer
+from .descent_minimizer import DescentMinimizer
 from .line_searching import LineSearchStrongWolfe
 
 
-class RelaxedNewton(QuasiNewtonMinimizer):
+class RelaxedNewton(DescentMinimizer):
     """ A implementation of the relaxed Newton minimization scheme.
     The relaxed Newton minimization exploits gradient and curvature information to
     propose a step. A linesearch optimizes along this direction.
@@ -76,4 +76,4 @@ class RelaxedNewton(QuasiNewtonMinimizer):
         curvature = energy.curvature
         descend_direction = curvature.inverse_times(gradient)
         return descend_direction * -1
-
+#            return descend_direction * -1
