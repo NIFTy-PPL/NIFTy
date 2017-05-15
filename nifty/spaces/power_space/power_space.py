@@ -23,7 +23,6 @@ import d2o
 from power_index_factory import PowerIndexFactory
 
 from nifty.spaces.space import Space
-from nifty.spaces.rg_space import RGSpace
 
 
 class PowerSpace(Space):
