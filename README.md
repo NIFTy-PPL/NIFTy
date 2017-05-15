@@ -15,7 +15,7 @@ Summary
 a versatile library designed to enable the development of signal
 inference algorithms that operate regardless of the underlying spatial
 grid and its resolution. Its object-oriented framework is written in
-Python, although it accesses libraries written in Cython, C++, and C for
+Python, although it accesses libraries written in C++ and C for
 efficiency.
 
 NIFTY offers a toolkit that abstracts discretized representations of
@@ -71,7 +71,6 @@ Installation
 
 -   [Python](http://www.python.org/) (v2.7.x)
     -   [NumPy](http://www.numpy.org/)
-    -   [Cython](http://cython.org/)
 
 ### Download
 
@@ -95,7 +94,7 @@ Starting with a fresh Ubuntu installation move to a folder like
 
 -   Using pip install numpy etc...:
 
-        sudo pip install numpy cython
+        sudo pip install numpy
 
 -   Install pyHealpix:
 
@@ -147,10 +146,9 @@ MacPorts, missing ones need to be installed manually. It may also be
 mentioned that one should only use one package manager, as multiple ones
 may cause trouble.
 
--   Install basic packages numpy and cython:
+-   Install numpy:
 
         sudo port install py27-numpy
-        sudo port install py27-cython
 
 -   Install pyHealpix:
 

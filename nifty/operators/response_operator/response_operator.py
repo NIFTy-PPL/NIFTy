@@ -6,6 +6,7 @@ from nifty.operators.smoothing_operator import SmoothingOperator
 from nifty.operators.composed_operator import ComposedOperator
 from nifty.operators.diagonal_operator import DiagonalOperator
 
+
 class ResponseOperator(LinearOperator):
     """ NIFTy ResponseOperator (example)
 
