@@ -40,4 +40,4 @@ from composed_operator import ComposedOperator
 
 from response_operator import ResponseOperator
 
-from curvature_operators import WienerFilterCurvature
+from curvature_operators import *

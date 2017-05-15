@@ -12,17 +12,28 @@ np.random.seed(42)
 
 class AdjointFFTResponse(LinearOperator):
     def __init__(self, FFT, R, default_spaces=None):
-        super(ResponseOperator, self).__init__(default_spaces)
+        super(AdjointFFTResponse, self).__init__(default_spaces)
         self._domain = FFT.target
-        self.target = R.target
+        self._target = R.target
         self.R = R
         self.FFT = FFT
 
-    def _times(self, x):
+    def _times(self, x, spaces=None):
         return self.R(self.FFT.adjoint_times(x))
 
-    def _adjoint_times(self, x):
+    def _adjoint_times(self, x, spaces=None):
         return self.FFT(self.R.adjoint_times(x))
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def unitary(self):
+        return False
 
 
 
@@ -79,11 +90,11 @@ if __name__ == "__main__":
 #                        callback=distance_measure,
 #                        max_history_length=3)
 
-    solution = energy.analytic_solution()
+
     m0 = Field(s_space, val=1.)
 
-    energy = WienerFilterEnergy(position=m0, D=D, j=j)
-
+    energy = WienerFilterEnergy(position=m0, R=R, N=N, S=S)
+    solution = energy.analytic_solution()
     (energy, convergence) = minimizer(energy)
 
     m = fft.adjoint_times(energy.position)
