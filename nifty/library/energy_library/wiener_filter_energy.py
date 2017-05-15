@@ -1,5 +1,5 @@
-from .energy import Energy
-from nifty.operators import WienerFilterCurvature
+from nifty.energies.energy import Energy
+from nifty.library.operator_library import WienerFilterCurvature
 
 class WienerFilterEnergy(Energy):
     """The Energy for the Wiener filter.

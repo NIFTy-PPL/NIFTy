@@ -1,1 +1,0 @@
-from wiener_filter_curvature import WienerFilterCurvature

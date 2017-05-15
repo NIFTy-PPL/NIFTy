@@ -39,5 +39,3 @@ from propagator_operator import HarmonicPropagatorOperator
 from composed_operator import ComposedOperator
 
 from response_operator import ResponseOperator
-
-from curvature_operators import WienerFilterCurvature
