@@ -10,45 +10,20 @@ rank = comm.rank
 
 np.random.seed(42)
 
-class WienerFilterEnergy(Energy):
-    def __init__(self, position, D, j):
-        # in principle not necessary, but useful in order to make the signature
-        # explicit
-        super(WienerFilterEnergy, self).__init__(position)
-        self.D = D
-        self.j = j
+class AdjointFFTResponse(LinearOperator):
+    def __init__(self, FFT, R, default_spaces=None):
+        super(ResponseOperator, self).__init__(default_spaces)
+        self._domain = FFT.target
+        self.target = R.target
+        self.R = R
+        self.FFT = FFT
 
-    def at(self, position):
-        return self.__class__(position, D=self.D, j=self.j)
+    def _times(self, x):
+        return self.R(self.FFT.adjoint_times(x))
 
-    @property
-    def value(self):
-        D_inv_x = self.D_inverse_x()
-        H = 0.5 * D_inv_x.dot(self.position) - self.j.dot(self.position)
-        return H.real
+    def _adjoint_times(self, x):
+        return self.FFT(self.R.adjoint_times(x))
 
-    @property
-    def gradient(self):
-        D_inv_x = self.D_inverse_x()
-        g = D_inv_x - self.j
-        return_g = g.copy_empty(dtype=np.float)
-        return_g.val = g.val.real
-        return return_g
-
-    @property
-    def curvature(self):
-        class Dummy(object):
-            def __init__(self, x):
-                self.x = x
-            def inverse_times(self, *args, **kwargs):
-                return self.x.times(*args, **kwargs)
-        my_dummy = Dummy(self.D)
-        return my_dummy
-
-
-    @memo
-    def D_inverse_x(self):
-        return D.inverse_times(self.position)
 
 
 if __name__ == "__main__":
@@ -72,10 +47,11 @@ if __name__ == "__main__":
     ss = fft.inverse_times(sh)
 
     # model the measurement process
-    R = SmoothingOperator(s_space, sigma=0.01)
-#    R = DiagonalOperator(s_space, diagonal=1.)
-#    R._diagonal.val[200:400, 200:400] = 0
+    Instrument = SmoothingOperator(s_space, sigma=0.01)
 
+#    Instrument = DiagonalOperator(s_space, diagonal=1.)
+#    Instrument._diagonal.val[200:400, 200:400] = 0
+    R = AdjointFFTResponse(fft, Instrument)
     signal_to_noise = 1
     N = DiagonalOperator(s_space, diagonal=ss.var()/signal_to_noise, bare=True)
     n = Field.from_random(domain=s_space,
@@ -84,15 +60,11 @@ if __name__ == "__main__":
                           mean=0)
 
     # create mock data
-    d = R(ss) + n
-
-    # set up reconstruction objects
-    j = R.adjoint_times(N.inverse_times(d))
-    D = PropagatorOperator(S=S, N=N, R=R)
+    d = R(sh) + n
 
     def distance_measure(energy, iteration):
-        x = energy.position
-        print (iteration, ((x-ss).norm()/ss.norm()).real)
+        x = energy.value
+        print (x, iteration)
 
 #    minimizer = SteepestDescent(convergence_tolerance=0,
 #                                iteration_limit=50,
@@ -107,13 +79,14 @@ if __name__ == "__main__":
 #                        callback=distance_measure,
 #                        max_history_length=3)
 
+    solution = energy.analytic_solution()
     m0 = Field(s_space, val=1.)
 
     energy = WienerFilterEnergy(position=m0, D=D, j=j)
 
     (energy, convergence) = minimizer(energy)
 
-    m = energy.position
+    m = fft.adjoint_times(energy.position)
 
     d_data = d.val.get_full_data().real
     if rank == 0:

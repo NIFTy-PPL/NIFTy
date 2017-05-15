@@ -19,3 +19,4 @@
 from energy import Energy
 from line_energy import LineEnergy
 from memoization import memo
+from wiener_filter_energy import WienerFilterEnergy
