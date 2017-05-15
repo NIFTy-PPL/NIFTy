@@ -30,7 +30,9 @@ class EndomorphicOperator(LinearOperator):
 
     Parameters
     ----------
-    #TODO: Copy Parameters from LinearOperator
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
 
     Attributes
     ----------
@@ -39,6 +41,8 @@ class EndomorphicOperator(LinearOperator):
     target : tuple of DomainObjects, i.e. Spaces and FieldTypes
         The domain in which the outcome of the operator lives. As the Operator
         is endomorphic this is the same as its domain.
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
     self_adjoint : boolean
         Indicates whether the operator is self_adjoint or not.
 
