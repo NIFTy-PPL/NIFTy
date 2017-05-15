@@ -80,27 +80,22 @@ class ResponseOperator(LinearOperator):
             shape_target = np.append(shape_target, self._domain[ii].shape)
 
         self._target = self._parse_domain(FieldArray(shape_target))
-        self._sigma = sigma
-        self._exposure = exposure
 
-        self._kernel = len(self._domain)*[None]
+        kernel_smoothing = len(self._domain)*[None]
+        kernel_exposure = len(self._domain)*[None]
 
-        for ii in xrange(len(self._kernel)):
-            self._kernel[ii] = SmoothingOperator(self._domain[ii],
-                                                 sigma=self._sigma[ii])
+        if len(sigma)!= len(exposure):
+            raise ValueError("Length of smoothing kernel and length of"
+                             "exposure do not match")
 
-        self._composed_kernel = ComposedOperator(self._kernel)
+        for ii in xrange(len(kernel_smoothing)):
+            kernel_smoothing[ii] = SmoothingOperator(self._domain[ii],
+                                                     sigma=sigma[ii])
+            kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
+                                                   diagonal=exposure[ii])
 
-        self._exposure_op = len(self._domain)*[None]
-        if len(self._exposure_op) != len(self._kernel):
-            raise ValueError("Definition of kernel and exposure do not suit "
-                             "each other")
-        else:
-            for ii in xrange(len(self._exposure_op)):
-                self._exposure_op[ii] = DiagonalOperator(
-                                                self._domain[ii],
-                                                diagonal=self._exposure[ii])
-            self._composed_exposure = ComposedOperator(self._exposure_op)
+        self._composed_kernel = ComposedOperator(kernel_smoothing)
+        self._composed_exposure = ComposedOperator(kernel_exposure)
 
     @property
     def domain(self):
