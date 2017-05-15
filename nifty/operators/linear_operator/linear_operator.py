@@ -75,7 +75,8 @@ class LinearOperator(Loggable, object):
     def __init__(self, default_spaces=None):
         self.default_spaces = default_spaces
 
-    def _parse_domain(self, domain):
+    @staticmethod
+    def _parse_domain(domain):
         return utilities.parse_domain(domain)
 
     @abc.abstractproperty
