@@ -36,41 +36,40 @@ from nifty.random import Random
 
 
 class Field(Loggable, Versionable, object):
-    """ Combines D2O-objects with meta-information NIFTY needs for computations.
-        
-    In NIFTY, Fields are used to store dataarrays and carry all the needed
+    """ The discrete representation of a continuous field over multiple spaces.
+
+    In NIFTY, Fields are used to store data arrays and carry all the needed
     metainformation (i.e. the domain) for operators to be able to work on them.
-    In addition Field has functions to analyse the power spectrum of it's
-    content or create a random field of it.
-    
+    In addition Field has methods to work with power-spectra.
+
     Parameters
     ----------
     domain : DomainObject
         One of the space types NIFTY supports. RGSpace, GLSpace, HPSpace,
-        LMSpace or PowerSpace. It might also be a FieldArray, which is 
+        LMSpace or PowerSpace. It might also be a FieldArray, which is
         an unstructured domain.
-    
+
     val : scalar, numpy.ndarray, distributed_data_object, Field
         The values the array should contain after init. A scalar input will
         fill the whole array with this scalar. If an array is provided the
         array's dimensions must match the domain's.
-    
+
     dtype : type
         A numpy.type. Most common are int, float and complex.
-    
+
     distribution_strategy: optional[{'fftw', 'equal', 'not', 'freeform'}]
         Specifies which distributor will be created and used.
         'fftw'      uses the distribution strategy of pyfftw,
         'equal'     tries to  distribute the data as uniform as possible
         'not'       does not distribute the data at all
         'freeform'  distribute the data according to the given local data/shape
-        
+
     copy: boolean
 
     Attributes
     ----------
     val : distributed_data_object
-            
+
     domain : DomainObject
         See Parameters.
     domain_axes : tuple of tuples
@@ -78,8 +77,8 @@ class Field(Loggable, Versionable, object):
     dtype : type
         Contains the datatype stored in the Field.
     distribution_strategy : string
-        Name of the used distribution_strategy.  
-    
+        Name of the used distribution_strategy.
+
     Raise
     -----
     TypeError
@@ -87,7 +86,7 @@ class Field(Loggable, Versionable, object):
             *the given domain contains something that is not a DomainObject
              instance
             *val is an array that has a different dimension than the domain
-    
+
     Examples
     --------
     >>> a = Field(RGSpace([4,5]),val=2)
@@ -99,7 +98,7 @@ class Field(Loggable, Versionable, object):
            [2, 2, 2, 2, 2]])
     >>> a.dtype
     dtype('int64')
-    
+
     See Also
     --------
     distributed_data_object
@@ -169,15 +168,15 @@ class Field(Loggable, Versionable, object):
             Normal input is a domain/ tuple of domains.
         start : int
             Sets the integer number for the first axis
-        
+
         Returns
         -------
         out : tuple
             Incremental numeration of all axes.
-        
+
         Note
         ----
-        
+
         The 'spaces' keyword is used in operators in order to carry out
         operations only on a certain subspace if the domain of the Field is
         a product space.
@@ -202,7 +201,7 @@ class Field(Loggable, Versionable, object):
         val : list of arrays
             If the dtype is None, Fields tries to infere the datatype from the
             values given to it at initialization.
-        
+
         Returns
         -------
         out : np.dtype
@@ -247,20 +246,20 @@ class Field(Loggable, Versionable, object):
         Parameters
         ----------
         cls : class
-        
+
         random_type : String
             'pm1', 'normal', 'uniform' are the supported arguments for this
             method.
-        
+
         domain : DomainObject
             The domain of the output random field
-        
+
         dtype : type
             The datatype of the output random field
-        
+
         distribution_strategy : all supported distribution strategies
             The distribution strategy of the output random field
-        
+
         Returns
         -------
         out : Field
@@ -319,8 +318,8 @@ class Field(Loggable, Versionable, object):
     def power_analyze(self, spaces=None, log=False, nbin=None, binbounds=None,
                       real_signal=True):
         """ Computes the powerspectrum of the Field
-        
-        Creates a PowerSpace with the given attributes and computes the 
+
+        Creates a PowerSpace with the given attributes and computes the
         power spectrum as a field over this PowerSpace.
         It's important to note that this can only be done if the subspace to
         be analyzed is in harmonic space.
@@ -331,16 +330,16 @@ class Field(Loggable, Versionable, object):
             The subspace which you want to have the powerspectrum of.
             {default : None}
                 if spaces==None : Tries to synthesize for the whole domain
-                
+
         log : boolean, *optional*
             True if the output PowerSpace should have log binning.
             {default : False}
-        
+
         nbin : int, None, *optional*
             The number of bins the resulting PowerSpace shall have.
             {default : None}
                 if nbin==None : maximum number of bins is used
-            
+
         binbounds : array-like, None, *optional*
             Inner bounds of the bins, if specifield
             {default : None}
@@ -357,10 +356,10 @@ class Field(Loggable, Versionable, object):
                 *len(spaces) is either 0 or >1
                 *len(domain) is not 1 with spaces=None
                 *the analyzed space is not harmonic
-        
+
         Returns
         -------
-        out : Field 
+        out : Field
             The output object. It's domain is a PowerSpace and it contains
             the power spectrum of 'self's field.
 
@@ -505,26 +504,26 @@ class Field(Loggable, Versionable, object):
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
                          mean=None, std=None):
         """Yields a random field in harmonic space with this power spectrum.
-        
+
         This method draws a Gaussian random field in the harmic partner domain.
         The drawn field has this field as its power spectrum.
-        
+
         Notes
         -----
         For this the domain must be a PowerSpace.
-        
+
         Parameters
         ----------
         spaces : {tuple, int, None} *optional*
             Specifies the subspace in which the power will be synthesized in
-            case of a product space. 
+            case of a product space.
             {default : None}
                 if spaces==None : Tries to synthesize for the whole domain
-        
+
         real_power : boolean *optional*
             Determines whether the power spectrum is real or complex
             {default : True}
-            
+
         real_signal : boolean *optional*
             True will result in a purely real signal-space field.
             This means that the created field is symmetric wrt. the origin
@@ -535,11 +534,11 @@ class Field(Loggable, Versionable, object):
             {default : None}
                 if mean==None : mean will be set to 0
         std : float *optional*
-            The standard deviation of the noise field the powerspectrum will be 
+            The standard deviation of the noise field the powerspectrum will be
             multiplied on.
             {default : None}
                 if std==None : std will be set to 1
-        
+
         Returns
         -------
         out : Field
@@ -664,12 +663,12 @@ class Field(Loggable, Versionable, object):
 
         Parameters
         ----------
-        new_val : number, numpy.array, distributed_data_object, 
+        new_val : number, numpy.array, distributed_data_object,
                 Field, None, *optional*
             The values to be stored in the field.
             {default : None}
                 if new_val==None : sets the values to 0.
-        
+
         copy : boolean, *optional*
             True if this field holds a copy of new_val, False if
             it holds the same object
@@ -691,9 +690,9 @@ class Field(Loggable, Versionable, object):
         Parameters
         ----------
         copy : boolean
-            True makes the method retrun a COPY of the Field's underlying 
+            True makes the method retrun a COPY of the Field's underlying
             distributed_data_object.
-        
+
         Returns
         -------
         out : distributed_data_object
@@ -715,7 +714,7 @@ class Field(Loggable, Versionable, object):
     @property
     def val(self):
         """ Retruns actual distributed_data_object associated with this Field.
-        
+
         Returns
         -------
         out : distributed_data_object
@@ -731,7 +730,7 @@ class Field(Loggable, Versionable, object):
     @val.setter
     def val(self, new_val):
         """ Sets the values in the d2o of the Field.
-        
+
         Parameters
         ----------
         new_val : number, numpy.array, distributed_data_object, Field
@@ -748,9 +747,9 @@ class Field(Loggable, Versionable, object):
     @property
     def shape(self):
         """ Returns the shape of the Field/ it's domain.
-        
+
         All axes lengths written down seperately in a tuple.
-        
+
         Returns
         -------
         out : tuple
@@ -773,9 +772,9 @@ class Field(Loggable, Versionable, object):
     @property
     def dim(self):
         """ Returns the dimension of the Field/it's domain.
-        
+
         Multiplies all values from shape.
-        
+
         Returns
         -------
         out : int
@@ -811,16 +810,16 @@ class Field(Loggable, Versionable, object):
 
     def cast(self, x=None, dtype=None):
         """ Transforms x to a d2o with the same shape as the domain of 'self'
-        
+
         Parameters
         ----------
         x : number, d2o, Field, array_like
             The input that shall be casted on a d2o of the same shape like the
             domain.
-            
+
         dtype : type
             The datatype the output shall have.
-        
+
         Returns
         -------
         out : distributed_data_object
@@ -866,7 +865,7 @@ class Field(Loggable, Versionable, object):
 
     def copy(self, domain=None, dtype=None, distribution_strategy=None):
         """ Returns a full copy of the Field.
-        
+
         If no keyword arguments are given, the returned object will be an
         identical copy of the original Field. By explicit specification one is
         able to define the domain, the dtype and the distribution_strategy of
@@ -876,13 +875,13 @@ class Field(Loggable, Versionable, object):
         ----------
         domain : DomainObject
             The new domain the Field shall have.
-        
+
         dtype : type
             The new dtype the Field shall have.
-            
+
         distribution_strategy : all supported distribution strategies
-            The new distribution strategy the Field shall have.        
-        
+            The new distribution strategy the Field shall have.
+
         Returns
         -------
         out : Field
@@ -906,20 +905,20 @@ class Field(Loggable, Versionable, object):
 
         If no keyword arguments are given, the returned object will be an
         identical copy of the original Field containing random data. By
-        explicit specification one is able to define the domain, the dtype and 
-        the distribution_strategy of the returned Field.        
-        
+        explicit specification one is able to define the domain, the dtype and
+        the distribution_strategy of the returned Field.
+
         Parameters
         ----------
         domain : DomainObject
             The new domain the Field shall have.
-            
+
         dtype : type
             The new dtype the Field shall have.
-            
+
         distribution_strategy : all supported distribution strategies
             The distribution strategy the new Field should have.
-        
+
         Returns
         -------
         out : Field
@@ -984,13 +983,13 @@ class Field(Loggable, Versionable, object):
             Here one can set the power to which the dimension is taken before
             division. power=2 will make the method devide every entry in 'self'
             by the square of the dimension.
-            
+
         inplace : boolean
             For True the values in 'self' will be changed to the weighted ones.
-        
+
         spaces : int
             Determines on what subspace the operation takes place.
-        
+
         Returns
         -------
         out : Field
@@ -1020,27 +1019,27 @@ class Field(Loggable, Versionable, object):
 
     def dot(self, x=None, spaces=None, bare=False):
         """ Computes the dot product of 'self' with x.
-        
+
         For a 1D Field this is the scalar product.
-        
+
         Parameters
         ----------
         x : Field
             Must have the same shape as 'self'
-        
+
         spaces : int
-            
-        
+
+
         bare : boolean
             bare=True operation will compute the sum over the pointwise product
             of 'self' and x.
             With bare=False this number will be devided by the dimension of the
             space over which the dotproduct is comupted.
-        
+
         Returns
         -------
         out : float, complex
-        
+
         """
         if not isinstance(x, Field):
             raise ValueError("The dot-partner must be an instance of " +
@@ -1089,12 +1088,12 @@ class Field(Loggable, Versionable, object):
 
     def conjugate(self, inplace=False):
         """ Retruns the complex conjugate of the field.
-        
+
         Parameters
         ----------
         inplace : boolean
             Decides whether self or a copied version of self shall be used
-            
+
         Returns
         -------
         cc : field
@@ -1427,18 +1426,18 @@ class Field(Loggable, Versionable, object):
 
     def __repr__(self):
         """ Is called by jsut typing the instance's name.
-        
+
         """
         return "<nifty_core.field>"
 
     def __str__(self):
         """ Is called by the print command.
-        
+
         Retruns
         -------
         out : A sting with usefull information about the stored values and
             properties of 'self'
-        
+
         """
         minmax = [self.min(), self.max()]
         mean = self.mean()
