@@ -22,8 +22,8 @@ from nifty.operators import EndomorphicOperator,\
 
 
 class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
+    """ NIFTY Harmonic Propagator Operator D.
 
-    """NIFTY Harmonic Propagator Operator D.
     The propagator operator D, is known from the Wiener Filter.
     Its inverse functional form might look like:
     D = (S^(-1) + M)^(-1)
@@ -46,9 +46,21 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
             (default:ConjugateGradient)
         preconditioner : Field
             numerical preconditioner to speed up convergence
+        default_spaces : tuple of ints *optional*
+            Defines on which space(s) of a given field the Operator acts by
+            default (default: None)
 
     Attributes
     ----------
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain in which the outcome of the operator lives. As the Operator
+        is endomorphic this is the same as its domain.
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
+    self_adjoint : boolean
+        Indicates whether the operator is self_adjoint or not.
 
     Raises
     ------
@@ -66,6 +78,7 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
     --------
     Scientific reference
     https://arxiv.org/abs/0806.3474
+
     """
 
     # ---Overwritten properties and methods---
@@ -136,7 +149,7 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
         return result
 
     def _inverse_times(self, x, spaces):
-        pre_result = self._S.times(x, spaces)
+        pre_result = self._S.inverse_times(x, spaces)
         pre_result += self._likelihood_times(x)
         result = x.copy_empty()
         result.set_val(pre_result, copy=False)

@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     x1 = HPSpace(64)
     k1 = HPLMTransformation.get_codomain(x1)
-    p1 = PowerSpace(harmonic_domain=k1, log=False)
+    p1 = PowerSpace(harmonic_partner=k1, logarithmic=False)
 
     # creating Power Operator with given spectrum
     spec = (lambda k: a_s / (1 + (k / k_0) ** 2) ** 2)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
                             exposure=[exposure])
 
     # drawing a random field
-    sk = p_field.power_synthesize(decompose_power=True, mean=0.)
+    sk = p_field.power_synthesize(real_power=True, mean=0.)
     s = Fft_op.adjoint_times(sk)
 
     signal_to_noise = 1

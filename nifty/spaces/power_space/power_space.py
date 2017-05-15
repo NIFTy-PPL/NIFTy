@@ -23,7 +23,6 @@ import d2o
 from power_index_factory import PowerIndexFactory
 
 from nifty.spaces.space import Space
-from nifty.spaces.rg_space import RGSpace
 
 
 class PowerSpace(Space):
@@ -85,7 +84,7 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_partner=RGSpace((1,)),
+    def __init__(self, harmonic_partner,
                  distribution_strategy='not',
                  logarithmic=False, nbin=None, binbounds=None):
         super(PowerSpace, self).__init__()
