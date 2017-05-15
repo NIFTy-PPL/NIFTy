@@ -58,7 +58,7 @@ class Space(DomainObject):
     """
 
     def __init__(self):
-        
+
         super(Space, self).__init__()
 
     @abc.abstractproperty
