@@ -21,12 +21,82 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
+from nifty.basic_arithmetics import log as nifty_log
 from nifty.config import nifty_configuration as gc
 from nifty.field import Field
 from nifty.operators.endomorphic_operator import EndomorphicOperator
 
 
 class DiagonalOperator(EndomorphicOperator):
+    """ NIFTY class for diagonal operators.
+
+    The NIFTY DiagonalOperator class is a subclass derived from the
+    EndomorphicOperator. It multiplies an input field pixel-wise with its
+    diagonal.
+
+
+    Parameters
+    ----------
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+    diagonal : {scalar, list, array, Field, d2o-object}
+        The diagonal entries of the operator.
+    bare : boolean
+        Indicates whether the input for the diagonal is bare or not
+        (default: False).
+    copy : boolean
+        Internal copy of the diagonal (default: True)
+    distribution_strategy : string
+        setting the prober distribution_strategy of the
+        diagonal (default : None). In case diagonal is d2o-object or Field,
+        their distribution_strategy is used as a fallback.
+    default_spaces : tuple of ints *optional*
+        Defines on which space(s) of a given field the Operator acts by
+        default (default: None)
+
+    Attributes
+    ----------
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain in which the outcome of the operator lives. As the Operator
+        is endomorphic this is the same as its domain.
+    unitary : boolean
+        Indicates whether the Operator is unitary or not.
+    self_adjoint : boolean
+        Indicates whether the operator is self_adjoint or not.
+    distribution_strategy : string
+        Defines the distribution_strategy of the distributed_data_object
+        in which the diagonal entries are stored in.
+
+    Raises
+    ------
+
+    Notes
+    -----
+    The ambiguity of bare or non-bare diagonal entries is based on the choice
+    of a matrix representation of the operator in question. The naive choice
+    of absorbing the volume weights into the matrix leads to a matrix-vector
+    calculus with the non-bare entries which seems intuitive, though.
+    The choice of keeping matrix entries and volume weights separate
+    deals with the bare entries that allow for correct interpretation
+    of the matrix entries; e.g., as variance in case of an covariance operator.
+
+    Examples
+    --------
+    >>> x_space = RGSpace(5)
+    >>> D = DiagonalOperator(x_space, diagonal=[1., 3., 2., 4., 6.])
+    >>> f = Field(x_space, val=2.)
+    >>> res = D.times(f)
+    >>> res.val
+    <distributed_data_object>
+    array([ 2.,  6.,  4.,  8.,  12.])
+
+    See Also
+    --------
+    EndomorphicOperator
+
+    """
 
     # ---Overwritten properties and methods---
 
@@ -63,6 +133,21 @@ class DiagonalOperator(EndomorphicOperator):
                                   operation=lambda z: z.adjoint().__rdiv__)
 
     def diagonal(self, bare=False, copy=True):
+        """ Returns the diagonal of the Operator.
+
+        Parameters
+        ----------
+        bare : boolean
+            Whether the returned Field values should be bare or not.
+        copy : boolean
+            Whether the returned Field should be copied or not.
+
+        Returns
+        -------
+        out : Field
+            The diagonal of the Operator.
+
+        """
         if bare:
             diagonal = self._diagonal.weight(power=-1)
         elif copy:
@@ -72,25 +157,100 @@ class DiagonalOperator(EndomorphicOperator):
         return diagonal
 
     def inverse_diagonal(self, bare=False):
-        return 1/self.diagonal(bare=bare, copy=False)
+        """ Returns the inverse-diagonal of the operator.
+
+        Parameters
+        ----------
+        bare : boolean
+            Whether the returned Field values should be bare or not.
+
+        Returns
+        -------
+        out : Field
+            The inverse of the diagonal of the Operator.
+
+        """        
+        return 1./self.diagonal(bare=bare, copy=False)
 
     def trace(self, bare=False):
+        """ Returns the trace the operator.
+
+        Parameters
+        ----------
+        bare : boolean
+            Whether the returned Field values should be bare or not.
+
+        Returns
+        -------
+        out : scalar
+            The trace of the Operator.
+
+        """
         return self.diagonal(bare=bare, copy=False).sum()
 
     def inverse_trace(self, bare=False):
-        return self.inverse_diagonal(bare=bare, copy=False).sum()
+        """ Returns the inverse-trace of the operator.
+
+        Parameters
+        ----------
+        bare : boolean
+            Whether the returned Field values should be bare or not.
+
+        Returns
+        -------
+        out : scalar
+            The inverse of the trace of the Operator.
+
+        """
+        return self.inverse_diagonal(bare=bare).sum()
 
     def trace_log(self):
-        log_diagonal = self.diagonal(copy=False).apply_scalar_function(np.log)
+        """ Returns the trave-log of the operator.
+
+        Returns
+        -------
+        out : scalar
+            the trace of the logarithm of the Operator.
+
+        """
+        log_diagonal = nifty_log(self.diagonal(copy=False))
         return log_diagonal.sum()
 
     def determinant(self):
+        """ Returns the determinant of the operator.
+
+        Returns
+        -------
+        out : scalar
+        out : scalar
+            the determinant of the Operator
+
+        """
+
         return self.diagonal(copy=False).val.prod()
 
     def inverse_determinant(self):
+        """ Returns the inverse-determinant of the operator.
+
+        Returns
+        -------
+        out : scalar
+            the inverse-determinant of the Operator
+
+        """
+
         return 1/self.determinant()
 
     def log_determinant(self):
+        """ Returns the log-eterminant of the operator.
+
+        Returns
+        -------
+        out : scalar
+            the log-determinant of the Operator
+
+        """
+
         return np.log(self.determinant())
 
     # ---Mandatory properties and methods---
@@ -116,6 +276,17 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def distribution_strategy(self):
+        """
+        distribution_strategy : string
+            Defines the way how the diagonal operator is distributed
+            among the nodes. Available distribution_strategies are:
+            'fftw', 'equal' and 'not'.
+
+        Notes :
+            https://arxiv.org/abs/1606.05385
+
+        """
+
         return self._distribution_strategy
 
     def _parse_distribution_strategy(self, distribution_strategy, val):
@@ -133,6 +304,20 @@ class DiagonalOperator(EndomorphicOperator):
         return distribution_strategy
 
     def set_diagonal(self, diagonal, bare=False, copy=True):
+        """ Sets the diagonal of the Operator.
+
+        Parameters
+        ----------
+        diagonal : {scalar, list, array, Field, d2o-object}
+            The diagonal entries of the operator.
+        bare : boolean
+            Indicates whether the input for the diagonal is bare or not
+            (default: False).
+        copy : boolean
+            Specifies if a copy of the input shall be made (default: True).
+
+        """
+
         # use the casting functionality from Field to process `diagonal`
         f = Field(domain=self.domain,
                   val=diagonal,

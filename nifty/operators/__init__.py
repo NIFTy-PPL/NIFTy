@@ -24,7 +24,7 @@ from diagonal_operator import DiagonalOperator
 
 from endomorphic_operator import EndomorphicOperator
 
-from smoothing_operator import SmoothingOperator
+from smoothing_operator import *
 
 from fft_operator import *
 
@@ -34,4 +34,8 @@ from projection_operator import ProjectionOperator
 
 from propagator_operator import PropagatorOperator
 
+from propagator_operator import HarmonicPropagatorOperator
+
 from composed_operator import ComposedOperator
+
+from response_operator import ResponseOperator

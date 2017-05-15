@@ -48,6 +48,26 @@ class RGSpace(Space):
 
         NIFTY subclass for spaces of regular Cartesian grids.
 
+        Parameters
+        ----------
+        shape : {int, numpy.ndarray}
+            Number of grid points or numbers of gridpoints along each axis.
+        zerocenter : {bool, numpy.ndarray}, *optional*
+        Whether x==0 (or k==0, respectively) is located in the center of
+        the grid (or the center of each axis speparately) or not.
+        (default: False).
+        distances : {float, numpy.ndarray}, *optional*
+            Distance between two grid points along each axis
+            (default: None).
+            If distances==None:
+                if harmonic==True, all distances will be set to 1
+                if harmonic==False, the distance along each axis will be
+                  set to the inverse of the number of points along that
+                  axis.
+        harmonic : bool, *optional*
+        Whether the space represents a grid in position or harmonic space.
+            (default: False).
+
         Attributes
         ----------
         harmonic : bool
@@ -72,15 +92,6 @@ class RGSpace(Space):
 
     def __init__(self, shape, zerocenter=False, distances=None,
                  harmonic=False):
-        """
-            Sets the attributes for an RGSpace class instance.
-
-
-
-            Returns
-            -------
-            None
-        """
         self._harmonic = bool(harmonic)
 
         super(RGSpace, self).__init__()
@@ -186,7 +197,7 @@ class RGSpace(Space):
                               harmonic=self.harmonic)
 
     def weight(self, x, power=1, axes=None, inplace=False):
-        weight = reduce(lambda x, y: x*y, self.distances)**power
+        weight = reduce(lambda x, y: x*y, self.distances) ** np.float(power)
         if inplace:
             x *= weight
             result_x = x
@@ -207,7 +218,8 @@ class RGSpace(Space):
         Returns
         -------
         distributed_data_object
-            A d2o containing the distances
+            A d2o containing the distances.
+
         """
 
         shape = self.shape
