@@ -21,31 +21,18 @@ import unittest
 from numpy.testing import assert_equal
 from keepers import Repository
 from test.common import expand, generate_spaces
+from nose.plugins.skip import SkipTest
 import os
 
-try:
-    import h5py
-except ImportError:
-    h5py_available = False
-else:
-    h5py_available = True
-
-if h5py_available:
-    class SpaceSerializationTests(unittest.TestCase):
-        # variable to hold the repository
-        _repo = None
-
-        @classmethod
-        def setUpClass(cls):
-            cls._repo = Repository('test.h5')
-
-        @expand([[space] for space in generate_spaces()])
-        def test_serialization(self, space):
-            self._repo.add(space, 'space')
-            self._repo.commit()
-
-            assert_equal(space, self._repo.get('space'))
-
-        @classmethod
-        def tearDownClass(cls):
-            os.remove('test.h5')
+class SpaceSerializationTests(unittest.TestCase):
+    @expand([[space] for space in generate_spaces()])
+    def test_serialization(self, space):
+        try:
+            import h5py
+        except ImportError:
+            raise SkipTest
+        repo = Repository('test.h5')
+        repo.add(space, 'space')
+        repo.commit()
+        assert_equal(space, repo.get('space'))
+        os.remove('test.h5')
