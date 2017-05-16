@@ -30,8 +30,7 @@ dependency_injector = keepers.DependencyInjector(
                                    [('mpi4py.MPI', 'MPI'),
                                     'pyHealpix',
                                     'plotly',
-                                    'pylab',
-                                    'healpy'])
+                                    'pylab'])
 
 dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
 

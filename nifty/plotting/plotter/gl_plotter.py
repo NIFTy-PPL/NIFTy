@@ -1,23 +1,24 @@
-from nifty.spaces import HPSpace
+from nifty.spaces import GLSpace
 
 from nifty.plotting.figures import Figure2D
-from nifty.plotting.plots import HPMollweide
+from nifty.plotting.plots import GLMollweide
 from .plotter import Plotter
 
 
-class HealpixPlotter(Plotter):
+class GLPlotter(Plotter):
     def __init__(self, interactive=False, path='.', title="", color_map=None):
-        super(HealpixPlotter, self).__init__(interactive, path, title)
+        super(GLPlotter, self).__init__(interactive, path, title)
         self.color_map = color_map
 
     @property
     def domain_classes(self):
-        return (HPSpace, )
+        return (GLSpace, )
 
     def _create_individual_figure(self, plots):
         return Figure2D(plots)
 
     def _create_individual_plot(self, data, plot_domain):
-        result_plot = HPMollweide(data=data,
+        result_plot = GLMollweide(data=data, nlat=plot_domain.nlat,
+                                  nlon=plot_domain.nlon,
                                   color_map=self.color_map)
         return result_plot

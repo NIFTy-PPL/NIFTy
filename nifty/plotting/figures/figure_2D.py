@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from figure_from_plot import FigureFromPlot
-from nifty.plotting.plots import Heatmap, Mollweide
+from nifty.plotting.plots import Heatmap, HPMollweide, GLMollweide
 
 
 class Figure2D(FigureFromPlot):
@@ -19,7 +19,8 @@ class Figure2D(FigureFromPlot):
             else:
                 height = 500
                 width = int(500 * y / x)
-            if isinstance(plots[0], Mollweide):
+            if isinstance(plots[0], GLMollweide) or isinstance(plots[0],
+                                                               HPMollweide):
                 if not xaxis:
                     xaxis = False
                 if not yaxis:
