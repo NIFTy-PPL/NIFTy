@@ -116,7 +116,7 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
             real)
         assert_almost_equal(
             l.hermitian_decomposition(distributed_data_object(x))[1],
-            imag)
+            imag/1j)
 
     @expand(get_weight_configs())
     def test_weight(self, x, power, axes, inplace, expected):
