@@ -78,11 +78,6 @@ The current version of Nifty3 can be obtained by cloning the repository:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
 
-and switching to the "master" branch:
-
-    cd NIFTy
-    git checkout master
-
 ### Installation on Ubuntu
 
 This is for you if you want to install NIFTy on your personal computer
@@ -98,14 +93,13 @@ Starting with a fresh Ubuntu installation move to a folder like
 
         git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
-        autoreconf -i && ./configure --prefix=$HOME/.local && make -j4 && make install
+        autoreconf -i && ./configure --prefix=$HOME/.local --enable-openmp --enable-native-optimizations && make -j4 && make install
         cd ..
 
 -   Finally, NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
         cd NIFTy
-        git checkout master
         python setup.py install --user
         cd ..
 
@@ -135,7 +129,7 @@ may cause trouble.
 
         git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
-        autoreconf -i && ./configure --prefix=`python-config --prefix` && make -j4 && sudo make install
+        autoreconf -i && ./configure --prefix=`python-config --prefix` --enable-openmp --enable-native-optimizations && make -j4 && sudo make install
         cd ..
 
     (The third command installs the package system-wide. User-specific
@@ -146,7 +140,6 @@ may cause trouble.
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
         cd NIFTy
-        git checkout master
         python setup.py install --user
         cd ..
 
