@@ -24,7 +24,7 @@ from diagonal_operator import DiagonalOperator
 
 from endomorphic_operator import EndomorphicOperator
 
-from smoothing_operator import SmoothingOperator
+from smoothing_operator import *
 
 from fft_operator import *
 
