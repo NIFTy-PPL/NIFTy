@@ -114,6 +114,11 @@ class PowerSpace(Space):
         self._pundex = power_index['pundex']
         self._k_array = power_index['k_array']
 
+        if self.config['nbin'] is not None:
+            if self.config['nbin'] > len(self.kindex):
+                self.logger.warn("nbin was set to a value being larger than "
+                                 "the length of kindex!")
+
     def pre_cast(self, x, axes):
         """ Casts power spectrum functions to discretized power spectra.
 
