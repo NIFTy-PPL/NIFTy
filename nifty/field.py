@@ -17,6 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import division
+
+import itertools
 import numpy as np
 
 from keepers import Versionable,\
@@ -104,6 +106,7 @@ class Field(Loggable, Versionable, object):
     distributed_data_object
 
     """
+
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None,
@@ -512,7 +515,7 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         for power_space_index in spaces:
             power_space = self.domain[power_space_index]
-            harmonic_domain = power_space.harmonic_domain
+            harmonic_domain = power_space.harmonic_partner
             result_domain[power_space_index] = harmonic_domain
 
         # create random samples: one or two, depending on whether the
@@ -554,14 +557,12 @@ class Field(Loggable, Versionable, object):
                                             inplace=True)
 
         if real_signal:
-            for power_space_index in spaces:
-                harmonic_domain = result_domain[power_space_index]
-                result_val_list = [harmonic_domain.hermitian_decomposition(
-                                    result_val,
-                                    axes=result.domain_axes[power_space_index],
-                                    preserve_gaussian_variance=True)[0]
-                                   for (result, result_val)
-                                   in zip(result_list, result_val_list)]
+            result_val_list = [self._hermitian_decomposition(
+                                                result_domain,
+                                                result_val,
+                                                spaces,
+                                                result_list[0].domain_axes)[0]
+                               for result_val in result_val_list]
 
         # store the result into the fields
         [x.set_val(new_val=y, copy=False) for x, y in
@@ -573,6 +574,46 @@ class Field(Loggable, Versionable, object):
             result = result_list[0] + 1j*result_list[1]
 
         return result
+
+    @staticmethod
+    def _hermitian_decomposition(domain, val, spaces, domain_axes):
+        # hermitianize for the first space
+        (h, a) = domain[spaces[0]].hermitian_decomposition(
+                                                       val,
+                                                       domain_axes[spaces[0]])
+        # hermitianize all remaining spaces using the iterative formula
+        for space in xrange(1, len(spaces)):
+            (hh, ha) = \
+                domain[space].hermitian_decomposition(h, domain_axes[space])
+            (ah, aa) = \
+                domain[space].hermitian_decomposition(a, domain_axes[space])
+            c = (hh - ha - ah + aa).conjugate()
+            h = (val + c)/2.
+            a = (val - c)/2.
+
+        # correct variance
+        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
+        # check if there was at least one flipping during hermitianization
+        flipped_Q = np.any([fp is not None for fp in fixed_points])
+        # if the array got flipped, correct the variance
+        if flipped_Q:
+            h *= np.sqrt(2)
+            a *= np.sqrt(2)
+            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
+            for product_point in itertools.product(*fixed_points):
+                slice_object = np.array((slice(None), )*len(val.shape),
+                                        dtype=np.object)
+                for i, sp in enumerate(spaces):
+                    point_component = product_point[i]
+                    if point_component is None:
+                        point_component = slice(None)
+                    slice_object[list(domain_axes[sp])] = point_component
+
+                slice_object = tuple(slice_object)
+                h[slice_object] /= np.sqrt(2)
+                a[slice_object] /= np.sqrt(2)
+
+        return (h, a)
 
     def _spec_to_rescaler(self, spec, result_list, power_space_index):
         power_space = self.domain[power_space_index]
