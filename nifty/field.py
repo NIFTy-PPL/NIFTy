@@ -358,7 +358,7 @@ class Field(Loggable, Versionable, object):
                 self.domain_axes[space_index])
 
         harmonic_domain = self.domain[space_index]
-        power_domain = PowerSpace(harmonic_domain=harmonic_domain,
+        power_domain = PowerSpace(harmonic_partner=harmonic_domain,
                                   distribution_strategy=distribution_strategy,
                                   logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
@@ -512,7 +512,7 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         for power_space_index in spaces:
             power_space = self.domain[power_space_index]
-            harmonic_domain = power_space.harmonic_domain
+            harmonic_domain = power_space.harmonic_partner
             result_domain[power_space_index] = harmonic_domain
 
         # create random samples: one or two, depending on whether the
