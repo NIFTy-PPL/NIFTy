@@ -1,1 +1,2 @@
 from wiener_filter_curvature import WienerFilterCurvature
+from nonlinear_wiener_filter_curvature import NonlinearWienerFilterCurvature

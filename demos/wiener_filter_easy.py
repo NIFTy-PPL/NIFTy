@@ -19,7 +19,7 @@ if __name__ == "__main__":
     correlation_length = 0.1
     #variance of field in position space sqrt(<|s_x|^2>) (in unit of s)
     field_variance = 2.
-    #smoothing length that response (in same unit as L)
+    #smoothing length of response (in same unit as L)
     response_sigma = 0.1
     
     #defining resolution (pixels per dimension)
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     d = R(ss) + n
 
     # Wiener filter
+
     j = R.adjoint_times(N.inverse_times(d))
     D = PropagatorOperator(S=S, N=N, R=R)
 

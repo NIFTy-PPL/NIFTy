@@ -1,1 +1,2 @@
 from wiener_filter_energy import WienerFilterEnergy
+from nonlinear_wiener_filter_energy import NonlinearWienerFilterEnergy
