@@ -20,7 +20,7 @@ class WienerFilterEnergy(Energy):
     """
 
     def __init__(self, position, d, R, N, S):
-        super(WienerFilterEnergy, self).__init__(position)
+        super(WienerFilterEnergy, self).__init__(position = position)
         self.d = d
         self.R = R
         self.N = N
@@ -34,12 +34,13 @@ class WienerFilterEnergy(Energy):
         energy = 0.5 * self.position.dot(self.S.inverse_times(self.position))
         energy += 0.5 * (self.d - self.R(self.position)).dot(
             self.N.inverse_times(self.d - self.R(self.position)))
-        return energy
+        return energy.real
 
     @property
     def gradient(self):
         gradient = self.S.inverse_times(self.position)
-        gradient -= self.N.inverse_times(self.d - self.R(self.position))
+        gradient -= self.R.adjoint_times(
+                    self.N.inverse_times(self.d - self.R(self.position)))
         return gradient
 
     @property
@@ -48,7 +49,7 @@ class WienerFilterEnergy(Energy):
         return curvature
 
     def analytic_solution(self):
-        D_inverse = self.curvature()
+        D_inverse = self.curvature
         j = self.R.adjoint_times(self.N.inverse_times(self.d))
         new_position = D_inverse.inverse_times(j)
         return self.at(new_position)
