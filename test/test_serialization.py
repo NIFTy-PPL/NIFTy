@@ -23,12 +23,12 @@ from keepers import Repository
 from test.common import expand, generate_spaces
 import os
 
-try:
-    import h5py
-except ImportError:
-    h5py_available = False
-else:
-    h5py_available = True
+#try:
+import h5py
+#except ImportError:
+#    h5py_available = False
+#else:
+#    h5py_available = True
 
 if h5py_available:
     class SpaceSerializationTests(unittest.TestCase):
