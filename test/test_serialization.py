@@ -34,5 +34,5 @@ class SpaceSerializationTests(unittest.TestCase):
         repo = Repository('test.h5')
         repo.add(space, 'space')
         repo.commit()
-        assert_equal(space, self._repo.get('space'))
+        assert_equal(space, repo.get('space'))
         os.remove('test.h5')
