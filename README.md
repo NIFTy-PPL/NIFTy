@@ -15,7 +15,7 @@ Summary
 a versatile library designed to enable the development of signal
 inference algorithms that operate regardless of the underlying spatial
 grid and its resolution. Its object-oriented framework is written in
-Python, although it accesses libraries written in Cython, C++, and C for
+Python, although it accesses libraries written in C++ and C for
 efficiency.
 
 NIFTY offers a toolkit that abstracts discretized representations of
@@ -38,25 +38,25 @@ certain grids, **fields** that are defined on spaces, and **operators**
 that apply to fields.
 
 -   [Spaces](http://www.mpa-garching.mpg.de/ift/nifty/space.html)
-    -   `rg_space` - *n*-dimensional regular Euclidean grid
-    -   `lm_space` - spherical harmonics
-    -   `gl_space` - Gauss-Legendre grid on the 2-sphere
-    -   `hp_space` - [HEALPix](http://sourceforge.net/projects/healpix/)
+    -   `RGSpace` - *n*-dimensional regular Euclidean grid
+    -   `LMSpace` - spherical harmonics
+    -   `GLSpace` - Gauss-Legendre grid on the 2-sphere
+    -   `HPSpace` - [HEALPix](http://sourceforge.net/projects/healpix/)
         grid on the 2-sphere
 -   [Fields](http://www.mpa-garching.mpg.de/ift/nifty/field.html)
-    -   `field` - generic class for (discretized) fields
+    -   `Field` - generic class for (discretized) fields
 
 <!-- -->
 
-    field.conjugate     field.dim          field.norm
-    field.dot           field.set_val      field.weight
+    Field.conjugate     Field.dim          Field.norm
+    Field.dot           Field.set_val      Field.weight
 
 -   [Operators](http://www.mpa-garching.mpg.de/ift/nifty/operator.html)
-    -   `diagonal_operator` - purely diagonal matrices in a specified
+    -   `DiagonalOperator` - purely diagonal matrices in a specified
         basis
-    -   `projection_operator` - projections onto subsets of a specified
+    -   `ProjectionOperator` - projections onto subsets of a specified
         basis
-    -   `propagator_operator` - information propagator in Wiener filter
+    -   `PropagatorOperator` - information propagator in Wiener filter
         theory
     -   (and more)
 -   (and more)
@@ -71,15 +71,17 @@ Installation
 
 -   [Python](http://www.python.org/) (v2.7.x)
     -   [NumPy](http://www.numpy.org/)
-    -   [Cython](http://cython.org/)
 
 ### Download
 
-The latest release is tagged **v1.0.7** and is available as a source
-package at [](https://gitlab.mpcdf.mpg.de/ift/NIFTy/tags). The current
-version can be obtained by cloning the repository:
+The current version of Nifty3 can be obtained by cloning the repository:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
+
+and switching to the "master" branch:
+
+    cd NIFTy
+    git checkout master
 
 ### Installation on Ubuntu
 
@@ -90,53 +92,31 @@ Starting with a fresh Ubuntu installation move to a folder like
 
 -   Install basic packages like python, python-dev, gsl and others:
 
-        sudo apt-get install curl git autoconf
-        sudo apt-get install python-dev python-pip gsl-bin libgsl0-dev libfreetype6-dev libpng-dev libatlas-base-dev
-
--   Using pip install numpy etc...:
-
-        sudo pip install numpy cython
+        sudo apt-get install curl git autoconf python-dev python-pip python-numpy
 
 -   Install pyHealpix:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
         cd pyHealpix
-        autoreconf -i && ./configure && make -j4 && sudo make install
+        autoreconf -i && ./configure --prefix=$HOME/.local && make -j4 && make install
         cd ..
 
 -   Finally, NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        cd nifty
-        sudo python setup.py install
+        cd NIFTy
+        git checkout master
+        python setup.py install --user
         cd ..
 
-### Installation on a Linux cluster
+### Installation on Linux systems in general
 
-This is for you if you want to install NIFTy on a HPC machine or cluster
-that is hosted by your university or institute. Most of the dependencies
-will most likely already be there, but you won't have superuser
-privileges. In this case, instead of:
-
-    sudo python setup.py install
-
-use:
-
-    python setup.py install --user
-
-or:
-
-    python setup.py install --install-lib=/SOMEWHERE
-
-in the instruction above. This will install the python packages into
-your local user directory.
-
-For pyHealpix, use:
-
-    git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
-    cd pyHealpix
-    autoreconf -i && ./configure --prefix=$HOME/.local && make -j4 && make install
-    cd ..
+Since all the "unconventional" packages (i.e. pyHealpix and NIFTy) listed in the
+section above are installed
+within the home directory of the user, the installation instructions for these
+should also work on any Linux machine where you do not have root access.
+In this case you have to ensure with your system administrators that the
+"standard" dependencies (python, numpy, etc.) are installed system-wide.
 
 ### Installation on OS X 10.11
 
@@ -147,10 +127,9 @@ MacPorts, missing ones need to be installed manually. It may also be
 mentioned that one should only use one package manager, as multiple ones
 may cause trouble.
 
--   Install basic packages numpy and cython:
+-   Install numpy:
 
         sudo port install py27-numpy
-        sudo port install py27-cython
 
 -   Install pyHealpix:
 
@@ -159,23 +138,17 @@ may cause trouble.
         autoreconf -i && ./configure --prefix=`python-config --prefix` && make -j4 && sudo make install
         cd ..
 
+    (The third command installs the package system-wide. User-specific
+    installation would be preferrable, but we haven't found a simple recipe yet
+    how to determine the installation prefix ...)
+
 -   Install NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        cd nifty
-        sudo python setup.py install
+        cd NIFTy
+        git checkout master
+        python setup.py install --user
         cd ..
-
-### Installation using pypi
-
-NIFTY can be installed using [PyPI](https://pypi.python.org/pypi) and
-**pip** by running the following command:
-
-    pip install ift_nifty
-
-Alternatively, a private or user specific installation can be done by:
-
-    pip install --user ift_nifty
 
 ### Running the tests
 

@@ -36,6 +36,74 @@ from nifty.random import Random
 
 
 class Field(Loggable, Versionable, object):
+    """ The discrete representation of a continuous field over multiple spaces.
+
+    In NIFTY, Fields are used to store data arrays and carry all the needed
+    metainformation (i.e. the domain) for operators to be able to work on them.
+    In addition Field has methods to work with power-spectra.
+
+    Parameters
+    ----------
+    domain : DomainObject
+        One of the space types NIFTY supports. RGSpace, GLSpace, HPSpace,
+        LMSpace or PowerSpace. It might also be a FieldArray, which is
+        an unstructured domain.
+
+    val : scalar, numpy.ndarray, distributed_data_object, Field
+        The values the array should contain after init. A scalar input will
+        fill the whole array with this scalar. If an array is provided the
+        array's dimensions must match the domain's.
+
+    dtype : type
+        A numpy.type. Most common are int, float and complex.
+
+    distribution_strategy: optional[{'fftw', 'equal', 'not', 'freeform'}]
+        Specifies which distributor will be created and used.
+        'fftw'      uses the distribution strategy of pyfftw,
+        'equal'     tries to  distribute the data as uniform as possible
+        'not'       does not distribute the data at all
+        'freeform'  distribute the data according to the given local data/shape
+
+    copy: boolean
+
+    Attributes
+    ----------
+    val : distributed_data_object
+
+    domain : DomainObject
+        See Parameters.
+    domain_axes : tuple of tuples
+        Enumerates the axes of the Field
+    dtype : type
+        Contains the datatype stored in the Field.
+    distribution_strategy : string
+        Name of the used distribution_strategy.
+
+    Raise
+    -----
+    TypeError
+        Raised if
+            *the given domain contains something that is not a DomainObject
+             instance
+            *val is an array that has a different dimension than the domain
+
+    Examples
+    --------
+    >>> a = Field(RGSpace([4,5]),val=2)
+    >>> a.val
+    <distributed_data_object>
+    array([[2, 2, 2, 2, 2],
+           [2, 2, 2, 2, 2],
+           [2, 2, 2, 2, 2],
+           [2, 2, 2, 2, 2]])
+    >>> a.dtype
+    dtype('int64')
+
+    See Also
+    --------
+    distributed_data_object
+
+    """
     # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None,
@@ -121,6 +189,37 @@ class Field(Loggable, Versionable, object):
     @classmethod
     def from_random(cls, random_type, domain=None, dtype=None,
                     distribution_strategy=None, **kwargs):
+        """ Draws a random field with the given parameters.
+
+        Parameters
+        ----------
+        cls : class
+
+        random_type : String
+            'pm1', 'normal', 'uniform' are the supported arguments for this
+            method.
+
+        domain : DomainObject
+            The domain of the output random field
+
+        dtype : type
+            The datatype of the output random field
+
+        distribution_strategy : all supported distribution strategies
+            The distribution strategy of the output random field
+
+        Returns
+        -------
+        out : Field
+            The output object.
+
+        See Also
+        --------
+        power_synthesise
+
+
+        """
+
         # create a initially empty field
         f = cls(domain=domain, dtype=dtype,
                 distribution_strategy=distribution_strategy)
@@ -143,7 +242,6 @@ class Field(Loggable, Versionable, object):
 
     @staticmethod
     def _parse_random_arguments(random_type, f, **kwargs):
-
         if random_type == "pm1":
             random_arguments = {}
 
@@ -167,8 +265,57 @@ class Field(Loggable, Versionable, object):
 
     # ---Powerspectral methods---
 
-    def power_analyze(self, spaces=None, logarithmic=False, nbin=None, binbounds=None,
-                      decompose_power=False):
+    def power_analyze(self, spaces=None, logarithmic=False, nbin=None,
+                      binbounds=None, decompose_power=True):
+        """ Computes the powerspectrum for a subspace of the Field.
+
+        Creates a PowerSpace for the space addressed by `spaces` with the given
+        binning and computes the power spectrum as a Field over this
+        PowerSpace. This can only be done if the subspace to  be analyzed is a
+        harmonic space.
+
+        Parameters
+        ----------
+        spaces : int *optional*
+            The subspace for which the powerspectrum shall be computed
+            (default : None).
+            if spaces==None : Tries to synthesize for the whole domain
+        logarithmic : boolean *optional*
+            True if the output PowerSpace should use logarithmic binning.
+            {default : False}
+        nbin : int *optional*
+            The number of bins the resulting PowerSpace shall have
+            (default : None).
+            if nbin==None : maximum number of bins is used
+        binbounds : array-like *optional*
+            Inner bounds of the bins (default : None).
+            if binbounds==None : bins are inferred. Overwrites nbins and log
+        decompose_power : boolean, *optional*
+            Whether the analysed signal-space Field is intrinsically real or
+            complex and if the power spectrum shall therefore be computed
+            for the real and the imaginary part of the Field separately
+            (default : True).
+
+        Raise
+        -----
+        ValueError
+            Raised if
+                *len(domain) is != 1 when spaces==None
+                *len(spaces) is != 1 if not None
+                *the analyzed space is not harmonic
+
+        Returns
+        -------
+        out : Field
+            The output object. It's domain is a PowerSpace and it contains
+            the power spectrum of 'self's field.
+
+        See Also
+        --------
+        power_synthesize, PowerSpace
+
+        """
+
         # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
@@ -210,10 +357,11 @@ class Field(Loggable, Versionable, object):
             self.val.get_axes_local_distribution_strategy(
                 self.domain_axes[space_index])
 
-        harmonic_partner = self.domain[space_index]
-        power_domain = PowerSpace(harmonic_partner=harmonic_partner,
+        harmonic_domain = self.domain[space_index]
+        power_domain = PowerSpace(harmonic_domain=harmonic_domain,
                                   distribution_strategy=distribution_strategy,
-                                  logarithmic=logarithmic, nbin=nbin, binbounds=binbounds)
+                                  logarithmic=logarithmic, nbin=nbin,
+                                  binbounds=binbounds)
 
         # extract pindex and rho from power_domain
         pindex = power_domain.pindex
@@ -221,7 +369,7 @@ class Field(Loggable, Versionable, object):
 
         if decompose_power:
             hermitian_part, anti_hermitian_part = \
-                harmonic_partner.hermitian_decomposition(
+                harmonic_domain.hermitian_decomposition(
                                             self.val,
                                             axes=self.domain_axes[space_index])
 
@@ -303,8 +451,50 @@ class Field(Loggable, Versionable, object):
 
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_power=True,
-                         real_signal=False, mean=None, std=None):
+    def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
+                         mean=None, std=None):
+        """ Converts a power spectrum into a random field realization.
+
+        This method draws a Gaussian random field in the harmic partner domain
+        of a PowerSpace.
+
+        Notes
+        -----
+        For this the spaces specified by `spaces` must be a PowerSpaces.
+
+        Parameters
+        ----------
+        spaces : {tuple, int, None} *optional*
+            Specifies the subspace containing all the PowerSpaces which
+            should be converted (default : None).
+            if spaces==None : Tries to convert the whole domain.
+        real_power : boolean *optional*
+            Determines whether the power spectrum is treated as intrinsically
+            real or complex (default : True).
+        real_signal : boolean *optional*
+            True will result in a purely real signal-space field
+            (default : True).
+        mean : float *optional*
+            The mean of the Gaussian noise field which is used for the Field
+            synthetization (default : None).
+            if mean==None : mean will be set to 0
+        std : float *optional*
+            The standard deviation of the Gaussian noise field which is used
+            for the Field synthetization (default : None).
+            {default : None}
+            if std==None : std will be set to 1
+
+        Returns
+        -------
+        out : Field
+            The output object. A random field created with the power spectrum
+            stored in the `spaces` in `self`.
+
+        See Also
+        --------
+        power_analyze
+
+        """
 
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
@@ -322,8 +512,8 @@ class Field(Loggable, Versionable, object):
         result_domain = list(self.domain)
         for power_space_index in spaces:
             power_space = self.domain[power_space_index]
-            harmonic_partner = power_space.harmonic_partner
-            result_domain[power_space_index] = harmonic_partner
+            harmonic_domain = power_space.harmonic_domain
+            result_domain[power_space_index] = harmonic_domain
 
         # create random samples: one or two, depending on whether the
         # power spectrum is real or complex
@@ -365,8 +555,8 @@ class Field(Loggable, Versionable, object):
 
         if real_signal:
             for power_space_index in spaces:
-                harmonic_partner = result_domain[power_space_index]
-                result_val_list = [harmonic_partner.hermitian_decomposition(
+                harmonic_domain = result_domain[power_space_index]
+                result_val_list = [harmonic_domain.hermitian_decomposition(
                                     result_val,
                                     axes=result.domain_axes[power_space_index],
                                     preserve_gaussian_variance=True)[0]
@@ -415,6 +605,24 @@ class Field(Loggable, Versionable, object):
     # ---Properties---
 
     def set_val(self, new_val=None, copy=False):
+        """ Sets the fields distributed_data_object.
+
+        Parameters
+        ----------
+        new_val : scalar, array-like, Field, None *optional*
+            The values to be stored in the field.
+            {default : None}
+
+        copy : boolean, *optional*
+            If False, Field tries to not copy the input data but use it
+            directly.
+            {default : False}
+        See Also
+        --------
+        val
+
+        """
+
         new_val = self.cast(new_val)
         if copy:
             new_val = new_val.copy()
@@ -422,6 +630,24 @@ class Field(Loggable, Versionable, object):
         return self
 
     def get_val(self, copy=False):
+        """ Returns the distributed_data_object associated with this Field.
+
+        Parameters
+        ----------
+        copy : boolean
+            If true, a copy of the Field's underlying distributed_data_object
+            is returned.
+
+        Returns
+        -------
+        out : distributed_data_object
+
+        See Also
+        --------
+        val
+
+        """
+
         if self._val is None:
             self.set_val(None)
 
@@ -432,6 +658,18 @@ class Field(Loggable, Versionable, object):
 
     @property
     def val(self):
+        """ Returns the distributed_data_object associated with this Field.
+
+        Returns
+        -------
+        out : distributed_data_object
+
+        See Also
+        --------
+        get_val
+
+        """
+
         return self.get_val(copy=False)
 
     @val.setter
@@ -440,6 +678,20 @@ class Field(Loggable, Versionable, object):
 
     @property
     def shape(self):
+        """ Returns the total shape of the Field's data array.
+
+        Returns
+        -------
+        out : tuple
+            The output object. The tuple contains the dimansions of the spaces
+            in domain.
+
+        See Also
+        --------
+        dim
+
+        """
+
         shape_tuple = tuple(sp.shape for sp in self.domain)
         try:
             global_shape = reduce(lambda x, y: x + y, shape_tuple)
@@ -450,6 +702,21 @@ class Field(Loggable, Versionable, object):
 
     @property
     def dim(self):
+        """ Returns the total number of pixel-dimensions the field has.
+
+        Effectively, all values from shape are multiplied.
+
+        Returns
+        -------
+        out : int
+            The dimension of the Field.
+
+        See Also
+        --------
+        shape
+
+        """
+
         dim_tuple = tuple(sp.dim for sp in self.domain)
         try:
             return reduce(lambda x, y: x * y, dim_tuple)
@@ -458,6 +725,12 @@ class Field(Loggable, Versionable, object):
 
     @property
     def dof(self):
+        """ Returns the total number of degrees of freedom the Field has. For
+        real Fields this is equal to `self.dim`. For complex Fields it is
+        2*`self.dim`.
+
+        """
+
         dof = self.dim
         if issubclass(self.dtype.type, np.complexfloating):
             dof *= 2
@@ -465,6 +738,9 @@ class Field(Loggable, Versionable, object):
 
     @property
     def total_volume(self):
+        """ Returns the total volume of all spaces in the domain.
+        """
+
         volume_tuple = tuple(sp.total_volume for sp in self.domain)
         try:
             return reduce(lambda x, y: x * y, volume_tuple)
@@ -474,6 +750,28 @@ class Field(Loggable, Versionable, object):
     # ---Special unary/binary operations---
 
     def cast(self, x=None, dtype=None):
+        """ Transforms x to a d2o with the correct dtype and shape.
+
+        Parameters
+        ----------
+        x : scalar, d2o, Field, array_like
+            The input that shall be casted on a d2o of the same shape like the
+            domain.
+
+        dtype : type
+            The datatype the output shall have. This can be used to override
+            the fields dtype.
+
+        Returns
+        -------
+        out : distributed_data_object
+            The output object.
+
+        See Also
+        --------
+        _actual_cast
+
+        """
         if dtype is None:
             dtype = self.dtype
         else:
@@ -508,6 +806,35 @@ class Field(Loggable, Versionable, object):
         return return_x
 
     def copy(self, domain=None, dtype=None, distribution_strategy=None):
+        """ Returns a full copy of the Field.
+
+        If no keyword arguments are given, the returned object will be an
+        identical copy of the original Field. By explicit specification one is
+        able to define the domain, the dtype and the distribution_strategy of
+        the returned Field.
+
+        Parameters
+        ----------
+        domain : DomainObject
+            The new domain the Field shall have.
+
+        dtype : type
+            The new dtype the Field shall have.
+
+        distribution_strategy : all supported distribution strategies
+            The new distribution strategy the Field shall have.
+
+        Returns
+        -------
+        out : Field
+            The output object. An identical copy of 'self'.
+
+        See Also
+        --------
+        copy_empty
+
+        """
+
         copied_val = self.get_val(copy=True)
         new_field = self.copy_empty(
                                 domain=domain,
@@ -517,6 +844,37 @@ class Field(Loggable, Versionable, object):
         return new_field
 
     def copy_empty(self, domain=None, dtype=None, distribution_strategy=None):
+        """ Returns an empty copy of the Field.
+
+        If no keyword arguments are given, the returned object will be an
+        identical copy of the original Field. The memory for the data array
+        is only allocated but not actively set to any value
+        (c.f. numpy.ndarray.copy_empty). By explicit specification one is able
+        to change the domain, the dtype and the distribution_strategy of the
+        returned Field.
+
+        Parameters
+        ----------
+        domain : DomainObject
+            The new domain the Field shall have.
+
+        dtype : type
+            The new dtype the Field shall have.
+
+        distribution_strategy : string, all supported distribution strategies
+            The distribution strategy the new Field should have.
+
+        Returns
+        -------
+        out : Field
+            The output object.
+
+        See Also
+        --------
+        copy
+
+        """
+
         if domain is None:
             domain = self.domain
         else:
@@ -562,6 +920,26 @@ class Field(Loggable, Versionable, object):
         return new_field
 
     def weight(self, power=1, inplace=False, spaces=None):
+        """ Weights the pixels of `self` with their invidual pixel-volume.
+
+        Parameters
+        ----------
+        power : number
+            The pixels get weighted with the volume-factor**power.
+
+        inplace : boolean
+            If True, `self` will be weighted and returned. Otherwise, a copy
+            is made.
+
+        spaces : tuple of ints
+            Determines on which subspace the operation takes place.
+
+        Returns
+        -------
+        out : Field
+            The weighted field.
+
+        """
         if inplace:
             new_field = self
         else:
@@ -584,7 +962,25 @@ class Field(Loggable, Versionable, object):
         return new_field
 
     def dot(self, x=None, spaces=None, bare=False):
+        """ Computes the volume-factor-aware dot product of 'self' with x.
 
+        Parameters
+        ----------
+        x : Field
+            The domain of x must contain `self.domain`
+
+        spaces : tuple of ints
+            If the domain of `self` and `x` are not the same, `spaces` specfies
+            the mapping.
+
+        bare : boolean
+            If true, no volume factors will be included in the computation.
+
+        Returns
+        -------
+        out : float, complex
+
+        """
         if not isinstance(x, Field):
             raise ValueError("The dot-partner must be an instance of " +
                              "the NIFTy field class")
@@ -612,35 +1008,40 @@ class Field(Loggable, Versionable, object):
             return dotted.sum(spaces=spaces)
 
     def norm(self, q=2):
+        """ Computes the Lq-norm of the field values.
+
+        Parameters
+        ----------
+        q : scalar
+            Parameter q of the Lq-norm (default: 2).
+
+        Returns
+        -------
+        norm : scalar
+            The Lq-norm of the field values.
+
         """
-            Computes the Lq-norm of the field values.
 
-            Parameters
-            ----------
-            q : scalar
-                Parameter q of the Lq-norm (default: 2).
-
-            Returns
-            -------
-            norm : scalar
-                The Lq-norm of the field values.
-
-        """
         if q == 2:
             return (self.dot(x=self)) ** (1 / 2)
         else:
             return self.dot(x=self ** (q - 1)) ** (1 / q)
 
     def conjugate(self, inplace=False):
-        """
-            Computes the complex conjugate of the field.
+        """ Retruns the complex conjugate of the field.
 
-            Returns
-            -------
-            cc : field
-                The complex conjugated field.
+        Parameters
+        ----------
+        inplace : boolean
+            Decides whether the conjugation should be performed inplace.
+
+        Returns
+        -------
+        cc : field
+            The complex conjugated field.
 
         """
+
         if inplace:
             work_field = self
         else:
@@ -655,15 +1056,33 @@ class Field(Loggable, Versionable, object):
     # ---General unary/contraction methods---
 
     def __pos__(self):
+        """ x.__pos__() <==> +x
+
+        Returns a (positive) copy of `self`.
+
+        """
+
         return self.copy()
 
     def __neg__(self):
+        """ x.__neg__() <==> -x
+
+        Returns a negative copy of `self`.
+
+        """
+
         return_field = self.copy_empty()
         new_val = -self.get_val(copy=False)
         return_field.set_val(new_val, copy=False)
         return return_field
 
     def __abs__(self):
+        """ x.__abs__() <==> abs(x)
+
+        Returns an absolute valued copy of `self`.
+
+        """
+
         return_field = self.copy_empty()
         new_val = abs(self.get_val(copy=False))
         return_field.set_val(new_val, copy=False)
@@ -759,72 +1178,240 @@ class Field(Loggable, Versionable, object):
         return working_field
 
     def __add__(self, other):
+        """ x.__add__(y) <==> x+y
+
+        See Also
+        --------
+        _binary_helper
+
+        """
+
         return self._binary_helper(other, op='__add__')
 
     def __radd__(self, other):
+        """ x.__radd__(y) <==> y+x
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__radd__')
 
     def __iadd__(self, other):
+        """ x.__iadd__(y) <==> x+=y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__iadd__', inplace=True)
 
     def __sub__(self, other):
+        """ x.__sub__(y) <==> x-y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__sub__')
 
     def __rsub__(self, other):
+        """ x.__rsub__(y) <==> y-x
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__rsub__')
 
     def __isub__(self, other):
+        """ x.__isub__(y) <==> x-=y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__isub__', inplace=True)
 
     def __mul__(self, other):
+        """ x.__mul__(y) <==> x*y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__mul__')
 
     def __rmul__(self, other):
+        """ x.__rmul__(y) <==> y*x
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__rmul__')
 
     def __imul__(self, other):
+        """ x.__imul__(y) <==> x*=y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__imul__', inplace=True)
 
     def __div__(self, other):
+        """ x.__div__(y) <==> x/y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__div__')
 
     def __rdiv__(self, other):
+        """ x.__rdiv__(y) <==> y/x
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__rdiv__')
 
     def __idiv__(self, other):
+        """ x.__idiv__(y) <==> x/=y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__idiv__', inplace=True)
 
     def __pow__(self, other):
+        """ x.__pow__(y) <==> x**y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__pow__')
 
     def __rpow__(self, other):
+        """ x.__rpow__(y) <==> y**x
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__rpow__')
 
     def __ipow__(self, other):
+        """ x.__ipow__(y) <==> x**=y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
         return self._binary_helper(other, op='__ipow__', inplace=True)
 
     def __lt__(self, other):
+        """ x.__lt__(y) <==> x<y
+
+        See Also
+        --------
+        _binary_helper
+
+        """
+
         return self._binary_helper(other, op='__lt__')
 
     def __le__(self, other):
+        """ x.__le__(y) <==> x<=y
+
+        See Also
+        --------
+        _binary_helper
+
+        """
+
         return self._binary_helper(other, op='__le__')
 
     def __ne__(self, other):
+        """ x.__ne__(y) <==> x!=y
+
+        See Also
+        --------
+        _binary_helper
+
+        """
+
         if other is None:
             return True
         else:
             return self._binary_helper(other, op='__ne__')
 
     def __eq__(self, other):
+        """ x.__eq__(y) <==> x=y
+
+        See Also
+        --------
+        _binary_helper
+
+        """
+
         if other is None:
             return False
         else:
             return self._binary_helper(other, op='__eq__')
 
     def __ge__(self, other):
+        """ x.__ge__(y) <==> x>=y
+
+        See Also
+        --------
+        _binary_helper
+
+        """
+
         return self._binary_helper(other, op='__ge__')
 
     def __gt__(self, other):
+        """ x.__gt__(y) <==> x>y
+
+        See Also
+        --------
+        _binary_helper
+
+        """
+
         return self._binary_helper(other, op='__gt__')
 
     def __repr__(self):

@@ -87,7 +87,7 @@ class DomainObject(Versionable, Loggable, object):
 
     @abc.abstractproperty
     def shape(self):
-        """ Returns the shape of the underlying array-like object.
+        """ The domain-object's shape contribution to the underlying array.
 
         Returns
         -------
