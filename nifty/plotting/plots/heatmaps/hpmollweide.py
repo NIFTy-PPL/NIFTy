@@ -24,7 +24,6 @@ class HPMollweide(Heatmap):
 
     def _mollview(self, x, xsize=800):
         f = pylab.figure(None, figsize=(8.5, 5.4))
-        extent = (0.02, 0.05, 0.96, 0.9)
         nside = int(np.sqrt(x.size//12))
         base = pyHealpix.Healpix_Base(nside, "RING")
         ra = np.linspace(-np.pi, np.pi, xsize)
