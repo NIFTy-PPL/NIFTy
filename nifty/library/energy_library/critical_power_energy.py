@@ -1,7 +1,9 @@
 from nifty.energies.energy import Energy
-from nifty.library.operator_library import NonlinearWienerFilterCurvature
+from nifty.library.operator_library import CriticalPowerCurvature
+from nifty.sugar import generate_posterior_sample
 from nifty import Field
-class NonlinearWienerFilterEnergy(Energy):
+
+class CriticalPowerEnergy(Energy):
     """The Energy for the Gaussian lognormal case.
 
     It describes the situation of linear measurement  of a
@@ -19,9 +21,9 @@ class NonlinearWienerFilterEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, d, R, N, S):
-        super(NonlinearWienerFilterEnergy, self).__init__(position = position)
-        self.d = d
+    def __init__(self, position, m, D, alpha, beta, w = None, samples=3):
+        super(CriticalPowerEnergy, self).__init__(position = position)
+        self.al = d
         self.R = R
         self.N = N
         self.S = S
@@ -46,8 +48,19 @@ class NonlinearWienerFilterEnergy(Energy):
 
     @property
     def curvature(self):
-        curvature = NonlinearWienerFilterCurvature(R=self.R,
+        curvature =CriticalPowerCurvature(R=self.R,
                                                    N=self.N,
                                                    S=self.S,
                                                    position=self.position)
         return curvature
+
+    def _calculate_w(self, m, D, samples):
+        w = Field(domain=self.position.domain, val=0)
+        for i in range(samples):
+            posterior_sample = generate_posterior_sample(m, D)
+            projected_sample =posterior_sample.power_analyze()**2
+            w += projected_sample
+        return w / float(samples)
+
+
+

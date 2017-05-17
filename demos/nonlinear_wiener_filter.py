@@ -54,7 +54,7 @@ if __name__ == "__main__":
     distribution_strategy = 'not'
 
     # Set up position space
-    s_space = RGSpace([128,128])
+    s_space = RGSpace([256,256])
     # s_space = HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
@@ -173,3 +173,9 @@ if __name__ == "__main__":
     if rank == 0:
         pl.plot([go.Heatmap(z=m_data)], filename='map.html')
 
+    f_m_data = function(m).val.get_full_data().real
+    if rank == 0:
+        pl.plot([go.Heatmap(z=f_m_data)], filename='f_map.html')
+    f_ss_data = function(ss).val.get_full_data().real
+    if rank == 0:
+        pl.plot([go.Heatmap(z=f_ss_data)], filename='f_ss.html')

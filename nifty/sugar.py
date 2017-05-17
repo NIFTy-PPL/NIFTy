@@ -19,7 +19,8 @@
 from nifty import PowerSpace,\
                   Field,\
                   DiagonalOperator,\
-                  FFTOperator
+                  FFTOperator,\
+                  sqrt
 
 __all__ = ['create_power_operator']
 
@@ -42,3 +43,22 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     power_operator = DiagonalOperator(domain, diagonal=f, bare=True)
 
     return power_operator
+
+
+def generate_posterior_sample(mean, covariance):
+    S = covariance.S
+    R = covariance.R
+    N = covariance.N
+    power = S.diagonal()
+    noise = N.diagonal().val
+    mock_signal = Field.from_random(random_type="normal", domain=S.domain,
+                                    std = sqrt(power), dtype = power.dtype)
+    mock_noise = Field.from_random(random_type="normal", domain=N.domain,
+                                   std = sqrt(noise), dtype = noise.dtype)
+    mock_data = R(mock_signal) + mock_noise
+
+    mock_j = R.adjoint_times(N.inverse_times(mock_data))
+    mock_m = covariance.inverse_times(mock_j)
+    sample = mock_signal - mock_m + mean
+    return sample
+
