@@ -18,7 +18,7 @@ class GLPlotter(Plotter):
         return Figure2D(plots)
 
     def _create_individual_plot(self, data, plot_domain):
-        result_plot = GLMollweide(data=data, nlat=plot_domain.nlat,
-                                  nlon=plot_domain.nlon,
+        result_plot = GLMollweide(data=data, nlat=plot_domain[0].nlat,
+                                  nlon=plot_domain[0].nlon,
                                   color_map=self.color_map)
         return result_plot

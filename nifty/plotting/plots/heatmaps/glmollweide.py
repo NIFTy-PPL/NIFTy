@@ -4,15 +4,12 @@ from nifty import dependency_injector as gdi
 from heatmap import Heatmap
 import numpy as np
 
-pylab = gdi.get('pylab')
 pyHealpix = gdi.get('pyHealpix')
 
 
 class GLMollweide(Heatmap):
     def __init__(self, data, nlat, nlon, color_map=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
-        if 'pylab' not in gdi:
-            raise ImportError("The module pylab is needed but not available.")
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
@@ -33,21 +30,26 @@ class GLMollweide(Heatmap):
         return idx
 
     def _mollview(self, x, nlat, nlon, xsize=800):
-        f = pylab.figure(None, figsize=(8.5, 5.4))
+        xsize = int(xsize)
+        ysize = int(xsize/2)
+        res = np.full(shape=(ysize,xsize), fill_value=np.nan, dtype=np.float64)
+        xc = (xsize-1)*0.5
+        yc = (ysize-1)*0.5
+        i, j = np.meshgrid(np.arange(xsize), np.arange(ysize))
+        u = 2*(i-xc)/(xc/1.02)
+        v = (j-yc)/(yc/1.02)
+
+        mask = np.where((u*u*0.25 + v*v) <= 1.)
+        t1 = v[mask]
+        theta = 0.5*np.pi-(
+            np.arcsin(2/np.pi*(np.arcsin(t1) + t1*np.sqrt((1.-t1)*(1+t1)))))
+        phi = -0.5*np.pi*u[mask]/np.maximum(np.sqrt((1-t1)*(1+t1)), 1e-6)
+
         x = np.reshape(x, (nlon, nlat))
-        ra = np.linspace(-np.pi, np.pi, xsize)
-        dec = np.linspace(-np.pi/2, np.pi/2, xsize/2)
-        X, Y = np.meshgrid(ra, dec)
-        gllat = pyHealpix.GL_thetas(nlat)-0.5*np.pi
-        gllon = np.arange(nlon+1)*(2*np.pi/nlon)
-        ilat = self._find_closest(gllat, dec-0.5*np.pi)
-        ilon = self._find_closest(gllon, np.pi+ra)
-        for i in range(ilon.size):
-            if (ilon[i] == nlon):
-                ilon[i] = 0
-        Z = np.empty((xsize/2, xsize), dtype=np.float64)
-        for i in range(xsize/2):
-            Z[i, :] = x[ilon, ilat[i]]
-        ax = f.add_subplot(111, projection='mollweide')
-        ax.pcolormesh(X, Y, Z, rasterized=True)
-        return f
+        ra = np.linspace(0, 2*np.pi, nlon+1)
+        dec = np.arccos(pyHealpix.GL_thetas(nlat))
+        ilat = self._find_closest(-dec, -theta)
+        ilon = self._find_closest(ra, phi+np.pi)
+        ilon=np.where(ilon==nlon,0,ilon)
+        res[mask]=x[ilon,ilat]
+        return res

@@ -10,8 +10,6 @@ pyHealpix = gdi.get('pyHealpix')
 class HPMollweide(Heatmap):
     def __init__(self, data, color_map=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
-        if 'pylab' not in gdi:
-            raise ImportError("The module pylab is needed but not available.")
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
@@ -41,6 +39,4 @@ class HPMollweide(Heatmap):
         ptg[:, 1] = phi
         base = pyHealpix.Healpix_Base(int(np.sqrt(x.size/12)), "RING")
         res[mask]=x[base.ang2pix(ptg)]
-        #for i in range(mask[0].size):
-        #    res[mask[1][i], mask[0][i]] = x[base.ang2pix(ptg[i])]
         return res
