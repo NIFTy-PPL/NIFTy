@@ -33,7 +33,8 @@ class GLMollweide(Heatmap):
     def _mollweidehelper(xsize):
         xsize = int(xsize)
         ysize = int(xsize/2)
-        res = np.full(shape=(ysize,xsize), fill_value=np.nan, dtype=np.float64)
+        res = np.full(shape=(ysize, xsize), fill_value=np.nan,
+                      dtype=np.float64)
         xc = (xsize-1)*0.5
         yc = (ysize-1)*0.5
         u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
@@ -45,17 +46,17 @@ class GLMollweide(Heatmap):
         theta = 0.5*np.pi-(
             np.arcsin(2/np.pi*(np.arcsin(t1) + t1*np.sqrt((1.-t1)*(1+t1)))))
         phi = -0.5*np.pi*u[mask]/np.maximum(np.sqrt((1-t1)*(1+t1)), 1e-6)
-        phi = np.where(phi<0, phi+2*np.pi, phi)
+        phi = np.where(phi < 0, phi+2*np.pi, phi)
         return res, mask, theta, phi
 
     def _mollview(self, x, nlat, nlon, xsize=800):
         res, mask, theta, phi = self._mollweidehelper(xsize)
 
-        x = np.reshape(x, (nlat,nlon))
+        x = np.reshape(x, (nlat, nlon))
         ra = np.linspace(0, 2*np.pi, nlon+1)
         dec = pyHealpix.GL_thetas(nlat)
         ilat = self._find_closest(dec, theta)
         ilon = self._find_closest(ra, phi)
-        ilon=np.where(ilon==nlon,0,ilon)
-        res[mask]=x[ilat,ilon]
+        ilon = np.where(ilon == nlon, 0, ilon)
+        res[mask] = x[ilat, ilon]
         return res

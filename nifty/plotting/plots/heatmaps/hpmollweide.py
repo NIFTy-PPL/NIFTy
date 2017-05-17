@@ -23,7 +23,8 @@ class HPMollweide(Heatmap):
     def _mollweidehelper(xsize):
         xsize = int(xsize)
         ysize = int(xsize/2)
-        res = np.full(shape=(ysize,xsize), fill_value=np.nan, dtype=np.float64)
+        res = np.full(shape=(ysize, xsize), fill_value=np.nan,
+                      dtype=np.float64)
         xc = (xsize-1)*0.5
         yc = (ysize-1)*0.5
         u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
@@ -35,7 +36,7 @@ class HPMollweide(Heatmap):
         theta = 0.5*np.pi-(
             np.arcsin(2/np.pi*(np.arcsin(t1) + t1*np.sqrt((1.-t1)*(1+t1)))))
         phi = -0.5*np.pi*u[mask]/np.maximum(np.sqrt((1-t1)*(1+t1)), 1e-6)
-        phi = np.where(phi<0, phi+2*np.pi, phi)
+        phi = np.where(phi < 0, phi+2*np.pi, phi)
         return res, mask, theta, phi
 
     def _mollview(self, x, xsize=800):
@@ -45,5 +46,5 @@ class HPMollweide(Heatmap):
         ptg[:, 0] = theta
         ptg[:, 1] = phi
         base = pyHealpix.Healpix_Base(int(np.sqrt(x.size/12)), "RING")
-        res[mask]=x[base.ang2pix(ptg)]
+        res[mask] = x[base.ang2pix(ptg)]
         return res
