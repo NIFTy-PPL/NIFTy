@@ -4,7 +4,6 @@ from nifty import dependency_injector as gdi
 from heatmap import Heatmap
 import numpy as np
 
-pylab = gdi.get('pylab')
 pyHealpix = gdi.get('pyHealpix')
 
 
@@ -23,17 +22,25 @@ class HPMollweide(Heatmap):
         super(HPMollweide, self).__init__(data, color_map, webgl, smoothing)
 
     def _mollview(self, x, xsize=800):
-        f = pylab.figure(None, figsize=(8.5, 5.4))
-        nside = int(np.sqrt(x.size//12))
-        base = pyHealpix.Healpix_Base(nside, "RING")
-        ra = np.linspace(-np.pi, np.pi, xsize)
-        dec = np.linspace(-np.pi/2, np.pi/2, xsize/2)
-        X, Y = np.meshgrid(ra, dec)
-        dims = X.shape+(2,)
-        ptg = np.empty(dims, dtype=np.float64)
-        ptg[:, :, 0] = 0.5*np.pi-Y
-        ptg[:, :, 1] = X+np.pi
-        Z = x[base.ang2pix(ptg)]
-        ax = f.add_subplot(111, projection='mollweide')
-        ax.pcolormesh(X, Y, Z, rasterized=True)
-        return f
+        xsize = int(xsize)
+        ysize = int(xsize/2)
+        res = np.full(shape=(ysize,xsize), fill_value=np.nan, dtype=np.float64)
+        xc = (xsize-1)*0.5
+        yc = (ysize-1)*0.5
+        i, j = np.meshgrid(np.arange(xsize), np.arange(ysize))
+        u = 2*(i-xc)/(xc/1.02)
+        v = (j-yc)/(yc/1.02)
+
+        mask = np.where((u*u*0.25 + v*v) <= 1.)
+        t1 = v[mask]
+        theta = 0.5*np.pi-(
+            np.arcsin(2/np.pi*(np.arcsin(t1) + t1*np.sqrt((1.-t1)*(1+t1)))))
+        phi = -0.5*np.pi*u[mask]/np.maximum(np.sqrt((1-t1)*(1+t1)), 1e-6)
+        ptg = np.empty((phi.size, 2), dtype=np.float64)
+        ptg[:, 0] = theta
+        ptg[:, 1] = phi
+        base = pyHealpix.Healpix_Base(int(np.sqrt(x.size/12)), "RING")
+        res[mask]=x[base.ang2pix(ptg)]
+        #for i in range(mask[0].size):
+        #    res[mask[1][i], mask[0][i]] = x[base.ang2pix(ptg[i])]
+        return res
