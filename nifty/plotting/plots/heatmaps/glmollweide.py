@@ -45,11 +45,12 @@ class GLMollweide(Heatmap):
             np.arcsin(2/np.pi*(np.arcsin(t1) + t1*np.sqrt((1.-t1)*(1+t1)))))
         phi = -0.5*np.pi*u[mask]/np.maximum(np.sqrt((1-t1)*(1+t1)), 1e-6)
 
-        x = np.reshape(x, (nlon, nlat))
+        x = np.reshape(x, (nlat,nlon))
         ra = np.linspace(0, 2*np.pi, nlon+1)
-        dec = np.arccos(pyHealpix.GL_thetas(nlat))
-        ilat = self._find_closest(-dec, -theta)
+        dec = pyHealpix.GL_thetas(nlat)
+        print "dec:",dec
+        ilat = self._find_closest(dec, theta)
         ilon = self._find_closest(ra, phi+np.pi)
         ilon=np.where(ilon==nlon,0,ilon)
-        res[mask]=x[ilon,ilat]
+        res[mask]=x[ilat,ilon]
         return res
