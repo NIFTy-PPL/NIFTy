@@ -48,7 +48,6 @@ class GLMollweide(Heatmap):
         x = np.reshape(x, (nlat,nlon))
         ra = np.linspace(0, 2*np.pi, nlon+1)
         dec = pyHealpix.GL_thetas(nlat)
-        print "dec:",dec
         ilat = self._find_closest(dec, theta)
         ilon = self._find_closest(ra, phi+np.pi)
         ilon=np.where(ilon==nlon,0,ilon)
