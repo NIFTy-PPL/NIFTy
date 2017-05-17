@@ -110,7 +110,7 @@ class RGSpace(Space):
         hermitian_part /= 2.
 
         # use subtraction since it is faster than flipping another time
-        anti_hermitian_part = (x-hermitian_part)/1j
+        anti_hermitian_part = (x-hermitian_part)
 
         if preserve_gaussian_variance:
             hermitian_part, anti_hermitian_part = \
@@ -119,6 +119,18 @@ class RGSpace(Space):
                                                     axes=axes)
 
         return (hermitian_part, anti_hermitian_part)
+
+    def hermitian_fixed_points(self):
+        shape = self.shape
+        mid_index = np.array(shape)//2
+        ndlist = [2 if (shape[i] % 2 == 0) else 1 for i in xrange(len(shape))]
+        ndlist = tuple(ndlist)
+        odd_axes_list = np.array([1 if (shape[i] % 2 == 1) else 0
+                                  for i in xrange(len(shape))])
+        fixed_points = []
+        for i in np.ndindex(ndlist):
+            fixed_points += [tuple((i+odd_axes_list) * mid_index)]
+        return fixed_points
 
     def _hermitianize_correct_variance(self, hermitian_part,
                                        anti_hermitian_part, axes):
@@ -145,8 +157,9 @@ class RGSpace(Space):
         return hermitian_part, anti_hermitian_part
 
     def _hermitianize_inverter(self, x, axes):
+        shape = x.shape
         # calculate the number of dimensions the input array has
-        dimensions = len(x.shape)
+        dimensions = len(shape)
         # prepare the slicing object which will be used for mirroring
         slice_primitive = [slice(None), ] * dimensions
         # copy the input data
@@ -158,11 +171,17 @@ class RGSpace(Space):
         # flip in the desired directions
         for i in axes:
             slice_picker = slice_primitive[:]
-            slice_picker[i] = slice(1, None, None)
+            if shape[i] % 2 == 0:
+                slice_picker[i] = slice(1, None, None)
+            else:
+                slice_picker[i] = slice(None)
             slice_picker = tuple(slice_picker)
 
             slice_inverter = slice_primitive[:]
-            slice_inverter[i] = slice(None, 0, -1)
+            if shape[i] % 2 == 0:
+                slice_inverter[i] = slice(None, 0, -1)
+            else:
+                slice_inverter[i] = slice(None, None, -1)
             slice_inverter = tuple(slice_inverter)
 
             try:

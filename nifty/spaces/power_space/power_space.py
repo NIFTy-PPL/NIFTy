@@ -114,6 +114,11 @@ class PowerSpace(Space):
         self._pundex = power_index['pundex']
         self._k_array = power_index['k_array']
 
+        if self.config['nbin'] is not None:
+            if self.config['nbin'] > len(self.kindex):
+                self.logger.warn("nbin was set to a value being larger than "
+                                 "the length of kindex!")
+
     def pre_cast(self, x, axes):
         """ Casts power spectrum functions to discretized power spectra.
 
@@ -249,12 +254,12 @@ class PowerSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['kindex'] = self.kindex
-        hdf5_group['rho'] = self.config["rho"]
-        hdf5_group['pundex'] = self.config["pundex"]
+        hdf5_group['rho'] = self.rho
+        hdf5_group['pundex'] = self.pundex
         hdf5_group['logarithmic'] = self.config["logarithmic"]
         # Store nbin as string, since it can be None
-        hdf5_group.attrs['nbin'] = str(self.nbin)
-        hdf5_group.attrs['binbounds'] = str(self.binbounds)
+        hdf5_group.attrs['nbin'] = str(self.config["nbin"])
+        hdf5_group.attrs['binbounds'] = str(self.config["binbounds"])
 
         return {
             'harmonic_partner': self.harmonic_partner,
@@ -274,10 +279,10 @@ class PowerSpace(Space):
         new_ps._harmonic_partner = repository.get('harmonic_partner',
                                                   hdf5_group)
 
-        new_ps.config = {}
-        new_ps.config['logarithmic'] = hdf5_group['logarithmic'][()]
-        exec("new_ps.config['nbin'] = " + hdf5_group.attrs['nbin'])
-        exec("new_ps.config['binbounds'] = " + hdf5_group.attrs['binbounds'])
+        new_ps._config = {}
+        new_ps._config['logarithmic'] = hdf5_group['logarithmic'][()]
+        exec("new_ps._config['nbin'] = " + hdf5_group.attrs['nbin'])
+        exec("new_ps._config['binbounds'] = " + hdf5_group.attrs['binbounds'])
 
         new_ps._pindex = repository.get('pindex', hdf5_group)
         new_ps._kindex = hdf5_group['kindex'][:]
