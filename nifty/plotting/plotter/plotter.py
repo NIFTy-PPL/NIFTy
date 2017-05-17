@@ -21,7 +21,7 @@ plotly = gdi.get('plotly')
 
 try:
     plotly.offline.init_notebook_mode()
-except AttributeError:
+except AttributeError, ImportError:
     pass
 
 rank = d2o.config.dependency_injector[
