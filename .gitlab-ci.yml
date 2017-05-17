@@ -11,9 +11,10 @@ variables:
 
 before_script:
   - apt-get update
+  - chmod +x ci/*.sh
   - ci/install_basics.sh
   - pip install --upgrade -r ci/requirements.txt
-  - chmod +x ci/*.sh
+
 
 test_min:
   stage: test
