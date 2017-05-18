@@ -87,7 +87,7 @@ Starting with a fresh Ubuntu installation move to a folder like
 
 -   Install basic packages like python, python-dev, gsl and others:
 
-        sudo apt-get install curl git autoconf python-dev python-pip python-numpy
+        sudo apt-get install curl git autoconf libtool python-dev python-pip python-numpy
 
 -   Install pyHealpix:
 
