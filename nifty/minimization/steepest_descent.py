@@ -20,7 +20,25 @@ from .descent_minimizer import DescentMinimizer
 
 
 class SteepestDescent(DescentMinimizer):
-    def _get_descend_direction(self, energy):
+    def get_descend_direction(self, energy):
+        """ Implementation of the steepest descent minimization scheme.
+
+        Also known as 'gradient descent'. This algorithm simply follows the
+        functionals gradient for minization.
+
+        Parameters
+        ----------
+        energy : Energy
+            An instance of the Energy class which shall be minized. The
+            position of `energy` is used as the starting point of minization.
+
+        Returns
+        -------
+        descend_direction : Field
+            Returns the descent direction.
+
+        """
+
         descend_direction = energy.gradient
         norm = descend_direction.norm()
         if norm != 1:

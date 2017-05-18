@@ -22,6 +22,47 @@ from keepers import Loggable
 
 
 class Energy(Loggable, object):
+    """ Provides the functional used by minimization schemes.
+
+   The Energy object is an implementation of a scalar function including its
+   gradient and curvature at some position.
+
+    Parameters
+    ----------
+    position : Field
+        The input parameter of the scalar function.
+
+    Attributes
+    ----------
+    position : Field
+        The Field location in parameter space where value, gradient and
+        curvature are evaluated.
+    value : np.float
+        The value of the energy functional at given `position`.
+    gradient : Field
+        The gradient at given `position` in parameter direction.
+    curvature : LinearOperator, callable
+        A positive semi-definite operator or function describing the curvature
+        of the potential at the given `position`.
+
+    Notes
+    -----
+    An instance of the Energy class is defined at a certain location. If one
+    is interested in the value, gradient or curvature of the abstract energy
+    functional one has to 'jump' to the new position using the `at` method.
+    This method returns a new energy instance residing at the new position. By
+    this approach, intermediate results from computing e.g. the gradient can
+    safely be reused for e.g. the value or the curvature.
+
+    Memorizing the evaluations of some quantities (using the memo decorator)
+    minimizes the computational effort for multiple calls.
+
+    See also
+    --------
+    memo
+
+    """
+
     __metaclass__ = NiftyMeta
 
     def __init__(self, position):
@@ -33,20 +74,56 @@ class Energy(Loggable, object):
         self._position = position
 
     def at(self, position):
+        """ Initializes and returns a new Energy object at the new position.
+
+        Parameters
+        ----------
+        position : Field
+            Parameter for the new Energy object.
+
+        Returns
+        -------
+        out : Energy
+            Energy object at new position.
+
+        """
+
         return self.__class__(position)
 
     @property
     def position(self):
+        """
+        The Field location in parameter space where value, gradient and
+        curvature are evaluated.
+
+        """
+
         return self._position
 
     @property
     def value(self):
+        """
+        The value of the energy functional at given `position`.
+
+        """
+
         raise NotImplementedError
 
     @property
     def gradient(self):
+        """
+        The gradient at given `position` in parameter direction.
+
+        """
+
         raise NotImplementedError
 
     @property
     def curvature(self):
+        """
+        A positive semi-definite operator or function describing the curvature
+        of the potential at the given `position`.
+
+        """
+
         raise NotImplementedError

@@ -22,37 +22,49 @@ from .line_search import LineSearch
 
 
 class LineSearchStrongWolfe(LineSearch):
-    """
-    Class for finding a step size that satisfies the strong Wolfe conditions.
+    """Class for finding a step size that satisfies the strong Wolfe conditions.
+    
+    Algorithm contains two stages. It begins whit a trial step length and it 
+    keeps increasing the it until it finds an acceptable step length or an
+    interval. If it does not satisfy the Wolfe conditions it performs the Zoom 
+    algorithm (second stage). By interpolating it decreases the size of the 
+    interval until an acceptable step length is found.  
+    
+    Parameters
+    ----------
+    c1 : float 
+        Parameter for Armijo condition rule. (Default: 1e-4)
+    c2 : float
+        Parameter for curvature condition rule. (Default: 0.9)
+    max_step_size : float
+        Maximum step allowed in to be made in the descent direction. 
+        (Default: 50)
+    max_iterations : integer
+        Maximum number of iterations performed by the line search algorithm.
+        (Default: 10)
+    max_zoom_iterations : integer
+        Maximum number of iterations performed by the zoom algorithm. 
+        (Default: 10)
+        
+    Attributes
+    ----------
+    c1 : float
+        Parameter for Armijo condition rule.
+    c2 : float
+        Parameter for curvature condition rule.
+    max_step_size : float
+        Maximum step allowed in to be made in the descent direction. 
+    max_iterations : integer
+        Maximum number of iterations performed by the line search algorithm.
+    max_zoom_iterations : integer
+        Maximum number of iterations performed by the zoom algorithm.
+        
     """
 
     def __init__(self, c1=1e-4, c2=0.9,
                  max_step_size=50, max_iterations=10,
                  max_zoom_iterations=10):
 
-        """
-        Parameters
-        ----------
-
-        f : callable f(x, *args)
-            Objective function.
-
-        fprime : callable f'(x, *args)
-            Objective functions gradient.
-
-        f_args : tuple (optional)
-            Additional arguments passed to objective function and its
-            derivation.
-
-        c1 : float (optional)
-            Parameter for Armijo condition rule.
-
-        c2 : float (optional)
-            Parameter for curvature condition rule.
-
-        max_step_size : float (optional)
-            Maximum step size
-        """
 
         super(LineSearchStrongWolfe, self).__init__()
 
@@ -63,6 +75,34 @@ class LineSearchStrongWolfe(LineSearch):
         self.max_zoom_iterations = int(max_zoom_iterations)
 
     def perform_line_search(self, energy, pk, f_k_minus_1=None):
+        """Performs the first stage of the algorithm.
+        
+        It starts with a trial step size and it keeps increasing it until it 
+        satisfy the strong Wolf conditions. It also performs the descent and 
+        returns the optimal step length and the new enrgy.
+        
+        Parameters
+        ----------
+        energy : Energy object
+            Energy object from which we will calculate the energy and the
+            gradient at a specific point.
+        pk : Field
+            Unit vector pointing into the search direction.
+        f_k_minus_1 : float
+            Value of the fuction (which is being minimized) at the k-1 
+            iteration of the line search procedure. (Default: None)
+        
+        Returns
+        -------
+        alpha_star : float
+            The optimal step length in the descent direction.
+        phi_star : float
+            Value of the energy after the performed descent.
+        energy_star : Energy object
+            The new Energy object on the new position.
+            
+        """        
+        
         self._set_line_energy(energy, pk, f_k_minus_1=f_k_minus_1)
         c1 = self.c1
         c2 = self.c2
@@ -154,7 +194,47 @@ class LineSearchStrongWolfe(LineSearch):
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
               phi_lo, phiprime_lo, phi_hi, c1, c2):
-
+        """Performs the second stage of the line search algorithm.
+        
+        If the first stage was not successful then the Zoom algorithm tries to 
+        find a suitable step length by using bisection, quadratic, cubic 
+        interpolation.
+        
+        Parameters
+        ----------
+        alpha_lo : float
+            The lower boundary for the step length interval.
+        alph_hi : float
+            The upper boundary for the step length interval.
+        phi_0 : float
+            Value of the energy at the starting point of the line search 
+            algorithm.
+        phiprime_0 : Field
+            Gradient at the starting point of the line search algorithm.
+        phi_lo : float
+            Value of the energy if we perform a step of length alpha_lo in 
+            descent direction.
+        phiprime_lo : Field
+            Gradient at the nwe position if we perform a step of length 
+            alpha_lo in descent direction.
+        phi_hi : float
+            Value of the energy if we perform a step of length alpha_hi in 
+            descent direction.
+        c1 : float
+            Parameter for Armijo condition rule.
+        c2 : float
+            Parameter for curvature condition rule.
+        
+        Returns
+        -------
+        alpha_star : float
+            The optimal step length in the descent direction.
+        phi_star : float
+            Value of the energy after the performed descent.
+        energy_star : Energy object
+            The new Energy object on the new position.
+        
+        """
         max_iterations = self.max_zoom_iterations
         # define the cubic and quadratic interpolant checks
         cubic_delta = 0.2  # cubic
@@ -225,12 +305,36 @@ class LineSearchStrongWolfe(LineSearch):
         return alpha_star, phi_star, energy_star
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):
-        """
+        """Estimating the minimum with cubic interpolation.
+        
         Finds the minimizer for a cubic polynomial that goes through the
-        points (a,fa), (b,fb), and (c,fc) with derivative at a of fpa.
+        points ( a,f(a) ), ( b,f(b) ), and ( c,f(c) ) with derivative at point a of fpa.
+        f(x) = A *(x-a)^3 + B*(x-a)^2 + C*(x-a) + D
         If no minimizer can be found return None
+        
+        Parameters
+        ----------
+        a : float
+            Selected point.
+        fa : float
+            Value of polynomial at point a.
+        fpa : Field
+            Derivative at point a.
+        b : float
+            Selected point.
+        fb : float
+            Value of polynomial at point b.
+        c : float
+            Selected point.
+        fc : float
+            Value of polynomial at point c.
+        
+        Returns
+        -------
+        xmin : float
+            Position of the approximated minimum.
+        
         """
-        # f(x) = A *(x-a)^3 + B*(x-a)^2 + C*(x-a) + D
 
         with np.errstate(divide='raise', over='raise', invalid='raise'):
             try:
@@ -256,9 +360,29 @@ class LineSearchStrongWolfe(LineSearch):
         return xmin
 
     def _quadmin(self, a, fa, fpa, b, fb):
-        """
+        """Estimating the minimum with quadratic interpolation.
+        
         Finds the minimizer for a quadratic polynomial that goes through
-        the points (a,fa), (b,fb) with derivative at a of fpa,
+        the points ( a,f(a) ), ( b,f(b) ) with derivative at point a of fpa.
+        f(x) = B*(x-a)^2 + C*(x-a) + D
+        
+        Parameters
+        ----------
+        a : float
+            Selected point.
+        fa : float
+            Value of polynomial at point a.
+        fpa : Field
+            Derivative at point a.
+        b : float
+            Selected point.
+        fb : float
+            Value of polynomial at point b.
+        
+        Returns
+        -------
+        xmin : float
+            Position of the approximated minimum.       
         """
         # f(x) = B*(x-a)^2 + C*(x-a) + D
         with np.errstate(divide='raise', over='raise', invalid='raise'):

@@ -21,6 +21,7 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class RelaxedNewton(DescentMinimizer):
+
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None):
@@ -33,7 +34,27 @@ class RelaxedNewton(DescentMinimizer):
 
         self.line_searcher.prefered_initial_step_size = 1.
 
-    def _get_descend_direction(self, energy):
+    def get_descend_direction(self, energy):
+        """ Calculates the descent direction according to a Newton scheme.
+
+        The descent direction is determined by weighting the gradient at the
+        current parameter position with the inverse local curvature, provided
+        by the Energy object.
+
+
+        Parameters
+        ----------
+        energy : Energy
+            An instance of the Energy class which shall be minized. The
+            position of `energy` is used as the starting point of minization.
+
+        Returns
+        -------
+        descend_direction : Field
+           Returns the descent direction with proposed step length. In a
+           quadratic potential this corresponds to the optimal step.
+
+        """
         gradient = energy.gradient
         curvature = energy.curvature
         descend_direction = curvature.inverse_times(gradient)
