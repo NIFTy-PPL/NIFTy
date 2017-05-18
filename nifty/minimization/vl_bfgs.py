@@ -40,7 +40,33 @@ class VL_BFGS(DescentMinimizer):
         self._information_store = None
         return super(VL_BFGS, self).__call__(energy)
 
-    def _get_descend_direction(self, energy):
+    def get_descend_direction(self, energy):
+        """Implementation of the Vector-free L-BFGS minimization scheme.
+
+        Find the descent direction by using the inverse Hessian.
+        Instead of storing the whole matrix, it stores only the last few
+        updates, which are used to do operations requiring the inverse
+        Hessian product. The updates are represented in a new basis to optimize
+        the algorithm.
+
+        Parameters
+        ----------
+        energy : Energy
+            An instance of the Energy class which shall be minized. The
+            position of `energy` is used as the starting point of minization.
+
+        Returns
+        -------
+        descend_direction : Field
+            Returns the descent direction.
+
+        References
+        ----------
+        W. Chen, Z. Wang, J. Zhou, "Large-scale L-BFGS using MapReduce", 2014,
+        Microsoft
+
+        """
+
         x = energy.position
         gradient = energy.gradient
         # initialize the information store if it doesn't already exist
@@ -65,6 +91,39 @@ class VL_BFGS(DescentMinimizer):
 
 
 class InformationStore(object):
+    """Class for storing a list of past updates.
+
+    Parameters
+    ----------
+    max_history_length : integer
+        Maximum number of stored past updates.
+    x0 : Field
+        Initial position in variable space.
+    gradient : Field
+        Gradient at position x0.
+
+    Attributes
+    ----------
+    max_history_length : integer
+        Maximum number of stored past updates.
+    s : List
+        List of past position differences, which are Fields.
+    y : List
+        List of past gradient differences, which are Fields.
+    last_x : Field
+        Initial position in variable space.
+    last_gradient : Field
+        Gradient at initial position.
+    k : integer
+        Number of currently stored past updates.
+    _ss_store : dictionary
+        Dictionary of scalar products between different elements of s.
+    _sy_store : dictionary
+        Dictionary of scalar products between elements of s and y.
+    _yy_store : dictionary
+        Dictionary of scalar products between different elements of y.
+
+    """
     def __init__(self, max_history_length, x0, gradient):
         self.max_history_length = max_history_length
         self.s = LimitedList(max_history_length)
@@ -79,10 +138,21 @@ class InformationStore(object):
 
     @property
     def history_length(self):
+        """Returns the number of currently stored updates.
+
+        """
         return min(self.k, self.max_history_length)
 
     @property
     def b(self):
+        """Combines s, y and gradient to form the new base vectors b.
+
+        Returns
+        -------
+        result : List
+            List of new basis vectors.
+
+        """
         result = []
         m = self.history_length
         k = self.k
@@ -101,6 +171,17 @@ class InformationStore(object):
 
     @property
     def b_dot_b(self):
+        """Generates the (2m+1) * (2m+1) scalar matrix.
+
+        The i,j-th element of the matrix is a scalar product between the i-th
+        and j-th base vector.
+
+        Returns
+        -------
+        result : numpy.ndarray
+            Scalar matrix.
+
+        """
         m = self.history_length
         k = self.k
         result = np.empty((2*m+1, 2*m+1), dtype=np.float)
@@ -129,6 +210,14 @@ class InformationStore(object):
 
     @property
     def delta(self):
+        """Calculates the new scalar coefficients (deltas).
+
+        Returns
+        -------
+        delta : List
+            List of the new scalar coefficients (deltas).
+
+        """
         m = self.history_length
         b_dot_b = self.b_dot_b
 
@@ -153,33 +242,114 @@ class InformationStore(object):
         return delta
 
     def ss_store(self, i, j):
+        """Updates the dictionary _ss_store with a new scalar product.
+
+        Returns the scalar product of s_i and s_j.
+
+        Parameters
+        ----------
+        i : integer
+            s index.
+        j : integer
+            s index.
+
+        Returns
+        -------
+        _ss_store[key] : float
+            Scalar product of s_i and s_j.
+
+        """
         key = tuple(sorted((i, j)))
         if key not in self._ss_store:
             self._ss_store[key] = self.s[i].dot(self.s[j])
         return self._ss_store[key]
 
     def sy_store(self, i, j):
+        """Updates the dictionary _sy_store with a new scalar product.
+
+        Returns the scalar product of s_i and y_j.
+
+        Parameters
+        ----------
+        i : integer
+            s index.
+        j : integer
+            y index.
+
+        Returns
+        -------
+        _sy_store[key] : float
+            Scalar product of s_i and y_j.
+
+        """
         key = (i, j)
         if key not in self._sy_store:
             self._sy_store[key] = self.s[i].dot(self.y[j])
         return self._sy_store[key]
 
     def yy_store(self, i, j):
+        """Updates the dictionary _yy_store with a new scalar product.
+
+        Returns the scalar product of y_i and y_j.
+
+        Parameters
+        ----------
+        i : integer
+            y index.
+        j : integer
+            y index.
+
+        Returns
+        ------
+        _yy_store[key] : float
+            Scalar product of y_i and y_j.
+
+        """
         key = tuple(sorted((i, j)))
         if key not in self._yy_store:
             self._yy_store[key] = self.y[i].dot(self.y[j])
         return self._yy_store[key]
 
     def sgrad_store(self, i):
+        """Returns scalar product between s_i and gradient on initial position.
+
+        Returns
+        -------
+        scalar product : float
+            Scalar product.
+
+        """
         return self.s[i].dot(self.last_gradient)
 
     def ygrad_store(self, i):
+        """Returns scalar product between y_i and gradient on initial position.
+
+        Returns
+        -------
+        scalar product : float
+            Scalar product.
+
+        """
         return self.y[i].dot(self.last_gradient)
 
     def gradgrad_store(self):
+        """Returns scalar product of gradient on initial position with itself.
+
+        Returns
+        -------
+        scalar product : float
+            Scalar product.
+
+        """
         return self.last_gradient.dot(self.last_gradient)
 
     def add_new_point(self, x, gradient):
+        """Updates the s list and y list.
+
+        Calculates the new position and gradient differences and adds them to
+        the respective list.
+
+        """
         self.k += 1
 
         new_s = x - self.last_x
@@ -193,15 +363,55 @@ class InformationStore(object):
 
 
 class LimitedList(object):
+    """Class for creating a list of limited length.
+
+    Parameters
+    ----------
+    history_length : integer
+        Maximum number of stored past updates.
+
+    Attributes
+    ----------
+    history_length : integer
+        Maximum number of stored past updates.
+    _offset : integer
+        Offset to correct the indices which are bigger than maximum history.
+        length.
+    _storage : list
+        List where input values are stored.
+
+    """
     def __init__(self, history_length):
         self.history_length = int(history_length)
         self._offset = 0
         self._storage = []
 
     def __getitem__(self, index):
+        """Returns the element with index [index-offset].
+
+        Parameters
+        ----------
+        index : integer
+            Index of the selected element.
+
+        Returns
+        -------
+            selected element
+        """
         return self._storage[index-self._offset]
 
     def add(self, value):
+        """Adds a new element to the list.
+
+        If the list is of length maximum history then it removes the first
+        element first.
+
+        Parameters
+        ----------
+        value : anything
+            New element in the list.
+
+        """
         if len(self._storage) == self.history_length:
             self._storage.pop(0)
             self._offset += 1
