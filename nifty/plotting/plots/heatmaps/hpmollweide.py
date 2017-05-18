@@ -4,6 +4,8 @@ from nifty import dependency_injector as gdi
 from heatmap import Heatmap
 import numpy as np
 
+from .mollweide_helper import mollweide_helper
+
 pyHealpix = gdi.get('pyHealpix')
 
 
@@ -19,28 +21,8 @@ class HPMollweide(Heatmap):
             data = self._mollview(data)
         super(HPMollweide, self).__init__(data, color_map, webgl, smoothing)
 
-    @staticmethod
-    def _mollweidehelper(xsize):
-        xsize = int(xsize)
-        ysize = int(xsize/2)
-        res = np.full(shape=(ysize, xsize), fill_value=np.nan,
-                      dtype=np.float64)
-        xc = (xsize-1)*0.5
-        yc = (ysize-1)*0.5
-        u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))
-        u = 2*(u-xc)/(xc/1.02)
-        v = (v-yc)/(yc/1.02)
-
-        mask = np.where((u*u*0.25 + v*v) <= 1.)
-        t1 = v[mask]
-        theta = 0.5*np.pi-(
-            np.arcsin(2/np.pi*(np.arcsin(t1) + t1*np.sqrt((1.-t1)*(1+t1)))))
-        phi = -0.5*np.pi*u[mask]/np.maximum(np.sqrt((1-t1)*(1+t1)), 1e-6)
-        phi = np.where(phi < 0, phi+2*np.pi, phi)
-        return res, mask, theta, phi
-
     def _mollview(self, x, xsize=800):
-        res, mask, theta, phi = self._mollweidehelper(xsize)
+        res, mask, theta, phi = mollweide_helper(xsize)
 
         ptg = np.empty((phi.size, 2), dtype=np.float64)
         ptg[:, 0] = theta
