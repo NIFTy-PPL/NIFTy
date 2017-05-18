@@ -23,41 +23,6 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class VL_BFGS(DescentMinimizer):
-    """Implementation of the Vector-free L-BFGS minimization scheme.
-    
-    Find the descent direction by using the inverse Hessian.
-    Instead of storing the whole matrix, it stores only the last few updates, 
-    which are used to do operations requiring the inverse Hessian product. The
-    updates are represented in a new basis to optimize the algorithm.
-    LITERATURE:
-        W. Chen, Z. Wang, J. Zhou, Large-scale L-BFGS using MapReduce, 2014,
-        Microsoft
-        
-    Parameters
-    ----------
-    line_searcher : callable
-        Function which finds the step size in descent direction. (default:
-        LineSearchStrongWolfe())
-    callback : function *optional*
-        Function f(energy, iteration_number) specified by the user to print 
-        iteration number and energy value at every iteration step. It accepts 
-        an Energy object(energy) and integer(iteration_number). (default: None)
-    convergence_tolerance : scalar
-        Tolerance specifying convergence. (default: 1E-4)
-    convergence_level : integer
-        Number of times the tolerance should be undershot before exiting. 
-        (default: 3)
-    iteration_limit : integer *optional*
-        Maximum number of iterations performed. (default: None)
-    max_history_length : integer
-        Maximum number of stored past updates. (default: 10)
-    
-    Attributes
-    ----------
-    max_history_length : integer
-        Maximum number of stored past updates.
-    
-    """
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None, max_history_length=10):
@@ -72,42 +37,36 @@ class VL_BFGS(DescentMinimizer):
         self.max_history_length = max_history_length
 
     def __call__(self, energy):
-        """Runs the inherited __call__ method from QuasiNewtonMinimizer.
-        
-        Parameters
-        ----------
-        energy : Energy object
-            Energy object which describes our system.
-            
-        Returns
-        -------
-        energy : Energy object
-            Latest `energy` of the minimization.
-        convergence : integer
-            Latest convergence level indicating whether the minimization
-            has converged or not.
-        
-        """
         self._information_store = None
         return super(VL_BFGS, self).__call__(energy)
 
-    def _get_descend_direction(self, energy):
-        """Initializes the storage of updates and gets descent direction.
-        
-        Gets the new basis vectors b and sums them to get the descend 
-        direction.
-        
+    def get_descend_direction(self, energy):
+        """Implementation of the Vector-free L-BFGS minimization scheme.
+
+        Find the descent direction by using the inverse Hessian.
+        Instead of storing the whole matrix, it stores only the last few
+        updates, which are used to do operations requiring the inverse
+        Hessian product. The updates are represented in a new basis to optimize
+        the algorithm.
+
         Parameters
         ----------
-        energy : Energy object
-            Energy object which describes our system.
-            
+        energy : Energy
+            An instance of the Energy class which shall be minized. The
+            position of `energy` is used as the starting point of minization.
+
         Returns
         -------
         descend_direction : Field
-            Descend direction.
-        
+            Returns the descent direction.
+
+        References
+        ----------
+        W. Chen, Z. Wang, J. Zhou, "Large-scale L-BFGS using MapReduce", 2014,
+        Microsoft
+
         """
+
         x = energy.position
         gradient = energy.gradient
         # initialize the information store if it doesn't already exist
@@ -133,7 +92,7 @@ class VL_BFGS(DescentMinimizer):
 
 class InformationStore(object):
     """Class for storing a list of past updates.
-    
+
     Parameters
     ----------
     max_history_length : integer
@@ -142,7 +101,7 @@ class InformationStore(object):
         Initial position in variable space.
     gradient : Field
         Gradient at position x0.
-    
+
     Attributes
     ----------
     max_history_length : integer
@@ -163,7 +122,7 @@ class InformationStore(object):
         Dictionary of scalar products between elements of s and y.
     _yy_store : dictionary
         Dictionary of scalar products between different elements of y.
-    
+
     """
     def __init__(self, max_history_length, x0, gradient):
         self.max_history_length = max_history_length
@@ -180,19 +139,19 @@ class InformationStore(object):
     @property
     def history_length(self):
         """Returns the number of currently stored updates.
-        
+
         """
         return min(self.k, self.max_history_length)
 
     @property
     def b(self):
-        """Combines s, y and gradient to form the new base vectors b. 
-        
+        """Combines s, y and gradient to form the new base vectors b.
+
         Returns
         -------
         result : List
             List of new basis vectors.
-            
+
         """
         result = []
         m = self.history_length
@@ -213,15 +172,15 @@ class InformationStore(object):
     @property
     def b_dot_b(self):
         """Generates the (2m+1) * (2m+1) scalar matrix.
-        
+
         The i,j-th element of the matrix is a scalar product between the i-th
-        and j-th base vector. 
-        
+        and j-th base vector.
+
         Returns
         -------
-        result : numpy.ndarray      
+        result : numpy.ndarray
             Scalar matrix.
-        
+
         """
         m = self.history_length
         k = self.k
@@ -252,12 +211,12 @@ class InformationStore(object):
     @property
     def delta(self):
         """Calculates the new scalar coefficients (deltas).
-        
+
         Returns
         -------
         delta : List
             List of the new scalar coefficients (deltas).
-        
+
         """
         m = self.history_length
         b_dot_b = self.b_dot_b
@@ -284,21 +243,21 @@ class InformationStore(object):
 
     def ss_store(self, i, j):
         """Updates the dictionary _ss_store with a new scalar product.
-        
-        Returns the scalar product of s_i and s_j.        
-        
+
+        Returns the scalar product of s_i and s_j.
+
         Parameters
         ----------
         i : integer
             s index.
         j : integer
             s index.
-            
+
         Returns
         -------
         _ss_store[key] : float
             Scalar product of s_i and s_j.
-            
+
         """
         key = tuple(sorted((i, j)))
         if key not in self._ss_store:
@@ -307,21 +266,21 @@ class InformationStore(object):
 
     def sy_store(self, i, j):
         """Updates the dictionary _sy_store with a new scalar product.
-        
-        Returns the scalar product of s_i and y_j.        
-        
+
+        Returns the scalar product of s_i and y_j.
+
         Parameters
         ----------
         i : integer
             s index.
         j : integer
             y index.
-            
+
         Returns
         -------
         _sy_store[key] : float
             Scalar product of s_i and y_j.
-            
+
         """
         key = (i, j)
         if key not in self._sy_store:
@@ -330,21 +289,21 @@ class InformationStore(object):
 
     def yy_store(self, i, j):
         """Updates the dictionary _yy_store with a new scalar product.
-        
-        Returns the scalar product of y_i and y_j.        
-        
+
+        Returns the scalar product of y_i and y_j.
+
         Parameters
         ----------
         i : integer
             y index.
         j : integer
             y index.
-            
+
         Returns
         ------
         _yy_store[key] : float
             Scalar product of y_i and y_j.
-            
+
         """
         key = tuple(sorted((i, j)))
         if key not in self._yy_store:
@@ -353,43 +312,43 @@ class InformationStore(object):
 
     def sgrad_store(self, i):
         """Returns scalar product between s_i and gradient on initial position.
-        
+
         Returns
         -------
         scalar product : float
             Scalar product.
-            
+
         """
         return self.s[i].dot(self.last_gradient)
 
     def ygrad_store(self, i):
         """Returns scalar product between y_i and gradient on initial position.
-        
+
         Returns
         -------
         scalar product : float
             Scalar product.
-            
+
         """
         return self.y[i].dot(self.last_gradient)
 
     def gradgrad_store(self):
         """Returns scalar product of gradient on initial position with itself.
-        
+
         Returns
         -------
         scalar product : float
             Scalar product.
-            
+
         """
         return self.last_gradient.dot(self.last_gradient)
 
     def add_new_point(self, x, gradient):
         """Updates the s list and y list.
 
-        Calculates the new position and gradient differences and adds them to 
-        the respective list.        
-        
+        Calculates the new position and gradient differences and adds them to
+        the respective list.
+
         """
         self.k += 1
 
@@ -405,12 +364,12 @@ class InformationStore(object):
 
 class LimitedList(object):
     """Class for creating a list of limited length.
-    
+
     Parameters
     ----------
     history_length : integer
         Maximum number of stored past updates.
-    
+
     Attributes
     ----------
     history_length : integer
@@ -420,7 +379,7 @@ class LimitedList(object):
         length.
     _storage : list
         List where input values are stored.
-        
+
     """
     def __init__(self, history_length):
         self.history_length = int(history_length)
@@ -429,12 +388,12 @@ class LimitedList(object):
 
     def __getitem__(self, index):
         """Returns the element with index [index-offset].
-        
+
         Parameters
         ----------
         index : integer
             Index of the selected element.
-            
+
         Returns
         -------
             selected element
@@ -443,15 +402,15 @@ class LimitedList(object):
 
     def add(self, value):
         """Adds a new element to the list.
-        
+
         If the list is of length maximum history then it removes the first
         element first.
-        
+
         Parameters
         ----------
         value : anything
             New element in the list.
-        
+
         """
         if len(self._storage) == self.history_length:
             self._storage.pop(0)

@@ -21,26 +21,7 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class RelaxedNewton(DescentMinimizer):
-    """ A implementation of the relaxed Newton minimization scheme.
-    The relaxed Newton minimization exploits gradient and curvature information to
-    propose a step. A linesearch optimizes along this direction.
 
-    Parameter
-    ---------
-    line_searcher : LineSearch,
-        An implementation of a line-search algorithm.
-    callback : function, *optional*
-        Function f(energy, iteration_number) specified by the user to print 
-        iteration number and energy value at every iteration step. It accepts 
-        an Energy object(energy) and integer(iteration_number). (default: None)
-    convergence_tolerance : float,
-        Specifies the required accuracy for convergence. (default : 10e-4)
-    convergence_level : integer
-        Specifies the demanded level of convergence. (default : 3)
-    iteration_limit : integer
-        Limiting the maximum number of steps. (default : None)
-
-    """
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None):
@@ -53,27 +34,28 @@ class RelaxedNewton(DescentMinimizer):
 
         self.line_searcher.prefered_initial_step_size = 1.
 
-    def _get_descend_direction(self, energy):
+    def get_descend_direction(self, energy):
         """ Calculates the descent direction according to a Newton scheme.
+
         The descent direction is determined by weighting the gradient at the
-        current parameter position with the inverse local curvature, provided by the
-        Energy object.
+        current parameter position with the inverse local curvature, provided
+        by the Energy object.
+
 
         Parameters
         ----------
         energy : Energy
-            The energy object providing implementations of the to be minimized function,
-            its gradient and curvature.
+            An instance of the Energy class which shall be minized. The
+            position of `energy` is used as the starting point of minization.
 
         Returns
         -------
-        out : Field
-           Returns the descent direction with proposed step length. In a quadratic
-            potential this corresponds to the optimal step.
+        descend_direction : Field
+           Returns the descent direction with proposed step length. In a
+           quadratic potential this corresponds to the optimal step.
 
         """
         gradient = energy.gradient
         curvature = energy.curvature
         descend_direction = curvature.inverse_times(gradient)
         return descend_direction * -1
-#            return descend_direction * -1
