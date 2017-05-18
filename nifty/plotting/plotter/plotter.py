@@ -2,6 +2,7 @@
 
 import abc
 import os
+import sys
 
 import numpy as np
 
@@ -19,10 +20,8 @@ from nifty.plotting.figures import MultiFigure
 
 plotly = gdi.get('plotly')
 
-try:
+if plotly is not None and 'IPython' in sys.modules:
     plotly.offline.init_notebook_mode()
-except AttributeError:
-    pass
 
 rank = d2o.config.dependency_injector[
         d2o.configuration['mpi_module']].COMM_WORLD.rank

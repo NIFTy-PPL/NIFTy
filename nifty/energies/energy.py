@@ -30,7 +30,7 @@ class Energy(Loggable, object):
             position = position.copy()
         except AttributeError:
             pass
-        self.position = position
+        self._position = position
 
     def at(self, position):
         return self.__class__(position)

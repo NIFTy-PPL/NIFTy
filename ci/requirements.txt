@@ -1,9 +1,7 @@
 numpy
 cython
-mpi4py
 matplotlib
 plotly
-ipython==5.3.0
 nose
 parameterized
 coverage
