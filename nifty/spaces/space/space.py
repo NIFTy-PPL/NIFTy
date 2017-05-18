@@ -202,6 +202,4 @@ class Space(DomainObject):
         raise NotImplementedError
 
     def __repr__(self):
-        string = ""
-        string += str(type(self)) + "\n"
-        return string
+        return str(type(self)) + "\n"

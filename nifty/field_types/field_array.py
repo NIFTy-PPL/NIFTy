@@ -22,12 +22,11 @@ from field_type import FieldType
 class FieldArray(FieldType):
 
     def __init__(self, shape):
-        try:
-            new_shape = tuple([int(i) for i in shape])
-        except TypeError:
-            new_shape = (int(shape), )
-        self._shape = new_shape
         super(FieldArray, self).__init__()
+        try:
+            self._shape = tuple([int(i) for i in shape])
+        except TypeError:
+            self._shape = (int(shape), )
 
     @property
     def shape(self):

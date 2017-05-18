@@ -83,7 +83,7 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, S=None, M=None, R=None, N=None, inverter=None,
+    def __init__(self, S, M=None, R=None, N=None, inverter=None,
                  preconditioner=None):
         """
             Sets the standard operator properties and `codomain`, `_A1`, `_A2`,
@@ -101,7 +101,6 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
                 Covariance of the noise prior or the likelihood, respectively.
 
         """
-        # infer domain, and target
         # infer domain, and target
         if M is not None:
             self._codomain = M.domain
