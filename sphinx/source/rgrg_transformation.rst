@@ -1,7 +1,7 @@
 .. currentmodule:: nifty
 
-The ``RGRGTransformation`` class -- ...
-.......................................
+The ``RGRGTransformation`` class -- A transformation routine
+............................................................
 
 
 .. autoclass:: RGRGTransformation

@@ -1,7 +1,7 @@
 .. currentmodule:: nifty
 
-The ``FFTOperator`` class -- ...
-................................
+The ``FFTOperator`` class -- Fourier Transformations
+....................................................
 
 .. autoclass:: FFTOperator
     :show-inheritance:

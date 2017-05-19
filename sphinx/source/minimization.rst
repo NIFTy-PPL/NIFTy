@@ -1,6 +1,7 @@
 Minimization
 ------------
-NIFTY provides minimizer
+NIFTY provides several minimization routines.
+
 
 .. toctree:: 
     :maxdepth: 1

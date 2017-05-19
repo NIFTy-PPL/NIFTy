@@ -1,7 +1,7 @@
 .. currentmodule:: nifty
 
-The ``Field`` class -- ...
-..........................
+The ``Field`` class -- Basic class to define fields over spaces
+...............................................................
 
 
 .. autoclass:: Field

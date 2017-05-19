@@ -1,7 +1,7 @@
 .. currentmodule:: nifty
 
-The ``PowerIndices`` class --  TODO: Title For PowerIndices
-...........................................................
+The ``PowerIndices`` class --  Useful set of indices for the PowerSpace
+.......................................................................
 
 .. autoclass:: PowerIndices
     :show-inheritance:

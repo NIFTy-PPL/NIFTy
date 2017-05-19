@@ -1,7 +1,7 @@
 .. currentmodule:: nifty
 
-The ``HPLMTransformation`` class -- ...
-.......................................
+The ``HPLMTransformation`` class -- A transformation routine
+............................................................
 
 
 .. autoclass:: HPLMTransformation

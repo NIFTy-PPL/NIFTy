@@ -1,7 +1,7 @@
 .. currentmodule:: nifty
 
-The ``PowerSpace`` class --  TODO: Title For PowerSpace
-.......................................................
+The ``PowerSpace`` class --  The natural space underlying power-spectra
+.......................................................................
 
 .. autoclass:: PowerSpace
     :show-inheritance:

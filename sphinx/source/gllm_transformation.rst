@@ -1,7 +1,7 @@
 .. currentmodule:: nifty
 
-The ``GLLMTransformation`` class -- ...
-.......................................
+The ``GLLMTransformation`` class -- A transformation routine
+............................................................
 
 
 .. autoclass:: GLLMTransformation
