@@ -1,0 +1,231 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The PropagatorOperator class – … &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The EndomorphicOperator class – …" href="endomorphic_operator.html" />
+    <link rel="prev" title="The ProjectionOperator class – …" href="projection_operator.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-propagatoroperator-class">
+<h1>The <code class="docutils literal"><span class="pre">PropagatorOperator</span></code> class – …<a class="headerlink" href="#the-propagatoroperator-class" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="nifty.PropagatorOperator">
+<em class="property">class </em><code class="descclassname">nifty.</code><code class="descname">PropagatorOperator</code><span class="sig-paren">(</span><em>S=None</em>, <em>M=None</em>, <em>R=None</em>, <em>N=None</em>, <em>inverter=None</em>, <em>preconditioner=None</em>, <em>default_spaces=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/propagator_operator/propagator_operator.html#PropagatorOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.PropagatorOperator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">nifty.operators.invertible_operator_mixin.invertible_operator_mixin.InvertibleOperatorMixin</span></code>, <code class="xref py py-class docutils literal"><span class="pre">nifty.operators.endomorphic_operator.endomorphic_operator.EndomorphicOperator</span></code></p>
+<p>NIFTY Propagator Operator D.</p>
+<p>The propagator operator D, is known from the Wiener Filter.
+Its inverse functional form might look like:
+D = (S^(-1) + M)^(-1)
+D = (S^(-1) + N^(-1))^(-1)
+D = (S^(-1) + R^(dagger) N^(-1) R)^(-1)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>S</strong> : LinearOperator</p>
+<blockquote>
+<div><blockquote>
+<div><p>Covariance of the signal prior.</p>
+</div></blockquote>
+<dl class="docutils">
+<dt>M <span class="classifier-delimiter">:</span> <span class="classifier">LinearOperator</span></dt>
+<dd><p class="first last">Likelihood contribution.</p>
+</dd>
+<dt>R <span class="classifier-delimiter">:</span> <span class="classifier">LinearOperator</span></dt>
+<dd><p class="first last">Response operator translating signal to (noiseless) data.</p>
+</dd>
+<dt>N <span class="classifier-delimiter">:</span> <span class="classifier">LinearOperator</span></dt>
+<dd><p class="first last">Covariance of the noise prior or the likelihood, respectively.</p>
+</dd>
+<dt>inverter <span class="classifier-delimiter">:</span> <span class="classifier">class to invert explicitly defined operators</span></dt>
+<dd><p class="first last">(default:ConjugateGradient)</p>
+</dd>
+<dt>preconditioner <span class="classifier-delimiter">:</span> <span class="classifier">Field</span></dt>
+<dd><p class="first last">numerical preconditioner to speed up convergence</p>
+</dd>
+<dt>default_spaces <span class="classifier-delimiter">:</span> <span class="classifier">tuple of ints <em>optional</em></span></dt>
+<dd><p class="first last">Defines on which space(s) of a given field the Operator acts by
+default (default: None)</p>
+</dd>
+</dl>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>ValueError</strong></p>
+<blockquote class="last">
+<div><dl class="docutils">
+<dt>is raised if</dt>
+<dd><ul class="first last simple">
+<li>neither N nor M is given</li>
+</ul>
+</dd>
+</dl>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p><code class="xref py py-obj docutils literal"><span class="pre">Scientific</span></code></p>
+<dl class="last docutils">
+<dt><code class="xref py py-obj docutils literal"><span class="pre">https</span></code></dt>
+<dd>//arxiv.org/abs/0806.3474</dd>
+</dl>
+</div>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">x_space</span> <span class="o">=</span> <span class="n">RGSpace</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">k_space</span> <span class="o">=</span> <span class="n">RGRGTransformation</span><span class="o">.</span><span class="n">get_codomain</span><span class="p">(</span><span class="n">x_space</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">f</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">x_space</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">S</span> <span class="o">=</span> <span class="n">create_power_operator</span><span class="p">(</span><span class="n">k_space</span><span class="p">,</span> <span class="n">spec</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">N</span> <span class="o">=</span> <span class="n">DiagonalOperaor</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span> <span class="n">diag</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">D</span> <span class="o">=</span> <span class="n">PropagatorOperator</span><span class="p">(</span><span class="n">S</span><span class="o">=</span><span class="n">S</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="n">N</span><span class="p">)</span> <span class="c1"># D^{-1} = S^{-1} + N^{-1}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">D</span><span class="p">(</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="n">val</span>
+<span class="go">&lt;distributed_data_object&gt;</span>
+<span class="go">array([ 1.,  2.,  3.,  4.]</span>
+</pre></div>
+</div>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PropagatorOperator.domain" title="nifty.PropagatorOperator.domain"><code class="xref py py-obj docutils literal"><span class="pre">domain</span></code></a></td>
+<td><em>domain</em> – tuple of DomainObjects, i.e. Spaces and FieldTypes</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">target</span></code></td>
+<td><em>target</em> – tuple of DomainObjects, i.e. Spaces and FieldTypes</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PropagatorOperator.unitary" title="nifty.PropagatorOperator.unitary"><code class="xref py py-obj docutils literal"><span class="pre">unitary</span></code></a></td>
+<td><em>unitary</em> – boolean</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.PropagatorOperator.self_adjoint" title="nifty.PropagatorOperator.self_adjoint"><code class="xref py py-obj docutils literal"><span class="pre">self_adjoint</span></code></a></td>
+<td>States whether the Operator is self_adjoint or not.</td>
+</tr>
+</tbody>
+</table>
+<dl class="attribute">
+<dt id="nifty.PropagatorOperator.domain">
+<code class="descname">domain</code><a class="headerlink" href="#nifty.PropagatorOperator.domain" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>domain</em> – tuple of DomainObjects, i.e. Spaces and FieldTypes
+The domain on which the Operator’s input Field lives.
+Every Operator which inherits from the abstract LinearOperator
+base class must have this attribute.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PropagatorOperator.self_adjoint">
+<code class="descname">self_adjoint</code><a class="headerlink" href="#nifty.PropagatorOperator.self_adjoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>States whether the Operator is self_adjoint or not.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PropagatorOperator.unitary">
+<code class="descname">unitary</code><a class="headerlink" href="#nifty.PropagatorOperator.unitary" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>unitary</em> – boolean
+States whether the Operator is unitary or not.
+Every Operator which inherits from the abstract LinearOperator
+base class must have this attribute.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="operator.html">Operators</a><ul>
+      <li>Previous: <a href="projection_operator.html" title="previous chapter">The <code class="docutils literal"><span class="pre">ProjectionOperator</span></code> class – …</a></li>
+      <li>Next: <a href="endomorphic_operator.html" title="next chapter">The <code class="docutils literal"><span class="pre">EndomorphicOperator</span></code> class – …</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/propagator_operator.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/propagator_operator.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

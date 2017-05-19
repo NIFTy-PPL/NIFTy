@@ -1,0 +1,473 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The DiagonalOperator class – … &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The FFTOperator class – …" href="fft_operator.html" />
+    <link rel="prev" title="Operators" href="operator.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-diagonaloperator-class">
+<h1>The <code class="docutils literal"><span class="pre">DiagonalOperator</span></code> class – …<a class="headerlink" href="#the-diagonaloperator-class" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="nifty.DiagonalOperator">
+<em class="property">class </em><code class="descclassname">nifty.</code><code class="descname">DiagonalOperator</code><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">nifty.operators.endomorphic_operator.endomorphic_operator.EndomorphicOperator</span></code></p>
+<p>NIFTY class for diagonal operators.</p>
+<p>The NIFTY DiagonalOperator class is a subclass derived from the
+EndomorphicOperator. It multiplies an input field pixel-wise with its
+diagonal.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>domain</strong> : tuple of DomainObjects, i.e. Spaces and FieldTypes</p>
+<blockquote>
+<div><p>The domain on which the Operator’s input Field lives.</p>
+</div></blockquote>
+<p><strong>diagonal</strong> : {scalar, list, array, Field, d2o-object}</p>
+<blockquote>
+<div><p>The diagonal entries of the operator.</p>
+</div></blockquote>
+<p><strong>bare</strong> : boolean</p>
+<blockquote>
+<div><p>Indicates whether the input for the diagonal is bare or not
+(default: False).</p>
+</div></blockquote>
+<p><strong>copy</strong> : boolean</p>
+<blockquote>
+<div><p>Internal copy of the diagonal (default: True)</p>
+</div></blockquote>
+<p><strong>distribution_strategy</strong> : string</p>
+<blockquote>
+<div><p>setting the prober distribution_strategy of the
+diagonal (default : None). In case diagonal is d2o-object or Field,
+their distribution_strategy is used as a fallback.</p>
+</div></blockquote>
+<p><strong>default_spaces</strong> : tuple of ints <em>optional</em></p>
+<blockquote class="last">
+<div><p>Defines on which space(s) of a given field the Operator acts by
+default (default: None)</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><code class="xref py py-obj docutils literal"><span class="pre">EndomorphicOperator</span></code></p>
+</div>
+<p class="rubric">Notes</p>
+<p>The ambiguity of bare or non-bare diagonal entries is based on the choice
+of a matrix representation of the operator in question. The naive choice
+of absorbing the volume weights into the matrix leads to a matrix-vector
+calculus with the non-bare entries which seems intuitive, though.
+The choice of keeping matrix entries and volume weights separate
+deals with the bare entries that allow for correct interpretation
+of the matrix entries; e.g., as variance in case of an covariance operator.</p>
+<p class="rubric">Examples</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">x_space</span> <span class="o">=</span> <span class="n">RGSpace</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">D</span> <span class="o">=</span> <span class="n">DiagonalOperator</span><span class="p">(</span><span class="n">x_space</span><span class="p">,</span> <span class="n">diagonal</span><span class="o">=</span><span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">3.</span><span class="p">,</span> <span class="mf">2.</span><span class="p">,</span> <span class="mf">4.</span><span class="p">,</span> <span class="mf">6.</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">f</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">x_space</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="mf">2.</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">D</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="o">.</span><span class="n">val</span>
+<span class="go">&lt;distributed_data_object&gt;</span>
+<span class="go">array([ 2.,  6.,  4.,  8.,  12.])</span>
+</pre></div>
+</div>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.domain" title="nifty.DiagonalOperator.domain"><code class="xref py py-obj docutils literal"><span class="pre">domain</span></code></a></td>
+<td><em>domain</em> – tuple of DomainObjects, i.e. Spaces and FieldTypes</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">target</span></code></td>
+<td><em>target</em> – tuple of DomainObjects, i.e. Spaces and FieldTypes</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.unitary" title="nifty.DiagonalOperator.unitary"><code class="xref py py-obj docutils literal"><span class="pre">unitary</span></code></a></td>
+<td><em>unitary</em> – boolean</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.DiagonalOperator.self_adjoint" title="nifty.DiagonalOperator.self_adjoint"><code class="xref py py-obj docutils literal"><span class="pre">self_adjoint</span></code></a></td>
+<td>States whether the Operator is self_adjoint or not.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.distribution_strategy" title="nifty.DiagonalOperator.distribution_strategy"><code class="xref py py-obj docutils literal"><span class="pre">distribution_strategy</span></code></a></td>
+<td><em>distribution_strategy</em> –</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.determinant" title="nifty.DiagonalOperator.determinant"><code class="xref py py-obj docutils literal"><span class="pre">determinant</span></code></a>()</td>
+<td>Returns the determinant of the operator.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.DiagonalOperator.diagonal" title="nifty.DiagonalOperator.diagonal"><code class="xref py py-obj docutils literal"><span class="pre">diagonal</span></code></a>([bare,&nbsp;copy])</td>
+<td>Returns the diagonal of the Operator.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.inverse_determinant" title="nifty.DiagonalOperator.inverse_determinant"><code class="xref py py-obj docutils literal"><span class="pre">inverse_determinant</span></code></a>()</td>
+<td>Returns the inverse-determinant of the operator.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.DiagonalOperator.inverse_diagonal" title="nifty.DiagonalOperator.inverse_diagonal"><code class="xref py py-obj docutils literal"><span class="pre">inverse_diagonal</span></code></a>([bare])</td>
+<td>Returns the inverse-diagonal of the operator.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.inverse_trace" title="nifty.DiagonalOperator.inverse_trace"><code class="xref py py-obj docutils literal"><span class="pre">inverse_trace</span></code></a>([bare])</td>
+<td>Returns the inverse-trace of the operator.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.DiagonalOperator.log_determinant" title="nifty.DiagonalOperator.log_determinant"><code class="xref py py-obj docutils literal"><span class="pre">log_determinant</span></code></a>()</td>
+<td>Returns the log-eterminant of the operator.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.set_diagonal" title="nifty.DiagonalOperator.set_diagonal"><code class="xref py py-obj docutils literal"><span class="pre">set_diagonal</span></code></a>(diagonal[,&nbsp;bare,&nbsp;copy])</td>
+<td>Sets the diagonal of the Operator.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.DiagonalOperator.trace" title="nifty.DiagonalOperator.trace"><code class="xref py py-obj docutils literal"><span class="pre">trace</span></code></a>([bare])</td>
+<td>Returns the trace the operator.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.DiagonalOperator.trace_log" title="nifty.DiagonalOperator.trace_log"><code class="xref py py-obj docutils literal"><span class="pre">trace_log</span></code></a>()</td>
+<td>Returns the trave-log of the operator.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="nifty.DiagonalOperator.determinant">
+<code class="descname">determinant</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.determinant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.determinant" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the determinant of the operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : scalar</p>
+<p><strong>out</strong> : scalar</p>
+<blockquote class="last">
+<div><p>the determinant of the Operator</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.diagonal">
+<code class="descname">diagonal</code><span class="sig-paren">(</span><em>bare=False</em>, <em>copy=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.diagonal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.diagonal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the diagonal of the Operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>bare</strong> : boolean</p>
+<blockquote>
+<div><p>Whether the returned Field values should be bare or not.</p>
+</div></blockquote>
+<p><strong>copy</strong> : boolean</p>
+<blockquote>
+<div><p>Whether the returned Field should be copied or not.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : Field</p>
+<blockquote class="last">
+<div><p>The diagonal of the Operator.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.inverse_determinant">
+<code class="descname">inverse_determinant</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.inverse_determinant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.inverse_determinant" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the inverse-determinant of the operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : scalar</p>
+<blockquote class="last">
+<div><p>the inverse-determinant of the Operator</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.inverse_diagonal">
+<code class="descname">inverse_diagonal</code><span class="sig-paren">(</span><em>bare=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.inverse_diagonal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.inverse_diagonal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the inverse-diagonal of the operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>bare</strong> : boolean</p>
+<blockquote>
+<div><p>Whether the returned Field values should be bare or not.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : Field</p>
+<blockquote class="last">
+<div><p>The inverse of the diagonal of the Operator.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.inverse_trace">
+<code class="descname">inverse_trace</code><span class="sig-paren">(</span><em>bare=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.inverse_trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.inverse_trace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the inverse-trace of the operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>bare</strong> : boolean</p>
+<blockquote>
+<div><p>Whether the returned Field values should be bare or not.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : scalar</p>
+<blockquote class="last">
+<div><p>The inverse of the trace of the Operator.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.log_determinant">
+<code class="descname">log_determinant</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.log_determinant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.log_determinant" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the log-eterminant of the operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : scalar</p>
+<blockquote class="last">
+<div><p>the log-determinant of the Operator</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.set_diagonal">
+<code class="descname">set_diagonal</code><span class="sig-paren">(</span><em>diagonal</em>, <em>bare=False</em>, <em>copy=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.set_diagonal"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.set_diagonal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the diagonal of the Operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>diagonal</strong> : {scalar, list, array, Field, d2o-object}</p>
+<blockquote>
+<div><p>The diagonal entries of the operator.</p>
+</div></blockquote>
+<p><strong>bare</strong> : boolean</p>
+<blockquote>
+<div><p>Indicates whether the input for the diagonal is bare or not
+(default: False).</p>
+</div></blockquote>
+<p><strong>copy</strong> : boolean</p>
+<blockquote class="last">
+<div><p>Specifies if a copy of the input shall be made (default: True).</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.trace">
+<code class="descname">trace</code><span class="sig-paren">(</span><em>bare=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.trace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.trace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the trace the operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>bare</strong> : boolean</p>
+<blockquote>
+<div><p>Whether the returned Field values should be bare or not.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : scalar</p>
+<blockquote class="last">
+<div><p>The trace of the Operator.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.DiagonalOperator.trace_log">
+<code class="descname">trace_log</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/diagonal_operator/diagonal_operator.html#DiagonalOperator.trace_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DiagonalOperator.trace_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the trave-log of the operator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>out</strong> : scalar</p>
+<blockquote class="last">
+<div><p>the trace of the logarithm of the Operator.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.DiagonalOperator.distribution_strategy">
+<code class="descname">distribution_strategy</code><a class="headerlink" href="#nifty.DiagonalOperator.distribution_strategy" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>distribution_strategy</em> –</p>
+<dl class="docutils">
+<dt>string</dt>
+<dd>Defines the way how the diagonal operator is distributed
+among the nodes. Available distribution_strategies are:
+‘fftw’, ‘equal’ and ‘not’.</dd>
+<dt>Notes :</dt>
+<dd><a class="reference external" href="https://arxiv.org/abs/1606.05385">https://arxiv.org/abs/1606.05385</a></dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.DiagonalOperator.domain">
+<code class="descname">domain</code><a class="headerlink" href="#nifty.DiagonalOperator.domain" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>domain</em> – tuple of DomainObjects, i.e. Spaces and FieldTypes
+The domain on which the Operator’s input Field lives.
+Every Operator which inherits from the abstract LinearOperator
+base class must have this attribute.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.DiagonalOperator.self_adjoint">
+<code class="descname">self_adjoint</code><a class="headerlink" href="#nifty.DiagonalOperator.self_adjoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>States whether the Operator is self_adjoint or not.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.DiagonalOperator.unitary">
+<code class="descname">unitary</code><a class="headerlink" href="#nifty.DiagonalOperator.unitary" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>unitary</em> – boolean
+States whether the Operator is unitary or not.
+Every Operator which inherits from the abstract LinearOperator
+base class must have this attribute.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="operator.html">Operators</a><ul>
+      <li>Previous: <a href="operator.html" title="previous chapter">Operators</a></li>
+      <li>Next: <a href="fft_operator.html" title="next chapter">The <code class="docutils literal"><span class="pre">FFTOperator</span></code> class – …</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/diagonal_operator.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/diagonal_operator.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

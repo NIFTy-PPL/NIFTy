@@ -1,0 +1,167 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The HPLMTransformation class – … &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The LMGLTransformation class – …" href="lmgl_transformation.html" />
+    <link rel="prev" title="The GLLMTransformation class – …" href="gllm_transformation.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-hplmtransformation-class">
+<h1>The <code class="docutils literal"><span class="pre">HPLMTransformation</span></code> class – …<a class="headerlink" href="#the-hplmtransformation-class" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="nifty.HPLMTransformation">
+<em class="property">class </em><code class="descclassname">nifty.</code><code class="descname">HPLMTransformation</code><span class="sig-paren">(</span><em>domain</em>, <em>codomain=None</em>, <em>module=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/fft_operator/transformations/hplmtransformation.html#HPLMTransformation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.HPLMTransformation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">nifty.operators.fft_operator.transformations.slicing_transformation.SlicingTransformation</span></code></p>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">unitary</span></code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">check_codomain</span></code>(domain,&nbsp;codomain)</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.HPLMTransformation.get_codomain" title="nifty.HPLMTransformation.get_codomain"><code class="xref py py-obj docutils literal"><span class="pre">get_codomain</span></code></a>(domain)</td>
+<td>Generates a compatible codomain to which transformations are reasonable, i.e. an instance of the <code class="xref py py-class docutils literal"><span class="pre">lm_space</span></code> class.</td>
+</tr>
+</tbody>
+</table>
+<dl class="classmethod">
+<dt id="nifty.HPLMTransformation.get_codomain">
+<em class="property">classmethod </em><code class="descname">get_codomain</code><span class="sig-paren">(</span><em>domain</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/operators/fft_operator/transformations/hplmtransformation.html#HPLMTransformation.get_codomain"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.HPLMTransformation.get_codomain" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a compatible codomain to which transformations are
+reasonable, i.e. an instance of the <code class="xref py py-class docutils literal"><span class="pre">lm_space</span></code> class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>domain: HPSpace</strong></p>
+<blockquote>
+<div><p>Space for which a codomain is to be generated</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>codomain</strong> : LMSpace</p>
+<blockquote class="last">
+<div><p>A compatible codomain.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="operator.html">Operators</a><ul>
+  <li><a href="transformations.html">Transformations</a><ul>
+      <li>Previous: <a href="gllm_transformation.html" title="previous chapter">The <code class="docutils literal"><span class="pre">GLLMTransformation</span></code> class – …</a></li>
+      <li>Next: <a href="lmgl_transformation.html" title="next chapter">The <code class="docutils literal"><span class="pre">LMGLTransformation</span></code> class – …</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/hplm_transformation.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/hplm_transformation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

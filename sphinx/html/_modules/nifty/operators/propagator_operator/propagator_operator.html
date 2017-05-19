@@ -1,0 +1,265 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nifty.operators.propagator_operator.propagator_operator &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for nifty.operators.propagator_operator.propagator_operator</h1><div class="highlight"><pre>
+<span></span><span class="c1"># NIFTy</span>
+<span class="c1"># Copyright (C) 2017  Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">from</span> <span class="nn">nifty.operators</span> <span class="k">import</span> <span class="n">EndomorphicOperator</span><span class="p">,</span>\
+                            <span class="n">FFTOperator</span><span class="p">,</span>\
+                            <span class="n">InvertibleOperatorMixin</span>
+
+
+<div class="viewcode-block" id="PropagatorOperator"><a class="viewcode-back" href="../../../../propagator_operator.html#nifty.PropagatorOperator">[docs]</a><span class="k">class</span> <span class="nc">PropagatorOperator</span><span class="p">(</span><span class="n">InvertibleOperatorMixin</span><span class="p">,</span> <span class="n">EndomorphicOperator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; NIFTY Propagator Operator D.</span>
+
+<span class="sd">    The propagator operator D, is known from the Wiener Filter.</span>
+<span class="sd">    Its inverse functional form might look like:</span>
+<span class="sd">    D = (S^(-1) + M)^(-1)</span>
+<span class="sd">    D = (S^(-1) + N^(-1))^(-1)</span>
+<span class="sd">    D = (S^(-1) + R^(\dagger) N^(-1) R)^(-1)</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">        S : LinearOperator</span>
+<span class="sd">            Covariance of the signal prior.</span>
+<span class="sd">        M : LinearOperator</span>
+<span class="sd">            Likelihood contribution.</span>
+<span class="sd">        R : LinearOperator</span>
+<span class="sd">            Response operator translating signal to (noiseless) data.</span>
+<span class="sd">        N : LinearOperator</span>
+<span class="sd">            Covariance of the noise prior or the likelihood, respectively.</span>
+<span class="sd">        inverter : class to invert explicitly defined operators</span>
+<span class="sd">            (default:ConjugateGradient)</span>
+<span class="sd">        preconditioner : Field</span>
+<span class="sd">            numerical preconditioner to speed up convergence</span>
+<span class="sd">        default_spaces : tuple of ints *optional*</span>
+<span class="sd">            Defines on which space(s) of a given field the Operator acts by</span>
+<span class="sd">            default (default: None)</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes</span>
+<span class="sd">        The domain on which the Operator&#39;s input Field lives.</span>
+<span class="sd">    target : tuple of DomainObjects, i.e. Spaces and FieldTypes</span>
+<span class="sd">        The domain in which the outcome of the operator lives. As the Operator</span>
+<span class="sd">        is endomorphic this is the same as its domain.</span>
+<span class="sd">    unitary : boolean</span>
+<span class="sd">        Indicates whether the Operator is unitary or not.</span>
+<span class="sd">    self_adjoint : boolean</span>
+<span class="sd">        Indicates whether the operator is self_adjoint or not.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    ValueError</span>
+<span class="sd">        is raised if</span>
+<span class="sd">            * neither N nor M is given</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; x_space = RGSpace(4)</span>
+<span class="sd">    &gt;&gt;&gt; k_space = RGRGTransformation.get_codomain(x_space)</span>
+<span class="sd">    &gt;&gt;&gt; f = Field(x_space, val=[2, 4, 6, 8])</span>
+<span class="sd">    &gt;&gt;&gt; S = create_power_operator(k_space, spec=1)</span>
+<span class="sd">    &gt;&gt;&gt; N = DiagonalOperaor(f.domain, diag=1)</span>
+<span class="sd">    &gt;&gt;&gt; D = PropagatorOperator(S=S, N=N) # D^{-1} = S^{-1} + N^{-1}</span>
+<span class="sd">    &gt;&gt;&gt; D(f).val</span>
+<span class="sd">    &lt;distributed_data_object&gt;</span>
+<span class="sd">    array([ 1.,  2.,  3.,  4.]</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    Scientific reference</span>
+<span class="sd">    https://arxiv.org/abs/0806.3474</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ---Overwritten properties and methods---</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">S</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">R</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">N</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inverter</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">preconditioner</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">default_spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Sets the standard operator properties and `codomain`, `_A1`, `_A2`,</span>
+<span class="sd">            and `RN` if required.</span>
+
+<span class="sd">            Parameters</span>
+<span class="sd">            ----------</span>
+<span class="sd">            S : operator</span>
+<span class="sd">                Covariance of the signal prior.</span>
+<span class="sd">            M : operator</span>
+<span class="sd">                Likelihood contribution.</span>
+<span class="sd">            R : operator</span>
+<span class="sd">                Response operator translating signal to (noiseless) data.</span>
+<span class="sd">            N : operator</span>
+<span class="sd">                Covariance of the noise prior or the likelihood, respectively.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># infer domain, and target</span>
+        <span class="k">if</span> <span class="n">M</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">domain</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_likelihood_times</span> <span class="o">=</span> <span class="n">M</span><span class="o">.</span><span class="n">times</span>
+
+        <span class="k">elif</span> <span class="n">N</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Either M or N must be given!&quot;</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">R</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="n">R</span><span class="o">.</span><span class="n">domain</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_likelihood_times</span> <span class="o">=</span> \
+                <span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">R</span><span class="o">.</span><span class="n">adjoint_times</span><span class="p">(</span><span class="n">N</span><span class="o">.</span><span class="n">inverse_times</span><span class="p">(</span><span class="n">R</span><span class="o">.</span><span class="n">times</span><span class="p">(</span><span class="n">z</span><span class="p">)))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">domain</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_likelihood_times</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">z</span><span class="p">:</span> <span class="n">N</span><span class="o">.</span><span class="n">inverse_times</span><span class="p">(</span><span class="n">z</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_S</span> <span class="o">=</span> <span class="n">S</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_fft_S</span> <span class="o">=</span> <span class="n">FFTOperator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_domain</span><span class="p">,</span> <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">preconditioner</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">preconditioner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S_times</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">PropagatorOperator</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">inverter</span><span class="o">=</span><span class="n">inverter</span><span class="p">,</span>
+                                                 <span class="n">preconditioner</span><span class="o">=</span><span class="n">preconditioner</span><span class="p">,</span>
+                                                 <span class="n">default_spaces</span><span class="o">=</span><span class="n">default_spaces</span><span class="p">)</span>
+
+    <span class="c1"># ---Mandatory properties and methods---</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_domain</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">self_adjoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">unitary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1"># ---Added properties and methods---</span>
+
+    <span class="k">def</span> <span class="nf">_S_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="n">transformed_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fft_S</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">(</span><span class="n">transformed_x</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span>
+            <span class="n">transformed_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fft_S</span><span class="o">.</span><span class="n">inverse_times</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">transformed_y</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">_S_inverse_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+            <span class="n">transformed_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fft_S</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="o">.</span><span class="n">inverse_times</span><span class="p">(</span><span class="n">transformed_x</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span>
+            <span class="n">transformed_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fft_S</span><span class="o">.</span><span class="n">inverse_times</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+            <span class="n">result</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">transformed_y</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">result</span>
+
+    <span class="k">def</span> <span class="nf">_inverse_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">spaces</span><span class="p">):</span>
+        <span class="n">pre_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S_inverse_times</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+        <span class="n">pre_result</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_likelihood_times</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+        <span class="n">result</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">pre_result</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../index.html">
+              <img class="logo" src="../../../../_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

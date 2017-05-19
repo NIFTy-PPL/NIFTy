@@ -1,0 +1,453 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nifty.spaces.rg_space.rg_space &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for nifty.spaces.rg_space.rg_space</h1><div class="highlight"><pre>
+<span></span><span class="c1"># NIFTy</span>
+<span class="c1"># Copyright (C) 2017  Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    ..                  __   ____   __</span>
+<span class="sd">    ..                /__/ /   _/ /  /_</span>
+<span class="sd">    ..      __ ___    __  /  /_  /   _/  __   __</span>
+<span class="sd">    ..    /   _   | /  / /   _/ /  /   /  / /  /</span>
+<span class="sd">    ..   /  / /  / /  / /  /   /  /_  /  /_/  /</span>
+<span class="sd">    ..  /__/ /__/ /__/ /__/    \___/  \___   /  rg</span>
+<span class="sd">    ..                               /______/</span>
+
+<span class="sd">    NIFTY submodule for regular Cartesian grids.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">d2o</span> <span class="k">import</span> <span class="n">distributed_data_object</span><span class="p">,</span>\
+                <span class="n">STRATEGIES</span> <span class="k">as</span> <span class="n">DISTRIBUTION_STRATEGIES</span>
+
+<span class="kn">from</span> <span class="nn">nifty.spaces.space</span> <span class="k">import</span> <span class="n">Space</span>
+
+
+<div class="viewcode-block" id="RGSpace"><a class="viewcode-back" href="../../../../rg_space.html#nifty.RGSpace">[docs]</a><span class="k">class</span> <span class="nc">RGSpace</span><span class="p">(</span><span class="n">Space</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        ..      _____   _______</span>
+<span class="sd">        ..    /   __/ /   _   /</span>
+<span class="sd">        ..   /  /    /  /_/  /</span>
+<span class="sd">        ..  /__/     \____  /  space class</span>
+<span class="sd">        ..          /______/</span>
+
+<span class="sd">        NIFTY subclass for spaces of regular Cartesian grids.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        shape : {int, numpy.ndarray}</span>
+<span class="sd">            Number of grid points or numbers of gridpoints along each axis.</span>
+<span class="sd">        zerocenter : {bool, numpy.ndarray}, *optional*</span>
+<span class="sd">        Whether x==0 (or k==0, respectively) is located in the center of</span>
+<span class="sd">        the grid (or the center of each axis speparately) or not.</span>
+<span class="sd">        (default: False).</span>
+<span class="sd">        distances : {float, numpy.ndarray}, *optional*</span>
+<span class="sd">            Distance between two grid points along each axis</span>
+<span class="sd">            (default: None).</span>
+<span class="sd">            If distances==None:</span>
+<span class="sd">                if harmonic==True, all distances will be set to 1</span>
+<span class="sd">                if harmonic==False, the distance along each axis will be</span>
+<span class="sd">                  set to the inverse of the number of points along that</span>
+<span class="sd">                  axis.</span>
+<span class="sd">        harmonic : bool, *optional*</span>
+<span class="sd">        Whether the space represents a grid in position or harmonic space.</span>
+<span class="sd">            (default: False).</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        harmonic : bool</span>
+<span class="sd">            Whether or not the grid represents a position or harmonic space.</span>
+<span class="sd">        zerocenter : tuple of bool</span>
+<span class="sd">            Whether x==0 (or k==0, respectively) is located in the center of</span>
+<span class="sd">            the grid (or the center of each axis speparately) or not.</span>
+<span class="sd">        distances : tuple of floats</span>
+<span class="sd">            Distance between two grid points along the correponding axis.</span>
+<span class="sd">        dim : np.int</span>
+<span class="sd">            Total number of dimensionality, i.e. the number of pixels.</span>
+<span class="sd">        harmonic : bool</span>
+<span class="sd">            Specifies whether the space is a signal or harmonic space.</span>
+<span class="sd">        total_volume : np.float</span>
+<span class="sd">            The total volume of the space.</span>
+<span class="sd">        shape : tuple of np.ints</span>
+<span class="sd">            The shape of the space&#39;s data array.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ---Overwritten properties and methods---</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">,</span> <span class="n">zerocenter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">distances</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">harmonic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_harmonic</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">harmonic</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">RGSpace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_shape</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_distances</span><span class="p">(</span><span class="n">distances</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_zerocenter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_zerocenter</span><span class="p">(</span><span class="n">zerocenter</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RGSpace.hermitian_decomposition"><a class="viewcode-back" href="../../../../rg_space.html#nifty.RGSpace.hermitian_decomposition">[docs]</a>    <span class="k">def</span> <span class="nf">hermitian_decomposition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                                <span class="n">preserve_gaussian_variance</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># compute the hermitian part</span>
+        <span class="n">flipped_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_hermitianize_inverter</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span>
+        <span class="n">flipped_x</span> <span class="o">=</span> <span class="n">flipped_x</span><span class="o">.</span><span class="n">conjugate</span><span class="p">()</span>
+        <span class="c1"># average x and flipped_x.</span>
+        <span class="n">hermitian_part</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">flipped_x</span>
+        <span class="n">hermitian_part</span> <span class="o">/=</span> <span class="mf">2.</span>
+
+        <span class="c1"># use subtraction since it is faster than flipping another time</span>
+        <span class="n">anti_hermitian_part</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">hermitian_part</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">preserve_gaussian_variance</span><span class="p">:</span>
+            <span class="n">hermitian_part</span><span class="p">,</span> <span class="n">anti_hermitian_part</span> <span class="o">=</span> \
+                <span class="bp">self</span><span class="o">.</span><span class="n">_hermitianize_correct_variance</span><span class="p">(</span><span class="n">hermitian_part</span><span class="p">,</span>
+                                                    <span class="n">anti_hermitian_part</span><span class="p">,</span>
+                                                    <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">hermitian_part</span><span class="p">,</span> <span class="n">anti_hermitian_part</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">hermitian_fixed_points</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">mid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span><span class="o">//</span><span class="mi">2</span>
+        <span class="n">ndlist</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span> <span class="k">if</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">else</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">))]</span>
+        <span class="n">ndlist</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ndlist</span><span class="p">)</span>
+        <span class="n">odd_axes_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span> <span class="k">if</span> <span class="p">(</span><span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">else</span> <span class="mi">0</span>
+                                  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">))])</span>
+        <span class="n">fixed_points</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">ndindex</span><span class="p">(</span><span class="n">ndlist</span><span class="p">):</span>
+            <span class="n">fixed_points</span> <span class="o">+=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">((</span><span class="n">i</span><span class="o">+</span><span class="n">odd_axes_list</span><span class="p">)</span> <span class="o">*</span> <span class="n">mid_index</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">fixed_points</span>
+
+    <span class="k">def</span> <span class="nf">_hermitianize_correct_variance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hermitian_part</span><span class="p">,</span>
+                                       <span class="n">anti_hermitian_part</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+        <span class="c1"># Correct the variance by multiplying sqrt(2)</span>
+        <span class="n">hermitian_part</span> <span class="o">=</span> <span class="n">hermitian_part</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">anti_hermitian_part</span> <span class="o">=</span> <span class="n">anti_hermitian_part</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="c1"># The fixed points of the point inversion must not be averaged.</span>
+        <span class="c1"># Hence one must divide out the sqrt(2) again</span>
+        <span class="c1"># -&gt; Get the middle index of the array</span>
+        <span class="n">mid_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">hermitian_part</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span> <span class="o">//</span> <span class="mi">2</span>
+        <span class="n">dimensions</span> <span class="o">=</span> <span class="n">mid_index</span><span class="o">.</span><span class="n">size</span>
+        <span class="c1"># Use ndindex to iterate over all combinations of zeros and the</span>
+        <span class="c1"># mid_index in order to correct all fixed points.</span>
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">axes</span> <span class="o">=</span> <span class="n">xrange</span><span class="p">(</span><span class="n">dimensions</span><span class="p">)</span>
+
+        <span class="n">ndlist</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">axes</span> <span class="k">else</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="n">dimensions</span><span class="p">)]</span>
+        <span class="n">ndlist</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ndlist</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">ndindex</span><span class="p">(</span><span class="n">ndlist</span><span class="p">):</span>
+            <span class="n">temp_index</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="n">mid_index</span><span class="p">)</span>
+            <span class="n">hermitian_part</span><span class="p">[</span><span class="n">temp_index</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">anti_hermitian_part</span><span class="p">[</span><span class="n">temp_index</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">hermitian_part</span><span class="p">,</span> <span class="n">anti_hermitian_part</span>
+
+    <span class="k">def</span> <span class="nf">_hermitianize_inverter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+        <span class="c1"># calculate the number of dimensions the input array has</span>
+        <span class="n">dimensions</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
+        <span class="c1"># prepare the slicing object which will be used for mirroring</span>
+        <span class="n">slice_primitive</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="p">]</span> <span class="o">*</span> <span class="n">dimensions</span>
+        <span class="c1"># copy the input data</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">axes</span> <span class="o">=</span> <span class="n">xrange</span><span class="p">(</span><span class="n">dimensions</span><span class="p">)</span>
+
+        <span class="c1"># flip in the desired directions</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+            <span class="n">slice_picker</span> <span class="o">=</span> <span class="n">slice_primitive</span><span class="p">[:]</span>
+            <span class="k">if</span> <span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">slice_picker</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">slice_picker</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">slice_picker</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">slice_picker</span><span class="p">)</span>
+
+            <span class="n">slice_inverter</span> <span class="o">=</span> <span class="n">slice_primitive</span><span class="p">[:]</span>
+            <span class="k">if</span> <span class="n">shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">slice_inverter</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">slice_inverter</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">slice_inverter</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">slice_inverter</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">y</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">to_key</span><span class="o">=</span><span class="n">slice_picker</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">y</span><span class="p">,</span>
+                           <span class="n">from_key</span><span class="o">=</span><span class="n">slice_inverter</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">(</span><span class="ne">AttributeError</span><span class="p">):</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">slice_picker</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">slice_inverter</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">y</span>
+
+    <span class="c1"># ---Mandatory properties and methods---</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">harmonic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_harmonic</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">total_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">*</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances</span><span class="p">)</span>
+
+<div class="viewcode-block" id="RGSpace.copy"><a class="viewcode-back" href="../../../../rg_space.html#nifty.RGSpace.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                              <span class="n">zerocenter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">zerocenter</span><span class="p">,</span>
+                              <span class="n">distances</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">distances</span><span class="p">,</span>
+                              <span class="n">harmonic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">harmonic</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="RGSpace.weight"><a class="viewcode-back" href="../../../../rg_space.html#nifty.RGSpace.weight">[docs]</a>    <span class="k">def</span> <span class="nf">weight</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">weight</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">*</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances</span><span class="p">)</span> <span class="o">**</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">*=</span> <span class="n">weight</span>
+            <span class="n">result_x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result_x</span> <span class="o">=</span> <span class="n">x</span><span class="o">*</span><span class="n">weight</span>
+        <span class="k">return</span> <span class="n">result_x</span></div>
+
+<div class="viewcode-block" id="RGSpace.get_distance_array"><a class="viewcode-back" href="../../../../rg_space.html#nifty.RGSpace.get_distance_array">[docs]</a>    <span class="k">def</span> <span class="nf">get_distance_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distribution_strategy</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Calculates an n-dimensional array with its entries being the</span>
+<span class="sd">        lengths of the vectors from the zero point of the grid.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        distribution_strategy : str</span>
+<span class="sd">            The distribution_strategy which shall be used the returned</span>
+<span class="sd">            distributed_data_object.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        distributed_data_object</span>
+<span class="sd">            A d2o containing the distances.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
+        <span class="c1"># prepare the distributed_data_object</span>
+        <span class="n">nkdict</span> <span class="o">=</span> <span class="n">distributed_data_object</span><span class="p">(</span>
+                        <span class="n">global_shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+                        <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">distribution_strategy</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">distribution_strategy</span> <span class="ow">in</span> <span class="n">DISTRIBUTION_STRATEGIES</span><span class="p">[</span><span class="s1">&#39;slicing&#39;</span><span class="p">]:</span>
+            <span class="c1"># get the node&#39;s individual slice of the first dimension</span>
+            <span class="n">slice_of_first_dimension</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span>
+                                    <span class="o">*</span><span class="n">nkdict</span><span class="o">.</span><span class="n">distributor</span><span class="o">.</span><span class="n">local_slice</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">elif</span> <span class="n">distribution_strategy</span> <span class="ow">in</span> <span class="n">DISTRIBUTION_STRATEGIES</span><span class="p">[</span><span class="s1">&#39;not&#39;</span><span class="p">]:</span>
+            <span class="n">slice_of_first_dimension</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Unsupported distribution strategy&quot;</span><span class="p">)</span>
+        <span class="n">dists</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distance_array_helper</span><span class="p">(</span><span class="n">slice_of_first_dimension</span><span class="p">)</span>
+        <span class="n">nkdict</span><span class="o">.</span><span class="n">set_local_data</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">nkdict</span></div>
+
+    <span class="k">def</span> <span class="nf">_distance_array_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">slice_of_first_dimension</span><span class="p">):</span>
+        <span class="n">dk</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances</span>
+        <span class="n">shape</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="n">inds</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">shape</span><span class="p">:</span>
+            <span class="n">inds</span> <span class="o">+=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">a</span><span class="p">)]</span>
+
+        <span class="n">cords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ogrid</span><span class="p">[</span><span class="n">inds</span><span class="p">]</span>
+
+        <span class="n">dists</span> <span class="o">=</span> <span class="p">((</span><span class="n">cords</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">//</span><span class="mi">2</span><span class="p">)</span><span class="o">*</span><span class="n">dk</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span>
+        <span class="c1"># apply zerocenterQ shift</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">zerocenter</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="n">dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span>
+        <span class="c1"># only save the individual slice</span>
+        <span class="n">dists</span> <span class="o">=</span> <span class="n">dists</span><span class="p">[</span><span class="n">slice_of_first_dimension</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)):</span>
+            <span class="n">temp</span> <span class="o">=</span> <span class="p">((</span><span class="n">cords</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">-</span> <span class="n">shape</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span> <span class="o">//</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">dk</span><span class="p">[</span><span class="n">ii</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">zerocenter</span><span class="p">[</span><span class="n">ii</span><span class="p">]:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">ifftshift</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+            <span class="n">dists</span> <span class="o">=</span> <span class="n">dists</span> <span class="o">+</span> <span class="n">temp</span>
+        <span class="n">dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">dists</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dists</span>
+
+<div class="viewcode-block" id="RGSpace.get_fft_smoothing_kernel_function"><a class="viewcode-back" href="../../../../rg_space.html#nifty.RGSpace.get_fft_smoothing_kernel_function">[docs]</a>    <span class="k">def</span> <span class="nf">get_fft_smoothing_kernel_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">sigma</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distances</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span></div>
+
+    <span class="c1"># ---Added properties and methods---</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">distances</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Distance between two grid points along each axis. It is a tuple</span>
+<span class="sd">        of positive floating point numbers with the n-th entry giving the</span>
+<span class="sd">        distances of grid points along the n-th dimension.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_distances</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">zerocenter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns True if grid points lie symmetrically around zero.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if the grid points are centered around the 0 grid point. This</span>
+<span class="sd">            option is most common for harmonic spaces (where both conventions</span>
+<span class="sd">            are used) but may be used for position spaces, too.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_zerocenter</span>
+
+    <span class="k">def</span> <span class="nf">_parse_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">shape</span><span class="p">):</span>
+            <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="n">shape</span><span class="p">,)</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+        <span class="n">temp</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">shape</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_parse_distances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distances</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">distances</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">harmonic</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">temp</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">distances</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_parse_zerocenter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zerocenter</span><span class="p">):</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">temp</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">zerocenter</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+
+    <span class="c1"># ---Serialization---</span>
+
+    <span class="k">def</span> <span class="nf">_to_hdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5_group</span><span class="p">):</span>
+        <span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;zerocenter&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">zerocenter</span>
+        <span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;distances&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distances</span>
+        <span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;harmonic&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">harmonic</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_from_hdf5</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">hdf5_group</span><span class="p">,</span> <span class="n">repository</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">shape</span><span class="o">=</span><span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">][:],</span>
+            <span class="n">zerocenter</span><span class="o">=</span><span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;zerocenter&#39;</span><span class="p">][:],</span>
+            <span class="n">distances</span><span class="o">=</span><span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;distances&#39;</span><span class="p">][:],</span>
+            <span class="n">harmonic</span><span class="o">=</span><span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;harmonic&#39;</span><span class="p">][()],</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../index.html">
+              <img class="logo" src="../../../../_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

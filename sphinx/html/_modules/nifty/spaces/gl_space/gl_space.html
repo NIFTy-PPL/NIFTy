@@ -1,0 +1,290 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nifty.spaces.gl_space.gl_space &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for nifty.spaces.gl_space.gl_space</h1><div class="highlight"><pre>
+<span></span><span class="c1"># NIFTy</span>
+<span class="c1"># Copyright (C) 2017  Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">nifty.spaces.space</span> <span class="k">import</span> <span class="n">Space</span>
+<span class="kn">from</span> <span class="nn">nifty.config</span> <span class="k">import</span> <span class="n">dependency_injector</span> <span class="k">as</span> <span class="n">gdi</span>
+
+<span class="n">pyHealpix</span> <span class="o">=</span> <span class="n">gdi</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;pyHealpix&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="GLSpace"><a class="viewcode-back" href="../../../../gl_space.html#nifty.GLSpace">[docs]</a><span class="k">class</span> <span class="nc">GLSpace</span><span class="p">(</span><span class="n">Space</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        ..                 __</span>
+<span class="sd">        ..               /  /</span>
+<span class="sd">        ..     ____ __  /  /</span>
+<span class="sd">        ..   /   _   / /  /</span>
+<span class="sd">        ..  /  /_/  / /  /_</span>
+<span class="sd">        ..  \___   /  \___/  space class</span>
+<span class="sd">        .. /______/</span>
+
+<span class="sd">        NIFTY subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        nlat : int</span>
+<span class="sd">            Number of latitudinal bins (or rings) that are used for this</span>
+<span class="sd">            pixelization.</span>
+<span class="sd">        nlon : int, *optional*</span>
+<span class="sd">            Number of longditudinal bins that are used for this pixelization.</span>
+
+<span class="sd">        Attributes</span>
+<span class="sd">        ----------</span>
+<span class="sd">        dim : np.int</span>
+<span class="sd">            Total number of dimensionality, i.e. the number of pixels.</span>
+<span class="sd">        harmonic : bool</span>
+<span class="sd">            Specifies whether the space is a signal or harmonic space.</span>
+<span class="sd">        nlat : int</span>
+<span class="sd">            Number of latitudinal bins (or rings) that are used for this</span>
+<span class="sd">            pixelization.</span>
+<span class="sd">        nlon : int</span>
+<span class="sd">            Number of longditudinal bins that are used for this pixelization.</span>
+<span class="sd">        total_volume : np.float</span>
+<span class="sd">            The total volume of the space.</span>
+<span class="sd">        shape : tuple of np.ints</span>
+<span class="sd">            The shape of the space&#39;s data array.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If input `nlat` or `nlon` is invalid.</span>
+<span class="sd">        ImportError</span>
+<span class="sd">            If the pyHealpix module is not available</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        hp_space : A class for the HEALPix discretization of the sphere [#]_.</span>
+<span class="sd">        lm_space : A class for spherical harmonic components.</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, &quot;Libsharp - spherical</span>
+<span class="sd">               harmonic transforms revisited&quot;;</span>
+<span class="sd">               `arXiv:1303.4945 &lt;http://www.arxiv.org/abs/1303.4945&gt;`_</span>
+<span class="sd">        .. [#] K.M. Gorski et al., 2005, &quot;HEALPix: A Framework for</span>
+<span class="sd">               High-Resolution Discretization and Fast Analysis of Data</span>
+<span class="sd">               Distributed on the Sphere&quot;, *ApJ* 622..759G.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ---Overwritten properties and methods---</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nlat</span><span class="p">,</span> <span class="n">nlon</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="s1">&#39;pyHealpix&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">gdi</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                <span class="s2">&quot;The module pyHealpix is needed but not available.&quot;</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">GLSpace</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nlat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_nlat</span><span class="p">(</span><span class="n">nlat</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_nlon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_nlon</span><span class="p">(</span><span class="n">nlon</span><span class="p">)</span>
+
+    <span class="c1"># ---Mandatory properties and methods---</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">harmonic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nlat</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlon</span><span class="p">)),)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nlat</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlon</span><span class="p">))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">total_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span>
+
+<div class="viewcode-block" id="GLSpace.copy"><a class="viewcode-back" href="../../../../gl_space.html#nifty.GLSpace.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">nlat</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nlat</span><span class="p">,</span>
+                              <span class="n">nlon</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nlon</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GLSpace.weight"><a class="viewcode-back" href="../../../../gl_space.html#nifty.GLSpace.weight">[docs]</a>    <span class="k">def</span> <span class="nf">weight</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">nlon</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlon</span>
+        <span class="n">nlat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlat</span>
+        <span class="n">vol</span> <span class="o">=</span> <span class="n">pyHealpix</span><span class="o">.</span><span class="n">GL_weights</span><span class="p">(</span><span class="n">nlat</span><span class="p">,</span> <span class="n">nlon</span><span class="p">)</span> <span class="o">**</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">(</span><span class="n">power</span><span class="p">)</span>
+        <span class="n">weight</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">itertools</span><span class="o">.</span><span class="n">chain</span><span class="o">.</span><span class="n">from_iterable</span><span class="p">(</span>
+                          <span class="n">itertools</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">nlon</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">vol</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># reshape the weight array to match the input shape</span>
+            <span class="n">new_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+            <span class="c1"># we know len(axes) is always 1</span>
+            <span class="n">new_shape</span><span class="p">[</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">weight</span><span class="p">)</span>
+            <span class="n">weight</span> <span class="o">=</span> <span class="n">weight</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">new_shape</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">*=</span> <span class="n">weight</span>
+            <span class="n">result_x</span> <span class="o">=</span> <span class="n">x</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result_x</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">weight</span>
+
+        <span class="k">return</span> <span class="n">result_x</span></div>
+
+<div class="viewcode-block" id="GLSpace.get_distance_array"><a class="viewcode-back" href="../../../../gl_space.html#nifty.GLSpace.get_distance_array">[docs]</a>    <span class="k">def</span> <span class="nf">get_distance_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distribution_strategy</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+<div class="viewcode-block" id="GLSpace.get_fft_smoothing_kernel_function"><a class="viewcode-back" href="../../../../gl_space.html#nifty.GLSpace.get_fft_smoothing_kernel_function">[docs]</a>    <span class="k">def</span> <span class="nf">get_fft_smoothing_kernel_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="c1"># ---Added properties and methods---</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nlat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Number of latitudinal bins (or rings) that are used for this</span>
+<span class="sd">        pixelization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nlat</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nlon</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Number of longditudinal bins that are used for this pixelization.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nlon</span>
+
+    <span class="k">def</span> <span class="nf">_parse_nlat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nlat</span><span class="p">):</span>
+        <span class="n">nlat</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nlat</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">nlat</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;nlat must be a positive number.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nlat</span>
+
+    <span class="k">def</span> <span class="nf">_parse_nlon</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nlon</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">nlon</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">nlon</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlat</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">nlon</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">nlon</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nlon</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;nlon must be a positive number.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nlon</span>
+
+    <span class="c1"># ---Serialization---</span>
+
+    <span class="k">def</span> <span class="nf">_to_hdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5_group</span><span class="p">):</span>
+        <span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;nlat&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlat</span>
+        <span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;nlon&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nlon</span>
+
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_from_hdf5</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">hdf5_group</span><span class="p">,</span> <span class="n">repository</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">nlat</span><span class="o">=</span><span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;nlat&#39;</span><span class="p">][()],</span>
+            <span class="n">nlon</span><span class="o">=</span><span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;nlon&#39;</span><span class="p">][()],</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../index.html">
+              <img class="logo" src="../../../../_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

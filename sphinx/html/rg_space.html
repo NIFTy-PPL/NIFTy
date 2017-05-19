@@ -1,0 +1,509 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The RGSpace class – Regular Cartesian grids &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The HPSpace class – HEALPix discretization of the sphere" href="hp_space.html" />
+    <link rel="prev" title="Spaces" href="spaces.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-rgspace-class-regular-cartesian-grids">
+<h1>The <code class="docutils literal"><span class="pre">RGSpace</span></code> class – Regular Cartesian grids<a class="headerlink" href="#the-rgspace-class-regular-cartesian-grids" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="nifty.RGSpace">
+<em class="property">class </em><code class="descclassname">nifty.</code><code class="descname">RGSpace</code><a class="reference internal" href="_modules/nifty/spaces/rg_space/rg_space.html#RGSpace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.RGSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">nifty.spaces.space.space.Space</span></code></p>
+<p>NIFTY subclass for spaces of regular Cartesian grids.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>shape</strong> : {int, numpy.ndarray}</p>
+<blockquote>
+<div><p>Number of grid points or numbers of gridpoints along each axis.</p>
+</div></blockquote>
+<p><strong>zerocenter</strong> : {bool, numpy.ndarray}, <em>optional</em></p>
+<p><strong>Whether x==0 (or k==0, respectively) is located in the center of</strong></p>
+<p><strong>the grid (or the center of each axis speparately) or not.</strong></p>
+<p><strong>(default: False).</strong></p>
+<p><strong>distances</strong> : {float, numpy.ndarray}, <em>optional</em></p>
+<blockquote>
+<div><p>Distance between two grid points along each axis
+(default: None).
+If distances==None:</p>
+<blockquote>
+<div><p>if harmonic==True, all distances will be set to 1
+if harmonic==False, the distance along each axis will be</p>
+<blockquote>
+<div><p>set to the inverse of the number of points along that
+axis.</p>
+</div></blockquote>
+</div></blockquote>
+</div></blockquote>
+<p><strong>harmonic</strong> : bool, <em>optional</em></p>
+<p><strong>Whether the space represents a grid in position or harmonic space.</strong></p>
+<blockquote class="last">
+<div><p>(default: False).</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.RGSpace.harmonic" title="nifty.RGSpace.harmonic"><code class="xref py py-obj docutils literal"><span class="pre">harmonic</span></code></a></td>
+<td>Returns True if this space is a harmonic space.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.RGSpace.zerocenter" title="nifty.RGSpace.zerocenter"><code class="xref py py-obj docutils literal"><span class="pre">zerocenter</span></code></a></td>
+<td>Returns True if grid points lie symmetrically around zero.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.RGSpace.distances" title="nifty.RGSpace.distances"><code class="xref py py-obj docutils literal"><span class="pre">distances</span></code></a></td>
+<td>Distance between two grid points along each axis.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.RGSpace.dim" title="nifty.RGSpace.dim"><code class="xref py py-obj docutils literal"><span class="pre">dim</span></code></a></td>
+<td>Returns the number of pixel-dimensions the object has.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.RGSpace.harmonic" title="nifty.RGSpace.harmonic"><code class="xref py py-obj docutils literal"><span class="pre">harmonic</span></code></a></td>
+<td>Returns True if this space is a harmonic space.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.RGSpace.total_volume" title="nifty.RGSpace.total_volume"><code class="xref py py-obj docutils literal"><span class="pre">total_volume</span></code></a></td>
+<td>Returns the total volume of the space.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.RGSpace.shape" title="nifty.RGSpace.shape"><code class="xref py py-obj docutils literal"><span class="pre">shape</span></code></a></td>
+<td>The domain-object’s shape contribution to the underlying array.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.RGSpace.copy" title="nifty.RGSpace.copy"><code class="xref py py-obj docutils literal"><span class="pre">copy</span></code></a>()</td>
+<td>Returns a copy of this Space instance.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.RGSpace.get_distance_array" title="nifty.RGSpace.get_distance_array"><code class="xref py py-obj docutils literal"><span class="pre">get_distance_array</span></code></a>(distribution_strategy)</td>
+<td>Calculates an n-dimensional array with its entries being the lengths of the vectors from the zero point of the grid.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.RGSpace.get_fft_smoothing_kernel_function" title="nifty.RGSpace.get_fft_smoothing_kernel_function"><code class="xref py py-obj docutils literal"><span class="pre">get_fft_smoothing_kernel_function</span></code></a>(sigma)</td>
+<td>This method returns a smoothing kernel function.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.RGSpace.hermitian_decomposition" title="nifty.RGSpace.hermitian_decomposition"><code class="xref py py-obj docutils literal"><span class="pre">hermitian_decomposition</span></code></a>(x[,&nbsp;axes,&nbsp;…])</td>
+<td>Decomposes x into its hermitian and anti-hermitian constituents.</td>
+</tr>
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">hermitian_fixed_points</span></code>()</td>
+<td></td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.RGSpace.weight" title="nifty.RGSpace.weight"><code class="xref py py-obj docutils literal"><span class="pre">weight</span></code></a>(x[,&nbsp;power,&nbsp;axes,&nbsp;inplace])</td>
+<td>Weights the field on this domain with the space’s volume-weights.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="nifty.RGSpace.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/rg_space/rg_space.html#RGSpace.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.RGSpace.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a copy of this Space instance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Space</p>
+<blockquote class="last">
+<div><p>A copy of this instance.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.RGSpace.get_distance_array">
+<code class="descname">get_distance_array</code><span class="sig-paren">(</span><em>distribution_strategy</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/rg_space/rg_space.html#RGSpace.get_distance_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.RGSpace.get_distance_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates an n-dimensional array with its entries being the
+lengths of the vectors from the zero point of the grid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>distribution_strategy</strong> : str</p>
+<blockquote>
+<div><p>The distribution_strategy which shall be used the returned
+distributed_data_object.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">distributed_data_object</p>
+<blockquote class="last">
+<div><p>A d2o containing the distances.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.RGSpace.get_fft_smoothing_kernel_function">
+<code class="descname">get_fft_smoothing_kernel_function</code><span class="sig-paren">(</span><em>sigma</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/rg_space/rg_space.html#RGSpace.get_fft_smoothing_kernel_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.RGSpace.get_fft_smoothing_kernel_function" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method returns a smoothing kernel function.</p>
+<p>This method, which is only implemented for harmonic spaces, helps
+smoothing fields that live in a position space that has this space as
+its harmonic space. The returned function multiplies field values of a
+field with a zero centered Gaussian which corresponds to a convolution
+with a Gaussian kernel and sigma standard deviation in position space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>sigma</strong> : float</p>
+<blockquote>
+<div><p>A real number representing a physical scale on which the smoothing
+takes place. The smoothing is defined with respect to the real
+physical field and points that are closer together than one sigma
+are blurred together. Mathematically sigma is the standard
+deviation of a convolution with a normalized, zero-centered
+Gaussian that takes place in position space.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">function (array-like -&gt; array-like)</p>
+<blockquote>
+<div><p>A smoothing operation that multiplies values with a Gaussian
+kernel.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError :</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.RGSpace.hermitian_decomposition">
+<code class="descname">hermitian_decomposition</code><span class="sig-paren">(</span><em>x</em>, <em>axes=None</em>, <em>preserve_gaussian_variance=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/rg_space/rg_space.html#RGSpace.hermitian_decomposition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.RGSpace.hermitian_decomposition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decomposes x into its hermitian and anti-hermitian constituents.</p>
+<p>This method decomposes a field’s array x into its hermitian and
+antihermitian part, which corresponds to  real and imaginary part
+in a corresponding harmonic partner space. This is an internal function
+that is mainly used for power-synthesizing and -analyzing Fields.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : distributed_data_object</p>
+<blockquote>
+<div><p>The field’s val object.</p>
+</div></blockquote>
+<p><strong>axes</strong> : tuple of ints</p>
+<blockquote>
+<div><p>Specifies the axes of x which correspond to this space.</p>
+</div></blockquote>
+<p><strong>preserve_gaussian_variance</strong> : bool <em>optional</em></p>
+<blockquote>
+<div><p>FIXME: figure out what this does</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">(distributed_data_object, distributed_data_object)</p>
+<blockquote>
+<div><p>A tuple of two distributed_data_objects, the first being the
+hermitian and the second the anti-hermitian part of x.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.RGSpace.weight">
+<code class="descname">weight</code><span class="sig-paren">(</span><em>x</em>, <em>power=1</em>, <em>axes=None</em>, <em>inplace=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/rg_space/rg_space.html#RGSpace.weight"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.RGSpace.weight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Weights the field on this domain with the space’s volume-weights.</p>
+<p>Weights hereby refer to integration weights, as they appear in
+discretized integrals. Per default, this function mutliplies each bin
+of the field x by its volume, which lets it behave like a density
+(top form). However, different powers of the volume can be applied
+with the power parameter. The axes parameter specifies which of the
+field array’s indices correspond to this domain.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : distributed_data_object</p>
+<blockquote>
+<div><p>The fields data array.</p>
+</div></blockquote>
+<p><strong>power</strong> : int, <em>optional</em></p>
+<blockquote>
+<div><p>The power to which the volume-weight is raised (default: 1).</p>
+</div></blockquote>
+<p><strong>axes</strong> : {int, tuple}, <em>optional</em></p>
+<blockquote>
+<div><p>Specifies the axes of x which represent this domain
+(default: None).
+If axes==None:</p>
+<blockquote>
+<div><p>weighting is applied with respect to all axes</p>
+</div></blockquote>
+</div></blockquote>
+<p><strong>inplace</strong> : bool, <em>optional</em></p>
+<blockquote>
+<div><p>If this is True, the weighting is done on the values of x,
+if it is False, x is not modified and this method returns a
+weighted copy of x (default: False).</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">distributed_data_object</p>
+<blockquote>
+<div><p>A weighted version of x, with volume-weights raised to the
+given power.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.RGSpace.dim">
+<code class="descname">dim</code><a class="headerlink" href="#nifty.RGSpace.dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of pixel-dimensions the object has.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">int</p>
+<blockquote>
+<div><p>An Integer representing the number of pixels the discretized
+manifold has.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.RGSpace.distances">
+<code class="descname">distances</code><a class="headerlink" href="#nifty.RGSpace.distances" title="Permalink to this definition">¶</a></dt>
+<dd><p>Distance between two grid points along each axis. It is a tuple
+of positive floating point numbers with the n-th entry giving the
+distances of grid points along the n-th dimension.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.RGSpace.harmonic">
+<code class="descname">harmonic</code><a class="headerlink" href="#nifty.RGSpace.harmonic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if this space is a harmonic space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.RGSpace.shape">
+<code class="descname">shape</code><a class="headerlink" href="#nifty.RGSpace.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>The domain-object’s shape contribution to the underlying array.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">tuple of ints</p>
+<blockquote>
+<div><p>The shape of the underlying array-like object.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.RGSpace.total_volume">
+<code class="descname">total_volume</code><a class="headerlink" href="#nifty.RGSpace.total_volume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the total volume of the space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">float</p>
+<blockquote>
+<div><p>A real number representing the sum of all pixel volumes.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.RGSpace.zerocenter">
+<code class="descname">zerocenter</code><a class="headerlink" href="#nifty.RGSpace.zerocenter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if grid points lie symmetrically around zero.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">bool</p>
+<blockquote class="last">
+<div><p>True if the grid points are centered around the 0 grid point. This
+option is most common for harmonic spaces (where both conventions
+are used) but may be used for position spaces, too.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="spaces.html">Spaces</a><ul>
+      <li>Previous: <a href="spaces.html" title="previous chapter">Spaces</a></li>
+      <li>Next: <a href="hp_space.html" title="next chapter">The <code class="docutils literal"><span class="pre">HPSpace</span></code> class – HEALPix discretization of the sphere</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/rg_space.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/rg_space.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

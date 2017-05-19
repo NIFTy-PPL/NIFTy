@@ -1,0 +1,194 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The DescentMinimizer class – … &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The Field class – …" href="field.html" />
+    <link rel="prev" title="The ConjugateGradient class – …" href="conjugate_gradient.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-descentminimizer-class">
+<h1>The <code class="docutils literal"><span class="pre">DescentMinimizer</span></code> class – …<a class="headerlink" href="#the-descentminimizer-class" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="nifty.DescentMinimizer">
+<em class="property">class </em><code class="descclassname">nifty.</code><code class="descname">DescentMinimizer</code><a class="reference internal" href="_modules/nifty/minimization/descent_minimizer.html#DescentMinimizer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.DescentMinimizer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">keepers.logging.loggable.Loggable</span></code>, <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>A base class used by gradient methods to find a local minimum.</p>
+<p>Descent minimization methods are used to find a local minimum of a scalar
+function by following a descent direction. This class implements the
+minimization procedure once a descent direction is known. The descent
+direction has to be implemented separately.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>line_searcher</strong> : callable <em>optional</em></p>
+<blockquote>
+<div><p>Function which infers the step size in the descent direction
+(default : LineSearchStrongWolfe()).</p>
+</div></blockquote>
+<p><strong>callback</strong> : callable <em>optional</em></p>
+<blockquote>
+<div><p>Function f(energy, iteration_number) supplied by the user to perform
+in-situ analysis at every iteration step. When being called the
+current energy and iteration_number are passed. (default: None)</p>
+</div></blockquote>
+<p><strong>convergence_tolerance</strong> : float <em>optional</em></p>
+<blockquote>
+<div><p>Tolerance specifying the case of convergence. (default: 1E-4)</p>
+</div></blockquote>
+<p><strong>convergence_level</strong> : integer <em>optional</em></p>
+<blockquote>
+<div><p>Number of times the tolerance must be undershot before convergence
+is reached. (default: 3)</p>
+</div></blockquote>
+<p><strong>iteration_limit</strong> : integer <em>optional</em></p>
+<blockquote class="last">
+<div><p>Maximum number of iterations performed (default: None).</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>The callback function can be used to externally stop the minimization by
+raising a <cite>StopIteration</cite> exception.
+Check <cite>get_descent_direction</cite> of a derived class for information on the
+concrete minization scheme.</p>
+<p class="rubric">Attributes</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>convergence_tolerance</td>
+<td>(float) Tolerance specifying the case of convergence.</td>
+</tr>
+<tr class="row-even"><td>convergence_level</td>
+<td>(integer) Number of times the tolerance must be undershot before convergence is reached. (default: 3)</td>
+</tr>
+<tr class="row-odd"><td>iteration_limit</td>
+<td>(integer) Maximum number of iterations performed.</td>
+</tr>
+<tr class="row-even"><td>line_searcher</td>
+<td>(LineSearch) Function which infers the optimal step size for functional minization given a descent direction.</td>
+</tr>
+<tr class="row-odd"><td>callback</td>
+<td>(function) Function f(energy, iteration_number) supplied by the user to perform in-situ analysis at every iteration step. When being called the current energy and iteration_number are passed.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">__call__</span></code>(energy)</td>
+<td>Performs the minimization of the provided Energy functional.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">get_descend_direction</span></code>(energy)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="minimization.html">Minimization</a><ul>
+      <li>Previous: <a href="conjugate_gradient.html" title="previous chapter">The <code class="docutils literal"><span class="pre">ConjugateGradient</span></code> class – …</a></li>
+      <li>Next: <a href="field.html" title="next chapter">The <code class="docutils literal"><span class="pre">Field</span></code> class – …</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/descent_minimizer.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/descent_minimizer.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

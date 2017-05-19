@@ -1,0 +1,383 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Spaces &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The RGSpace class – Regular Cartesian grids" href="rg_space.html" />
+    <link rel="prev" title="NIFTY – Numerical Information Field Theory" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="spaces">
+<h1>Spaces<a class="headerlink" href="#spaces" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="xref py py-class docutils literal"><span class="pre">Space</span></code> classes of NIFTY represent geometrical spaces approximated by grids in the computer environment. Each subclass of the base class corresponds to a specific grid type and replaces some of the inherited methods with its own methods that are unique to the respective grid. This framework ensures an abstract handling of spaces independent of the underlying geometrical grid and the grid’s resolution.</p>
+<p>Each instance of a <code class="xref py py-class docutils literal"><span class="pre">Space</span></code> needs to capture all structural and dimensional specifics of the grid and all computationally relevant quantities such as the data type of associated field values. These parameters are stored as properties of an instance of the class at its initialization, and they do not need to be accessed explicitly by the user thereafter. This prevents the writing of grid or resolution dependent code.</p>
+<p>Spatial symmetries of a system can be exploited by corresponding coordinate transformations. Often, transformations from one basis to its harmonic counterpart can greatly reduce the computational complexity of algorithms. The harmonic basis is defined by the eigenbasis of the Laplace operator; e.g., for a flat position space it is the Fourier basis. This conjugation of bases is implemented in NIFTY by distinguishing conjugate space classes, which can be obtained by the instance method <em>get_codomain</em> (and checked for by <em>check_codomain</em>). Moreover, transformations between conjugate spaces are performed automatically if required.</p>
+<div class="section" id="space-classes">
+<h2>Space classes<a class="headerlink" href="#space-classes" title="Permalink to this headline">¶</a></h2>
+<p>Next to the generic <code class="xref py py-class docutils literal"><span class="pre">Space</span></code> class, NIFTY has implementations of five subclasses, representing specific geometrical spaces and their discretizations.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="rg_space.html">The <code class="docutils literal"><span class="pre">RGSpace</span></code> class – Regular Cartesian grids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hp_space.html">The <code class="docutils literal"><span class="pre">HPSpace</span></code> class – HEALPix discretization of the sphere</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gl_space.html">The <code class="docutils literal"><span class="pre">GLSpace</span></code> class – Gauss-Legendre pixelization of the sphere</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lm_space.html">The <code class="docutils literal"><span class="pre">LMSpace</span></code> class – Spherical Harmonics components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="power_space.html">The <code class="docutils literal"><span class="pre">PowerSpace</span></code> class –  TODO: Title For PowerSpace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="power_indices.html">The <code class="docutils literal"><span class="pre">PowerIndices</span></code> class –  TODO: Title For PowerIndices</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="the-space-class-the-base-space-object">
+<h2>The <code class="docutils literal"><span class="pre">Space</span></code> class – The base Space object<a class="headerlink" href="#the-space-class-the-base-space-object" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="nifty.Space">
+<em class="property">class </em><code class="descclassname">nifty.</code><code class="descname">Space</code><a class="reference internal" href="_modules/nifty/spaces/space/space.html#Space"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.Space" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">nifty.domain_object.DomainObject</span></code></p>
+<p>The abstract base class for all NIFTy spaces.</p>
+<p>An instance of a space contains information about the manifolds
+geometry and enhances the functionality of DomainObject by methods that
+are needed for powerspectrum analysis and smoothing.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>None</strong></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>TypeError</strong></p>
+<blockquote class="last">
+<div><p>Raised if instantiated directly.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p><cite>Space</cite> is an abstract base class. In order to allow for instantiation
+the methods <cite>get_distance_array</cite>, <cite>total_volume</cite> and <cite>copy</cite> must be
+implemented as well as the abstract methods inherited from
+<cite>DomainObject</cite>.</p>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><code class="xref py py-obj docutils literal"><span class="pre">dim</span></code></td>
+<td>Returns the number of pixel-dimensions the object has.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.Space.harmonic" title="nifty.Space.harmonic"><code class="xref py py-obj docutils literal"><span class="pre">harmonic</span></code></a></td>
+<td>Returns True if this space is a harmonic space.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.Space.total_volume" title="nifty.Space.total_volume"><code class="xref py py-obj docutils literal"><span class="pre">total_volume</span></code></a></td>
+<td>Returns the total volume of the space.</td>
+</tr>
+<tr class="row-even"><td><code class="xref py py-obj docutils literal"><span class="pre">shape</span></code></td>
+<td>The domain-object’s shape contribution to the underlying array.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.Space.copy" title="nifty.Space.copy"><code class="xref py py-obj docutils literal"><span class="pre">copy</span></code></a>()</td>
+<td>Returns a copy of this Space instance.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.Space.get_distance_array" title="nifty.Space.get_distance_array"><code class="xref py py-obj docutils literal"><span class="pre">get_distance_array</span></code></a>(distribution_strategy)</td>
+<td>The distances of the pixel to zero.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.Space.get_fft_smoothing_kernel_function" title="nifty.Space.get_fft_smoothing_kernel_function"><code class="xref py py-obj docutils literal"><span class="pre">get_fft_smoothing_kernel_function</span></code></a>(sigma)</td>
+<td>This method returns a smoothing kernel function.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.Space.hermitian_decomposition" title="nifty.Space.hermitian_decomposition"><code class="xref py py-obj docutils literal"><span class="pre">hermitian_decomposition</span></code></a>(x,&nbsp;axes[,&nbsp;…])</td>
+<td>Decomposes x into its hermitian and anti-hermitian constituents.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="nifty.Space.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/space/space.html#Space.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.Space.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a copy of this Space instance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Space</p>
+<blockquote class="last">
+<div><p>A copy of this instance.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.Space.get_distance_array">
+<code class="descname">get_distance_array</code><span class="sig-paren">(</span><em>distribution_strategy</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/space/space.html#Space.get_distance_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.Space.get_distance_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>The distances of the pixel to zero.</p>
+<p>This returns an array that gives for each pixel its distance to the
+center of the manifolds grid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>distribution_strategy</strong> : str</p>
+<blockquote>
+<div><p>The distribution_strategy which shall be used the returned
+distributed_data_object.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">distributed_data_object</p>
+<blockquote>
+<div><p>A d2o containing the distances</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.Space.get_fft_smoothing_kernel_function">
+<code class="descname">get_fft_smoothing_kernel_function</code><span class="sig-paren">(</span><em>sigma</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/space/space.html#Space.get_fft_smoothing_kernel_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.Space.get_fft_smoothing_kernel_function" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method returns a smoothing kernel function.</p>
+<p>This method, which is only implemented for harmonic spaces, helps
+smoothing fields that live in a position space that has this space as
+its harmonic space. The returned function multiplies field values of a
+field with a zero centered Gaussian which corresponds to a convolution
+with a Gaussian kernel and sigma standard deviation in position space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>sigma</strong> : float</p>
+<blockquote>
+<div><p>A real number representing a physical scale on which the smoothing
+takes place. The smoothing is defined with respect to the real
+physical field and points that are closer together than one sigma
+are blurred together. Mathematically sigma is the standard
+deviation of a convolution with a normalized, zero-centered
+Gaussian that takes place in position space.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">function (array-like -&gt; array-like)</p>
+<blockquote>
+<div><p>A smoothing operation that multiplies values with a Gaussian
+kernel.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError :</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.Space.hermitian_decomposition">
+<code class="descname">hermitian_decomposition</code><span class="sig-paren">(</span><em>x</em>, <em>axes</em>, <em>preserve_gaussian_variance=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/space/space.html#Space.hermitian_decomposition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.Space.hermitian_decomposition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decomposes x into its hermitian and anti-hermitian constituents.</p>
+<p>This method decomposes a field’s array x into its hermitian and
+antihermitian part, which corresponds to  real and imaginary part
+in a corresponding harmonic partner space. This is an internal function
+that is mainly used for power-synthesizing and -analyzing Fields.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : distributed_data_object</p>
+<blockquote>
+<div><p>The field’s val object.</p>
+</div></blockquote>
+<p><strong>axes</strong> : tuple of ints</p>
+<blockquote>
+<div><p>Specifies the axes of x which correspond to this space.</p>
+</div></blockquote>
+<p><strong>preserve_gaussian_variance</strong> : bool <em>optional</em></p>
+<blockquote>
+<div><p>FIXME: figure out what this does</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">(distributed_data_object, distributed_data_object)</p>
+<blockquote>
+<div><p>A tuple of two distributed_data_objects, the first being the
+hermitian and the second the anti-hermitian part of x.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.Space.harmonic">
+<code class="descname">harmonic</code><a class="headerlink" href="#nifty.Space.harmonic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if this space is a harmonic space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.Space.total_volume">
+<code class="descname">total_volume</code><a class="headerlink" href="#nifty.Space.total_volume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the total volume of the space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">float</p>
+<blockquote>
+<div><p>A real number representing the sum of all pixel volumes.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p>
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Spaces</a><ul>
+<li><a class="reference internal" href="#space-classes">Space classes</a></li>
+<li><a class="reference internal" href="#the-space-class-the-base-space-object">The <code class="docutils literal"><span class="pre">Space</span></code> class – The base Space object</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">NIFTY – Numerical Information Field Theory</a></li>
+      <li>Next: <a href="rg_space.html" title="next chapter">The <code class="docutils literal"><span class="pre">RGSpace</span></code> class – Regular Cartesian grids</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/spaces.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/spaces.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

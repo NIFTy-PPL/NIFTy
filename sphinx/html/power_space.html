@@ -1,0 +1,535 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>The PowerSpace class – TODO: Title For PowerSpace &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The PowerIndices class – TODO: Title For PowerIndices" href="power_indices.html" />
+    <link rel="prev" title="The LMSpace class – Spherical Harmonics components" href="lm_space.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="the-powerspace-class-todo-title-for-powerspace">
+<h1>The <code class="docutils literal"><span class="pre">PowerSpace</span></code> class –  TODO: Title For PowerSpace<a class="headerlink" href="#the-powerspace-class-todo-title-for-powerspace" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="nifty.PowerSpace">
+<em class="property">class </em><code class="descclassname">nifty.</code><code class="descname">PowerSpace</code><a class="reference internal" href="_modules/nifty/spaces/power_space/power_space.html#PowerSpace"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.PowerSpace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">nifty.spaces.space.space.Space</span></code></p>
+<p>NIFTY class for spaces of power spectra.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>harmonic_partner</strong> : Space</p>
+<blockquote>
+<div><p>The harmonic Space of which this is the power space.</p>
+</div></blockquote>
+<p><strong>distribution_strategy</strong> : str <em>optional</em></p>
+<blockquote>
+<div><p>The distribution strategy used for the distributed_data_objects
+derived from this PowerSpace, e.g. the pindex.
+(default : ‘not’)</p>
+</div></blockquote>
+<p><strong>logarithmic</strong> : bool <em>optional</em></p>
+<blockquote>
+<div><p>True if logarithmic binning should be used (default : False).</p>
+</div></blockquote>
+<p><strong>nbin</strong> : {int, None} <em>optional</em></p>
+<blockquote>
+<div><p>The number of bins that should be used for power spectrum binning
+(default : None).
+if nbin == None, then nbin is set to the length of kindex.</p>
+</div></blockquote>
+<p><strong>binbounds</strong> :  {list, array-like} <em>optional</em></p>
+<blockquote class="last">
+<div><p>Array-like inner boundaries of the used bins of the default
+indices.
+(default : None)
+if binbounds == None :</p>
+<blockquote>
+<div><p>Calculates the bounds from the kindex while applying the
+logarithmic and nbin keywords.</p>
+</div></blockquote>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>A power space is the result of a projection of a harmonic space where
+k-modes of equal length get mapped to one power index.</p>
+<p class="rubric">Attributes</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.pindex" title="nifty.PowerSpace.pindex"><code class="xref py py-obj docutils literal"><span class="pre">pindex</span></code></a></td>
+<td>A distributed_data_object having the shape of the harmonic partner space containing the indices of the power bin a pixel belongs to.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.PowerSpace.kindex" title="nifty.PowerSpace.kindex"><code class="xref py py-obj docutils literal"><span class="pre">kindex</span></code></a></td>
+<td>Sorted array of all k-modes.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.pundex" title="nifty.PowerSpace.pundex"><code class="xref py py-obj docutils literal"><span class="pre">pundex</span></code></a></td>
+<td>An array for which the n-th entry gives the flat index of the first occurence of a k-vector with length==kindex[n] in the k_array.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.PowerSpace.rho" title="nifty.PowerSpace.rho"><code class="xref py py-obj docutils literal"><span class="pre">rho</span></code></a></td>
+<td>Degeneracy factor of the individual k-vectors.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.dim" title="nifty.PowerSpace.dim"><code class="xref py py-obj docutils literal"><span class="pre">dim</span></code></a></td>
+<td>Returns the number of pixel-dimensions the object has.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.PowerSpace.harmonic" title="nifty.PowerSpace.harmonic"><code class="xref py py-obj docutils literal"><span class="pre">harmonic</span></code></a></td>
+<td>Returns True if this space is a harmonic space.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.total_volume" title="nifty.PowerSpace.total_volume"><code class="xref py py-obj docutils literal"><span class="pre">total_volume</span></code></a></td>
+<td>Returns the total volume of the space.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.PowerSpace.shape" title="nifty.PowerSpace.shape"><code class="xref py py-obj docutils literal"><span class="pre">shape</span></code></a></td>
+<td>The domain-object’s shape contribution to the underlying array.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.config" title="nifty.PowerSpace.config"><code class="xref py py-obj docutils literal"><span class="pre">config</span></code></a></td>
+<td>Returns the configuration which was used for <cite>logarithmic</cite>, <cite>nbin</cite> and <cite>binbounds</cite> during initialization.</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Methods</p>
+<table border="1" class="longtable docutils">
+<colgroup>
+<col width="10%" />
+<col width="90%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.copy" title="nifty.PowerSpace.copy"><code class="xref py py-obj docutils literal"><span class="pre">copy</span></code></a>()</td>
+<td>Returns a copy of this Space instance.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.PowerSpace.get_distance_array" title="nifty.PowerSpace.get_distance_array"><code class="xref py py-obj docutils literal"><span class="pre">get_distance_array</span></code></a>(distribution_strategy)</td>
+<td>The distances of the pixel to zero.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.get_fft_smoothing_kernel_function" title="nifty.PowerSpace.get_fft_smoothing_kernel_function"><code class="xref py py-obj docutils literal"><span class="pre">get_fft_smoothing_kernel_function</span></code></a>(sigma)</td>
+<td>This method returns a smoothing kernel function.</td>
+</tr>
+<tr class="row-even"><td><a class="reference internal" href="#nifty.PowerSpace.pre_cast" title="nifty.PowerSpace.pre_cast"><code class="xref py py-obj docutils literal"><span class="pre">pre_cast</span></code></a>(x,&nbsp;axes)</td>
+<td>Casts power spectrum functions to discretized power spectra.</td>
+</tr>
+<tr class="row-odd"><td><a class="reference internal" href="#nifty.PowerSpace.weight" title="nifty.PowerSpace.weight"><code class="xref py py-obj docutils literal"><span class="pre">weight</span></code></a>(x[,&nbsp;power,&nbsp;axes,&nbsp;inplace])</td>
+<td>Weights the field on this domain with the space’s volume-weights.</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="nifty.PowerSpace.copy">
+<code class="descname">copy</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/power_space/power_space.html#PowerSpace.copy"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.PowerSpace.copy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a copy of this Space instance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Space</p>
+<blockquote class="last">
+<div><p>A copy of this instance.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.PowerSpace.get_distance_array">
+<code class="descname">get_distance_array</code><span class="sig-paren">(</span><em>distribution_strategy</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/power_space/power_space.html#PowerSpace.get_distance_array"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.PowerSpace.get_distance_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>The distances of the pixel to zero.</p>
+<p>This returns an array that gives for each pixel its distance to the
+center of the manifolds grid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>distribution_strategy</strong> : str</p>
+<blockquote>
+<div><p>The distribution_strategy which shall be used the returned
+distributed_data_object.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">distributed_data_object</p>
+<blockquote>
+<div><p>A d2o containing the distances</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.PowerSpace.get_fft_smoothing_kernel_function">
+<code class="descname">get_fft_smoothing_kernel_function</code><span class="sig-paren">(</span><em>sigma</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/power_space/power_space.html#PowerSpace.get_fft_smoothing_kernel_function"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.PowerSpace.get_fft_smoothing_kernel_function" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method returns a smoothing kernel function.</p>
+<p>This method, which is only implemented for harmonic spaces, helps
+smoothing fields that live in a position space that has this space as
+its harmonic space. The returned function multiplies field values of a
+field with a zero centered Gaussian which corresponds to a convolution
+with a Gaussian kernel and sigma standard deviation in position space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>sigma</strong> : float</p>
+<blockquote>
+<div><p>A real number representing a physical scale on which the smoothing
+takes place. The smoothing is defined with respect to the real
+physical field and points that are closer together than one sigma
+are blurred together. Mathematically sigma is the standard
+deviation of a convolution with a normalized, zero-centered
+Gaussian that takes place in position space.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">function (array-like -&gt; array-like)</p>
+<blockquote>
+<div><p>A smoothing operation that multiplies values with a Gaussian
+kernel.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError :</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.PowerSpace.pre_cast">
+<code class="descname">pre_cast</code><span class="sig-paren">(</span><em>x</em>, <em>axes</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/power_space/power_space.html#PowerSpace.pre_cast"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.PowerSpace.pre_cast" title="Permalink to this definition">¶</a></dt>
+<dd><p>Casts power spectrum functions to discretized power spectra.</p>
+<p>This function takes an array or a function. If it is an array it does
+nothing, otherwise it interpretes the function as power spectrum and
+evaluates it at every k-mode.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : {array-like, function array-like -&gt; array-like}</p>
+<blockquote>
+<div><p>power spectrum given either in discretized form or implicitly as a
+function</p>
+</div></blockquote>
+<p><strong>axes</strong> : tuple of ints</p>
+<blockquote>
+<div><p>Specifies the axes of x which correspond to this space. For
+explicifying the power spectrum function, this is ignored.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">array-like</p>
+<blockquote class="last">
+<div><p>discretized power spectrum</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="nifty.PowerSpace.weight">
+<code class="descname">weight</code><span class="sig-paren">(</span><em>x</em>, <em>power=1</em>, <em>axes=None</em>, <em>inplace=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/nifty/spaces/power_space/power_space.html#PowerSpace.weight"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#nifty.PowerSpace.weight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Weights the field on this domain with the space’s volume-weights.</p>
+<p>Weights hereby refer to integration weights, as they appear in
+discretized integrals. Per default, this function mutliplies each bin
+of the field x by its volume, which lets it behave like a density
+(top form). However, different powers of the volume can be applied
+with the power parameter. The axes parameter specifies which of the
+field array’s indices correspond to this domain.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>x</strong> : distributed_data_object</p>
+<blockquote>
+<div><p>The fields data array.</p>
+</div></blockquote>
+<p><strong>power</strong> : int, <em>optional</em></p>
+<blockquote>
+<div><p>The power to which the volume-weight is raised (default: 1).</p>
+</div></blockquote>
+<p><strong>axes</strong> : {int, tuple}, <em>optional</em></p>
+<blockquote>
+<div><p>Specifies the axes of x which represent this domain
+(default: None).
+If axes==None:</p>
+<blockquote>
+<div><p>weighting is applied with respect to all axes</p>
+</div></blockquote>
+</div></blockquote>
+<p><strong>inplace</strong> : bool, <em>optional</em></p>
+<blockquote>
+<div><p>If this is True, the weighting is done on the values of x,
+if it is False, x is not modified and this method returns a
+weighted copy of x (default: False).</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">distributed_data_object</p>
+<blockquote>
+<div><p>A weighted version of x, with volume-weights raised to the
+given power.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.config">
+<code class="descname">config</code><a class="headerlink" href="#nifty.PowerSpace.config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the configuration which was used for <cite>logarithmic</cite>, <cite>nbin</cite>
+and <cite>binbounds</cite> during initialization.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.dim">
+<code class="descname">dim</code><a class="headerlink" href="#nifty.PowerSpace.dim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the number of pixel-dimensions the object has.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">int</p>
+<blockquote>
+<div><p>An Integer representing the number of pixels the discretized
+manifold has.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.harmonic">
+<code class="descname">harmonic</code><a class="headerlink" href="#nifty.PowerSpace.harmonic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True if this space is a harmonic space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.harmonic_partner">
+<code class="descname">harmonic_partner</code><a class="headerlink" href="#nifty.PowerSpace.harmonic_partner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the Space of which this is the power space.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.k_array">
+<code class="descname">k_array</code><a class="headerlink" href="#nifty.PowerSpace.k_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>An array containing distances to the grid center (i.e. zero-mode)
+for every k-mode in the grid of the harmonic partner space.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.kindex">
+<code class="descname">kindex</code><a class="headerlink" href="#nifty.PowerSpace.kindex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sorted array of all k-modes.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.pindex">
+<code class="descname">pindex</code><a class="headerlink" href="#nifty.PowerSpace.pindex" title="Permalink to this definition">¶</a></dt>
+<dd><p>A distributed_data_object having the shape of the harmonic partner
+space containing the indices of the power bin a pixel belongs to.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.pundex">
+<code class="descname">pundex</code><a class="headerlink" href="#nifty.PowerSpace.pundex" title="Permalink to this definition">¶</a></dt>
+<dd><p>An array for which the n-th entry gives the flat index of the
+first occurence of a k-vector with length==kindex[n] in the
+k_array.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.rho">
+<code class="descname">rho</code><a class="headerlink" href="#nifty.PowerSpace.rho" title="Permalink to this definition">¶</a></dt>
+<dd><p>Degeneracy factor of the individual k-vectors.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.shape">
+<code class="descname">shape</code><a class="headerlink" href="#nifty.PowerSpace.shape" title="Permalink to this definition">¶</a></dt>
+<dd><p>The domain-object’s shape contribution to the underlying array.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">tuple of ints</p>
+<blockquote>
+<div><p>The shape of the underlying array-like object.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="nifty.PowerSpace.total_volume">
+<code class="descname">total_volume</code><a class="headerlink" href="#nifty.PowerSpace.total_volume" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the total volume of the space.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">float</p>
+<blockquote>
+<div><p>A real number representing the sum of all pixel volumes.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>NotImplementedError</strong></p>
+<blockquote class="last">
+<div><p>If called for this abstract class.</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="spaces.html">Spaces</a><ul>
+      <li>Previous: <a href="lm_space.html" title="previous chapter">The <code class="docutils literal"><span class="pre">LMSpace</span></code> class – Spherical Harmonics components</a></li>
+      <li>Next: <a href="power_indices.html" title="next chapter">The <code class="docutils literal"><span class="pre">PowerIndices</span></code> class –  TODO: Title For PowerIndices</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/power_space.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/power_space.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

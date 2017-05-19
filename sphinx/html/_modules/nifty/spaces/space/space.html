@@ -1,0 +1,298 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nifty.spaces.space.space &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for nifty.spaces.space.space</h1><div class="highlight"><pre>
+<span></span><span class="c1"># NIFTy</span>
+<span class="c1"># Copyright (C) 2017  Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">import</span> <span class="nn">abc</span>
+
+<span class="kn">from</span> <span class="nn">nifty.domain_object</span> <span class="k">import</span> <span class="n">DomainObject</span>
+
+
+<div class="viewcode-block" id="Space"><a class="viewcode-back" href="../../../../spaces.html#nifty.Space">[docs]</a><span class="k">class</span> <span class="nc">Space</span><span class="p">(</span><span class="n">DomainObject</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The abstract base class for all NIFTy spaces.</span>
+
+<span class="sd">    An instance of a space contains information about the manifolds</span>
+<span class="sd">    geometry and enhances the functionality of DomainObject by methods that</span>
+<span class="sd">    are needed for powerspectrum analysis and smoothing.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    None</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dim : np.int</span>
+<span class="sd">        Total number of dimensionality, i.e. the number of pixels.</span>
+<span class="sd">    harmonic : bool</span>
+<span class="sd">        Specifies whether the space is a signal or harmonic space.</span>
+<span class="sd">    total_volume : np.float</span>
+<span class="sd">        The total volume of the space.</span>
+<span class="sd">    shape : tuple of np.ints</span>
+<span class="sd">        The shape of the space&#39;s data array.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    TypeError</span>
+<span class="sd">        Raised if instantiated directly.</span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    `Space` is an abstract base class. In order to allow for instantiation</span>
+<span class="sd">    the methods `get_distance_array`, `total_volume` and `copy` must be</span>
+<span class="sd">    implemented as well as the abstract methods inherited from</span>
+<span class="sd">    `DomainObject`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">Space</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractproperty</span>
+    <span class="k">def</span> <span class="nf">harmonic</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns True if this space is a harmonic space.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            If called for this abstract class.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractproperty</span>
+    <span class="k">def</span> <span class="nf">total_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the total volume of the space.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            A real number representing the sum of all pixel volumes.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            If called for this abstract class.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;There is no generic volume for the Space base class.&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Space.copy"><a class="viewcode-back" href="../../../../spaces.html#nifty.Space.copy">[docs]</a>    <span class="nd">@abc</span><span class="o">.</span><span class="n">abstractmethod</span>
+    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a copy of this Space instance.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Space</span>
+<span class="sd">            A copy of this instance.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Space.get_distance_array"><a class="viewcode-back" href="../../../../spaces.html#nifty.Space.get_distance_array">[docs]</a>    <span class="k">def</span> <span class="nf">get_distance_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distribution_strategy</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; The distances of the pixel to zero.</span>
+
+<span class="sd">        This returns an array that gives for each pixel its distance to the</span>
+<span class="sd">        center of the manifolds grid.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        distribution_strategy : str</span>
+<span class="sd">            The distribution_strategy which shall be used the returned</span>
+<span class="sd">            distributed_data_object.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        distributed_data_object</span>
+<span class="sd">            A d2o containing the distances</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            If called for this abstract class.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;There is no generic distance structure for Space base class.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Space.get_fft_smoothing_kernel_function"><a class="viewcode-back" href="../../../../spaces.html#nifty.Space.get_fft_smoothing_kernel_function">[docs]</a>    <span class="k">def</span> <span class="nf">get_fft_smoothing_kernel_function</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sigma</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; This method returns a smoothing kernel function.</span>
+
+<span class="sd">        This method, which is only implemented for harmonic spaces, helps</span>
+<span class="sd">        smoothing fields that live in a position space that has this space as</span>
+<span class="sd">        its harmonic space. The returned function multiplies field values of a</span>
+<span class="sd">        field with a zero centered Gaussian which corresponds to a convolution</span>
+<span class="sd">        with a Gaussian kernel and sigma standard deviation in position space.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sigma : float</span>
+<span class="sd">            A real number representing a physical scale on which the smoothing</span>
+<span class="sd">            takes place. The smoothing is defined with respect to the real</span>
+<span class="sd">            physical field and points that are closer together than one sigma</span>
+<span class="sd">            are blurred together. Mathematically sigma is the standard</span>
+<span class="sd">            deviation of a convolution with a normalized, zero-centered</span>
+<span class="sd">            Gaussian that takes place in position space.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        function (array-like -&gt; array-like)</span>
+<span class="sd">            A smoothing operation that multiplies values with a Gaussian</span>
+<span class="sd">            kernel.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError :</span>
+<span class="sd">            If called for this abstract class.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;There is no generic co-smoothing kernel for Space base class.&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Space.hermitian_decomposition"><a class="viewcode-back" href="../../../../spaces.html#nifty.Space.hermitian_decomposition">[docs]</a>    <span class="k">def</span> <span class="nf">hermitian_decomposition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span>
+                                <span class="n">preserve_gaussian_variance</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Decomposes x into its hermitian and anti-hermitian constituents.</span>
+
+<span class="sd">        This method decomposes a field&#39;s array x into its hermitian and</span>
+<span class="sd">        antihermitian part, which corresponds to  real and imaginary part</span>
+<span class="sd">        in a corresponding harmonic partner space. This is an internal function</span>
+<span class="sd">        that is mainly used for power-synthesizing and -analyzing Fields.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : distributed_data_object</span>
+<span class="sd">            The field&#39;s val object.</span>
+<span class="sd">        axes : tuple of ints</span>
+<span class="sd">            Specifies the axes of x which correspond to this space.</span>
+
+<span class="sd">        preserve_gaussian_variance : bool *optional*</span>
+<span class="sd">            FIXME: figure out what this does</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        (distributed_data_object, distributed_data_object)</span>
+<span class="sd">            A tuple of two distributed_data_objects, the first being the</span>
+<span class="sd">            hermitian and the second the anti-hermitian part of x.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            If called for this abstract class.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">string</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">string</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">string</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../../../index.html">
+              <img class="logo" src="../../../../_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,1607 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>nifty.field &#8212; NIFTY 3.0.x documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '3.0.x',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for nifty.field</h1><div class="highlight"><pre>
+<span></span><span class="c1"># NIFTy</span>
+<span class="c1"># Copyright (C) 2017  Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># Author: Theo Steininger</span>
+<span class="c1">#</span>
+<span class="c1"># This program is free software: you can redistribute it and/or modify</span>
+<span class="c1"># it under the terms of the GNU General Public License as published by</span>
+<span class="c1"># the Free Software Foundation, either version 3 of the License, or</span>
+<span class="c1"># (at your option) any later version.</span>
+<span class="c1">#</span>
+<span class="c1"># This program is distributed in the hope that it will be useful,</span>
+<span class="c1"># but WITHOUT ANY WARRANTY; without even the implied warranty of</span>
+<span class="c1"># MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</span>
+<span class="c1"># GNU General Public License for more details.</span>
+<span class="c1">#</span>
+<span class="c1"># You should have received a copy of the GNU General Public License</span>
+<span class="c1"># along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span>
+
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">keepers</span> <span class="k">import</span> <span class="n">Versionable</span><span class="p">,</span>\
+                    <span class="n">Loggable</span>
+
+<span class="kn">from</span> <span class="nn">d2o</span> <span class="k">import</span> <span class="n">distributed_data_object</span><span class="p">,</span>\
+    <span class="n">STRATEGIES</span> <span class="k">as</span> <span class="n">DISTRIBUTION_STRATEGIES</span>
+
+<span class="kn">from</span> <span class="nn">nifty.config</span> <span class="k">import</span> <span class="n">nifty_configuration</span> <span class="k">as</span> <span class="n">gc</span>
+
+<span class="kn">from</span> <span class="nn">nifty.domain_object</span> <span class="k">import</span> <span class="n">DomainObject</span>
+
+<span class="kn">from</span> <span class="nn">nifty.spaces.power_space</span> <span class="k">import</span> <span class="n">PowerSpace</span>
+
+<span class="kn">import</span> <span class="nn">nifty.nifty_utilities</span> <span class="k">as</span> <span class="nn">utilities</span>
+<span class="kn">from</span> <span class="nn">nifty.random</span> <span class="k">import</span> <span class="n">Random</span>
+
+
+<div class="viewcode-block" id="Field"><a class="viewcode-back" href="../../nifty.Field.html#nifty.Field">[docs]</a><span class="k">class</span> <span class="nc">Field</span><span class="p">(</span><span class="n">Loggable</span><span class="p">,</span> <span class="n">Versionable</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; The discrete representation of a continuous field over multiple spaces.</span>
+
+<span class="sd">    In NIFTY, Fields are used to store data arrays and carry all the needed</span>
+<span class="sd">    metainformation (i.e. the domain) for operators to be able to work on them.</span>
+<span class="sd">    In addition Field has methods to work with power-spectra.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    domain : DomainObject</span>
+<span class="sd">        One of the space types NIFTY supports. RGSpace, GLSpace, HPSpace,</span>
+<span class="sd">        LMSpace or PowerSpace. It might also be a FieldArray, which is</span>
+<span class="sd">        an unstructured domain.</span>
+
+<span class="sd">    val : scalar, numpy.ndarray, distributed_data_object, Field</span>
+<span class="sd">        The values the array should contain after init. A scalar input will</span>
+<span class="sd">        fill the whole array with this scalar. If an array is provided the</span>
+<span class="sd">        array&#39;s dimensions must match the domain&#39;s.</span>
+
+<span class="sd">    dtype : type</span>
+<span class="sd">        A numpy.type. Most common are int, float and complex.</span>
+
+<span class="sd">    distribution_strategy: optional[{&#39;fftw&#39;, &#39;equal&#39;, &#39;not&#39;, &#39;freeform&#39;}]</span>
+<span class="sd">        Specifies which distributor will be created and used.</span>
+<span class="sd">        &#39;fftw&#39;      uses the distribution strategy of pyfftw,</span>
+<span class="sd">        &#39;equal&#39;     tries to  distribute the data as uniform as possible</span>
+<span class="sd">        &#39;not&#39;       does not distribute the data at all</span>
+<span class="sd">        &#39;freeform&#39;  distribute the data according to the given local data/shape</span>
+
+<span class="sd">    copy: boolean</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    val : distributed_data_object</span>
+
+<span class="sd">    domain : DomainObject</span>
+<span class="sd">        See Parameters.</span>
+<span class="sd">    domain_axes : tuple of tuples</span>
+<span class="sd">        Enumerates the axes of the Field</span>
+<span class="sd">    dtype : type</span>
+<span class="sd">        Contains the datatype stored in the Field.</span>
+<span class="sd">    distribution_strategy : string</span>
+<span class="sd">        Name of the used distribution_strategy.</span>
+
+<span class="sd">    Raise</span>
+<span class="sd">    -----</span>
+<span class="sd">    TypeError</span>
+<span class="sd">        Raised if</span>
+<span class="sd">            *the given domain contains something that is not a DomainObject</span>
+<span class="sd">             instance</span>
+<span class="sd">            *val is an array that has a different dimension than the domain</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; a = Field(RGSpace([4,5]),val=2)</span>
+<span class="sd">    &gt;&gt;&gt; a.val</span>
+<span class="sd">    &lt;distributed_data_object&gt;</span>
+<span class="sd">    array([[2, 2, 2, 2, 2],</span>
+<span class="sd">           [2, 2, 2, 2, 2],</span>
+<span class="sd">           [2, 2, 2, 2, 2],</span>
+<span class="sd">           [2, 2, 2, 2, 2]])</span>
+<span class="sd">    &gt;&gt;&gt; a.dtype</span>
+<span class="sd">    dtype(&#39;int64&#39;)</span>
+
+<span class="sd">    See Also</span>
+<span class="sd">    --------</span>
+<span class="sd">    distributed_data_object</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ---Initialization methods---</span>
+
+<div class="viewcode-block" id="Field.__init__"><a class="viewcode-back" href="../../nifty.Field.html#nifty.Field.__init__">[docs]</a>    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">distribution_strategy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_domain</span><span class="p">(</span><span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_axes_tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_infer_dtype</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                                       <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">distribution_strategy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_distribution_strategy</span><span class="p">(</span>
+                                <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">distribution_strategy</span><span class="p">,</span>
+                                <span class="n">val</span><span class="o">=</span><span class="n">val</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_val</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="o">=</span><span class="n">val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="n">copy</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_parse_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">val</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">domain</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">Field</span><span class="p">):</span>
+                <span class="n">domain</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">domain</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">domain</span> <span class="o">=</span> <span class="p">()</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">DomainObject</span><span class="p">):</span>
+            <span class="n">domain</span> <span class="o">=</span> <span class="p">(</span><span class="n">domain</span><span class="p">,)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="n">domain</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">domain</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">DomainObject</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;Given domain contains something that is not a &quot;</span>
+                    <span class="s2">&quot;DomainObject instance.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">domain</span>
+
+    <span class="k">def</span> <span class="nf">_get_axes_tuple</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">things_with_shape</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">start</span>
+        <span class="n">axes_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">thing</span> <span class="ow">in</span> <span class="n">things_with_shape</span><span class="p">:</span>
+            <span class="n">l</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">thing</span><span class="o">.</span><span class="n">shape</span><span class="p">)):</span>
+                <span class="n">l</span> <span class="o">+=</span> <span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">axes_list</span> <span class="o">+=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">l</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">axes_list</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_infer_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">dtype</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">dtype</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">TypeError</span>
+                    <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">result_type</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">(</span><span class="ne">TypeError</span><span class="p">):</span>
+                    <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">gc</span><span class="p">[</span><span class="s1">&#39;default_field_dtype&#39;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">dtype</span>
+
+    <span class="k">def</span> <span class="nf">_parse_distribution_strategy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">distribution_strategy</span><span class="p">,</span> <span class="n">val</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">distribution_strategy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">distributed_data_object</span><span class="p">):</span>
+                <span class="n">distribution_strategy</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">distribution_strategy</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">Field</span><span class="p">):</span>
+                <span class="n">distribution_strategy</span> <span class="o">=</span> <span class="n">val</span><span class="o">.</span><span class="n">distribution_strategy</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;distribution_strategy set to default!&quot;</span><span class="p">)</span>
+                <span class="n">distribution_strategy</span> <span class="o">=</span> <span class="n">gc</span><span class="p">[</span><span class="s1">&#39;default_distribution_strategy&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">distribution_strategy</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">DISTRIBUTION_STRATEGIES</span><span class="p">[</span><span class="s1">&#39;global&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;distribution_strategy must be a global-type &quot;</span>
+                    <span class="s2">&quot;strategy.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">distribution_strategy</span>
+
+    <span class="c1"># ---Factory methods---</span>
+
+<div class="viewcode-block" id="Field.from_random"><a class="viewcode-back" href="../../field.html#nifty.Field.from_random">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_random</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">random_type</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">distribution_strategy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Draws a random field with the given parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cls : class</span>
+
+<span class="sd">        random_type : String</span>
+<span class="sd">            &#39;pm1&#39;, &#39;normal&#39;, &#39;uniform&#39; are the supported arguments for this</span>
+<span class="sd">            method.</span>
+
+<span class="sd">        domain : DomainObject</span>
+<span class="sd">            The domain of the output random field</span>
+
+<span class="sd">        dtype : type</span>
+<span class="sd">            The datatype of the output random field</span>
+
+<span class="sd">        distribution_strategy : all supported distribution strategies</span>
+<span class="sd">            The distribution strategy of the output random field</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : Field</span>
+<span class="sd">            The output object.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        power_synthesise</span>
+
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># create a initially empty field</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">distribution_strategy</span><span class="p">)</span>
+
+        <span class="c1"># now use the processed input in terms of f in order to parse the</span>
+        <span class="c1"># random arguments</span>
+        <span class="n">random_arguments</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_parse_random_arguments</span><span class="p">(</span><span class="n">random_type</span><span class="o">=</span><span class="n">random_type</span><span class="p">,</span>
+                                                       <span class="n">f</span><span class="o">=</span><span class="n">f</span><span class="p">,</span>
+                                                       <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># extract the distributed_data_object from f and apply the appropriate</span>
+        <span class="c1"># random number generator to it</span>
+        <span class="n">sample</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">generator_function</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">Random</span><span class="p">,</span> <span class="n">random_type</span><span class="p">)</span>
+        <span class="n">sample</span><span class="o">.</span><span class="n">apply_generator</span><span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">shape</span><span class="p">:</span> <span class="n">generator_function</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">f</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+                                             <span class="n">shape</span><span class="o">=</span><span class="n">shape</span><span class="p">,</span>
+                                             <span class="o">**</span><span class="n">random_arguments</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">f</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_parse_random_arguments</span><span class="p">(</span><span class="n">random_type</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">random_type</span> <span class="o">==</span> <span class="s2">&quot;pm1&quot;</span><span class="p">:</span>
+            <span class="n">random_arguments</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">elif</span> <span class="n">random_type</span> <span class="o">==</span> <span class="s2">&quot;normal&quot;</span><span class="p">:</span>
+            <span class="n">mean</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">std</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;std&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">random_arguments</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;mean&#39;</span><span class="p">:</span> <span class="n">mean</span><span class="p">,</span>
+                                <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="n">std</span><span class="p">}</span>
+
+        <span class="k">elif</span> <span class="n">random_type</span> <span class="o">==</span> <span class="s2">&quot;uniform&quot;</span><span class="p">:</span>
+            <span class="n">low</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;low&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">high</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;high&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">random_arguments</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;low&#39;</span><span class="p">:</span> <span class="n">low</span><span class="p">,</span>
+                                <span class="s1">&#39;high&#39;</span><span class="p">:</span> <span class="n">high</span><span class="p">}</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="s2">&quot;unsupported random key &#39;&quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">random_type</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;&#39;.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">random_arguments</span>
+
+    <span class="c1"># ---Powerspectral methods---</span>
+
+<div class="viewcode-block" id="Field.power_analyze"><a class="viewcode-back" href="../../field.html#nifty.Field.power_analyze">[docs]</a>    <span class="k">def</span> <span class="nf">power_analyze</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">logarithmic</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">binbounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">decompose_power</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Computes the powerspectrum for a subspace of the Field.</span>
+
+<span class="sd">        Creates a PowerSpace for the space addressed by `spaces` with the given</span>
+<span class="sd">        binning and computes the power spectrum as a Field over this</span>
+<span class="sd">        PowerSpace. This can only be done if the subspace to  be analyzed is a</span>
+<span class="sd">        harmonic space.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spaces : int *optional*</span>
+<span class="sd">            The subspace for which the powerspectrum shall be computed</span>
+<span class="sd">            (default : None).</span>
+<span class="sd">            if spaces==None : Tries to synthesize for the whole domain</span>
+<span class="sd">        logarithmic : boolean *optional*</span>
+<span class="sd">            True if the output PowerSpace should use logarithmic binning.</span>
+<span class="sd">            {default : False}</span>
+<span class="sd">        nbin : int *optional*</span>
+<span class="sd">            The number of bins the resulting PowerSpace shall have</span>
+<span class="sd">            (default : None).</span>
+<span class="sd">            if nbin==None : maximum number of bins is used</span>
+<span class="sd">        binbounds : array-like *optional*</span>
+<span class="sd">            Inner bounds of the bins (default : None).</span>
+<span class="sd">            if binbounds==None : bins are inferred. Overwrites nbins and log</span>
+<span class="sd">        decompose_power : boolean, *optional*</span>
+<span class="sd">            Whether the analysed signal-space Field is intrinsically real or</span>
+<span class="sd">            complex and if the power spectrum shall therefore be computed</span>
+<span class="sd">            for the real and the imaginary part of the Field separately</span>
+<span class="sd">            (default : True).</span>
+
+<span class="sd">        Raise</span>
+<span class="sd">        -----</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            Raised if</span>
+<span class="sd">                *len(domain) is != 1 when spaces==None</span>
+<span class="sd">                *len(spaces) is != 1 if not None</span>
+<span class="sd">                *the analyzed space is not harmonic</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : Field</span>
+<span class="sd">            The output object. It&#39;s domain is a PowerSpace and it contains</span>
+<span class="sd">            the power spectrum of &#39;self&#39;s field.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        power_synthesize, PowerSpace</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check if all spaces in `self.domain` are either harmonic or</span>
+        <span class="c1"># power_space instances</span>
+        <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">harmonic</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sp</span><span class="p">,</span> <span class="n">PowerSpace</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Field has a space in `domain` which is neither &quot;</span>
+                    <span class="s2">&quot;harmonic nor a PowerSpace.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># check if the `spaces` input is valid</span>
+        <span class="n">spaces</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">cast_axis_to_tuple</span><span class="p">(</span><span class="n">spaces</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">spaces</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">spaces</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Field has multiple spaces as domain &quot;</span>
+                    <span class="s2">&quot;but `spaces` is None.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">spaces</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;No space for analysis specified.&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">spaces</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;Conversion of only one space at a time is allowed.&quot;</span><span class="p">)</span>
+
+        <span class="n">space_index</span> <span class="o">=</span> <span class="n">spaces</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">space_index</span><span class="p">]</span><span class="o">.</span><span class="n">harmonic</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;The analyzed space must be harmonic.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Create the target PowerSpace instance:</span>
+        <span class="c1"># If the associated signal-space field was real, we extract the</span>
+        <span class="c1"># hermitian and anti-hermitian parts of `self` and put them</span>
+        <span class="c1"># into the real and imaginary parts of the power spectrum.</span>
+        <span class="c1"># If it was complex, all the power is put into a real power spectrum.</span>
+
+        <span class="n">distribution_strategy</span> <span class="o">=</span> \
+            <span class="bp">self</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">get_axes_local_distribution_strategy</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">space_index</span><span class="p">])</span>
+
+        <span class="n">harmonic_domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">space_index</span><span class="p">]</span>
+        <span class="n">power_domain</span> <span class="o">=</span> <span class="n">PowerSpace</span><span class="p">(</span><span class="n">harmonic_partner</span><span class="o">=</span><span class="n">harmonic_domain</span><span class="p">,</span>
+                                  <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">distribution_strategy</span><span class="p">,</span>
+                                  <span class="n">logarithmic</span><span class="o">=</span><span class="n">logarithmic</span><span class="p">,</span> <span class="n">nbin</span><span class="o">=</span><span class="n">nbin</span><span class="p">,</span>
+                                  <span class="n">binbounds</span><span class="o">=</span><span class="n">binbounds</span><span class="p">)</span>
+
+        <span class="c1"># extract pindex and rho from power_domain</span>
+        <span class="n">pindex</span> <span class="o">=</span> <span class="n">power_domain</span><span class="o">.</span><span class="n">pindex</span>
+        <span class="n">rho</span> <span class="o">=</span> <span class="n">power_domain</span><span class="o">.</span><span class="n">rho</span>
+
+        <span class="k">if</span> <span class="n">decompose_power</span><span class="p">:</span>
+            <span class="n">hermitian_part</span><span class="p">,</span> <span class="n">anti_hermitian_part</span> <span class="o">=</span> \
+                <span class="n">harmonic_domain</span><span class="o">.</span><span class="n">hermitian_decomposition</span><span class="p">(</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">val</span><span class="p">,</span>
+                                            <span class="n">axes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">space_index</span><span class="p">])</span>
+
+            <span class="p">[</span><span class="n">hermitian_power</span><span class="p">,</span> <span class="n">anti_hermitian_power</span><span class="p">]</span> <span class="o">=</span> \
+                <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_calculate_power_spectrum</span><span class="p">(</span>
+                                            <span class="n">x</span><span class="o">=</span><span class="n">part</span><span class="p">,</span>
+                                            <span class="n">pindex</span><span class="o">=</span><span class="n">pindex</span><span class="p">,</span>
+                                            <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span>
+                                            <span class="n">axes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">space_index</span><span class="p">])</span>
+                 <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="p">[</span><span class="n">hermitian_part</span><span class="p">,</span> <span class="n">anti_hermitian_part</span><span class="p">]]</span>
+
+            <span class="n">power_spectrum</span> <span class="o">=</span> <span class="n">hermitian_power</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span> <span class="o">*</span> <span class="n">anti_hermitian_power</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">power_spectrum</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_power_spectrum</span><span class="p">(</span>
+                                            <span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">val</span><span class="p">,</span>
+                                            <span class="n">pindex</span><span class="o">=</span><span class="n">pindex</span><span class="p">,</span>
+                                            <span class="n">rho</span><span class="o">=</span><span class="n">rho</span><span class="p">,</span>
+                                            <span class="n">axes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">space_index</span><span class="p">])</span>
+
+        <span class="c1"># create the result field and put power_spectrum into it</span>
+        <span class="n">result_domain</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+        <span class="n">result_domain</span><span class="p">[</span><span class="n">space_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">power_domain</span>
+
+        <span class="k">if</span> <span class="n">decompose_power</span><span class="p">:</span>
+            <span class="n">result_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">complex</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result_dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float</span>
+
+        <span class="n">result_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">(</span>
+                   <span class="n">domain</span><span class="o">=</span><span class="n">result_domain</span><span class="p">,</span>
+                   <span class="n">dtype</span><span class="o">=</span><span class="n">result_dtype</span><span class="p">,</span>
+                   <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">power_spectrum</span><span class="o">.</span><span class="n">distribution_strategy</span><span class="p">)</span>
+        <span class="n">result_field</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="o">=</span><span class="n">power_spectrum</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result_field</span></div>
+
+    <span class="k">def</span> <span class="nf">_calculate_power_spectrum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">pindex</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">axes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">fieldabs</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">fieldabs</span> <span class="o">**=</span> <span class="mi">2</span>
+
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pindex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_shape_up_pindex</span><span class="p">(</span>
+                                    <span class="n">pindex</span><span class="o">=</span><span class="n">pindex</span><span class="p">,</span>
+                                    <span class="n">target_shape</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                                    <span class="n">target_strategy</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">distribution_strategy</span><span class="p">,</span>
+                                    <span class="n">axes</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span>
+        <span class="n">power_spectrum</span> <span class="o">=</span> <span class="n">pindex</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">weights</span><span class="o">=</span><span class="n">fieldabs</span><span class="p">,</span>
+                                         <span class="n">axis</span><span class="o">=</span><span class="n">axes</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">axes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">new_rho_shape</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">power_spectrum</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">new_rho_shape</span><span class="p">[</span><span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rho</span><span class="p">)</span>
+            <span class="n">rho</span> <span class="o">=</span> <span class="n">rho</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">new_rho_shape</span><span class="p">)</span>
+        <span class="n">power_spectrum</span> <span class="o">/=</span> <span class="n">rho</span>
+
+        <span class="n">power_spectrum</span> <span class="o">**=</span> <span class="mf">0.5</span>
+        <span class="k">return</span> <span class="n">power_spectrum</span>
+
+    <span class="k">def</span> <span class="nf">_shape_up_pindex</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pindex</span><span class="p">,</span> <span class="n">target_shape</span><span class="p">,</span> <span class="n">target_strategy</span><span class="p">,</span> <span class="n">axes</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">pindex</span><span class="o">.</span><span class="n">distribution_strategy</span> <span class="ow">not</span> <span class="ow">in</span> \
+                <span class="n">DISTRIBUTION_STRATEGIES</span><span class="p">[</span><span class="s1">&#39;global&#39;</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;pindex&#39;s distribution strategy must be &quot;</span>
+                             <span class="s2">&quot;global-type&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">pindex</span><span class="o">.</span><span class="n">distribution_strategy</span> <span class="ow">in</span> <span class="n">DISTRIBUTION_STRATEGIES</span><span class="p">[</span><span class="s1">&#39;slicing&#39;</span><span class="p">]:</span>
+            <span class="k">if</span> <span class="p">((</span><span class="mi">0</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">)</span> <span class="ow">or</span>
+                    <span class="p">(</span><span class="n">target_strategy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">pindex</span><span class="o">.</span><span class="n">distribution_strategy</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;A slicing distributor shall not be reshaped to &quot;</span>
+                    <span class="s2">&quot;something non-sliced.&quot;</span><span class="p">)</span>
+
+        <span class="n">semiscaled_shape</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_shape</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">axes</span><span class="p">:</span>
+            <span class="n">semiscaled_shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_shape</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">local_data</span> <span class="o">=</span> <span class="n">pindex</span><span class="o">.</span><span class="n">get_local_data</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">semiscaled_local_data</span> <span class="o">=</span> <span class="n">local_data</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">semiscaled_shape</span><span class="p">)</span>
+        <span class="n">result_obj</span> <span class="o">=</span> <span class="n">pindex</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">(</span><span class="n">global_shape</span><span class="o">=</span><span class="n">target_shape</span><span class="p">,</span>
+                                       <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">target_strategy</span><span class="p">)</span>
+        <span class="n">result_obj</span><span class="o">.</span><span class="n">set_full_data</span><span class="p">(</span><span class="n">semiscaled_local_data</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">result_obj</span>
+
+<div class="viewcode-block" id="Field.power_synthesize"><a class="viewcode-back" href="../../field.html#nifty.Field.power_synthesize">[docs]</a>    <span class="k">def</span> <span class="nf">power_synthesize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">real_power</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">real_signal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                         <span class="n">mean</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">std</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Converts a power spectrum into a random field realization.</span>
+
+<span class="sd">        This method draws a Gaussian random field in the harmic partner domain</span>
+<span class="sd">        of a PowerSpace.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        For this the spaces specified by `spaces` must be a PowerSpaces.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        spaces : {tuple, int, None} *optional*</span>
+<span class="sd">            Specifies the subspace containing all the PowerSpaces which</span>
+<span class="sd">            should be converted (default : None).</span>
+<span class="sd">            if spaces==None : Tries to convert the whole domain.</span>
+<span class="sd">        real_power : boolean *optional*</span>
+<span class="sd">            Determines whether the power spectrum is treated as intrinsically</span>
+<span class="sd">            real or complex (default : True).</span>
+<span class="sd">        real_signal : boolean *optional*</span>
+<span class="sd">            True will result in a purely real signal-space field</span>
+<span class="sd">            (default : True).</span>
+<span class="sd">        mean : float *optional*</span>
+<span class="sd">            The mean of the Gaussian noise field which is used for the Field</span>
+<span class="sd">            synthetization (default : None).</span>
+<span class="sd">            if mean==None : mean will be set to 0</span>
+<span class="sd">        std : float *optional*</span>
+<span class="sd">            The standard deviation of the Gaussian noise field which is used</span>
+<span class="sd">            for the Field synthetization (default : None).</span>
+<span class="sd">            {default : None}</span>
+<span class="sd">            if std==None : std will be set to 1</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : Field</span>
+<span class="sd">            The output object. A random field created with the power spectrum</span>
+<span class="sd">            stored in the `spaces` in `self`.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        power_analyze</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># check if the `spaces` input is valid</span>
+        <span class="n">spaces</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">cast_axis_to_tuple</span><span class="p">(</span><span class="n">spaces</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">spaces</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spaces</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">power_space_index</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">:</span>
+            <span class="n">power_space</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">power_space_index</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">power_space</span><span class="p">,</span> <span class="n">PowerSpace</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A PowerSpace is needed for field &quot;</span>
+                                 <span class="s2">&quot;synthetization.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># create the result domain</span>
+        <span class="n">result_domain</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">power_space_index</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">:</span>
+            <span class="n">power_space</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">power_space_index</span><span class="p">]</span>
+            <span class="n">harmonic_domain</span> <span class="o">=</span> <span class="n">power_space</span><span class="o">.</span><span class="n">harmonic_partner</span>
+            <span class="n">result_domain</span><span class="p">[</span><span class="n">power_space_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">harmonic_domain</span>
+
+        <span class="c1"># create random samples: one or two, depending on whether the</span>
+        <span class="c1"># power spectrum is real or complex</span>
+        <span class="k">if</span> <span class="n">real_power</span><span class="p">:</span>
+            <span class="n">result_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span>
+
+        <span class="n">result_list</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="n">from_random</span><span class="p">(</span>
+                             <span class="s1">&#39;normal&#39;</span><span class="p">,</span>
+                             <span class="n">mean</span><span class="o">=</span><span class="n">mean</span><span class="p">,</span>
+                             <span class="n">std</span><span class="o">=</span><span class="n">std</span><span class="p">,</span>
+                             <span class="n">domain</span><span class="o">=</span><span class="n">result_domain</span><span class="p">,</span>
+                             <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">complex</span><span class="p">,</span>
+                             <span class="n">distribution_strategy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">distribution_strategy</span><span class="p">)</span>
+                       <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">result_list</span><span class="p">]</span>
+
+        <span class="c1"># from now on extract the values from the random fields for further</span>
+        <span class="c1"># processing without killing the fields.</span>
+        <span class="c1"># if the signal-space field should be real, hermitianize the field</span>
+        <span class="c1"># components</span>
+
+        <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">get_full_data</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">power_space_index</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">:</span>
+            <span class="n">spec</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_spec_to_rescaler</span><span class="p">(</span><span class="n">spec</span><span class="p">,</span> <span class="n">result_list</span><span class="p">,</span> <span class="n">power_space_index</span><span class="p">)</span>
+        <span class="n">local_rescaler</span> <span class="o">=</span> <span class="n">spec</span>
+
+        <span class="n">result_val_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">val</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">result_list</span><span class="p">]</span>
+
+        <span class="c1"># apply the rescaler to the random fields</span>
+        <span class="n">result_val_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">apply_scalar_function</span><span class="p">(</span>
+                                            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">local_rescaler</span><span class="o">.</span><span class="n">real</span><span class="p">,</span>
+                                            <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">real_power</span><span class="p">:</span>
+            <span class="n">result_val_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">apply_scalar_function</span><span class="p">(</span>
+                                            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">local_rescaler</span><span class="o">.</span><span class="n">imag</span><span class="p">,</span>
+                                            <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">real_signal</span><span class="p">:</span>
+            <span class="n">result_val_list</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_hermitian_decomposition</span><span class="p">(</span>
+                                                <span class="n">result_domain</span><span class="p">,</span>
+                                                <span class="n">result_val</span><span class="p">,</span>
+                                                <span class="n">spaces</span><span class="p">,</span>
+                                                <span class="n">result_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                               <span class="k">for</span> <span class="n">result_val</span> <span class="ow">in</span> <span class="n">result_val_list</span><span class="p">]</span>
+
+        <span class="c1"># store the result into the fields</span>
+        <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="o">=</span><span class="n">y</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span>
+            <span class="nb">zip</span><span class="p">(</span><span class="n">result_list</span><span class="p">,</span> <span class="n">result_val_list</span><span class="p">)]</span>
+
+        <span class="k">if</span> <span class="n">real_power</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">result_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">result_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="n">j</span><span class="o">*</span><span class="n">result_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">result</span></div>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">_hermitian_decomposition</span><span class="p">(</span><span class="n">domain</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">spaces</span><span class="p">,</span> <span class="n">domain_axes</span><span class="p">):</span>
+        <span class="c1"># hermitianize for the first space</span>
+        <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">=</span> <span class="n">domain</span><span class="p">[</span><span class="n">spaces</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">hermitian_decomposition</span><span class="p">(</span>
+                                                       <span class="n">val</span><span class="p">,</span>
+                                                       <span class="n">domain_axes</span><span class="p">[</span><span class="n">spaces</span><span class="p">[</span><span class="mi">0</span><span class="p">]])</span>
+        <span class="c1"># hermitianize all remaining spaces using the iterative formula</span>
+        <span class="k">for</span> <span class="n">space</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">spaces</span><span class="p">)):</span>
+            <span class="p">(</span><span class="n">hh</span><span class="p">,</span> <span class="n">ha</span><span class="p">)</span> <span class="o">=</span> \
+                <span class="n">domain</span><span class="p">[</span><span class="n">space</span><span class="p">]</span><span class="o">.</span><span class="n">hermitian_decomposition</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">domain_axes</span><span class="p">[</span><span class="n">space</span><span class="p">])</span>
+            <span class="p">(</span><span class="n">ah</span><span class="p">,</span> <span class="n">aa</span><span class="p">)</span> <span class="o">=</span> \
+                <span class="n">domain</span><span class="p">[</span><span class="n">space</span><span class="p">]</span><span class="o">.</span><span class="n">hermitian_decomposition</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">domain_axes</span><span class="p">[</span><span class="n">space</span><span class="p">])</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="p">(</span><span class="n">hh</span> <span class="o">-</span> <span class="n">ha</span> <span class="o">-</span> <span class="n">ah</span> <span class="o">+</span> <span class="n">aa</span><span class="p">)</span><span class="o">.</span><span class="n">conjugate</span><span class="p">()</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="p">(</span><span class="n">val</span> <span class="o">+</span> <span class="n">c</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+            <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">val</span> <span class="o">-</span> <span class="n">c</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+
+        <span class="c1"># correct variance</span>
+        <span class="n">fixed_points</span> <span class="o">=</span> <span class="p">[</span><span class="n">domain</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">hermitian_fixed_points</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">]</span>
+        <span class="c1"># check if there was at least one flipping during hermitianization</span>
+        <span class="n">flipped_Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">([</span><span class="n">fp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">fixed_points</span><span class="p">])</span>
+        <span class="c1"># if the array got flipped, correct the variance</span>
+        <span class="k">if</span> <span class="n">flipped_Q</span><span class="p">:</span>
+            <span class="n">h</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">a</span> <span class="o">*=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">fixed_points</span> <span class="o">=</span> <span class="p">[[</span><span class="n">fp</span><span class="p">]</span> <span class="k">if</span> <span class="n">fp</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">fp</span> <span class="k">for</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">fixed_points</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">product_point</span> <span class="ow">in</span> <span class="n">itertools</span><span class="o">.</span><span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="n">fixed_points</span><span class="p">):</span>
+                <span class="n">slice_object</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">((</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="p">)</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
+                                        <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">object</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">spaces</span><span class="p">):</span>
+                    <span class="n">point_component</span> <span class="o">=</span> <span class="n">product_point</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">point_component</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">point_component</span> <span class="o">=</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+                    <span class="n">slice_object</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">sp</span><span class="p">])]</span> <span class="o">=</span> <span class="n">point_component</span>
+
+                <span class="n">slice_object</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">slice_object</span><span class="p">)</span>
+                <span class="n">h</span><span class="p">[</span><span class="n">slice_object</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+                <span class="n">a</span><span class="p">[</span><span class="n">slice_object</span><span class="p">]</span> <span class="o">/=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_spec_to_rescaler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">result_list</span><span class="p">,</span> <span class="n">power_space_index</span><span class="p">):</span>
+        <span class="n">power_space</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">power_space_index</span><span class="p">]</span>
+
+        <span class="c1"># weight the random fields with the power spectrum</span>
+        <span class="c1"># therefore get the pindex from the power space</span>
+        <span class="n">pindex</span> <span class="o">=</span> <span class="n">power_space</span><span class="o">.</span><span class="n">pindex</span>
+        <span class="c1"># take the local data from pindex. This data must be compatible to the</span>
+        <span class="c1"># local data of the field given the slice of the PowerSpace</span>
+        <span class="n">local_distribution_strategy</span> <span class="o">=</span> \
+            <span class="n">result_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">get_axes_local_distribution_strategy</span><span class="p">(</span>
+                <span class="n">result_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">power_space_index</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">pindex</span><span class="o">.</span><span class="n">distribution_strategy</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">local_distribution_strategy</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="s2">&quot;The distribution_stragey of pindex does not fit the &quot;</span>
+                <span class="s2">&quot;slice_local distribution strategy of the synthesized field.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Now use numpy advanced indexing in order to put the entries of the</span>
+        <span class="c1"># power spectrum into the appropriate places of the pindex array.</span>
+        <span class="c1"># Do this for every &#39;pindex-slice&#39; in parallel using the &#39;slice(None)&#39;s</span>
+        <span class="n">local_pindex</span> <span class="o">=</span> <span class="n">pindex</span><span class="o">.</span><span class="n">get_local_data</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">local_blow_up</span> <span class="o">=</span> <span class="p">[</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">local_blow_up</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">power_space_index</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">local_pindex</span>
+        <span class="c1"># here, the power_spectrum is distributed into the new shape</span>
+        <span class="n">local_rescaler</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="n">local_blow_up</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">local_rescaler</span>
+
+    <span class="c1"># ---Properties---</span>
+
+<div class="viewcode-block" id="Field.set_val"><a class="viewcode-back" href="../../field.html#nifty.Field.set_val">[docs]</a>    <span class="k">def</span> <span class="nf">set_val</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_val</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Sets the fields distributed_data_object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        new_val : scalar, array-like, Field, None *optional*</span>
+<span class="sd">            The values to be stored in the field.</span>
+<span class="sd">            {default : None}</span>
+
+<span class="sd">        copy : boolean, *optional*</span>
+<span class="sd">            If False, Field tries to not copy the input data but use it</span>
+<span class="sd">            directly.</span>
+<span class="sd">            {default : False}</span>
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        val</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">new_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">new_val</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
+            <span class="n">new_val</span> <span class="o">=</span> <span class="n">new_val</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_val</span> <span class="o">=</span> <span class="n">new_val</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="Field.get_val"><a class="viewcode-back" href="../../field.html#nifty.Field.get_val">[docs]</a>    <span class="k">def</span> <span class="nf">get_val</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the distributed_data_object associated with this Field.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        copy : boolean</span>
+<span class="sd">            If true, a copy of the Field&#39;s underlying distributed_data_object</span>
+<span class="sd">            is returned.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : distributed_data_object</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        val</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">copy</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">val</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the distributed_data_object associated with this Field.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : distributed_data_object</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        get_val</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="nd">@val</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span> <span class="nf">val</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_val</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="o">=</span><span class="n">new_val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">shape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the total shape of the Field&#39;s data array.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : tuple</span>
+<span class="sd">            The output object. The tuple contains the dimansions of the spaces</span>
+<span class="sd">            in domain.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        dim</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">shape_tuple</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">shape</span> <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">global_shape</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span><span class="p">,</span> <span class="n">shape_tuple</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="n">global_shape</span> <span class="o">=</span> <span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">global_shape</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dim</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the total number of pixel-dimensions the field has.</span>
+
+<span class="sd">        Effectively, all values from shape are multiplied.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : int</span>
+<span class="sd">            The dimension of the Field.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        shape</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">dim_tuple</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">dim</span> <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="n">dim_tuple</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">dof</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the total number of degrees of freedom the Field has. For</span>
+<span class="sd">        real Fields this is equal to `self.dim`. For complex Fields it is</span>
+<span class="sd">        2*`self.dim`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">dof</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span>
+        <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">complexfloating</span><span class="p">):</span>
+            <span class="n">dof</span> <span class="o">*=</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="n">dof</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">total_volume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns the total volume of all spaces in the domain.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">volume_tuple</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">sp</span><span class="o">.</span><span class="n">total_volume</span> <span class="k">for</span> <span class="n">sp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="p">,</span> <span class="n">volume_tuple</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mf">0.</span>
+
+    <span class="c1"># ---Special unary/binary operations---</span>
+
+<div class="viewcode-block" id="Field.cast"><a class="viewcode-back" href="../../field.html#nifty.Field.cast">[docs]</a>    <span class="k">def</span> <span class="nf">cast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Transforms x to a d2o with the correct dtype and shape.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : scalar, d2o, Field, array_like</span>
+<span class="sd">            The input that shall be casted on a d2o of the same shape like the</span>
+<span class="sd">            domain.</span>
+
+<span class="sd">        dtype : type</span>
+<span class="sd">            The datatype the output shall have. This can be used to override</span>
+<span class="sd">            the fields dtype.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : distributed_data_object</span>
+<span class="sd">            The output object.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _actual_cast</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">casted_x</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">sp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">):</span>
+            <span class="n">casted_x</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">pre_cast</span><span class="p">(</span><span class="n">casted_x</span><span class="p">,</span>
+                                   <span class="n">axes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">ind</span><span class="p">])</span>
+
+        <span class="n">casted_x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_actual_cast</span><span class="p">(</span><span class="n">casted_x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">sp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">):</span>
+            <span class="n">casted_x</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">post_cast</span><span class="p">(</span><span class="n">casted_x</span><span class="p">,</span>
+                                    <span class="n">axes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">ind</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">casted_x</span></div>
+
+    <span class="k">def</span> <span class="nf">_actual_cast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Field</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">get_val</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="n">return_x</span> <span class="o">=</span> <span class="n">distributed_data_object</span><span class="p">(</span>
+                            <span class="n">global_shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                            <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                            <span class="n">distribution_strategy</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">distribution_strategy</span><span class="p">)</span>
+        <span class="n">return_x</span><span class="o">.</span><span class="n">set_full_data</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">return_x</span>
+
+<div class="viewcode-block" id="Field.copy"><a class="viewcode-back" href="../../field.html#nifty.Field.copy">[docs]</a>    <span class="k">def</span> <span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">distribution_strategy</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns a full copy of the Field.</span>
+
+<span class="sd">        If no keyword arguments are given, the returned object will be an</span>
+<span class="sd">        identical copy of the original Field. By explicit specification one is</span>
+<span class="sd">        able to define the domain, the dtype and the distribution_strategy of</span>
+<span class="sd">        the returned Field.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        domain : DomainObject</span>
+<span class="sd">            The new domain the Field shall have.</span>
+
+<span class="sd">        dtype : type</span>
+<span class="sd">            The new dtype the Field shall have.</span>
+
+<span class="sd">        distribution_strategy : all supported distribution strategies</span>
+<span class="sd">            The new distribution strategy the Field shall have.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : Field</span>
+<span class="sd">            The output object. An identical copy of &#39;self&#39;.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        copy_empty</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">copied_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">new_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">(</span>
+                                <span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+                                <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                                <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">distribution_strategy</span><span class="p">)</span>
+        <span class="n">new_field</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="o">=</span><span class="n">copied_val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_field</span></div>
+
+<div class="viewcode-block" id="Field.copy_empty"><a class="viewcode-back" href="../../field.html#nifty.Field.copy_empty">[docs]</a>    <span class="k">def</span> <span class="nf">copy_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">distribution_strategy</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Returns an empty copy of the Field.</span>
+
+<span class="sd">        If no keyword arguments are given, the returned object will be an</span>
+<span class="sd">        identical copy of the original Field. The memory for the data array</span>
+<span class="sd">        is only allocated but not actively set to any value</span>
+<span class="sd">        (c.f. numpy.ndarray.copy_empty). By explicit specification one is able</span>
+<span class="sd">        to change the domain, the dtype and the distribution_strategy of the</span>
+<span class="sd">        returned Field.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        domain : DomainObject</span>
+<span class="sd">            The new domain the Field shall have.</span>
+
+<span class="sd">        dtype : type</span>
+<span class="sd">            The new dtype the Field shall have.</span>
+
+<span class="sd">        distribution_strategy : string, all supported distribution strategies</span>
+<span class="sd">            The distribution strategy the new Field should have.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : Field</span>
+<span class="sd">            The output object.</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        copy</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">domain</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">domain</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_parse_domain</span><span class="p">(</span><span class="n">domain</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">distribution_strategy</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">distribution_strategy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_strategy</span>
+
+        <span class="n">fast_copyable</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)):</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">domain</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+                    <span class="n">fast_copyable</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">break</span>
+        <span class="k">except</span> <span class="ne">IndexError</span><span class="p">:</span>
+            <span class="n">fast_copyable</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">fast_copyable</span> <span class="ow">and</span> <span class="n">dtype</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="ow">and</span>
+                <span class="n">distribution_strategy</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_strategy</span><span class="p">):</span>
+            <span class="n">new_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fast_copy_empty</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_field</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">domain</span><span class="o">=</span><span class="n">domain</span><span class="p">,</span>
+                              <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
+                              <span class="n">distribution_strategy</span><span class="o">=</span><span class="n">distribution_strategy</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_field</span></div>
+
+    <span class="k">def</span> <span class="nf">_fast_copy_empty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># make an empty field</span>
+        <span class="n">new_field</span> <span class="o">=</span> <span class="n">EmptyField</span><span class="p">()</span>
+        <span class="c1"># repair its class</span>
+        <span class="n">new_field</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span>
+        <span class="c1"># copy domain, codomain and val</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="o">!=</span> <span class="s1">&#39;_val&#39;</span><span class="p">:</span>
+                <span class="n">new_field</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_field</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">new_field</span>
+
+<div class="viewcode-block" id="Field.weight"><a class="viewcode-back" href="../../field.html#nifty.Field.weight">[docs]</a>    <span class="k">def</span> <span class="nf">weight</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Weights the pixels of `self` with their invidual pixel-volume.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        power : number</span>
+<span class="sd">            The pixels get weighted with the volume-factor**power.</span>
+
+<span class="sd">        inplace : boolean</span>
+<span class="sd">            If True, `self` will be weighted and returned. Otherwise, a copy</span>
+<span class="sd">            is made.</span>
+
+<span class="sd">        spaces : tuple of ints</span>
+<span class="sd">            Determines on which subspace the operation takes place.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : Field</span>
+<span class="sd">            The weighted field.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="n">new_field</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">new_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+
+        <span class="n">new_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">spaces</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">cast_axis_to_tuple</span><span class="p">(</span><span class="n">spaces</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">spaces</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spaces</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">ind</span><span class="p">,</span> <span class="n">sp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">ind</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">:</span>
+                <span class="n">new_val</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">weight</span><span class="p">(</span><span class="n">new_val</span><span class="p">,</span>
+                                    <span class="n">power</span><span class="o">=</span><span class="n">power</span><span class="p">,</span>
+                                    <span class="n">axes</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">ind</span><span class="p">],</span>
+                                    <span class="n">inplace</span><span class="o">=</span><span class="n">inplace</span><span class="p">)</span>
+
+        <span class="n">new_field</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="o">=</span><span class="n">new_val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_field</span></div>
+
+<div class="viewcode-block" id="Field.dot"><a class="viewcode-back" href="../../field.html#nifty.Field.dot">[docs]</a>    <span class="k">def</span> <span class="nf">dot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bare</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Computes the volume-factor-aware dot product of &#39;self&#39; with x.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : Field</span>
+<span class="sd">            The domain of x must contain `self.domain`</span>
+
+<span class="sd">        spaces : tuple of ints</span>
+<span class="sd">            If the domain of `self` and `x` are not the same, `spaces` specfies</span>
+<span class="sd">            the mapping.</span>
+
+<span class="sd">        bare : boolean</span>
+<span class="sd">            If true, no volume factors will be included in the computation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : float, complex</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Field</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;The dot-partner must be an instance of &quot;</span> <span class="o">+</span>
+                             <span class="s2">&quot;the NIFTy field class&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Compute the dot respecting the fact of discrete/continuous spaces</span>
+        <span class="k">if</span> <span class="n">bare</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">(</span><span class="n">power</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">spaces</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x_val</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">y_val</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="n">x_val</span><span class="o">.</span><span class="n">conjugate</span><span class="p">()</span> <span class="o">*</span> <span class="n">y_val</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">result</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># create a diagonal operator which is capable of taking care of the</span>
+            <span class="c1"># axes-matching</span>
+            <span class="kn">from</span> <span class="nn">nifty.operators.diagonal_operator</span> <span class="k">import</span> <span class="n">DiagonalOperator</span>
+            <span class="n">diagonal</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">val</span><span class="o">.</span><span class="n">conjugate</span><span class="p">()</span>
+            <span class="n">diagonalOperator</span> <span class="o">=</span> <span class="n">DiagonalOperator</span><span class="p">(</span><span class="n">domain</span><span class="o">=</span><span class="n">y</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+                                                <span class="n">diagonal</span><span class="o">=</span><span class="n">diagonal</span><span class="p">,</span>
+                                                <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">dotted</span> <span class="o">=</span> <span class="n">diagonalOperator</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">dotted</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">spaces</span><span class="o">=</span><span class="n">spaces</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Field.norm"><a class="viewcode-back" href="../../field.html#nifty.Field.norm">[docs]</a>    <span class="k">def</span> <span class="nf">norm</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Computes the Lq-norm of the field values.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        q : scalar</span>
+<span class="sd">            Parameter q of the Lq-norm (default: 2).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        norm : scalar</span>
+<span class="sd">            The Lq-norm of the field values.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">q</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="p">))</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="bp">self</span> <span class="o">**</span> <span class="p">(</span><span class="n">q</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">q</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Field.conjugate"><a class="viewcode-back" href="../../field.html#nifty.Field.conjugate">[docs]</a>    <span class="k">def</span> <span class="nf">conjugate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Retruns the complex conjugate of the field.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inplace : boolean</span>
+<span class="sd">            Decides whether the conjugation should be performed inplace.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        cc : field</span>
+<span class="sd">            The complex conjugated field.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="n">work_field</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">work_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+
+        <span class="n">new_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">new_val</span> <span class="o">=</span> <span class="n">new_val</span><span class="o">.</span><span class="n">conjugate</span><span class="p">()</span>
+        <span class="n">work_field</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="o">=</span><span class="n">new_val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">work_field</span></div>
+
+    <span class="c1"># ---General unary/contraction methods---</span>
+
+    <span class="k">def</span> <span class="nf">__pos__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__pos__() &lt;==&gt; +x</span>
+
+<span class="sd">        Returns a (positive) copy of `self`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__neg__() &lt;==&gt; -x</span>
+
+<span class="sd">        Returns a negative copy of `self`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">return_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+        <span class="n">new_val</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">return_field</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">return_field</span>
+
+    <span class="k">def</span> <span class="nf">__abs__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__abs__() &lt;==&gt; abs(x)</span>
+
+<span class="sd">        Returns an absolute valued copy of `self`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">return_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">()</span>
+        <span class="n">new_val</span> <span class="o">=</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">return_field</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">new_val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">return_field</span>
+
+    <span class="k">def</span> <span class="nf">_contraction_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">spaces</span><span class="p">):</span>
+        <span class="c1"># build a list of all axes</span>
+        <span class="k">if</span> <span class="n">spaces</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">spaces</span> <span class="o">=</span> <span class="n">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">spaces</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">cast_axis_to_tuple</span><span class="p">(</span><span class="n">spaces</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+
+        <span class="n">axes_list</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">[</span><span class="n">sp_index</span><span class="p">]</span> <span class="k">for</span> <span class="n">sp_index</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">axes_list</span> <span class="o">=</span> <span class="n">reduce</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="n">x</span><span class="o">+</span><span class="n">y</span><span class="p">,</span> <span class="n">axes_list</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="n">axes_list</span> <span class="o">=</span> <span class="p">()</span>
+
+        <span class="c1"># perform the contraction on the d2o</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">op</span><span class="p">)(</span><span class="n">axis</span><span class="o">=</span><span class="n">axes_list</span><span class="p">)</span>
+
+        <span class="c1"># check if the result is scalar or if a result_field must be constr.</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">data</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">return_domain</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                                  <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">))</span>
+                                  <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">spaces</span><span class="p">)</span>
+
+            <span class="n">return_field</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">domain</span><span class="o">=</span><span class="n">return_domain</span><span class="p">,</span>
+                                 <span class="n">val</span><span class="o">=</span><span class="n">data</span><span class="p">,</span>
+                                 <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">return_field</span>
+
+    <span class="k">def</span> <span class="nf">sum</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">prod</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;prod&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">any</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;any&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">nanmin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;nanmin&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">nanmax</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;nanmax&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">mean</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;mean&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">var</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;var&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">std</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spaces</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_contraction_helper</span><span class="p">(</span><span class="s1">&#39;std&#39;</span><span class="p">,</span> <span class="n">spaces</span><span class="p">)</span>
+
+    <span class="c1"># ---General binary methods---</span>
+
+    <span class="k">def</span> <span class="nf">_binary_helper</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="c1"># if other is a field, make sure that the domains match</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Field</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)):</span>
+                    <span class="k">assert</span> <span class="n">other</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">AssertionError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;domains are incompatible.&quot;</span><span class="p">)</span>
+            <span class="n">other</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">self_val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">(</span><span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">return_val</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">self_val</span><span class="p">,</span> <span class="n">op</span><span class="p">)(</span><span class="n">other</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="n">working_field</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">working_field</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">copy_empty</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">return_val</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="n">working_field</span><span class="o">.</span><span class="n">set_val</span><span class="p">(</span><span class="n">return_val</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">working_field</span>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__add__(y) &lt;==&gt; x+y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _binary_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__add__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__radd__(y) &lt;==&gt; y+x</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__radd__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__iadd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__iadd__(y) &lt;==&gt; x+=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__iadd__&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__sub__(y) &lt;==&gt; x-y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__sub__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rsub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__rsub__(y) &lt;==&gt; y-x</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__rsub__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__isub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__isub__(y) &lt;==&gt; x-=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__isub__&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__mul__(y) &lt;==&gt; x*y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__mul__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__rmul__(y) &lt;==&gt; y*x</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__rmul__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__imul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__imul__(y) &lt;==&gt; x*=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__imul__&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__div__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__div__(y) &lt;==&gt; x/y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__div__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rdiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__rdiv__(y) &lt;==&gt; y/x</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__rdiv__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__idiv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__idiv__(y) &lt;==&gt; x/=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__idiv__&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__pow__(y) &lt;==&gt; x**y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__pow__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__rpow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__rpow__(y) &lt;==&gt; y**x</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__rpow__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ipow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__ipow__(y) &lt;==&gt; x**=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _builtin_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__ipow__&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__lt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__lt__(y) &lt;==&gt; x&lt;y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _binary_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__lt__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__le__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__le__(y) &lt;==&gt; x&lt;=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _binary_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__le__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__ne__(y) &lt;==&gt; x!=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _binary_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__ne__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__eq__(y) &lt;==&gt; x=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _binary_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">other</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__eq__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__ge__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__ge__(y) &lt;==&gt; x&gt;=y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _binary_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__ge__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__gt__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; x.__gt__(y) &lt;==&gt; x&gt;y</span>
+
+<span class="sd">        See Also</span>
+<span class="sd">        --------</span>
+<span class="sd">        _binary_helper</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_binary_helper</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;__gt__&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;nifty_core.field&gt;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">minmax</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">()]</span>
+        <span class="n">mean</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">return</span> <span class="s2">&quot;nifty_core.field instance</span><span class="se">\n</span><span class="s2">- domain      = &quot;</span> <span class="o">+</span> \
+               <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span> <span class="o">+</span> \
+               <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">- val         = &quot;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_val</span><span class="p">())</span> <span class="o">+</span> \
+               <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  - min.,max. = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">minmax</span><span class="p">)</span> <span class="o">+</span> \
+               <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">  - mean = &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+
+    <span class="c1"># ---Serialization---</span>
+
+    <span class="k">def</span> <span class="nf">_to_hdf5</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hdf5_group</span><span class="p">):</span>
+        <span class="n">hdf5_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">name</span>
+        <span class="n">hdf5_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;distribution_strategy&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution_strategy</span>
+        <span class="n">hdf5_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;domain_axes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain_axes</span><span class="p">)</span>
+        <span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;num_domain&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ret_dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ret_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;val&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">val</span><span class="p">}</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">)):</span>
+            <span class="n">ret_dict</span><span class="p">[</span><span class="s1">&#39;s_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">ret_dict</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_from_hdf5</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">hdf5_group</span><span class="p">,</span> <span class="n">repository</span><span class="p">):</span>
+        <span class="c1"># create empty field</span>
+        <span class="n">new_field</span> <span class="o">=</span> <span class="n">EmptyField</span><span class="p">()</span>
+        <span class="c1"># reset class</span>
+        <span class="n">new_field</span><span class="o">.</span><span class="vm">__class__</span> <span class="o">=</span> <span class="bp">cls</span>
+        <span class="c1"># set values</span>
+        <span class="n">temp_domain</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">hdf5_group</span><span class="p">[</span><span class="s1">&#39;num_domain&#39;</span><span class="p">][()]):</span>
+            <span class="n">temp_domain</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">repository</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;s_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">hdf5_group</span><span class="p">))</span>
+        <span class="n">new_field</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">temp_domain</span><span class="p">)</span>
+
+        <span class="n">exec</span><span class="p">(</span><span class="s1">&#39;new_field.domain_axes = &#39;</span> <span class="o">+</span> <span class="n">hdf5_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;domain_axes&#39;</span><span class="p">])</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">new_field</span><span class="o">.</span><span class="n">_val</span> <span class="o">=</span> <span class="n">repository</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;val&#39;</span><span class="p">,</span> <span class="n">hdf5_group</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">(</span><span class="ne">KeyError</span><span class="p">):</span>
+            <span class="n">new_field</span><span class="o">.</span><span class="n">_val</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">new_field</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">hdf5_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">])</span>
+        <span class="n">new_field</span><span class="o">.</span><span class="n">distribution_strategy</span> <span class="o">=</span>\
+            <span class="n">hdf5_group</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;distribution_strategy&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">new_field</span></div>
+
+
+<span class="k">class</span> <span class="nc">EmptyField</span><span class="p">(</span><span class="n">Field</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/nifty_logo_black.png" alt="Logo"/>
+            </a></p><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Theo Steininger.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
