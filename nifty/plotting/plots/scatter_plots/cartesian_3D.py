@@ -4,11 +4,17 @@ from cartesian import Cartesian
 
 
 class Cartesian3D(Cartesian):
-    def __init__(self, x, y, z, label='', line=None, marker=None,
+    def __init__(self, data, label='', line=None, marker=None,
                  showlegend=True):
-        super(Cartesian3D, self).__init__(x, y, label, line, marker,
+        super(Cartesian3D, self).__init__(data, label, line, marker,
                                           showlegend)
-        self.z = z
+
+    def at(self, data):
+        return Cartesian3D(data=data,
+                           label=self.label,
+                           line=self.line,
+                           marker=self.marker,
+                           showlegend=self.showlegend)
 
     @property
     def figure_dimension(self):
@@ -16,6 +22,6 @@ class Cartesian3D(Cartesian):
 
     def to_plotly(self):
         plotly_object = super(Cartesian3D, self).to_plotly()
-        plotly_object['z'] = self.z
+        plotly_object['z'] = self.data[2]
         plotly_object['type'] = 'scatter3d'
         return plotly_object

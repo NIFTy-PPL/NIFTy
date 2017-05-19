@@ -10,18 +10,27 @@ pyHealpix = gdi.get('pyHealpix')
 
 
 class HPMollweide(Heatmap):
-    def __init__(self, data, color_map=None, webgl=False,
+    def __init__(self, data, xsize=800, color_map=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
+        self.xsize = xsize
+        super(HPMollweide, self).__init__(data, color_map, webgl, smoothing)
+
+    def at(self, data):
         if isinstance(data, list):
             data = [self._mollview(d) for d in data]
         else:
             data = self._mollview(data)
-        super(HPMollweide, self).__init__(data, color_map, webgl, smoothing)
+        return HPMollweide(data=data,
+                           xsize=self.xsize,
+                           color_map=self.color_map,
+                           webgl=self.webgl,
+                           smoothing=self.smoothing)
 
-    def _mollview(self, x, xsize=800):
+    def _mollview(self, x):
+        xsize = self.xsize
         res, mask, theta, phi = mollweide_helper(xsize)
 
         ptg = np.empty((phi.size, 2), dtype=np.float64)

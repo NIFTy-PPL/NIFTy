@@ -10,16 +10,26 @@ pyHealpix = gdi.get('pyHealpix')
 
 
 class GLMollweide(Heatmap):
-    def __init__(self, data, nlat, nlon, color_map=None, webgl=False,
-                 smoothing=False):  # smoothing 'best', 'fast', False
+    def __init__(self, data, xsize=800, color_map=None,
+                 webgl=False, smoothing=False):
+        # smoothing 'best', 'fast', False
         if 'pyHealpix' not in gdi:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
+        self.xsize = xsize
+
+        super(GLMollweide, self).__init__(data, color_map, webgl, smoothing)
+
+    def at(self, data):
         if isinstance(data, list):
             data = [self._mollview(d) for d in data]
         else:
-            data = self._mollview(data, nlat, nlon)
-        super(GLMollweide, self).__init__(data, color_map, webgl, smoothing)
+            data = self._mollview(data)
+        return GLMollweide(data=data,
+                           xsize=self.xsize,
+                           color_map=self.color_map,
+                           webgl=self.webgl,
+                           smoothing=self.smoothing)
 
     @staticmethod
     def _find_closest(A, target):
@@ -31,10 +41,13 @@ class GLMollweide(Heatmap):
         idx -= target - left < right - target
         return idx
 
-    def _mollview(self, x, nlat, nlon, xsize=800):
+    def _mollview(self, x):
+        xsize = self.xsize
+        nlat = x.shape[0]
+        nlon = x.shape[1]
+
         res, mask, theta, phi = mollweide_helper(xsize)
 
-        x = np.reshape(x, (nlat, nlon))
         ra = np.linspace(0, 2*np.pi, nlon+1)
         dec = pyHealpix.GL_thetas(nlat)
         ilat = self._find_closest(dec, theta)

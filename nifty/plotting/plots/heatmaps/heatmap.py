@@ -6,14 +6,8 @@ from nifty.plotting.plotly_wrapper import PlotlyWrapper
 
 
 class Heatmap(PlotlyWrapper):
-    def __init__(self, data, color_map=None, webgl=False,
-                 smoothing=False):  # smoothing 'best', 'fast', False
-        if isinstance(data, list):
-            self.data = np.zeros((data[0].shape))
-            for arr in data:
-                self.data = np.add(self.data, arr)
-        else:
-            self.data = data
+    def __init__(self, data, color_map=None, webgl=False, smoothing=False):
+        # smoothing 'best', 'fast', False
 
         if color_map is not None:
             if not isinstance(color_map, Colormap):
@@ -22,6 +16,19 @@ class Heatmap(PlotlyWrapper):
         self.color_map = color_map
         self.webgl = webgl
         self.smoothing = smoothing
+        self.data = data
+
+    def at(self, data):
+        if isinstance(data, list):
+            temp_data = np.zeros((data[0].shape))
+            for arr in data:
+                temp_data = np.add(temp_data, arr)
+        else:
+            temp_data = data
+        return Heatmap(data=temp_data,
+                       color_map=self.color_map,
+                       webgl=self.webgl,
+                       smoothing=self.smoothing)
 
     @property
     def figure_dimension(self):
@@ -29,7 +36,9 @@ class Heatmap(PlotlyWrapper):
 
     def to_plotly(self):
         plotly_object = dict()
+
         plotly_object['z'] = self.data
+
         plotly_object['showscale'] = False
         if self.color_map:
             plotly_object['colorscale'] = self.color_map.to_plotly()

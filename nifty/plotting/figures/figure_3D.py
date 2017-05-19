@@ -10,6 +10,15 @@ class Figure3D(FigureFromPlot):
         self.yaxis = yaxis
         self.zaxis = zaxis
 
+    def at(self, plots):
+        return Figure3D(plots=plots,
+                        title=self.title,
+                        width=self.width,
+                        height=self.height,
+                        xaxis=self.xaxis,
+                        yaxis=self.yaxis,
+                        zaxis=self.zaxis)
+
     def to_plotly(self):
         plotly_object = super(Figure3D, self).to_plotly()
         if self.xaxis or self.yaxis or self.zaxis:

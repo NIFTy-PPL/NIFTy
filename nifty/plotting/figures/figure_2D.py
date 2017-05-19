@@ -7,31 +7,44 @@ from nifty.plotting.plots import Heatmap, HPMollweide, GLMollweide
 class Figure2D(FigureFromPlot):
     def __init__(self, plots, title=None, width=None, height=None,
                  xaxis=None, yaxis=None):
-        super(Figure2D, self).__init__(plots, title, width, height)
 
-        # TODO: add sanitization of plots input
-        if isinstance(plots[0], Heatmap) and not width and not height:
-            (x, y) = plots[0].data.shape
+        if plots is not None:
+            if isinstance(plots[0], Heatmap) and width is None and \
+               height is None:
+                (x, y) = plots[0].data.shape
 
-            if x > y:
-                width = 500
-                height = int(500*y/x)
+                if x > y:
+                    width = 500
+                    height = int(500*y/x)
+                else:
+                    height = 500
+                    width = int(500 * y / x)
+
+                if isinstance(plots[0], GLMollweide) or \
+                   isinstance(plots[0], HPMollweide):
+                    xaxis = False if (xaxis is None) else xaxis
+                    yaxis = False if (yaxis is None) else yaxis
+
             else:
-                height = 500
-                width = int(500 * y / x)
-            if isinstance(plots[0], GLMollweide) or isinstance(plots[0],
-                                                               HPMollweide):
-                if not xaxis:
-                    xaxis = False
-                if not yaxis:
-                    yaxis = False
+                width = None
+                height = None
 
         super(Figure2D, self).__init__(plots, title, width, height)
         self.xaxis = xaxis
         self.yaxis = yaxis
 
+    def at(self, plots):
+        return Figure2D(plots=plots,
+                        title=self.title,
+                        width=self.width,
+                        height=self.height,
+                        xaxis=self.xaxis,
+                        yaxis=self.yaxis)
+
     def to_plotly(self):
+
         plotly_object = super(Figure2D, self).to_plotly()
+
         if self.xaxis or self.yaxis:
             plotly_object['layout']['scene']['aspectratio'] = {}
         if self.xaxis:
