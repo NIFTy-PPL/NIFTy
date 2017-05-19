@@ -21,13 +21,11 @@ class CriticalPowerEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, m, D, alpha, beta, w = None, samples=3):
+    def __init__(self, position, m, D=None, alpha =1.0, q=0, w=None, samples=3):
         super(CriticalPowerEnergy, self).__init__(position = position)
-        self.al = d
-        self.R = R
-        self.N = N
-        self.S = S
-
+        self.m = m
+        if w is None:
+            self._calculate_w(self.m, D)
 
     def at(self, position):
         return self.__class__(position, self.d, self.R, self.N, self.S)
@@ -56,10 +54,15 @@ class CriticalPowerEnergy(Energy):
 
     def _calculate_w(self, m, D, samples):
         w = Field(domain=self.position.domain, val=0)
-        for i in range(samples):
-            posterior_sample = generate_posterior_sample(m, D)
-            projected_sample =posterior_sample.power_analyze()**2
-            w += projected_sample
+        if D is not None:
+            for i in range(samples):
+                posterior_sample = generate_posterior_sample(m, D)
+                projected_sample =posterior_sample.power_analyze()**2
+                w += projected_sample
+            w /= float(samples)
+        else:
+            pass
+
         return w / float(samples)
 
 
