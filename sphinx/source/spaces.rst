@@ -19,7 +19,6 @@ Next to the generic :py:class:`Space` class, NIFTY has implementations of five s
     gl_space
     lm_space
     power_space
-    power_indices
 
 .. currentmodule:: nifty
 
