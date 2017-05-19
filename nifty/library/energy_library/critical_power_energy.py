@@ -1,7 +1,8 @@
 from nifty.energies.energy import Energy
-from nifty.library.operator_library import CriticalPowerCurvature
+from nifty.library.operator_library import CriticalPowerCurvature,\
+                                            SmoothnessOperator
 from nifty.sugar import generate_posterior_sample
-from nifty import Field
+from nifty import Field, exp
 
 class CriticalPowerEnergy(Energy):
     """The Energy for the Gaussian lognormal case.
@@ -21,35 +22,44 @@ class CriticalPowerEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, m, D=None, alpha =1.0, q=0, w=None, samples=3):
+    def __init__(self, position, m, D=None, alpha =1.0, q=0, sigma=0, w=None, samples=3):
         super(CriticalPowerEnergy, self).__init__(position = position)
         self.m = m
+        self.D = D
+        self.samples = samples
+        self.sigma = sigma
+        self.alpha = alpha
+        self.q = q
+        self.T = SmoothnessOperator(domain=self.position.domain, sigma=self.sigma)
+        self.rho = self.position.domain.rho
         if w is None:
-            self._calculate_w(self.m, D)
+            self.w = self._calculate_w(self.m, self.D, self.samples)
+        self.theta = exp(-self.position) * (self.q + w / 2.)
 
     def at(self, position):
-        return self.__class__(position, self.d, self.R, self.N, self.S)
+        return self.__class__(position, self.m, D=self.D,
+                              alpha =self.alpha,
+                              q=self.q,
+                              sigma=self.sigma, w=self.w,
+                              samples=self.samples)
 
     @property
     def value(self):
-        energy = 0.5 * self.position.dot(self.S.inverse_times(self.position))
-        energy += 0.5 * (self.d - self.R(self.position)).dot(
-            self.N.inverse_times(self.d - self.R(self.position)))
+        energy = self.theta.sum()
+        energy += self.position.dot(self.alpha - 1 + self.rho / 2.)
+        energy += 0.5 * self.position.dot(self.T(self.position))
         return energy.real
 
     @property
     def gradient(self):
-        gradient = self.S.inverse_times(self.position)
-        gradient -= self.R.derived_adjoint_times(
-                    self.N.inverse_times(self.d - self.R(self.position)), self.position)
+        gradient = - self.theta
+        gradient += self.alpha - 1 + self.rho / 2.
+        gradient += self.T(self.position)
         return gradient
 
     @property
     def curvature(self):
-        curvature =CriticalPowerCurvature(R=self.R,
-                                                   N=self.N,
-                                                   S=self.S,
-                                                   position=self.position)
+        curvature = CriticalPowerCurvature(theta=self.theta, T = self.T)
         return curvature
 
     def _calculate_w(self, m, D, samples):
@@ -57,13 +67,13 @@ class CriticalPowerEnergy(Energy):
         if D is not None:
             for i in range(samples):
                 posterior_sample = generate_posterior_sample(m, D)
-                projected_sample =posterior_sample.power_analyze()**2
+                projected_sample =posterior_sample.project_power(domain=self.position.domain)
                 w += projected_sample
             w /= float(samples)
         else:
-            pass
+            w = m.project_power(domain=self.position.domain)
 
-        return w / float(samples)
+        return w
 
 
 
