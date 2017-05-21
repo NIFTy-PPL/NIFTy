@@ -11,7 +11,7 @@ Summary
 
 ### Description
 
-**NIFTY**, "**N**umerical **I**nformation **F**ield **T**heor**y**", is
+**NIFTY**, "**N**umerical **I**nformation **F**ield **T**heor<strong>y</strong>", is
 a versatile library designed to enable the development of signal
 inference algorithms that operate regardless of the underlying spatial
 grid and its resolution. Its object-oriented framework is written in
