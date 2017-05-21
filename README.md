@@ -92,16 +92,12 @@ Starting with a fresh Ubuntu installation move to a folder like
 -   Install pyHealpix:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
-        cd pyHealpix
-        autoreconf -i && ./configure --prefix=$HOME/.local --enable-openmp --enable-native-optimizations && make -j4 && make install
-        cd ..
+        (cd pyHealpix && autoreconf -i && ./configure --prefix=$HOME/.local --enable-openmp --enable-native-optimizations && make -j4 install)
 
 -   Finally, NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        cd NIFTy
-        python setup.py install --user
-        cd ..
+        (cd NIFTy && python setup.py install --user)
 
 ### Installation on Linux systems in general
 
@@ -139,16 +135,13 @@ may cause trouble.
 -   Install NIFTy:
 
         git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        cd NIFTy
-        python setup.py install --user
-        cd ..
+        (cd NIFTy && python setup.py install --user)
 
 ### Running the tests
 
 In oder to run the tests one needs two additional packages:
 
-    pip install nose
-    pip install parameterized
+    pip install nose parameterized
 
 Afterwards the tests (including a coverage report) are run using the following
 command in the repository root:
