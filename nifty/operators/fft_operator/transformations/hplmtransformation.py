@@ -92,11 +92,6 @@ class HPLMTransformation(SlicingTransformation):
         super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
-        if inp.dtype not in (np.float, np.complex):
-            self.logger.warn("The input array has dtype: %s. The FFT will "
-                             "be performed at double precision." %
-                             str(inp.dtype))
-
         lmax = self.codomain.lmax
         mmax = lmax
 

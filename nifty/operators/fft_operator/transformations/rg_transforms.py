@@ -433,11 +433,6 @@ class FFTW(Transform):
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
-        #if val.dtype not in (np.float, np.complex):
-        #    self.logger.warn("The input array has dtype: %s. The FFT will "
-        #                     "be performed at double precision." %
-        #                     str(val.dtype))
-
         # If the input is a numpy array we transform it locally
         if not isinstance(val, distributed_data_object):
             # Cast to a np.ndarray
@@ -581,11 +576,6 @@ class NUMPYFFT(Transform):
         if axes is not None and \
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
-
-        if val.dtype not in (np.float, np.complex):
-            self.logger.warn("The input array has dtype: %s. The FFT will "
-                             "be performed at double precision." %
-                             str(val.dtype))
 
         return_val = val.copy_empty(global_shape=val.shape,
                                     dtype=np.complex)
