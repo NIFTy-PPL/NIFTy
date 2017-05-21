@@ -20,17 +20,17 @@ test_all:
   stage: test
   script:
     - python setup.py build_ext --inplace
-    - nosetests -vv
+    - nosetests
     - ci/install_pyHealpix.sh
     - ci/install_mpi4py.sh
     - python setup.py build_ext --inplace
-    - nosetests -vv
+    - nosetests
     - ci/install_pyfftw.sh
     - python setup.py build_ext --inplace
-    - nosetests -vv
+    - nosetests
     - ci/install_h5py.sh
     - python setup.py build_ext --inplace
-    - nosetests -vv --with-coverage --cover-package=nifty --cover-branches
+    - nosetests --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
