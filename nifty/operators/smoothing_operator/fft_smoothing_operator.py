@@ -24,6 +24,7 @@ class FFTSmoothingOperator(SmoothingOperator):
         kernel = codomain.get_distance_array(
             distribution_strategy=axes_local_distribution_strategy)
 
+        #MR FIXME: this causes calls of log(0.) which should probably be avoided
         if self.log_distances:
             kernel.apply_scalar_function(np.log, inplace=True)
 
@@ -43,6 +44,7 @@ class FFTSmoothingOperator(SmoothingOperator):
 
         # apply the kernel
         if inverse:
+            #MR FIXME: danger of having division by zero or overflows
             local_transformed_x /= local_kernel
         else:
             local_transformed_x *= local_kernel
