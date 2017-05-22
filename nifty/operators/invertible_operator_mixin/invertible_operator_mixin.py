@@ -103,8 +103,3 @@ class InvertibleOperatorMixin(object):
                                                 b=x,
                                                 x0=x0)
         return result
-
-    #MR FIXME: why? shouldn't this be equivalent to the adjoint inverse?
-    def _inverse_adjoint_times(self, x, spaces):
-        raise NotImplementedError(
-            "no generic instance method 'inverse_adjoint_times'.")
