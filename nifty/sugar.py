@@ -25,7 +25,6 @@ __all__ = ['create_power_operator']
 
 def create_power_operator(domain, power_spectrum, dtype=None,
                           distribution_strategy='not'):
-<<<<<<< nifty/sugar.py
     """ Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that lives over the specified domain.
@@ -50,8 +49,6 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     DiagonalOperator : An operator that implements the given power spectrum.
 
     """
-=======
->>>>>>> nifty/sugar.py
 
     power_domain = PowerSpace(domain,
                               distribution_strategy=distribution_strategy)
