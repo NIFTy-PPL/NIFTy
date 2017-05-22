@@ -59,7 +59,6 @@ release_image_master:
   services:
     - docker:dind
   script:
-    - export DOCKER_HOST="tcp://localhost:2375"
     - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
     - docker build -t $RELEASE_IMAGE_MASTER .
     - docker push $RELEASE_IMAGE_MASTER
@@ -74,7 +73,6 @@ release_image_tagged:
   services:
     - docker:dind
   script:
-    - export DOCKER_HOST="tcp://localhost:2375"
     - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
     - docker build -t $RELEASE_IMAGE_TAGGED .
     - docker push $RELEASE_IMAGE_TAGGED
