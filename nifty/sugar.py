@@ -25,6 +25,30 @@ __all__ = ['create_power_operator']
 
 def create_power_operator(domain, power_spectrum, dtype=None,
                           distribution_strategy='not'):
+    """ Creates a diagonal operator with the given power spectrum.
+
+    Constructs a diagonal operator that lives over the specified domain.
+
+    Parameters
+    ----------
+    domain : DomainObject
+        Domain over which the power operator shall live. 
+    power_spectrum : (array-like, method)
+        An array-like object, or a method that implements the square root
+        of a power spectrum as a function of k.
+    dtype : type *optional*
+        dtype that the field holding the power spectrum shall use
+        (default : None).
+        if dtype == None: the dtype of `power_spectrum` will be used.
+    distribution_strategy : string *optional*
+        Distributed strategy to be used by the underlying d2o objects.
+        (default : 'not')
+
+    Returns
+    -------
+    DiagonalOperator : An operator that implements the given power spectrum.
+
+    """
 
     power_domain = PowerSpace(domain,
                               distribution_strategy=distribution_strategy)

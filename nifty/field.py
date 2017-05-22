@@ -218,7 +218,7 @@ class Field(Loggable, Versionable, object):
 
         See Also
         --------
-        power_synthesise
+        power_synthesize
 
 
         """
@@ -270,12 +270,13 @@ class Field(Loggable, Versionable, object):
 
     def power_analyze(self, spaces=None, logarithmic=False, nbin=None,
                       binbounds=None, decompose_power=True):
-        """ Computes the powerspectrum for a subspace of the Field.
+        """ Computes the square root power spectrum for a subspace of `self`.
 
         Creates a PowerSpace for the space addressed by `spaces` with the given
         binning and computes the power spectrum as a Field over this
         PowerSpace. This can only be done if the subspace to  be analyzed is a
-        harmonic space.
+        harmonic space. The resulting field has the same units as the initial
+        field, corresponding to the square root of the power spectrum.
 
         Parameters
         ----------
@@ -456,14 +457,10 @@ class Field(Loggable, Versionable, object):
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
                          mean=None, std=None):
-        """ Converts a power spectrum into a random field realization.
+        """ Yields a sampled field with `self`**2 as its power spectrum.
 
-        This method draws a Gaussian random field in the harmic partner domain
-        of a PowerSpace.
-
-        Notes
-        -----
-        For this the spaces specified by `spaces` must be a PowerSpaces.
+        This method draws a Gaussian random field in the harmonic partner
+        domain of this fields domains, using this field as power spectrum.
 
         Parameters
         ----------
@@ -484,7 +481,6 @@ class Field(Loggable, Versionable, object):
         std : float *optional*
             The standard deviation of the Gaussian noise field which is used
             for the Field synthetization (default : None).
-            {default : None}
             if std==None : std will be set to 1
 
         Returns
@@ -493,9 +489,19 @@ class Field(Loggable, Versionable, object):
             The output object. A random field created with the power spectrum
             stored in the `spaces` in `self`.
 
+        Notes
+        -----
+        For this the spaces specified by `spaces` must be a PowerSpace.
+        This expects this field to be the square root of a power spectrum, i.e.
+        to have the unit of the field to be sampled.
+
         See Also
         --------
         power_analyze
+
+        Raises
+        ------
+        ValueError : If domain specified by `spaces` is not a PowerSpace.
 
         """
 
