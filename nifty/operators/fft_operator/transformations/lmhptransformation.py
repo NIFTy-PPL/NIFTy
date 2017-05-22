@@ -94,11 +94,6 @@ class LMHPTransformation(SlicingTransformation):
         super(LMHPTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
-        if inp.dtype not in (np.float, np.complex):
-            self.logger.warn("The input array has dtype: %s. The FFT will "
-                             "be performed at double precision." %
-                             str(inp.dtype))
-
         nside = self.codomain.nside
         lmax = self.domain.lmax
         mmax = lmax

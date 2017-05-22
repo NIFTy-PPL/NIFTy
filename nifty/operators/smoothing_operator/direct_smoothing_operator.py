@@ -144,6 +144,7 @@ class DirectSmoothingOperator(SmoothingOperator):
             distribution_strategy='not')
         distance_array = distance_array.get_local_data(copy=False)
 
+        #MR FIXME: this causes calls of log(0.) which should probably be avoided
         if self.log_distances:
             np.log(distance_array, out=distance_array)
 

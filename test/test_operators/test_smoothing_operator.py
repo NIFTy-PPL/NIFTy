@@ -36,9 +36,6 @@ def _get_rtol(tp):
     else:
         return 1e-5
 
-from itertools import product
-from test.common import expand
-
 class SmoothingOperator_Tests(unittest.TestCase):
     spaces = [RGSpace(100)]
 

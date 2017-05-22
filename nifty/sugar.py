@@ -18,25 +18,22 @@
 
 from nifty import PowerSpace,\
                   Field,\
-                  DiagonalOperator,\
-                  FFTOperator
+                  DiagonalOperator
 
 __all__ = ['create_power_operator']
 
 
 def create_power_operator(domain, power_spectrum, dtype=None,
                           distribution_strategy='not'):
+<<<<<<< nifty/sugar.py
     """ Creates a diagonal operator with the given power spectrum.
 
-    Constructs a diagonal operator that lives over the specified domain, or
-    its default harmonic codomain in case it is not harmonic.
+    Constructs a diagonal operator that lives over the specified domain.
 
     Parameters
     ----------
     domain : DomainObject
-        Domain over which the power operator shall live. If this is not a
-        harmonic domain, it will return an operator for its harmonic codomain
-        instead.
+        Domain over which the power operator shall live. 
     power_spectrum : (array-like, method)
         An array-like object, or a method that implements the square root
         of a power spectrum as a function of k.
@@ -53,21 +50,14 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     DiagonalOperator : An operator that implements the given power spectrum.
 
     """
-
-    if not domain.harmonic:
-        fft = FFTOperator(domain)
-        domain = fft.target[0]
+=======
+>>>>>>> nifty/sugar.py
 
     power_domain = PowerSpace(domain,
                               distribution_strategy=distribution_strategy)
-
-    fp = Field(power_domain,
-               val=power_spectrum, dtype=dtype,
+    fp = Field(power_domain, val=power_spectrum, dtype=dtype,
                distribution_strategy=distribution_strategy)
     fp **= 2
-
     f = fp.power_synthesize(mean=1, std=0, real_signal=False)
 
-    power_operator = DiagonalOperator(domain, diagonal=f, bare=True)
-
-    return power_operator
+    return DiagonalOperator(domain, diagonal=f, bare=True)

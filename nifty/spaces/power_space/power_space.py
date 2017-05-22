@@ -261,6 +261,7 @@ class PowerSpace(Space):
         hdf5_group.attrs['nbin'] = str(self.config["nbin"])
         hdf5_group.attrs['binbounds'] = str(self.config["binbounds"])
 
+        #MR FIXME: why not "return None" as happens everywhere else?
         return {
             'harmonic_partner': self.harmonic_partner,
             'pindex': self.pindex,

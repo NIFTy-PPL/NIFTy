@@ -106,6 +106,7 @@ class DiagonalOperator_Tests(unittest.TestCase):
         assert_allclose(trace_op, np.sum(1./diag.val.get_full_data()))
 
     @expand(product(spaces, [True, False]))
+    #MR FIXME: what if any diagonal element <=0?
     def test_trace_log(self, space, copy):
         diag = Field.from_random('normal', domain=space)
         D = DiagonalOperator(space, diagonal=diag, copy=copy)
@@ -127,6 +128,7 @@ class DiagonalOperator_Tests(unittest.TestCase):
         assert_allclose(inv_det, 1./D.determinant())
 
     @expand(product(spaces, [True, False], [True, False]))
+    #MR FIXME: what if determinant <=0?
     def test_log_determinant(self, space, bare, copy):
         diag = Field.from_random('normal', domain=space)
         D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
