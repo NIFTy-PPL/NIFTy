@@ -39,11 +39,12 @@ class SmoothingOperator(EndomorphicOperator):
         can only live on one space or FieldType
     sigma : float
         Sets the length of the Gaussian convolution kernel
-    log_distances : boolean
-        States whether the convolution happens on the logarithmic grid or not.
+    log_distances : boolean *optional*
+        States whether the convolution happens on the logarithmic grid or not
+        (default: False).
     default_spaces : tuple of ints *optional*
         Defines on which space(s) of a given field the Operator acts by
-        default (default: None)
+        default (default: None).
 
     Attributes
     ----------
@@ -117,7 +118,6 @@ class SmoothingOperator(EndomorphicOperator):
                 raise NotImplementedError("For the given Space smoothing "
                                           " is not available.")
         else:
-            print 'new 4'
             return super(SmoothingOperator, cls).__new__(cls,
                                                          domain,
                                                          *args,
