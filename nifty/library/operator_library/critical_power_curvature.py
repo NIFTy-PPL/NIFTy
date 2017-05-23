@@ -7,8 +7,8 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
         self.theta = theta
         self.T = T
-        if preconditioner is None:
-            preconditioner = self.T.times
+        # if preconditioner is None:
+        #     preconditioner = self.T.times
         self._domain = self.T.domain
         super(CriticalPowerCurvature, self).__init__(inverter=inverter,
                                                  preconditioner=preconditioner)

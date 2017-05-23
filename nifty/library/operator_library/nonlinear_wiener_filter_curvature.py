@@ -9,8 +9,8 @@ class NonlinearWienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperato
         self.N = N
         self.S = S
         self.position = position
-        if preconditioner is None:
-            preconditioner = self.S.times
+        # if preconditioner is None:
+        #     preconditioner = self.S.times
         self._domain = self.S.domain
         super(NonlinearWienerFilterCurvature, self).__init__(inverter=inverter,
                                                  preconditioner=preconditioner)

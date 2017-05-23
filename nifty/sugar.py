@@ -25,13 +25,15 @@ from nifty import PowerSpace,\
 __all__ = ['create_power_operator']
 
 
-def create_power_operator(domain, power_spectrum, dtype=None,
+def create_power_operator(domain, power_spectrum, power_domain=None, dtype=None,
                           distribution_strategy='not'):
     if not domain.harmonic:
         fft = FFTOperator(domain)
         domain = fft.target[0]
-
-    power_domain = PowerSpace(domain,
+    if isinstance(power_spectrum, Field):
+        power_domain = power_spectrum.domain
+    elif power_domain is None:
+        power_domain = PowerSpace(domain,
                               distribution_strategy=distribution_strategy)
 
     fp = Field(power_domain,
@@ -49,15 +51,17 @@ def generate_posterior_sample(mean, covariance):
     S = covariance.S
     R = covariance.R
     N = covariance.N
-    power = S.diagonal()
+    power = sqrt(S.diagonal().power_analyze())
+    mock_signal = power.power_synthesize(real_signal=True)
+
+
     noise = N.diagonal().val
-    mock_signal = Field.from_random(random_type="normal", domain=S.domain,
-                                    std = sqrt(power), dtype = power.dtype)
+
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,
                                    std = sqrt(noise), dtype = noise.dtype)
-    mock_data = R(mock_signal) + mock_noise
+    mock_data = R.derived_times(mock_signal, mean) + mock_noise
 
-    mock_j = R.adjoint_times(N.inverse_times(mock_data))
+    mock_j = R.derived_adjoint_times(N.inverse_times(mock_data), mean)
     mock_m = covariance.inverse_times(mock_j)
     sample = mock_signal - mock_m + mean
     return sample

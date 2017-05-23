@@ -22,19 +22,20 @@ class CriticalPowerEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, m, D=None, alpha =1.0, q=0, sigma=0, w=None, samples=3):
+    def __init__(self, position, m, D=None, alpha =1.0, q=0., sigma=0., w=None, samples=3):
         super(CriticalPowerEnergy, self).__init__(position = position)
         self.m = m
         self.D = D
         self.samples = samples
         self.sigma = sigma
-        self.alpha = alpha
-        self.q = q
-        self.T = SmoothnessOperator(domain=self.position.domain, sigma=self.sigma)
-        self.rho = self.position.domain.rho
-        if w is None:
+        self.alpha = Field(self.position.domain, val=alpha)
+        self.q = Field(self.position.domain, val=q)
+        self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma)
+        self.rho = self.position.domain[0].rho
+        self.w = w
+        if self.w is None:
             self.w = self._calculate_w(self.m, self.D, self.samples)
-        self.theta = exp(-self.position) * (self.q + w / 2.)
+        self.theta = exp(-self.position) * (self.q + self.w / 2.)
 
     def at(self, position):
         return self.__class__(position, self.m, D=self.D,
@@ -45,7 +46,7 @@ class CriticalPowerEnergy(Energy):
 
     @property
     def value(self):
-        energy = self.theta.sum()
+        energy = exp(-self.position).dot(self.q + self.w / 2.)
         energy += self.position.dot(self.alpha - 1 + self.rho / 2.)
         energy += 0.5 * self.position.dot(self.T(self.position))
         return energy.real
@@ -55,6 +56,7 @@ class CriticalPowerEnergy(Energy):
         gradient = - self.theta
         gradient += self.alpha - 1 + self.rho / 2.
         gradient += self.T(self.position)
+        gradient.val[0] = 0.
         return gradient
 
     @property
@@ -63,15 +65,19 @@ class CriticalPowerEnergy(Energy):
         return curvature
 
     def _calculate_w(self, m, D, samples):
-        w = Field(domain=self.position.domain, val=0)
+        w = Field(domain=self.position.domain, val=0. , dtype=m.dtype)
         if D is not None:
             for i in range(samples):
                 posterior_sample = generate_posterior_sample(m, D)
-                projected_sample =posterior_sample.project_power(domain=self.position.domain)
+                projected_sample = posterior_sample.project_power(
+                    logarithmic=self.position.domain[0].config["logarithmic"],
+                        decompose_power=False)
                 w += projected_sample
             w /= float(samples)
         else:
-            w = m.project_power(domain=self.position.domain)
+            w = m.project_power(
+                    logarithmic=self.position.domain[0].config["logarithmic"],
+                        decompose_power=False)
 
         return w
 

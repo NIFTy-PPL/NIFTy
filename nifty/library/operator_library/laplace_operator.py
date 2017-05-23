@@ -34,8 +34,8 @@ class LaplaceOperator(EndomorphicOperator):
         return False
     def _times(self, t, spaces):
         if t.val.distribution_strategy != 'not':
-            self.logger.warn("distribution_strategy should be 'not' but is %s"
-                             % t.val.distribution_strategy)
+            # self.logger.warn("distribution_strategy should be 'not' but is %s"
+            #                  % t.val.distribution_strategy)
             array = t.val.get_full_data()
         else:
             array = t.val.get_local_data(copy=False)
@@ -46,8 +46,8 @@ class LaplaceOperator(EndomorphicOperator):
         return Field(self.domain, val=ret)
     def _adjoint_times(self, t, spaces):
         if t.val.distribution_strategy != 'not':
-            self.logger.warn("distribution_strategy should be 'not' but is %s"
-                             % t.val.distribution_strategy)
+            # self.logger.warn("distribution_strategy should be 'not' but is %s"
+            #                  % t.val.distribution_strategy)
             array = t.val.get_full_data()
         else:
             array = t.val.get_local_data(copy=False)
