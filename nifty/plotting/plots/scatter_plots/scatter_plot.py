@@ -7,13 +7,18 @@ from nifty.plotting.descriptors import Marker,\
 
 
 class ScatterPlot(PlotlyWrapper):
-    def __init__(self, label, line, marker):
+    def __init__(self, data, label, line, marker):
+        self.data = data
         self.label = label
         self.line = line
         self.marker = marker
         if not self.line and not self.marker:
             self.marker = Marker()
             self.line = Line()
+
+    @abc.abstractmethod
+    def at(self, data):
+        raise NotImplementedError
 
     @abc.abstractproperty
     def figure_dimension(self):

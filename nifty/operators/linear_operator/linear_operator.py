@@ -269,10 +269,6 @@ class LinearOperator(Loggable, object):
         raise NotImplementedError(
             "no generic instance method 'adjoint_inverse_times'.")
 
-    def _inverse_adjoint_times(self, x, spaces):
-        raise NotImplementedError(
-            "no generic instance method 'inverse_adjoint_times'.")
-
     def _check_input_compatibility(self, x, spaces, inverse=False):
         if not isinstance(x, Field):
             raise ValueError(

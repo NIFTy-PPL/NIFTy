@@ -1054,7 +1054,7 @@ class Field(Loggable, Versionable, object):
             dotted = diagonalOperator(x, spaces=spaces)
             return dotted.sum(spaces=spaces)
 
-    def norm(self, q=2):
+    def norm(self):
         """ Computes the Lq-norm of the field values.
 
         Parameters
@@ -1068,11 +1068,7 @@ class Field(Loggable, Versionable, object):
             The Lq-norm of the field values.
 
         """
-
-        if q == 2:
-            return (self.dot(x=self)) ** (1 / 2)
-        else:
-            return self.dot(x=self ** (q - 1)) ** (1 / q)
+        return np.sqrt(np.abs(self.dot(x=self)))
 
     def conjugate(self, inplace=False):
         """ Retruns the complex conjugate of the field.
