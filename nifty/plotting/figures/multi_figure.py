@@ -10,13 +10,21 @@ plotly = gdi.get('plotly')
 
 # TODO: add nice height and width defaults for multifigure
 class MultiFigure(FigureBase):
-    def __init__(self, rows, columns, title=None, width=None, height=None,
-                 subfigures=None):
+    def __init__(self, subfigures, title=None, width=None, height=None):
         if 'plotly' not in gdi:
             raise ImportError("The module plotly is needed but not available.")
         super(MultiFigure, self).__init__(title, width, height)
-        self.subfigures = np.empty((rows, columns), dtype=np.object)
-        self.subfigures[:] = subfigures
+        if subfigures is not None:
+            self.subfigures = np.asarray(subfigures, dtype=np.object)
+            if len(self.subfigures.shape) != 2:
+                raise ValueError("Subfigures must be a two-dimensional array.")
+
+
+    def at(self, subfigures):
+        return MultiFigure(subfigures=subfigures,
+                           title=self.title,
+                           width=self.width,
+                           height=self.height)
 
     @property
     def rows(self):
@@ -26,15 +34,15 @@ class MultiFigure(FigureBase):
     def columns(self):
         return self.subfigures.shape[1]
 
-    def add_subfigure(self, figure, row, column):
-        self.subfigures[row, column] = figure
-
     def to_plotly(self):
         title_extractor = lambda z: z.title if z else ""
-        sub_titles = tuple(np.vectorize(title_extractor)(self.subfigures.flatten()))
+        sub_titles = tuple(np.vectorize(title_extractor)(
+                                                    self.subfigures.flatten()))
 
-        specs_setter = lambda z: {'is_3d': True} if isinstance(z, Figure3D) else {}
-        sub_specs = list(map(list, np.vectorize(specs_setter)(self.subfigures)))
+        specs_setter = lambda z: ({'is_3d': True}
+                                  if isinstance(z, Figure3D) else {})
+        sub_specs = list(map(list, np.vectorize(specs_setter)(
+                                                             self.subfigures)))
 
         multi_figure_plotly_object = plotly.tools.make_subplots(
                                                    self.rows,
@@ -46,7 +54,7 @@ class MultiFigure(FigureBase):
                                                     width=self.width,
                                                     title=self.title)
 
-        #TODO resolve bug with titles and 3D subplots
+        # TODO resolve bug with titles and 3D subplots
 
         i = 1
         for index, fig in np.ndenumerate(self.subfigures):
