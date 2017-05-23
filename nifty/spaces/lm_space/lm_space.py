@@ -97,8 +97,8 @@ class LMSpace(Space):
         anti_hermitian_part[:] = x.imag * 1j
         return (hermitian_part, anti_hermitian_part)
 
-    def hermitian_fixed_points(self):
-        return None
+#    def hermitian_fixed_points(self):
+#        return None
 
     # ---Mandatory properties and methods---
 

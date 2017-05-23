@@ -120,17 +120,17 @@ class RGSpace(Space):
 
         return (hermitian_part, anti_hermitian_part)
 
-    def hermitian_fixed_points(self):
-        shape = self.shape
-        mid_index = np.array(shape)//2
-        ndlist = [2 if (shape[i] % 2 == 0) else 1 for i in xrange(len(shape))]
-        ndlist = tuple(ndlist)
-        odd_axes_list = np.array([1 if (shape[i] % 2 == 1) else 0
-                                  for i in xrange(len(shape))])
-        fixed_points = []
-        for i in np.ndindex(ndlist):
-            fixed_points += [tuple((i+odd_axes_list) * mid_index)]
-        return fixed_points
+#    def hermitian_fixed_points(self):
+#        shape = self.shape
+#        mid_index = np.array(shape)//2
+#        ndlist = [2 if (shape[i] % 2 == 0) else 1 for i in xrange(len(shape))]
+#        ndlist = tuple(ndlist)
+#        odd_axes_list = np.array([1 if (shape[i] % 2 == 1) else 0
+#                                  for i in xrange(len(shape))])
+#        fixed_points = []
+#        for i in np.ndindex(ndlist):
+#            fixed_points += [tuple((i+odd_axes_list) * mid_index)]
+#        return fixed_points
 
     def _hermitianize_correct_variance(self, hermitian_part,
                                        anti_hermitian_part, axes):

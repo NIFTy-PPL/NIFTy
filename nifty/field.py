@@ -605,19 +605,26 @@ class Field(Loggable, Versionable, object):
         if flipped_Q:
             h *= np.sqrt(2)
             a *= np.sqrt(2)
-            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
-            for product_point in itertools.product(*fixed_points):
-                slice_object = np.array((slice(None), )*len(val.shape),
-                                        dtype=np.object)
-                for i, sp in enumerate(spaces):
-                    point_component = product_point[i]
-                    if point_component is None:
-                        point_component = slice(None)
-                    slice_object[list(domain_axes[sp])] = point_component
 
-                slice_object = tuple(slice_object)
-                h[slice_object] /= np.sqrt(2)
-                a[slice_object] /= np.sqrt(2)
+            # in principle one must not correct the variance for the fixed
+            # points of the hermitianization. However, for a complex field
+            # the input field looses half of its power at its fixed points
+            # in the `hermitian` part. Hence, here a factor of sqrt(2) is
+            # also necessary!
+
+#            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
+#            for product_point in itertools.product(*fixed_points):
+#                slice_object = np.array((slice(None), )*len(val.shape),
+#                                        dtype=np.object)
+#                for i, sp in enumerate(spaces):
+#                    point_component = product_point[i]
+#                    if point_component is None:
+#                        point_component = slice(None)
+#                    slice_object[list(domain_axes[sp])] = point_component
+#
+#                slice_object = tuple(slice_object)
+#                h[slice_object] /= np.sqrt(2)
+#                a[slice_object] /= np.sqrt(2)
 
         return (h, a)
 
