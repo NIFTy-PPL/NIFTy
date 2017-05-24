@@ -17,6 +17,10 @@ import sys
 import os
 
 
+import sphinx_rtd_theme
+
+
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -77,7 +81,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'NIFTY'
-copyright = u'2017, Theo Steininger'
+copyright = u'2013-2017, Max-Planck-Society'
 author = u'Theo Steininger'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -138,12 +142,27 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'alabaster'
-#html_theme = 'classic'
+
+html_theme = "sphinx_rtd_theme"
 
 html_theme_options = {
-    'page_width':''
+    'collapse_navigation': False,
+    'display_version': False,
+    'navigation_depth': 3,
 }
+
+#html_theme = 'alabaster'
+#html_theme_options = {
+#    'page_width':''
+#}
+
+#html_theme = 'classic'
+
+
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+
+
+
 
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -163,7 +182,7 @@ html_theme_options = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = 'nifty_logo_black.png'
+html_logo = 'nifty_logo_white.png'
 
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
