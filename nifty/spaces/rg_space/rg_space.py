@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 """
     ..                  __   ____   __
@@ -286,10 +286,6 @@ class RGSpace(Space):
         return dists
 
     def get_fft_smoothing_kernel_function(self, sigma):
-
-        if sigma is None:
-            sigma = np.sqrt(2) * np.max(self.distances)
-
         return lambda x: np.exp(-0.5 * np.pi**2 * x**2 * sigma**2)
 
     # ---Added properties and methods---
