@@ -1,8 +1,8 @@
 .. currentmodule:: nifty
 
-The ``ResponseOperator`` class -- A possible response implementation
+The ``PowerSpace`` class --  NIFTY class for spaces of power spectra
 ....................................................................
 
-.. autoclass:: ResponseOperator
+.. autoclass:: PowerSpace
     :show-inheritance:
     :members:

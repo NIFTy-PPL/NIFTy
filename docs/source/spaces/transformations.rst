@@ -1,11 +1,10 @@
 Transformations
 ---------------
-NIFTY provides transformations
+NIFTY helper classes for transformations betwenn NIFTY spaces.
 
 .. toctree:: 
     :maxdepth: 1
     
-    rg_transforms
     rgrg_transformation
     gllm_transformation
     hplm_transformation

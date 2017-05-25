@@ -11,7 +11,3 @@ In NIFTY, Fields are used to store data arrays and carry all the needed metainfo
     :show-inheritance:
     :members:
 
-    .. rubric:: Methods
-
-    .. autoautosummary:: Field
-        :methods:

@@ -3,6 +3,6 @@
 The ``EndomorphicOperator`` class -- ...
 ........................................
 
-.. autoclass:: EnomorphicOperator
+.. autoclass:: EndomorphicOperator
     :show-inheritance:
     :members:
