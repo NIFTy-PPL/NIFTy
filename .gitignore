@@ -7,7 +7,7 @@
 *.egg
 *.egg-info
 *~
-
+*.csv
 .git/
 .svn/
 .spyderproject
@@ -15,4 +15,4 @@
 build
 
 .idea
-.coverage
+*.csv.coverage
