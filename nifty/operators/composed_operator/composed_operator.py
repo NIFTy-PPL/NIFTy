@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 from nifty.operators.linear_operator import LinearOperator
 
@@ -130,9 +130,6 @@ class ComposedOperator(LinearOperator):
 
     def _adjoint_inverse_times(self, x, spaces):
         return self._times_helper(x, spaces, func='adjoint_inverse_times')
-
-    def _inverse_adjoint_times(self, x, spaces):
-        return self._times_helper(x, spaces, func='inverse_adjoint_times')
 
     def _times_helper(self, x, spaces, func):
         space_index = 0

@@ -10,4 +10,3 @@ In NIFTY, Fields are used to store data arrays and carry all the needed metainfo
 .. autoclass:: Field
     :show-inheritance:
     :members:
-

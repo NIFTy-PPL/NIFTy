@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
 
@@ -218,7 +218,7 @@ class Field(Loggable, Versionable, object):
 
         See Also
         --------
-        power_synthesise
+        power_synthesize
 
 
         """
@@ -270,12 +270,13 @@ class Field(Loggable, Versionable, object):
 
     def power_analyze(self, spaces=None, logarithmic=False, nbin=None,
                       binbounds=None, decompose_power=True):
-        """ Computes the powerspectrum for a subspace of the Field.
+        """ Computes the square root power spectrum for a subspace of `self`.
 
         Creates a PowerSpace for the space addressed by `spaces` with the given
         binning and computes the power spectrum as a Field over this
         PowerSpace. This can only be done if the subspace to  be analyzed is a
-        harmonic space.
+        harmonic space. The resulting field has the same units as the initial
+        field, corresponding to the square root of the power spectrum.
 
         Parameters
         ----------
@@ -385,6 +386,7 @@ class Field(Loggable, Versionable, object):
                  for part in [hermitian_part, anti_hermitian_part]]
 
             power_spectrum = hermitian_power + 1j * anti_hermitian_power
+
         else:
             power_spectrum = self._calculate_power_spectrum(
                                             x=self.val,
@@ -395,11 +397,7 @@ class Field(Loggable, Versionable, object):
         # create the result field and put power_spectrum into it
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
-
-        if decompose_power:
-            result_dtype = np.complex
-        else:
-            result_dtype = np.float
+        result_dtype = power_spectrum.dtype
 
         result_field = self.copy_empty(
                    domain=result_domain,
@@ -456,14 +454,10 @@ class Field(Loggable, Versionable, object):
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
                          mean=None, std=None):
-        """ Converts a power spectrum into a random field realization.
+        """ Yields a sampled field with `self`**2 as its power spectrum.
 
-        This method draws a Gaussian random field in the harmic partner domain
-        of a PowerSpace.
-
-        Notes
-        -----
-        For this the spaces specified by `spaces` must be a PowerSpaces.
+        This method draws a Gaussian random field in the harmonic partner
+        domain of this fields domains, using this field as power spectrum.
 
         Parameters
         ----------
@@ -484,7 +478,6 @@ class Field(Loggable, Versionable, object):
         std : float *optional*
             The standard deviation of the Gaussian noise field which is used
             for the Field synthetization (default : None).
-            {default : None}
             if std==None : std will be set to 1
 
         Returns
@@ -493,9 +486,19 @@ class Field(Loggable, Versionable, object):
             The output object. A random field created with the power spectrum
             stored in the `spaces` in `self`.
 
+        Notes
+        -----
+        For this the spaces specified by `spaces` must be a PowerSpace.
+        This expects this field to be the square root of a power spectrum, i.e.
+        to have the unit of the field to be sampled.
+
         See Also
         --------
         power_analyze
+
+        Raises
+        ------
+        ValueError : If domain specified by `spaces` is not a PowerSpace.
 
         """
 
@@ -579,39 +582,57 @@ class Field(Loggable, Versionable, object):
     def _hermitian_decomposition(domain, val, spaces, domain_axes):
         # hermitianize for the first space
         (h, a) = domain[spaces[0]].hermitian_decomposition(
-                                                       val,
-                                                       domain_axes[spaces[0]])
+                                               val,
+                                               domain_axes[spaces[0]],
+                                               preserve_gaussian_variance=True)
         # hermitianize all remaining spaces using the iterative formula
         for space in xrange(1, len(spaces)):
-            (hh, ha) = \
-                domain[space].hermitian_decomposition(h, domain_axes[space])
-            (ah, aa) = \
-                domain[space].hermitian_decomposition(a, domain_axes[space])
+            (hh, ha) = domain[space].hermitian_decomposition(
+                                              h,
+                                              domain_axes[space],
+                                              preserve_gaussian_variance=True)
+            (ah, aa) = domain[space].hermitian_decomposition(
+                                              a,
+                                              domain_axes[space],
+                                              preserve_gaussian_variance=True)
             c = (hh - ha - ah + aa).conjugate()
             h = (val + c)/2.
             a = (val - c)/2.
 
         # correct variance
-        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
-        # check if there was at least one flipping during hermitianization
-        flipped_Q = np.any([fp is not None for fp in fixed_points])
-        # if the array got flipped, correct the variance
-        if flipped_Q:
-            h *= np.sqrt(2)
-            a *= np.sqrt(2)
-            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
-            for product_point in itertools.product(*fixed_points):
-                slice_object = np.array((slice(None), )*len(val.shape),
-                                        dtype=np.object)
-                for i, sp in enumerate(spaces):
-                    point_component = product_point[i]
-                    if point_component is None:
-                        point_component = slice(None)
-                    slice_object[list(domain_axes[sp])] = point_component
 
-                slice_object = tuple(slice_object)
-                h[slice_object] /= np.sqrt(2)
-                a[slice_object] /= np.sqrt(2)
+        # in principle one must not correct the variance for the fixed
+        # points of the hermitianization. However, for a complex field
+        # the input field loses half of its power at its fixed points
+        # in the `hermitian` part. Hence, here a factor of sqrt(2) is
+        # also necessary!
+        # => The hermitianization can be done on a space level since either
+        # nothing must be done (LMSpace) or ALL points need a factor of sqrt(2)
+        # => use the preserve_gaussian_variance flag in the
+        # hermitian_decomposition method above.
+
+        # This code is for educational purposes:
+#        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
+#        # check if there was at least one flipping during hermitianization
+#        flipped_Q = np.any([fp is not None for fp in fixed_points])
+#        # if the array got flipped, correct the variance
+#        if flipped_Q:
+#            h *= np.sqrt(2)
+#            a *= np.sqrt(2)
+#
+#            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
+#            for product_point in itertools.product(*fixed_points):
+#                slice_object = np.array((slice(None), )*len(val.shape),
+#                                        dtype=np.object)
+#                for i, sp in enumerate(spaces):
+#                    point_component = product_point[i]
+#                    if point_component is None:
+#                        point_component = slice(None)
+#                    slice_object[list(domain_axes[sp])] = point_component
+#
+#                slice_object = tuple(slice_object)
+#                h[slice_object] /= np.sqrt(2)
+#                a[slice_object] /= np.sqrt(2)
 
         return (h, a)
 
@@ -1048,7 +1069,7 @@ class Field(Loggable, Versionable, object):
             dotted = diagonalOperator(x, spaces=spaces)
             return dotted.sum(spaces=spaces)
 
-    def norm(self, q=2):
+    def norm(self):
         """ Computes the Lq-norm of the field values.
 
         Parameters
@@ -1062,11 +1083,7 @@ class Field(Loggable, Versionable, object):
             The Lq-norm of the field values.
 
         """
-
-        if q == 2:
-            return (self.dot(x=self)) ** (1 / 2)
-        else:
-            return self.dot(x=self ** (q - 1)) ** (1 / q)
+        return np.sqrt(np.abs(self.dot(x=self)))
 
     def conjugate(self, inplace=False):
         """ Retruns the complex conjugate of the field.

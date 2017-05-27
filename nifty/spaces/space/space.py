@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
 
@@ -64,12 +64,6 @@ class Space(DomainObject):
     @abc.abstractproperty
     def harmonic(self):
         """ Returns True if this space is a harmonic space.
-
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError
@@ -83,12 +77,8 @@ class Space(DomainObject):
         float
             A real number representing the sum of all pixel volumes.
 
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
+
         raise NotImplementedError(
             "There is no generic volume for the Space base class.")
 
@@ -122,11 +112,6 @@ class Space(DomainObject):
         distributed_data_object
             A d2o containing the distances
 
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError(
@@ -157,11 +142,6 @@ class Space(DomainObject):
             A smoothing operation that multiplies values with a Gaussian
             kernel.
 
-        Raises
-        ------
-        NotImplementedError :
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError(
@@ -184,7 +164,11 @@ class Space(DomainObject):
             Specifies the axes of x which correspond to this space.
 
         preserve_gaussian_variance : bool *optional*
-            FIXME: figure out what this does
+            If the hermitian decomposition is done via computing the half
+            sums and differences of `x` and mirrored `x`, all points except the
+            fixed points lose half of their variance. If `x` is complex also
+            the lose half of their variance since the real(/imaginary) part
+            gets lost.
 
         Returns
         -------
@@ -192,16 +176,6 @@ class Space(DomainObject):
             A tuple of two distributed_data_objects, the first being the
             hermitian and the second the anti-hermitian part of x.
 
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError
-
-    def __repr__(self):
-        string = ""
-        string += str(type(self)) + "\n"
-        return string

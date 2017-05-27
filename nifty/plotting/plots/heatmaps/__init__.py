@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from mollweide import Mollweide
+from hpmollweide import HPMollweide
+from glmollweide import GLMollweide
 from heatmap import Heatmap

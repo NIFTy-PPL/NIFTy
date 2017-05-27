@@ -38,4 +38,3 @@ Indices and tables
 * :ref:`genindex`
 * :any:`Module Index <mod/modules>`
 * :ref:`search`
-

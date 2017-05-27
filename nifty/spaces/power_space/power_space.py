@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
 
@@ -149,6 +149,13 @@ class PowerSpace(Space):
 
     # ---Mandatory properties and methods---
 
+    def __repr__(self):
+        return ("PowerSpace(harmonic_partner=%r, distribution_strategy=%r, "
+                "logarithmic=%r, nbin=%r, binbounds=%r)"
+                % (self.harmonic_partner, self.pindex.distribution_strategy,
+                   self.config['logarithmic'], self.config['nbin'],
+                   self.config['binbounds']))
+
     @property
     def harmonic(self):
         return True
@@ -261,6 +268,7 @@ class PowerSpace(Space):
         hdf5_group.attrs['nbin'] = str(self.config["nbin"])
         hdf5_group.attrs['binbounds'] = str(self.config["binbounds"])
 
+        #MR FIXME: why not "return None" as happens everywhere else?
         return {
             'harmonic_partner': self.harmonic_partner,
             'pindex': self.pindex,

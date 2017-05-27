@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from abc import abstractmethod
+import abc
 
 from nifty.plotting.plotly_wrapper import PlotlyWrapper
 
@@ -11,6 +11,10 @@ class FigureBase(PlotlyWrapper):
         self.width = width
         self.height = height
 
-    @abstractmethod
+    @abc.abstractmethod
+    def at(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def to_plotly(self):
         raise NotImplementedError

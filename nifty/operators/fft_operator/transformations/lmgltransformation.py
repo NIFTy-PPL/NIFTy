@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
 from nifty.config import dependency_injector as gdi
@@ -106,11 +106,6 @@ class LMGLTransformation(SlicingTransformation):
         super(LMGLTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
-        if inp.dtype not in (np.float, np.complex):
-            self.logger.warn("The input array has dtype: %s. The FFT will "
-                             "be performed at double precision." %
-                             str(inp.dtype))
-
         nlat = self.codomain.nlat
         nlon = self.codomain.nlon
         lmax = self.domain.lmax
