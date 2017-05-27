@@ -45,6 +45,10 @@ class DomainObject(Versionable, Loggable, object):
         # _global_id is used in the Versioning module from keepers
         self._ignore_for_hash = ['_global_id']
 
+    @abc.abstractmethod
+    def __repr__(self):
+        raise NotImplementedError
+
     def __hash__(self):
         # Extract the identifying parts from the vars(self) dict.
         result_hash = 0

@@ -18,13 +18,14 @@
 
 import unittest
 import numpy as np
+from numpy.testing import assert_, assert_equal
 
 from itertools import product
 from types import LambdaType
-from numpy.testing import assert_, assert_raises, assert_equal
-from nifty import LMSpace, GLSpace, HPSpace
-from nifty.config import dependency_injector as di
 from test.common import expand, generate_spaces, generate_harmonic_spaces
+
+from d2o import distributed_data_object
+from nifty.spaces import *
 
 
 class SpaceInterfaceTests(unittest.TestCase):
@@ -34,28 +35,17 @@ class SpaceInterfaceTests(unittest.TestCase):
                     ['dim', int],
                     ['total_volume', np.float]]))
     def test_property_ret_type(self, space, attr_expected_type):
-        assert_(
-            isinstance(getattr(
-                space,
-                attr_expected_type[0]
-            ), attr_expected_type[1])
-        )
+        assert_(isinstance(getattr(space, attr_expected_type[0]),
+                           attr_expected_type[1]))
 
     @expand(product(generate_harmonic_spaces(), [
-        ['get_fft_smoothing_kernel_function', None, LambdaType],
+        ['get_distance_array', 'not', distributed_data_object],
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
     def test_method_ret_type(self, space, method_expected_type):
-        getattr(
-            space, method_expected_type[0])(*method_expected_type[1:-1])
-
-        assert_equal(
-            type(getattr(
-                space,
-                method_expected_type[0])(*method_expected_type[1:-1])
-            ),
-            method_expected_type[-1]
-        )
+        assert_(type(getattr(space, method_expected_type[0])(
+                          *method_expected_type[1:-1])) is
+                method_expected_type[-1])
 
     @expand([[space] for space in generate_spaces()])
     def test_copy(self, space):
@@ -63,3 +53,7 @@ class SpaceInterfaceTests(unittest.TestCase):
         assert_(space is not space.copy())
         # make sure contents are the same
         assert_equal(space, space.copy())
+
+    @expand([[space] for space in generate_spaces()])
+    def test_repr(self, space):
+        assert_(space == eval(space.__repr__()))

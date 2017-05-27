@@ -386,6 +386,7 @@ class Field(Loggable, Versionable, object):
                  for part in [hermitian_part, anti_hermitian_part]]
 
             power_spectrum = hermitian_power + 1j * anti_hermitian_power
+
         else:
             power_spectrum = self._calculate_power_spectrum(
                                             x=self.val,
@@ -396,11 +397,7 @@ class Field(Loggable, Versionable, object):
         # create the result field and put power_spectrum into it
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
-
-        if decompose_power:
-            result_dtype = np.complex
-        else:
-            result_dtype = np.float
+        result_dtype = power_spectrum.dtype
 
         result_field = self.copy_empty(
                    domain=result_domain,
@@ -585,33 +582,44 @@ class Field(Loggable, Versionable, object):
     def _hermitian_decomposition(domain, val, spaces, domain_axes):
         # hermitianize for the first space
         (h, a) = domain[spaces[0]].hermitian_decomposition(
-                                                       val,
-                                                       domain_axes[spaces[0]])
+                                               val,
+                                               domain_axes[spaces[0]],
+                                               preserve_gaussian_variance=True)
         # hermitianize all remaining spaces using the iterative formula
         for space in xrange(1, len(spaces)):
-            (hh, ha) = \
-                domain[space].hermitian_decomposition(h, domain_axes[space])
-            (ah, aa) = \
-                domain[space].hermitian_decomposition(a, domain_axes[space])
+            (hh, ha) = domain[space].hermitian_decomposition(
+                                              h,
+                                              domain_axes[space],
+                                              preserve_gaussian_variance=True)
+            (ah, aa) = domain[space].hermitian_decomposition(
+                                              a,
+                                              domain_axes[space],
+                                              preserve_gaussian_variance=True)
             c = (hh - ha - ah + aa).conjugate()
             h = (val + c)/2.
             a = (val - c)/2.
 
         # correct variance
-        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
-        # check if there was at least one flipping during hermitianization
-        flipped_Q = np.any([fp is not None for fp in fixed_points])
-        # if the array got flipped, correct the variance
-        if flipped_Q:
-            h *= np.sqrt(2)
-            a *= np.sqrt(2)
 
-            # in principle one must not correct the variance for the fixed
-            # points of the hermitianization. However, for a complex field
-            # the input field looses half of its power at its fixed points
-            # in the `hermitian` part. Hence, here a factor of sqrt(2) is
-            # also necessary!
+        # in principle one must not correct the variance for the fixed
+        # points of the hermitianization. However, for a complex field
+        # the input field loses half of its power at its fixed points
+        # in the `hermitian` part. Hence, here a factor of sqrt(2) is
+        # also necessary!
+        # => The hermitianization can be done on a space level since either
+        # nothing must be done (LMSpace) or ALL points need a factor of sqrt(2)
+        # => use the preserve_gaussian_variance flag in the
+        # hermitian_decomposition method above.
 
+        # This code is for educational purposes:
+#        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
+#        # check if there was at least one flipping during hermitianization
+#        flipped_Q = np.any([fp is not None for fp in fixed_points])
+#        # if the array got flipped, correct the variance
+#        if flipped_Q:
+#            h *= np.sqrt(2)
+#            a *= np.sqrt(2)
+#
 #            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
 #            for product_point in itertools.product(*fixed_points):
 #                slice_object = np.array((slice(None), )*len(val.shape),

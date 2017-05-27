@@ -84,6 +84,9 @@ class HPSpace(Space):
 
     # ---Mandatory properties and methods---
 
+    def __repr__(self):
+        return ("HPSpace(nside=%r)" % self.nside)
+
     @property
     def harmonic(self):
         return False

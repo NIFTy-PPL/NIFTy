@@ -149,6 +149,13 @@ class PowerSpace(Space):
 
     # ---Mandatory properties and methods---
 
+    def __repr__(self):
+        return ("PowerSpace(harmonic_partner=%r, distribution_strategy=%r, "
+                "logarithmic=%r, nbin=%r, binbounds=%r)"
+                % (self.harmonic_partner, self.pindex.distribution_strategy,
+                   self.config['logarithmic'], self.config['nbin'],
+                   self.config['binbounds']))
+
     @property
     def harmonic(self):
         return True

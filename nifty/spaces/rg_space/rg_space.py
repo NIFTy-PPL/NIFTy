@@ -52,10 +52,10 @@ class RGSpace(Space):
         ----------
         shape : {int, numpy.ndarray}
             Number of grid points or numbers of gridpoints along each axis.
-        zerocenter : {bool, numpy.ndarray}, *optional*
-        Whether x==0 (or k==0, respectively) is located in the center of
-        the grid (or the center of each axis speparately) or not.
-        (default: False).
+        zerocenter : {bool, numpy.ndarray} *optional*
+            Whether x==0 (or k==0, respectively) is located in the center of
+            the grid (or the center of each axis speparately) or not.
+            (default: False).
         distances : {float, numpy.ndarray}, *optional*
             Distance between two grid points along each axis
             (default: None).
@@ -120,40 +120,32 @@ class RGSpace(Space):
 
         return (hermitian_part, anti_hermitian_part)
 
-#    def hermitian_fixed_points(self):
-#        shape = self.shape
-#        mid_index = np.array(shape)//2
-#        ndlist = [2 if (shape[i] % 2 == 0) else 1 for i in xrange(len(shape))]
-#        ndlist = tuple(ndlist)
-#        odd_axes_list = np.array([1 if (shape[i] % 2 == 1) else 0
-#                                  for i in xrange(len(shape))])
-#        fixed_points = []
-#        for i in np.ndindex(ndlist):
-#            fixed_points += [tuple((i+odd_axes_list) * mid_index)]
-#        return fixed_points
-
     def _hermitianize_correct_variance(self, hermitian_part,
                                        anti_hermitian_part, axes):
         # Correct the variance by multiplying sqrt(2)
         hermitian_part = hermitian_part * np.sqrt(2)
         anti_hermitian_part = anti_hermitian_part * np.sqrt(2)
 
-        # The fixed points of the point inversion must not be averaged.
-        # Hence one must divide out the sqrt(2) again
-        # -> Get the middle index of the array
-        mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
-        dimensions = mid_index.size
-        # Use ndindex to iterate over all combinations of zeros and the
-        # mid_index in order to correct all fixed points.
-        if axes is None:
-            axes = xrange(dimensions)
+        # If the dtype of the input is complex, the fixed points lose the power
+        # of their imaginary-part (or real-part, respectively). Therefore
+        # the factor of sqrt(2) also applies there
+        if not issubclass(hermitian_part.dtype.type, np.complexfloating):
+            # The fixed points of the point inversion must not be averaged.
+            # Hence one must divide out the sqrt(2) again
+            # -> Get the middle index of the array
+            mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
+            dimensions = mid_index.size
+            # Use ndindex to iterate over all combinations of zeros and the
+            # mid_index in order to correct all fixed points.
+            if axes is None:
+                axes = xrange(dimensions)
 
-        ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
-        ndlist = tuple(ndlist)
-        for i in np.ndindex(ndlist):
-            temp_index = tuple(i * mid_index)
-            hermitian_part[temp_index] /= np.sqrt(2)
-            anti_hermitian_part[temp_index] /= np.sqrt(2)
+            ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
+            ndlist = tuple(ndlist)
+            for i in np.ndindex(ndlist):
+                temp_index = tuple(i * mid_index)
+                hermitian_part[temp_index] /= np.sqrt(2)
+                anti_hermitian_part[temp_index] /= np.sqrt(2)
         return hermitian_part, anti_hermitian_part
 
     def _hermitianize_inverter(self, x, axes):
@@ -192,6 +184,10 @@ class RGSpace(Space):
         return y
 
     # ---Mandatory properties and methods---
+
+    def __repr__(self):
+        return ("RGSpace(shape=%r, zerocenter=%r, distances=%r, harmonic=%r)"
+                % (self.shape, self.zerocenter, self.distances, self.harmonic))
 
     @property
     def harmonic(self):

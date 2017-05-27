@@ -100,6 +100,9 @@ class GLSpace(Space):
 
     # ---Mandatory properties and methods---
 
+    def __repr__(self):
+        return ("GLSpace(nlat=%r, nlon=%r)" % (self.nlat, self.nlon))
+
     @property
     def harmonic(self):
         return False
