@@ -27,16 +27,34 @@ class Figure3D(FigureFromPlot):
         if self.xaxis:
             plotly_object['layout']['scene']['xaxis'] = self.xaxis.to_plotly()
         elif not self.xaxis:
-            plotly_object['layout']['scene']['xaxis'] = dict(showline=False)
+            plotly_object['layout']['scene']['xaxis'] = dict(
+                showgrid=False,
+                zeroline=False,
+                showline=False,
+                ticks='',
+                showticklabels=False
+            )
 
         if self.yaxis:
             plotly_object['layout']['scene']['yaxis'] = self.yaxis.to_plotly()
         elif not self.yaxis:
-            plotly_object['layout']['scene']['yaxis'] = dict(showline=False)
+            plotly_object['layout']['scene']['yaxis'] = dict(
+                showgrid=False,
+                zeroline=False,
+                showline=False,
+                ticks='',
+                showticklabels=False
+            )
 
         if self.zaxis:
             plotly_object['layout']['scene']['zaxis'] = self.zaxis.to_plotly()
         elif not self.zaxis:
-            plotly_object['layout']['scene']['zaxis'] = dict(showline=False)
+            plotly_object['layout']['scene']['zaxis'] = dict(
+                showgrid=False,
+                zeroline=False,
+                showline=False,
+                ticks='',
+                showticklabels=False
+            )
 
         return plotly_object

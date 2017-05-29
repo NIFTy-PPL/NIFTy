@@ -7,7 +7,12 @@ from nifty.plotting.plotly_wrapper import PlotlyWrapper
 
 class Heatmap(PlotlyWrapper):
     def __init__(self, data, color_map=None, webgl=False, smoothing=False):
-        # smoothing 'best', 'fast', False
+        """
+        :param data: 2D array to plot
+        :param color_map: Nifty Colormap, None as default
+        :param webgl: optimized for webgl
+        :param smoothing: 'best', 'fast', False
+        """
 
         if color_map is not None:
             if not isinstance(color_map, Colormap):
@@ -19,6 +24,7 @@ class Heatmap(PlotlyWrapper):
         self.data = data
 
     def at(self, data):
+
         if isinstance(data, list):
             temp_data = np.zeros((data[0].shape))
             for arr in data:
@@ -39,7 +45,6 @@ class Heatmap(PlotlyWrapper):
 
         plotly_object['z'] = self.data
 
-        plotly_object['showscale'] = False
         if self.color_map:
             plotly_object['colorscale'] = self.color_map.to_plotly()
             plotly_object['colorbar'] = dict(title=self.color_map.name, x=0.42)

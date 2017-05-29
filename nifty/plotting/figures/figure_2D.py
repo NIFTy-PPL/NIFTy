@@ -7,10 +7,15 @@ from nifty.plotting.plots import Heatmap, HPMollweide, GLMollweide
 class Figure2D(FigureFromPlot):
     def __init__(self, plots, title=None, width=None, height=None,
                  xaxis=None, yaxis=None):
+        """
+        :param title: title of figure (subtitle when used as subfigure)
+        :param xaxis: Nifty Axis, if folse, then not displayed (false default for Mollweide)
+        :param yaxis: Nifty Axis, if folse, then not displayed (false default for Mollweide)
+        """
 
         if plots is not None:
             if isinstance(plots[0], Heatmap) and width is None and \
-               height is None:
+                            height is None:
                 (x, y) = plots[0].data.shape
 
                 if x > y:
@@ -21,7 +26,7 @@ class Figure2D(FigureFromPlot):
                     width = int(500 * y / x)
 
                 if isinstance(plots[0], GLMollweide) or \
-                   isinstance(plots[0], HPMollweide):
+                        isinstance(plots[0], HPMollweide):
                     xaxis = False if (xaxis is None) else xaxis
                     yaxis = False if (yaxis is None) else yaxis
 
@@ -49,19 +54,23 @@ class Figure2D(FigureFromPlot):
             plotly_object['layout']['scene']['aspectratio'] = {}
         if self.xaxis:
             plotly_object['layout']['xaxis'] = self.xaxis.to_plotly()
-        elif not self.xaxis:
+        elif self.xaxis is False:
             plotly_object['layout']['xaxis'] = dict(
-                                                autorange=True,
-                                                showgrid=False,
-                                                zeroline=False,
-                                                showline=False,
-                                                autotick=True,
-                                                ticks='',
-                                                showticklabels=False
-                                            )
+                showgrid=False,
+                zeroline=False,
+                showline=False,
+                ticks='',
+                showticklabels=False
+            )
         if self.yaxis:
             plotly_object['layout']['yaxis'] = self.yaxis.to_plotly()
-        elif not self.yaxis:
-            plotly_object['layout']['yaxis'] = dict(showline=False)
+        elif self.yaxis is False:
+            plotly_object['layout']['yaxis'] = dict(
+                showgrid=False,
+                zeroline=False,
+                showline=False,
+                ticks='',
+                showticklabels=False
+            )
 
         return plotly_object
