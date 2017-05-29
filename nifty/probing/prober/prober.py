@@ -37,11 +37,12 @@ class Prober(object):
     """
 
     def __init__(self, domain=None, distribution_strategy=None, probe_count=8,
-                 random_type='pm1', compute_variance=False):
+                 random_type='pm1', compute_variance=False, ncpu=1):
 
         self._domain = utilities.parse_domain(domain)
         self._distribution_strategy = \
             self._parse_distribution_strategy(distribution_strategy)
+        self._ncpu = self._parse_probe_count(ncpu)
         self._probe_count = self._parse_probe_count(probe_count)
         self._random_type = self._parse_random_type(random_type)
         self.compute_variance = bool(compute_variance)
@@ -88,10 +89,24 @@ class Prober(object):
     def probing_run(self, callee):
         """ controls the generation, evaluation and finalization of probes """
         self.reset()
-        for index in xrange(self.probe_count):
-            current_probe = self.get_probe(index)
-            pre_result = self.process_probe(callee, current_probe, index)
-            self.finish_probe(current_probe, pre_result)
+        if self._ncpu==1:
+            for index in xrange(self.probe_count):
+                current_probe = self.get_probe(index)
+                pre_result = self.process_probe(callee, current_probe, index)
+                self.finish_probe(current_probe, pre_result)
+        else:
+            from pathos.multiprocessing import ProcessPool as Pool
+            Pool.ncpus = self._ncpu
+
+            probes = [None]*self.probe_count
+            callee = [callee]*self.probe_count
+            index = np.arange(self.probe_count)
+            for ii in xrange(self.probe_count):
+                probes[ii] = self.get_probe(index[ii])
+            pool = Pool().map
+            pre_result = pool(self.process_probe, callee, probes, index)
+            for ii in xrange(self.probe_count):
+                self.finish_probe(probes[ii], pre_result[ii])
 
     def reset(self):
         pass
