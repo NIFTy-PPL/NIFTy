@@ -32,6 +32,7 @@ dependency_injector = keepers.DependencyInjector(
                                     'plotly'])
 
 dependency_injector.register('pyfftw', lambda z: hasattr(z, 'FFTW_MPI'))
+dependency_injector.register(('pyfftw','pyfftw_scalar'))
 
 # Initialize the variables
 variable_fft_module = keepers.Variable(
