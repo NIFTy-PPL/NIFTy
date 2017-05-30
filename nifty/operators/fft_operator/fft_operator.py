@@ -63,9 +63,10 @@ class FFTOperator(LinearOperator):
         but for full control, the user should explicitly specify a codomain.
     module: String (optional)
         Software module employed for carrying out the transform operations.
-        For RGSpace pairs this can be "numpy" or "fftw", where "numpy" is
-        always available, but "fftw" offers higher performance and
-        parallelization. For sphere-related domains, only "pyHealpix" is
+        For RGSpace pairs this can be "scalar" or "mpi", where "scalar" is
+        always available (using pyfftw if available, else numpy.fft), and "mpi"
+        requires pyfftw and offers MPI parallelization.
+        For sphere-related domains, only "pyHealpix" is
         available. If omitted, "fftw" is selected for RGSpaces if available,
         else "numpy"; on the sphere the default is "pyHealpix".
     domain_dtype: data type (optional)

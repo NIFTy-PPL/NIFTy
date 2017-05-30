@@ -25,8 +25,8 @@ import nifty.nifty_utilities as utilities
 
 from keepers import Loggable
 
-pyfftw = gdi.get('pyfftw')
-pyfftw_scalar = gdi.get('pyfftw_scalar')
+fftw_mpi = gdi.get('fftw_mpi')
+fftw_scalar = gdi.get('fftw_scalar')
 
 
 class Transform(Loggable, object):
@@ -201,20 +201,21 @@ class Transform(Loggable, object):
         raise NotImplementedError
 
 
-class FFTW(Transform):
+class MPIFFT(Transform):
     """
-        The pyfftw pendant of a fft object.
+        The MPI-parallel FFTW pendant of a fft object.
     """
 
     def __init__(self, domain, codomain):
 
-        if 'pyfftw' not in gdi:
-            raise ImportError("The module pyfftw is needed but not available.")
+        if 'fftw_mpi' not in gdi:
+            raise ImportError(
+                "The MPI FFTW module is needed but not available.")
 
-        super(FFTW, self).__init__(domain, codomain)
+        super(MPIFFT, self).__init__(domain, codomain)
 
-        # Enable caching for pyfftw.interfaces
-        pyfftw.interfaces.cache.enable()
+        # Enable caching
+        fftw_mpi.interfaces.cache.enable()
 
         # The plan_dict stores the FFTWTransformInfo objects which correspond
         # to a certain set of (field_val, domain, codomain) sets.
@@ -410,7 +411,7 @@ class FFTW(Transform):
 
     def transform(self, val, axes, **kwargs):
         """
-            The pyfftw transform function.
+            The MPI-parallel FFTW transform function.
 
             Parameters
             ----------
@@ -468,8 +469,9 @@ class FFTW(Transform):
 class FFTWTransformInfo(object):
     def __init__(self, domain, codomain, axes, local_shape,
                  local_offset_Q, fftw_context, **kwargs):
-        if pyfftw is None:
-            raise ImportError("The module pyfftw is needed but not available.")
+        if fftw_mpi is None:
+            raise ImportError(
+                "The MPI FFTW module is needed but not available.")
 
         shape = (local_shape if axes is None else
                  [y for x, y in enumerate(local_shape) if x in axes])
@@ -513,9 +515,9 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
                                                      fftw_context,
                                                      **kwargs)
         if codomain.harmonic:
-            self._fftw_interface = pyfftw.interfaces.numpy_fft.fftn
+            self._fftw_interface = fftw_mpi.interfaces.numpy_fft.fftn
         else:
-            self._fftw_interface = pyfftw.interfaces.numpy_fft.ifftn
+            self._fftw_interface = fftw_mpi.interfaces.numpy_fft.ifftn
 
     @property
     def fftw_interface(self):
@@ -532,7 +534,7 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
                                                    local_offset_Q,
                                                    fftw_context,
                                                    **kwargs)
-        self._plan = pyfftw.create_mpi_plan(
+        self._plan = fftw_mpi.create_mpi_plan(
             input_shape=transform_shape,
             input_dtype='complex128',
             output_dtype='complex128',
@@ -546,7 +548,7 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
         return self._plan
 
 
-class NUMPYFFT(Transform):
+class ScalarFFT(Transform):
     """
         The numpy fft pendant of a fft object.
 
@@ -554,7 +556,7 @@ class NUMPYFFT(Transform):
 
     def transform(self, val, axes, **kwargs):
         """
-            The pyfftw transform function.
+            The scalar FFT transform function.
 
             Parameters
             ----------
@@ -573,9 +575,9 @@ class NUMPYFFT(Transform):
             result : np.ndarray or distributed_data_object
                 Fourier-transformed pendant of the input field.
         """
-        # Enable caching for pyfftw_scalar.interfaces
-        if 'pyfftw_scalar' in gdi:
-            pyfftw_scalar.interfaces.cache.enable()
+        # Enable caching
+        if 'fftw_scalar' in gdi:
+            fftw_scalar.interfaces.cache.enable()
 
         # Check if the axes provided are valid given the shape
         if axes is not None and \
@@ -630,11 +632,11 @@ class NUMPYFFT(Transform):
             local_val = self._apply_mask(temp_val, mask, axes)
 
         # perform the transformation
-        if 'pyfftw_scalar' in gdi:
+        if 'fftw_scalar' in gdi:
             if self.codomain.harmonic:
-                result_val = pyfftw_scalar.interfaces.numpy_fft.fftn(local_val, axes=axes)
+                result_val = fftw_scalar.interfaces.numpy_fft.fftn(local_val, axes=axes)
             else:
-                result_val = pyfftw_scalar.interfaces.numpy_fft.ifftn(local_val, axes=axes)
+                result_val = fftw_scalar.interfaces.numpy_fft.ifftn(local_val, axes=axes)
         else:
             if self.codomain.harmonic:
                 result_val = np.fft.fftn(local_val, axes=axes)

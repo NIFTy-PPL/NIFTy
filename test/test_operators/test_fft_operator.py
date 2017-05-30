@@ -62,11 +62,11 @@ class FFTOperatorTests(unittest.TestCase):
         res = foo.get_distance_array('not')
         assert_equal(res[zc1 * (dim1 // 2), zc2 * (dim2 // 2)], 0.)
 
-    @expand(product(["numpy", "fftw"], [10, 11], [False, True], [False, True],
+    @expand(product(["scalar","mpi"], [10, 11], [False, True], [False, True],
                     [0.1, 1, 3.7],
                     [np.float64, np.complex128, np.float32, np.complex64]))
     def test_fft1D(self, module, dim1, zc1, zc2, d, itp):
-        if module == "fftw" and "pyfftw" not in di:
+        if module == "mpi" and "fftw_mpi" not in di:
             raise SkipTest
         tol = _get_rtol(itp)
         a = RGSpace(dim1, zerocenter=zc1, distances=d)
@@ -78,12 +78,12 @@ class FFTOperatorTests(unittest.TestCase):
         out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
-    @expand(product(["numpy", "fftw"], [10, 11], [9, 12], [False, True],
+    @expand(product(["scalar", "mpi"], [10, 11], [9, 12], [False, True],
                     [False, True], [False, True], [False, True], [0.1, 1, 3.7],
                     [0.4, 1, 2.7],
                     [np.float64, np.complex128, np.float32, np.complex64]))
     def test_fft2D(self, module, dim1, dim2, zc1, zc2, zc3, zc4, d1, d2, itp):
-        if module == "fftw" and "pyfftw" not in di:
+        if module == "mpi" and "fftw_mpi" not in di:
             raise SkipTest
         tol = _get_rtol(itp)
         a = RGSpace([dim1, dim2], zerocenter=[zc1, zc2], distances=[d1, d2])
