@@ -596,8 +596,9 @@ class Field(Loggable, Versionable, object):
                                               domain_axes[space],
                                               preserve_gaussian_variance=True)
             c = (hh - ha - ah + aa).conjugate()
-            h = (val + c)/2.
-            a = (val - c)/2.
+            full = (hh + ha + ah + aa)
+            h = (full + c)/2.
+            a = (full - c)/2.
 
         # correct variance
 
