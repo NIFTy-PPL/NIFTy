@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
 
@@ -386,6 +386,7 @@ class Field(Loggable, Versionable, object):
                  for part in [hermitian_part, anti_hermitian_part]]
 
             power_spectrum = hermitian_power + 1j * anti_hermitian_power
+
         else:
             power_spectrum = self._calculate_power_spectrum(
                                             x=self.val,
@@ -396,11 +397,7 @@ class Field(Loggable, Versionable, object):
         # create the result field and put power_spectrum into it
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
-
-        if decompose_power:
-            result_dtype = np.complex
-        else:
-            result_dtype = np.float
+        result_dtype = power_spectrum.dtype
 
         result_field = self.copy_empty(
                    domain=result_domain,
@@ -585,39 +582,58 @@ class Field(Loggable, Versionable, object):
     def _hermitian_decomposition(domain, val, spaces, domain_axes):
         # hermitianize for the first space
         (h, a) = domain[spaces[0]].hermitian_decomposition(
-                                                       val,
-                                                       domain_axes[spaces[0]])
+                                               val,
+                                               domain_axes[spaces[0]],
+                                               preserve_gaussian_variance=True)
         # hermitianize all remaining spaces using the iterative formula
         for space in xrange(1, len(spaces)):
-            (hh, ha) = \
-                domain[space].hermitian_decomposition(h, domain_axes[space])
-            (ah, aa) = \
-                domain[space].hermitian_decomposition(a, domain_axes[space])
+            (hh, ha) = domain[space].hermitian_decomposition(
+                                              h,
+                                              domain_axes[space],
+                                              preserve_gaussian_variance=True)
+            (ah, aa) = domain[space].hermitian_decomposition(
+                                              a,
+                                              domain_axes[space],
+                                              preserve_gaussian_variance=True)
             c = (hh - ha - ah + aa).conjugate()
-            h = (val + c)/2.
-            a = (val - c)/2.
+            full = (hh + ha + ah + aa)
+            h = (full + c)/2.
+            a = (full - c)/2.
 
         # correct variance
-        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
-        # check if there was at least one flipping during hermitianization
-        flipped_Q = np.any([fp is not None for fp in fixed_points])
-        # if the array got flipped, correct the variance
-        if flipped_Q:
-            h *= np.sqrt(2)
-            a *= np.sqrt(2)
-            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
-            for product_point in itertools.product(*fixed_points):
-                slice_object = np.array((slice(None), )*len(val.shape),
-                                        dtype=np.object)
-                for i, sp in enumerate(spaces):
-                    point_component = product_point[i]
-                    if point_component is None:
-                        point_component = slice(None)
-                    slice_object[list(domain_axes[sp])] = point_component
 
-                slice_object = tuple(slice_object)
-                h[slice_object] /= np.sqrt(2)
-                a[slice_object] /= np.sqrt(2)
+        # in principle one must not correct the variance for the fixed
+        # points of the hermitianization. However, for a complex field
+        # the input field loses half of its power at its fixed points
+        # in the `hermitian` part. Hence, here a factor of sqrt(2) is
+        # also necessary!
+        # => The hermitianization can be done on a space level since either
+        # nothing must be done (LMSpace) or ALL points need a factor of sqrt(2)
+        # => use the preserve_gaussian_variance flag in the
+        # hermitian_decomposition method above.
+
+        # This code is for educational purposes:
+#        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
+#        # check if there was at least one flipping during hermitianization
+#        flipped_Q = np.any([fp is not None for fp in fixed_points])
+#        # if the array got flipped, correct the variance
+#        if flipped_Q:
+#            h *= np.sqrt(2)
+#            a *= np.sqrt(2)
+#
+#            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
+#            for product_point in itertools.product(*fixed_points):
+#                slice_object = np.array((slice(None), )*len(val.shape),
+#                                        dtype=np.object)
+#                for i, sp in enumerate(spaces):
+#                    point_component = product_point[i]
+#                    if point_component is None:
+#                        point_component = slice(None)
+#                    slice_object[list(domain_axes[sp])] = point_component
+#
+#                slice_object = tuple(slice_object)
+#                h[slice_object] /= np.sqrt(2)
+#                a[slice_object] /= np.sqrt(2)
 
         return (h, a)
 
