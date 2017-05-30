@@ -208,7 +208,7 @@ class MPIFFT(Transform):
 
     def __init__(self, domain, codomain):
 
-        if 'fftw_mpi' not in gdi:
+        if fftw_mpi is None:
             raise ImportError(
                 "The MPI FFTW module is needed but not available.")
 
@@ -576,7 +576,7 @@ class ScalarFFT(Transform):
                 Fourier-transformed pendant of the input field.
         """
         # Enable caching
-        if 'fftw_scalar' in gdi:
+        if fftw_scalar is not None:
             fftw_scalar.interfaces.cache.enable()
 
         # Check if the axes provided are valid given the shape
@@ -632,7 +632,7 @@ class ScalarFFT(Transform):
             local_val = self._apply_mask(temp_val, mask, axes)
 
         # perform the transformation
-        if 'fftw_scalar' in gdi:
+        if fftw_scalar is not None:
             if self.codomain.harmonic:
                 result_val = fftw_scalar.interfaces.numpy_fft.fftn(local_val, axes=axes)
             else:
