@@ -18,7 +18,7 @@
 
 import d2o
 import numpy as np
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from nifty import RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
 from nifty.config import dependency_injector as di
 from string import strip
