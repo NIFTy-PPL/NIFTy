@@ -38,7 +38,7 @@ class HPLMTransformation(SlicingTransformation):
         if module != 'pyHealpix':
             raise ValueError("Unsupported SHT module.")
 
-        if 'pyHealpix' not in gdi:
+        if pyHealpix is None:
             raise ImportError(
                 "The module pyHealpix is needed but not available")
 
