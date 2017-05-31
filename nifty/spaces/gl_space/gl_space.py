@@ -45,7 +45,7 @@ class GLSpace(Space):
             Number of latitudinal bins (or rings) that are used for this
             pixelization.
         nlon : int, *optional*
-            Number of longditudinal bins that are used for this pixelization.
+            Number of longitudinal bins that are used for this pixelization.
 
         Attributes
         ----------
@@ -57,7 +57,7 @@ class GLSpace(Space):
             Number of latitudinal bins (or rings) that are used for this
             pixelization.
         nlon : int
-            Number of longditudinal bins that are used for this pixelization.
+            Number of longitudinal bins that are used for this pixelization.
         total_volume : np.float
             The total volume of the space.
         shape : tuple of np.ints
@@ -89,7 +89,7 @@ class GLSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, nlat, nlon=None):
-        if 'pyHealpix' not in gdi:
+        if pyHealpix is None:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
 
@@ -163,7 +163,7 @@ class GLSpace(Space):
 
     @property
     def nlon(self):
-        """ Number of longditudinal bins that are used for this pixelization.
+        """ Number of longitudinal bins that are used for this pixelization.
         """
 
         return self._nlon

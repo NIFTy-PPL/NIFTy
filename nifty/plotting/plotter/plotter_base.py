@@ -31,7 +31,7 @@ class PlotterBase(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, interactive=False, path='.', title=""):
-        if 'plotly' not in gdi:
+        if plotly is None:
             raise ImportError("The module plotly is needed but not available.")
         self.interactive = interactive
         self.path = path

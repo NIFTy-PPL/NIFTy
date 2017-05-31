@@ -36,7 +36,7 @@ class LMHPTransformation(SlicingTransformation):
         if module != 'pyHealpix':
             raise ValueError("Unsupported SHT module.")
 
-        if gdi.get('pyHealpix') is None:
+        if pyHealpix is None:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
 
