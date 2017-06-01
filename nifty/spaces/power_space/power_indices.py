@@ -25,8 +25,7 @@ class PowerIndices(object):
     Given the shape and the density of a underlying rectangular grid this
     class provides the user
     with the pindex, kindex and rho. The indices are binned
-    according to the supplied parameter scheme. If wanted, computed
-    results are stored for future reuse.
+    according to the supplied parameter scheme.
 
     Parameters
     ----------
@@ -44,23 +43,10 @@ class PowerIndices(object):
         self.k_array = self.domain.get_distance_array(distribution_strategy)
 
 
-    def _cast_config(self, **kwargs):
+    def _cast_config(self, logarithmic, nbin, binbounds):
         """
             internal helper function which casts the various combinations of
             possible parameters into a properly defaulted dictionary
-        """
-        temp_logarithmic = kwargs.get("logarithmic")
-        temp_nbin = kwargs.get("nbin")
-        temp_binbounds = kwargs.get("binbounds")
-
-        return self._cast_config_helper(logarithmic=temp_logarithmic,
-                                        nbin=temp_nbin,
-                                        binbounds=temp_binbounds)
-
-    def _cast_config_helper(self, logarithmic, nbin, binbounds):
-        """
-            internal helper function which sets the defaults for the
-            _cast_config function
         """
 
         try:
@@ -78,12 +64,9 @@ class PowerIndices(object):
         except(TypeError):
             temp_binbounds = None
 
-        temp_dict = {"logarithmic": temp_logarithmic,
-                     "nbin": temp_nbin,
-                     "binbounds": temp_binbounds}
-        return temp_dict
+        return temp_logarithmic, temp_nbin, temp_binbounds
 
-    def get_index_dict(self, **kwargs):
+    def get_index_dict(self, logarithmic, nbin, binbounds):
         """
             Returns a dictionary containing the pindex, kindex and rho
             binned according to the supplied parameter scheme and a
@@ -105,30 +88,19 @@ class PowerIndices(object):
                 Contains the keys: 'config', 'pindex', 'kindex' and 'rho'
         """
         # Cast the input arguments
-        temp_config_dict = self._cast_config(**kwargs)
-        # Compute a hashable identifier from the config which will be used
-        # as dict key
-        temp_key = self._freeze_config(temp_config_dict)
-        temp_index_dict = self._compute_index_dict(temp_config_dict)
+        loarithmic, nbin, binbounds = self._cast_config(logarithmic, nbin, binbounds)
+        pindex, kindex, rho, k_array = self._compute_index_dict(logarithmic, nbin, binbounds)
         # Return the plain result.
-        return temp_index_dict
+        return pindex, kindex, rho, k_array
 
-    def _freeze_config(self, config_dict):
-        """
-            a helper function which forms a hashable identifying object from
-            a config dictionary which can be used as key of a dict
-        """
-        return frozenset(config_dict.items())
-
-    def _compute_index_dict(self, config_dict):
+    def _compute_index_dict(self, logarithmic, nbin, binbounds):
         """
             Internal helper function which takes a config_dict, asks for the
             pindex/kindex/rho set, and bins them according to the config
         """
         # if no binning is requested, compute the indices, build the dict,
         # and return it straight.
-        if not config_dict["logarithmic"] and config_dict["nbin"] is None and \
-                config_dict["binbounds"] is None:
+        if not logarithmic and nbin is None and binbounds is None:
             (temp_pindex, temp_kindex, temp_rho) =\
                 self._compute_indices(self.k_array)
             temp_k_array = self.k_array
@@ -137,24 +109,18 @@ class PowerIndices(object):
         # indices, bin them, and then return everything.
         else:
             # Get the unbinned indices
-            temp_unbinned_indices = self.get_index_dict(nbin=None,
+            pindex, kindex, rho, dummy = self.get_index_dict(nbin=None,
                                                         binbounds=None,
-                                                        logarithmic=False,
-                                                        store=False)
+                                                        logarithmic=False)
             # Bin them
             (temp_pindex, temp_kindex, temp_rho) = \
                 self._bin_power_indices(
-                    temp_unbinned_indices, **config_dict)
+                    pindex, kindex, rho, logarithmic, nbin, binbounds)
             # Make a binned version of k_array
             temp_k_array = self._compute_k_array_from_pindex_kindex(
                                temp_pindex, temp_kindex)
 
-        temp_index_dict = {"config": config_dict,
-                           "pindex": temp_pindex,
-                           "kindex": temp_kindex,
-                           "rho": temp_rho,
-                           "k_array": temp_k_array}
-        return temp_index_dict
+        return temp_pindex, temp_kindex, temp_rho, temp_k_array
 
     def _compute_k_array_from_pindex_kindex(self, pindex, kindex):
         tempindex = pindex.copy(dtype=kindex.dtype)
@@ -192,7 +158,7 @@ class PowerIndices(object):
 
         return global_pindex, global_kindex, global_rho
 
-    def _bin_power_indices(self, index_dict, **kwargs):
+    def _bin_power_indices(self, pindex, kindex, rho, logarithmic, nbin, binbounds):
         """
             Returns the binned power indices associated with the Fourier grid.
 
@@ -219,16 +185,6 @@ class PowerIndices(object):
                 The (re)binned power indices.
 
         """
-        # Cast the given config
-        temp_config_dict = self._cast_config(**kwargs)
-        logarithmic = temp_config_dict['logarithmic']
-        nbin = temp_config_dict['nbin']
-        binbounds = temp_config_dict['binbounds']
-
-        # Extract the necessary indices from the supplied index dict
-        pindex = index_dict["pindex"]
-        kindex = index_dict["kindex"]
-        rho = index_dict["rho"]
 
         # boundaries
         if(binbounds is not None):

@@ -94,20 +94,16 @@ class PowerSpace(Space):
                 "harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
 
+        self._logarithmic = logarithmic
+        self._nbin = nbin
+        self._binbounds = binbounds
         tmp = PowerIndices(self.harmonic_partner, distribution_strategy)
-        power_index = tmp.get_index_dict(logarithmic=logarithmic,
+        self._pindex, self._kindex, self._rho, self._k_array = tmp.get_index_dict(logarithmic=logarithmic,
                                                    nbin=nbin,
                                                    binbounds=binbounds)
 
-        self._config = power_index['config']
-
-        self._pindex = power_index['pindex']
-        self._kindex = power_index['kindex']
-        self._rho = power_index['rho']
-        self._k_array = power_index['k_array']
-
-        if self.config['nbin'] is not None:
-            if self.config['nbin'] > len(self.kindex):
+        if nbin is not None:
+            if nbin > len(self.kindex):
                 self.logger.warn("nbin was set to a value being larger than "
                                  "the length of kindex!")
 
@@ -145,8 +141,7 @@ class PowerSpace(Space):
         return ("PowerSpace(harmonic_partner=%r, distribution_strategy=%r, "
                 "logarithmic=%r, nbin=%r, binbounds=%r)"
                 % (self.harmonic_partner, self.pindex.distribution_strategy,
-                   self.config['logarithmic'], self.config['nbin'],
-                   self.config['binbounds']))
+                   self._logarithmic, self._nbin, self._binbounds))
 
     @property
     def harmonic(self):
@@ -169,9 +164,9 @@ class PowerSpace(Space):
         distribution_strategy = self.pindex.distribution_strategy
         return self.__class__(harmonic_partner=self.harmonic_partner,
                               distribution_strategy=distribution_strategy,
-                              logarithmic=self.config["logarithmic"],
-                              nbin=self.config["nbin"],
-                              binbounds=self.config["binbounds"])
+                              logarithmic=self._logarithmic,
+                              nbin=self._nbin,
+                              binbounds=self._binbounds)
 
     def weight(self, x, power=1, axes=None, inplace=False):
         reshaper = [1, ] * len(x.shape)
@@ -209,11 +204,16 @@ class PowerSpace(Space):
         return self._harmonic_partner
 
     @property
-    def config(self):
-        """ Returns the configuration which was used for `logarithmic`, `nbin`
-        and `binbounds` during initialization.
-        """
-        return self._config
+    def logarithmic(self):
+        return self._logarithmic
+
+    @property
+    def nbin(self):
+        return self._nbin
+
+    @property
+    def binbounds(self):
+        return self._binbounds
 
     @property
     def pindex(self):
@@ -246,10 +246,10 @@ class PowerSpace(Space):
     def _to_hdf5(self, hdf5_group):
         hdf5_group['kindex'] = self.kindex
         hdf5_group['rho'] = self.rho
-        hdf5_group['logarithmic'] = self.config["logarithmic"]
+        hdf5_group['logarithmic'] = self._logarithmic
         # Store nbin as string, since it can be None
-        hdf5_group.attrs['nbin'] = str(self.config["nbin"])
-        hdf5_group.attrs['binbounds'] = str(self.config["binbounds"])
+        hdf5_group.attrs['nbin'] = str(self._nbin)
+        hdf5_group.attrs['binbounds'] = str(self._binbounds)
 
         #MR FIXME: why not "return None" as happens everywhere else?
         return {
@@ -270,10 +270,9 @@ class PowerSpace(Space):
         new_ps._harmonic_partner = repository.get('harmonic_partner',
                                                   hdf5_group)
 
-        new_ps._config = {}
-        new_ps._config['logarithmic'] = hdf5_group['logarithmic'][()]
-        exec("new_ps._config['nbin'] = " + hdf5_group.attrs['nbin'])
-        exec("new_ps._config['binbounds'] = " + hdf5_group.attrs['binbounds'])
+        new_ps._logarithmic = hdf5_group['logarithmic'][()]
+        exec("new_ps._nbin = " + hdf5_group.attrs['nbin'])
+        exec("new_ps._binbounds = " + hdf5_group.attrs['binbounds'])
 
         new_ps._pindex = repository.get('pindex', hdf5_group)
         new_ps._kindex = hdf5_group['kindex'][:]
