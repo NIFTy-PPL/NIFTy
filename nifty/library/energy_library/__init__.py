@@ -1,3 +1,2 @@
 from wiener_filter_energy import WienerFilterEnergy
-from nonlinear_wiener_filter_energy import NonlinearWienerFilterEnergy
 from critical_power_energy import CriticalPowerEnergy

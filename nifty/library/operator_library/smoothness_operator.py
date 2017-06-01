@@ -1,7 +1,7 @@
 from nifty import EndomorphicOperator,\
                   PowerSpace
 
-from laplace_operator import LaplaceOperator
+from laplace_operator import LogLaplaceOperator
 
 
 class SmoothnessOperator(EndomorphicOperator):
@@ -21,7 +21,7 @@ class SmoothnessOperator(EndomorphicOperator):
 
         self._sigma = sigma
 
-        self._Laplace = LaplaceOperator(domain=self._domain[0])
+        self._Laplace = LogLaplaceOperator(domain=self._domain[0])
 
     """
     SmoothnessOperator

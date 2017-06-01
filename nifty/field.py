@@ -167,8 +167,58 @@ class Field(Loggable, Versionable, object):
 
     # ---Powerspectral methods---
 
-    def power_analyze(self, spaces=None, logarithmic=False, nbin=None, binbounds=None,
-                      decompose_power=False):
+    def power_analyze(self, spaces=None, logarithmic=False, nbin=None,
+                      binbounds=None, decompose_power=True):
+        """ Computes the square root power spectrum for a subspace of `self`.
+
+        Creates a PowerSpace for the space addressed by `spaces` with the given
+        binning and computes the power spectrum as a Field over this
+        PowerSpace. This can only be done if the subspace to  be analyzed is a
+        harmonic space. The resulting field has the same units as the initial
+        field, corresponding to the square root of the power spectrum.
+
+        Parameters
+        ----------
+        spaces : int *optional*
+            The subspace for which the powerspectrum shall be computed
+            (default : None).
+            if spaces==None : Tries to synthesize for the whole domain
+        logarithmic : boolean *optional*
+            True if the output PowerSpace should use logarithmic binning.
+            {default : False}
+        nbin : int *optional*
+            The number of bins the resulting PowerSpace shall have
+            (default : None).
+            if nbin==None : maximum number of bins is used
+        binbounds : array-like *optional*
+            Inner bounds of the bins (default : None).
+            if binbounds==None : bins are inferred. Overwrites nbins and log
+        decompose_power : boolean, *optional*
+            Whether the analysed signal-space Field is intrinsically real or
+            complex and if the power spectrum shall therefore be computed
+            for the real and the imaginary part of the Field separately
+            (default : True).
+
+        Raise
+        -----
+        ValueError
+            Raised if
+                *len(domain) is != 1 when spaces==None
+                *len(spaces) is != 1 if not None
+                *the analyzed space is not harmonic
+
+        Returns
+        -------
+        out : Field
+            The output object. It's domain is a PowerSpace and it contains
+            the power spectrum of 'self's field.
+
+        See Also
+        --------
+        power_synthesize, PowerSpace
+
+        """
+
         # check if all spaces in `self.domain` are either harmonic or
         # power_space instances
         for sp in self.domain:
@@ -210,10 +260,11 @@ class Field(Loggable, Versionable, object):
             self.val.get_axes_local_distribution_strategy(
                 self.domain_axes[space_index])
 
-        harmonic_partner = self.domain[space_index]
-        power_domain = PowerSpace(harmonic_partner=harmonic_partner,
+        harmonic_domain = self.domain[space_index]
+        power_domain = PowerSpace(harmonic_partner=harmonic_domain,
                                   distribution_strategy=distribution_strategy,
-                                  logarithmic=logarithmic, nbin=nbin, binbounds=binbounds)
+                                  logarithmic=logarithmic, nbin=nbin,
+                                  binbounds=binbounds)
 
         # extract pindex and rho from power_domain
         pindex = power_domain.pindex
@@ -221,7 +272,7 @@ class Field(Loggable, Versionable, object):
 
         if decompose_power:
             hermitian_part, anti_hermitian_part = \
-                harmonic_partner.hermitian_decomposition(
+                harmonic_domain.hermitian_decomposition(
                                             self.val,
                                             axes=self.domain_axes[space_index])
 
@@ -234,6 +285,7 @@ class Field(Loggable, Versionable, object):
                  for part in [hermitian_part, anti_hermitian_part]]
 
             power_spectrum = hermitian_power + 1j * anti_hermitian_power
+
         else:
             power_spectrum = self._calculate_power_spectrum(
                                             x=self.val,
@@ -244,11 +296,7 @@ class Field(Loggable, Versionable, object):
         # create the result field and put power_spectrum into it
         result_domain = list(self.domain)
         result_domain[space_index] = power_domain
-
-        if decompose_power:
-            result_dtype = np.complex
-        else:
-            result_dtype = np.float
+        result_dtype = power_spectrum.dtype
 
         result_field = self.copy_empty(
                    domain=result_domain,
@@ -258,145 +306,7 @@ class Field(Loggable, Versionable, object):
 
         return result_field
 
-    def project_power(self, spaces=None, logarithmic=False, nbin=None,
-                      binbounds=None, decompose_power=True):
-        """ Computes the quadratic power projection for a subspace of the Field.
-
-        Creates a PowerSpace for the space addressed by `spaces` with the given
-        binning and computes the quadratic power projection as a Field over this
-        PowerSpace. This can only be done if the subspace to  be analyzed is a
-        harmonic space.
-
-        Parameters
-        ----------
-        spaces : int *optional*
-            The subspace for which the power projection shall be computed
-            (default : None).
-            if spaces==None : Tries to synthesize for the whole domain
-        logarithmic : boolean *optional*
-            True if the output PowerSpace should use logarithmic binning.
-            {default : False}
-        nbin : int *optional*
-            The number of bins the resulting PowerSpace shall have
-            (default : None).
-            if nbin==None : maximum number of bins is used
-        binbounds : array-like *optional*
-            Inner bounds of the bins (default : None).
-            if binbounds==None : bins are inferred. Overwrites nbins and log
-        decompose_power : boolean, *optional*
-            Whether the analysed signal-space Field is intrinsically real or
-            complex and if the projected power shall therefore be computed
-            for the real and the imaginary part of the Field separately
-            (default : True).
-
-        Raise
-        -----
-        ValueError
-            Raised if
-                *len(domain) is != 1 when spaces==None
-                *len(spaces) is != 1 if not None
-                *the analyzed space is not harmonic
-
-        Returns
-        -------
-        out : Field
-            The output object. It's domain is a PowerSpace and it contains
-            the quadratic power projection of 'self's field.
-
-        See Also
-        --------
-        power_synthesize, PowerSpace, power_analyze
-
-        """
-
-        # check if all spaces in `self.domain` are either harmonic or
-        # power_space instances
-        for sp in self.domain:
-            if not sp.harmonic and not isinstance(sp, PowerSpace):
-                self.logger.info(
-                    "Field has a space in `domain` which is neither "
-                    "harmonic nor a PowerSpace.")
-
-        # check if the `spaces` input is valid
-        spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
-        if spaces is None:
-            if len(self.domain) == 1:
-                spaces = (0,)
-            else:
-                raise ValueError(
-                    "Field has multiple spaces as domain "
-                    "but `spaces` is None.")
-
-        if len(spaces) == 0:
-            raise ValueError(
-                "No space for analysis specified.")
-        elif len(spaces) > 1:
-            raise ValueError(
-                "Conversion of only one space at a time is allowed.")
-
-        space_index = spaces[0]
-
-        if not self.domain[space_index].harmonic:
-            raise ValueError(
-                "The analyzed space must be harmonic.")
-
-        # Create the target PowerSpace instance:
-        # If the associated signal-space field was real, we extract the
-        # hermitian and anti-hermitian parts of `self` and put them
-        # into the real and imaginary parts of the projected power.
-        # If it was complex, all the power is put into a real power projection
-
-        distribution_strategy = \
-            self.val.get_axes_local_distribution_strategy(
-                self.domain_axes[space_index])
-
-        harmonic_domain = self.domain[space_index]
-        power_domain = PowerSpace(harmonic_partner=harmonic_domain,
-                                  distribution_strategy=distribution_strategy,
-                                  logarithmic=logarithmic, nbin=nbin,
-                                  binbounds=binbounds)
-
-        # extract pindex and rho from power_domain
-        pindex = power_domain.pindex
-
-        if decompose_power:
-            hermitian_part, anti_hermitian_part = \
-                harmonic_domain.hermitian_decomposition(
-                                            self.val,
-                                            axes=self.domain_axes[space_index])
-
-            [hermitian_power, anti_hermitian_power] = \
-                [self._calculate_projected_power(
-                                            x=part,
-                                            pindex=pindex,
-                                            axes=self.domain_axes[space_index])
-                 for part in [hermitian_part, anti_hermitian_part]]
-
-            power_projection = hermitian_power + 1j * anti_hermitian_power
-        else:
-            power_projection = self._calculate_projected_power(
-                                            x=self.val,
-                                            pindex=pindex,
-                                            axes=self.domain_axes[space_index])
-
-        # create the result field and put power_spectrum into it
-        result_domain = list(self.domain)
-        result_domain[space_index] = power_domain
-
-        if decompose_power:
-            result_dtype = np.complex
-        else:
-            result_dtype = np.float
-
-        result_field = self.copy_empty(
-                   domain=result_domain,
-                   dtype=result_dtype,
-                   distribution_strategy=power_projection.distribution_strategy)
-        result_field.set_val(new_val=power_projection, copy=False)
-
-        return result_field
-
-    def _calculate_projected_power(self, x, pindex, axes=None):
+    def _calculate_power_spectrum(self, x, pindex, rho, axes=None):
         fieldabs = abs(x)
         fieldabs **= 2
 
@@ -406,12 +316,8 @@ class Field(Loggable, Versionable, object):
                                     target_shape=x.shape,
                                     target_strategy=x.distribution_strategy,
                                     axes=axes)
-        projected_power = pindex.bincount(weights=fieldabs,
+        power_spectrum = pindex.bincount(weights=fieldabs,
                                          axis=axes)
-        return projected_power
-
-    def _calculate_power_spectrum(self, x, pindex, rho, axes=None):
-        power_spectrum = self._calculate_projected_power(x, pindex, axes)
         if axes is not None:
             new_rho_shape = [1, ] * len(power_spectrum.shape)
             new_rho_shape[axes[0]] = len(rho)

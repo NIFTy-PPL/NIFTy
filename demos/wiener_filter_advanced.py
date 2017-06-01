@@ -61,7 +61,7 @@ if __name__ == "__main__":
     sp = Field(p_space, val=lambda z: pow_spec(z)**(1./2),
                distribution_strategy=distribution_strategy)
     sh = sp.power_synthesize(real_signal=True)
-
+    ss = fft.adjoint_times(sh)
 
     # Choosing the measurement instrument
     Instrument = SmoothingOperator(s_space, sigma=0.05)

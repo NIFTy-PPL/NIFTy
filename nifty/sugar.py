@@ -55,13 +55,13 @@ def generate_posterior_sample(mean, covariance):
     mock_signal = power.power_synthesize(real_signal=True)
 
 
-    noise = N.diagonal().val
+    noise = N.diagonal(bare=True).val
 
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,
                                    std = sqrt(noise), dtype = noise.dtype)
-    mock_data = R.derived_times(mock_signal, mean) + mock_noise
+    mock_data = R(mock_signal) + mock_noise
 
-    mock_j = R.derived_adjoint_times(N.inverse_times(mock_data), mean)
+    mock_j = R.adjoint_times(N.inverse_times(mock_data))
     mock_m = covariance.inverse_times(mock_j)
     sample = mock_signal - mock_m + mean
     return sample

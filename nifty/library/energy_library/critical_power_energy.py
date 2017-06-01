@@ -1,6 +1,7 @@
 from nifty.energies.energy import Energy
 from nifty.library.operator_library import CriticalPowerCurvature,\
-                                            SmoothnessOperator
+                                            LaplaceOperator
+
 from nifty.sugar import generate_posterior_sample
 from nifty import Field, exp
 
@@ -30,7 +31,9 @@ class CriticalPowerEnergy(Energy):
         self.sigma = sigma
         self.alpha = Field(self.position.domain, val=alpha)
         self.q = Field(self.position.domain, val=q)
-        self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma)
+        #self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma)
+        self.Laplace = LaplaceOperator(self.position.domain[0])
+        self.roughness = self.Laplace(self.position)
         self.rho = self.position.domain[0].rho
         self.w = w
         if self.w is None:
@@ -47,21 +50,21 @@ class CriticalPowerEnergy(Energy):
     @property
     def value(self):
         energy = exp(-self.position).dot(self.q + self.w / 2.)
-        energy += self.position.dot(self.alpha - 1 + self.rho / 2.)
-        energy += 0.5 * self.position.dot(self.T(self.position))
+        energy += self.position.dot(self.alpha - 1. + self.rho / 2.)
+        energy += 0.5 * self.roughness.dot(self.roughness) / self.sigma**2
         return energy.real
 
     @property
     def gradient(self):
         gradient = - self.theta
-        gradient += self.alpha - 1 + self.rho / 2.
-        gradient += self.T(self.position)
-        gradient.val[0] = 0.
+        gradient += self.alpha - 1. + self.rho / 2.
+        gradient += self.Laplace(self.roughness) / self.sigma **2
         return gradient
 
     @property
     def curvature(self):
-        curvature = CriticalPowerCurvature(theta=self.theta, T = self.T)
+        curvature = CriticalPowerCurvature(theta=self.theta, Laplace = self.Laplace,
+                                           sigma = self.sigma)
         return curvature
 
     def _calculate_w(self, m, D, samples):
@@ -69,15 +72,18 @@ class CriticalPowerEnergy(Energy):
         if D is not None:
             for i in range(samples):
                 posterior_sample = generate_posterior_sample(m, D)
-                projected_sample = posterior_sample.project_power(
+                projected_sample = posterior_sample.power_analyze(
                     logarithmic=self.position.domain[0].config["logarithmic"],
+                    nbin= self.position.domain[0].config["nbin"],
                         decompose_power=False)
-                w += projected_sample
+                w += (projected_sample **2) * self.rho
             w /= float(samples)
         else:
-            w = m.project_power(
+            w = m.power_analyze(
                     logarithmic=self.position.domain[0].config["logarithmic"],
                         decompose_power=False)
+            w **= 2
+            w *= self.rho
 
         return w
 

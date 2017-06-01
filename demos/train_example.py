@@ -54,12 +54,36 @@ def plot_parameters(m,t, t_real):
     pl.plot([go.Scatter(y=m_data)], filename='map.html')
     pl.plot([go.Scatter(y=t_data),
              go.Scatter(y=t_real_data)], filename="t.html")
+class AdjointFFTResponse(LinearOperator):
+    def __init__(self, FFT, R, default_spaces=None):
+        super(AdjointFFTResponse, self).__init__(default_spaces)
+        self._domain = FFT.target
+        self._target = R.target
+        self.R = R
+        self.FFT = FFT
+
+    def _times(self, x, spaces=None):
+        return self.R(self.FFT.adjoint_times(x))
+
+    def _adjoint_times(self, x, spaces=None):
+        return self.FFT(self.R.adjoint_times(x))
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def unitary(self):
+        return False
 
 if __name__ == "__main__":
 
     distribution_strategy = 'not'
     full_data = np.genfromtxt("train_data.csv", delimiter = ',')
-    d = full_data.T[2]
+    d = full_data.T[3]
     d[0] = 0.
     d -= d.mean()
     d[0] = 0.
@@ -80,42 +104,9 @@ if __name__ == "__main__":
     Instrument = DiagonalOperator(s_space, diagonal=1.)
 #    Instrument._diagonal.val[200:400, 200:400] = 0
 
-    #   Choosing nonlinearity
-
-    # log-normal model:
-
-    # function = exp
-    # derivative = exp
-
-    # tan-normal model
-
-    # def function(x):
-    #     return 0.5 * tanh(x) + 0.5
-    # def derivative(x):
-    #     return 0.5*(1 - tanh(x)**2)
-
-    # no nonlinearity, Wiener Filter
-
-    def function(x):
-        return x
-    def derivative(x):
-        return 1
-
-    # small quadratic pertubarion
-
-    # def function(x):
-    #     return 0.5*x**2 + x
-    # def derivative(x):
-    #     return x + 1
-
-    # def function(x):
-    #     return 0.9*x**4 +0.2*x**2 + x
-    # def derivative(x):
-    #     return 0.9*4*x**3 + 0.4*x +1
-    #
 
     #Adding a harmonic transformation to the instrument
-    R = NonlinearResponse(fft, Instrument, function, derivative)
+    R = AdjointFFTResponse(fft, Instrument)
     noise = .1
     N = DiagonalOperator(s_space, diagonal=noise, bare=True)
 
@@ -139,13 +130,13 @@ if __name__ == "__main__":
                               callback=convergence_measure)
     minimizer2 = RelaxedNewton(convergence_tolerance=0,
                               convergence_level=1,
-                              iteration_limit=10,
+                              iteration_limit=30,
                               callback=convergence_measure)
 
-    # minimizer1 = VL_BFGS(convergence_tolerance=0,
-    #                    iteration_limit=5,
-    #                    callback=convergence_measure,
-    #                    max_history_length=3)
+    minimizer1 = VL_BFGS(convergence_tolerance=0,
+                       iteration_limit=30,
+                       callback=convergence_measure,
+                       max_history_length=3)
 
 
 
@@ -159,30 +150,37 @@ if __name__ == "__main__":
     S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                                distribution_strategy=distribution_strategy)
 
-
-    data_power = fft(d).power_analyze()
+    data_power  = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
+                                          nbin=p_space.config["nbin"])**2)
     for i in range(100):
         S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                               distribution_strategy=distribution_strategy)
 
         # Initializing the  nonlinear Wiener Filter energy
-        map_energy = NonlinearWienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0)
+        map_energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0)
         # Minimization with chosen minimizer
-        (map_energy, convergence) = minimizer1(map_energy)
+        map_energy = map_energy.analytic_solution()
+
         # Updating parameters for correlation structure reconstruction
         m0 = map_energy.position
         D0 = map_energy.curvature
         # Initializing the power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=.5, samples=5)
-        (power_energy, convergence) = minimizer1(power_energy)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=.5, samples=3)
+        if i > 0:
+            (power_energy, convergence) = minimizer1(power_energy)
+        else:
+            (power_energy, convergence) = minimizer1(power_energy)
         # Setting new power spectrum
         t0 = power_energy.position
-        plot_parameters(m0,t0,log(data_power**2))
+        t0.val[-1] = t0.val[-2]
+        # Plotting current estimate
+        plot_parameters(m0,t0,data_power)
 
     # Transforming fields to position space for plotting
 
     ss = fft.adjoint_times(sh)
     m = fft.adjoint_times(map_energy.position)
+
 
 
     # Plotting

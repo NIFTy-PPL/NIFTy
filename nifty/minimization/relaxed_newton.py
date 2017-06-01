@@ -37,4 +37,4 @@ class RelaxedNewton(DescentMinimizer):
         gradient = energy.gradient
         curvature = energy.curvature
         descend_direction = curvature.inverse_times(gradient)
-        return descend_direction * -1
+        return descend_direction * -1.
