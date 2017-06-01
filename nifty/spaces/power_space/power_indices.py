@@ -25,24 +25,9 @@ class PowerIndices(object):
     Given the shape and the density of a underlying grid this class provides
     the user with the pindex, kindex and rho. The indices are binned
     according to the supplied parameter scheme.
-
-    Parameters
-    ----------
-    domain : NIFTy harmonic space
-        The space for which the power indices get computed
-    distribution_strategy : str
-        The distribution_strategy that will be used for the k_array and pindex
-        distributed_data_object.
     """
-    def __init__(self, domain, distribution_strategy):
-        self.domain = domain
-        self.distribution_strategy = distribution_strategy
-
-        # Compute the global k_array
-        self.k_array = self.domain.get_distance_array(distribution_strategy)
-
-
-    def get_index_dict(self, logarithmic, nbin, binbounds):
+    @staticmethod
+    def get_arrays(domain, distribution_strategy, logarithmic, nbin, binbounds):
         """
             Returns a dictionary containing the pindex, kindex and rho
             binned according to the supplied parameter scheme and a
@@ -50,6 +35,11 @@ class PowerIndices(object):
 
             Parameters
             ----------
+            domain : NIFTy harmonic space
+                The space for which the power indices get computed
+            distribution_strategy : str
+                The distribution_strategy that will be used for the k_array and
+                pindex distributed_data_object.
             logarithmic : bool
                 Flag specifying if the binning is performed on logarithmic
                 scale.
@@ -59,24 +49,33 @@ class PowerIndices(object):
                 Array-like inner boundaries of the used bins.
 
         """
-
         # if no binning is requested, compute the indices, build the dict,
         # and return it straight.
         if not logarithmic and nbin is None and binbounds is None:
-            (temp_pindex, temp_kindex, temp_rho) =\
-                self._compute_indices(self.k_array)
-            temp_k_array = self.k_array
+            k_array = domain.get_distance_array(distribution_strategy)
+            temp_kindex = k_array.unique()
+            # compute the local pindex slice on basis of the local k_array data
+            local_pindex = np.searchsorted(temp_kindex, k_array.get_local_data())
+            # prepare the distributed_data_object
+            temp_pindex = distributed_data_object(
+                            global_shape=k_array.shape,
+                            dtype=local_pindex.dtype,
+                            distribution_strategy=distribution_strategy)
+            # store the local pindex data in the global_pindex d2o
+            temp_pindex.set_local_data(local_pindex)
+            temp_rho = temp_pindex.bincount().get_full_data()
+            temp_k_array = k_array
 
         # if binning is required, make a recursive call to get the unbinned
         # indices, bin them, and then return everything.
         else:
             # Get the unbinned indices
-            pindex, kindex, rho, dummy = self.get_index_dict(nbin=None,
+            pindex, kindex, rho, dummy = PowerIndices.get_arrays(domain,distribution_strategy,nbin=None,
                                                         binbounds=None,
                                                         logarithmic=False)
             # Bin them
             (temp_pindex, temp_kindex, temp_rho) = \
-                self._bin_power_indices(
+                PowerIndices._bin_power_indices(
                     pindex, kindex, rho, logarithmic, nbin, binbounds)
             # Make a binned version of k_array
             tempindex = temp_pindex.copy(dtype=temp_kindex.dtype)
@@ -85,37 +84,8 @@ class PowerIndices(object):
 
         return temp_pindex, temp_kindex, temp_rho, temp_k_array
 
-    def _compute_indices(self, k_array):
-        """
-        Internal helper function which computes pindex, kindex and rho
-        from a given k_array
-        """
-        ##########
-        # kindex #
-        ##########
-        global_kindex = k_array.unique()
-
-        ##########
-        # pindex #
-        ##########
-        # compute the local pindex slice on basis of the local k_array data
-        local_pindex = np.searchsorted(global_kindex, k_array.get_local_data())
-        # prepare the distributed_data_object
-        global_pindex = distributed_data_object(
-                            global_shape=k_array.shape,
-                            dtype=local_pindex.dtype,
-                            distribution_strategy=self.distribution_strategy)
-        # store the local pindex data in the global_pindex d2o
-        global_pindex.set_local_data(local_pindex)
-
-        #######
-        # rho #
-        #######
-        global_rho = global_pindex.bincount().get_full_data()
-
-        return global_pindex, global_kindex, global_rho
-
-    def _bin_power_indices(self, pindex, kindex, rho, logarithmic, nbin, binbounds):
+    @staticmethod
+    def _bin_power_indices(pindex, kindex, rho, logarithmic, nbin, binbounds):
         """
             Returns the binned power indices associated with the Fourier grid.
 
@@ -154,7 +124,7 @@ class PowerIndices(object):
                 k = np.r_[0, np.log(kindex[1:])]
             else:
                 k = kindex
-            dk = np.max(k[2:] - k[1:-1])  # minimal dk
+            dk = np.max(k[2:] - k[1:-1])  # maximal dk
             if(nbin is None):
                 nbin = int((k[-1] - 0.5 * (k[2] + k[1])) /
                            dk - 0.5)  # maximal nbin
@@ -168,19 +138,8 @@ class PowerIndices(object):
                 binbounds = np.exp(binbounds)
         # reordering
         reorder = np.searchsorted(binbounds, kindex)
-        rho_ = np.zeros(len(binbounds) + 1, dtype=rho.dtype)
-        kindex_ = np.empty(len(binbounds) + 1, dtype=kindex.dtype)
-        for ii in range(len(reorder)):
-            if(rho_[reorder[ii]] == 0):
-                kindex_[reorder[ii]] = kindex[ii]
-                rho_[reorder[ii]] += rho[ii]
-            else:
-                kindex_[reorder[ii]] = ((kindex_[reorder[ii]] *
-                                         rho_[reorder[ii]] +
-                                         kindex[ii] * rho[ii]) /
-                                        (rho_[reorder[ii]] + rho[ii]))
-                rho_[reorder[ii]] += rho[ii]
-
+        rho_ = np.bincount(reorder,weights=rho).astype(rho.dtype)
+        kindex_ = np.bincount(reorder,weights=kindex*rho)/rho_
         pindex_ = pindex.copy_empty()
         pindex_.set_local_data(reorder[pindex.get_local_data()])
 

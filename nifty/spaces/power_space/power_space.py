@@ -103,16 +103,25 @@ class PowerSpace(Space):
             raise ValueError(
                 "harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
+        try:
+            self._logarithmic = bool(logarithmic)
+        except(TypeError):
+            self._logarithmic = False
+        try:
+            self._nbin = int(nbin)
+        except(TypeError):
+            self._nbin = None
+        try:
+            self._binbounds = tuple(np.array(binbounds))
+        except(TypeError):
+            self._binbounds = None
 
-        self._logarithmic = logarithmic
-        self._nbin = nbin
-        self._binbounds = binbounds
-        tmp = PowerIndices(self.harmonic_partner, distribution_strategy)
-        self._pindex, self._kindex, self._rho, self._k_array = tmp.get_index_dict(logarithmic,
-                                                   nbin, binbounds)
+#        tmp = PowerIndices(self.harmonic_partner, distribution_strategy)
+        self._pindex, self._kindex, self._rho, self._k_array = PowerIndices.get_arrays(self.harmonic_partner, distribution_strategy, self._logarithmic,
+                                                   self._nbin, self._binbounds)
 
-        if nbin is not None:
-            if nbin > len(self.kindex):
+        if self._nbin is not None:
+            if self._nbin > len(self.kindex):
                 self.logger.warn("nbin was set to a value being larger than "
                                  "the length of kindex!")
 
@@ -139,10 +148,7 @@ class PowerSpace(Space):
 
         """
 
-        if callable(x):
-            return x(self.kindex)
-        else:
-            return x
+        return x(self.kindex) if callable(x) else x
 
     # ---Mandatory properties and methods---
 
