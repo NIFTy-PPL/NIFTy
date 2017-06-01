@@ -22,9 +22,8 @@ from d2o import distributed_data_object
 class PowerIndices(object):
     """Computes helpful quantities to deal with power spectra.
 
-    Given the shape and the density of a underlying rectangular grid this
-    class provides the user
-    with the pindex, kindex and rho. The indices are binned
+    Given the shape and the density of a underlying grid this class provides
+    the user with the pindex, kindex and rho. The indices are binned
     according to the supplied parameter scheme.
 
     Parameters
@@ -43,29 +42,6 @@ class PowerIndices(object):
         self.k_array = self.domain.get_distance_array(distribution_strategy)
 
 
-    def _cast_config(self, logarithmic, nbin, binbounds):
-        """
-            internal helper function which casts the various combinations of
-            possible parameters into a properly defaulted dictionary
-        """
-
-        try:
-            temp_logarithmic = bool(logarithmic)
-        except(TypeError):
-            temp_logarithmic = False
-
-        try:
-            temp_nbin = int(nbin)
-        except(TypeError):
-            temp_nbin = None
-
-        try:
-            temp_binbounds = tuple(np.array(binbounds))
-        except(TypeError):
-            temp_binbounds = None
-
-        return temp_logarithmic, temp_nbin, temp_binbounds
-
     def get_index_dict(self, logarithmic, nbin, binbounds):
         """
             Returns a dictionary containing the pindex, kindex and rho
@@ -82,22 +58,8 @@ class PowerIndices(object):
             binbounds : {list, array}
                 Array-like inner boundaries of the used bins.
 
-            Returns
-            -------
-            index_dict : dict
-                Contains the keys: 'config', 'pindex', 'kindex' and 'rho'
         """
-        # Cast the input arguments
-        loarithmic, nbin, binbounds = self._cast_config(logarithmic, nbin, binbounds)
-        pindex, kindex, rho, k_array = self._compute_index_dict(logarithmic, nbin, binbounds)
-        # Return the plain result.
-        return pindex, kindex, rho, k_array
 
-    def _compute_index_dict(self, logarithmic, nbin, binbounds):
-        """
-            Internal helper function which takes a config_dict, asks for the
-            pindex/kindex/rho set, and bins them according to the config
-        """
         # if no binning is requested, compute the indices, build the dict,
         # and return it straight.
         if not logarithmic and nbin is None and binbounds is None:
@@ -117,16 +79,11 @@ class PowerIndices(object):
                 self._bin_power_indices(
                     pindex, kindex, rho, logarithmic, nbin, binbounds)
             # Make a binned version of k_array
-            temp_k_array = self._compute_k_array_from_pindex_kindex(
-                               temp_pindex, temp_kindex)
+            tempindex = temp_pindex.copy(dtype=temp_kindex.dtype)
+            temp_k_array = tempindex.apply_scalar_function(
+                            lambda x: temp_kindex[x.astype(np.dtype('int'))])
 
         return temp_pindex, temp_kindex, temp_rho, temp_k_array
-
-    def _compute_k_array_from_pindex_kindex(self, pindex, kindex):
-        tempindex = pindex.copy(dtype=kindex.dtype)
-        result = tempindex.apply_scalar_function(
-                            lambda x: kindex[x.astype(np.dtype('int'))])
-        return result
 
     def _compute_indices(self, k_array):
         """

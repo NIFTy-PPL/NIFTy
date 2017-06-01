@@ -67,9 +67,19 @@ class PowerSpace(Space):
         The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
-    config : {logarithmic, nbin, binbounds}
-        Dictionary storing the values for `logarithmic`, `nbin`, and
-        `binbounds` that were used during initialization.
+    logarithmic : bool
+        True if logarithmic binning should be used.
+    nbin : {int, None}
+        The number of bins that should be used for power spectrum binning
+        (default : None).
+        if nbin == None, then nbin is set to the length of kindex.
+    binbounds :  {list, array-like}
+        Array-like inner boundaries of the used bins of the default
+        indices.
+        (default : None)
+        if binbounds == None :
+            Calculates the bounds from the kindex while applying the
+            logarithmic and nbin keywords.
 
     Notes
     -----
@@ -98,9 +108,8 @@ class PowerSpace(Space):
         self._nbin = nbin
         self._binbounds = binbounds
         tmp = PowerIndices(self.harmonic_partner, distribution_strategy)
-        self._pindex, self._kindex, self._rho, self._k_array = tmp.get_index_dict(logarithmic=logarithmic,
-                                                   nbin=nbin,
-                                                   binbounds=binbounds)
+        self._pindex, self._kindex, self._rho, self._k_array = tmp.get_index_dict(logarithmic,
+                                                   nbin, binbounds)
 
         if nbin is not None:
             if nbin > len(self.kindex):
