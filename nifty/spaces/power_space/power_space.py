@@ -20,9 +20,8 @@ import numpy as np
 
 import d2o
 
-from power_index_factory import PowerIndexFactory
-
 from nifty.spaces.space import Space
+from power_indices import PowerIndices
 
 
 class PowerSpace(Space):
@@ -57,9 +56,6 @@ class PowerSpace(Space):
         mapped to which power bin
     kindex : numpy.ndarray
         Sorted array of all k-modes.
-    pundex : numpy.ndarray
-        Flat index of the first occurence of a k-vector with length==kindex[n]
-        in the k_array.
     rho : numpy.ndarray
         The amount of k-modes that get mapped to one power bin is given by
         rho.
@@ -88,8 +84,7 @@ class PowerSpace(Space):
                  distribution_strategy='not',
                  logarithmic=False, nbin=None, binbounds=None):
         super(PowerSpace, self).__init__()
-        self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',
-                                  '_k_array']
+        self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_k_array']
 
         if not isinstance(harmonic_partner, Space):
             raise ValueError(
@@ -99,19 +94,19 @@ class PowerSpace(Space):
                 "harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
 
-        power_index = PowerIndexFactory.get_power_index(
-                        domain=self.harmonic_partner,
-                        distribution_strategy=distribution_strategy,
-                        logarithmic=logarithmic,
-                        nbin=nbin,
-                        binbounds=binbounds)
+        tmp = PowerIndices(self.harmonic_partner, distribution_strategy,
+                             logarithmic=logarithmic,
+                             nbin=nbin,
+                             binbounds=binbounds)
+        power_index = tmp.get_index_dict(logarithmic=logarithmic,
+                                                   nbin=nbin,
+                                                   binbounds=binbounds)
 
         self._config = power_index['config']
 
         self._pindex = power_index['pindex']
         self._kindex = power_index['kindex']
         self._rho = power_index['rho']
-        self._pundex = power_index['pundex']
         self._k_array = power_index['k_array']
 
         if self.config['nbin'] is not None:
@@ -243,14 +238,6 @@ class PowerSpace(Space):
         return self._rho
 
     @property
-    def pundex(self):
-        """ An array for which the n-th entry gives the flat index of the
-        first occurence of a k-vector with length==kindex[n] in the
-        k_array.
-        """
-        return self._pundex
-
-    @property
     def k_array(self):
         """ An array containing distances to the grid center (i.e. zero-mode)
         for every k-mode in the grid of the harmonic partner space.
@@ -262,7 +249,6 @@ class PowerSpace(Space):
     def _to_hdf5(self, hdf5_group):
         hdf5_group['kindex'] = self.kindex
         hdf5_group['rho'] = self.rho
-        hdf5_group['pundex'] = self.pundex
         hdf5_group['logarithmic'] = self.config["logarithmic"]
         # Store nbin as string, since it can be None
         hdf5_group.attrs['nbin'] = str(self.config["nbin"])
@@ -295,10 +281,8 @@ class PowerSpace(Space):
         new_ps._pindex = repository.get('pindex', hdf5_group)
         new_ps._kindex = hdf5_group['kindex'][:]
         new_ps._rho = hdf5_group['rho'][:]
-        new_ps._pundex = hdf5_group['pundex'][:]
         new_ps._k_array = repository.get('k_array', hdf5_group)
-        new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_pundex',
-                                    '_k_array']
+        new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_k_array']
 
         return new_ps
 

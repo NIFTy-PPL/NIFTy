@@ -17,19 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from d2o import distributed_data_object,\
-                STRATEGIES as DISTRIBUTION_STRATEGIES
-
-from d2o.config import dependency_injector as d2o_di
-from d2o.config import configuration as d2o_config
-
+from d2o import distributed_data_object
 
 class PowerIndices(object):
     """Computes helpful quantities to deal with power spectra.
 
     Given the shape and the density of a underlying rectangular grid this
     class provides the user
-    with the pindex, kindex, rho and pundex. The indices are binned
+    with the pindex, kindex and rho. The indices are binned
     according to the supplied parameter scheme. If wanted, computed
     results are stored for future reuse.
 
@@ -150,7 +145,7 @@ class PowerIndices(object):
 
     def get_index_dict(self, **kwargs):
         """
-            Returns a dictionary containing the pindex, kindex, rho and pundex
+            Returns a dictionary containing the pindex, kindex and rho
             binned according to the supplied parameter scheme and a
             configuration dict containing this scheme.
 
@@ -170,8 +165,7 @@ class PowerIndices(object):
             Returns
             -------
             index_dict : dict
-                Contains the keys: 'config', 'pindex', 'kindex', 'rho' and
-                'pundex'
+                Contains the keys: 'config', 'pindex', 'kindex' and 'rho'
         """
         # Cast the input arguments
         temp_config_dict = self._cast_config(**kwargs)
@@ -207,18 +201,18 @@ class PowerIndices(object):
     def _compute_index_dict(self, config_dict):
         """
             Internal helper function which takes a config_dict, asks for the
-            pindex/kindex/rho/pundex set, and bins them according to the config
+            pindex/kindex/rho set, and bins them according to the config
         """
         # if no binning is requested, compute the indices, build the dict,
         # and return it straight.
         if not config_dict["logarithmic"] and config_dict["nbin"] is None and \
                 config_dict["binbounds"] is None:
-            (temp_pindex, temp_kindex, temp_rho, temp_pundex) =\
+            (temp_pindex, temp_kindex, temp_rho) =\
                 self._compute_indices(self.k_array)
             temp_k_array = self.k_array
 
         # if binning is required, make a recursive call to get the unbinned
-        # indices, bin them, compute the pundex and then return everything.
+        # indices, bin them, and then return everything.
         else:
             # Get the unbinned indices
             temp_unbinned_indices = self.get_index_dict(nbin=None,
@@ -226,7 +220,7 @@ class PowerIndices(object):
                                                         logarithmic=False,
                                                         store=False)
             # Bin them
-            (temp_pindex, temp_kindex, temp_rho, temp_pundex) = \
+            (temp_pindex, temp_kindex, temp_rho) = \
                 self._bin_power_indices(
                     temp_unbinned_indices, **config_dict)
             # Make a binned version of k_array
@@ -237,7 +231,6 @@ class PowerIndices(object):
                            "pindex": temp_pindex,
                            "kindex": temp_kindex,
                            "rho": temp_rho,
-                           "pundex": temp_pundex,
                            "k_array": temp_k_array}
         return temp_index_dict
 
@@ -249,7 +242,7 @@ class PowerIndices(object):
 
     def _compute_indices(self, k_array):
         """
-        Internal helper function which computes pindex, kindex, rho and pundex
+        Internal helper function which computes pindex, kindex and rho
         from a given k_array
         """
         ##########
@@ -275,63 +268,7 @@ class PowerIndices(object):
         #######
         global_rho = global_pindex.bincount().get_full_data()
 
-        ##########
-        # pundex #
-        ##########
-        global_pundex = self._compute_pundex(global_pindex,
-                                             global_kindex)
-
-        return global_pindex, global_kindex, global_rho, global_pundex
-
-    def _compute_pundex(self, global_pindex, global_kindex):
-        """
-        Internal helper function which computes the pundex array from a
-        pindex and a kindex array. This function is separated from the
-        _compute_indices function as it is needed in _bin_power_indices,
-        too.
-        """
-        if self.distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
-            ##########
-            # pundex #
-            ##########
-            # Prepare the local data
-            local_pindex = global_pindex.get_local_data()
-            # Compute the local pundices for the local pindices
-            (temp_uniqued_pindex, local_temp_pundex) = np.unique(
-                                                            local_pindex,
-                                                            return_index=True)
-            # Shift the local pundices by the nodes' local_dim_offset
-            local_temp_pundex += global_pindex.distributor.local_dim_offset
-
-            # Prepare the pundex arrays used for the Allreduce operation
-            # pundex has the same length as the kindex array
-            local_pundex = np.zeros(shape=global_kindex.shape, dtype=np.int)
-            # Set the default value higher than the maximal possible pundex
-            # value so that MPI.MIN can sort out the default
-            local_pundex += np.prod(global_pindex.shape) + 1
-            # Set the default value higher than the length
-            global_pundex = np.empty_like(local_pundex)
-            # Store the individual pundices in the local_pundex array
-            local_pundex[temp_uniqued_pindex] = local_temp_pundex
-            # Extract the MPI module from the global_pindex d2o
-            MPI = d2o_di[d2o_config['mpi_module']]
-            # Use Allreduce to find the first occurences/smallest pundices
-            global_pindex.comm.Allreduce(local_pundex,
-                                         global_pundex,
-                                         op=MPI.MIN)
-            return global_pundex
-
-        elif self.distribution_strategy in DISTRIBUTION_STRATEGIES['not']:
-            ##########
-            # pundex #
-            ##########
-            pundex = np.unique(global_pindex.get_local_data(),
-                               return_index=True)[1]
-            return pundex
-        else:
-            raise NotImplementedError(
-                "_compute_pundex_d2o not implemented for given "
-                "distribution_strategy")
+        return global_pindex, global_kindex, global_rho
 
     def _bin_power_indices(self, index_dict, **kwargs):
         """
@@ -356,7 +293,7 @@ class PowerIndices(object):
             Returns
             -------
             pindex : distributed_data_object
-            kindex, rho, pundex : ndarrays
+            kindex, rho : ndarrays
                 The (re)binned power indices.
 
         """
@@ -411,6 +348,5 @@ class PowerIndices(object):
 
         pindex_ = pindex.copy_empty()
         pindex_.set_local_data(reorder[pindex.get_local_data()])
-        pundex_ = self._compute_pundex(pindex_, kindex_)
 
-        return pindex_, kindex_, rho_, pundex_
+        return pindex_, kindex_, rho_

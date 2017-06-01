@@ -32,20 +32,20 @@ from itertools import product, chain
 from d2o.config import dependency_injector as gdi
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
-    RGSpace((7,), harmonic=True,zerocenter=True), 
-    RGSpace((8,), harmonic=True,zerocenter=True), 
-    RGSpace((7,8), harmonic=True), 
+    RGSpace((7,), harmonic=True,zerocenter=True),
+    RGSpace((8,), harmonic=True,zerocenter=True),
+    RGSpace((7,8), harmonic=True),
     RGSpace((7,8), harmonic=True, zerocenter=True),
     RGSpace((6,6), harmonic=True, zerocenter=True),
     RGSpace((7,5), harmonic=True, zerocenter=True),
-    RGSpace((5,5), harmonic=True), 
+    RGSpace((5,5), harmonic=True),
     RGSpace((4,5,7), harmonic=True),
     RGSpace((4,5,7), harmonic=True, zerocenter=True),
     LMSpace(6),
     LMSpace(9)]
 
 
-#Try all sensible kinds of combinations of spaces, distributuion strategy and 
+#Try all sensible kinds of combinations of spaces, distributuion strategy and
 #binning parameters
 _maybe_fftw = ["fftw"] if ('pyfftw' in gdi) else []
 
@@ -68,7 +68,6 @@ CONSTRUCTOR_CONFIGS = [
         'pindex': distributed_data_object([0, 1, 2, 3, 4, 3, 2, 1]),
         'kindex': np.array([0., 1., 2., 3., 4.]),
         'rho': np.array([1, 2, 2, 2, 1]),
-        'pundex': np.array([0, 1, 2, 3, 4]),
         'k_array': np.array([0., 1., 2., 3., 4., 3., 2., 1.]),
         }],
     [RGSpace((8,), harmonic=True), 'not', True, None, None, {
@@ -81,7 +80,6 @@ CONSTRUCTOR_CONFIGS = [
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
         'kindex': np.array([0., 2.28571429]),
         'rho': np.array([1, 7]),
-        'pundex': np.array([0, 1]),
         'k_array': np.array([0., 2.28571429, 2.28571429, 2.28571429,
                              2.28571429, 2.28571429, 2.28571429, 2.28571429]),
         }],
@@ -120,7 +118,6 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
         ['pindex', distributed_data_object],
         ['kindex', np.ndarray],
         ['rho', np.ndarray],
-        ['pundex', np.ndarray],
         ['k_array', distributed_data_object],
         ])
     def test_property_ret_type(self, attribute, expected_type):
@@ -130,21 +127,15 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 
 class PowerSpaceConsistencyCheck(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
-    def test_pipundexInversion(self, harmonic_partner, distribution_strategy,
-                         binbounds, nbin,logarithmic):
-        p = PowerSpace(harmonic_partner=harmonic_partner,
-                           distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
-        assert_equal(p.pindex.flatten()[p.pundex],np.arange(p.dim),
-            err_msg='pundex is not right-inverse of pindex!')
-        
-    @expand(CONSISTENCY_CONFIGS)
     def test_rhopindexConsistency(self, harmonic_partner, distribution_strategy,
                          binbounds, nbin,logarithmic):
+        p = PowerSpace(harmonic_partner=harmonic_partner,
+                       distribution_strategy=distribution_strategy,
+                       logarithmic=logarithmic, nbin=nbin,
+                       binbounds=binbounds)
         assert_equal(p.pindex.flatten().bincount(), p.rho,
             err_msg='rho is not equal to pindex degeneracy')
-                         
+
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
     def test_constructor(self, harmonic_partner, distribution_strategy,
