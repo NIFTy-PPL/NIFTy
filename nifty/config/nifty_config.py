@@ -31,8 +31,9 @@ dependency_injector = keepers.DependencyInjector(
                                     'pyHealpix',
                                     'plotly'])
 
-dependency_injector.register(('pyfftw','fftw_mpi'), lambda z: hasattr(z, 'FFTW_MPI'))
-dependency_injector.register(('pyfftw','fftw_scalar'))
+dependency_injector.register(('pyfftw', 'fftw_mpi'),
+                             lambda z: hasattr(z, 'FFTW_MPI'))
+dependency_injector.register(('pyfftw', 'fftw_scalar'))
 
 # Initialize the variables
 variable_fft_module = keepers.Variable(

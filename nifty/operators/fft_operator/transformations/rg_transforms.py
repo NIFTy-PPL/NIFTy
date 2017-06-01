@@ -634,9 +634,11 @@ class ScalarFFT(Transform):
         # perform the transformation
         if fftw_scalar is not None:
             if self.codomain.harmonic:
-                result_val = fftw_scalar.interfaces.numpy_fft.fftn(local_val, axes=axes)
+                result_val = fftw_scalar.interfaces.numpy_fft.fftn(
+                             local_val, axes=axes)
             else:
-                result_val = fftw_scalar.interfaces.numpy_fft.ifftn(local_val, axes=axes)
+                result_val = fftw_scalar.interfaces.numpy_fft.ifftn(
+                             local_val, axes=axes)
         else:
             if self.codomain.harmonic:
                 result_val = np.fft.fftn(local_val, axes=axes)

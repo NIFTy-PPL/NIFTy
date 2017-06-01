@@ -62,7 +62,7 @@ class FFTOperatorTests(unittest.TestCase):
         res = foo.get_distance_array('not')
         assert_equal(res[zc1 * (dim1 // 2), zc2 * (dim2 // 2)], 0.)
 
-    @expand(product(["scalar","mpi"], [10, 11], [False, True], [False, True],
+    @expand(product(["scalar", "mpi"], [10, 11], [False, True], [False, True],
                     [0.1, 1, 3.7],
                     [np.float64, np.complex128, np.float32, np.complex64]))
     def test_fft1D(self, module, dim1, zc1, zc2, d, itp):
