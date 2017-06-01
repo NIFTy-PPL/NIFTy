@@ -58,13 +58,13 @@ if __name__ == "__main__":
 
     # Setting up power space
     p_space = PowerSpace(h_space, logarithmic=False,
-                         distribution_strategy=distribution_strategy, nbin=16)
+                         distribution_strategy=distribution_strategy, nbin=70)
 
     # Choosing the prior correlation structure and defining correlation operator
     pow_spec = (lambda k: (.05 / (k + 1) ** 2))
     # t = Field(p_space, val=pow_spec)
     t= Field.from_random("normal", domain=p_space)
-    lap = LogLaplaceOperator(p_space)
+    lap = LaplaceOperator(p_space)
     T = SmoothnessOperator(p_space,sigma=1.)
     test_energy = TestEnergy(t,T)
 
