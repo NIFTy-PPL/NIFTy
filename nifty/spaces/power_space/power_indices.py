@@ -35,87 +35,27 @@ class PowerIndices(object):
     distribution_strategy : str
         The distribution_strategy that will be used for the k_array and pindex
         distributed_data_object.
-    logarithmic : bool *optional*
-        Flag specifying if the binning of the default indices is
-        performed on logarithmic scale.
-    nbin : integer *optional*
-        Number of used bins for the binning of the default indices.
-    binbounds : {list, array}
-        Array-like inner boundaries of the used bins of the default
-        indices.
     """
-    def __init__(self, domain, distribution_strategy,
-                 logarithmic=False, nbin=None, binbounds=None):
+    def __init__(self, domain, distribution_strategy):
         self.domain = domain
         self.distribution_strategy = distribution_strategy
 
         # Compute the global k_array
         self.k_array = self.domain.get_distance_array(distribution_strategy)
-        # Initialize the dictionary which stores all individual index-dicts
-        self.global_dict = {}
-        # Set self.default_parameters
-        self.set_default(config_dict={'logarithmic': logarithmic,
-                                      'nbin': nbin,
-                                      'binbounds': binbounds})
 
-    # Redirect the direct calls approaching a power_index instance to the
-    # default_indices dict
-    @property
-    def default_indices(self):
-        return self.get_index_dict(**self.default_parameters)
-
-    def __getitem__(self, x):
-        return self.default_indices.get(x)
-
-    def __contains__(self, x):
-        return self.default_indices.__contains__(x)
-
-    def __iter__(self):
-        return self.default_indices.__iter__()
-
-    def __getattr__(self, x):
-        return self.default_indices.__getattribute__(x)
-
-    def set_default(self, **kwargs):
-        """
-            Sets the index-set which is specified by the parameters as the
-            default for the power_index instance.
-
-            Parameters
-            ----------
-            logarithmic : bool
-                Flag specifying if the binning is performed on logarithmic
-                scale.
-            nbin : integer
-                Number of used bins.
-            binbounds : {list, array}
-                Array-like inner boundaries of the used bins.
-
-            Returns
-            -------
-            None
-        """
-        parsed_kwargs = self._cast_config(**kwargs)
-        self.default_parameters = parsed_kwargs
 
     def _cast_config(self, **kwargs):
         """
             internal helper function which casts the various combinations of
             possible parameters into a properly defaulted dictionary
         """
-        temp_config_dict = kwargs.get('config_dict', None)
-        if temp_config_dict is not None:
-            return self._cast_config_helper(**temp_config_dict)
-        else:
-            defaults = self.default_parameters
-            temp_logarithmic = kwargs.get("logarithmic",
-                                          defaults['logarithmic'])
-            temp_nbin = kwargs.get("nbin", defaults['nbin'])
-            temp_binbounds = kwargs.get("binbounds", defaults['binbounds'])
+        temp_logarithmic = kwargs.get("logarithmic")
+        temp_nbin = kwargs.get("nbin")
+        temp_binbounds = kwargs.get("binbounds")
 
-            return self._cast_config_helper(logarithmic=temp_logarithmic,
-                                            nbin=temp_nbin,
-                                            binbounds=temp_binbounds)
+        return self._cast_config_helper(logarithmic=temp_logarithmic,
+                                        nbin=temp_nbin,
+                                        binbounds=temp_binbounds)
 
     def _cast_config_helper(self, logarithmic, nbin, binbounds):
         """
@@ -151,9 +91,6 @@ class PowerIndices(object):
 
             Parameters
             ----------
-            store : bool
-                Flag specifying if  the calculated index dictionary should be
-                stored in the global_dict for future use.
             logarithmic : bool
                 Flag specifying if the binning is performed on logarithmic
                 scale.
@@ -172,24 +109,9 @@ class PowerIndices(object):
         # Compute a hashable identifier from the config which will be used
         # as dict key
         temp_key = self._freeze_config(temp_config_dict)
-        # Check if the result should be stored for future use.
-        storeQ = kwargs.get("store", True)
-        # Try to find the requested index dict in the global_dict
-        try:
-            return self.global_dict[temp_key]
-        except(KeyError):
-            # If it is not found, calculate it.
-            temp_index_dict = self._compute_index_dict(temp_config_dict)
-            # Store it, if required
-            if storeQ:
-                self.global_dict[temp_key] = temp_index_dict
-                # Important: If the result is stored, return a reference to
-                # the dictionary entry, not anly a plain copy. Otherwise,
-                # set_default breaks!
-                return self.global_dict[temp_key]
-            else:
-                # Return the plain result.
-                return temp_index_dict
+        temp_index_dict = self._compute_index_dict(temp_config_dict)
+        # Return the plain result.
+        return temp_index_dict
 
     def _freeze_config(self, config_dict):
         """

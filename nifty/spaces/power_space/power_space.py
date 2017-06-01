@@ -94,10 +94,7 @@ class PowerSpace(Space):
                 "harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
 
-        tmp = PowerIndices(self.harmonic_partner, distribution_strategy,
-                             logarithmic=logarithmic,
-                             nbin=nbin,
-                             binbounds=binbounds)
+        tmp = PowerIndices(self.harmonic_partner, distribution_strategy)
         power_index = tmp.get_index_dict(logarithmic=logarithmic,
                                                    nbin=nbin,
                                                    binbounds=binbounds)
