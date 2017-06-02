@@ -409,7 +409,7 @@ class Field(Loggable, Versionable, object):
 
     def _calculate_power_spectrum(self, x, pindex, rho, axes=None):
         fieldabs = abs(x)
-        fieldabs **= 2
+        fieldabs *= fieldabs
 
         if axes is not None:
             pindex = self._shape_up_pindex(
@@ -425,7 +425,7 @@ class Field(Loggable, Versionable, object):
             rho = rho.reshape(new_rho_shape)
         power_spectrum /= rho
 
-        power_spectrum **= 0.5
+        power_spectrum = sqrt(power_spectrum)
         return power_spectrum
 
     def _shape_up_pindex(self, pindex, target_shape, target_strategy, axes):

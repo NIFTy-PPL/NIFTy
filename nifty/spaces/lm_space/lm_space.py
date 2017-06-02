@@ -130,7 +130,7 @@ class LMSpace(Space):
         # dim = (((2*(l+1)-1)+1)**2/4 - 2 * (l-m)(l-m+1)/2
         # dim = np.int((l+1)**2 - (l-m)*(l-m+1.))
         # We fix l == m
-        return np.int((l+1)**2)
+        return np.int((l+1)*(l+1))
 
     @property
     def total_volume(self):
@@ -166,7 +166,7 @@ class LMSpace(Space):
 
     def get_fft_smoothing_kernel_function(self, sigma):
         # FIXME why x(x+1) ? add reference to paper!
-        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
+        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma*sigma)
 
     # ---Added properties and methods---
 

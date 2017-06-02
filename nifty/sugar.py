@@ -32,7 +32,7 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     Parameters
     ----------
     domain : DomainObject
-        Domain over which the power operator shall live. 
+        Domain over which the power operator shall live.
     power_spectrum : (array-like, method)
         An array-like object, or a method that implements the square root
         of a power spectrum as a function of k.
@@ -54,7 +54,7 @@ def create_power_operator(domain, power_spectrum, dtype=None,
                               distribution_strategy=distribution_strategy)
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
                distribution_strategy=distribution_strategy)
-    fp **= 2
+    fp *= fp
     f = fp.power_synthesize(mean=1, std=0, real_signal=False)
 
     return DiagonalOperator(domain, diagonal=f, bare=True)
