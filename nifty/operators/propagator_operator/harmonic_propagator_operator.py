@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 from nifty.operators import EndomorphicOperator,\
                             FFTOperator,\
@@ -83,7 +83,7 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, S=None, M=None, R=None, N=None, inverter=None,
+    def __init__(self, S, M=None, R=None, N=None, inverter=None,
                  preconditioner=None):
         """
             Sets the standard operator properties and `codomain`, `_A1`, `_A2`,
@@ -101,7 +101,6 @@ class HarmonicPropagatorOperator(InvertibleOperatorMixin, EndomorphicOperator):
                 Covariance of the noise prior or the likelihood, respectively.
 
         """
-        # infer domain, and target
         # infer domain, and target
         if M is not None:
             self._codomain = M.domain

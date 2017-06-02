@@ -4,16 +4,19 @@ from cartesian import Cartesian
 
 
 class Cartesian2D(Cartesian):
-    def __init__(self, x=None, y=None, x_start=0, x_step=1,
-                 label='', line=None, marker=None, showlegend=True,
+    def __init__(self, data, label='', line=None, marker=None, showlegend=True,
                  webgl=True):
-        if y is None:
-            raise Exception('Error: no y data to plot')
-        if x is None:
-            x = range(x_start, len(y) * x_step, x_step)
-        super(Cartesian2D, self).__init__(x, y, label, line, marker,
+        super(Cartesian2D, self).__init__(data, label, line, marker,
                                           showlegend)
         self.webgl = webgl
+
+    def at(self, data):
+        return Cartesian2D(data=data,
+                           label=self.label,
+                           line=self.line,
+                           marker=self.marker,
+                           showlegend=self.showlegend,
+                           webgl=self.webgl)
 
     @property
     def figure_dimension(self):

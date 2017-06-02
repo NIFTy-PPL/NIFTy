@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
 
@@ -24,50 +24,47 @@ from nifty import LineEnergy
 
 
 class LineSearch(Loggable, object):
+    """Class for determining the optimal step size along some descent direction.
+    
+    Initialize the line search procedure which can be used by a specific line
+    search method. Its finds the step size in a specific direction in the
+    minimization process.
+    
+    Attributes
+    ----------
+    line_energy : LineEnergy Object
+        LineEnergy object from which we can extract energy at a specific point.
+    f_k_minus_1 : Field
+        Value of the field at the k-1 iteration of the line search procedure.
+    prefered_initial_step_size : float
+        Initial guess for the step length.
+    
     """
-    Class for finding a step size.
-    """
+    
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
 
-        """
-        Parameters
-        ----------
-
-        f : callable f(x, *args)
-            Objective function.
-
-        fprime : callable f'(x, *args)
-            Objective functions gradient.
-
-        f_args : tuple (optional)
-            Additional arguments passed to objective function and its
-            derivation.
-        """
+        
 
         self.line_energy = None
         self.f_k_minus_1 = None
         self.prefered_initial_step_size = None
 
     def _set_line_energy(self, energy, pk, f_k_minus_1=None):
-        """
-        Set the coordinates for a new line search.
+        """Set the coordinates for a new line search.
 
         Parameters
         ----------
-        xk : ndarray, d2o, field
-            Starting point.
-
-        pk : ndarray, d2o, field
-            Unit vector in search direction.
-
-        f_k : float (optional)
-            Function value f(x_k).
-
-        fprime_k : ndarray, d2o, field (optional)
-            Function value fprime(xk).
-
+        energy : Energy object
+            Energy object from which we can calculate the energy, gradient and
+            curvature at a specific point.        
+        pk : Field
+            Unit vector pointing into the search direction.
+        f_k_minus_1 : float
+            Value of the fuction (energy) which will be minimized at the k-1 
+            iteration of the line search procedure. (Default: None)
+            
         """
         self.line_energy = LineEnergy(position=0.,
                                       energy=energy,

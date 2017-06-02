@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
 import numpy as np
@@ -23,32 +23,62 @@ from keepers import Loggable
 
 
 class ConjugateGradient(Loggable, object):
+    """ Implementation of the Conjugate Gradient scheme.
+
+    It is an iterative method for solving a linear system of equations:
+                                    Ax = b
+
+    Parameters
+    ----------
+    convergence_tolerance : float *optional*
+        Tolerance specifying the case of convergence. (default: 1E-4)
+    convergence_level : integer *optional*
+        Number of times the tolerance must be undershot before convergence
+        is reached. (default: 3)
+    iteration_limit : integer *optional*
+        Maximum number of iterations performed (default: None).
+    reset_count : integer *optional*
+        Number of iterations after which to restart; i.e., forget previous
+        conjugated directions (default: None).
+    preconditioner : Operator *optional*
+        This operator can be provided which transforms the variables of the
+        system to improve the conditioning (default: None).
+    callback : callable *optional*
+        Function f(energy, iteration_number) supplied by the user to perform
+        in-situ analysis at every iteration step. When being called the
+        current energy and iteration_number are passed. (default: None)
+
+    Attributes
+    ----------
+    convergence_tolerance : float
+        Tolerance specifying the case of convergence.
+    convergence_level : integer
+        Number of times the tolerance must be undershot before convergence
+        is reached. (default: 3)
+    iteration_limit : integer
+        Maximum number of iterations performed.
+    reset_count : integer
+        Number of iterations after which to restart; i.e., forget previous
+        conjugated directions.
+    preconditioner : function
+        This operator can be provided which transforms the variables of the
+        system to improve the conditioning (default: None).
+    callback : callable
+        Function f(energy, iteration_number) supplied by the user to perform
+        in-situ analysis at every iteration step. When being called the
+        current energy and iteration_number are passed. (default: None)
+
+    References
+    ----------
+    Thomas V. Mikosch et al., "Numerical Optimization", Second Edition,
+    2006, Springer-Verlag New York
+
+    """
+
     def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None, reset_count=None,
                  preconditioner=None, callback=None):
-        """
-            Initializes the conjugate_gradient and sets the attributes (except
-            for `x`).
 
-            Parameters
-            ----------
-            A : {operator, function}
-                Operator `A` applicable to a field.
-            b : field
-                Resulting field of the operation `A(x)`.
-            W : {operator, function}, *optional*
-                Operator `W` that is a preconditioner on `A` and is applicable to a
-                field (default: None).
-            spam : function, *optional*
-                Callback function which is given the current `x` and iteration
-                counter each iteration (default: None).
-            reset : integer, *optional*
-                Number of iterations after which to restart; i.e., forget previous
-                conjugated directions (default: sqrt(b.dim)).
-            note : bool, *optional*
-                Indicates whether notes are printed or not (default: False).
-
-        """
         self.convergence_tolerance = np.float(convergence_tolerance)
         self.convergence_level = np.float(convergence_level)
 
@@ -67,31 +97,28 @@ class ConjugateGradient(Loggable, object):
         self.callback = callback
 
     def __call__(self, A, b, x0):
-        """
-            Runs the conjugate gradient minimization.
+        """ Runs the conjugate gradient minimization.
+        For `Ax = b` the variable `x` is infered.
 
-            Parameters
-            ----------
-            x0 : field, *optional*
-                Starting guess for the minimization.
-            tol : scalar, *optional*
-                Tolerance specifying convergence; measured by current relative
-                residual (default: 1E-4).
-            clevel : integer, *optional*
-                Number of times the tolerance should be undershot before
-                exiting (default: 1).
-            limii : integer, *optional*
-                Maximum number of iterations performed (default: 10 * b.dim).
+        Parameters
+        ----------
+        A : Operator
+            Operator `A` applicable to a Field.
+        b : Field
+            Result of the operation `A(x)`.
+        x0 : Field
+            Starting guess for the minimization.
 
-            Returns
-            -------
-            x : field
-                Latest `x` of the minimization.
-            convergence : integer
-                Latest convergence level indicating whether the minimization
-                has converged or not.
+        Returns
+        -------
+        x : Field
+            Latest `x` of the minimization.
+        convergence : integer
+            Latest convergence level indicating whether the minimization
+            has converged or not.
 
         """
+
         r = b - A(x0)
         d = self.preconditioner(r)
         previous_gamma = r.dot(d)

@@ -11,11 +11,10 @@ variables:
 
 before_script:
   - apt-get update
-  - >
-    apt-get install -y build-essential python python-pip python-dev git
-    autoconf gsl-bin libgsl-dev wget python-numpy
-  - pip install --upgrade -r ci/requirements_base.txt
   - chmod +x ci/*.sh
+  - ci/install_basics.sh
+  - pip install --upgrade -r ci/requirements.txt
+
 
 test_min:
   stage: test
@@ -26,22 +25,16 @@ test_min:
 test_mpi:
   stage: test
   script:
-    - apt-get install -y openmpi-bin libopenmpi-dev
-    - pip install mpi4py
     - ci/install_pyHealpix.sh
+    - ci/install_mpi4py.sh
     - python setup.py build_ext --inplace
     - nosetests -vv
 
 test_mpi_fftw:
   stage: test
   script:
-    - apt-get install -y openmpi-bin libopenmpi-dev
-    - >
-      apt-get install -y libatlas-base-dev libfftw3-bin libfftw3-dev
-      libfftw3-double3 libfftw3-long3 libfftw3-mpi-dev libfftw3-mpi3
-      libfftw3-quad3 libfftw3-single3
-    - pip install mpi4py
     - ci/install_pyHealpix.sh
+    - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - python setup.py build_ext --inplace
     - nosetests -vv
@@ -49,18 +42,10 @@ test_mpi_fftw:
 test_mpi_fftw_hdf5:
   stage: test
   script:
-    - apt-get install -y openmpi-bin libopenmpi-dev
-    - >
-      apt-get install -y libatlas-base-dev libfftw3-bin libfftw3-dev
-      libfftw3-double3 libfftw3-long3 libfftw3-mpi-dev libfftw3-mpi3
-      libfftw3-quad3 libfftw3-single3
-    - >
-      apt-get install -y libhdf5-10 libhdf5-dev libhdf5-openmpi-10
-      libhdf5-openmpi-dev hdf5-tools
-    - pip install mpi4py
     - ci/install_pyHealpix.sh
-    - ci/install_h5py.sh
+    - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
+    - ci/install_h5py.sh
     - python setup.py build_ext --inplace
     - nosetests -vv --with-coverage --cover-package=nifty --cover-branches
     - >

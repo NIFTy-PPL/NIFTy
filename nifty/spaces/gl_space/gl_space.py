@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
 
@@ -45,7 +45,7 @@ class GLSpace(Space):
             Number of latitudinal bins (or rings) that are used for this
             pixelization.
         nlon : int, *optional*
-            Number of longditudinal bins that are used for this pixelization.
+            Number of longitudinal bins that are used for this pixelization.
 
         Attributes
         ----------
@@ -57,7 +57,7 @@ class GLSpace(Space):
             Number of latitudinal bins (or rings) that are used for this
             pixelization.
         nlon : int
-            Number of longditudinal bins that are used for this pixelization.
+            Number of longitudinal bins that are used for this pixelization.
         total_volume : np.float
             The total volume of the space.
         shape : tuple of np.ints
@@ -89,7 +89,7 @@ class GLSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, nlat, nlon=None):
-        if 'pyHealpix' not in gdi:
+        if pyHealpix is None:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
 
@@ -99,6 +99,9 @@ class GLSpace(Space):
         self._nlon = self._parse_nlon(nlon)
 
     # ---Mandatory properties and methods---
+
+    def __repr__(self):
+        return ("GLSpace(nlat=%r, nlon=%r)" % (self.nlat, self.nlon))
 
     @property
     def harmonic(self):
@@ -160,7 +163,7 @@ class GLSpace(Space):
 
     @property
     def nlon(self):
-        """ Number of longditudinal bins that are used for this pixelization.
+        """ Number of longitudinal bins that are used for this pixelization.
         """
 
         return self._nlon

@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
 
@@ -162,7 +162,7 @@ def get_hermitian_configs():
         [0.37928780+0.j, 0.33013206+0.26511434j, 0.48235714+0.j,
             0.33013206-0.26511434j],
         [0.47773437+0.17342852j, 0.31059374+0.02379381j, 0.64003551-0.23838932j,
-            0.27824437-0.0197826j]])
+            0.27824437-0.0197826j]])*1j
 
     h_1_x = np.array([
         [[0.23987021+0.41617749j, 0.34605012+0.55462234j, 0.07947035+0.73360723j,
@@ -205,7 +205,7 @@ def get_hermitian_configs():
              0.64466122-0.10318736j],
          [0.19076379+0.j, 0.49389371+0.03664104j, 0.85091112+0.j,
              0.49389371-0.03664104j]]
-        ])
+        ])*1j
     return [
         [h_0_x, None, h_0_res_real, h_0_res_imag],
         [h_1_x, (2,), h_1_res_real, h_1_res_imag]

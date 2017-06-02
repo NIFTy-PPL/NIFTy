@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
 
@@ -114,6 +114,11 @@ class PowerSpace(Space):
         self._pundex = power_index['pundex']
         self._k_array = power_index['k_array']
 
+        if self.config['nbin'] is not None:
+            if self.config['nbin'] > len(self.kindex):
+                self.logger.warn("nbin was set to a value being larger than "
+                                 "the length of kindex!")
+
     def pre_cast(self, x, axes):
         """ Casts power spectrum functions to discretized power spectra.
 
@@ -143,6 +148,13 @@ class PowerSpace(Space):
             return x
 
     # ---Mandatory properties and methods---
+
+    def __repr__(self):
+        return ("PowerSpace(harmonic_partner=%r, distribution_strategy=%r, "
+                "logarithmic=%r, nbin=%r, binbounds=%r)"
+                % (self.harmonic_partner, self.pindex.distribution_strategy,
+                   self.config['logarithmic'], self.config['nbin'],
+                   self.config['binbounds']))
 
     @property
     def harmonic(self):
@@ -249,13 +261,14 @@ class PowerSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['kindex'] = self.kindex
-        hdf5_group['rho'] = self.config["rho"]
-        hdf5_group['pundex'] = self.config["pundex"]
+        hdf5_group['rho'] = self.rho
+        hdf5_group['pundex'] = self.pundex
         hdf5_group['logarithmic'] = self.config["logarithmic"]
         # Store nbin as string, since it can be None
-        hdf5_group.attrs['nbin'] = str(self.nbin)
-        hdf5_group.attrs['binbounds'] = str(self.binbounds)
+        hdf5_group.attrs['nbin'] = str(self.config["nbin"])
+        hdf5_group.attrs['binbounds'] = str(self.config["binbounds"])
 
+        #MR FIXME: why not "return None" as happens everywhere else?
         return {
             'harmonic_partner': self.harmonic_partner,
             'pindex': self.pindex,
@@ -274,10 +287,10 @@ class PowerSpace(Space):
         new_ps._harmonic_partner = repository.get('harmonic_partner',
                                                   hdf5_group)
 
-        new_ps.config = {}
-        new_ps.config['logarithmic'] = hdf5_group['logarithmic'][()]
-        exec("new_ps.config['nbin'] = " + hdf5_group.attrs['nbin'])
-        exec("new_ps.config['binbounds'] = " + hdf5_group.attrs['binbounds'])
+        new_ps._config = {}
+        new_ps._config['logarithmic'] = hdf5_group['logarithmic'][()]
+        exec("new_ps._config['nbin'] = " + hdf5_group.attrs['nbin'])
+        exec("new_ps._config['binbounds'] = " + hdf5_group.attrs['binbounds'])
 
         new_ps._pindex = repository.get('pindex', hdf5_group)
         new_ps._kindex = hdf5_group['kindex'][:]

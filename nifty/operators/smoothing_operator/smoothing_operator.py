@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
 
@@ -39,11 +39,12 @@ class SmoothingOperator(EndomorphicOperator):
         can only live on one space or FieldType
     sigma : float
         Sets the length of the Gaussian convolution kernel
-    log_distances : boolean
-        States whether the convolution happens on the logarithmic grid or not.
+    log_distances : boolean *optional*
+        States whether the convolution happens on the logarithmic grid or not
+        (default: False).
     default_spaces : tuple of ints *optional*
         Defines on which space(s) of a given field the Operator acts by
-        default (default: None)
+        default (default: None).
 
     Attributes
     ----------
@@ -117,7 +118,6 @@ class SmoothingOperator(EndomorphicOperator):
                 raise NotImplementedError("For the given Space smoothing "
                                           " is not available.")
         else:
-            print 'new 4'
             return super(SmoothingOperator, cls).__new__(cls,
                                                          domain,
                                                          *args,

@@ -2,6 +2,7 @@
 
 import abc
 import os
+import sys
 
 import numpy as np
 
@@ -19,24 +20,26 @@ from nifty.plotting.figures import MultiFigure
 
 plotly = gdi.get('plotly')
 
-try:
+if plotly is not None and 'IPython' in sys.modules:
     plotly.offline.init_notebook_mode()
-except AttributeError:
-    pass
 
 rank = d2o.config.dependency_injector[
         d2o.configuration['mpi_module']].COMM_WORLD.rank
 
 
-class Plotter(Loggable, object):
+class PlotterBase(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, interactive=False, path='.', title=""):
-        if 'plotly' not in gdi:
+        if plotly is None:
             raise ImportError("The module plotly is needed but not available.")
         self.interactive = interactive
         self.path = path
         self.title = str(title)
+
+        self.plot = self._initialize_plot()
+        self.figure = self._initialize_figure()
+        self.multi_figure = self._initialize_multifigure()
 
     @abc.abstractproperty
     def domain_classes(self):
@@ -58,7 +61,7 @@ class Plotter(Loggable, object):
     def path(self, new_path):
         self._path = os.path.normpath(new_path)
 
-    def plot(self, fields, spaces=None,  data_extractor=None, labels=None):
+    def __call__(self, fields, spaces=None,  data_extractor=None, labels=None):
         if isinstance(fields, Field):
             fields = [fields]
         elif not isinstance(fields, list):
@@ -83,12 +86,12 @@ class Plotter(Loggable, object):
         plots_list = []
         for slice_list in utilities.get_slice_list(data_list[0].shape, axes):
             plots_list += \
-                    [[self._create_individual_plot(current_data[slice_list],
-                                                   plot_domain)
-                      for current_data in data_list]]
+                    [[self.plot.at(self._parse_data(current_data,
+                                                     field,
+                                                     spaces))
+                      for (current_data, field) in zip(data_list, fields)]]
 
-        figures = [self._create_individual_figure(plots)
-                   for plots in plots_list]
+        figures = [self.figure.at(plots) for plots in plots_list]
 
         self._finalize_figure(figures)
 
@@ -104,12 +107,15 @@ class Plotter(Loggable, object):
         return data
 
     @abc.abstractmethod
-    def _create_individual_figure(self, plots):
+    def _initialize_plot(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def _create_individual_plot(self, data, fields):
+    def _initialize_figure(self):
         raise NotImplementedError
+
+    def _initialize_multifigure(self):
+        return MultiFigure(subfigures=None)
 
     def _finalize_figure(self, figures):
         if len(figures) > 1:
@@ -118,9 +124,7 @@ class Plotter(Loggable, object):
             figure_array[:len(figures)] = figures
             figure_array = figure_array.reshape((2, rows))
 
-            final_figure = MultiFigure(rows, 2,
-                                       title='Test',
-                                       subfigures=figure_array)
+            final_figure = self.multi_figure(subfigures=figure_array)
         else:
             final_figure = figures[0]
 

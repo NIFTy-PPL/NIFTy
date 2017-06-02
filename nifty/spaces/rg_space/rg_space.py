@@ -1,8 +1,3 @@
-# NIFTy
-# Copyright (C) 2017  Theo Steininger
-#
-# Author: Theo Steininger
-#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,6 +10,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2017 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
 """
     ..                  __   ____   __
@@ -52,10 +52,10 @@ class RGSpace(Space):
         ----------
         shape : {int, numpy.ndarray}
             Number of grid points or numbers of gridpoints along each axis.
-        zerocenter : {bool, numpy.ndarray}, *optional*
-        Whether x==0 (or k==0, respectively) is located in the center of
-        the grid (or the center of each axis speparately) or not.
-        (default: False).
+        zerocenter : {bool, numpy.ndarray} *optional*
+            Whether x==0 (or k==0, respectively) is located in the center of
+            the grid (or the center of each axis speparately) or not.
+            (default: False).
         distances : {float, numpy.ndarray}, *optional*
             Distance between two grid points along each axis
             (default: None).
@@ -110,7 +110,7 @@ class RGSpace(Space):
         hermitian_part /= 2.
 
         # use subtraction since it is faster than flipping another time
-        anti_hermitian_part = (x-hermitian_part)/1j
+        anti_hermitian_part = (x-hermitian_part)
 
         if preserve_gaussian_variance:
             hermitian_part, anti_hermitian_part = \
@@ -126,27 +126,32 @@ class RGSpace(Space):
         hermitian_part = hermitian_part * np.sqrt(2)
         anti_hermitian_part = anti_hermitian_part * np.sqrt(2)
 
-        # The fixed points of the point inversion must not be averaged.
-        # Hence one must divide out the sqrt(2) again
-        # -> Get the middle index of the array
-        mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
-        dimensions = mid_index.size
-        # Use ndindex to iterate over all combinations of zeros and the
-        # mid_index in order to correct all fixed points.
-        if axes is None:
-            axes = xrange(dimensions)
+        # If the dtype of the input is complex, the fixed points lose the power
+        # of their imaginary-part (or real-part, respectively). Therefore
+        # the factor of sqrt(2) also applies there
+        if not issubclass(hermitian_part.dtype.type, np.complexfloating):
+            # The fixed points of the point inversion must not be averaged.
+            # Hence one must divide out the sqrt(2) again
+            # -> Get the middle index of the array
+            mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
+            dimensions = mid_index.size
+            # Use ndindex to iterate over all combinations of zeros and the
+            # mid_index in order to correct all fixed points.
+            if axes is None:
+                axes = xrange(dimensions)
 
-        ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
-        ndlist = tuple(ndlist)
-        for i in np.ndindex(ndlist):
-            temp_index = tuple(i * mid_index)
-            hermitian_part[temp_index] /= np.sqrt(2)
-            anti_hermitian_part[temp_index] /= np.sqrt(2)
+            ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
+            ndlist = tuple(ndlist)
+            for i in np.ndindex(ndlist):
+                temp_index = tuple(i * mid_index)
+                hermitian_part[temp_index] /= np.sqrt(2)
+                anti_hermitian_part[temp_index] /= np.sqrt(2)
         return hermitian_part, anti_hermitian_part
 
     def _hermitianize_inverter(self, x, axes):
+        shape = x.shape
         # calculate the number of dimensions the input array has
-        dimensions = len(x.shape)
+        dimensions = len(shape)
         # prepare the slicing object which will be used for mirroring
         slice_primitive = [slice(None), ] * dimensions
         # copy the input data
@@ -158,11 +163,17 @@ class RGSpace(Space):
         # flip in the desired directions
         for i in axes:
             slice_picker = slice_primitive[:]
-            slice_picker[i] = slice(1, None, None)
+            if shape[i] % 2 == 0:
+                slice_picker[i] = slice(1, None, None)
+            else:
+                slice_picker[i] = slice(None)
             slice_picker = tuple(slice_picker)
 
             slice_inverter = slice_primitive[:]
-            slice_inverter[i] = slice(None, 0, -1)
+            if shape[i] % 2 == 0:
+                slice_inverter[i] = slice(None, 0, -1)
+            else:
+                slice_inverter[i] = slice(None, None, -1)
             slice_inverter = tuple(slice_inverter)
 
             try:
@@ -173,6 +184,10 @@ class RGSpace(Space):
         return y
 
     # ---Mandatory properties and methods---
+
+    def __repr__(self):
+        return ("RGSpace(shape=%r, zerocenter=%r, distances=%r, harmonic=%r)"
+                % (self.shape, self.zerocenter, self.distances, self.harmonic))
 
     @property
     def harmonic(self):
@@ -267,10 +282,6 @@ class RGSpace(Space):
         return dists
 
     def get_fft_smoothing_kernel_function(self, sigma):
-
-        if sigma is None:
-            sigma = np.sqrt(2) * np.max(self.distances)
-
         return lambda x: np.exp(-0.5 * np.pi**2 * x**2 * sigma**2)
 
     # ---Added properties and methods---
