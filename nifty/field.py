@@ -269,7 +269,7 @@ class Field(Loggable, Versionable, object):
     # ---Powerspectral methods---
 
     def power_analyze(self, spaces=None, logarithmic=False, nbin=None,
-                      binbounds=None, decompose_power=True):
+                      binbounds=None, keep_phase_information=False):
         """ Computes the square root power spectrum for a subspace of `self`.
 
         Creates a PowerSpace for the space addressed by `spaces` with the given
@@ -294,11 +294,16 @@ class Field(Loggable, Versionable, object):
         binbounds : array-like *optional*
             Inner bounds of the bins (default : None).
             if binbounds==None : bins are inferred. Overwrites nbins and log
-        decompose_power : boolean, *optional*
-            Whether the analysed signal-space Field is intrinsically real or
-            complex and if the power spectrum shall therefore be computed
-            for the real and the imaginary part of the Field separately
-            (default : True).
+        keep_phase_information : boolean, *optional*
+            If False, return a real-valued result containing the power spectrum
+            of the input Field.
+            If True, return a complex-valued result whose real component
+            contains the power spectrum computed from the real part of the
+            input Field, and whose imaginary component contains the power
+            spectrum computed from the imaginary part of the input Field.
+            The absolute value of this result should be identical to the output
+            of power_analyze with keep_phase_information=False.
+            (default : False).
 
         Raise
         -----
@@ -371,7 +376,7 @@ class Field(Loggable, Versionable, object):
         pindex = power_domain.pindex
         rho = power_domain.rho
 
-        if decompose_power:
+        if keep_phase_information:
             hermitian_part, anti_hermitian_part = \
                 harmonic_domain.hermitian_decomposition(
                                             self.val,
