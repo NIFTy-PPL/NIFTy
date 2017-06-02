@@ -35,12 +35,19 @@ dependency_injector.register(('pyfftw', 'fftw_mpi'),
                              lambda z: hasattr(z, 'FFTW_MPI'))
 dependency_injector.register(('pyfftw', 'fftw_scalar'))
 
+
+def _fft_module_checker(z):
+    if z == 'mpi_fftw':
+        return 'fftw_mpi' in dependency_injector
+    if z == 'scalar_fftw':
+        return 'fftw_scalar' in dependency_injector
+    return True
+
 # Initialize the variables
 variable_fft_module = keepers.Variable(
                                'fft_module',
-                               ['mpi', 'scalar'],
-                               lambda z: (('fftw_mpi' in dependency_injector)
-                                          if z == 'mpi' else True))
+                               ['mpi_fftw', 'scalar_fftw', 'scalar_numpy'],
+                               lambda z: _fft_module_checker(z))
 
 
 def dtype_validator(dtype):

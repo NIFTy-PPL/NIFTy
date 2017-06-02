@@ -30,20 +30,16 @@ class RGRGTransformation(Transformation):
         super(RGRGTransformation, self).__init__(domain, codomain, module)
 
         if module is None:
-            if nifty_configuration['fft_module'] == 'mpi':
-                self._transform = MPIFFT(self.domain, self.codomain)
-            elif nifty_configuration['fft_module'] == 'scalar':
-                self._transform = ScalarFFT(self.domain, self.codomain)
-            else:
-                raise ValueError('Unsupported default FFT module:' +
-                                 nifty_configuration['fft_module'])
+            module = nifty_configuration['fft_module']
+
+        if module == 'mpi_fftw':
+            self._transform = MPIFFT(self.domain, self.codomain)
+        elif module == 'scalar_fftw':
+            self._transform = ScalarFFT(self.domain, self.codomain, True)
+        elif module == 'scalar_numpy':
+            self._transform = ScalarFFT(self.domain, self.codomain, False)
         else:
-            if module == 'mpi':
-                self._transform = MPIFFT(self.domain, self.codomain)
-            elif module == 'scalar':
-                self._transform = ScalarFFT(self.domain, self.codomain)
-            else:
-                raise ValueError('Unsupported FFT module:' + module)
+            raise ValueError('Unsupported FFT module:' + module)
 
     # ---Mandatory properties and methods---
 

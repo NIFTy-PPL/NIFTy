@@ -553,6 +553,17 @@ class ScalarFFT(Transform):
         The numpy fft pendant of a fft object.
 
     """
+    def __init__(self, domain, codomain, fftw):
+        super(ScalarFFT, self).__init__(domain, codomain)
+
+        if fftw and (fftw_scalar is None):
+            raise ImportError(
+                "The scalar FFTW module is needed but not available.")
+
+        self._fftw = fftw
+        # Enable caching
+        if self._fftw:
+            fftw_scalar.interfaces.cache.enable()
 
     def transform(self, val, axes, **kwargs):
         """
@@ -575,9 +586,6 @@ class ScalarFFT(Transform):
             result : np.ndarray or distributed_data_object
                 Fourier-transformed pendant of the input field.
         """
-        # Enable caching
-        if fftw_scalar is not None:
-            fftw_scalar.interfaces.cache.enable()
 
         # Check if the axes provided are valid given the shape
         if axes is not None and \
@@ -632,7 +640,7 @@ class ScalarFFT(Transform):
             local_val = self._apply_mask(temp_val, mask, axes)
 
         # perform the transformation
-        if fftw_scalar is not None:
+        if self._fftw:
             if self.codomain.harmonic:
                 result_val = fftw_scalar.interfaces.numpy_fft.fftn(
                              local_val, axes=axes)
