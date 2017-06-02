@@ -590,11 +590,11 @@ class Field(Loggable, Versionable, object):
             (hh, ha) = domain[space].hermitian_decomposition(
                                               h,
                                               domain_axes[space],
-                                              preserve_gaussian_variance=True)
+                                              preserve_gaussian_variance=False)
             (ah, aa) = domain[space].hermitian_decomposition(
                                               a,
                                               domain_axes[space],
-                                              preserve_gaussian_variance=True)
+                                              preserve_gaussian_variance=False)
             c = (hh - ha - ah + aa).conjugate()
             full = (hh + ha + ah + aa)
             h = (full + c)/2.
