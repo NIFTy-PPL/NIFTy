@@ -18,10 +18,9 @@
 
 import numpy as np
 
-import d2o
+from d2o import distributed_data_object
 
 from nifty.spaces.space import Space
-from power_indices import PowerIndices
 
 
 class PowerSpace(Space):
@@ -42,8 +41,8 @@ class PowerSpace(Space):
         (default : None).
         if nbin == None, then nbin is set to the length of kindex.
     binbounds :  {list, array-like} *optional*
-        Array-like inner boundaries of the used bins of the default
-        indices.
+        Boundaries between the power spectrum bins.
+        (If binbounds has n entries, there will be n+1 bins.)
         (default : None)
         if binbounds == None :
             Calculates the bounds from the kindex while applying the
@@ -67,19 +66,8 @@ class PowerSpace(Space):
         The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
-    logarithmic : bool
-        True if logarithmic binning should be used.
-    nbin : {int, None}
-        The number of bins that should be used for power spectrum binning
-        (default : None).
-        if nbin == None, then nbin is set to the length of kindex.
     binbounds :  {list, array-like}
-        Array-like inner boundaries of the used bins of the default
-        indices.
-        (default : None)
-        if binbounds == None :
-            Calculates the bounds from the kindex while applying the
-            logarithmic and nbin keywords.
+        Boundaries between the power spectrum bins
 
     Notes
     -----
@@ -96,34 +84,15 @@ class PowerSpace(Space):
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_k_array']
 
-        if not isinstance(harmonic_partner, Space):
-            raise ValueError(
-                "harmonic_partner must be a Space.")
-        if not harmonic_partner.harmonic:
-            raise ValueError(
-                "harmonic_partner must be a harmonic space.")
+        if not (isinstance(harmonic_partner, Space) and \
+                harmonic_partner.harmonic):
+            raise ValueError("harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
-        try:
-            self._logarithmic = bool(logarithmic)
-        except(TypeError):
-            self._logarithmic = False
-        try:
-            self._nbin = int(nbin)
-        except(TypeError):
-            self._nbin = None
-        try:
-            self._binbounds = tuple(np.array(binbounds))
-        except(TypeError):
-            self._binbounds = None
 
-#        tmp = PowerIndices(self.harmonic_partner, distribution_strategy)
-        self._pindex, self._kindex, self._rho, self._k_array = PowerIndices.get_arrays(self.harmonic_partner, distribution_strategy, self._logarithmic,
-                                                   self._nbin, self._binbounds)
+        self._k_array = self._harmonic_partner.get_distance_array(distribution_strategy)
+        self._compute_binbounds (binbounds, logarithmic, nbin)
 
-        if self._nbin is not None:
-            if self._nbin > len(self.kindex):
-                self.logger.warn("nbin was set to a value being larger than "
-                                 "the length of kindex!")
+        self._do_binning()
 
     def pre_cast(self, x, axes):
         """ Casts power spectrum functions to discretized power spectra.
@@ -154,9 +123,9 @@ class PowerSpace(Space):
 
     def __repr__(self):
         return ("PowerSpace(harmonic_partner=%r, distribution_strategy=%r, "
-                "logarithmic=%r, nbin=%r, binbounds=%r)"
+                "binbounds=%r)"
                 % (self.harmonic_partner, self.pindex.distribution_strategy,
-                   self._logarithmic, self._nbin, self._binbounds))
+                   self._binbounds))
 
     @property
     def harmonic(self):
@@ -179,8 +148,6 @@ class PowerSpace(Space):
         distribution_strategy = self.pindex.distribution_strategy
         return self.__class__(harmonic_partner=self.harmonic_partner,
                               distribution_strategy=distribution_strategy,
-                              logarithmic=self._logarithmic,
-                              nbin=self._nbin,
                               binbounds=self._binbounds)
 
     def weight(self, x, power=1, axes=None, inplace=False):
@@ -201,10 +168,9 @@ class PowerSpace(Space):
         return result_x
 
     def get_distance_array(self, distribution_strategy):
-        result = d2o.distributed_data_object(
+        return distributed_data_object(
                                 self.kindex, dtype=np.float64,
                                 distribution_strategy=distribution_strategy)
-        return result
 
     def get_fft_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(
@@ -217,14 +183,6 @@ class PowerSpace(Space):
         """ Returns the Space of which this is the power space.
         """
         return self._harmonic_partner
-
-    @property
-    def logarithmic(self):
-        return self._logarithmic
-
-    @property
-    def nbin(self):
-        return self._nbin
 
     @property
     def binbounds(self):
@@ -261,9 +219,6 @@ class PowerSpace(Space):
     def _to_hdf5(self, hdf5_group):
         hdf5_group['kindex'] = self.kindex
         hdf5_group['rho'] = self.rho
-        hdf5_group['logarithmic'] = self._logarithmic
-        # Store nbin as string, since it can be None
-        hdf5_group.attrs['nbin'] = str(self._nbin)
         hdf5_group.attrs['binbounds'] = str(self._binbounds)
 
         #MR FIXME: why not "return None" as happens everywhere else?
@@ -285,8 +240,6 @@ class PowerSpace(Space):
         new_ps._harmonic_partner = repository.get('harmonic_partner',
                                                   hdf5_group)
 
-        new_ps._logarithmic = hdf5_group['logarithmic'][()]
-        exec("new_ps._nbin = " + hdf5_group.attrs['nbin'])
         exec("new_ps._binbounds = " + hdf5_group.attrs['binbounds'])
 
         new_ps._pindex = repository.get('pindex', hdf5_group)
@@ -296,6 +249,74 @@ class PowerSpace(Space):
         new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_k_array']
 
         return new_ps
+
+    def _do_binning(self):
+        """ Computes pindex, kindex and rho according to self._binbounds.
+        """
+        # if no binning is requested, compute the "natural" binning, i.e. there
+        # is one bin for every distinct k-vector length
+        if self._binbounds is None:
+            self._kindex = self._k_array.unique()
+            # prepare the distributed_data_object
+            self._pindex = distributed_data_object(
+                global_shape=self._k_array.shape,
+                dtype=np.int,
+                distribution_strategy=self._k_array.distribution_strategy)
+            # store the local pindex data in the global_pindex d2o
+            self._pindex.set_local_data(
+                np.searchsorted(self._kindex, self._k_array.get_local_data()))
+            self._rho = self._pindex.bincount().get_full_data()
+
+        # use the provided binbounds
+        else:
+            self._pindex = distributed_data_object(
+                global_shape=self._k_array.shape,
+                dtype=np.int,
+                distribution_strategy=self._k_array.distribution_strategy)
+            self._pindex.set_local_data(np.searchsorted(
+                self._binbounds, self._k_array.get_local_data()))
+            self._rho = self._pindex.bincount().get_full_data()
+            self._kindex = self._pindex.bincount(
+                weights=self._k_array).get_full_data()/self._rho
+
+    def _compute_binbounds (self, binbounds, logarithmic, nbin):
+        try:
+            self._binbounds = np.sort(tuple(np.array(binbounds)))
+        except(TypeError):
+            self._binbounds = None
+
+        if(self._binbounds is None):
+            try:
+                logarithmic = bool(logarithmic)
+            except(TypeError):
+                logarithmic = False
+            try:
+                nbin = int(nbin)
+            except(TypeError):
+                nbin = None
+
+            if not logarithmic and nbin is None:
+                return # no binbounds, use "natural" binning
+
+            # equal binning
+            # MR FIXME: this needs to improve
+            kindex = self._k_array.unique()
+            if (logarithmic):
+                k = np.r_[0, np.log(kindex[1:])]
+            else:
+                k = kindex
+            dk = np.max(k[2:] - k[1:-1])  # minimum dk to avoid empty bins
+            if(nbin is None):
+                nbin = int((k[-1] - 0.5 * (k[2] + k[1])) /
+                           dk - 0.5)  # maximal nbin
+            else:
+                nbin = min(int(nbin), int(
+                    (k[-1] - 0.5 * (k[2] + k[1])) / dk + 2.5))
+                dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
+            self._binbounds = np.r_[0.5 * (3 * k[1] - k[2]),
+                              0.5 * (k[1] + k[2]) + dk * np.arange(nbin - 2)]
+            if(logarithmic):
+                self._binbounds = np.exp(self._binbounds)
 
 
 class EmptyPowerSpace(PowerSpace):

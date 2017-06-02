@@ -64,8 +64,6 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 5,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'logarithmic': False,
-        'nbin': None,
         'binbounds': None,
         'pindex': distributed_data_object([0, 1, 2, 3, 4, 3, 2, 1]),
         'kindex': np.array([0., 1., 2., 3., 4.]),
@@ -78,8 +76,6 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 2,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'logarithmic': True,
-        'nbin': None,
         'binbounds': None,
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
         'kindex': np.array([0., 2.28571429]),
@@ -118,8 +114,6 @@ def get_weight_configs():
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
         ['harmonic_partner', Space],
-        ['logarithmic', bool],
-        ['nbin', NoneType],
         ['binbounds', NoneType],
         ['pindex', distributed_data_object],
         ['kindex', np.ndarray],
@@ -143,7 +137,7 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
             err_msg='rho is not equal to pindex degeneracy')
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
-    @expand(CONSISTENCY_CONFIGS)
+    @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, harmonic_partner, distribution_strategy,
                          logarithmic, nbin, binbounds, expected):
         if 'error' in expected:
