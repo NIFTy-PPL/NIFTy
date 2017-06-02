@@ -1,6 +1,6 @@
 from nifty.energies.energy import Energy
 from nifty.library.operator_library import CriticalPowerCurvature,\
-                                            LaplaceOperator
+                                            SmoothnessOperator
 
 from nifty.sugar import generate_posterior_sample
 from nifty import Field, exp
@@ -31,14 +31,12 @@ class CriticalPowerEnergy(Energy):
         self.sigma = sigma
         self.alpha = Field(self.position.domain, val=alpha)
         self.q = Field(self.position.domain, val=q)
-        #self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma)
-        self.Laplace = LaplaceOperator(self.position.domain[0])
-        self.roughness = self.Laplace(self.position)
+        self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma)
         self.rho = self.position.domain[0].rho
         self.w = w
         if self.w is None:
             self.w = self._calculate_w(self.m, self.D, self.samples)
-        self.theta = exp(-self.position) * (self.q + self.w / 2.)
+        self.theta = (exp(-self.position) * (self.q + self.w / 2.))
 
     def at(self, position):
         return self.__class__(position, self.m, D=self.D,
@@ -49,22 +47,22 @@ class CriticalPowerEnergy(Energy):
 
     @property
     def value(self):
-        energy = exp(-self.position).dot(self.q + self.w / 2.)
-        energy += self.position.dot(self.alpha - 1. + self.rho / 2.)
-        energy += 0.5 * self.roughness.dot(self.roughness) / self.sigma**2
+        energy = exp(-self.position).dot(self.q + self.w / 2., bare= True)
+        energy += self.position.dot(self.alpha - 1. + self.rho / 2., bare=True)
+        energy += 0.5 * self.position.dot(self.T(self.position))
         return energy.real
 
     @property
     def gradient(self):
-        gradient = - self.theta
-        gradient += self.alpha - 1. + self.rho / 2.
-        gradient += self.Laplace(self.roughness) / self.sigma **2
+        gradient = - self.theta.weight(-1)
+        gradient += (self.alpha - 1. + self.rho / 2.).weight(-1)
+        gradient +=  self.T(self.position)
+        gradient.val = gradient.val.real
         return gradient
 
     @property
     def curvature(self):
-        curvature = CriticalPowerCurvature(theta=self.theta, Laplace = self.Laplace,
-                                           sigma = self.sigma)
+        curvature = CriticalPowerCurvature(theta=self.theta.weight(-1), T=self.T)
         return curvature
 
     def _calculate_w(self, m, D, samples):
@@ -81,6 +79,7 @@ class CriticalPowerEnergy(Energy):
         else:
             w = m.power_analyze(
                     logarithmic=self.position.domain[0].config["logarithmic"],
+                        nbin=self.position.domain[0].config["nbin"],
                         decompose_power=False)
             w **= 2
             w *= self.rho

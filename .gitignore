@@ -7,6 +7,7 @@
 *.egg
 *.egg-info
 *~
+*.DS_Store
 *.csv
 .git/
 .svn/

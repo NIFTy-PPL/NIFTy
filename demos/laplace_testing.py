@@ -58,23 +58,23 @@ if __name__ == "__main__":
 
     # Setting up power space
     p_space = PowerSpace(h_space, logarithmic=False,
-                         distribution_strategy=distribution_strategy, nbin=70)
+                         distribution_strategy=distribution_strategy, nbin=200)
 
     # Choosing the prior correlation structure and defining correlation operator
     pow_spec = (lambda k: (.05 / (k + 1) ** 2))
     # t = Field(p_space, val=pow_spec)
     t= Field.from_random("normal", domain=p_space)
-    lap = LaplaceOperator(p_space)
-    T = SmoothnessOperator(p_space,sigma=1.)
+    lap = LaplaceOperator(p_space, logarithmic=True)
+    T = SmoothnessOperator(p_space,sigma=1., logarithmic=True)
     test_energy = TestEnergy(t,T)
 
     def convergence_measure(a_energy, iteration): # returns current energy
         x = a_energy.value
         print (x, iteration)
     minimizer1 = VL_BFGS(convergence_tolerance=0,
-                       iteration_limit=1000,
+                       iteration_limit=10,
                        callback=convergence_measure,
-                       max_history_length=3)
+                       max_history_length=10)
 
 
     def explicify(op, domain):
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     B = explicify(lap.adjoint_times, p_space)
     test_energy,convergence = minimizer1(test_energy)
     data = test_energy.position.val.get_full_data()
-    pl.plot([go.Scatter(x=log(p_space.kindex)[1:], y=data[1:])], filename="t.html")
+    pl.plot([go.Scatter(x=(p_space.kindex)[1:], y=data[1:])], filename="t.html")
     tt = Field.from_random("normal", domain=t.domain)
     print "adjointness"
     print t.dot(lap(tt))
@@ -100,6 +100,6 @@ if __name__ == "__main__":
     aa = Field(p_space, val=p_space.kindex.copy())
     aa.val[0] = 1
 
-    print lap(log(aa)).val
+    print lap(log(aa)**2).val
     print "######################"
     print test_energy.position.val

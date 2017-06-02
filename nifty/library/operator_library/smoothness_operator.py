@@ -6,7 +6,7 @@ from laplace_operator import LaplaceOperator
 
 class SmoothnessOperator(EndomorphicOperator):
 
-    def __init__(self, domain, sigma=1.,
+    def __init__(self, domain, sigma=1.,logarithmic = True,
                  default_spaces=None):
 
         super(SmoothnessOperator, self).__init__(default_spaces)
@@ -21,7 +21,7 @@ class SmoothnessOperator(EndomorphicOperator):
 
         self._sigma = sigma
 
-        self._Laplace = LaplaceOperator(domain=self._domain[0])
+        self._Laplace = LaplaceOperator(domain=self._domain[0], logarithmic=logarithmic)
 
     """
     SmoothnessOperator

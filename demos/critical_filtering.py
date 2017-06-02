@@ -8,7 +8,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.rank
 
-np.random.seed(232)
+np.random.seed(42)
 
 
 def plot_parameters(m,t,t_true, t_real, t_d):
@@ -60,8 +60,8 @@ if __name__ == "__main__":
     h_space = fft.target[0]
 
     # Setting up power space
-    p_space = PowerSpace(h_space, logarithmic=False,
-                         distribution_strategy=distribution_strategy, nbin=128)
+    p_space = PowerSpace(h_space, logarithmic=True,
+                         distribution_strategy=distribution_strategy, nbin=120)
 
     # Choosing the prior correlation structure and defining correlation operator
     pow_spec = (lambda k: (.05 / (k + 1) ** 2))
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     #Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = 1.
+    noise = 5.
     N = DiagonalOperator(s_space, diagonal=noise, bare=True)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     realized_power = log(sh.power_analyze(logarithmic=p_space.config["logarithmic"],
                                           nbin=p_space.config["nbin"])**2)
-    data_power  = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
+    data_power = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
                                           nbin=p_space.config["nbin"])**2)
     d_data = d.val.get_full_data().real
     if rank == 0:
@@ -110,24 +110,24 @@ if __name__ == "__main__":
 
     minimizer1 = RelaxedNewton(convergence_tolerance=0,
                               convergence_level=1,
-                              iteration_limit=2,
+                              iteration_limit=3,
                               callback=convergence_measure)
     minimizer2 = VL_BFGS(convergence_tolerance=0,
                        iteration_limit=50,
                        callback=convergence_measure,
-                       max_history_length=3)
+                       max_history_length=10)
 
     # Setting starting position
     flat_power = Field(p_space,val=10e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
-    t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
-    #t0 = data_power
+    # t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
+    t0 = data_power- 1.
     S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                                distribution_strategy=distribution_strategy)
 
 
-    for i in range(100):
+    for i in range(500):
         S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                               distribution_strategy=distribution_strategy)
 
@@ -140,14 +140,13 @@ if __name__ == "__main__":
         m0 = map_energy.position
         D0 = map_energy.curvature
         # Initializing the power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=10., samples=3)
-        if i > 0:
-            (power_energy, convergence) = minimizer1(power_energy)
-        else:
-            (power_energy, convergence) = minimizer2(power_energy)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=1000., samples=1)
+
+        (power_energy, convergence) = minimizer1(power_energy)
+
         # Setting new power spectrum
-        t0 = power_energy.position
-        t0.val[-1] = t0.val[-2]
+        t0.val  = power_energy.position.val.real
+        # t0.val[-1] = t0.val[-2]
         # Plotting current estimate
         plot_parameters(m0,t0,log(sp**2),realized_power, data_power)
 
