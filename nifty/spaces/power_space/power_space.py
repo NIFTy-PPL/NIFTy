@@ -42,7 +42,8 @@ class PowerSpace(Space):
         if nbin == None, then nbin is set to the length of kindex.
     binbounds :  {list, array-like} *optional*
         Boundaries between the power spectrum bins.
-        (If binbounds has n entries, there will be n+1 bins.)
+        (If binbounds has n entries, there will be n+1 bins, the first bin
+        starting at -inf, the last bin ending at +inf.)
         (default : None)
         if binbounds == None :
             Calculates the bounds from the kindex while applying the
@@ -253,15 +254,16 @@ class PowerSpace(Space):
     def _do_binning(self):
         """ Computes pindex, kindex and rho according to self._binbounds.
         """
+        # prepare the pindex object
+        self._pindex = distributed_data_object(
+            global_shape=self._k_array.shape,
+            dtype=np.int,
+            distribution_strategy=self._k_array.distribution_strategy)
+
         # if no binning is requested, compute the "natural" binning, i.e. there
         # is one bin for every distinct k-vector length
         if self._binbounds is None:
             self._kindex = self._k_array.unique()
-            # prepare the distributed_data_object
-            self._pindex = distributed_data_object(
-                global_shape=self._k_array.shape,
-                dtype=np.int,
-                distribution_strategy=self._k_array.distribution_strategy)
             # store the local pindex data in the global_pindex d2o
             self._pindex.set_local_data(
                 np.searchsorted(self._kindex, self._k_array.get_local_data()))
@@ -269,10 +271,6 @@ class PowerSpace(Space):
 
         # use the provided binbounds
         else:
-            self._pindex = distributed_data_object(
-                global_shape=self._k_array.shape,
-                dtype=np.int,
-                distribution_strategy=self._k_array.distribution_strategy)
             self._pindex.set_local_data(np.searchsorted(
                 self._binbounds, self._k_array.get_local_data()))
             self._rho = self._pindex.bincount().get_full_data()
