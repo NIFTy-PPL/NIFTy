@@ -68,7 +68,6 @@ CONSTRUCTOR_CONFIGS = [
         'pindex': distributed_data_object([0, 1, 2, 3, 4, 3, 2, 1]),
         'kindex': np.array([0., 1., 2., 3., 4.]),
         'rho': np.array([1, 2, 2, 2, 1]),
-        'k_array': np.array([0., 1., 2., 3., 4., 3., 2., 1.]),
         }],
     [RGSpace((8,), harmonic=True), 'not', True, None, None, {
         'harmonic': True,
@@ -80,8 +79,6 @@ CONSTRUCTOR_CONFIGS = [
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
         'kindex': np.array([0., 2.28571429]),
         'rho': np.array([1, 7]),
-        'k_array': np.array([0., 2.28571429, 2.28571429, 2.28571429,
-                             2.28571429, 2.28571429, 2.28571429, 2.28571429]),
         }],
     ]
 
@@ -118,7 +115,6 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
         ['pindex', distributed_data_object],
         ['kindex', np.ndarray],
         ['rho', np.ndarray],
-        ['k_array', distributed_data_object],
         ])
     def test_property_ret_type(self, attribute, expected_type):
         r = RGSpace((4, 4), harmonic=True)

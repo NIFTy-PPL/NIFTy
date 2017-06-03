@@ -81,19 +81,71 @@ class PowerSpace(Space):
 
     def __init__(self, harmonic_partner,
                  distribution_strategy='not',
-                 logarithmic=False, nbin=None, binbounds=None):
+                 logarithmic=None, nbin=None, binbounds=None):
         super(PowerSpace, self).__init__()
-        self._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_k_array']
+        self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
 
         if not (isinstance(harmonic_partner, Space) and \
                 harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
 
-        self._k_array = self._harmonic_partner.get_distance_array(distribution_strategy)
-        self._compute_binbounds (binbounds, logarithmic, nbin)
+        dists = self._harmonic_partner.get_distance_array(distribution_strategy)
 
-        self._do_binning()
+        if logarithmic is None and nbin is None and binbounds is None:
+            # compute the "natural" binning, i.e. there
+            # is one bin for every distinct k-vector length
+            tmp = dists.unique()
+            tol = 1e-12*tmp[-1]
+            # remove all points that are closer than tol to their right
+            # neighbors.
+            # I'm appending the last value*2 to the array to treat the
+            # rightmost point correctly.
+            tmp = tmp[np.diff(np.append(tmp,2*tmp[-1]))>tol]
+            self._binbounds = tmp[0:-1]+0.5*np.diff(tmp)
+        else:
+            if binbounds is not None:
+                self._binbounds = np.sort(tuple(np.array(binbounds)))
+            else:
+                if logarithmic is not None:
+                    logarithmic = bool(logarithmic)
+                if nbin is not None:
+                    nbin = int(nbin)
+
+                # equidistant binning (linear or log)
+                # MR FIXME: this needs to improve
+                kindex = dists.unique()
+                if (logarithmic):
+                    k = np.r_[0, np.log(kindex[1:])]
+                else:
+                    k = kindex
+                dk = np.max(k[2:] - k[1:-1])  # minimum dk to avoid empty bins
+                if(nbin is None):
+                    nbin = int((k[-1] - 0.5 * (k[2] + k[1])) /
+                               dk - 0.5)  # maximal nbin
+                else:
+                    nbin = min(int(nbin), int(
+                        (k[-1] - 0.5 * (k[2] + k[1])) / dk + 2.5))
+                    dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
+                self._binbounds = np.r_[0.5 * (3 * k[1] - k[2]),
+                                  0.5 * (k[1] + k[2]) + dk * np.arange(nbin - 2)]
+                if(logarithmic):
+                    self._binbounds = np.exp(self._binbounds)
+
+        # Compute pindex, kindex and rho according to self._binbounds
+
+        # prepare the pindex object
+        self._pindex = distributed_data_object(
+            global_shape=dists.shape,
+            dtype=np.int,
+            distribution_strategy=distribution_strategy)
+
+        # bin according to the binbounds
+        self._pindex.set_local_data(np.searchsorted(
+            self._binbounds, dists.get_local_data()))
+        self._rho = self._pindex.bincount().get_full_data()
+        self._kindex = self._pindex.bincount(
+            weights=dists).get_full_data()/self._rho
 
     def pre_cast(self, x, axes):
         """ Casts power spectrum functions to discretized power spectra.
@@ -208,13 +260,6 @@ class PowerSpace(Space):
         """
         return self._rho
 
-    @property
-    def k_array(self):
-        """ An array containing distances to the grid center (i.e. zero-mode)
-        for every k-mode in the grid of the harmonic partner space.
-        """
-        return self._k_array
-
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
@@ -226,7 +271,6 @@ class PowerSpace(Space):
         return {
             'harmonic_partner': self.harmonic_partner,
             'pindex': self.pindex,
-            'k_array': self.k_array
         }
 
     @classmethod
@@ -246,75 +290,9 @@ class PowerSpace(Space):
         new_ps._pindex = repository.get('pindex', hdf5_group)
         new_ps._kindex = hdf5_group['kindex'][:]
         new_ps._rho = hdf5_group['rho'][:]
-        new_ps._k_array = repository.get('k_array', hdf5_group)
-        new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho', '_k_array']
+        new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho']
 
         return new_ps
-
-    def _do_binning(self):
-        """ Computes pindex, kindex and rho according to self._binbounds.
-        """
-        # prepare the pindex object
-        self._pindex = distributed_data_object(
-            global_shape=self._k_array.shape,
-            dtype=np.int,
-            distribution_strategy=self._k_array.distribution_strategy)
-
-        # if no binning is requested, compute the "natural" binning, i.e. there
-        # is one bin for every distinct k-vector length
-        if self._binbounds is None:
-            self._kindex = self._k_array.unique()
-            # store the local pindex data in the global_pindex d2o
-            self._pindex.set_local_data(
-                np.searchsorted(self._kindex, self._k_array.get_local_data()))
-            self._rho = self._pindex.bincount().get_full_data()
-
-        # use the provided binbounds
-        else:
-            self._pindex.set_local_data(np.searchsorted(
-                self._binbounds, self._k_array.get_local_data()))
-            self._rho = self._pindex.bincount().get_full_data()
-            self._kindex = self._pindex.bincount(
-                weights=self._k_array).get_full_data()/self._rho
-
-    def _compute_binbounds (self, binbounds, logarithmic, nbin):
-        try:
-            self._binbounds = np.sort(tuple(np.array(binbounds)))
-        except(TypeError):
-            self._binbounds = None
-
-        if(self._binbounds is None):
-            try:
-                logarithmic = bool(logarithmic)
-            except(TypeError):
-                logarithmic = False
-            try:
-                nbin = int(nbin)
-            except(TypeError):
-                nbin = None
-
-            if not logarithmic and nbin is None:
-                return # no binbounds, use "natural" binning
-
-            # equal binning
-            # MR FIXME: this needs to improve
-            kindex = self._k_array.unique()
-            if (logarithmic):
-                k = np.r_[0, np.log(kindex[1:])]
-            else:
-                k = kindex
-            dk = np.max(k[2:] - k[1:-1])  # minimum dk to avoid empty bins
-            if(nbin is None):
-                nbin = int((k[-1] - 0.5 * (k[2] + k[1])) /
-                           dk - 0.5)  # maximal nbin
-            else:
-                nbin = min(int(nbin), int(
-                    (k[-1] - 0.5 * (k[2] + k[1])) / dk + 2.5))
-                dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
-            self._binbounds = np.r_[0.5 * (3 * k[1] - k[2]),
-                              0.5 * (k[1] + k[2]) + dk * np.arange(nbin - 2)]
-            if(logarithmic):
-                self._binbounds = np.exp(self._binbounds)
 
 
 class EmptyPowerSpace(PowerSpace):
