@@ -341,23 +341,39 @@ class Field(Loggable, Versionable, object):
             raise ValueError(
                 "No space for analysis specified.")
 
-        work_field = abs(self)
-        work_field = work_field*work_field
+        if keep_phase_information:
+            parts_val = self._hermitian_decomposition(
+                                              domain=self.domain,
+                                              val=self.val,
+                                              spaces=spaces,
+                                              domain_axes=self.domain_axes,
+                                              preserve_gaussian_variance=False)
+            parts = [self.copy_empty().set_val(part_val, copy=False)
+                     for part_val in parts_val]
+        else:
+            parts = [self]
+
+        parts = [abs(part)**2 for part in parts]
 
         for space_index in spaces:
-            work_field = self._single_power_analyze(
-                                work_field=work_field,
+            parts = [self._single_power_analyze(
+                                work_field=part,
                                 space_index=space_index,
                                 logarithmic=logarithmic,
                                 nbin=nbin,
-                                binbounds=binbounds,
-                                keep_phase_information=keep_phase_information)
+                                binbounds=binbounds)
+                     for part in parts]
 
-        return work_field
+        if keep_phase_information:
+            result_field = parts[0] + 1j*parts[1]
+        else:
+            result_field = parts[0]
+
+        return result_field
 
     @classmethod
     def _single_power_analyze(cls, work_field, space_index, logarithmic, nbin,
-                              binbounds, keep_phase_information):
+                              binbounds):
 
         if not work_field.domain[space_index].harmonic:
             raise ValueError(
@@ -383,28 +399,11 @@ class Field(Loggable, Versionable, object):
         pindex = power_domain.pindex
         rho = power_domain.rho
 
-        if keep_phase_information:
-            hermitian_part, anti_hermitian_part = \
-                harmonic_domain.hermitian_decomposition(
-                                    work_field.val,
-                                    axes=work_field.domain_axes[space_index])
-
-            [hermitian_power, anti_hermitian_power] = \
-                [cls._calculate_power_spectrum(
-                                    field_val=part,
-                                    pindex=pindex,
-                                    rho=rho,
-                                    axes=work_field.domain_axes[space_index])
-                 for part in [hermitian_part, anti_hermitian_part]]
-
-            power_spectrum = hermitian_power + 1j * anti_hermitian_power
-
-        else:
-            power_spectrum = cls._calculate_power_spectrum(
-                                    field_val=work_field.val,
-                                    pindex=pindex,
-                                    rho=rho,
-                                    axes=work_field.domain_axes[space_index])
+        power_spectrum = cls._calculate_power_spectrum(
+                                field_val=work_field.val,
+                                pindex=pindex,
+                                rho=rho,
+                                axes=work_field.domain_axes[space_index])
 
         # create the result field and put power_spectrum into it
         result_domain = list(work_field.domain)
@@ -574,10 +573,11 @@ class Field(Loggable, Versionable, object):
 
         if real_signal:
             result_val_list = [self._hermitian_decomposition(
-                                                result_domain,
-                                                result_val,
-                                                spaces,
-                                                result_list[0].domain_axes)[0]
+                                            result_domain,
+                                            result_val,
+                                            spaces,
+                                            result_list[0].domain_axes,
+                                            preserve_gaussian_variance=True)[0]
                                for result_val in result_val_list]
 
         # store the result into the fields
@@ -592,12 +592,13 @@ class Field(Loggable, Versionable, object):
         return result
 
     @staticmethod
-    def _hermitian_decomposition(domain, val, spaces, domain_axes):
+    def _hermitian_decomposition(domain, val, spaces, domain_axes,
+                                 preserve_gaussian_variance=False):
         # hermitianize for the first space
         (h, a) = domain[spaces[0]].hermitian_decomposition(
-                                               val,
-                                               domain_axes[spaces[0]],
-                                               preserve_gaussian_variance=True)
+                       val,
+                       domain_axes[spaces[0]],
+                       preserve_gaussian_variance=preserve_gaussian_variance)
         # hermitianize all remaining spaces using the iterative formula
         for space in xrange(1, len(spaces)):
             (hh, ha) = domain[space].hermitian_decomposition(
