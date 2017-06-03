@@ -396,10 +396,6 @@ class Field(Loggable, Versionable, object):
                                   logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
 
-        # extract pindex and rho from power_domain
-        pindex = power_domain.pindex
-        rho = power_domain.rho
-
         power_spectrum = cls._calculate_power_spectrum(
                                 field_val=work_field.val,
                                 pdomain=power_domain,
