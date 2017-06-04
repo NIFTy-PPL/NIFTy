@@ -58,7 +58,7 @@ CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT, CONSISTENCY_CONFIGS_EX
 CONSTRUCTOR_CONFIGS = [
     [1, 'not', False, None, None, {'error': ValueError}],
     [RGSpace((8,)), 'not', False, None, None, {'error': ValueError}],
-    [RGSpace((8,), harmonic=True), 'not', False, None, None, {
+    [RGSpace((8,), harmonic=True), 'not', None, None, None, {
         'harmonic': True,
         'shape': (5,),
         'dim': 5,
@@ -75,7 +75,7 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 2,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'binbounds': None,
+        'binbounds': (0.70710678118654757,),
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
         'kindex': np.array([0., 2.28571429]),
         'rho': np.array([1, 7]),
