@@ -67,7 +67,7 @@ class PowerSpace(Space):
         The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
-    binbounds :  {list, array-like}
+    binbounds :  tuple or None
         Boundaries between the power spectrum bins
 
     Notes
@@ -92,6 +92,7 @@ class PowerSpace(Space):
 
         dists = self._harmonic_partner.get_distance_array(distribution_strategy)
 
+        self._binbounds = None
         if logarithmic is None and nbin is None and binbounds is None:
             # compute the "natural" binning, i.e. there
             # is one bin for every distinct k-vector length
@@ -102,10 +103,10 @@ class PowerSpace(Space):
             # I'm appending the last value*2 to the array to treat the
             # rightmost point correctly.
             tmp = tmp[np.diff(np.append(tmp,2*tmp[-1]))>tol]
-            self._binbounds = tmp[0:-1]+0.5*np.diff(tmp)
+            bb = tmp[0:-1]+0.5*np.diff(tmp)
         else:
             if binbounds is not None:
-                self._binbounds = np.sort(tuple(np.array(binbounds)))
+                bb = np.sort(np.array(binbounds))
             else:
                 if logarithmic is not None:
                     logarithmic = bool(logarithmic)
@@ -127,22 +128,20 @@ class PowerSpace(Space):
                     nbin = min(int(nbin), int(
                         (k[-1] - 0.5 * (k[2] + k[1])) / dk + 2.5))
                     dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
-                self._binbounds = np.r_[0.5 * (3 * k[1] - k[2]),
+                bb = np.r_[0.5 * (3 * k[1] - k[2]),
                                   0.5 * (k[1] + k[2]) + dk * np.arange(nbin - 2)]
                 if(logarithmic):
-                    self._binbounds = np.exp(self._binbounds)
+                    bb = np.exp(bb)
+            self._binbounds = tuple(bb)
 
-        # Compute pindex, kindex and rho according to self._binbounds
-
-        # prepare the pindex object
+        # Compute pindex, kindex and rho according to bb
         self._pindex = distributed_data_object(
             global_shape=dists.shape,
             dtype=np.int,
             distribution_strategy=distribution_strategy)
 
-        # bin according to the binbounds
         self._pindex.set_local_data(np.searchsorted(
-            self._binbounds, dists.get_local_data()))
+            bb, dists.get_local_data()))
         self._rho = self._pindex.bincount().get_full_data()
         self._kindex = self._pindex.bincount(
             weights=dists).get_full_data()/self._rho
