@@ -35,7 +35,7 @@ class PowerSpace(Space):
         derived from this PowerSpace, e.g. the pindex.
         (default : 'not')
     logarithmic : bool *optional*
-        True if logarithmic binning should be used (default : False).
+        True if logarithmic binning should be used (default : None).
     nbin : {int, None} *optional*
         The number of bins that should be used for power spectrum binning
         (default : None).
@@ -102,7 +102,7 @@ class PowerSpace(Space):
             # neighbors.
             # I'm appending the last value*2 to the array to treat the
             # rightmost point correctly.
-            tmp = tmp[np.diff(np.append(tmp,2*tmp[-1]))>tol]
+            tmp = tmp[np.diff(np.append(tmp,2*tmp[-1]))>tol] #FIXME: np.r_ ??
             bb = tmp[0:-1]+0.5*np.diff(tmp)
         else:
             if binbounds is not None:
@@ -263,7 +263,7 @@ class PowerSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group.attrs['binbounds'] = str(self._binbounds)
-        hdf5_group['distribution_strategy'] = self._pindex.distribution_strategy
+        hdf5_group.attrs['distribution_strategy'] = self._pindex.distribution_strategy
 
         return {
             'harmonic_partner': self.harmonic_partner,
@@ -273,5 +273,5 @@ class PowerSpace(Space):
     def _from_hdf5(cls, hdf5_group, repository):
         hp = repository.get('harmonic_partner', hdf5_group)
         exec("bb = " + hdf5_group.attrs['binbounds'])
-        ds = hdf5_group['distribution_strategy'][()]
+        ds = hdf5_group.attrs['distribution_strategy']
         return PowerSpace (hp,ds,binbounds=bb)
