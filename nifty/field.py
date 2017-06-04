@@ -758,7 +758,7 @@ class Field(Loggable, Versionable, object):
         Returns
         -------
         out : tuple
-            The output object. The tuple contains the dimansions of the spaces
+            The output object. The tuple contains the dimensions of the spaces
             in domain.
 
         See Also
