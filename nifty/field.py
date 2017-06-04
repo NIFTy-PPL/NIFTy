@@ -418,6 +418,8 @@ class Field(Loggable, Versionable, object):
     def _calculate_power_spectrum(cls, field_val, pdomain, axes=None):
 
         pindex = pdomain.pindex
+        # MR FIXME: how about iterating over slices, instead of replicating
+        # pindex? Would save memory and probably isn't slower.
         if axes is not None:
             pindex = cls._shape_up_pindex(
                             pindex=pindex,
@@ -426,7 +428,7 @@ class Field(Loggable, Versionable, object):
                             axes=axes)
         power_spectrum = pindex.bincount(weights=field_val,
                                          axis=axes)
-        rho=pdomain.rho
+        rho = pdomain.rho
         if axes is not None:
             new_rho_shape = [1, ] * len(power_spectrum.shape)
             new_rho_shape[axes[0]] = len(rho)

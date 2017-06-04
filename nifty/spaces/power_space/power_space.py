@@ -85,12 +85,13 @@ class PowerSpace(Space):
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
 
-        if not (isinstance(harmonic_partner, Space) and \
+        if not (isinstance(harmonic_partner, Space) and
                 harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
 
-        dists = self._harmonic_partner.get_distance_array(distribution_strategy)
+        dists = self._harmonic_partner.get_distance_array(
+                distribution_strategy)
 
         self._binbounds = None
         if logarithmic is None and nbin is None and binbounds is None:
@@ -102,7 +103,7 @@ class PowerSpace(Space):
             # neighbors.
             # I'm appending the last value*2 to the array to treat the
             # rightmost point correctly.
-            tmp = tmp[np.diff(np.append(tmp,2*tmp[-1]))>tol] #FIXME: np.r_ ??
+            tmp = tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
             bb = tmp[0:-1]+0.5*np.diff(tmp)
         else:
             if binbounds is not None:
@@ -129,7 +130,7 @@ class PowerSpace(Space):
                         (k[-1] - 0.5 * (k[2] + k[1])) / dk + 2.5))
                     dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
                 bb = np.r_[0.5 * (3 * k[1] - k[2]),
-                                  0.5 * (k[1] + k[2]) + dk * np.arange(nbin - 2)]
+                           0.5 * (k[1] + k[2]) + dk * np.arange(nbin-2)]
                 if(logarithmic):
                     bb = np.exp(bb)
             self._binbounds = tuple(bb)
@@ -263,7 +264,8 @@ class PowerSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group.attrs['binbounds'] = str(self._binbounds)
-        hdf5_group.attrs['distribution_strategy'] = self._pindex.distribution_strategy
+        hdf5_group.attrs['distribution_strategy'] = \
+            self._pindex.distribution_strategy
 
         return {
             'harmonic_partner': self.harmonic_partner,
@@ -274,4 +276,4 @@ class PowerSpace(Space):
         hp = repository.get('harmonic_partner', hdf5_group)
         exec("bb = " + hdf5_group.attrs['binbounds'])
         ds = hdf5_group.attrs['distribution_strategy']
-        return PowerSpace (hp,ds,binbounds=bb)
+        return PowerSpace(hp, ds, binbounds=bb)
