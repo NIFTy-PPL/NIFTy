@@ -262,38 +262,16 @@ class PowerSpace(Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group['kindex'] = self.kindex
-        hdf5_group['rho'] = self.rho
         hdf5_group.attrs['binbounds'] = str(self._binbounds)
+        hdf5_group['distribution_strategy'] = self._pindex.distribution_strategy
 
-        #MR FIXME: why not "return None" as happens everywhere else?
         return {
             'harmonic_partner': self.harmonic_partner,
-            'pindex': self.pindex,
         }
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
-        # make an empty PowerSpace object
-        new_ps = EmptyPowerSpace()
-        # reset class
-        new_ps.__class__ = cls
-        # call instructor so that classes are properly setup
-        super(PowerSpace, new_ps).__init__()
-        # set all values
-        new_ps._harmonic_partner = repository.get('harmonic_partner',
-                                                  hdf5_group)
-
-        exec("new_ps._binbounds = " + hdf5_group.attrs['binbounds'])
-
-        new_ps._pindex = repository.get('pindex', hdf5_group)
-        new_ps._kindex = hdf5_group['kindex'][:]
-        new_ps._rho = hdf5_group['rho'][:]
-        new_ps._ignore_for_hash += ['_pindex', '_kindex', '_rho']
-
-        return new_ps
-
-
-class EmptyPowerSpace(PowerSpace):
-    def __init__(self):
-        pass
+        hp = repository.get('harmonic_partner', hdf5_group)
+        exec("bb = " + hdf5_group.attrs['binbounds'])
+        ds = hdf5_group['distribution_strategy'][()]
+        return PowerSpace (hp,ds,binbounds=bb)
