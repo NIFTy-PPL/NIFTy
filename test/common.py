@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from nifty import RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
 from nifty.config import dependency_injector as di
 
