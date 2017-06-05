@@ -46,8 +46,10 @@ HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
                    LMSpace(9)]
 
 
-# Try all sensible kinds of combinations of spaces, distributuion strategy and
-# binning parameters
+#Try all sensible kinds of combinations of spaces, distributuion strategy and
+#binning parameters
+_maybe_fftw = ["fftw"] if ('pyfftw' in gdi) else []
+
 CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
                                        [None], [None, 3, 4], [True, False])
@@ -134,18 +136,18 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 
 
 class PowerSpaceConsistencyCheck(unittest.TestCase):
-#    @expand(CONSISTENCY_CONFIGS)
-#    def test_pipundexInversion(self, harmonic_partner, distribution_strategy,
-#                               binbounds, nbin, logarithmic):
-#        if distribution_strategy == "fftw":
-#            if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-#                raise SkipTest
-#        p = PowerSpace(harmonic_partner=harmonic_partner,
-#                       distribution_strategy=distribution_strategy,
-#                       logarithmic=logarithmic, nbin=nbin,
-#                       binbounds=binbounds)
-#        assert_equal(p.pindex.flatten()[p.pundex], np.arange(p.dim),
-#                     err_msg='pundex is not right-inverse of pindex!')
+    @expand(CONSISTENCY_CONFIGS)
+    def test_pipundexInversion(self, harmonic_partner, distribution_strategy,
+                               binbounds, nbin, logarithmic):
+        if distribution_strategy == "fftw":
+            if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
+                raise SkipTest
+        p = PowerSpace(harmonic_partner=harmonic_partner,
+                       distribution_strategy=distribution_strategy,
+                       logarithmic=logarithmic, nbin=nbin,
+                       binbounds=binbounds)
+        assert_equal(p.pindex.flatten()[p.pundex], np.arange(p.dim),
+                     err_msg='pundex is not right-inverse of pindex!')
 
     @expand(CONSISTENCY_CONFIGS)
     def test_rhopindexConsistency(self, harmonic_partner,
@@ -156,12 +158,14 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                 print (gdi.get('fftw'), "blub \n\n\n")
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
-                       distribution_strategy=distribution_strategy,
-                       logarithmic=logarithmic, nbin=nbin,
-                       binbounds=binbounds)
-        assert_equal(p.pindex.flatten().bincount(), p.rho,
-                     err_msg='rho is not equal to pindex degeneracy')
+                           distribution_strategy=distribution_strategy,
+                           logarithmic=logarithmic, nbin=nbin,
+                           binbounds=binbounds)
+        assert_equal(p.pindex.flatten()[p.pundex],np.arange(p.dim),
+            err_msg='pundex is not right-inverse of pindex!')
 
+        assert_equal(p.pindex.flatten().bincount(), p.rho,
+            err_msg='rho is not equal to pindex degeneracy')
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
