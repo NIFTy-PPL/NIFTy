@@ -48,8 +48,6 @@ HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
 
 #Try all sensible kinds of combinations of spaces, distributuion strategy and
 #binning parameters
-_maybe_fftw = ["fftw"] if ('pyfftw' in gdi) else []
-
 CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
                                        [None], [None, 3, 4], [True, False])
@@ -134,7 +132,6 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                          binbounds, nbin,logarithmic):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                print (gdi.get('fftw'), "blub \n\n\n")
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
@@ -151,7 +148,6 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
                 raise SkipTest
-            raise SkipTest
         if 'error' in expected:
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_partner=harmonic_partner,
