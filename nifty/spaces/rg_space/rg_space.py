@@ -267,14 +267,16 @@ class RGSpace(Space):
 
         cords = np.ogrid[inds]
 
-        dists = ((cords[0] - shape[0]//2)*dk[0])**2
+        dists = (cords[0] - shape[0]//2)*dk[0]
+        dists *= dists
         # apply zerocenterQ shift
         if not self.zerocenter[0]:
             dists = np.fft.ifftshift(dists)
         # only save the individual slice
         dists = dists[slice_of_first_dimension]
         for ii in range(1, len(shape)):
-            temp = ((cords[ii] - shape[ii] // 2) * dk[ii])**2
+            temp = (cords[ii] - shape[ii] // 2) * dk[ii]
+            temp *= temp
             if not self.zerocenter[ii]:
                 temp = np.fft.ifftshift(temp)
             dists = dists + temp
@@ -282,7 +284,7 @@ class RGSpace(Space):
         return dists
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        return lambda x: np.exp(-0.5 * np.pi**2 * x**2 * sigma**2)
+        return lambda x: np.exp(-0.5 * np.pi*np.pi * x*x * sigma*sigma)
 
     # ---Added properties and methods---
 

@@ -118,7 +118,7 @@ class RGRGTransformation(Transformation):
             np.absolute(np.array(domain.shape) *
                         np.array(domain.distances) *
                         np.array(codomain.distances) - 1) <
-                10**-7):
+                1e-7):
             raise AttributeError("The grid-distances of domain and codomain "
                                  "do not match.")
 
