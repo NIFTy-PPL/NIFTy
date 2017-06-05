@@ -25,8 +25,7 @@ import nifty.nifty_utilities as utilities
 
 from keepers import Loggable
 
-fftw_mpi = gdi.get('fftw_mpi')
-fftw_scalar = gdi.get('fftw_scalar')
+fftw = gdi.get('fftw')
 
 
 class Transform(Loggable, object):
@@ -208,14 +207,14 @@ class MPIFFT(Transform):
 
     def __init__(self, domain, codomain):
 
-        if fftw_mpi is None:
+        if not hasattr(fftw, 'FFTW_MPI'):
             raise ImportError(
                 "The MPI FFTW module is needed but not available.")
 
         super(MPIFFT, self).__init__(domain, codomain)
 
         # Enable caching
-        fftw_mpi.interfaces.cache.enable()
+        fftw.interfaces.cache.enable()
 
         # The plan_dict stores the FFTWTransformInfo objects which correspond
         # to a certain set of (field_val, domain, codomain) sets.
@@ -469,7 +468,7 @@ class MPIFFT(Transform):
 class FFTWTransformInfo(object):
     def __init__(self, domain, codomain, axes, local_shape,
                  local_offset_Q, fftw_context, **kwargs):
-        if fftw_mpi is None:
+        if not hasattr(fftw, 'FFTW_MPI'):
             raise ImportError(
                 "The MPI FFTW module is needed but not available.")
 
@@ -515,9 +514,9 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
                                                      fftw_context,
                                                      **kwargs)
         if codomain.harmonic:
-            self._fftw_interface = fftw_mpi.interfaces.numpy_fft.fftn
+            self._fftw_interface = fftw.interfaces.numpy_fft.fftn
         else:
-            self._fftw_interface = fftw_mpi.interfaces.numpy_fft.ifftn
+            self._fftw_interface = fftw.interfaces.numpy_fft.ifftn
 
     @property
     def fftw_interface(self):
@@ -534,7 +533,7 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
                                                    local_offset_Q,
                                                    fftw_context,
                                                    **kwargs)
-        self._plan = fftw_mpi.create_mpi_plan(
+        self._plan = fftw.create_mpi_plan(
             input_shape=transform_shape,
             input_dtype='complex128',
             output_dtype='complex128',
@@ -548,22 +547,22 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
         return self._plan
 
 
-class ScalarFFT(Transform):
+class SerialFFT(Transform):
     """
         The numpy fft pendant of a fft object.
 
     """
-    def __init__(self, domain, codomain, fftw):
-        super(ScalarFFT, self).__init__(domain, codomain)
+    def __init__(self, domain, codomain, use_fftw):
+        super(SerialFFT, self).__init__(domain, codomain)
 
-        if fftw and (fftw_scalar is None):
+        if use_fftw and (fftw is None):
             raise ImportError(
-                "The scalar FFTW module is needed but not available.")
+                "The serial FFTW module is needed but not available.")
 
-        self._fftw = fftw
+        self._use_fftw = use_fftw
         # Enable caching
-        if self._fftw:
-            fftw_scalar.interfaces.cache.enable()
+        if self._use_fftw:
+            fftw.interfaces.cache.enable()
 
     def transform(self, val, axes, **kwargs):
         """
@@ -640,12 +639,12 @@ class ScalarFFT(Transform):
             local_val = self._apply_mask(temp_val, mask, axes)
 
         # perform the transformation
-        if self._fftw:
+        if self._use_fftw:
             if self.codomain.harmonic:
-                result_val = fftw_scalar.interfaces.numpy_fft.fftn(
+                result_val = fftw.interfaces.numpy_fft.fftn(
                              local_val, axes=axes)
             else:
-                result_val = fftw_scalar.interfaces.numpy_fft.ifftn(
+                result_val = fftw.interfaces.numpy_fft.ifftn(
                              local_val, axes=axes)
         else:
             if self.codomain.harmonic:

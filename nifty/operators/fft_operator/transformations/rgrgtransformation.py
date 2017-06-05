@@ -18,7 +18,7 @@
 
 import numpy as np
 from transformation import Transformation
-from rg_transforms import MPIFFT, ScalarFFT
+from rg_transforms import MPIFFT, SerialFFT
 from nifty import RGSpace, nifty_configuration
 
 
@@ -32,12 +32,14 @@ class RGRGTransformation(Transformation):
         if module is None:
             module = nifty_configuration['fft_module']
 
-        if module == 'mpi_fftw':
+        if module == 'fftw_mpi':
             self._transform = MPIFFT(self.domain, self.codomain)
-        elif module == 'scalar_fftw':
-            self._transform = ScalarFFT(self.domain, self.codomain, True)
-        elif module == 'scalar_numpy':
-            self._transform = ScalarFFT(self.domain, self.codomain, False)
+        elif module == 'fftw':
+            self._transform = SerialFFT(self.domain, self.codomain,
+                                        use_fftw=True)
+        elif module == 'numpy':
+            self._transform = SerialFFT(self.domain, self.codomain,
+                                        use_fftw=False)
         else:
             raise ValueError('Unsupported FFT module:' + module)
 
