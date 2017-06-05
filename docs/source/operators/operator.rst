@@ -33,7 +33,6 @@ algorithms.
     propagator_operator
     endomorphic_operator
     invertible_operator_mixin
-    transformations
 
 .. currentmodule:: nifty
 

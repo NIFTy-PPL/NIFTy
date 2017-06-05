@@ -12,7 +12,7 @@ pyHealpix = gdi.get('pyHealpix')
 class HPMollweide(Heatmap):
     def __init__(self, data, xsize=800, color_map=None, webgl=False,
                  smoothing=False):  # smoothing 'best', 'fast', False
-        if 'pyHealpix' not in gdi:
+        if pyHealpix is None:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
         self.xsize = xsize
