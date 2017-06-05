@@ -18,7 +18,7 @@
 
 import numpy as np
 from transformation import Transformation
-from rg_transforms import FFTW, NUMPYFFT
+from rg_transforms import MPIFFT, SerialFFT
 from nifty import RGSpace, nifty_configuration
 
 
@@ -30,20 +30,18 @@ class RGRGTransformation(Transformation):
         super(RGRGTransformation, self).__init__(domain, codomain, module)
 
         if module is None:
-            if nifty_configuration['fft_module'] == 'fftw':
-                self._transform = FFTW(self.domain, self.codomain)
-            elif nifty_configuration['fft_module'] == 'numpy':
-                self._transform = NUMPYFFT(self.domain, self.codomain)
-            else:
-                raise ValueError('Unsupported default FFT module:' +
-                                 nifty_configuration['fft_module'])
+            module = nifty_configuration['fft_module']
+
+        if module == 'fftw_mpi':
+            self._transform = MPIFFT(self.domain, self.codomain)
+        elif module == 'fftw':
+            self._transform = SerialFFT(self.domain, self.codomain,
+                                        use_fftw=True)
+        elif module == 'numpy':
+            self._transform = SerialFFT(self.domain, self.codomain,
+                                        use_fftw=False)
         else:
-            if module == 'fftw':
-                self._transform = FFTW(self.domain, self.codomain)
-            elif module == 'numpy':
-                self._transform = NUMPYFFT(self.domain, self.codomain)
-            else:
-                raise ValueError('Unsupported FFT module:' + module)
+            raise ValueError('Unsupported FFT module:' + module)
 
     # ---Mandatory properties and methods---
 
