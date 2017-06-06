@@ -6,24 +6,47 @@ from nifty.sugar import generate_posterior_sample
 from nifty import Field, exp
 
 class CriticalPowerEnergy(Energy):
-    """The Energy for the Gaussian lognormal case.
+    """The Energy of the power spectrum according to the critical filter.
 
-    It describes the situation of linear measurement  of a
-    lognormal signal with Gaussian noise and Gaussain signal prior.
+    It describes the energy of the logarithmic amplitudes of the power spectrum of
+    a Gaussian random field under reconstruction uncertainty with smoothness and
+    inverse gamma prior. It is used to infer a correlated signal with unknown correlation
+    structure.
 
     Parameters
     ----------
-    d : Field,
-        the data.
-    R : Operator,
-        The nonlinear response operator, describtion of the measurement process.
-    N : EndomorphicOperator,
-        The noise covariance in data space.
-    S : EndomorphicOperator,
-        The prior signal covariance in harmonic space.
+    position : Field,
+        The current position of this energy.
+    m : Field,
+        The map whichs power spectrum has to be inferred
+    D : EndomorphicOperator,
+        The curvature of the Gaussian encoding the posterior covariance.
+        If not specified, the map is assumed to be no reconstruction.
+        default : None
+    alpha : float
+        The spectral prior of the inverse gamma distribution. 1.0 corresponds to
+        non-informative.
+        default : 1.0
+    q : float
+        The cutoff parameter of the inverse gamma distribution. 0.0 corresponds to
+        non-informative.
+        default : 0.0
+    sigma : float
+        The parameter of the smoothness prior.
+        default : ??? None? ???????
+    logarithmic : boolean
+        Whether smoothness acts on linear or logarithmic scale.
+    samples : integer
+        Number of samples used for the estimation of the uncertainty corrections.
+        default : 3
+    w : Field
+        The contribution from the map with or without uncertainty. It is used
+        to pass on the result of the costly sampling during the minimization.
+        default : None
     """
 
-    def __init__(self, position, m, D=None, alpha =1.0, q=0., sigma=0., w=None, samples=3):
+    def __init__(self, position, m, D=None, alpha =1.0, q=0., sigma=0.,
+                 logarithmic = True, samples=3, w=None):
         super(CriticalPowerEnergy, self).__init__(position = position)
         self.m = m
         self.D = D
@@ -31,7 +54,8 @@ class CriticalPowerEnergy(Energy):
         self.sigma = sigma
         self.alpha = Field(self.position.domain, val=alpha)
         self.q = Field(self.position.domain, val=q)
-        self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma)
+        self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma,
+                                    logarithmic=logarithmic)
         self.rho = self.position.domain[0].rho
         self.w = w
         if self.w is None:
@@ -72,16 +96,13 @@ class CriticalPowerEnergy(Energy):
                 posterior_sample = generate_posterior_sample(m, D)
                 projected_sample = posterior_sample.power_analyze(
                     logarithmic=self.position.domain[0].config["logarithmic"],
-                    nbin= self.position.domain[0].config["nbin"],
-                        decompose_power=False)
-                w += (projected_sample **2) * self.rho
+                    nbin= self.position.domain[0].config["nbin"])
+                w += (projected_sample) * self.rho
             w /= float(samples)
         else:
             w = m.power_analyze(
                     logarithmic=self.position.domain[0].config["logarithmic"],
-                        nbin=self.position.domain[0].config["nbin"],
-                        decompose_power=False)
-            w **= 2
+                        nbin=self.position.domain[0].config["nbin"])
             w *= self.rho
 
         return w

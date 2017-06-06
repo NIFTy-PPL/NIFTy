@@ -1,14 +1,15 @@
 from nifty.operators import EndomorphicOperator,\
-                            InvertibleOperatorMixin
+                            InvertibleOperatorMixin,\
+                            DiagonalOperator
 
 
 class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     def __init__(self, theta, T, inverter=None, preconditioner=None):
 
-        self.theta = theta
+        self.theta = DiagonalOperator(theta.domain, diagonal=theta)
         self.T = T
-        # if preconditioner is None:
-        #     preconditioner = self.T.times
+        if preconditioner is None:
+            preconditioner = self.theta.inverse_times
         self._domain = self.theta.domain
         super(CriticalPowerCurvature, self).__init__(inverter=inverter,
                                                  preconditioner=preconditioner)
@@ -27,4 +28,4 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     # ---Added properties and methods---
 
     def _times(self, x, spaces):
-        return self.T(x) + self.theta * x
+        return self.T(x) + self.theta(x)

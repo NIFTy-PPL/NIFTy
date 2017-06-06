@@ -48,12 +48,13 @@ class NonlinearResponse(LinearOperator):
 
 def plot_parameters(m,t, t_real):
     m = fft.adjoint_times(m)
+    x =  log(t.domain[0].kindex[1:])
     m_data = m.val.get_full_data().real
     t_data = t.val.get_full_data().real
     t_real_data = t_real.val.get_full_data().real
     pl.plot([go.Scatter(y=m_data)], filename='map.html')
-    pl.plot([go.Scatter(y=t_data),
-             go.Scatter(y=t_real_data)], filename="t.html")
+    pl.plot([go.Scatter(x = x,y=t_data),
+             go.Scatter(x= x, y=t_real_data[1:])], filename="t.html")
 class AdjointFFTResponse(LinearOperator):
     def __init__(self, FFT, R, default_spaces=None):
         super(AdjointFFTResponse, self).__init__(default_spaces)
@@ -83,7 +84,7 @@ if __name__ == "__main__":
 
     distribution_strategy = 'not'
     full_data = np.genfromtxt("train_data.csv", delimiter = ',')
-    d = full_data.T[3]
+    d = full_data.T[2]
     d[0] = 0.
     d -= d.mean()
     d[0] = 0.
@@ -97,7 +98,7 @@ if __name__ == "__main__":
     fft = FFTOperator(s_space)
     h_space = fft.target[0]
     p_space = PowerSpace(h_space, logarithmic=False,
-                         distribution_strategy=distribution_strategy)
+                         distribution_strategy=distribution_strategy)#, nbin=50)
 
     # Choosing the measurement instrument
 #    Instrument = SmoothingOperator(s_space, sigma=0.01)
@@ -133,10 +134,10 @@ if __name__ == "__main__":
                               iteration_limit=30,
                               callback=convergence_measure)
 
-    minimizer1 = VL_BFGS(convergence_tolerance=0,
-                       iteration_limit=30,
+    minimizer3 = VL_BFGS(convergence_tolerance=0,
+                       iteration_limit=50,
                        callback=convergence_measure,
-                       max_history_length=3)
+                       max_history_length=10)
 
 
 
@@ -144,17 +145,17 @@ if __name__ == "__main__":
     flat_power = Field(p_space,val=10e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
-    # t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
-    t0 = Field(p_space,val=-10)
+    t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
+    t0 = Field(p_space,val=-13.)
     # t0 = log(sp.copy()**2)
     S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                                distribution_strategy=distribution_strategy)
 
     data_power  = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
-                                          nbin=p_space.config["nbin"])**2)
-    for i in range(100):
+                                          nbin=p_space.config["nbin"]))
+    for i in range(500):
         S0 = create_power_operator(h_space, power_spectrum=exp(t0),
-                              distribution_strategy=distribution_strategy)
+                                   distribution_strategy=distribution_strategy)
 
         # Initializing the  nonlinear Wiener Filter energy
         map_energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0)
@@ -165,16 +166,15 @@ if __name__ == "__main__":
         m0 = map_energy.position
         D0 = map_energy.curvature
         # Initializing the power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=.5, samples=3)
-        if i > 0:
-            (power_energy, convergence) = minimizer1(power_energy)
-        else:
-            (power_energy, convergence) = minimizer1(power_energy)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=100000., samples=20)
+
+        (power_energy, convergence) = minimizer3(power_energy)
+
         # Setting new power spectrum
-        t0 = power_energy.position
-        t0.val[-1] = t0.val[-2]
+        t0.val = power_energy.position.val.real
+        # t0.val[-1] = t0.val[-2]
         # Plotting current estimate
-        plot_parameters(m0,t0,data_power)
+        plot_parameters(m0, t0, data_power)
 
     # Transforming fields to position space for plotting
 

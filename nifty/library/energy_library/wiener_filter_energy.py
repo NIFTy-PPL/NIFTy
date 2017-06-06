@@ -5,10 +5,12 @@ class WienerFilterEnergy(Energy):
     """The Energy for the Wiener filter.
 
     It describes the situation of linear measurement with
-    Gaussian noise and Gaussain signal prior.
+    Gaussian noise and Gaussain signal prior with known covariance.
 
     Parameters
     ----------
+    position: Field,
+        The current position.
     d : Field,
         the data.
     R : Operator,

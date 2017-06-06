@@ -64,30 +64,30 @@ if __name__ == "__main__":
 
     # Setting up power space
     p_space = PowerSpace(h_space, logarithmic=False,
-                         distribution_strategy=distribution_strategy, nbin=500)
+                         distribution_strategy=distribution_strategy)#, nbin=5)
 
     # Choosing the prior correlation structure and defining correlation operator
-    p_spec = (lambda k: (.05 / (k + 1) ** 2))
+    p_spec = (lambda k: (.05 / (k + 1) ** 3))
     S = create_power_operator(h_space, power_spectrum=p_spec,
                               distribution_strategy=distribution_strategy)
 
     # Drawing a sample sh from the prior distribution in harmonic space
-    sp = Field(p_space,  val=lambda z: pow_spec(z)**(1./2),
+    sp = Field(p_space,  val=p_spec,
                distribution_strategy=distribution_strategy)
     sh = sp.power_synthesize(real_signal=True)
 
 
     # Choosing the measurement instrument
-    Instrument = SmoothingOperator(s_space, sigma=0.01)
-    # Instrument = DiagonalOperator(s_space, diagonal=1.)
+    # Instrument = SmoothingOperator(s_space, sigma=0.01)
+    Instrument = DiagonalOperator(s_space, diagonal=1.)
     # Instrument._diagonal.val[200:400, 200:400] = 0
-    # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
+    #Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
 
     #Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = 1.
+    noise = .1
     N = DiagonalOperator(s_space, diagonal=noise, bare=True)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
@@ -98,9 +98,9 @@ if __name__ == "__main__":
     d = R(sh) + n
 
     realized_power = log(sh.power_analyze(logarithmic=p_space.config["logarithmic"],
-                                          nbin=p_space.config["nbin"])**2)
+                                          nbin=p_space.config["nbin"]))
     data_power = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
-                                          nbin=p_space.config["nbin"])**2)
+                                          nbin=p_space.config["nbin"]))
     d_data = d.val.get_full_data().real
     if rank == 0:
         pl.plot([go.Heatmap(z=d_data)], filename='data.html')
@@ -117,9 +117,9 @@ if __name__ == "__main__":
                               iteration_limit=3,
                               callback=convergence_measure)
     minimizer2 = VL_BFGS(convergence_tolerance=0,
-                       iteration_limit=50,
+                       iteration_limit=7,
                        callback=convergence_measure,
-                       max_history_length=10)
+                       max_history_length=3)
 
     # Setting starting position
     flat_power = Field(p_space,val=10e-8)
@@ -127,12 +127,13 @@ if __name__ == "__main__":
 
     # t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
     t0 = data_power- 1.
-    S0 = create_power_operator(h_space, power_spectrum=exp(0.5*t0),
+
+    S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                                distribution_strategy=distribution_strategy)
 
 
     for i in range(500):
-        S0 = create_power_operator(h_space, power_spectrum=exp(0.5*t0),
+        S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                               distribution_strategy=distribution_strategy)
 
         # Initializing the  nonlinear Wiener Filter energy
@@ -144,7 +145,7 @@ if __name__ == "__main__":
         m0 = map_energy.position
         D0 = map_energy.curvature
         # Initializing the power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=1000., samples=1)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=100., samples=5)
 
         (power_energy, convergence) = minimizer1(power_energy)
 
@@ -152,7 +153,7 @@ if __name__ == "__main__":
         t0.val  = power_energy.position.val.real
         # t0.val[-1] = t0.val[-2]
         # Plotting current estimate
-        plot_parameters(m0,t0,log(sp**2),realized_power, data_power)
+        plot_parameters(m0,t0,log(sp),realized_power, data_power)
 
     # Transforming fields to position space for plotting
 
@@ -183,11 +184,3 @@ if __name__ == "__main__":
     if rank == 0:
         pl.plot([go.Heatmap(z=m_data)], filename='map.html')
 
-    collector = fft(n).power_analyze() **2
-    for i in range(10000):
-        n = Field.from_random(domain=s_space,
-                          random_type='normal',
-                          std=sqrt(noise),
-                          mean=0)
-        collector = fft(n).power_analyze()**2
-    collector /= 10001.
