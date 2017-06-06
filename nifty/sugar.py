@@ -63,7 +63,7 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
                distribution_strategy=distribution_strategy)
     f = fp.power_synthesize(mean=1, std=0, real_signal=False)
-
+    f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
 
 def generate_posterior_sample(mean, covariance):

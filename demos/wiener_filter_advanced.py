@@ -42,7 +42,7 @@ if __name__ == "__main__":
     distribution_strategy = 'not'
 
     # Set up position space
-    s_space = RGSpace([1024,1024])
+    s_space = RGSpace([512,512])
     # s_space = HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
@@ -53,13 +53,13 @@ if __name__ == "__main__":
     p_space = PowerSpace(h_space, distribution_strategy=distribution_strategy)
 
     # Choosing the prior correlation structure and defining correlation operator
-    pow_spec = (lambda k: (42 / (k + 1) ** 3))
-    sqr_pow_spec = lambda z: pow_spec(z) ** (1. / 2)
-    S = create_power_operator(h_space, power_spectrum=sqr_pow_spec,
+    p_spec = (lambda k: (42 / (k + 1) ** 3))
+
+    S = create_power_operator(h_space, power_spectrum=p_spec,
                               distribution_strategy=distribution_strategy)
 
     # Drawing a sample sh from the prior distribution in harmonic space
-    sp = Field(p_space, val=lambda z: pow_spec(z)**(1./2),
+    sp = Field(p_space, val=p_spec,
                distribution_strategy=distribution_strategy)
     sh = sp.power_synthesize(real_signal=True)
     ss = fft.adjoint_times(sh)

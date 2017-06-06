@@ -67,8 +67,7 @@ if __name__ == "__main__":
                          distribution_strategy=distribution_strategy, nbin=500)
 
     # Choosing the prior correlation structure and defining correlation operator
-    pow_spec = (lambda k: (.05 / (k + 1) ** 2))
-    p_spec = lambda z: pow_spec(z) ** (1. / 2)
+    p_spec = (lambda k: (.05 / (k + 1) ** 2))
     S = create_power_operator(h_space, power_spectrum=p_spec,
                               distribution_strategy=distribution_strategy)
 
