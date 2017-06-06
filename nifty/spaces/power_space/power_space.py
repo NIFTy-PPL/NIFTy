@@ -45,9 +45,14 @@ class PowerSpace(Space):
         (If binbounds has n entries, there will be n+1 bins, the first bin
         starting at -inf, the last bin ending at +inf.)
         (default : None)
-        if binbounds == None :
+        if binbounds == None:
             Calculates the bounds from the kindex while applying the
             logarithmic and nbin keywords.
+    Note: if "bindounds" is not None, both "logarithmic" and "nbin" must be
+        None!
+    Note: if "binbounds", "logarithmic", and "nbin" are all None, then
+        "natural" binning is performed, i.e. there will be one bin for every
+        distinct k-vector length.
 
     Attributes
     ----------
@@ -93,11 +98,16 @@ class PowerSpace(Space):
         dists = self._harmonic_partner.get_distance_array(
                 distribution_strategy)
 
+        # sanity check
+        if binbounds is not None and not(nbin is None and logarithmic is None):
+            raise ValueError(
+                "if binbounds is defined, nbin and logarithmic must be None")
+
         self._binbounds = None
         if logarithmic is None and nbin is None and binbounds is None:
             # compute the "natural" binning, i.e. there
             # is one bin for every distinct k-vector length
-            tmp = dists.unique()
+            tmp = dists.unique()  # expensive!
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right
             # neighbors.
@@ -142,7 +152,7 @@ class PowerSpace(Space):
             distribution_strategy=distribution_strategy)
 
         self._pindex.set_local_data(np.searchsorted(
-            bb, dists.get_local_data()))
+            bb, dists.get_local_data()))  # also expensive!
         self._rho = self._pindex.bincount().get_full_data()
         self._kindex = self._pindex.bincount(
             weights=dists).get_full_data()/self._rho
