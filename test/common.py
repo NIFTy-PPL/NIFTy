@@ -16,9 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nose_parameterized import parameterized
+from parameterized import parameterized
 from nifty import RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
-from nifty.config import dependency_injector as di
+from nifty.config import dependency_injector as gdi
 
 
 def custom_name_func(testcase_func, param_num, param):
@@ -36,7 +36,7 @@ def expand(*args, **kwargs):
 def generate_spaces():
     spaces = [RGSpace(4), PowerSpace(RGSpace((4, 4), harmonic=True)),
               LMSpace(5), HPSpace(4)]
-    if 'pyHealpix' in di:
+    if 'pyHealpix' in gdi:
         spaces.append(GLSpace(4))
     return spaces
 

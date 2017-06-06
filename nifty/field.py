@@ -269,7 +269,7 @@ class Field(Loggable, Versionable, object):
     # ---Powerspectral methods---
 
     def power_analyze(self, spaces=None, logarithmic=False, nbin=None,
-                      binbounds=None, decompose_power=True):
+                      binbounds=None, keep_phase_information=False):
         """ Computes the square root power spectrum for a subspace of `self`.
 
         Creates a PowerSpace for the space addressed by `spaces` with the given
@@ -283,7 +283,6 @@ class Field(Loggable, Versionable, object):
         spaces : int *optional*
             The subspace for which the powerspectrum shall be computed
             (default : None).
-            if spaces==None : Tries to synthesize for the whole domain
         logarithmic : boolean *optional*
             True if the output PowerSpace should use logarithmic binning.
             {default : False}
@@ -294,11 +293,16 @@ class Field(Loggable, Versionable, object):
         binbounds : array-like *optional*
             Inner bounds of the bins (default : None).
             if binbounds==None : bins are inferred. Overwrites nbins and log
-        decompose_power : boolean, *optional*
-            Whether the analysed signal-space Field is intrinsically real or
-            complex and if the power spectrum shall therefore be computed
-            for the real and the imaginary part of the Field separately
-            (default : True).
+        keep_phase_information : boolean, *optional*
+            If False, return a real-valued result containing the power spectrum
+            of the input Field.
+            If True, return a complex-valued result whose real component
+            contains the power spectrum computed from the real part of the
+            input Field, and whose imaginary component contains the power
+            spectrum computed from the imaginary part of the input Field.
+            The absolute value of this result should be identical to the output
+            of power_analyze with keep_phase_information=False.
+            (default : False).
 
         Raise
         -----
@@ -331,23 +335,47 @@ class Field(Loggable, Versionable, object):
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
-            if len(self.domain) == 1:
-                spaces = (0,)
-            else:
-                raise ValueError(
-                    "Field has multiple spaces as domain "
-                    "but `spaces` is None.")
+            spaces = range(len(self.domain))
 
         if len(spaces) == 0:
             raise ValueError(
                 "No space for analysis specified.")
-        elif len(spaces) > 1:
-            raise ValueError(
-                "Conversion of only one space at a time is allowed.")
 
-        space_index = spaces[0]
+        if keep_phase_information:
+            parts_val = self._hermitian_decomposition(
+                                              domain=self.domain,
+                                              val=self.val,
+                                              spaces=spaces,
+                                              domain_axes=self.domain_axes,
+                                              preserve_gaussian_variance=False)
+            parts = [self.copy_empty().set_val(part_val, copy=False)
+                     for part_val in parts_val]
+        else:
+            parts = [self]
 
-        if not self.domain[space_index].harmonic:
+        parts = [abs(part)**2 for part in parts]
+
+        for space_index in spaces:
+            parts = [self._single_power_analyze(
+                                work_field=part,
+                                space_index=space_index,
+                                logarithmic=logarithmic,
+                                nbin=nbin,
+                                binbounds=binbounds)
+                     for part in parts]
+
+        if keep_phase_information:
+            result_field = parts[0] + 1j*parts[1]
+        else:
+            result_field = parts[0]
+
+        return result_field
+
+    @classmethod
+    def _single_power_analyze(cls, work_field, space_index, logarithmic, nbin,
+                              binbounds):
+
+        if not work_field.domain[space_index].harmonic:
             raise ValueError(
                 "The analyzed space must be harmonic.")
 
@@ -358,10 +386,10 @@ class Field(Loggable, Versionable, object):
         # If it was complex, all the power is put into a real power spectrum.
 
         distribution_strategy = \
-            self.val.get_axes_local_distribution_strategy(
-                self.domain_axes[space_index])
+            work_field.val.get_axes_local_distribution_strategy(
+                work_field.domain_axes[space_index])
 
-        harmonic_domain = self.domain[space_index]
+        harmonic_domain = work_field.domain[space_index]
         power_domain = PowerSpace(harmonic_partner=harmonic_domain,
                                   distribution_strategy=distribution_strategy,
                                   logarithmic=logarithmic, nbin=nbin,
@@ -371,35 +399,18 @@ class Field(Loggable, Versionable, object):
         pindex = power_domain.pindex
         rho = power_domain.rho
 
-        if decompose_power:
-            hermitian_part, anti_hermitian_part = \
-                harmonic_domain.hermitian_decomposition(
-                                            self.val,
-                                            axes=self.domain_axes[space_index])
-
-            [hermitian_power, anti_hermitian_power] = \
-                [self._calculate_power_spectrum(
-                                            x=part,
-                                            pindex=pindex,
-                                            rho=rho,
-                                            axes=self.domain_axes[space_index])
-                 for part in [hermitian_part, anti_hermitian_part]]
-
-            power_spectrum = hermitian_power + 1j * anti_hermitian_power
-
-        else:
-            power_spectrum = self._calculate_power_spectrum(
-                                            x=self.val,
-                                            pindex=pindex,
-                                            rho=rho,
-                                            axes=self.domain_axes[space_index])
+        power_spectrum = cls._calculate_power_spectrum(
+                                field_val=work_field.val,
+                                pindex=pindex,
+                                rho=rho,
+                                axes=work_field.domain_axes[space_index])
 
         # create the result field and put power_spectrum into it
-        result_domain = list(self.domain)
+        result_domain = list(work_field.domain)
         result_domain[space_index] = power_domain
         result_dtype = power_spectrum.dtype
 
-        result_field = self.copy_empty(
+        result_field = work_field.copy_empty(
                    domain=result_domain,
                    dtype=result_dtype,
                    distribution_strategy=power_spectrum.distribution_strategy)
@@ -407,17 +418,16 @@ class Field(Loggable, Versionable, object):
 
         return result_field
 
-    def _calculate_power_spectrum(self, x, pindex, rho, axes=None):
-        fieldabs = abs(x)
-        fieldabs **= 2
+    @classmethod
+    def _calculate_power_spectrum(cls, field_val, pindex, rho, axes=None):
 
         if axes is not None:
-            pindex = self._shape_up_pindex(
-                                    pindex=pindex,
-                                    target_shape=x.shape,
-                                    target_strategy=x.distribution_strategy,
-                                    axes=axes)
-        power_spectrum = pindex.bincount(weights=fieldabs,
+            pindex = cls._shape_up_pindex(
+                            pindex=pindex,
+                            target_shape=field_val.shape,
+                            target_strategy=field_val.distribution_strategy,
+                            axes=axes)
+        power_spectrum = pindex.bincount(weights=field_val,
                                          axis=axes)
         if axes is not None:
             new_rho_shape = [1, ] * len(power_spectrum.shape)
@@ -425,10 +435,10 @@ class Field(Loggable, Versionable, object):
             rho = rho.reshape(new_rho_shape)
         power_spectrum /= rho
 
-        power_spectrum **= 0.5
         return power_spectrum
 
-    def _shape_up_pindex(self, pindex, target_shape, target_strategy, axes):
+    @staticmethod
+    def _shape_up_pindex(pindex, target_shape, target_strategy, axes):
         if pindex.distribution_strategy not in \
                 DISTRIBUTION_STRATEGIES['global']:
             raise ValueError("pindex's distribution strategy must be "
@@ -543,6 +553,8 @@ class Field(Loggable, Versionable, object):
         # components
 
         spec = self.val.get_full_data()
+        spec = np.sqrt(spec)
+
         for power_space_index in spaces:
             spec = self._spec_to_rescaler(spec, result_list, power_space_index)
         local_rescaler = spec
@@ -561,10 +573,11 @@ class Field(Loggable, Versionable, object):
 
         if real_signal:
             result_val_list = [self._hermitian_decomposition(
-                                                result_domain,
-                                                result_val,
-                                                spaces,
-                                                result_list[0].domain_axes)[0]
+                                            result_domain,
+                                            result_val,
+                                            spaces,
+                                            result_list[0].domain_axes,
+                                            preserve_gaussian_variance=True)[0]
                                for result_val in result_val_list]
 
         # store the result into the fields
@@ -579,12 +592,13 @@ class Field(Loggable, Versionable, object):
         return result
 
     @staticmethod
-    def _hermitian_decomposition(domain, val, spaces, domain_axes):
+    def _hermitian_decomposition(domain, val, spaces, domain_axes,
+                                 preserve_gaussian_variance=False):
         # hermitianize for the first space
         (h, a) = domain[spaces[0]].hermitian_decomposition(
-                                               val,
-                                               domain_axes[spaces[0]],
-                                               preserve_gaussian_variance=True)
+                       val,
+                       domain_axes[spaces[0]],
+                       preserve_gaussian_variance=preserve_gaussian_variance)
         # hermitianize all remaining spaces using the iterative formula
         for space in xrange(1, len(spaces)):
             (hh, ha) = domain[space].hermitian_decomposition(
@@ -1142,8 +1156,8 @@ class Field(Loggable, Versionable, object):
 
         """
 
-        return_field = self.copy_empty()
         new_val = abs(self.get_val(copy=False))
+        return_field = self.copy_empty(dtype=new_val.dtype)
         return_field.set_val(new_val, copy=False)
         return return_field
 
