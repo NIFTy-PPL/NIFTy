@@ -25,7 +25,7 @@ import nifty.nifty_utilities as utilities
 
 from keepers import Loggable
 
-pyfftw = gdi.get('pyfftw')
+fftw = gdi.get('fftw')
 
 
 class Transform(Loggable, object):
@@ -200,20 +200,21 @@ class Transform(Loggable, object):
         raise NotImplementedError
 
 
-class FFTW(Transform):
+class MPIFFT(Transform):
     """
-        The pyfftw pendant of a fft object.
+        The MPI-parallel FFTW pendant of a fft object.
     """
 
     def __init__(self, domain, codomain):
 
-        if 'pyfftw' not in gdi:
-            raise ImportError("The module pyfftw is needed but not available.")
+        if not hasattr(fftw, 'FFTW_MPI'):
+            raise ImportError(
+                "The MPI FFTW module is needed but not available.")
 
-        super(FFTW, self).__init__(domain, codomain)
+        super(MPIFFT, self).__init__(domain, codomain)
 
-        # Enable caching for pyfftw.interfaces
-        pyfftw.interfaces.cache.enable()
+        # Enable caching
+        fftw.interfaces.cache.enable()
 
         # The plan_dict stores the FFTWTransformInfo objects which correspond
         # to a certain set of (field_val, domain, codomain) sets.
@@ -409,7 +410,7 @@ class FFTW(Transform):
 
     def transform(self, val, axes, **kwargs):
         """
-            The pyfftw transform function.
+            The MPI-parallel FFTW transform function.
 
             Parameters
             ----------
@@ -467,8 +468,9 @@ class FFTW(Transform):
 class FFTWTransformInfo(object):
     def __init__(self, domain, codomain, axes, local_shape,
                  local_offset_Q, fftw_context, **kwargs):
-        if pyfftw is None:
-            raise ImportError("The module pyfftw is needed but not available.")
+        if not hasattr(fftw, 'FFTW_MPI'):
+            raise ImportError(
+                "The MPI FFTW module is needed but not available.")
 
         shape = (local_shape if axes is None else
                  [y for x, y in enumerate(local_shape) if x in axes])
@@ -512,9 +514,9 @@ class FFTWLocalTransformInfo(FFTWTransformInfo):
                                                      fftw_context,
                                                      **kwargs)
         if codomain.harmonic:
-            self._fftw_interface = pyfftw.interfaces.numpy_fft.fftn
+            self._fftw_interface = fftw.interfaces.numpy_fft.fftn
         else:
-            self._fftw_interface = pyfftw.interfaces.numpy_fft.ifftn
+            self._fftw_interface = fftw.interfaces.numpy_fft.ifftn
 
     @property
     def fftw_interface(self):
@@ -531,7 +533,7 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
                                                    local_offset_Q,
                                                    fftw_context,
                                                    **kwargs)
-        self._plan = pyfftw.create_mpi_plan(
+        self._plan = fftw.create_mpi_plan(
             input_shape=transform_shape,
             input_dtype='complex128',
             output_dtype='complex128',
@@ -545,15 +547,26 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
         return self._plan
 
 
-class NUMPYFFT(Transform):
+class SerialFFT(Transform):
     """
         The numpy fft pendant of a fft object.
 
     """
+    def __init__(self, domain, codomain, use_fftw):
+        super(SerialFFT, self).__init__(domain, codomain)
+
+        if use_fftw and (fftw is None):
+            raise ImportError(
+                "The serial FFTW module is needed but not available.")
+
+        self._use_fftw = use_fftw
+        # Enable caching
+        if self._use_fftw:
+            fftw.interfaces.cache.enable()
 
     def transform(self, val, axes, **kwargs):
         """
-            The pyfftw transform function.
+            The scalar FFT transform function.
 
             Parameters
             ----------
@@ -572,6 +585,7 @@ class NUMPYFFT(Transform):
             result : np.ndarray or distributed_data_object
                 Fourier-transformed pendant of the input field.
         """
+
         # Check if the axes provided are valid given the shape
         if axes is not None and \
                 not all(axis in range(len(val.shape)) for axis in axes):
@@ -625,10 +639,18 @@ class NUMPYFFT(Transform):
             local_val = self._apply_mask(temp_val, mask, axes)
 
         # perform the transformation
-        if self.codomain.harmonic:
-            result_val = np.fft.fftn(local_val, axes=axes)
+        if self._use_fftw:
+            if self.codomain.harmonic:
+                result_val = fftw.interfaces.numpy_fft.fftn(
+                             local_val, axes=axes)
+            else:
+                result_val = fftw.interfaces.numpy_fft.ifftn(
+                             local_val, axes=axes)
         else:
-            result_val = np.fft.ifftn(local_val, axes=axes)
+            if self.codomain.harmonic:
+                result_val = np.fft.fftn(local_val, axes=axes)
+            else:
+                result_val = np.fft.ifftn(local_val, axes=axes)
 
         # Apply domain centering mask
         if reduce(lambda x, y: x + y, self.domain.zerocenter):
