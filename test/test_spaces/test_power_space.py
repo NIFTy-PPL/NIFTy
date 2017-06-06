@@ -53,7 +53,7 @@ CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES,
                                        [None], [None, 3, 4], [True, False])
 CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
-                                       [[0., 1.3]], [None], [False])
+                                       [[0., 1.3]], [None], [None])
 CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT,
                             CONSISTENCY_CONFIGS_EXPLICIT)
 
