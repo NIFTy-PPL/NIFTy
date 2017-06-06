@@ -24,7 +24,8 @@ from nifty import PowerSpace,\
 __all__ = ['create_power_operator']
 
 
-def create_power_operator(domain, power_spectrum, power_domain=None, dtype=None,
+
+def create_power_operator(domain, power_spectrum, dtype=None,
                           distribution_strategy='not'):
     """ Creates a diagonal operator with the given power spectrum.
 
@@ -51,8 +52,14 @@ def create_power_operator(domain, power_spectrum, power_domain=None, dtype=None,
 
     """
 
-    power_domain = PowerSpace(domain,
+    if isinstance(power_spectrum, Field):
+        power_domain = power_spectrum.domain
+    else :
+        power_domain = PowerSpace(domain,
                               distribution_strategy=distribution_strategy)
+
+
+
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
                distribution_strategy=distribution_strategy)
     fp **= 2

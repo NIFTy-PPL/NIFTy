@@ -12,6 +12,8 @@ np.random.seed(42)
 
 
 def plot_parameters(m,t,t_true, t_real, t_d):
+
+    x = log(t.domain[0].kindex)
     m = fft.adjoint_times(m)
     m_data = m.val.get_full_data().real
     t_data = t.val.get_full_data().real
@@ -19,8 +21,9 @@ def plot_parameters(m,t,t_true, t_real, t_d):
     t_true_data = t_true.val.get_full_data().real
     t_real_data = t_real.val.get_full_data().real
     pl.plot([go.Heatmap(z=m_data)], filename='map.html')
-    pl.plot([go.Scatter(y=t_data), go.Scatter(y=t_true_data),
-             go.Scatter(y=t_real_data), go.Scatter(y=t_d_data)], filename="t.html")
+    pl.plot([go.Scatter(x=x,y=t_data), go.Scatter(x=x ,y=t_true_data),
+             go.Scatter(x=x, y=t_real_data), go.Scatter(x=x, y=t_d_data)], filename="t.html")
+
 
 class AdjointFFTResponse(LinearOperator):
     def __init__(self, FFT, R, default_spaces=None):
@@ -60,12 +63,13 @@ if __name__ == "__main__":
     h_space = fft.target[0]
 
     # Setting up power space
-    p_space = PowerSpace(h_space, logarithmic=True,
-                         distribution_strategy=distribution_strategy, nbin=120)
+    p_space = PowerSpace(h_space, logarithmic=False,
+                         distribution_strategy=distribution_strategy, nbin=500)
 
     # Choosing the prior correlation structure and defining correlation operator
     pow_spec = (lambda k: (.05 / (k + 1) ** 2))
-    S = create_power_operator(h_space, power_spectrum=pow_spec,
+    p_spec = lambda z: pow_spec(z) ** (1. / 2)
+    S = create_power_operator(h_space, power_spectrum=p_spec,
                               distribution_strategy=distribution_strategy)
 
     # Drawing a sample sh from the prior distribution in harmonic space
@@ -75,15 +79,16 @@ if __name__ == "__main__":
 
 
     # Choosing the measurement instrument
-#    Instrument = SmoothingOperator(s_space, sigma=0.01)
-    Instrument = DiagonalOperator(s_space, diagonal=1.)
-#    Instrument._diagonal.val[200:400, 200:400] = 0
+    Instrument = SmoothingOperator(s_space, sigma=0.01)
+    # Instrument = DiagonalOperator(s_space, diagonal=1.)
+    # Instrument._diagonal.val[200:400, 200:400] = 0
+    # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
 
     #Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = 5.
+    noise = 1.
     N = DiagonalOperator(s_space, diagonal=noise, bare=True)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
@@ -123,12 +128,12 @@ if __name__ == "__main__":
 
     # t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
     t0 = data_power- 1.
-    S0 = create_power_operator(h_space, power_spectrum=exp(t0),
+    S0 = create_power_operator(h_space, power_spectrum=exp(0.5*t0),
                                distribution_strategy=distribution_strategy)
 
 
     for i in range(500):
-        S0 = create_power_operator(h_space, power_spectrum=exp(t0),
+        S0 = create_power_operator(h_space, power_spectrum=exp(0.5*t0),
                               distribution_strategy=distribution_strategy)
 
         # Initializing the  nonlinear Wiener Filter energy
@@ -178,3 +183,12 @@ if __name__ == "__main__":
     m_data = m.val.get_full_data().real
     if rank == 0:
         pl.plot([go.Heatmap(z=m_data)], filename='map.html')
+
+    collector = fft(n).power_analyze() **2
+    for i in range(10000):
+        n = Field.from_random(domain=s_space,
+                          random_type='normal',
+                          std=sqrt(noise),
+                          mean=0)
+        collector = fft(n).power_analyze()**2
+    collector /= 10001.

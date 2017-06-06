@@ -42,7 +42,7 @@ if __name__ == "__main__":
     distribution_strategy = 'not'
 
     # Set up position space
-    s_space = RGSpace([128,129])
+    s_space = RGSpace([1024,1024])
     # s_space = HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
@@ -54,7 +54,8 @@ if __name__ == "__main__":
 
     # Choosing the prior correlation structure and defining correlation operator
     pow_spec = (lambda k: (42 / (k + 1) ** 3))
-    S = create_power_operator(h_space, power_spectrum=pow_spec,
+    sqr_pow_spec = lambda z: pow_spec(z) ** (1. / 2)
+    S = create_power_operator(h_space, power_spectrum=sqr_pow_spec,
                               distribution_strategy=distribution_strategy)
 
     # Drawing a sample sh from the prior distribution in harmonic space
@@ -64,13 +65,13 @@ if __name__ == "__main__":
     ss = fft.adjoint_times(sh)
 
     # Choosing the measurement instrument
-    Instrument = SmoothingOperator(s_space, sigma=0.05)
-#    Instrument = DiagonalOperator(s_space, diagonal=1.)
+    # Instrument = SmoothingOperator(s_space, sigma=0.05)
+    Instrument = DiagonalOperator(s_space, diagonal=1.)
 #    Instrument._diagonal.val[200:400, 200:400] = 0
 
     #Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
-    signal_to_noise = 1
+    signal_to_noise = 1.
     N = DiagonalOperator(s_space, diagonal=ss.var()/signal_to_noise, bare=True)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
@@ -91,18 +92,18 @@ if __name__ == "__main__":
 #                                callback=convergence_measure)
 
     minimizer = RelaxedNewton(convergence_tolerance=0,
-                              iteration_limit=10,
+                              iteration_limit=1,
                               callback=convergence_measure)
     #
     # minimizer = VL_BFGS(convergence_tolerance=0,
-    #                    iteration_limit=500,
+    #                    iteration_limit=50,
     #                    callback=convergence_measure,
     #                    max_history_length=3)
     #
-    #
+
 
     # Setting starting position
-    m0 = Field(h_space, val=1.)
+    m0 = Field(h_space, val=.0)
 
     # Initializing the Wiener Filter energy
     energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S)
