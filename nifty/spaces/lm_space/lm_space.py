@@ -169,6 +169,12 @@ class LMSpace(Space):
 
         return dists
 
+    def get_unique_distances(self):
+        return np.arange(self.lmax+1, dtype=np.float64)
+
+    def get_natural_binbounds(self):
+        return np.arange(self.lmax, dtype=np.float64) + 0.5
+
     @staticmethod
     def _distance_array_helper(index_array, lmax):
         u = 2*lmax + 1

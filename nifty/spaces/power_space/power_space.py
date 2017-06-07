@@ -95,9 +95,6 @@ class PowerSpace(Space):
             raise ValueError("harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
 
-        dists = self._harmonic_partner.get_distance_array(
-                distribution_strategy)
-
         # sanity check
         if binbounds is not None and not(nbin is None and logarithmic is None):
             raise ValueError(
@@ -105,16 +102,7 @@ class PowerSpace(Space):
 
         self._binbounds = None
         if logarithmic is None and nbin is None and binbounds is None:
-            # compute the "natural" binning, i.e. there
-            # is one bin for every distinct k-vector length
-            tmp = dists.unique()  # expensive!
-            tol = 1e-12*tmp[-1]
-            # remove all points that are closer than tol to their right
-            # neighbors.
-            # I'm appending the last value*2 to the array to treat the
-            # rightmost point correctly.
-            tmp = tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
-            bb = tmp[0:-1]+0.5*np.diff(tmp)
+            bb = self._harmonic_partner.get_natural_binbounds()
         else:
             if binbounds is not None:
                 bb = np.sort(np.array(binbounds))
@@ -126,7 +114,7 @@ class PowerSpace(Space):
 
                 # equidistant binning (linear or log)
                 # MR FIXME: this needs to improve
-                kindex = dists.unique()
+                kindex = self._harmonic_partner.get_unique_distances()
                 if (logarithmic):
                     k = np.r_[0, np.log(kindex[1:])]
                 else:
@@ -145,6 +133,8 @@ class PowerSpace(Space):
                     bb = np.exp(bb)
             self._binbounds = tuple(bb)
 
+        dists = self._harmonic_partner.get_distance_array(
+                distribution_strategy)
         # Compute pindex, kindex and rho according to bb
         self._pindex = distributed_data_object(
             global_shape=dists.shape,
