@@ -3,6 +3,25 @@ from nifty.operators import EndomorphicOperator,\
 
 
 class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+    """The curvature of the WienerFilterEnergy.
+
+    This operator implements the second derivative of the
+    WienerFilterEnergy used in some minimization algorithms or
+    for error estimates of the posterior maps. It corresponds to the
+    inverse propagator.
+
+
+    Parameters
+    ----------
+    R: LinearOperator,
+        The response operator of the Wiener filter measurement.
+    N : EndomorphicOperator
+        The noise covariance.
+    S: DiagonalOperator,
+        The prior signal covariance
+
+    """
+
     def __init__(self, R, N, S, inverter=None, preconditioner=None):
 
         self.R = R

@@ -4,6 +4,20 @@ from nifty.operators import EndomorphicOperator,\
 
 
 class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+    """The curvature of the CriticalPowerEnergy.
+
+    This operator implements the second derivative of the
+    CriticalPowerEnergy used in some minimization algorithms or
+    for error estimates of the powerspectrum.
+
+
+    Parameters
+    ----------
+    theta: Field,
+        The map and inverse gamma prior contribution to the curvature.
+    T : SmoothnessOperator,
+        The smoothness prior contribution to the curvature.
+    """
     def __init__(self, theta, T, inverter=None, preconditioner=None):
 
         self.theta = DiagonalOperator(theta.domain, diagonal=theta)

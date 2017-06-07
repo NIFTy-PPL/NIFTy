@@ -10,8 +10,7 @@ class CriticalPowerEnergy(Energy):
 
     It describes the energy of the logarithmic amplitudes of the power spectrum of
     a Gaussian random field under reconstruction uncertainty with smoothness and
-    inverse gamma prior. It is used to infer a correlated signal with unknown correlation
-    structure.
+    inverse gamma prior. It is used to infer the correlation structure of a correlated signal.
 
     Parameters
     ----------

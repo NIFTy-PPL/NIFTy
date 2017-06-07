@@ -128,9 +128,6 @@ if __name__ == "__main__":
     # t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
     t0 = data_power- 1.
 
-    S0 = create_power_operator(h_space, power_spectrum=exp(t0),
-                               distribution_strategy=distribution_strategy)
-
 
     for i in range(500):
         S0 = create_power_operator(h_space, power_spectrum=exp(t0),
@@ -151,7 +148,7 @@ if __name__ == "__main__":
 
         # Setting new power spectrum
         t0.val  = power_energy.position.val.real
-        # t0.val[-1] = t0.val[-2]
+
         # Plotting current estimate
         plot_parameters(m0,t0,log(sp),realized_power, data_power)
 

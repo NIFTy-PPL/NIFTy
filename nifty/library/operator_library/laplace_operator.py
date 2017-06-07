@@ -21,6 +21,20 @@ from nifty import Field,\
 
 
 class LaplaceOperator(EndomorphicOperator):
+    """A irregular LaplaceOperator with free boundary and excluding monopole.
+
+    This LaplaceOperator implements the second derivative of a Field in PowerSpace
+    on logarithmic or linear scale with vanishing curvature at the boundary, starting
+    at the second entry of the Field. The second derivative of the Field on the irregular grid
+    is calculated using finite differences.
+
+    Parameters
+    ----------
+    logarithmic : boolean,
+        Whether smoothness is calculated on a logarithmic scale or linear scale
+        default : True
+    """
+
     def __init__(self, domain,
                  default_spaces=None, logarithmic = True):
         super(LaplaceOperator, self).__init__(default_spaces)
@@ -37,13 +51,6 @@ class LaplaceOperator(EndomorphicOperator):
             self.positions[0] = -1
 
         self.fwd_dist = self.positions[1:] - self.positions[:-1]
-
-    """
-    input parameters:
-    domain- can only live over one domain
-    to do:
-    correct implementation of D20 object
-    """
 
     @property
     def target(self):
