@@ -42,14 +42,14 @@ SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES[2], SPACES[0:2], SPACES[1
 DTYPE_COMBINATIONS = [np.float64, np.complex128]
 DIST_COMBINATIONS = STRATEGIES['global']
 COPY_COMBINATIONS = [True, False]
-VAL_COMBINATIONS = [np.empty(0), np.empty(0, dtype=np.complex128),
-                    np.random.rand(12),  np.random.rand(12) + np.random.rand(12)*1j,
-                    np.random.rand(4),  np.random.rand(4) + np.random.rand(4)*1j,
-                    np.random.rand(6),  np.random.rand(6) + np.random.rand(6)*1j,
-                    np.random.rand(48).reshape((12, 4)),
-                    np.random.rand(48).reshape((12, 4)) + np.random.rand(48).reshape((12, 4))*1j,
-                    np.random.rand(24).reshape((4, 6)),
-                    np.random.rand(24).reshape((4, 6)) + np.random.rand(24).reshape((4, 6)) * 1j
+VAL_COMBINATIONS = [None, None,
+                    np.random.randn(12),  np.random.randn(12) + np.random.randn(12)*1j,
+                    np.random.randn(4),  np.random.randn(4) + np.random.randn(4)*1j,
+                    np.random.randn(6),  np.random.randn(6) + np.random.randn(6)*1j,
+                    np.random.randn(48).reshape((12, 4)),
+                    np.random.randn(48).reshape((12, 4)) + np.random.randn(48).reshape((12, 4))*1j,
+                    np.random.randn(24).reshape((4, 6)),
+                    np.random.randn(24).reshape((4, 6)) + np.random.randn(24).reshape((4, 6)) * 1j
                     ]
 
 # The expected properties
@@ -131,8 +131,8 @@ EXPECTED_PROPERTIES = [{'shape': (),  # empty, real
 
 
 def get_cast_configs():
-    keys = ('__class__', 'shape', 'distribution_strategy', 'dtype')
-    values = product([distributed_data_object], [(), (12,), (4,), (6,), (12, 4), (4, 6)], ['not'],
+    keys = ('shape', 'distribution_strategy', 'dtype')
+    values = product([(), (12,), (4,), (6,), (12, 4), (4, 6)], ['not'],
                      [np.float, np.complex])
     output = [dict(zip(keys, l)) for l in values]
     return output
@@ -175,7 +175,7 @@ class FieldFunctionalityTest(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
 
-
+asert
 '''
     @expand(product(FIELD_COMBINATIONS, EXPECTED_FUNCTIONALITY['power_synthesize']))
     def test_power_synthesize(self, field, expected_functionality):
