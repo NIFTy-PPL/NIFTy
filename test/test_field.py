@@ -127,14 +127,28 @@ EXPECTED_PROPERTIES = [{'shape': (),  # empty, real
                         },
                        ]
 
+
 # The expected output of the methods
 
-
+# cast test config, testing for shape, dtype and dist-strategy of the resulting d2o object,
+# dist-strategy combinatorics maybe expanded
 def get_cast_configs():
     keys = ('shape', 'distribution_strategy', 'dtype')
     values = product([(), (12,), (4,), (6,), (12, 4), (4, 6)], ['not'],
                      [np.float, np.complex])
     output = [dict(zip(keys, l)) for l in values]
+    return output
+
+
+# pnorm test config for  p=1
+def get_norm_configs():
+    output = []
+    val = np.copy(VAL_COMBINATIONS)
+    val[0] = np.zeros(1)
+    val[1] = np.zeros(1)
+    for i in val:
+        output.append([np.sqrt(sum(abs(i.flatten())**2))])
+    print output
     return output
 
 
@@ -172,10 +186,19 @@ class FieldFunctionalityTest(unittest.TestCase):
         for key, value in expected_functionality.iteritems():
             assert_equal(getattr(cast, key), value)
 
+#  not yet working
+    @expand(zip(product(SPACE_COMBINATIONS, DTYPE_COMBINATIONS), VAL_COMBINATIONS, get_norm_configs()))
+    def test_norm(self, setters, values, expected_functionality):
+        field = Field(domain=setters[0], val=values,  dtype=setters[1])
+        norm = field.norm()
+        for value in expected_functionality:
+            assert_equal(norm, value)
+
+'''
 if __name__ == '__main__':
     unittest.main()
+'''
 
-asert
 '''
     @expand(product(FIELD_COMBINATIONS, EXPECTED_FUNCTIONALITY['power_synthesize']))
     def test_power_synthesize(self, field, expected_functionality):
@@ -200,12 +223,6 @@ asert
         dot = field.dot()
         for key, value in expected_functionality:
             assert_equal(getattr(dot, key), value)
-
-    @expand(product(SPACE_COMBINATIONS, EXPECTED_FUNCTIONALITY['norm']))
-    def test_norm(self, field, expected_functionality):
-        norm = field.norm()e
-        for key, value in expected_functionality:
-            assert_equal(getattr(norm, key), value)
 
     @expand(product(SPACE_COMBINATIONS, EXPECTED_FUNCTIONALITY['conjugate']))
     def test_conjugate(self, field, expected_functionality):
