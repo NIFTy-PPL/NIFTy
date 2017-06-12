@@ -170,6 +170,8 @@ class Field(Loggable, Versionable, object):
         else:
             dtype = np.dtype(dtype)
 
+        dtype = np.result_type(dtype, np.float)
+
         return dtype
 
     def _parse_distribution_strategy(self, distribution_strategy, val):
