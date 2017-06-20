@@ -24,7 +24,7 @@ class WienerFilterEnergy(Energy):
     @property
     def value(self):
         D_inv_x = self.D_inverse_x()
-        H = 0.5 * D_inv_x.dot(self.position) - self.j.dot(self.position)
+        H = 0.5 * D_inv_x.vdot(self.position) - self.j.dot(self.position)
         return H.real
 
     @property

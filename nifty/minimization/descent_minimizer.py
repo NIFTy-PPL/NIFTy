@@ -137,7 +137,7 @@ class DescentMinimizer(Loggable, object):
 
             # compute the the gradient for the current location
             gradient = energy.gradient
-            gradient_norm = gradient.dot(gradient)
+            gradient_norm = gradient.vdot(gradient)
 
             # check if position is at a flat point
             if gradient_norm == 0:
