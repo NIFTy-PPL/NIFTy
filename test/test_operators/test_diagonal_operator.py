@@ -33,8 +33,8 @@ class DiagonalOperator_Tests(unittest.TestCase):
         rand2 = Field.from_random('normal', domain=space)
         diag = Field.from_random('normal', domain=space)
         D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
-        tt1 = rand1.dot(D.times(rand2))
-        tt2 = rand2.dot(D.times(rand1))
+        tt1 = rand1.vdot(D.times(rand2))
+        tt2 = rand2.vdot(D.times(rand1))
         assert_approx_equal(tt1, tt2)
 
     @expand(product(spaces, [True, False], [True, False]))
