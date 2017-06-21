@@ -132,6 +132,46 @@ class DiagonalOperator(EndomorphicOperator):
         return self._times_helper(x, spaces,
                                   operation=lambda z: z.adjoint().__rdiv__)
 
+    def diagonal(self, bare=False, copy=True):
+        """ Returns the diagonal of the Operator.
+
+        Parameters
+        ----------
+        bare : boolean
+            Whether the returned Field values should be bare or not.
+        copy : boolean
+            Whether the returned Field should be copied or not.
+
+        Returns
+        -------
+        out : Field
+            The diagonal of the Operator.
+
+        """
+        if bare:
+            diagonal = self._diagonal.weight(power=-1)
+        elif copy:
+            diagonal = self._diagonal.copy()
+        else:
+            diagonal = self._diagonal
+        return diagonal
+
+    def inverse_diagonal(self, bare=False):
+        """ Returns the inverse-diagonal of the operator.
+
+        Parameters
+        ----------
+        bare : boolean
+            Whether the returned Field values should be bare or not.
+
+        Returns
+        -------
+        out : Field
+            The inverse of the diagonal of the Operator.
+
+        """
+        return 1./self.diagonal(bare=bare, copy=False)
+
     # ---Mandatory properties and methods---
 
     @property
