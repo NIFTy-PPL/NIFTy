@@ -76,3 +76,18 @@ class DiagonalOperator_Tests(unittest.TestCase):
         D = DiagonalOperator(space, diagonal=diag, bare=bare, copy=copy)
         tt = D.adjoint_inverse_times(rand1)
         assert_equal(tt.domain[0], space)
+
+    @expand(product(spaces, [True, False]))
+    def test_diagonal(self, space, copy):
+        diag = Field.from_random('normal', domain=space)
+        D = DiagonalOperator(space, diagonal=diag, copy=copy)
+        diag_op = D.diagonal()
+        assert_allclose(diag.val.get_full_data(), diag_op.val.get_full_data())
+
+    @expand(product(spaces, [True, False]))
+    def test_inverse(self, space, copy):
+        diag = Field.from_random('normal', domain=space)
+        D = DiagonalOperator(space, diagonal=diag, copy=copy)
+        diag_op = D.inverse_diagonal()
+        assert_allclose(1./diag.val.get_full_data(),
+                        diag_op.val.get_full_data())
