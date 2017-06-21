@@ -51,7 +51,7 @@ class ComposedOperator(LinearOperator):
 
     Notes
     -----
-    Very usefull in case one has to transform a Field living over a product
+    Very useful in case one has to transform a Field living over a product
     space (see example below).
 
     Examples

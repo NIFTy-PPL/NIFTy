@@ -1040,7 +1040,7 @@ class Field(Loggable, Versionable, object):
         new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
-    def dot(self, x=None, spaces=None, bare=False):
+    def vdot(self, x=None, spaces=None, bare=False):
         """ Computes the volume-factor-aware dot product of 'self' with x.
 
         Parameters
