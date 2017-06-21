@@ -70,7 +70,7 @@ class ConjugateGradient(Loggable, object):
 
     References
     ----------
-    Thomas V. Mikosch et al., "Numerical Optimization", Second Edition,
+    Jorge Nocedal & Stephen Wright, "Numerical Optimization", Second Edition,
     2006, Springer-Verlag New York
 
     """
