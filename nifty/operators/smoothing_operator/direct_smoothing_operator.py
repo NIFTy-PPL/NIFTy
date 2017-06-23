@@ -53,7 +53,7 @@ class DirectSmoothingOperator(SmoothingOperator):
         wgt = []
         expfac = 1. / (2. * sigma*sigma)
         for i in range(x.size):
-            if nval[i]>0:
+            if nval[i] > 0:
                 t = x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
                 t = np.exp(-t*t*expfac)
                 t *= 1./np.sum(t)
