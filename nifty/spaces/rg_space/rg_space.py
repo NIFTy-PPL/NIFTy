@@ -284,7 +284,7 @@ class RGSpace(Space):
         return dists
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        return lambda x: np.exp(-0.5 * np.pi*np.pi * x*x * sigma*sigma)
+        return lambda x: np.exp(-2. * np.pi*np.pi * x*x * sigma*sigma)
 
     # ---Added properties and methods---
 
