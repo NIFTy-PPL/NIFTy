@@ -42,7 +42,7 @@ if __name__ == "__main__":
     distribution_strategy = 'not'
 
     # Set up position space
-    s_space = RGSpace([512,512])
+    s_space = RGSpace([128,128])
     # s_space = HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
@@ -108,9 +108,29 @@ if __name__ == "__main__":
     # Initializing the Wiener Filter energy
     energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S)
 
+
     # Solving the problem analytically
     solution = energy.analytic_solution()
+    sample_variance = Field(sh.power_analyze(logarithmic=False).domain,val=0. + 0j)
+    sample_mean = Field(sh.domain,val=0. + 0j)
+    n_samples = 200
+    for i in range(n_samples):
+        sample = sugar.generate_posterior_sample(solution.position,solution.curvature)
+        sample_variance += sample.power_analyze(logarithmic=False)
+        sample_mean += sample
+    sample_variance = sample_variance/n_samples - (sample_mean/n_samples).power_analyze(logarithmic=False)
 
+    D = HarmonicPropagatorOperator(S=S, N=N, R=Instrument)
+
+
+    class DiagonalProber(DiagonalProberMixin, Prober):
+        pass
+
+
+    diagProber = DiagonalProber(domain=sh.domain)
+    diagProber(D)
+    diag = diagProber.diagonal
+    pr_diag = diag.power_analyze(logarithmic=False)**0.5
     # Solving the problem with chosen minimization strategy
     (energy, convergence) = minimizer(energy)
 

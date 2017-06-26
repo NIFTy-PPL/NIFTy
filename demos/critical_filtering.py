@@ -11,18 +11,16 @@ rank = comm.rank
 np.random.seed(42)
 
 
-def plot_parameters(m,t,t_true, t_real, t_d):
+def plot_parameters(m,t,p, p_d):
 
     x = log(t.domain[0].kindex)
     m = fft.adjoint_times(m)
-    m_data = m.val.get_full_data().real
-    t_data = t.val.get_full_data().real
-    t_d_data = t_d.val.get_full_data().real
-    t_true_data = t_true.val.get_full_data().real
-    t_real_data = t_real.val.get_full_data().real
-    pl.plot([go.Heatmap(z=m_data)], filename='map.html')
-    pl.plot([go.Scatter(x=x,y=t_data), go.Scatter(x=x ,y=t_true_data),
-             go.Scatter(x=x, y=t_real_data), go.Scatter(x=x, y=t_d_data)], filename="t.html")
+    m = m.val.get_full_data().real
+    t = t.val.get_full_data().real
+    p = p.val.get_full_data().real
+    p_d = p_d.val.get_full_data().real
+    pl.plot([go.Heatmap(z=m)], filename='map.html')
+    pl.plot([go.Scatter(x=x,y=t), go.Scatter(x=x ,y=p), go.Scatter(x=x, y=p_d)], filename="t.html")
 
 
 class AdjointFFTResponse(LinearOperator):
@@ -63,11 +61,11 @@ if __name__ == "__main__":
     h_space = fft.target[0]
 
     # Setting up power space
-    p_space = PowerSpace(h_space, logarithmic=False,
+    p_space = PowerSpace(h_space, logarithmic=True,
                          distribution_strategy=distribution_strategy)#, nbin=5)
 
     # Choosing the prior correlation structure and defining correlation operator
-    p_spec = (lambda k: (.05 / (k + 1) ** 3))
+    p_spec = (lambda k: (.5 / (k + 1) ** 3))
     S = create_power_operator(h_space, power_spectrum=p_spec,
                               distribution_strategy=distribution_strategy)
 
@@ -87,7 +85,7 @@ if __name__ == "__main__":
     #Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = .1
+    noise = 1.
     N = DiagonalOperator(s_space, diagonal=noise, bare=True)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
@@ -112,8 +110,8 @@ if __name__ == "__main__":
         print (x, iteration)
 
 
-    minimizer1 = RelaxedNewton(convergence_tolerance=0,
-                              convergence_level=1,
+    minimizer1 = RelaxedNewton(convergence_tolerance=10e-2,
+                              convergence_level=2,
                               iteration_limit=3,
                               callback=convergence_measure)
     minimizer2 = VL_BFGS(convergence_tolerance=0,
@@ -125,8 +123,8 @@ if __name__ == "__main__":
     flat_power = Field(p_space,val=10e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
-    # t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
-    t0 = data_power- 1.
+    t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
+
 
 
     for i in range(500):
@@ -142,42 +140,15 @@ if __name__ == "__main__":
         m0 = map_energy.position
         D0 = map_energy.curvature
         # Initializing the power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=100., samples=5)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=100., samples=3)
 
         (power_energy, convergence) = minimizer1(power_energy)
+
 
         # Setting new power spectrum
         t0.val  = power_energy.position.val.real
 
         # Plotting current estimate
-        plot_parameters(m0,t0,log(sp),realized_power, data_power)
+        plot_parameters(m0,t0,log(sp), data_power)
 
-    # Transforming fields to position space for plotting
-
-    ss = fft.adjoint_times(sh)
-    m = fft.adjoint_times(map_energy.position)
-
-
-    # Plotting
-
-    d_data = d.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
-
-    tt_data = power_energy.position.val.get_full_data().real
-    t_data = log(sp**2).val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Scatter(y=t_data),go.Scatter(y=tt_data)], filename="t.html")
-    ss_data = ss.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=ss_data)], filename='ss.html')
-
-    sh_data = sh.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=sh_data)], filename='sh.html')
-
-
-    m_data = m.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=m_data)], filename='map.html')
 

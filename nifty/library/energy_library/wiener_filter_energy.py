@@ -1,4 +1,5 @@
 from nifty.energies.energy import Energy
+from nifty.energies.memoization import memo
 from nifty.library.operator_library import WienerFilterCurvature
 
 class WienerFilterEnergy(Energy):
@@ -33,22 +34,29 @@ class WienerFilterEnergy(Energy):
 
     @property
     def value(self):
+        residual = self._residual()
         energy = 0.5 * self.position.dot(self.S.inverse_times(self.position))
-        energy += 0.5 * (self.d - self.R(self.position)).dot(
-            self.N.inverse_times(self.d - self.R(self.position)))
+        energy += 0.5 * (residual).dot(self.N.inverse_times(residual))
         return energy.real
 
     @property
     def gradient(self):
+        residual = self._residual()
         gradient = self.S.inverse_times(self.position)
         gradient -= self.R.adjoint_times(
-                    self.N.inverse_times(self.d - self.R(self.position)))
+                    self.N.inverse_times(residual))
         return gradient
 
     @property
     def curvature(self):
         curvature = WienerFilterCurvature(R=self.R, N=self.N, S=self.S)
         return curvature
+
+    @memo
+    def _residual(self):
+        residual = self.d - self.R(self.position)
+        return residual
+
 
     def analytic_solution(self):
         D_inverse = self.curvature
