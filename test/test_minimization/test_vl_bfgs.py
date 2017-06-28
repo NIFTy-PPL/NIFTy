@@ -79,5 +79,5 @@ class VL_BFGS_Tests(unittest.TestCase):
         assert_almost_equal(energy.value, 0, decimal=3)
         assert_almost_equal(energy.position.val.get_full_data(), 
                             test_x.val.get_full_data(), decimal=3)
-        assert_equal(convergence, convergence_level)
+        assert_equal(convergence, convergence_level+2)
 
