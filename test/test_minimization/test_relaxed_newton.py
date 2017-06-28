@@ -9,6 +9,7 @@ from itertools import product
 from test.common import expand
 from test.common import generate_spaces
 
+np.random.seed(42)
 
 
 class QuadraticPot(Energy):
@@ -76,9 +77,9 @@ class RelaxedNewton_Tests(unittest.TestCase):
                                     
         (energy, convergence) = minimizer(energy)
         
-        assert_almost_equal(energy.value, 0, significant=3)
+        assert_almost_equal(energy.value, 0, decimal=3)
         assert_almost_equal(energy.position.val.get_full_data(), 
-                            test_x.val.get_full_data(), significant=3)
+                            test_x.val.get_full_data(), decimal=3)
         assert_equal(convergence, convergence_level+2)
 
 

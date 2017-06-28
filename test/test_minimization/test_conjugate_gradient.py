@@ -9,6 +9,7 @@ from itertools import product
 from test.common import expand
 from test.common import generate_spaces
 
+np.random.seed(42)
 
 
 class ConjugateGradient_Tests(unittest.TestCase):
@@ -39,9 +40,9 @@ class ConjugateGradient_Tests(unittest.TestCase):
                       convergence_level):
         
         x0 = Field.from_random('normal', domain=space)
-        test_x = Field(space, val = 0.)
+        test_x = Field(space, val = 1.)
         A = DiagonalOperator(space, diagonal = 1.)
-        b = Field(space, val=0.)
+        b = Field(space, val=1.)
         
         minimizer = ConjugateGradient(iteration_limit=iteration_limit,
                                     convergence_tolerance=convergence_tolerance, 
@@ -50,7 +51,7 @@ class ConjugateGradient_Tests(unittest.TestCase):
         (position, convergence) = minimizer(A=A, x0=x0, b=b)
         
         assert_almost_equal(position.val.get_full_data(), 
-                            test_x.val.get_full_data(), significant=3)
+                            test_x.val.get_full_data(), decimal=3)
         assert_equal(convergence, convergence_level+1)
 
 
