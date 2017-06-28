@@ -20,7 +20,6 @@ from __future__ import division
 import numpy as np
 
 from keepers import Loggable
-from nifty import Field
 
 
 class ConjugateGradient(Loggable, object):
@@ -76,7 +75,7 @@ class ConjugateGradient(Loggable, object):
 
     """
 
-    def __init__(self, convergence_tolerance=1E-8, convergence_level=3,
+    def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None, reset_count=None,
                  preconditioner=None, callback=None):
 
@@ -157,9 +156,6 @@ class ConjugateGradient(Loggable, object):
                 r = b - A(x)
             else:
                 r -= q * alpha
-            #tmp=r.val.get_full_data()
-            #tmp.imag=0.
-            #r=Field(r.domain,val=tmp)
 
             s = self.preconditioner(r)
             gamma = r.vdot(s).real
@@ -169,10 +165,8 @@ class ConjugateGradient(Loggable, object):
                                  "violated!")
 
             beta = max(0, gamma/previous_gamma)
-            print "beta:",beta
 
             delta = np.sqrt(gamma)/norm_b
-            print "delta:",delta
 
             self.logger.debug("Iteration : %08u   alpha = %3.1E   "
                               "beta = %3.1E   delta = %3.1E" %
@@ -199,7 +193,6 @@ class ConjugateGradient(Loggable, object):
 
             d = s + d * beta
 
-            print "iter:",iteration_number
             iteration_number += 1
             previous_gamma = gamma
 
