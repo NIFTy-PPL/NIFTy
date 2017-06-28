@@ -164,6 +164,7 @@ class DescentMinimizer(Loggable, object):
                 new_energy = energy.at( position=energy.position + 
                     np.random.rand()/10*(new_energy.position-energy.position) )
                 energy = new_energy
+                convergence = self.convergence_level + 2
                 break
 
             energy = new_energy

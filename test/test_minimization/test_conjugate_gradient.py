@@ -1,7 +1,7 @@
 
 import unittest
 
-from numpy.testing import assert_approx_equal, assert_equal
+from numpy.testing import assert_equal, assert_almost_equal
 
 from nifty import *
 
@@ -31,7 +31,7 @@ class ConjugateGradient_Tests(unittest.TestCase):
         
         if position.domain[0] != space:
             raise TypeError
-        if type(convergence) != float:
+        if type(convergence) != int:
             raise TypeError
 
     @expand(product(spaces, [10,  100, 1000], [1E-3, 1E-4, 1E-5], [2, 3, 4] ))
@@ -49,7 +49,7 @@ class ConjugateGradient_Tests(unittest.TestCase):
                                     
         (position, convergence) = minimizer(A=A, x0=x0, b=b)
         
-        assert_approx_equal(position.val.get_full_data(), 
+        assert_almost_equal(position.val.get_full_data(), 
                             test_x.val.get_full_data(), significant=3)
         assert_equal(convergence, convergence_level+1)
 
