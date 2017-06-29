@@ -87,8 +87,8 @@ class PlotterBase(Loggable, object):
         for slice_list in utilities.get_slice_list(data_list[0].shape, axes):
             plots_list += \
                     [[self.plot.at(self._parse_data(current_data,
-                                                     field,
-                                                     spaces))
+                                                    field,
+                                                    spaces))
                       for (current_data, field) in zip(data_list, fields)]]
 
         figures = [self.figure.at(plots) for plots in plots_list]

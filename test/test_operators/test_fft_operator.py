@@ -143,8 +143,8 @@ class FFTOperatorTests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
                                 dtype=tp)
         out = fft.times(inp)
-        v1 = np.sqrt(out.dot(out))
-        v2 = np.sqrt(inp.dot(fft.adjoint_times(out)))
+        v1 = np.sqrt(out.vdot(out))
+        v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
         assert_allclose(v1, v2, rtol=tol, atol=tol)
 
     @expand(product([128, 256],
@@ -159,6 +159,6 @@ class FFTOperatorTests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
                                 dtype=tp)
         out = fft.times(inp)
-        v1 = np.sqrt(out.dot(out))
-        v2 = np.sqrt(inp.dot(fft.adjoint_times(out)))
+        v1 = np.sqrt(out.vdot(out))
+        v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
         assert_allclose(v1, v2, rtol=tol, atol=tol)

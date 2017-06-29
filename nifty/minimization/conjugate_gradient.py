@@ -70,7 +70,7 @@ class ConjugateGradient(Loggable, object):
 
     References
     ----------
-    Thomas V. Mikosch et al., "Numerical Optimization", Second Edition,
+    Jorge Nocedal & Stephen Wright, "Numerical Optimization", Second Edition,
     2006, Springer-Verlag New York
 
     """
@@ -121,12 +121,12 @@ class ConjugateGradient(Loggable, object):
 
         r = b - A(x0)
         d = self.preconditioner(r)
-        previous_gamma = r.dot(d)
+        previous_gamma = r.vdot(d)
         if previous_gamma == 0:
             self.logger.info("The starting guess is already perfect solution "
                              "for the inverse problem.")
             return x0, self.convergence_level+1
-        norm_b = np.sqrt(b.dot(b))
+        norm_b = np.sqrt(b.vdot(b))
         x = x0
         convergence = 0
         iteration_number = 1
@@ -137,7 +137,7 @@ class ConjugateGradient(Loggable, object):
                 self.callback(x, iteration_number)
 
             q = A(d)
-            alpha = previous_gamma/d.dot(q)
+            alpha = previous_gamma/d.vdot(q)
 
             if not np.isfinite(alpha):
                 self.logger.error("Alpha became infinite! Stopping.")
@@ -158,7 +158,7 @@ class ConjugateGradient(Loggable, object):
                 r -= q * alpha
 
             s = self.preconditioner(r)
-            gamma = r.dot(s)
+            gamma = r.vdot(s)
 
             if gamma.real < 0:
                 self.logger.warn("Positive definitness of preconditioner "
