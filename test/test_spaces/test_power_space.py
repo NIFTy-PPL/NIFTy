@@ -25,7 +25,6 @@ from d2o import distributed_data_object
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
 from nifty import PowerSpace, RGSpace, Space, LMSpace
-from types import NoneType
 from test.common import expand
 from itertools import product, chain
 # needed to check wether fftw is available
@@ -155,7 +154,6 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                                   logarithmic):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                print (gdi.get('fftw'), "blub \n\n\n")
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
@@ -186,7 +184,7 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
                            distribution_strategy=distribution_strategy,
                            logarithmic=logarithmic, nbin=nbin,
                            binbounds=binbounds)
-            for key, value in expected.iteritems():
+            for key, value in expected.items():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)
                 else:

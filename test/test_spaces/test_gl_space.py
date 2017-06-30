@@ -89,7 +89,7 @@ class GLSpaceFunctionalityTests(unittest.TestCase):
                 GLSpace(nlat, nlon)
         else:
             g = GLSpace(nlat, nlon)
-            for key, value in expected.iteritems():
+            for key, value in expected.items():
                 assert_equal(getattr(g, key), value)
 
     @expand(get_weight_configs())

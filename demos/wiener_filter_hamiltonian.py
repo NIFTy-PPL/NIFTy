@@ -1,3 +1,6 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import object
 
 from nifty import *
 
@@ -62,11 +65,11 @@ if __name__ == "__main__":
     p_space = PowerSpace(h_space, distribution_strategy=distribution_strategy)
 
     # create the field instances and power operator
-    pow_spec = (lambda k: (42 / (k + 1) ** 3))
+    pow_spec = (lambda k: (42. / (k + 1) ** 3))
     S = create_power_operator(h_space, power_spectrum=pow_spec,
                               distribution_strategy=distribution_strategy)
 
-    sp = Field(p_space, val=lambda z: pow_spec(z)**(1./2),
+    sp = Field(p_space, val=lambda z: pow_spec(z)**0.5,
                distribution_strategy=distribution_strategy)
     sh = sp.power_synthesize(real_signal=True)
     ss = fft.inverse_times(sh)
@@ -92,7 +95,7 @@ if __name__ == "__main__":
 
     def distance_measure(energy, iteration):
         x = energy.position
-        print (iteration, ((x-ss).norm()/ss.norm()).real)
+        print((iteration, (x-ss).norm()/ss.norm()).real))
 
 #    minimizer = SteepestDescent(convergence_tolerance=0,
 #                                iteration_limit=50,

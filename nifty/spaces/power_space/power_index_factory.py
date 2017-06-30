@@ -16,7 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from power_indices import PowerIndices
+from builtins import object
+from .power_indices import PowerIndices
 
 
 class _PowerIndexFactory(object):

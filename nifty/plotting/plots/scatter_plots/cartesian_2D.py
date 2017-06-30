@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from cartesian import Cartesian
+from .cartesian import Cartesian
 
 
 class Cartesian2D(Cartesian):

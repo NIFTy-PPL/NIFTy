@@ -1,3 +1,4 @@
+from __future__ import division
 
 from nifty import *
 #import plotly.offline as pl
@@ -11,7 +12,7 @@ rank = comm.rank
 if __name__ == "__main__":
 
     distribution_strategy = 'not'
-    
+
     #Setting up physical constants
     #total length of Interval or Volume the field lives on, e.g. in meters
     L = 2.
@@ -21,18 +22,18 @@ if __name__ == "__main__":
     field_variance = 2.
     #smoothing length that response (in same unit as L)
     response_sigma = 0.1
-    
+
     #defining resolution (pixels per dimension)
     N_pixels = 512
-    
+
     #Setting up derived constants
     k_0 = 1./correlation_length
     #note that field_variance**2 = a*k_0/4. for this analytic form of power
     #spectrum
     a = field_variance**2/k_0*4.
-    pow_spec = (lambda k: a / (1 + k/k_0) ** 4)
+    pow_spec = (lambda k: a / (1. + k/k_0) ** 4)
     pixel_width = L/N_pixels
-    
+
     # Setting up the geometry
     s_space = RGSpace([N_pixels, N_pixels], distances = pixel_width)
     fft = FFTOperator(s_space)

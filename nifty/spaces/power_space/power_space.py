@@ -16,13 +16,15 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import str
 import numpy as np
 
 import d2o
 
-from power_index_factory import PowerIndexFactory
+from .power_index_factory import PowerIndexFactory
 
 from nifty.spaces.space import Space
+from functools import reduce
 
 
 class PowerSpace(Space):

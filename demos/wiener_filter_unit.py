@@ -1,3 +1,5 @@
+from __future__ import division
+from builtins import range
 from nifty import *
 from mpi4py import MPI
 import plotly.offline as py
@@ -12,7 +14,7 @@ def plot_maps(x, name):
 
     trace = [None]*len(x)
 
-    keys = x.keys()
+    keys = list(x.keys())
     field = x[keys[0]]
     domain = field.domain[0]
     shape = len(domain.shape)
@@ -21,14 +23,14 @@ def plot_maps(x, name):
     x_axis = np.arange(0, max_n, step)
 
     if shape == 1:
-        for ii in xrange(len(x)):
+        for ii in range(len(x)):
             trace[ii] = go.Scatter(x= x_axis, y=x[keys[ii]].val.get_full_data(), name=keys[ii])
         fig = go.Figure(data=trace)
 
         py.plot(fig, filename=name)
 
     elif shape == 2:
-        for ii in xrange(len(x)):
+        for ii in range(len(x)):
             py.plot([go.Heatmap(z=x[keys[ii]].val.get_full_data())], filename=keys[ii])
     else:
         raise TypeError("Only 1D and 2D field plots are supported")
@@ -48,12 +50,12 @@ def plot_power(x, name):
 
     trace = [None]*len(x)
 
-    keys = x.keys()
+    keys = list(x.keys())
     field = x[keys[0]]
     domain = field.domain[0]
     x_axis = domain.kindex
 
-    for ii in xrange(len(x)):
+    for ii in range(len(x)):
         trace[ii] = go.Scatter(x= x_axis, y=x[keys[ii]].val.get_full_data(), name=keys[ii])
 
     fig = go.Figure(data=trace, layout=layout)

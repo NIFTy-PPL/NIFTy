@@ -16,14 +16,17 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import abc
 from nifty.nifty_meta import NiftyMeta
 
 from keepers import Loggable,\
                     Versionable
+from future.utils import with_metaclass
 
 
-class DomainObject(Versionable, Loggable, object):
+class DomainObject(with_metaclass(NiftyMeta, type('NewBase',
+        (Versionable, Loggable, object), {}))):
     """The abstract class that can be used as a domain for a field.
 
     This holds all the information and functionality a field needs to know
@@ -38,8 +41,6 @@ class DomainObject(Versionable, Loggable, object):
         on this domain.
 
     """
-
-    __metaclass__ = NiftyMeta
 
     def __init__(self):
         # _global_id is used in the Versioning module from keepers
@@ -56,7 +57,7 @@ class DomainObject(Versionable, Loggable, object):
             item = vars(self)[key]
             if key in self._ignore_for_hash or key == '_ignore_for_hash':
                 continue
-            result_hash ^= item.__hash__() ^ int(hash(key)/117)
+            result_hash ^= item.__hash__() ^ int(hash(key)//117)
         return result_hash
 
     def __eq__(self, x):
@@ -75,7 +76,7 @@ class DomainObject(Versionable, Loggable, object):
         """
 
         if isinstance(x, type(self)):
-            for key in vars(self).keys():
+            for key in list(vars(self).keys()):
                 item1 = vars(self)[key]
                 if key in self._ignore_for_hash or key == '_ignore_for_hash':
                     continue

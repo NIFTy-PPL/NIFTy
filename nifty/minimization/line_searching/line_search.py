@@ -21,9 +21,10 @@ import abc
 from keepers import Loggable
 
 from nifty import LineEnergy
+from future.utils import with_metaclass
 
 
-class LineSearch(Loggable, object):
+class LineSearch(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object), {}))):
     """Class for determining the optimal step size along some descent direction.
     
     Initialize the line search procedure which can be used by a specific line
@@ -40,8 +41,6 @@ class LineSearch(Loggable, object):
         Initial guess for the step length.
     
     """
-    
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
 

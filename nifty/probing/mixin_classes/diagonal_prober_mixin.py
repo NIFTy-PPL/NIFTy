@@ -16,6 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
+from builtins import object
+
 
 class DiagonalProberMixin(object):
     def __init__(self, *args, **kwargs):

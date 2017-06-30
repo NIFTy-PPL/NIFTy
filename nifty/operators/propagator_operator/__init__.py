@@ -16,5 +16,5 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from propagator_operator import PropagatorOperator
-from harmonic_propagator_operator import HarmonicPropagatorOperator
+from .propagator_operator import PropagatorOperator
+from .harmonic_propagator_operator import HarmonicPropagatorOperator

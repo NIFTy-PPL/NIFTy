@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
+from builtins import range
 import numpy as np
 
 from .line_search import LineSearch
@@ -134,7 +136,7 @@ class LineSearchStrongWolfe(LineSearch):
         phiprime_alpha0 = phiprime_0
 
         # start the minimization loop
-        for i in xrange(max_iterations):
+        for i in range(max_iterations):
             energy_alpha1 = self.line_energy.at(alpha1)
             phi_alpha1 = energy_alpha1.value
             if alpha1 == 0:
@@ -243,7 +245,7 @@ class LineSearchStrongWolfe(LineSearch):
         alpha_recent = 0
         phi_recent = phi_0
 
-        for i in xrange(max_iterations):
+        for i in range(max_iterations):
             delta_alpha = alpha_hi - alpha_lo
             if delta_alpha < 0:
                 a, b = alpha_hi, alpha_lo

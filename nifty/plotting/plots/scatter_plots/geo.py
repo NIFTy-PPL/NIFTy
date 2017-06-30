@@ -1,5 +1,4 @@
-
-from scatter_plot import ScatterPlot
+from .scatter_plot import ScatterPlot
 
 
 class Geo(ScatterPlot):

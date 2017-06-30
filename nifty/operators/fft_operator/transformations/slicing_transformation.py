@@ -20,7 +20,7 @@ import abc
 import numpy as np
 
 import nifty.nifty_utilities as utilities
-from transformation import Transformation
+from .transformation import Transformation
 
 
 class SlicingTransformation(Transformation):

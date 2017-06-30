@@ -16,9 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import numpy as np
-from transformation import Transformation
-from rg_transforms import MPIFFT, SerialFFT
+from .transformation import Transformation
+from .rg_transforms import MPIFFT, SerialFFT
 from nifty import RGSpace, nifty_configuration
 
 
@@ -82,8 +83,8 @@ class RGRGTransformation(Transformation):
             zerocenter = temp
 
         # calculate the initialization parameters
-        distances = 1 / (np.array(domain.shape) *
-                         np.array(domain.distances))
+        distances = 1. / (np.array(domain.shape) *
+                          np.array(domain.distances))
 
         new_space = RGSpace(domain.shape,
                             zerocenter=zerocenter,

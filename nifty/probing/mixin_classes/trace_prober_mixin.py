@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
+from builtins import object
 
 class TraceProberMixin(object):
     def __init__(self, *args, **kwargs):
@@ -53,5 +55,5 @@ class TraceProberMixin(object):
             mean = self.trace
             sum_sq = self.__sum_of_squares
 
-            self.__trace_variance = ((sum_sq - sum_pr*mean) / (n-1))
+            self.__trace_variance = (sum_sq - sum_pr*mean) / (n-1)
         return self.__trace_variance

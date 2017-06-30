@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import range
+from builtins import object
 import warnings
 
 import numpy as np
@@ -24,6 +26,7 @@ from nifty.config import dependency_injector as gdi
 import nifty.nifty_utilities as utilities
 
 from keepers import Loggable
+from functools import reduce
 
 fftw = gdi.get('fftw')
 

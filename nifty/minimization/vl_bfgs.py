@@ -16,6 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
+from builtins import range
+from builtins import object
 import numpy as np
 
 from .descent_minimizer import DescentMinimizer
@@ -81,7 +84,7 @@ class VL_BFGS(DescentMinimizer):
         delta = self._information_store.delta
 
         descend_direction = delta[0] * b[0]
-        for i in xrange(1, len(delta)):
+        for i in range(1, len(delta)):
             descend_direction += delta[i] * b[i]
 
         norm = descend_direction.norm()
@@ -158,11 +161,11 @@ class InformationStore(object):
         k = self.k
 
         s = self.s
-        for i in xrange(m):
+        for i in range(m):
             result.append(s[k-m+i])
 
         y = self.y
-        for i in xrange(m):
+        for i in range(m):
             result.append(y[k-m+i])
 
         result.append(self.last_gradient)
@@ -186,8 +189,8 @@ class InformationStore(object):
         k = self.k
         result = np.empty((2*m+1, 2*m+1), dtype=np.float)
 
-        for i in xrange(m):
-            for j in xrange(m):
+        for i in range(m):
+            for j in range(m):
                 result[i, j] = self.ss_store(k-m+i, k-m+j)
 
                 sy_ij = self.sy_store(k-m+i, k-m+j)
@@ -226,16 +229,16 @@ class InformationStore(object):
 
         alpha = np.empty(m, dtype=np.float)
 
-        for j in xrange(m-1, -1, -1):
-            delta_b_b = sum([delta[l] * b_dot_b[l, j] for l in xrange(2*m+1)])
+        for j in range(m-1, -1, -1):
+            delta_b_b = sum([delta[l] * b_dot_b[l, j] for l in range(2*m+1)])
             alpha[j] = delta_b_b/b_dot_b[j, m+j]
             delta[m+j] -= alpha[j]
 
-        for i in xrange(2*m+1):
+        for i in range(2*m+1):
             delta[i] *= b_dot_b[m-1, 2*m-1]/b_dot_b[2*m-1, 2*m-1]
 
-        for j in xrange(m-1, -1, -1):
-            delta_b_b = sum([delta[l]*b_dot_b[m+j, l] for l in xrange(2*m+1)])
+        for j in range(m-1, -1, -1):
+            delta_b_b = sum([delta[l]*b_dot_b[m+j, l] for l in range(2*m+1)])
             beta = delta_b_b/b_dot_b[j, m+j]
             delta[j] += (alpha[j] - beta)
 

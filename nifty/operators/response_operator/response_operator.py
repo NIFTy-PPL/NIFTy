@@ -1,3 +1,4 @@
+from builtins import range
 import numpy as np
 from nifty import Field,\
                   FieldArray
@@ -76,7 +77,7 @@ class ResponseOperator(LinearOperator):
 
         shapes = len(self._domain)*[None]
         shape_target = []
-        for ii in xrange(len(shapes)):
+        for ii in range(len(shapes)):
             shapes[ii] = self._domain[ii].shape
             shape_target = np.append(shape_target, self._domain[ii].shape)
 
@@ -89,8 +90,8 @@ class ResponseOperator(LinearOperator):
             raise ValueError("Length of smoothing kernel and length of"
                              "exposure do not match")
 
-        for ii in xrange(len(kernel_smoothing)):
-            kernel_smoothing[ii] = SmoothingOperator(self._domain[ii],
+        for ii in range(len(kernel_smoothing)):
+            kernel_smoothing[ii] = SmoothingOperator.make(self._domain[ii],
                                                      sigma=sigma[ii])
             kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
                                                    diagonal=exposure[ii])

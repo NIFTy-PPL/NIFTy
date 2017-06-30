@@ -29,6 +29,7 @@
 
 """
 from __future__ import division
+from builtins import range
 
 import numpy as np
 
@@ -36,6 +37,7 @@ from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
+from functools import reduce
 
 
 class RGSpace(Space):
@@ -138,9 +140,9 @@ class RGSpace(Space):
             # Use ndindex to iterate over all combinations of zeros and the
             # mid_index in order to correct all fixed points.
             if axes is None:
-                axes = xrange(dimensions)
+                axes = range(dimensions)
 
-            ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
+            ndlist = [2 if i in axes else 1 for i in range(dimensions)]
             ndlist = tuple(ndlist)
             for i in np.ndindex(ndlist):
                 temp_index = tuple(i * mid_index)
@@ -158,7 +160,7 @@ class RGSpace(Space):
         y = x.copy()
 
         if axes is None:
-            axes = xrange(dimensions)
+            axes = range(dimensions)
 
         # flip in the desired directions
         for i in axes:

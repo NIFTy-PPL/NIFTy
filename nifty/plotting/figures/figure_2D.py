@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from figure_from_plot import FigureFromPlot
+from .figure_from_plot import FigureFromPlot
 from nifty.plotting.plots import Heatmap, HPMollweide, GLMollweide
 
 

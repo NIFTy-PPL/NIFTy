@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from nifty import dependency_injector as gdi
-from heatmap import Heatmap
+from .heatmap import Heatmap
 import numpy as np
 
 from .mollweide_helper import mollweide_helper

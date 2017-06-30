@@ -225,7 +225,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     def test_constructor(self, shape, zerocenter, distances,
                          harmonic, expected):
         x = RGSpace(shape, zerocenter, distances, harmonic)
-        for key, value in expected.iteritems():
+        for key, value in expected.items():
             assert_equal(getattr(x, key), value)
 
     @expand(get_hermitian_configs())

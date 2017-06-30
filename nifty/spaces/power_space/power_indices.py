@@ -16,6 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
+from builtins import range
+from builtins import object
 import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
@@ -202,7 +205,7 @@ class PowerIndices(object):
             a helper function which forms a hashable identifying object from
             a config dictionary which can be used as key of a dict
         """
-        return frozenset(config_dict.items())
+        return frozenset(list(config_dict.items()))
 
     def _compute_index_dict(self, config_dict):
         """

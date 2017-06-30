@@ -25,7 +25,7 @@ from nifty.spaces import RGSpace,\
                          LMSpace
 
 from nifty.operators.linear_operator import LinearOperator
-from transformations import RGRGTransformation,\
+from .transformations import RGRGTransformation,\
                             LMGLTransformation,\
                             LMHPTransformation,\
                             GLLMTransformation,\

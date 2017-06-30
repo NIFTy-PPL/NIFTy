@@ -16,15 +16,17 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import str
 import abc
 from nifty.nifty_meta import NiftyMeta
 
 from keepers import Loggable
 from nifty.field import Field
 import nifty.nifty_utilities as utilities
+from future.utils import with_metaclass
 
 
-class LinearOperator(Loggable, object):
+class LinearOperator(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """NIFTY base class for linear operators.
 
     The base NIFTY operator class is an abstract class from which
@@ -69,8 +71,6 @@ class LinearOperator(Loggable, object):
     PropagatorOperator, ComposedOperator
 
     """
-
-    __metaclass__ = NiftyMeta
 
     def __init__(self, default_spaces=None):
         self.default_spaces = default_spaces
