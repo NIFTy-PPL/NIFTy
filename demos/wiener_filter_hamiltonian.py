@@ -27,7 +27,7 @@ class WienerFilterEnergy(Energy):
     @property
     def value(self):
         D_inv_x = self.D_inverse_x()
-        H = 0.5 * D_inv_x.vdot(self.position) - self.j.dot(self.position)
+        H = 0.5 * D_inv_x.vdot(self.position) - self.j.vdot(self.position)
         return H.real
 
     @property
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     ss = fft.inverse_times(sh)
 
     # model the measurement process
-    R = SmoothingOperator(s_space, sigma=0.01)
+    R = SmoothingOperator.make(s_space, sigma=0.01)
 #    R = DiagonalOperator(s_space, diagonal=1.)
 #    R._diagonal.val[200:400, 200:400] = 0
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     def distance_measure(energy, iteration):
         x = energy.position
-        print((iteration, (x-ss).norm()/ss.norm()).real))
+        print(iteration, (x-ss).norm()/ss.norm().real)
 
 #    minimizer = SteepestDescent(convergence_tolerance=0,
 #                                iteration_limit=50,

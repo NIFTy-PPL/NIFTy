@@ -1104,7 +1104,7 @@ class Field(Loggable, Versionable, object):
             The Lq-norm of the field values.
 
         """
-        return np.sqrt(np.abs(self.dot(x=self)))
+        return np.sqrt(np.abs(self.vdot(x=self)))
 
     def conjugate(self, inplace=False):
         """ Retruns the complex conjugate of the field.

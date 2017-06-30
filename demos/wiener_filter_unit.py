@@ -88,7 +88,7 @@ if __name__ == "__main__":
     x1 = RGSpace(npix, distances=total_volume / npix,
                  zerocenter=False)
     k1 = RGRGTransformation.get_codomain(x1)
-    p1 = PowerSpace(harmonic_domain=k1, log=False)
+    p1 = PowerSpace(harmonic_partner=k1, logarithmic=False)
 
     # creating Power Operator with given spectrum
     spec = (lambda k: a_s / (1 + (k / k_0) ** 2) ** 2)
