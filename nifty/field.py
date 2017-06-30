@@ -802,7 +802,7 @@ class Field(Loggable, Versionable, object):
 
         dim_tuple = tuple(sp.dim for sp in self.domain)
         try:
-            return reduce(lambda x, y: x * y, dim_tuple)
+            return int(reduce(lambda x, y: x * y, dim_tuple))
         except TypeError:
             return 0
 

@@ -201,7 +201,7 @@ class RGSpace(Space):
 
     @property
     def dim(self):
-        return reduce(lambda x, y: x*y, self.shape)
+        return int(reduce(lambda x, y: x*y, self.shape))
 
     @property
     def total_volume(self):
