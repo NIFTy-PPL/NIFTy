@@ -163,22 +163,18 @@ class RGSpace(Space):
         # flip in the desired directions
         for i in axes:
             slice_picker = slice_primitive[:]
-            if shape[i] % 2 == 0:
-                slice_picker[i] = slice(1, None, None)
-            else:
-                slice_picker[i] = slice(None)
-            slice_picker = tuple(slice_picker)
-
             slice_inverter = slice_primitive[:]
-            if shape[i] % 2 == 0:
+            if self.zerocenter[i] == False or shape[i] % 2 == 0:
+                slice_picker[i] = slice(1, None, None)
                 slice_inverter[i] = slice(None, 0, -1)
             else:
+                slice_picker[i] = slice(None)
                 slice_inverter[i] = slice(None, None, -1)
+            slice_picker = tuple(slice_picker)
             slice_inverter = tuple(slice_inverter)
 
             try:
-                y.set_data(to_key=slice_picker, data=y,
-                           from_key=slice_inverter)
+                y.set_data(to_key=slice_picker, data=y, from_key=slice_inverter)
             except(AttributeError):
                 y[slice_picker] = y[slice_inverter]
         return y
