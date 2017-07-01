@@ -57,7 +57,7 @@ class FFTOperator(LinearOperator):
         "adjoint_times".
         If omitted, a co-domain will be chosen automatically.
         Whenever "domain" is an RGSpace, the codomain (and its parameters) are
-        uniquely determined (except for "zerocenter").
+        uniquely determined.
         For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
         co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
@@ -235,7 +235,7 @@ class FFTOperator(LinearOperator):
             A (more or less perfect) counterpart to "domain" with respect
             to a FFT operation.
             Whenever "domain" is an RGSpace, the codomain (and its parameters)
-            are uniquely determined (except for "zerocenter").
+            are uniquely determined.
             For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
             co-domain is chosen that should work satisfactorily in most
             situations. For full control however, the user should not rely on

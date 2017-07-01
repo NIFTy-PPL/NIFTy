@@ -25,57 +25,43 @@ from numpy.testing import assert_, assert_equal, assert_almost_equal
 from nifty import RGSpace
 from test.common import expand
 
-# [shape, zerocenter, distances, harmonic, expected]
+# [shape, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [
-        [(8,), False, None, False,
+        [(8,), None, False,
             {
                 'shape': (8,),
-                'zerocenter': (False,),
                 'distances': (0.125,),
                 'harmonic': False,
                 'dim': 8,
                 'total_volume': 1.0
             }],
-        [(8,), True, None, False,
+        [(8,), None, True,
             {
                 'shape': (8,),
-                'zerocenter': (True,),
-                'distances': (0.125,),
-                'harmonic': False,
-                'dim': 8,
-                'total_volume': 1.0
-            }],
-        [(8,), False, None, True,
-            {
-                'shape': (8,),
-                'zerocenter': (False,),
                 'distances': (1.0,),
                 'harmonic': True,
                 'dim': 8,
                 'total_volume': 8.0
             }],
-        [(8,), False, (12,), True,
+        [(8,), (12,), True,
             {
                 'shape': (8,),
-                'zerocenter': (False,),
                 'distances': (12.0,),
                 'harmonic': True,
                 'dim': 8,
                 'total_volume': 96.0
             }],
-        [(11, 11), (False, True), None, False,
+        [(11, 11), None, False,
             {
                 'shape': (11, 11),
-                'zerocenter': (False, True),
                 'distances': (1/11, 1/11),
                 'harmonic': False,
                 'dim': 121,
                 'total_volume': 1.0
             }],
-        [(11, 11), True, (1.3, 1.3), True,
+        [(11, 11), (1.3, 1.3), True,
             {
                 'shape': (11, 11),
-                'zerocenter': (True, True),
                 'distances': (1.3, 1.3),
                 'harmonic': True,
                 'dim': 121,
@@ -86,7 +72,7 @@ CONSTRUCTOR_CONFIGS = [
 
 
 def get_distance_array_configs():
-    # for RGSpace(shape=(4, 4), distances=None, zerocenter=[False, False])
+    # for RGSpace(shape=(4, 4), distances=None)
     cords_0 = np.ogrid[0:4, 0:4]
     da_0 = ((cords_0[0] - 4 // 2) * 0.25)**2
     da_0 = np.fft.ifftshift(da_0)
@@ -94,20 +80,8 @@ def get_distance_array_configs():
     temp = np.fft.ifftshift(temp)
     da_0 = da_0 + temp
     da_0 = np.sqrt(da_0)
-    # for RGSpace(shape=(4, 4), distances=None, zerocenter=[True, True])
-    da_1 = ((cords_0[0] - 4 // 2) * 0.25)**2
-    temp = ((cords_0[1] - 4 // 2) * 0.25)**2
-    da_1 = da_1 + temp
-    da_1 = np.sqrt(da_1)
-    # for RGSpace(shape=(4, 4), distances=(12, 12), zerocenter=[True, True])
-    da_2 = ((cords_0[0] - 4 // 2) * 12)**2
-    temp = ((cords_0[1] - 4 // 2) * 12)**2
-    da_2 = da_2 + temp
-    da_2 = np.sqrt(da_2)
     return [
-        [(4, 4),  None, [False, False], da_0],
-        [(4, 4),  None, [True, True], da_1],
-        [(4, 4),  (12, 12), [True, True], da_2]
+        [(4, 4),  None, da_0],
         ]
 
 
@@ -213,8 +187,7 @@ def get_hermitian_configs():
 
 
 class RGSpaceInterfaceTests(unittest.TestCase):
-    @expand([['distances', tuple],
-            ['zerocenter', tuple]])
+    @expand([['distances', tuple]])
     def test_property_ret_type(self, attribute, expected_type):
         x = RGSpace(1)
         assert_(isinstance(getattr(x, attribute), expected_type))
@@ -222,9 +195,9 @@ class RGSpaceInterfaceTests(unittest.TestCase):
 
 class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, shape, zerocenter, distances,
+    def test_constructor(self, shape, distances,
                          harmonic, expected):
-        x = RGSpace(shape, zerocenter, distances, harmonic)
+        x = RGSpace(shape, distances, harmonic)
         for key, value in expected.iteritems():
             assert_equal(getattr(x, key), value)
 
@@ -235,8 +208,8 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         assert_almost_equal(r.hermitian_decomposition(x, axes=axes)[1], imag)
 
     @expand(get_distance_array_configs())
-    def test_distance_array(self, shape, distances, zerocenter, expected):
-        r = RGSpace(shape=shape, distances=distances, zerocenter=zerocenter)
+    def test_distance_array(self, shape, distances, expected):
+        r = RGSpace(shape=shape, distances=distances)
         assert_almost_equal(r.get_distance_array('not'), expected)
 
     @expand(get_weight_configs())
