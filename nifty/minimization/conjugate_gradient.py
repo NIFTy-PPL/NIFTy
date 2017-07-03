@@ -121,13 +121,13 @@ class ConjugateGradient(Loggable, object):
 
         r = b - A(x0)
         d = self.preconditioner(r)
-        previous_gamma = r.vdot(d)
+        previous_gamma = (r.vdot(d)).real
         if previous_gamma == 0:
             self.logger.info("The starting guess is already perfect solution "
                              "for the inverse problem.")
             return x0, self.convergence_level+1
-        norm_b = np.sqrt(b.vdot(b))
-        x = x0
+        norm_b = np.sqrt((b.vdot(b)).real)
+        x = x0.copy()
         convergence = 0
         iteration_number = 1
         self.logger.info("Starting conjugate gradient.")
@@ -137,7 +137,7 @@ class ConjugateGradient(Loggable, object):
                 self.callback(x, iteration_number)
 
             q = A(d)
-            alpha = previous_gamma/d.vdot(q)
+            alpha = previous_gamma/d.vdot(q).real
 
             if not np.isfinite(alpha):
                 self.logger.error("Alpha became infinite! Stopping.")
@@ -146,7 +146,7 @@ class ConjugateGradient(Loggable, object):
             x += d * alpha
 
             reset = False
-            if alpha.real < 0:
+            if alpha < 0:
                 self.logger.warn("Positive definiteness of A violated!")
                 reset = True
             if self.reset_count is not None:
@@ -158,9 +158,9 @@ class ConjugateGradient(Loggable, object):
                 r -= q * alpha
 
             s = self.preconditioner(r)
-            gamma = r.vdot(s)
+            gamma = r.vdot(s).real
 
-            if gamma.real < 0:
+            if gamma < 0:
                 self.logger.warn("Positive definitness of preconditioner "
                                  "violated!")
 
@@ -170,10 +170,7 @@ class ConjugateGradient(Loggable, object):
 
             self.logger.debug("Iteration : %08u   alpha = %3.1E   "
                               "beta = %3.1E   delta = %3.1E" %
-                              (iteration_number,
-                               np.real(alpha),
-                               np.real(beta),
-                               np.real(delta)))
+                              (iteration_number, alpha, beta, delta))
 
             if gamma == 0:
                 convergence = self.convergence_level+1
