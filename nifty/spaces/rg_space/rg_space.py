@@ -162,10 +162,11 @@ class RGSpace(Space):
         y = x.copy()
 
         # flip in the desired directions
-        for i in axes:
+        for k in range(len(axes)):
+            i = axes[k]
             slice_picker = slice_primitive[:]
             slice_inverter = slice_primitive[:]
-            if self.zerocenter[i] is False or self.shape[i] % 2 == 0:
+            if (not self.zerocenter[k]) or self.shape[k] % 2 == 0:
                 slice_picker[i] = slice(1, None, None)
                 slice_inverter[i] = slice(None, 0, -1)
             else:
