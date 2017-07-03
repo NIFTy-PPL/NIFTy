@@ -144,8 +144,11 @@ class RGSpace(Space):
             # Use ndindex to iterate over all combinations of zeros and the
             # mid_index in order to correct all fixed points.
 
-            ndlist = [2 if i in axes and self.shape[i] % 2 == 0
-                      else 1 for i in xrange(dimensions)]
+            ndlist=[1]*dimensions
+            for k in range(len(axes)):
+                i = axes[k]
+                if self.shape[k]%2 == 0:
+                    ndlist[i] = 2
             ndlist = tuple(ndlist)
             for i in np.ndindex(ndlist):
                 temp_index = tuple(i * mid_index)
