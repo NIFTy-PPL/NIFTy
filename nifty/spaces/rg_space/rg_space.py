@@ -104,7 +104,7 @@ class RGSpace(Space):
                                 preserve_gaussian_variance=False):
         # check axes
         if axes is None:
-            axes = range(len(x.shape))
+            axes = range(len(self.shape))
         assert len(x.shape) >= len(self.shape), "shapes mismatch"
         assert len(axes) == len(self.shape), "axes mismatch"
 
