@@ -55,6 +55,26 @@ class Test_Interface(unittest.TestCase):
         f = Field(domain=domain)
         assert_(isinstance(getattr(f, attribute), desired_type))
 
+    def test_hermitian_decomposition2(self):
+        s1=(25,2)
+        s2=(16,)
+        ax1=((0,1,2),)
+        ax2=((0,1),(2,))
+        r2 = RGSpace(s1+s2, harmonic=True)
+        ra = RGSpace(s1, harmonic=True)
+        rb = RGSpace(s2, harmonic=True)
+        v = np.empty(s1+s2,dtype=np.complex128)
+        v.real = np.random.random(s1+s2)
+        v.imag = np.random.random(s1+s2)
+        f1=Field(r2,val=v,copy=True)
+        f2=Field((ra,rb),val=v,copy=True)
+        h2,a2 = Field._hermitian_decomposition((RGSpace(s1, harmonic=True),
+                RGSpace(s2, harmonic=True)),f2.val,(0,1),ax2,False)
+        h1,a1 = Field._hermitian_decomposition((RGSpace(s1+s2, harmonic=True),),
+                f1.val,(0,),ax1,False)
+        assert(np.max(np.abs(h1-h2))<1e-10)
+        assert(np.max(np.abs(a1-a2))<1e-10)
+
 #class Test_Initialization(unittest.TestCase):
 #
 #    @parameterized.expand(

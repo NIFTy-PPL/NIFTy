@@ -155,16 +155,12 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
 
     @expand(product([(10,),(11,),(1,1),(4,4),(5,7),(8,12),(7,16),(4,6,8),
         (17,5,3)],))
-    def test_hermitian_decomposition1(self, shape):
+    def test_hermitian_decomposition(self, shape):
         r = RGSpace(shape, harmonic=True)
         v = np.empty(shape,dtype=np.complex128)
         v.real = np.random.random(shape)
         v.imag = np.random.random(shape)
-        v=Field(r,val=v)
-        h,a = r.hermitian_decomposition(v.val)
-        v=v.val.get_full_data()
-        h=h.get_full_data()
-        a=a.get_full_data()
+        h,a = r.hermitian_decomposition(v)
         # make sure that data == h + a
         assert_almost_equal(v,h+a)
         # test hermitianity of h
@@ -176,23 +172,8 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
                 i2.append(h.shape[i]-i1[i] if i1[i]>0 else 0)
             i2 = tuple(i2)
             assert_almost_equal(h[i1],np.conj(h[i2]))
+            assert_almost_equal(a[i1],-np.conj(a[i2]))
             it.iternext()
-
-    def test_hermitian_decomposition2(self):
-        r2 = RGSpace((16,25), harmonic=True)
-        ra = RGSpace((16,), harmonic=True)
-        rb = RGSpace((25,), harmonic=True)
-        v = np.empty((16,25),dtype=np.complex128)
-        v.real = np.random.random((16,25))
-        v.imag = np.random.random((16,25))
-        f1=Field(r2,val=v,copy=True)
-        f2=Field((ra,rb),val=v,copy=True)
-        h2,a2 = Field._hermitian_decomposition((RGSpace((16,), harmonic=True),
-                RGSpace((25,), harmonic=True)),f2.val,(0,1),((0,),(1,),),False)
-        h1,a1 = Field._hermitian_decomposition((RGSpace((16,25), harmonic=True),),
-                f1.val,(0,),((0,1),),False)
-        assert(np.max(np.abs(h1-h2))<1e-10)
-        assert(np.max(np.abs(a1-a2))<1e-10)
 
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, zerocenter, expected):
