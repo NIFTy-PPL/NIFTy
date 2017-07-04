@@ -22,6 +22,8 @@ from d2o import distributed_data_object
 
 from nifty.spaces.space import Space
 
+_PSCache = {}
+
 
 class PowerSpace(Space):
     """ NIFTY class for spaces of power spectra.
@@ -100,6 +102,16 @@ class PowerSpace(Space):
             raise ValueError(
                 "if binbounds is defined, nbin and logarithmic must be None")
 
+        if binbounds is not None:
+            binbounds = tuple(binbounds)
+
+        key = (harmonic_partner, distribution_strategy, logarithmic, nbin,
+               binbounds)
+        if _PSCache.get(key) is not None:
+            (self._binbounds, self._pindex, self._kindex, self._rho) \
+                = _PSCache[key]
+            return
+
         self._binbounds = None
         if logarithmic is None and nbin is None and binbounds is None:
             bb = self._harmonic_partner.get_natural_binbounds()
@@ -146,6 +158,9 @@ class PowerSpace(Space):
         self._rho = self._pindex.bincount().get_full_data()
         self._kindex = self._pindex.bincount(
             weights=dists).get_full_data()/self._rho
+
+        _PSCache[key] = \
+            (self._binbounds, self._pindex, self._kindex, self._rho)
 
     def pre_cast(self, x, axes):
         """ Casts power spectrum functions to discretized power spectra.
