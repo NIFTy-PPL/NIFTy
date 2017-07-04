@@ -73,6 +73,25 @@ class Test_Interface(unittest.TestCase):
         assert_almost_equal(h1.get_full_data(),h3.get_full_data())
         assert_almost_equal(a1.get_full_data(),a3.get_full_data())
 
+    @expand(product([False,True],[False,True]))
+    def test_hermitian_decomposition1(self, complexdata, preserve):
+        s0=(1,)
+        s1=(56,25)
+        r0 = RGSpace(s0, harmonic=True)
+        r1 = RGSpace(s1, harmonic=True)
+        ra = RGSpace(s0+s1, harmonic=True)
+        v = np.random.random(s1)
+        if (complexdata):
+            v = v + 1j*np.random.random(s1)
+        f1=Field(r1,val=v,copy=True)
+        f2=Field((r0,r1),val=v,copy=True)
+        h1,a1 = Field._hermitian_decomposition((r1,),f1.val,(0,),((0,1,),),preserve)
+        h2,a2 = Field._hermitian_decomposition((r0,r1),f2.val,(0,1),((0,),(1,2)),preserve)
+        h2=h2[0,:,:]
+        a2=a2[0,:,:]
+        assert_almost_equal(h1.get_full_data(),h2.get_full_data())
+        assert_almost_equal(a1.get_full_data(),a2.get_full_data())
+
 #class Test_Initialization(unittest.TestCase):
 #
 #    @parameterized.expand(
