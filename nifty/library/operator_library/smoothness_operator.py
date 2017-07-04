@@ -1,5 +1,6 @@
 from nifty import EndomorphicOperator,\
                   PowerSpace
+import nifty.nifty_utilities as utilities
 
 from laplace_operator import LaplaceOperator
 
@@ -39,7 +40,7 @@ class SmoothnessOperator(EndomorphicOperator):
 
         self._sigma = sigma
 
-        self._Laplace = LaplaceOperator(domain=self._domain[0], logarithmic=logarithmic)
+        self._Laplace = LaplaceOperator(domain=domain, logarithmic=logarithmic)
 
 
 
@@ -67,6 +68,7 @@ class SmoothnessOperator(EndomorphicOperator):
     def self_adjoint(self):
         return False
 
-    def _times(self, t, spaces):
-        res = self._Laplace.adjoint_times(self._Laplace.times(t))
-        return (1/self.sigma)**2*res
+    def _times(self, x, spaces):
+
+        res = self._Laplace.adjoint_times(self._Laplace.times(x,spaces), spaces)
+        return (1./self.sigma)**2*res

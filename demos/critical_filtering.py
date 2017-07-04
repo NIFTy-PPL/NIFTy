@@ -62,7 +62,7 @@ if __name__ == "__main__":
 
     # Setting up power space
     p_space = PowerSpace(h_space, logarithmic=True,
-                         distribution_strategy=distribution_strategy)#, nbin=5)
+                         distribution_strategy=distribution_strategy)
 
     # Choosing the prior correlation structure and defining correlation operator
     p_spec = (lambda k: (.5 / (k + 1) ** 3))
@@ -140,7 +140,7 @@ if __name__ == "__main__":
         m0 = map_energy.position
         D0 = map_energy.curvature
         # Initializing the power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=100., samples=3)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=10., samples=3)
 
         (power_energy, convergence) = minimizer1(power_energy)
 
