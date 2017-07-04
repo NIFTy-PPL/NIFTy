@@ -20,7 +20,8 @@ import unittest
 
 import numpy as np
 from numpy.testing import assert_,\
-                          assert_equal
+                          assert_equal,\
+                          assert_almost_equal
 
 from itertools import product
 
@@ -55,25 +56,22 @@ class Test_Interface(unittest.TestCase):
         f = Field(domain=domain)
         assert_(isinstance(getattr(f, attribute), desired_type))
 
-    def test_hermitian_decomposition2(self):
-        s1=(25,2)
+    def test_hermitian_decomposition0(self):
+        s1=(25,)
         s2=(16,)
-        ax1=((0,1,2),)
-        ax2=((0,1),(2,))
-        r2 = RGSpace(s1+s2, harmonic=True)
-        ra = RGSpace(s1, harmonic=True)
-        rb = RGSpace(s2, harmonic=True)
-        v = np.empty(s1+s2,dtype=np.complex128)
-        v.real = np.random.random(s1+s2)
-        v.imag = np.random.random(s1+s2)
-        f1=Field(r2,val=v,copy=True)
-        f2=Field((ra,rb),val=v,copy=True)
-        h2,a2 = Field._hermitian_decomposition((RGSpace(s1, harmonic=True),
-                RGSpace(s2, harmonic=True)),f2.val,(0,1),ax2,False)
-        h1,a1 = Field._hermitian_decomposition((RGSpace(s1+s2, harmonic=True),),
-                f1.val,(0,),ax1,False)
-        assert(np.max(np.abs(h1-h2))<1e-10)
-        assert(np.max(np.abs(a1-a2))<1e-10)
+        r1 = RGSpace(s1, harmonic=True)
+        r2 = RGSpace(s2, harmonic=True)
+        ra = RGSpace(s1+s2, harmonic=True)
+        v = np.random.random(s1+s2) + 1j*np.random.random(s1+s2)
+        f1=Field(ra,val=v,copy=True)
+        f2=Field((r1,r2),val=v,copy=True)
+        h1,a1 = Field._hermitian_decomposition((ra,),f1.val,(0,),((0,1,),),False)
+        h2,a2 = Field._hermitian_decomposition((r1,r2),f2.val,(0,1),((0,),(1,)),False)
+        h3,a3 = Field._hermitian_decomposition((r1,r2),f2.val,(1,0),((0,),(1,)),False)
+        assert_almost_equal(h1.get_full_data(),h2.get_full_data())
+        assert_almost_equal(a1.get_full_data(),a2.get_full_data())
+        assert_almost_equal(h1.get_full_data(),h3.get_full_data())
+        assert_almost_equal(a1.get_full_data(),a3.get_full_data())
 
 #class Test_Initialization(unittest.TestCase):
 #

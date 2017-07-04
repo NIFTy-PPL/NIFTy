@@ -667,7 +667,7 @@ class Field(Loggable, Versionable, object):
 
         if pindex.distribution_strategy is not local_distribution_strategy:
             self.logger.warn(
-                "The distribution_stragey of pindex does not fit the "
+                "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
         # Now use numpy advanced indexing in order to put the entries of the
