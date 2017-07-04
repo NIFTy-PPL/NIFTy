@@ -25,10 +25,6 @@ class Figure2D(FigureFromPlot):
                     xaxis = False if (xaxis is None) else xaxis
                     yaxis = False if (yaxis is None) else yaxis
 
-            else:
-                width = None
-                height = None
-
         super(Figure2D, self).__init__(plots, title, width, height)
         self.xaxis = xaxis
         self.yaxis = yaxis

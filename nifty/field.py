@@ -170,6 +170,8 @@ class Field(Loggable, Versionable, object):
         else:
             dtype = np.dtype(dtype)
 
+        dtype = np.result_type(dtype, np.float)
+
         return dtype
 
     def _parse_distribution_strategy(self, distribution_strategy, val):
@@ -1038,7 +1040,7 @@ class Field(Loggable, Versionable, object):
         new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
-    def dot(self, x=None, spaces=None, bare=False):
+    def vdot(self, x=None, spaces=None, bare=False):
         """ Computes the volume-factor-aware dot product of 'self' with x.
 
         Parameters
@@ -1098,7 +1100,7 @@ class Field(Loggable, Versionable, object):
             The Lq-norm of the field values.
 
         """
-        return np.sqrt(np.abs(self.dot(x=self)))
+        return np.sqrt(np.abs(self.vdot(x=self)))
 
     def conjugate(self, inplace=False):
         """ Retruns the complex conjugate of the field.

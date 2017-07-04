@@ -85,7 +85,7 @@ class ResponseOperator(LinearOperator):
         kernel_smoothing = len(self._domain)*[None]
         kernel_exposure = len(self._domain)*[None]
 
-        if len(sigma)!= len(exposure):
+        if len(sigma) != len(exposure):
             raise ValueError("Length of smoothing kernel and length of"
                              "exposure do not match")
 
