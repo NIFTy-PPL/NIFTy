@@ -261,7 +261,7 @@ class InformationStore(object):
         """
         key = tuple(sorted((i, j)))
         if key not in self._ss_store:
-            self._ss_store[key] = self.s[i].dot(self.s[j])
+            self._ss_store[key] = self.s[i].vdot(self.s[j])
         return self._ss_store[key]
 
     def sy_store(self, i, j):
@@ -284,7 +284,7 @@ class InformationStore(object):
         """
         key = (i, j)
         if key not in self._sy_store:
-            self._sy_store[key] = self.s[i].dot(self.y[j])
+            self._sy_store[key] = self.s[i].vdot(self.y[j])
         return self._sy_store[key]
 
     def yy_store(self, i, j):
@@ -307,7 +307,7 @@ class InformationStore(object):
         """
         key = tuple(sorted((i, j)))
         if key not in self._yy_store:
-            self._yy_store[key] = self.y[i].dot(self.y[j])
+            self._yy_store[key] = self.y[i].vdot(self.y[j])
         return self._yy_store[key]
 
     def sgrad_store(self, i):
@@ -319,7 +319,7 @@ class InformationStore(object):
             Scalar product.
 
         """
-        return self.s[i].dot(self.last_gradient)
+        return self.s[i].vdot(self.last_gradient)
 
     def ygrad_store(self, i):
         """Returns scalar product between y_i and gradient on initial position.
@@ -330,7 +330,7 @@ class InformationStore(object):
             Scalar product.
 
         """
-        return self.y[i].dot(self.last_gradient)
+        return self.y[i].vdot(self.last_gradient)
 
     def gradgrad_store(self):
         """Returns scalar product of gradient on initial position with itself.
@@ -341,7 +341,7 @@ class InformationStore(object):
             Scalar product.
 
         """
-        return self.last_gradient.dot(self.last_gradient)
+        return self.last_gradient.vdot(self.last_gradient)
 
     def add_new_point(self, x, gradient):
         """Updates the s list and y list.

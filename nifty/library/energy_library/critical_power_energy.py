@@ -75,9 +75,9 @@ class CriticalPowerEnergy(Energy):
 
     @property
     def value(self):
-        energy = exp(-self.position).dot(self.q + self.w / 2., bare= True)
-        energy += self.position.dot(self.alpha - 1. + self.rho / 2., bare=True)
-        energy += 0.5 * self.position.dot(self.T(self.position))
+        energy = exp(-self.position).vdot(self.q + self.w / 2., bare= True)
+        energy += self.position.vdot(self.alpha - 1. + self.rho / 2., bare=True)
+        energy += 0.5 * self.position.vdot(self.T(self.position))
         return energy.real
 
     @property

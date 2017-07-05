@@ -115,7 +115,7 @@ if __name__ == "__main__":
     # Solving the problem analytically
     m0 = D0.inverse_times(j)
 
-    sample_variance = Field(sh.power_analyze(logarithmic=False).domain,val=0. + 0j)
+    sample_variance = Field(sh.domain,val=0. + 0j)
     sample_mean = Field(sh.domain,val=0. + 0j)
 
     # sampling the uncertainty map

@@ -109,7 +109,7 @@ class LineEnergy(Energy):
 
     @property
     def gradient(self):
-        return self.energy.gradient.dot(self.line_direction)
+        return self.energy.gradient.vdot(self.line_direction)
 
     @property
     def curvature(self):

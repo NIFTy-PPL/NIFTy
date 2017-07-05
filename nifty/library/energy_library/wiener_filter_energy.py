@@ -36,8 +36,8 @@ class WienerFilterEnergy(Energy):
     @property
     def value(self):
         residual = self._residual()
-        energy = 0.5 * self.position.dot(self.S.inverse_times(self.position))
-        energy += 0.5 * (residual).dot(self.N.inverse_times(residual))
+        energy = 0.5 * self.position.vdot(self.S.inverse_times(self.position))
+        energy += 0.5 * (residual).vdot(self.N.inverse_times(residual))
         return energy.real
 
     @property

@@ -165,7 +165,9 @@ class LMSpace(Space):
         return res
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        # FIXME why x(x+1) ? add reference to paper!
+        # cf. "All-sky convolution for polarimetry experiments"
+        # by Challinor et al.
+        # http://arxiv.org/abs/astro-ph/0008228
         return lambda x: np.exp(-0.5 * x * (x + 1) * sigma*sigma)
 
     # ---Added properties and methods---
