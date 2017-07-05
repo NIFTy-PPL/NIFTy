@@ -23,7 +23,7 @@ import d2o
 
 from .power_index_factory import PowerIndexFactory
 
-from nifty.spaces.space import Space
+from ..space import Space
 from functools import reduce
 
 

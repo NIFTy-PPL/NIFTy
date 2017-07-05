@@ -18,7 +18,7 @@
 
 from __future__ import division
 import abc
-from nifty.nifty_meta import NiftyMeta
+from .nifty_meta import NiftyMeta
 
 from keepers import Loggable,\
                     Versionable

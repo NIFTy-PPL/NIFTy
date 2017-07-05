@@ -19,7 +19,7 @@
 import abc
 import numpy as np
 
-import nifty.nifty_utilities as utilities
+from .... import nifty_utilities as utilities
 from .transformation import Transformation
 
 

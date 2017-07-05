@@ -19,7 +19,7 @@
 from __future__ import division
 import numpy as np
 from d2o import distributed_data_object
-from nifty.field import Field
+from .field import Field
 
 
 __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',

@@ -23,10 +23,10 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.basic_arithmetics import log as nifty_log
-from nifty.config import nifty_configuration as gc
-from nifty.field import Field
-from nifty.operators.endomorphic_operator import EndomorphicOperator
+from ...basic_arithmetics import log as nifty_log
+from ...config import nifty_configuration as gc
+from ...field import Field
+from ..endomorphic_operator import EndomorphicOperator
 
 
 class DiagonalOperator(EndomorphicOperator):

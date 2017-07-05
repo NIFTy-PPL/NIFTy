@@ -20,7 +20,7 @@ from __future__ import division
 import numpy as np
 from .transformation import Transformation
 from .rg_transforms import MPIFFT, SerialFFT
-from nifty import RGSpace, nifty_configuration
+from .... import RGSpace, nifty_configuration
 
 
 class RGRGTransformation(Transformation):

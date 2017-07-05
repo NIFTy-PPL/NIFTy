@@ -30,14 +30,14 @@ from keepers import Versionable,\
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import nifty_configuration as gc
+from .config import nifty_configuration as gc
 
-from nifty.domain_object import DomainObject
+from .domain_object import DomainObject
 
-from nifty.spaces.power_space import PowerSpace
+from .spaces.power_space import PowerSpace
 
-import nifty.nifty_utilities as utilities
-from nifty.random import Random
+from . import nifty_utilities as utilities
+from .random import Random
 from functools import reduce
 
 

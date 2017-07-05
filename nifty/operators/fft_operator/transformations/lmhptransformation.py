@@ -17,8 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from nifty.config import dependency_injector as gdi
-from nifty import HPSpace, LMSpace
+from ....config import dependency_injector as gdi
+from .... import HPSpace, LMSpace
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
 

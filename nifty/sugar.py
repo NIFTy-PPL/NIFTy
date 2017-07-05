@@ -16,9 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nifty import PowerSpace,\
-                  Field,\
-                  DiagonalOperator
+from . import PowerSpace,\
+              Field,\
+              DiagonalOperator
 
 __all__ = ['create_power_operator']
 
