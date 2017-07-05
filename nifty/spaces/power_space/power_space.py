@@ -218,7 +218,7 @@ class PowerSpace(Space):
                               distribution_strategy=distribution_strategy,
                               binbounds=self._binbounds)
 
-    def weight(self, x, power=1, axes=None, inplace=False):
+    def weight(self, x, power, axes, inplace=False):
         reshaper = [1, ] * len(x.shape)
         # we know len(axes) is always 1
         reshaper[axes[0]] = self.shape[0]
