@@ -80,6 +80,7 @@ if __name__ == "__main__":
 
     # Creating the mock data
     d = R(sh) + n
+    j = R.adjoint_times(N.inverse_times(d))
 
     # Choosing the minimization strategy
 
@@ -101,66 +102,27 @@ if __name__ == "__main__":
     #                    max_history_length=3)
     #
 
-
+    inverter = ConjugateGradient(convergence_level=3,
+                                 convergence_tolerance=10e-5,
+                                 preconditioner=None)
     # Setting starting position
     m0 = Field(h_space, val=.0)
 
     # Initializing the Wiener Filter energy
-    energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S)
-
+    energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S, inverter=inverter)
+    D0 = energy.curvature
 
     # Solving the problem analytically
-    solution = energy.analytic_solution()
+    m0 = D0.inverse_times(j)
+
     sample_variance = Field(sh.power_analyze(logarithmic=False).domain,val=0. + 0j)
     sample_mean = Field(sh.domain,val=0. + 0j)
-    n_samples = 200
+
+    # sampling the uncertainty map
+    n_samples = 1
     for i in range(n_samples):
-        sample = sugar.generate_posterior_sample(solution.position,solution.curvature)
-        sample_variance += sample.power_analyze(logarithmic=False)
+        sample = sugar.generate_posterior_sample(m0,D0)
+        sample_variance += sample**2
         sample_mean += sample
-    sample_variance = sample_variance/n_samples - (sample_mean/n_samples).power_analyze(logarithmic=False)
-
-    D = HarmonicPropagatorOperator(S=S, N=N, R=Instrument)
-
-
-    class DiagonalProber(DiagonalProberMixin, Prober):
-        pass
-
-
-    diagProber = DiagonalProber(domain=sh.domain)
-    diagProber(D)
-    diag = diagProber.diagonal
-    pr_diag = diag.power_analyze(logarithmic=False)**0.5
-    # Solving the problem with chosen minimization strategy
-    (energy, convergence) = minimizer(energy)
-
-    # Transforming fields to position space for plotting
-
-    ss = fft.adjoint_times(sh)
-    m = fft.adjoint_times(energy.position)
-    m_wf = fft.adjoint_times(solution.position)
-
-    # Plotting
-
-    d_data = d.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
-
-
-    ss_data = ss.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=ss_data)], filename='ss.html')
-
-    sh_data = sh.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=sh_data)], filename='sh.html')
-
-
-    m_data = m.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=m_data)], filename='map.html')
-
-    m_wf_data = m_wf.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=m_wf_data)], filename='map_wf.html')
+    variance = sample_variance/n_samples - (sample_mean/n_samples)
 

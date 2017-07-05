@@ -72,7 +72,7 @@ class InvertibleOperatorMixin(object):
         if x0 is None:
             x0 = Field(self.target, val=0., dtype=x.dtype)
 
-        (result, convergence) = self.__inverter(A=self.inverse_times,
+        (result, convergence) = self.__inverter(A=self.inverses_times,
                                                 b=x,
                                                 x0=x0)
         return result

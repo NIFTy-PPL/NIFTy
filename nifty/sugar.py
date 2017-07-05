@@ -20,7 +20,7 @@ from nifty import PowerSpace,\
                   Field,\
                   DiagonalOperator,\
                   sqrt
-
+from nifty.minimization.conjugate_gradient import ConjugateGradient
 __all__ = ['create_power_operator']
 
 
@@ -66,10 +66,36 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
 
-def generate_posterior_sample(mean, covariance):
+def generate_posterior_sample(mean, covariance, inverter = None):
+    """ Generates a posterior sample from a Gaussian distribution with given mean and covariance
+
+    This method generates samples by setting up the observation and reconstruction of a mock signal
+    in order to obtain residuals of the right correlation which are added to the given mean.
+
+    Parameters
+    ----------
+    mean : Field
+        the mean of the posterior Gaussian distribution
+    covariance : WienerFilterCurvature
+        The posterior correlation structure consisting of a
+        response operator, noise covariance and prior signal covariance
+    inverter : ConjugateGradient *optional*
+        the conjugate gradient used to invert the curvature for the Wiener filter.
+        default : None
+
+    Returns
+    -------
+    sample : Field
+        Returns the a sample from the Gaussian of given mean and covariance.
+
+    """
+
     S = covariance.S
     R = covariance.R
     N = covariance.N
+    if inverter is None:
+        inverter = ConjugateGradient(preconditioner=S)
+
     power = S.diagonal().power_analyze()**.5
     mock_signal = power.power_synthesize(real_signal=True)
 

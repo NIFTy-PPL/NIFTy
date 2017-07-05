@@ -95,6 +95,8 @@ if __name__ == "__main__":
     # Creating the mock data
     d = R(sh) + n
 
+    # The information source
+    j = R.adjoint_times(N.inverse_times(d))
     realized_power = log(sh.power_analyze(logarithmic=p_space.config["logarithmic"],
                                           nbin=p_space.config["nbin"]))
     data_power = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
@@ -114,11 +116,15 @@ if __name__ == "__main__":
                               convergence_level=2,
                               iteration_limit=3,
                               callback=convergence_measure)
+
     minimizer2 = VL_BFGS(convergence_tolerance=0,
                        iteration_limit=7,
                        callback=convergence_measure,
                        max_history_length=3)
 
+    inverter = ConjugateGradient(convergence_level=1,
+                                 convergence_tolerance=10e-4,
+                                 preconditioner=None)
     # Setting starting position
     flat_power = Field(p_space,val=10e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
@@ -132,15 +138,12 @@ if __name__ == "__main__":
                               distribution_strategy=distribution_strategy)
 
         # Initializing the  nonlinear Wiener Filter energy
-        map_energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0)
-        # Minimization with chosen minimizer
-        map_energy = map_energy.analytic_solution()
-
-        # Updating parameters for correlation structure reconstruction
-        m0 = map_energy.position
+        map_energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0, inverter=inverter)
+        # Solving the Wiener Filter analytically
         D0 = map_energy.curvature
+        m0 = D0.inverse_times(j)
         # Initializing the power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=10., samples=3)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, sigma=10., samples=3, inverter=inverter)
 
         (power_energy, convergence) = minimizer1(power_energy)
 
