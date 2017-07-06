@@ -38,6 +38,8 @@ from field import Field
 
 from random import Random
 
+from basic_arithmetics import *
+
 from nifty_utilities import *
 
 from field_types import *
