@@ -106,6 +106,9 @@ class LMSpace(Space):
 
         return (hermitian_part, anti_hermitian_part)
 
+#    def hermitian_fixed_points(self):
+#        return None
+
     # ---Mandatory properties and methods---
 
     def __repr__(self):
@@ -144,22 +147,6 @@ class LMSpace(Space):
             return x.copy()
 
     def get_distance_array(self, distribution_strategy):
-        if distribution_strategy == 'not':  # short cut
-            lmax = self.lmax
-            ldist = np.empty((self.dim,), dtype=np.float64)
-            ldist[0:lmax+1] = np.arange(lmax+1, dtype=np.float64)
-            tmp = np.empty((2*lmax+2), dtype=np.float64)
-            tmp[0::2] = np.arange(lmax+1)
-            tmp[1::2] = np.arange(lmax+1)
-            idx = lmax+1
-            for l in range(1, lmax+1):
-                ldist[idx:idx+2*(lmax+1-l)] = tmp[2*l:]
-                idx += 2*(lmax+1-l)
-            dists = arange(start=0, stop=self.shape[0],
-                           distribution_strategy=distribution_strategy)
-            dists.set_local_data(ldist)
-            return dists
-
         dists = arange(start=0, stop=self.shape[0],
                        distribution_strategy=distribution_strategy)
 
@@ -168,12 +155,6 @@ class LMSpace(Space):
             dtype=np.float64)
 
         return dists
-
-    def get_unique_distances(self):
-        return np.arange(self.lmax+1, dtype=np.float64)
-
-    def get_natural_binbounds(self):
-        return np.arange(self.lmax, dtype=np.float64) + 0.5
 
     @staticmethod
     def _distance_array_helper(index_array, lmax):

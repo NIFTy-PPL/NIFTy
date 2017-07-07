@@ -294,8 +294,7 @@ class Field(Loggable, Versionable, object):
             if nbin==None : maximum number of bins is used
         binbounds : array-like *optional*
             Inner bounds of the bins (default : None).
-            Overrides nbin and logarithmic.
-            if binbounds==None : bins are inferred.
+            if binbounds==None : bins are inferred. Overwrites nbins and log
         keep_phase_information : boolean, *optional*
             If False, return a real-valued result containing the power spectrum
             of the input Field.
@@ -398,9 +397,14 @@ class Field(Loggable, Versionable, object):
                                   logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
 
+        # extract pindex and rho from power_domain
+        pindex = power_domain.pindex
+        rho = power_domain.rho
+
         power_spectrum = cls._calculate_power_spectrum(
                                 field_val=work_field.val,
-                                pdomain=power_domain,
+                                pindex=pindex,
+                                rho=rho,
                                 axes=work_field.domain_axes[space_index])
 
         # create the result field and put power_spectrum into it
@@ -417,11 +421,8 @@ class Field(Loggable, Versionable, object):
         return result_field
 
     @classmethod
-    def _calculate_power_spectrum(cls, field_val, pdomain, axes=None):
+    def _calculate_power_spectrum(cls, field_val, pindex, rho, axes=None):
 
-        pindex = pdomain.pindex
-        # MR FIXME: how about iterating over slices, instead of replicating
-        # pindex? Would save memory and probably isn't slower.
         if axes is not None:
             pindex = cls._shape_up_pindex(
                             pindex=pindex,
@@ -430,7 +431,6 @@ class Field(Loggable, Versionable, object):
                             axes=axes)
         power_spectrum = pindex.bincount(weights=field_val,
                                          axis=axes)
-        rho = pdomain.rho
         if axes is not None:
             new_rho_shape = [1, ] * len(power_spectrum.shape)
             new_rho_shape[axes[0]] = len(rho)
@@ -762,7 +762,7 @@ class Field(Loggable, Versionable, object):
         Returns
         -------
         out : tuple
-            The output object. The tuple contains the dimensions of the spaces
+            The output object. The tuple contains the dimansions of the spaces
             in domain.
 
         See Also

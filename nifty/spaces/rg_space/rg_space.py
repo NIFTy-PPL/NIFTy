@@ -283,36 +283,6 @@ class RGSpace(Space):
         dists = np.sqrt(dists)
         return dists
 
-    def get_unique_distances(self):
-        dimensions = len(self.shape)
-        if dimensions == 1:  # extra easy
-            maxdist = self.shape[0]//2
-            return np.arange(maxdist+1, dtype=np.float64) * self.distances[0]
-        if np.all(self.distances == self.distances[0]):  # shortcut
-            maxdist = np.asarray(self.shape)//2
-            tmp = np.sum(maxdist*maxdist)
-            tmp = np.zeros(tmp+1, dtype=np.bool)
-            t2 = np.arange(maxdist[0]+1, dtype=np.int64)
-            t2 *= t2
-            for i in range(1, dimensions):
-                t3 = np.arange(maxdist[i]+1, dtype=np.int64)
-                t3 *= t3
-                t2 = np.add.outer(t2, t3)
-            tmp[t2] = True
-            return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
-        else:  # do it the hard way
-            tmp = self.get_distance_array('not').unique()  # expensive!
-            tol = 1e-12*tmp[-1]
-            # remove all points that are closer than tol to their right
-            # neighbors.
-            # I'm appending the last value*2 to the array to treat the
-            # rightmost point correctly.
-            return tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
-
-    def get_natural_binbounds(self):
-        tmp = self.get_unique_distances()
-        return 0.5*(tmp[:-1]+tmp[1:])
-
     def get_fft_smoothing_kernel_function(self, sigma):
         return lambda x: np.exp(-2. * np.pi*np.pi * x*x * sigma*sigma)
 
