@@ -20,20 +20,17 @@ import unittest
 
 import numpy as np
 from numpy.testing import assert_,\
-                          assert_equal
+                          assert_almost_equal
 
 from itertools import product
 
 from nifty import Field,\
-                  RGSpace,\
-                  FieldArray
+                  RGSpace
 
-from d2o import distributed_data_object,\
-                STRATEGIES
+from d2o import distributed_data_object
 
 from test.common import expand
 
-np.random.seed(123)
 
 SPACES = [RGSpace((4,)), RGSpace((5))]
 SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
@@ -55,10 +52,31 @@ class Test_Interface(unittest.TestCase):
         f = Field(domain=domain)
         assert_(isinstance(getattr(f, attribute), desired_type))
 
-#class Test_Initialization(unittest.TestCase):
-#
-#    @parameterized.expand(
-#        itertools.product(SPACE_COMBINATIONS,
-#                          []
-#                          )
-#    def test_
+
+class Test_Functionality(unittest.TestCase):
+    @expand(product([True, False], [True, False],
+                    [True, False], [True, False],
+                    [(1,), (4,), (5,)], [(1,), (6,), (7,)]))
+    def test_hermitian_decomposition(self, z1, z2, preserve, complexdata,
+                                     s1, s2):
+        np.random.seed(123)
+        r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
+        r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
+        ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+
+        v = np.random.random(s1+s2)
+        if complexdata:
+            v = v + 1j*np.random.random(s1+s2)
+        f1 = Field(ra, val=v, copy=True)
+        f2 = Field((r1, r2), val=v, copy=True)
+        h1, a1 = Field._hermitian_decomposition((ra,), f1.val, (0,),
+                                                ((0, 1,),), preserve)
+        h2, a2 = Field._hermitian_decomposition((r1, r2), f2.val, (0, 1),
+                                                ((0,), (1,)), preserve)
+        h3, a3 = Field._hermitian_decomposition((r1, r2), f2.val, (1, 0),
+                                                ((0,), (1,)), preserve)
+
+        assert_almost_equal(h1.get_full_data(), h2.get_full_data())
+        assert_almost_equal(a1.get_full_data(), a2.get_full_data())
+        assert_almost_equal(h1.get_full_data(), h3.get_full_data())
+        assert_almost_equal(a1.get_full_data(), a3.get_full_data())
