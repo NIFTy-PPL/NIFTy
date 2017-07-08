@@ -185,30 +185,32 @@ class InformationStore(object):
         result = np.empty((2*m+1, 2*m+1), dtype=np.float)
 
         # update the stores
+        if (m>0):
+            k1 = (k-1)%m
+
         for i in xrange(m):
-            self._ss_store[(k-m+i)%m,(k-1)%m] = self._ss_store[(k-1)%m,(k-m+i)%m] = self.s[k-m+i].vdot(self.s[k-1])
-            self._yy_store[(k-m+i)%m,(k-1)%m] = self._yy_store[(k-1)%m,(k-m+i)%m] = self.y[k-m+i].vdot(self.y[k-1])
-            self._sy_store[(k-m+i)%m,(k-1)%m] = self.s[k-m+i].vdot(self.y[k-1])
+            kmi = (k-m+i)%m
+            self._ss_store[kmi,k1] = self._ss_store[k1,kmi] \
+                = self.s[k-m+i].vdot(self.s[k-1])
+            self._yy_store[kmi,k1] = self._yy_store[k1,kmi] \
+                = self.y[k-m+i].vdot(self.y[k-1])
+            self._sy_store[kmi,k1] = self.s[k-m+i].vdot(self.y[k-1])
         for j in xrange(m-1):
-            self._sy_store[(k-1)%m,(k-m+j)%m] = self.s[k-1].vdot(self.y[k-m+j])
+            self._sy_store[k1,(k-m+j)%m] = self.s[k-1].vdot(self.y[k-m+j])
 
         for i in xrange(m):
+            kmi = (k-m+i)%m
             for j in xrange(m):
-                result[i, j] = self._ss_store[(k-m+i)%m, (k-m+j)%m]
-
-                sy_ij = self._sy_store[(k-m+i)%m, (k-m+j)%m]
-                result[i, m+j] = sy_ij
-                result[m+j, i] = sy_ij
-
+                kmj = (k-m+j)%m
+                result[i, j] = self._ss_store[kmi, kmj]
+                result[i, m+j] = result[m+j, i] = self._sy_store[kmi, kmj]
                 result[m+i, m+j] = self._yy_store[(k-m+i)%m, (k-m+j)%m]
 
             sgrad_i = self.s[k-m+i].vdot(self.last_gradient)
-            result[2*m, i] = sgrad_i
-            result[i, 2*m] = sgrad_i
+            result[2*m, i] = result[i, 2*m] = sgrad_i
 
             ygrad_i = self.y[k-m+i].vdot(self.last_gradient)
-            result[2*m, m+i] = ygrad_i
-            result[m+i, 2*m] = ygrad_i
+            result[2*m, m+i] = result[m+i, 2*m] = ygrad_i
 
         result[2*m, 2*m] = self.last_gradient.norm()
 
