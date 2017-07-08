@@ -89,25 +89,21 @@ class LMSpace(Space):
         super(LMSpace, self).__init__()
         self._lmax = self._parse_lmax(lmax)
 
-    def hermitian_decomposition(self, x, axes=None,
-                                preserve_gaussian_variance=False):
+    def hermitian_decomposition(self, x, axes=None):
         if issubclass(x.dtype.type, np.complexfloating):
             hermitian_part = x.copy_empty()
             anti_hermitian_part = x.copy_empty()
             hermitian_part[:] = x.real
             anti_hermitian_part[:] = x.imag * 1j
-            if preserve_gaussian_variance:
-                hermitian_part *= np.sqrt(2)
-                anti_hermitian_part *= np.sqrt(2)
         else:
             hermitian_part = x.copy()
             anti_hermitian_part = x.copy_empty()
-            anti_hermitian_part.val[:] = 0
+            anti_hermitian_part[:] = 0
 
         return (hermitian_part, anti_hermitian_part)
 
-#    def hermitian_fixed_points(self):
-#        return None
+    def hermitian_fixed_points(self):
+        return None
 
     # ---Mandatory properties and methods---
 

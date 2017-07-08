@@ -118,43 +118,25 @@ class RGSpace(Space):
         # use subtraction since it is faster than flipping another time
         anti_hermitian_part = (x-hermitian_part)
 
-        if preserve_gaussian_variance:
-            hermitian_part, anti_hermitian_part = \
-                self._hermitianize_correct_variance(hermitian_part,
-                                                    anti_hermitian_part,
-                                                    axes=axes)
-
         return (hermitian_part, anti_hermitian_part)
 
-    def _hermitianize_correct_variance(self, hermitian_part,
-                                       anti_hermitian_part, axes):
-        # Correct the variance by multiplying sqrt(2)
-        hermitian_part = hermitian_part * np.sqrt(2)
-        anti_hermitian_part = anti_hermitian_part * np.sqrt(2)
-
-        # If the dtype of the input is complex, the fixed points lose the power
-        # of their imaginary-part (or real-part, respectively). Therefore
-        # the factor of sqrt(2) also applies there
-        if not issubclass(hermitian_part.dtype.type, np.complexfloating):
-            # The fixed points of the point inversion must not be averaged.
-            # Hence one must divide out the sqrt(2) again
-            # -> Get the middle index of the array
-            mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
-            dimensions = mid_index.size
-            # Use ndindex to iterate over all combinations of zeros and the
-            # mid_index in order to correct all fixed points.
-
-            ndlist=[1]*dimensions
-            for k in range(len(axes)):
-                i = axes[k]
-                if self.shape[k]%2 == 0:
-                    ndlist[i] = 2
-            ndlist = tuple(ndlist)
-            for i in np.ndindex(ndlist):
-                temp_index = tuple(i * mid_index)
-                hermitian_part[temp_index] /= np.sqrt(2)
-                anti_hermitian_part[temp_index] /= np.sqrt(2)
-        return hermitian_part, anti_hermitian_part
+    def hermitian_fixed_points(self):
+        dimensions = len(self.shape)
+        mid_index = np.array(self.shape)//2
+        ndlist = [1]*dimensions
+        for k in range(dimensions):
+            if self.shape[k] % 2 == 0:
+                ndlist[k] = 2
+        ndlist = tuple(ndlist)
+        fixed_points = []
+        for index in np.ndindex(ndlist):
+            for k in range(dimensions):
+                if self.shape[k] % 2 != 0 and self.zerocenter[k]:
+                    index = list(index)
+                    index[k] = 1
+                    index = tuple(index)
+            fixed_points += [tuple(index * mid_index)]
+        return fixed_points
 
     def _hermitianize_inverter(self, x, axes):
         # calculate the number of dimensions the input array has
