@@ -672,8 +672,11 @@ class Field(Loggable, Versionable, object):
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
         local_pindex = pindex.get_local_data(copy=False)
 
-        local_blow_up = [slice(None)]*len(self.shape)
-        local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
+        local_blow_up = [slice(None)]*len(spec.shape)
+        # it is important to count from behind, since spec potentially grows
+        # with every iteration
+        index = self.domain_axes[power_space_index][0]-len(self.shape)
+        local_blow_up[index] = local_pindex
         # here, the power_spectrum is distributed into the new shape
         local_rescaler = spec[local_blow_up]
         return local_rescaler
