@@ -30,7 +30,7 @@ class TraceProberMixin(object):
         super(TraceProberMixin, self).reset()
 
     def finish_probe(self, probe, pre_result):
-        result = probe[1].dot(pre_result, bare=True)
+        result = probe[1].vdot(pre_result, bare=True)
         self.__sum_of_probings += result
         if self.compute_variance:
             self.__sum_of_squares += result.conjugate() * result

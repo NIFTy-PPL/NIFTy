@@ -67,11 +67,3 @@ if __name__ == "__main__":
     D = PropagatorOperator(S=S, N=N, R=R)
 
     m = D(j)
-
-    d_data = d.val.get_full_data().real
-    m_data = m.val.get_full_data().real
-    ss_data = ss.val.get_full_data().real
-#    if rank == 0:
-#        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
-#        pl.plot([go.Heatmap(z=m_data)], filename='map.html')
-#        pl.plot([go.Heatmap(z=ss_data)], filename='map_orig.html')

@@ -42,10 +42,13 @@ class CriticalPowerEnergy(Energy):
         The contribution from the map with or without uncertainty. It is used
         to pass on the result of the costly sampling during the minimization.
         default : None
+    inverter : ConjugateGradient
+        The inversion strategy to invert the curvature and to generate samples.
+        default : None
     """
 
     def __init__(self, position, m, D=None, alpha =1.0, q=0., sigma=0.,
-                 logarithmic = True, samples=3, w=None):
+                 logarithmic = True, samples=3, w=None, inverter=None):
         super(CriticalPowerEnergy, self).__init__(position = position)
         self.m = m
         self.D = D
@@ -56,10 +59,12 @@ class CriticalPowerEnergy(Energy):
         self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma,
                                     logarithmic=logarithmic)
         self.rho = self.position.domain[0].rho
+        self.inverter = inverter
         self.w = w
         if self.w is None:
             self.w = self._calculate_w(self.m, self.D, self.samples)
         self.theta = (exp(-self.position) * (self.q + self.w / 2.))
+
 
     def at(self, position):
         return self.__class__(position, self.m, D=self.D,
@@ -70,9 +75,9 @@ class CriticalPowerEnergy(Energy):
 
     @property
     def value(self):
-        energy = exp(-self.position).dot(self.q + self.w / 2., bare= True)
-        energy += self.position.dot(self.alpha - 1. + self.rho / 2., bare=True)
-        energy += 0.5 * self.position.dot(self.T(self.position))
+        energy = exp(-self.position).vdot(self.q + self.w / 2., bare= True)
+        energy += self.position.vdot(self.alpha - 1. + self.rho / 2., bare=True)
+        energy += 0.5 * self.position.vdot(self.T(self.position))
         return energy.real
 
     @property
@@ -85,14 +90,14 @@ class CriticalPowerEnergy(Energy):
 
     @property
     def curvature(self):
-        curvature = CriticalPowerCurvature(theta=self.theta.weight(-1), T=self.T)
+        curvature = CriticalPowerCurvature(theta=self.theta.weight(-1), T=self.T, inverter=self.inverter)
         return curvature
 
     def _calculate_w(self, m, D, samples):
         w = Field(domain=self.position.domain, val=0. , dtype=m.dtype)
         if D is not None:
             for i in range(samples):
-                posterior_sample = generate_posterior_sample(m, D)
+                posterior_sample = generate_posterior_sample(m, D, inverter = self.inverter)
                 projected_sample = posterior_sample.power_analyze(
                     logarithmic=self.position.domain[0].config["logarithmic"],
                     nbin= self.position.domain[0].config["nbin"])

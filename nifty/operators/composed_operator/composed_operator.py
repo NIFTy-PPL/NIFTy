@@ -51,7 +51,7 @@ class ComposedOperator(LinearOperator):
 
     Notes
     -----
-    Very usefull in case one has to transform a Field living over a product
+    Very useful in case one has to transform a Field living over a product
     space (see example below).
 
     Examples
@@ -96,6 +96,8 @@ class ComposedOperator(LinearOperator):
         is not easily forecasteable what the output of an operator-call
         will look like.
         """
+        if spaces is None:
+            spaces = self.default_spaces
         return spaces
 
     # ---Mandatory properties and methods---
