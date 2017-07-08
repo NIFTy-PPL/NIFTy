@@ -156,24 +156,20 @@ class DescentMinimizer(Loggable, object):
                                                pk=descend_direction,
                                                f_k_minus_1=f_k_minus_1)
             f_k_minus_1 = energy.value
-            
+
             # check if new energy value is bigger than old energy value
             if (new_energy.value - energy.value) > 0:
-                self.logger.info("Line search algorithm was unsuccessful. "
-                                 "Stopping.")
-                new_energy = energy.at( position=energy.position + 
-                    np.random.rand()/10*(new_energy.position-energy.position) )
-                energy = new_energy
-                convergence = self.convergence_level + 2
+                self.logger.info("Line search algorithm returned a new energy "
+                                 "that was larger than the old one. Stopping.")
                 break
 
             energy = new_energy
-
             # check convergence
             delta = abs(gradient).max() * (step_length/gradient_norm)
-            self.logger.debug("Iteration : %08u   step_length = %3.1E   "
-                              "delta = %3.1E" %
-                              (iteration_number, step_length, delta))
+            self.logger.debug("Iteration:%08u step_length=%3.1E "
+                              "delta=%3.1E energy=%3.1E" %
+                              (iteration_number, step_length, delta,
+                               energy.value))
             if delta == 0:
                 convergence = self.convergence_level + 2
                 self.logger.info("Found minimum according to line-search. "

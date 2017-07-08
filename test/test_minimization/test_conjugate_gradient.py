@@ -1,57 +1,47 @@
-
 import unittest
 
+import numpy as np
 from numpy.testing import assert_equal, assert_almost_equal
 
-from nifty import *
+from nifty import Field, DiagonalOperator, RGSpace, HPSpace
+from nifty import ConjugateGradient
 
-from itertools import product
 from test.common import expand
-from test.common import generate_spaces
 
-np.random.seed(42)
-
-
-class ConjugateGradient_Tests(unittest.TestCase):
-    spaces = generate_spaces()
+spaces = [RGSpace([1024, 1024], distances=0.123), HPSpace(32)]
 
 
-    @expand(product(spaces, [10,  100, 1000], [1E-3, 1E-4, 1E-5], [2, 3, 4] ))
-    def test_property(self, space, iteration_limit, convergence_tolerance, 
-                      convergence_level):
-        
-        x0 = Field.from_random('normal', domain=space)
-        A = DiagonalOperator(space, diagonal = 1.)
-        b = Field(space, val=0.)
-        
-        minimizer = ConjugateGradient(iteration_limit=iteration_limit,
-                                    convergence_tolerance=convergence_tolerance, 
-                                    convergence_level=convergence_level)
-                                    
-        (position, convergence) = minimizer(A=A, x0=x0, b=b)
-        
-        if position.domain[0] != space:
-            raise TypeError
-        if type(convergence) != int:
-            raise TypeError
+class Test_ConjugateGradient(unittest.TestCase):
 
-    @expand(product(spaces, [10,  100, 1000], [1E-3, 1E-4, 1E-5], [2, 3, 4] ))
-    def test_property(self, space, iteration_limit, convergence_tolerance, 
-                      convergence_level):
-        
-        x0 = Field.from_random('normal', domain=space)
-        test_x = Field(space, val = 1.)
-        A = DiagonalOperator(space, diagonal = 1.)
-        b = Field(space, val=1.)
-        
-        minimizer = ConjugateGradient(iteration_limit=iteration_limit,
-                                    convergence_tolerance=convergence_tolerance, 
-                                    convergence_level=convergence_level)
-                                    
-        (position, convergence) = minimizer(A=A, x0=x0, b=b)
-        
-        assert_almost_equal(position.val.get_full_data(), 
-                            test_x.val.get_full_data(), decimal=3)
-        assert_equal(convergence, convergence_level+1)
+    def test_interface(self):
+        iteration_limit = 100
+        convergence_level = 4
+        convergence_tolerance = 1E-6
+        callback = lambda z: z
+        minimizer = ConjugateGradient(
+                                iteration_limit=iteration_limit,
+                                convergence_tolerance=convergence_tolerance,
+                                convergence_level=convergence_level,
+                                callback=callback)
 
+        assert_equal(minimizer.iteration_limit, iteration_limit)
+        assert_equal(minimizer.convergence_level, convergence_level)
+        assert_equal(minimizer.convergence_tolerance, convergence_tolerance)
+        assert(minimizer.callback is callback)
 
+    @expand([[space] for space in spaces])
+    def test_minimization(self, space):
+        np.random.seed(42)
+        starting_point = Field.from_random('normal', domain=space)*10
+        covariance_diagonal = Field.from_random('uniform', domain=space) + 0.5
+        covariance = DiagonalOperator(space, diagonal=covariance_diagonal)
+        required_result = Field(space, val=1.)
+
+        minimizer = ConjugateGradient()
+
+        (position, convergence) = minimizer(A=covariance, x0=starting_point,
+                                            b=required_result)
+
+        assert_almost_equal(position.val.get_full_data(),
+                            1./covariance_diagonal.val.get_full_data(),
+                            decimal=3)
