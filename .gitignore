@@ -4,6 +4,10 @@ setup.cfg
 .DS_Store
 *.pyc
 *.html
+.document
+.svn/
+*.csv
+
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 
 # Byte-compiled / optimized / DLL files
@@ -33,18 +37,6 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-*.egg-info
-*~
-*.DS_Store
-*.csv
-.git/
-.svn/
-.spyderproject
-.document
-build
-
-.idea
-*.csv.coverage
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
