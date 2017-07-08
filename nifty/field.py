@@ -599,58 +599,55 @@ class Field(Loggable, Versionable, object):
         # hermitianize for the first space
         (h, a) = domain[spaces[0]].hermitian_decomposition(
                        val,
-                       domain_axes[spaces[0]],
-                       preserve_gaussian_variance=preserve_gaussian_variance)
+                       domain_axes[spaces[0]])
         # hermitianize all remaining spaces using the iterative formula
-        for space in xrange(1, len(spaces)):
+        for space in spaces[1:]:
             (hh, ha) = domain[space].hermitian_decomposition(
                                               h,
-                                              domain_axes[space],
-                                              preserve_gaussian_variance=False)
+                                              domain_axes[space])
             (ah, aa) = domain[space].hermitian_decomposition(
                                               a,
-                                              domain_axes[space],
-                                              preserve_gaussian_variance=False)
+                                              domain_axes[space])
             c = (hh - ha - ah + aa).conjugate()
             full = (hh + ha + ah + aa)
             h = (full + c)/2.
             a = (full - c)/2.
 
         # correct variance
+        if preserve_gaussian_variance:
+            h *= np.sqrt(2)
+            a *= np.sqrt(2)
 
-        # in principle one must not correct the variance for the fixed
-        # points of the hermitianization. However, for a complex field
-        # the input field loses half of its power at its fixed points
-        # in the `hermitian` part. Hence, here a factor of sqrt(2) is
-        # also necessary!
-        # => The hermitianization can be done on a space level since either
-        # nothing must be done (LMSpace) or ALL points need a factor of sqrt(2)
-        # => use the preserve_gaussian_variance flag in the
-        # hermitian_decomposition method above.
+            if not issubclass(val.dtype.type, np.complexfloating):
+                # in principle one must not correct the variance for the fixed
+                # points of the hermitianization. However, for a complex field
+                # the input field loses half of its power at its fixed points
+                # in the `hermitian` part. Hence, here a factor of sqrt(2) is
+                # also necessary!
+                # => The hermitianization can be done on a space level since
+                # either nothing must be done (LMSpace) or ALL points need a
+                # factor of sqrt(2)
+                # => use the preserve_gaussian_variance flag in the
+                # hermitian_decomposition method above.
 
-        # This code is for educational purposes:
-#        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
-#        # check if there was at least one flipping during hermitianization
-#        flipped_Q = np.any([fp is not None for fp in fixed_points])
-#        # if the array got flipped, correct the variance
-#        if flipped_Q:
-#            h *= np.sqrt(2)
-#            a *= np.sqrt(2)
-#
-#            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
-#            for product_point in itertools.product(*fixed_points):
-#                slice_object = np.array((slice(None), )*len(val.shape),
-#                                        dtype=np.object)
-#                for i, sp in enumerate(spaces):
-#                    point_component = product_point[i]
-#                    if point_component is None:
-#                        point_component = slice(None)
-#                    slice_object[list(domain_axes[sp])] = point_component
-#
-#                slice_object = tuple(slice_object)
-#                h[slice_object] /= np.sqrt(2)
-#                a[slice_object] /= np.sqrt(2)
+                # This code is for educational purposes:
+                fixed_points = [domain[i].hermitian_fixed_points()
+                                for i in spaces]
+                fixed_points = [[fp] if fp is None else fp
+                                for fp in fixed_points]
 
+                for product_point in itertools.product(*fixed_points):
+                    slice_object = np.array((slice(None), )*len(val.shape),
+                                            dtype=np.object)
+                    for i, sp in enumerate(spaces):
+                        point_component = product_point[i]
+                        if point_component is None:
+                            point_component = slice(None)
+                        slice_object[list(domain_axes[sp])] = point_component
+
+                    slice_object = tuple(slice_object)
+                    h[slice_object] /= np.sqrt(2)
+                    a[slice_object] /= np.sqrt(2)
         return (h, a)
 
     def _spec_to_rescaler(self, spec, result_list, power_space_index):
@@ -667,7 +664,7 @@ class Field(Loggable, Versionable, object):
 
         if pindex.distribution_strategy is not local_distribution_strategy:
             self.logger.warn(
-                "The distribution_stragey of pindex does not fit the "
+                "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
         # Now use numpy advanced indexing in order to put the entries of the
@@ -675,8 +672,11 @@ class Field(Loggable, Versionable, object):
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
         local_pindex = pindex.get_local_data(copy=False)
 
-        local_blow_up = [slice(None)]*len(self.shape)
-        local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
+        local_blow_up = [slice(None)]*len(spec.shape)
+        # it is important to count from behind, since spec potentially grows
+        # with every iteration
+        index = self.domain_axes[power_space_index][0]-len(self.shape)
+        local_blow_up[index] = local_pindex
         # here, the power_spectrum is distributed into the new shape
         local_rescaler = spec[local_blow_up]
         return local_rescaler

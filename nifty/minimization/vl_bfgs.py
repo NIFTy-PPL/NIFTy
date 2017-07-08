@@ -25,7 +25,7 @@ from .line_searching import LineSearchStrongWolfe
 class VL_BFGS(DescentMinimizer):
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,
-                 iteration_limit=None, max_history_length=10):
+                 iteration_limit=None, max_history_length=5):
 
         super(VL_BFGS, self).__init__(
                                 line_searcher=line_searcher,
@@ -84,9 +84,6 @@ class VL_BFGS(DescentMinimizer):
         for i in xrange(1, len(delta)):
             descend_direction += delta[i] * b[i]
 
-        norm = descend_direction.norm()
-        if norm != 1:
-            descend_direction /= norm
         return descend_direction
 
 
