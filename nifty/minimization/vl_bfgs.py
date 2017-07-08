@@ -108,11 +108,11 @@ class InformationStore(object):
     y : List
         List of past gradient differences, which are Fields.
     last_x : Field
-        Initial position in variable space.
+        Latest position in variable space.
     last_gradient : Field
-        Gradient at initial position.
+        Gradient at latest position.
     k : integer
-        Number of currently stored past updates.
+        Number of updates that have taken place
     _ss_store : dictionary
         Dictionary of scalar products between different elements of s.
     _sy_store : dictionary
@@ -129,9 +129,10 @@ class InformationStore(object):
         self.last_gradient = gradient.copy()
         self.k = 0
 
-        self._ss_store = {}
-        self._sy_store = {}
-        self._yy_store = {}
+        hl = max_history_length
+        self._ss_store = np.empty((hl,hl),dtype=np.float64)
+        self._sy_store = np.empty((hl,hl),dtype=np.float64)
+        self._yy_store = np.empty((hl,hl),dtype=np.float64)
 
     @property
     def history_length(self):
@@ -183,25 +184,33 @@ class InformationStore(object):
         k = self.k
         result = np.empty((2*m+1, 2*m+1), dtype=np.float)
 
+        # update the stores
+        for i in xrange(m):
+            self._ss_store[(k-m+i)%m,k%m] = self._ss_store[k%m,(k-m+i)%m] = self.s[k-m+i].vdot(self.s[k])
+            self._yy_store[(k-m+i)%m,k%m] = self._yy_store[k%m,(k-m+i)%m] = self.y[k-m+i].vdot(self.y[k])
+            self._sy_store[(k-m+i)%m,k%m] = self.s[k-m+i].vdot(self.y[k])
+        for j in xrange(m-1):
+            self._sy_store[k%m,(k-m+j)%m] = self.s[k].vdot(self.y[k-m+j])
+
         for i in xrange(m):
             for j in xrange(m):
-                result[i, j] = self.ss_store(k-m+i, k-m+j)
+                result[i, j] = self._ss_store[(k-m+i)%m, (k-m+j)%m]
 
-                sy_ij = self.sy_store(k-m+i, k-m+j)
+                sy_ij = self.sy_store[(k-m+i)%m, (k-m+j)%m]
                 result[i, m+j] = sy_ij
                 result[m+j, i] = sy_ij
 
-                result[m+i, m+j] = self.yy_store(k-m+i, k-m+j)
+                result[m+i, m+j] = self.yy_store[(k-m+i)%m, (k-m+j)%m]
 
-            sgrad_i = self.sgrad_store(k-m+i)
+            sgrad_i = self.s[k-m+i].vdot(self.last_gradient)
             result[2*m, i] = sgrad_i
             result[i, 2*m] = sgrad_i
 
-            ygrad_i = self.ygrad_store(k-m+i)
+            ygrad_i = self.y[k-m+i].vdot(self.last_gradient)
             result[2*m, m+i] = ygrad_i
             result[m+i, 2*m] = ygrad_i
 
-        result[2*m, 2*m] = self.gradgrad_store()
+        result[2*m, 2*m] = self.last_gradient.norm()
 
         return result
 
@@ -238,108 +247,6 @@ class InformationStore(object):
 
         return delta
 
-    def ss_store(self, i, j):
-        """Updates the dictionary _ss_store with a new scalar product.
-
-        Returns the scalar product of s_i and s_j.
-
-        Parameters
-        ----------
-        i : integer
-            s index.
-        j : integer
-            s index.
-
-        Returns
-        -------
-        _ss_store[key] : float
-            Scalar product of s_i and s_j.
-
-        """
-        key = tuple(sorted((i, j)))
-        if key not in self._ss_store:
-            self._ss_store[key] = self.s[i].vdot(self.s[j])
-        return self._ss_store[key]
-
-    def sy_store(self, i, j):
-        """Updates the dictionary _sy_store with a new scalar product.
-
-        Returns the scalar product of s_i and y_j.
-
-        Parameters
-        ----------
-        i : integer
-            s index.
-        j : integer
-            y index.
-
-        Returns
-        -------
-        _sy_store[key] : float
-            Scalar product of s_i and y_j.
-
-        """
-        key = (i, j)
-        if key not in self._sy_store:
-            self._sy_store[key] = self.s[i].vdot(self.y[j])
-        return self._sy_store[key]
-
-    def yy_store(self, i, j):
-        """Updates the dictionary _yy_store with a new scalar product.
-
-        Returns the scalar product of y_i and y_j.
-
-        Parameters
-        ----------
-        i : integer
-            y index.
-        j : integer
-            y index.
-
-        Returns
-        ------
-        _yy_store[key] : float
-            Scalar product of y_i and y_j.
-
-        """
-        key = tuple(sorted((i, j)))
-        if key not in self._yy_store:
-            self._yy_store[key] = self.y[i].vdot(self.y[j])
-        return self._yy_store[key]
-
-    def sgrad_store(self, i):
-        """Returns scalar product between s_i and gradient on initial position.
-
-        Returns
-        -------
-        scalar product : float
-            Scalar product.
-
-        """
-        return self.s[i].vdot(self.last_gradient)
-
-    def ygrad_store(self, i):
-        """Returns scalar product between y_i and gradient on initial position.
-
-        Returns
-        -------
-        scalar product : float
-            Scalar product.
-
-        """
-        return self.y[i].vdot(self.last_gradient)
-
-    def gradgrad_store(self):
-        """Returns scalar product of gradient on initial position with itself.
-
-        Returns
-        -------
-        scalar product : float
-            Scalar product.
-
-        """
-        return self.last_gradient.vdot(self.last_gradient)
-
     def add_new_point(self, x, gradient):
         """Updates the s list and y list.
 
@@ -349,11 +256,8 @@ class InformationStore(object):
         """
         self.k += 1
 
-        new_s = x - self.last_x
-        self.s.add(new_s)
-
-        new_y = gradient - self.last_gradient
-        self.y.add(new_y)
+        self.s[k] = x - self.last_x
+        self.y[k] = gradient - self.last_gradient
 
         self.last_x = x.copy()
         self.last_gradient = gradient.copy()
@@ -369,22 +273,17 @@ class LimitedList(object):
 
     Attributes
     ----------
-    history_length : integer
-        Maximum number of stored past updates.
-    _offset : integer
-        Offset to correct the indices which are bigger than maximum history.
-        length.
-    _storage : list
+    _pos : integer
+        Number of items that have been added so far.
+    _storage : list of length history_length
         List where input values are stored.
 
     """
     def __init__(self, history_length):
-        self.history_length = int(history_length)
-        self._offset = 0
-        self._storage = []
+        self._storage = [None]*history_length
 
     def __getitem__(self, index):
-        """Returns the element with index [index-offset].
+        """Returns the element with index [index].
 
         Parameters
         ----------
@@ -395,21 +294,7 @@ class LimitedList(object):
         -------
             selected element
         """
-        return self._storage[index-self._offset]
+        return self._storage[index%len(self._storage)]
 
-    def add(self, value):
-        """Adds a new element to the list.
-
-        If the list is of length maximum history then it removes the first
-        element first.
-
-        Parameters
-        ----------
-        value : anything
-            New element in the list.
-
-        """
-        if len(self._storage) == self.history_length:
-            self._storage.pop(0)
-            self._offset += 1
-        self._storage.append(value)
+    def __setitem__(self, index, value):
+        self._storage[index%len(self._storage)] = value
