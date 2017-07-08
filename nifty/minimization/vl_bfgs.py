@@ -130,9 +130,9 @@ class InformationStore(object):
         self.k = 0
 
         hl = max_history_length
-        self._ss_store = np.empty((hl,hl),dtype=np.float64)
-        self._sy_store = np.empty((hl,hl),dtype=np.float64)
-        self._yy_store = np.empty((hl,hl),dtype=np.float64)
+        self._ss_store = np.empty((hl, hl), dtype=np.float64)
+        self._sy_store = np.empty((hl, hl), dtype=np.float64)
+        self._yy_store = np.empty((hl, hl), dtype=np.float64)
 
     @property
     def history_length(self):
@@ -185,23 +185,23 @@ class InformationStore(object):
         result = np.empty((2*m+1, 2*m+1), dtype=np.float)
 
         # update the stores
-        if (m>0):
-            k1 = (k-1)%m
+        if (m > 0):
+            k1 = (k-1) % m
 
         for i in xrange(m):
-            kmi = (k-m+i)%m
-            self._ss_store[kmi,k1] = self._ss_store[k1,kmi] \
+            kmi = (k-m+i) % m
+            self._ss_store[kmi, k1] = self._ss_store[k1, kmi] \
                 = self.s[k-m+i].vdot(self.s[k-1])
-            self._yy_store[kmi,k1] = self._yy_store[k1,kmi] \
+            self._yy_store[kmi, k1] = self._yy_store[k1, kmi] \
                 = self.y[k-m+i].vdot(self.y[k-1])
-            self._sy_store[kmi,k1] = self.s[k-m+i].vdot(self.y[k-1])
+            self._sy_store[kmi, k1] = self.s[k-m+i].vdot(self.y[k-1])
         for j in xrange(m-1):
-            self._sy_store[k1,(k-m+j)%m] = self.s[k-1].vdot(self.y[k-m+j])
+            self._sy_store[k1, (k-m+j) % m] = self.s[k-1].vdot(self.y[k-m+j])
 
         for i in xrange(m):
-            kmi = (k-m+i)%m
+            kmi = (k-m+i) % m
             for j in xrange(m):
-                kmj = (k-m+j)%m
+                kmj = (k-m+j) % m
                 result[i, j] = self._ss_store[kmi, kmj]
                 result[i, m+j] = result[m+j, i] = self._sy_store[kmi, kmj]
                 result[m+i, m+j] = self._yy_store[kmi, kmj]
