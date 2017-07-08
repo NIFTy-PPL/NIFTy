@@ -123,8 +123,8 @@ class InformationStore(object):
     """
     def __init__(self, max_history_length, x0, gradient):
         self.max_history_length = max_history_length
-        self.s = LimitedList(max_history_length)
-        self.y = LimitedList(max_history_length)
+        self.s = [None]*max_history_length
+        self.y = [None]*max_history_length
         self.last_x = x0.copy()
         self.last_gradient = gradient.copy()
         self.k = 0
@@ -157,11 +157,11 @@ class InformationStore(object):
 
         s = self.s
         for i in xrange(m):
-            result.append(s[k-m+i])
+            result.append(s[(k-m+i) % m])
 
         y = self.y
         for i in xrange(m):
-            result.append(y[k-m+i])
+            result.append(y[(k-m+i) % m])
 
         result.append(self.last_gradient)
 
@@ -191,12 +191,13 @@ class InformationStore(object):
         for i in xrange(m):
             kmi = (k-m+i) % m
             self._ss_store[kmi, k1] = self._ss_store[k1, kmi] \
-                = self.s[k-m+i].vdot(self.s[k-1])
+                = self.s[kmi].vdot(self.s[k1])
             self._yy_store[kmi, k1] = self._yy_store[k1, kmi] \
-                = self.y[k-m+i].vdot(self.y[k-1])
-            self._sy_store[kmi, k1] = self.s[k-m+i].vdot(self.y[k-1])
+                = self.y[kmi].vdot(self.y[k1])
+            self._sy_store[kmi, k1] = self.s[kmi].vdot(self.y[k1])
         for j in xrange(m-1):
-            self._sy_store[k1, (k-m+j) % m] = self.s[k-1].vdot(self.y[k-m+j])
+            kmj = (k-m+j) % m
+            self._sy_store[k1, kmj] = self.s[k1].vdot(self.y[kmj])
 
         for i in xrange(m):
             kmi = (k-m+i) % m
@@ -206,7 +207,7 @@ class InformationStore(object):
                 result[i, m+j] = result[m+j, i] = self._sy_store[kmi, kmj]
                 result[m+i, m+j] = self._yy_store[kmi, kmj]
 
-            sgrad_i = self.s[k-m+i].vdot(self.last_gradient)
+            sgrad_i = self.s[kmi].vdot(self.last_gradient)
             result[2*m, i] = result[i, 2*m] = sgrad_i
 
             ygrad_i = self.y[k-m+i].vdot(self.last_gradient)
@@ -256,47 +257,11 @@ class InformationStore(object):
         the respective list.
 
         """
-        self.s[self.k] = x - self.last_x
-        self.y[self.k] = gradient - self.last_gradient
+        m = self.max_history_length
+        self.s[self.k % m] = x - self.last_x
+        self.y[self.k % m] = gradient - self.last_gradient
 
         self.last_x = x.copy()
         self.last_gradient = gradient.copy()
 
         self.k += 1
-
-
-class LimitedList(object):
-    """Class for creating a list of limited length.
-
-    Parameters
-    ----------
-    history_length : integer
-        Maximum number of stored past updates.
-
-    Attributes
-    ----------
-    _pos : integer
-        Number of items that have been added so far.
-    _storage : list of length history_length
-        List where input values are stored.
-
-    """
-    def __init__(self, history_length):
-        self._storage = [None]*history_length
-
-    def __getitem__(self, index):
-        """Returns the element with index [index].
-
-        Parameters
-        ----------
-        index : integer
-            Index of the selected element.
-
-        Returns
-        -------
-            selected element
-        """
-        return self._storage[index%len(self._storage)]
-
-    def __setitem__(self, index, value):
-        self._storage[index%len(self._storage)] = value
