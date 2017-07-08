@@ -204,7 +204,7 @@ class InformationStore(object):
                 kmj = (k-m+j)%m
                 result[i, j] = self._ss_store[kmi, kmj]
                 result[i, m+j] = result[m+j, i] = self._sy_store[kmi, kmj]
-                result[m+i, m+j] = self._yy_store[(k-m+i)%m, (k-m+j)%m]
+                result[m+i, m+j] = self._yy_store[kmi, kmj]
 
             sgrad_i = self.s[k-m+i].vdot(self.last_gradient)
             result[2*m, i] = result[i, 2*m] = sgrad_i
@@ -242,7 +242,7 @@ class InformationStore(object):
         for i in xrange(2*m+1):
             delta[i] *= b_dot_b[m-1, 2*m-1]/b_dot_b[2*m-1, 2*m-1]
 
-        for j in xrange(m-1, -1, -1):
+        for j in xrange(m):
             delta_b_b = sum([delta[l]*b_dot_b[m+j, l] for l in xrange(2*m+1)])
             beta = delta_b_b/b_dot_b[j, m+j]
             delta[j] += (alpha[j] - beta)
