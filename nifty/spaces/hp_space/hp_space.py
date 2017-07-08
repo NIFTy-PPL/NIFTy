@@ -84,17 +84,20 @@ class HPSpace(Space):
 
     # ---Mandatory properties and methods---
 
+    def __repr__(self):
+        return ("HPSpace(nside=%r)" % self.nside)
+
     @property
     def harmonic(self):
         return False
 
     @property
     def shape(self):
-        return (np.int(12 * self.nside ** 2),)
+        return (np.int(12 * self.nside * self.nside),)
 
     @property
     def dim(self):
-        return np.int(12 * self.nside ** 2)
+        return np.int(12 * self.nside * self.nside)
 
     @property
     def total_volume(self):
@@ -105,7 +108,7 @@ class HPSpace(Space):
 
     def weight(self, x, power=1, axes=None, inplace=False):
 
-        weight = ((4 * np.pi) / (12 * self.nside**2)) ** np.float(power)
+        weight = ((4*np.pi) / (12*self.nside*self.nside)) ** np.float(power)
 
         if inplace:
             x *= weight

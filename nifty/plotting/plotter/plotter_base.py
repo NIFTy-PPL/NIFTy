@@ -31,7 +31,7 @@ class PlotterBase(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, interactive=False, path='.', title=""):
-        if 'plotly' not in gdi:
+        if plotly is None:
             raise ImportError("The module plotly is needed but not available.")
         self.interactive = interactive
         self.path = path
@@ -87,8 +87,8 @@ class PlotterBase(Loggable, object):
         for slice_list in utilities.get_slice_list(data_list[0].shape, axes):
             plots_list += \
                     [[self.plot.at(self._parse_data(current_data,
-                                                     field,
-                                                     spaces))
+                                                    field,
+                                                    spaces))
                       for (current_data, field) in zip(data_list, fields)]]
 
         figures = [self.figure.at(plots) for plots in plots_list]

@@ -1,6 +1,6 @@
 Transformations
 ---------------
-NIFTY provides transformations
+NIFTY helper classes for transformations betwenn NIFTY spaces.
 
 .. toctree:: 
     :maxdepth: 1

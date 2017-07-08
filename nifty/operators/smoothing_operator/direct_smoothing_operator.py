@@ -53,10 +53,13 @@ class DirectSmoothingOperator(SmoothingOperator):
         wgt = []
         expfac = 1. / (2. * sigma*sigma)
         for i in range(x.size):
-            t = x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
-            t = np.exp(-t*t*expfac)
-            t *= 1./np.sum(t)
-            wgt.append(t)
+            if nval[i] > 0:
+                t = x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
+                t = np.exp(-t*t*expfac)
+                t *= 1./np.sum(t)
+                wgt.append(t)
+            else:
+                wgt.append(np.array([]))
 
         return ibegin, nval, wgt
 
@@ -146,7 +149,7 @@ class DirectSmoothingOperator(SmoothingOperator):
 
         #MR FIXME: this causes calls of log(0.) which should probably be avoided
         if self.log_distances:
-            np.log(distance_array, out=distance_array)
+            np.log(np.maximum(distance_array,1e-15), out=distance_array)
 
         # collect the local data + ghost cells
         local_data_Q = False

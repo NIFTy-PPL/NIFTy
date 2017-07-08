@@ -28,6 +28,9 @@ class FieldArray(FieldType):
         except TypeError:
             self._shape = (int(shape), )
 
+    def __repr__(self):
+        return "FieldArray(shape=%r)" % (self.shape, )
+
     @property
     def shape(self):
         return self._shape

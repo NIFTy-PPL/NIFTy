@@ -23,9 +23,12 @@ Contents
 .. toctree::
    :maxdepth: 1
    
-   spaces
-   operator
-   minimization
+   gallery
+   ift
+   start
+   spaces/spaces
+   operators/operator
+   minimizer/minimization
    field
 
 
@@ -33,6 +36,5 @@ Indices and tables
 ..................
 
 * :ref:`genindex`
-* :ref:`modindex`
+* :any:`Module Index <mod/modules>`
 * :ref:`search`
-

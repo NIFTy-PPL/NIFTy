@@ -91,16 +91,28 @@ class LMSpace(Space):
 
     def hermitian_decomposition(self, x, axes=None,
                                 preserve_gaussian_variance=False):
-        hermitian_part = x.copy_empty()
-        anti_hermitian_part = x.copy_empty()
-        hermitian_part[:] = x.real
-        anti_hermitian_part[:] = x.imag * 1j
+        if issubclass(x.dtype.type, np.complexfloating):
+            hermitian_part = x.copy_empty()
+            anti_hermitian_part = x.copy_empty()
+            hermitian_part[:] = x.real
+            anti_hermitian_part[:] = x.imag * 1j
+            if preserve_gaussian_variance:
+                hermitian_part *= np.sqrt(2)
+                anti_hermitian_part *= np.sqrt(2)
+        else:
+            hermitian_part = x.copy()
+            anti_hermitian_part = x.copy_empty()
+            anti_hermitian_part.val[:] = 0
+
         return (hermitian_part, anti_hermitian_part)
 
 #    def hermitian_fixed_points(self):
 #        return None
 
     # ---Mandatory properties and methods---
+
+    def __repr__(self):
+        return ("LMSpace(lmax=%r)" % self.lmax)
 
     @property
     def harmonic(self):
@@ -118,7 +130,7 @@ class LMSpace(Space):
         # dim = (((2*(l+1)-1)+1)**2/4 - 2 * (l-m)(l-m+1)/2
         # dim = np.int((l+1)**2 - (l-m)*(l-m+1.))
         # We fix l == m
-        return np.int((l+1)**2)
+        return np.int((l+1)*(l+1))
 
     @property
     def total_volume(self):
@@ -153,8 +165,10 @@ class LMSpace(Space):
         return res
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        # FIXME why x(x+1) ? add reference to paper!
-        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma**2)
+        # cf. "All-sky convolution for polarimetry experiments"
+        # by Challinor et al.
+        # http://arxiv.org/abs/astro-ph/0008228
+        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma*sigma)
 
     # ---Added properties and methods---
 

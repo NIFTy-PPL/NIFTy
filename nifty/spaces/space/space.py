@@ -64,12 +64,6 @@ class Space(DomainObject):
     @abc.abstractproperty
     def harmonic(self):
         """ Returns True if this space is a harmonic space.
-
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError
@@ -83,12 +77,8 @@ class Space(DomainObject):
         float
             A real number representing the sum of all pixel volumes.
 
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
+
         raise NotImplementedError(
             "There is no generic volume for the Space base class.")
 
@@ -122,11 +112,6 @@ class Space(DomainObject):
         distributed_data_object
             A d2o containing the distances
 
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError(
@@ -157,11 +142,6 @@ class Space(DomainObject):
             A smoothing operation that multiplies values with a Gaussian
             kernel.
 
-        Raises
-        ------
-        NotImplementedError :
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError(
@@ -184,7 +164,11 @@ class Space(DomainObject):
             Specifies the axes of x which correspond to this space.
 
         preserve_gaussian_variance : bool *optional*
-            FIXME: figure out what this does
+            If the hermitian decomposition is done via computing the half
+            sums and differences of `x` and mirrored `x`, all points except the
+            fixed points lose half of their variance. If `x` is complex also
+            the lose half of their variance since the real(/imaginary) part
+            gets lost.
 
         Returns
         -------
@@ -192,14 +176,6 @@ class Space(DomainObject):
             A tuple of two distributed_data_objects, the first being the
             hermitian and the second the anti-hermitian part of x.
 
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
         """
 
         raise NotImplementedError
-
-    def __repr__(self):
-        return str(type(self)) + "\n"
