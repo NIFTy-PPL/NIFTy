@@ -186,21 +186,21 @@ class InformationStore(object):
 
         # update the stores
         for i in xrange(m):
-            self._ss_store[(k-m+i)%m,k%m] = self._ss_store[k%m,(k-m+i)%m] = self.s[k-m+i].vdot(self.s[k])
-            self._yy_store[(k-m+i)%m,k%m] = self._yy_store[k%m,(k-m+i)%m] = self.y[k-m+i].vdot(self.y[k])
-            self._sy_store[(k-m+i)%m,k%m] = self.s[k-m+i].vdot(self.y[k])
+            self._ss_store[(k-m+i)%m,(k-1)%m] = self._ss_store[(k-1)%m,(k-m+i)%m] = self.s[k-m+i].vdot(self.s[k-1])
+            self._yy_store[(k-m+i)%m,(k-1)%m] = self._yy_store[(k-1)%m,(k-m+i)%m] = self.y[k-m+i].vdot(self.y[k-1])
+            self._sy_store[(k-m+i)%m,(k-1)%m] = self.s[k-m+i].vdot(self.y[k-1])
         for j in xrange(m-1):
-            self._sy_store[k%m,(k-m+j)%m] = self.s[k].vdot(self.y[k-m+j])
+            self._sy_store[(k-1)%m,(k-m+j)%m] = self.s[k-1].vdot(self.y[k-m+j])
 
         for i in xrange(m):
             for j in xrange(m):
                 result[i, j] = self._ss_store[(k-m+i)%m, (k-m+j)%m]
 
-                sy_ij = self.sy_store[(k-m+i)%m, (k-m+j)%m]
+                sy_ij = self._sy_store[(k-m+i)%m, (k-m+j)%m]
                 result[i, m+j] = sy_ij
                 result[m+j, i] = sy_ij
 
-                result[m+i, m+j] = self.yy_store[(k-m+i)%m, (k-m+j)%m]
+                result[m+i, m+j] = self._yy_store[(k-m+i)%m, (k-m+j)%m]
 
             sgrad_i = self.s[k-m+i].vdot(self.last_gradient)
             result[2*m, i] = sgrad_i
@@ -254,13 +254,13 @@ class InformationStore(object):
         the respective list.
 
         """
-        self.k += 1
-
-        self.s[k] = x - self.last_x
-        self.y[k] = gradient - self.last_gradient
+        self.s[self.k] = x - self.last_x
+        self.y[self.k] = gradient - self.last_gradient
 
         self.last_x = x.copy()
         self.last_gradient = gradient.copy()
+
+        self.k += 1
 
 
 class LimitedList(object):
