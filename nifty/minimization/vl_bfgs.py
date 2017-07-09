@@ -113,11 +113,11 @@ class InformationStore(object):
         Gradient at latest position.
     k : integer
         Number of updates that have taken place
-    _ss_store : numpy.ndarray
+    ss : numpy.ndarray
         2D circular buffer of scalar products between different elements of s.
-    _sy_store : numpy.ndarray
+    sy : numpy.ndarray
         2D circular buffer of scalar products between elements of s and y.
-    _yy_store : numpy.ndarray
+    yy : numpy.ndarray
         2D circular buffer of scalar products between different elements of y.
 
     """
@@ -130,9 +130,9 @@ class InformationStore(object):
         self.k = 0
 
         mmax = max_history_length
-        self._ss_store = np.empty((mmax, mmax), dtype=np.float64)
-        self._sy_store = np.empty((mmax, mmax), dtype=np.float64)
-        self._yy_store = np.empty((mmax, mmax), dtype=np.float64)
+        self.ss = np.empty((mmax, mmax), dtype=np.float64)
+        self.sy = np.empty((mmax, mmax), dtype=np.float64)
+        self.yy = np.empty((mmax, mmax), dtype=np.float64)
 
     @property
     def history_length(self):
@@ -190,22 +190,20 @@ class InformationStore(object):
         k1 = (k-1) % mmax
         for i in xrange(m):
             kmi = (k-m+i) % mmax
-            self._ss_store[kmi, k1] = self._ss_store[k1, kmi] \
-                = self.s[kmi].vdot(self.s[k1])
-            self._yy_store[kmi, k1] = self._yy_store[k1, kmi] \
-                = self.y[kmi].vdot(self.y[k1])
-            self._sy_store[kmi, k1] = self.s[kmi].vdot(self.y[k1])
+            self.ss[kmi, k1] = self.ss[k1, kmi] = self.s[kmi].vdot(self.s[k1])
+            self.yy[kmi, k1] = self.yy[k1, kmi] = self.y[kmi].vdot(self.y[k1])
+            self.sy[kmi, k1] = self.s[kmi].vdot(self.y[k1])
         for j in xrange(m-1):
-            kmj = (k+-m+j) % mmax
-            self._sy_store[k1, kmj] = self.s[k1].vdot(self.y[kmj])
+            kmj = (k-m+j) % mmax
+            self.sy[k1, kmj] = self.s[k1].vdot(self.y[kmj])
 
         for i in xrange(m):
             kmi = (k-m+i) % mmax
             for j in xrange(m):
                 kmj = (k-m+j) % mmax
-                result[i, j] = self._ss_store[kmi, kmj]
-                result[i, m+j] = result[m+j, i] = self._sy_store[kmi, kmj]
-                result[m+i, m+j] = self._yy_store[kmi, kmj]
+                result[i, j] = self.ss[kmi, kmj]
+                result[i, m+j] = result[m+j, i] = self.sy[kmi, kmj]
+                result[m+i, m+j] = self.yy[kmi, kmj]
 
             sgrad_i = self.s[kmi].vdot(self.last_gradient)
             result[2*m, i] = result[i, 2*m] = sgrad_i
@@ -253,8 +251,8 @@ class InformationStore(object):
     def add_new_point(self, x, gradient):
         """Updates the s list and y list.
 
-        Calculates the new position and gradient differences and adds them to
-        the respective list.
+        Calculates the new position and gradient differences and enters them
+        into the respective list.
 
         """
         mmax = self.max_history_length
