@@ -146,14 +146,14 @@ class DescentMinimizer(Loggable, object):
                 break
 
             # current position is encoded in energy object
-            descend_direction = self.get_descend_direction(energy)
+            descent_direction = self.get_descent_direction(energy)
 
             # compute the step length, which minimizes energy.value along the
             # search direction
             step_length, f_k, new_energy = \
                 self.line_searcher.perform_line_search(
                                                energy=energy,
-                                               pk=descend_direction,
+                                               pk=descent_direction,
                                                f_k_minus_1=f_k_minus_1)
             f_k_minus_1 = energy.value
 
@@ -195,5 +195,5 @@ class DescentMinimizer(Loggable, object):
         return energy, convergence
 
     @abc.abstractmethod
-    def get_descend_direction(self, energy):
+    def get_descent_direction(self, energy):
         raise NotImplementedError

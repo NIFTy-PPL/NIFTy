@@ -40,7 +40,7 @@ class VL_BFGS(DescentMinimizer):
         self._information_store = None
         return super(VL_BFGS, self).__call__(energy)
 
-    def get_descend_direction(self, energy):
+    def get_descent_direction(self, energy):
         """Implementation of the Vector-free L-BFGS minimization scheme.
 
         Find the descent direction by using the inverse Hessian.
@@ -57,7 +57,7 @@ class VL_BFGS(DescentMinimizer):
 
         Returns
         -------
-        descend_direction : Field
+        descent_direction : Field
             Returns the descent direction.
 
         References
@@ -80,11 +80,11 @@ class VL_BFGS(DescentMinimizer):
         b = self._information_store.b
         delta = self._information_store.delta
 
-        descend_direction = delta[0] * b[0]
+        descent_direction = delta[0] * b[0]
         for i in xrange(1, len(delta)):
-            descend_direction += delta[i] * b[i]
+            descent_direction += delta[i] * b[i]
 
-        return descend_direction
+        return descent_direction
 
 
 class InformationStore(object):
