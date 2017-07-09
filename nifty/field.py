@@ -1087,17 +1087,12 @@ class Field(Loggable, Versionable, object):
             return dotted.sum(spaces=spaces)
 
     def norm(self):
-        """ Computes the Lq-norm of the field values.
-
-        Parameters
-        ----------
-        q : scalar
-            Parameter q of the Lq-norm (default: 2).
+        """ Computes the L2-norm of the field values.
 
         Returns
         -------
         norm : scalar
-            The Lq-norm of the field values.
+            The L2-norm of the field values.
 
         """
         return np.sqrt(np.abs(self.vdot(x=self)))
