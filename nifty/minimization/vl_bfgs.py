@@ -104,21 +104,21 @@ class InformationStore(object):
     max_history_length : integer
         Maximum number of stored past updates.
     s : List
-        List of past position differences, which are Fields.
+        Circular buffer of past position differences, which are Fields.
     y : List
-        List of past gradient differences, which are Fields.
+        Circular buffer of past gradient differences, which are Fields.
     last_x : Field
         Latest position in variable space.
     last_gradient : Field
         Gradient at latest position.
     k : integer
         Number of updates that have taken place
-    _ss_store : dictionary
-        Dictionary of scalar products between different elements of s.
-    _sy_store : dictionary
-        Dictionary of scalar products between elements of s and y.
-    _yy_store : dictionary
-        Dictionary of scalar products between different elements of y.
+    _ss_store : numpy.ndarray
+        2D circular buffer of scalar products between different elements of s.
+    _sy_store : numpy.ndarray
+        2D circular buffer of scalar products between elements of s and y.
+    _yy_store : numpy.ndarray
+        2D circular buffer of scalar products between different elements of y.
 
     """
     def __init__(self, max_history_length, x0, gradient):
@@ -129,10 +129,10 @@ class InformationStore(object):
         self.last_gradient = gradient.copy()
         self.k = 0
 
-        hl = max_history_length
-        self._ss_store = np.empty((hl, hl), dtype=np.float64)
-        self._sy_store = np.empty((hl, hl), dtype=np.float64)
-        self._yy_store = np.empty((hl, hl), dtype=np.float64)
+        mmax = max_history_length
+        self._ss_store = np.empty((mmax, mmax), dtype=np.float64)
+        self._sy_store = np.empty((mmax, mmax), dtype=np.float64)
+        self._yy_store = np.empty((mmax, mmax), dtype=np.float64)
 
     @property
     def history_length(self):
@@ -153,15 +153,16 @@ class InformationStore(object):
         """
         result = []
         m = self.history_length
+        mmax = self.max_history_length
         k = self.k
 
         s = self.s
         for i in xrange(m):
-            result.append(s[(k-m+i) % m])
+            result.append(s[(k-m+i) % mmax])
 
         y = self.y
         for i in xrange(m):
-            result.append(y[(k-m+i) % m])
+            result.append(y[(k-m+i) % mmax])
 
         result.append(self.last_gradient)
 
@@ -181,28 +182,27 @@ class InformationStore(object):
 
         """
         m = self.history_length
+        mmax = self.max_history_length
         k = self.k
         result = np.empty((2*m+1, 2*m+1), dtype=np.float)
 
         # update the stores
-        if (m > 0):
-            k1 = (k-1) % m
-
+        k1 = (k-1) % mmax
         for i in xrange(m):
-            kmi = (k-m+i) % m
+            kmi = (k-m+i) % mmax
             self._ss_store[kmi, k1] = self._ss_store[k1, kmi] \
                 = self.s[kmi].vdot(self.s[k1])
             self._yy_store[kmi, k1] = self._yy_store[k1, kmi] \
                 = self.y[kmi].vdot(self.y[k1])
             self._sy_store[kmi, k1] = self.s[kmi].vdot(self.y[k1])
         for j in xrange(m-1):
-            kmj = (k-m+j) % m
+            kmj = (k+-m+j) % mmax
             self._sy_store[k1, kmj] = self.s[k1].vdot(self.y[kmj])
 
         for i in xrange(m):
-            kmi = (k-m+i) % m
+            kmi = (k-m+i) % mmax
             for j in xrange(m):
-                kmj = (k-m+j) % m
+                kmj = (k-m+j) % mmax
                 result[i, j] = self._ss_store[kmi, kmj]
                 result[i, m+j] = result[m+j, i] = self._sy_store[kmi, kmj]
                 result[m+i, m+j] = self._yy_store[kmi, kmj]
@@ -257,9 +257,9 @@ class InformationStore(object):
         the respective list.
 
         """
-        m = self.max_history_length
-        self.s[self.k % m] = x - self.last_x
-        self.y[self.k % m] = gradient - self.last_gradient
+        mmax = self.max_history_length
+        self.s[self.k % mmax] = x - self.last_x
+        self.y[self.k % mmax] = gradient - self.last_gradient
 
         self.last_x = x.copy()
         self.last_gradient = gradient.copy()
