@@ -210,7 +210,7 @@ class InformationStore(object):
             sgrad_i = self.s[kmi].vdot(self.last_gradient)
             result[2*m, i] = result[i, 2*m] = sgrad_i
 
-            ygrad_i = self.y[k-m+i].vdot(self.last_gradient)
+            ygrad_i = self.y[kmi].vdot(self.last_gradient)
             result[2*m, m+i] = result[m+i, 2*m] = ygrad_i
 
         result[2*m, 2*m] = self.last_gradient.norm()
