@@ -24,9 +24,9 @@ from .line_search import LineSearch
 class LineSearchStrongWolfe(LineSearch):
     """Class for finding a step size that satisfies the strong Wolfe conditions.
 
-    Algorithm contains two stages. It begins whit a trial step length and it
-    keeps increasing the it until it finds an acceptable step length or an
-    interval. If it does not satisfy the Wolfe conditions it performs the Zoom
+    Algorithm contains two stages. It begins whit a trial step length and
+    keeps increasing it until it finds an acceptable step length or an
+    interval. If it does not satisfy the Wolfe conditions, it performs the Zoom
     algorithm (second stage). By interpolating it decreases the size of the
     interval until an acceptable step length is found.
 
