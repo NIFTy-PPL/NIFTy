@@ -128,8 +128,8 @@ class SmoothingOperator(EndomorphicOperator):
             raise ValueError("SmoothingOperator only accepts exactly one "
                              "space as input domain.")
 
-        self.sigma = sigma
-        self.log_distances = log_distances
+        self._sigma = sigma
+        self._log_distances = log_distances
 
     def _inverse_times(self, x, spaces):
         if self.sigma == 0:
@@ -176,17 +176,9 @@ class SmoothingOperator(EndomorphicOperator):
     def sigma(self):
         return self._sigma
 
-    @sigma.setter
-    def sigma(self, sigma):
-        self._sigma = np.float(sigma)
-
     @property
     def log_distances(self):
         return self._log_distances
-
-    @log_distances.setter
-    def log_distances(self, log_distances):
-        self._log_distances = bool(log_distances)
 
     @abc.abstractmethod
     def _smooth(self, x, spaces, inverse):

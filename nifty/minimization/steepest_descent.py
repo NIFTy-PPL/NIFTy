@@ -42,8 +42,4 @@ class SteepestDescent(DescentMinimizer):
         """
 
         descend_direction = energy.gradient
-        norm = descend_direction.norm()
-        if norm != 1:
-            return descend_direction / -norm
-        else:
-            return descend_direction * -1
+        return descend_direction * -1

@@ -23,7 +23,6 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from ...basic_arithmetics import log as nifty_log
 from ...config import nifty_configuration as gc
 from ...field import Field
 from ..endomorphic_operator import EndomorphicOperator

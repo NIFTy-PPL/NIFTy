@@ -73,7 +73,7 @@ class LinearOperator(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object
     """
 
     def __init__(self, default_spaces=None):
-        self.default_spaces = default_spaces
+        self._default_spaces = default_spaces
 
     @staticmethod
     def _parse_domain(domain):
@@ -118,10 +118,6 @@ class LinearOperator(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object
     @property
     def default_spaces(self):
         return self._default_spaces
-
-    @default_spaces.setter
-    def default_spaces(self, spaces):
-        self._default_spaces = utilities.cast_axis_to_tuple(spaces)
 
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)

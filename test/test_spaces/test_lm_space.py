@@ -131,3 +131,7 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     def test_distance_array(self, lmax, expected):
         l = LMSpace(lmax)
         assert_almost_equal(l.get_distance_array('not').data, expected)
+
+    def test_hermitian_fixed_points(self):
+        x = LMSpace(5)
+        assert_equal(x.hermitian_fixed_points(), None)

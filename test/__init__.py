@@ -1,1 +1,1 @@
-import common
+from . import common
