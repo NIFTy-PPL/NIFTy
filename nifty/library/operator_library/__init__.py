@@ -1,4 +1,3 @@
 from wiener_filter_curvature import WienerFilterCurvature
 from critical_power_curvature import CriticalPowerCurvature
-from laplace_operator import LaplaceOperator
 from smoothness_operator import SmoothnessOperator

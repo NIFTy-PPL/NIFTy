@@ -7,8 +7,8 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
     This operator implements the second derivative of the
     WienerFilterEnergy used in some minimization algorithms or
-    for error estimates of the posterior maps. It corresponds to the
-    inverse propagator.
+    for error estimates of the posterior maps. It is the
+    inverse of the propagator operator.
 
 
     Parameters

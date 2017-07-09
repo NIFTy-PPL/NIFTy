@@ -54,8 +54,8 @@ from operators import *
 
 from probing import *
 
-from library import *
-
 from sugar import *
+
+import library
 
 import plotting
