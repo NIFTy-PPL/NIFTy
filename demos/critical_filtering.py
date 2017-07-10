@@ -1,6 +1,7 @@
 
 from nifty import *
-
+from nifty.library.wiener_filter import WienerFilterEnergy
+from nifty.library.critical_filter import CriticalPowerEnergy
 import plotly.offline as pl
 import plotly.graph_objs as go
 
