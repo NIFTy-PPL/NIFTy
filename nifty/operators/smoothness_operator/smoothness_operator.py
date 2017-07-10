@@ -31,7 +31,7 @@ class SmoothnessOperator(EndomorphicOperator):
         super(SmoothnessOperator, self).__init__(default_spaces=default_spaces)
 
         self._domain = self._parse_domain(domain)
-        if len(self.domain) != 0:
+        if len(self.domain) != 1:
             raise ValueError("The domain must contain exactly one PowerSpace.")
 
         if not isinstance(self.domain[0], PowerSpace):
@@ -68,7 +68,7 @@ class SmoothnessOperator(EndomorphicOperator):
         return False
 
     def _times(self, x, spaces):
-        res = self._aplace.adjoint_times(self._laplace(x, spaces), spaces)
+        res = self._laplace.adjoint_times(self._laplace(x, spaces), spaces)
         return (1./self.sigma)**2*res
 
     # ---Added properties and methods---
