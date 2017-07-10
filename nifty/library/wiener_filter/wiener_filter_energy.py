@@ -1,6 +1,6 @@
 from nifty.energies.energy import Energy
 from nifty.energies.memoization import memo
-from nifty.library.operator_library import WienerFilterCurvature
+from nifty.library.wiener_filter import WienerFilterCurvature
 
 
 class WienerFilterEnergy(Energy):

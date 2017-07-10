@@ -1,6 +1,7 @@
 from nifty.energies.energy import Energy
-from nifty.library.operator_library import CriticalPowerCurvature,\
-                                            SmoothnessOperator
+from nifty.operators.smoothness_operator import SmoothnessOperator
+from nifty.library.critical_filter import CriticalPowerCurvature
+
 
 from nifty.sugar import generate_posterior_sample
 from nifty import Field, exp

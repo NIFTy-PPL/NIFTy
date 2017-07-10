@@ -1,6 +1,6 @@
-from nifty.operators import EndomorphicOperator,\
-                            InvertibleOperatorMixin,\
-                            DiagonalOperator
+from nifty.operators.endomorphic_operator import EndomorphicOperator
+from nifty.operators.invertible_operator_mixin import InvertibleOperatorMixin
+from nifty.operators.diagonal_operator import DiagonalOperator
 
 
 class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
@@ -18,6 +18,9 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     T : SmoothnessOperator,
         The smoothness prior contribution to the curvature.
     """
+
+    # ---Overwritten properties and methods---
+
     def __init__(self, theta, T, inverter=None, preconditioner=None):
 
         self.theta = DiagonalOperator(theta.domain, diagonal=theta)
@@ -25,8 +28,15 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
         if preconditioner is None:
             preconditioner = self.theta.inverse_times
         self._domain = self.theta.domain
-        super(CriticalPowerCurvature, self).__init__(inverter=inverter,
+        super(CriticalPowerCurvature, self).__init__(
+                                                 inverter=inverter,
                                                  preconditioner=preconditioner)
+
+    def _times(self, x, spaces):
+        return self.T(x) + self.theta(x)
+
+    # ---Mandatory properties and methods---
+
     @property
     def domain(self):
         return self._domain
@@ -38,8 +48,3 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     @property
     def unitary(self):
         return False
-
-    # ---Added properties and methods---
-
-    def _times(self, x, spaces):
-        return self.T(x) + self.theta(x)
