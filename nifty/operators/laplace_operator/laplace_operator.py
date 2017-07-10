@@ -17,9 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from nifty import Field,\
-                  EndomorphicOperator,\
-                  PowerSpace
+from nifty.field import Field
+from nifty.spaces.power_space import PowerSpace
+from nifty.operators.endomorphic_operator import EndomorphicOperator
+
 import nifty.nifty_utilities as utilities
 
 

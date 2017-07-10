@@ -24,7 +24,6 @@ from nifty.minimization.conjugate_gradient import ConjugateGradient
 __all__ = ['create_power_operator']
 
 
-
 def create_power_operator(domain, power_spectrum, dtype=None,
                           distribution_strategy='not'):
     """ Creates a diagonal operator with the given power spectrum.
@@ -54,11 +53,9 @@ def create_power_operator(domain, power_spectrum, dtype=None,
 
     if isinstance(power_spectrum, Field):
         power_domain = power_spectrum.domain
-    else :
+    else:
         power_domain = PowerSpace(domain,
-                              distribution_strategy=distribution_strategy)
-
-
+                                  distribution_strategy=distribution_strategy)
 
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
                distribution_strategy=distribution_strategy)
@@ -66,7 +63,8 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
 
-def generate_posterior_sample(mean, covariance, inverter = None):
+
+def generate_posterior_sample(mean, covariance, inverter=None):
     """ Generates a posterior sample from a Gaussian distribution with given mean and covariance
 
     This method generates samples by setting up the observation and reconstruction of a mock signal
@@ -99,15 +97,13 @@ def generate_posterior_sample(mean, covariance, inverter = None):
     power = S.diagonal().power_analyze()**.5
     mock_signal = power.power_synthesize(real_signal=True)
 
-
     noise = N.diagonal(bare=True).val
 
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,
-                                   std = sqrt(noise), dtype = noise.dtype)
+                                   std=sqrt(noise), dtype=noise.dtype)
     mock_data = R(mock_signal) + mock_noise
 
     mock_j = R.adjoint_times(N.inverse_times(mock_data))
     mock_m = covariance.inverse_times(mock_j)
     sample = mock_signal - mock_m + mean
     return sample
-

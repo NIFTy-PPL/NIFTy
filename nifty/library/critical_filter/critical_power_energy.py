@@ -5,6 +5,7 @@ from nifty.library.operator_library import CriticalPowerCurvature,\
 from nifty.sugar import generate_posterior_sample
 from nifty import Field, exp
 
+
 class CriticalPowerEnergy(Energy):
     """The Energy of the power spectrum according to the critical filter.
 

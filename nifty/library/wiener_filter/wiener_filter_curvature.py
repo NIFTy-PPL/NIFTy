@@ -30,8 +30,10 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
         if preconditioner is None:
             preconditioner = self.S.times
         self._domain = self.S.domain
-        super(WienerFilterCurvature, self).__init__(inverter=inverter,
+        super(WienerFilterCurvature, self).__init__(
+                                                 inverter=inverter,
                                                  preconditioner=preconditioner)
+
     @property
     def domain(self):
         return self._domain
@@ -47,5 +49,5 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     # ---Added properties and methods---
 
     def _times(self, x, spaces):
-        return self.R.adjoint_times(self.N.inverse_times(self.R(x)))\
-               + self.S.inverse_times(x)
+        return (self.R.adjoint_times(self.N.inverse_times(self.R(x))) +
+                self.S.inverse_times(x))

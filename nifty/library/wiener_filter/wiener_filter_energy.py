@@ -2,10 +2,11 @@ from nifty.energies.energy import Energy
 from nifty.energies.memoization import memo
 from nifty.library.operator_library import WienerFilterCurvature
 
+
 class WienerFilterEnergy(Energy):
     """The Energy for the Wiener filter.
 
-    It describes the situation of linear measurement with
+    It covers the case of linear measurement with
     Gaussian noise and Gaussain signal prior with known covariance.
 
     Parameters
@@ -23,7 +24,7 @@ class WienerFilterEnergy(Energy):
     """
 
     def __init__(self, position, d, R, N, S, inverter=None):
-        super(WienerFilterEnergy, self).__init__(position = position)
+        super(WienerFilterEnergy, self).__init__(position=position)
         self.d = d
         self.R = R
         self.N = N
@@ -31,30 +32,31 @@ class WienerFilterEnergy(Energy):
         self.inverter = inverter
 
     def at(self, position):
-        return self.__class__(position, self.d, self.R, self.N, self.S)
+        return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
+                              S=self.S, inverter=self.inverter)
 
     @property
-    def value(self):
-        residual = self._residual()
-        energy = 0.5 * self.position.vdot(self.S.inverse_times(self.position))
-        energy += 0.5 * (residual).vdot(self.N.inverse_times(residual))
-        return energy.real
-
-    @property
-    def gradient(self):
-        residual = self._residual()
-        gradient = self.S.inverse_times(self.position)
-        gradient -= self.R.adjoint_times(
-                    self.N.inverse_times(residual))
-        return gradient
-
-    @property
-    def curvature(self):
-        curvature = WienerFilterCurvature(R=self.R, N=self.N, S=self.S, inverter=self.inverter)
-        return curvature
-
     @memo
-    def _residual(self):
-        residual = self.d - self.R(self.position)
-        return residual
+    def value(self):
+        return 0.5*self.position.vdot(self._Dx) - self._j.vdot(self.position)
 
+    @property
+    @memo
+    def gradient(self):
+        return self._Dx - self._j
+
+    @property
+    @memo
+    def curvature(self):
+        return WienerFilterCurvature(R=self.R, N=self.N, S=self.S,
+                                     inverter=self.inverter)
+
+    @property
+    @memo
+    def _Dx(self):
+        return self.curvature(self.position)
+
+    @property
+    @memo
+    def _j(self):
+        return self.R.adjoint_times(self.N.inverse_times(self.d))

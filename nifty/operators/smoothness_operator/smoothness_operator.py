@@ -1,8 +1,7 @@
-from nifty import EndomorphicOperator,\
-                  PowerSpace
-import nifty.nifty_utilities as utilities
 
-from laplace_operator import LaplaceOperator
+from nifty.spaces.power_space import PowerSpace
+from nifty.operators.endomorphic_operator import EndomorphicOperator
+from nifty.operators.laplace_operator import LaplaceOperator
 
 
 class SmoothnessOperator(EndomorphicOperator):
@@ -25,28 +24,28 @@ class SmoothnessOperator(EndomorphicOperator):
         default : True
     """
 
-    def __init__(self, domain, sigma ,logarithmic = True,
-                 default_spaces=None):
+    # ---Overwritten properties and methods---
 
-        super(SmoothnessOperator, self).__init__(default_spaces)
+    def __init__(self, domain, sigma, logarithmic=True, default_spaces=None):
 
-        if (not isinstance(domain, PowerSpace)):
-            raise TypeError("The domain has to live over a PowerSpace")
+        super(SmoothnessOperator, self).__init__(default_spaces=default_spaces)
 
         self._domain = self._parse_domain(domain)
+        if len(self.domain) != 0:
+            raise ValueError("The domain must contain exactly one PowerSpace.")
 
-        if (sigma <= 0):
+        if not isinstance(self.domain[0], PowerSpace):
+            raise TypeError("The domain must contain exactly one PowerSpace.")
+
+        if sigma <= 0:
             raise ValueError("ERROR: invalid sigma.")
 
         self._sigma = sigma
 
-        self._Laplace = LaplaceOperator(domain=domain, logarithmic=logarithmic)
+        self._laplace = LaplaceOperator(domain=self.domain,
+                                        logarithmic=logarithmic)
 
-
-
-    @property
-    def sigma(self):
-        return self._sigma
+    # ---Mandatory properties and methods---
 
     @property
     def target(self):
@@ -69,6 +68,11 @@ class SmoothnessOperator(EndomorphicOperator):
         return False
 
     def _times(self, x, spaces):
-
-        res = self._Laplace.adjoint_times(self._Laplace.times(x,spaces), spaces)
+        res = self._aplace.adjoint_times(self._laplace(x, spaces), spaces)
         return (1./self.sigma)**2*res
+
+    # ---Added properties and methods---
+
+    @property
+    def sigma(self):
+        return self._sigma
