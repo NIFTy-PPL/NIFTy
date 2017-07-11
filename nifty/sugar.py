@@ -64,11 +64,13 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     return DiagonalOperator(domain, diagonal=f, bare=True)
 
 
-def generate_posterior_sample(mean, covariance, inverter=None):
-    """ Generates a posterior sample from a Gaussian distribution with given mean and covariance
+def generate_posterior_sample(mean, covariance):
+    """ Generates a posterior sample from a Gaussian distribution with given
+    mean and covariance
 
-    This method generates samples by setting up the observation and reconstruction of a mock signal
-    in order to obtain residuals of the right correlation which are added to the given mean.
+    This method generates samples by setting up the observation and
+    reconstruction of a mock signal in order to obtain residuals of the right
+    correlation which are added to the given mean.
 
     Parameters
     ----------
@@ -77,9 +79,6 @@ def generate_posterior_sample(mean, covariance, inverter=None):
     covariance : WienerFilterCurvature
         The posterior correlation structure consisting of a
         response operator, noise covariance and prior signal covariance
-    inverter : ConjugateGradient *optional*
-        the conjugate gradient used to invert the curvature for the Wiener filter.
-        default : None
 
     Returns
     -------
@@ -91,8 +90,6 @@ def generate_posterior_sample(mean, covariance, inverter=None):
     S = covariance.S
     R = covariance.R
     N = covariance.N
-    if inverter is None:
-        inverter = ConjugateGradient(preconditioner=S)
 
     power = S.diagonal().power_analyze()**.5
     mock_signal = power.power_synthesize(real_signal=True)

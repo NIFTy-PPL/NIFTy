@@ -1,3 +1,5 @@
+import numpy as np
+
 from nifty.energies.energy import Energy
 from nifty.operators.smoothness_operator import SmoothnessOperator
 from nifty.library.critical_filter import CriticalPowerCurvature
@@ -10,9 +12,10 @@ from nifty import Field, exp
 class CriticalPowerEnergy(Energy):
     """The Energy of the power spectrum according to the critical filter.
 
-    It describes the energy of the logarithmic amplitudes of the power spectrum of
-    a Gaussian random field under reconstruction uncertainty with smoothness and
-    inverse gamma prior. It is used to infer the correlation structure of a correlated signal.
+    It describes the energy of the logarithmic amplitudes of the power spectrum
+    of a Gaussian random field under reconstruction uncertainty with smoothness
+    and inverse gamma prior. It is used to infer the correlation structure of a
+    correlated signal.
 
     Parameters
     ----------
@@ -25,20 +28,21 @@ class CriticalPowerEnergy(Energy):
         If not specified, the map is assumed to be no reconstruction.
         default : None
     alpha : float
-        The spectral prior of the inverse gamma distribution. 1.0 corresponds to
-        non-informative.
+        The spectral prior of the inverse gamma distribution. 1.0 corresponds
+        to non-informative.
         default : 1.0
     q : float
-        The cutoff parameter of the inverse gamma distribution. 0.0 corresponds to
-        non-informative.
+        The cutoff parameter of the inverse gamma distribution. 0.0 corresponds
+        to non-informative.
         default : 0.0
-    sigma : float
-        The parameter of the smoothness prior.
-        default : ??? None? ???????
+    smoothness_prior : float
+        Controls the strength of the smoothness prior
+        default : 0.0
     logarithmic : boolean
         Whether smoothness acts on linear or logarithmic scale.
     samples : integer
-        Number of samples used for the estimation of the uncertainty corrections.
+        Number of samples used for the estimation of the uncertainty
+        corrections.
         default : 3
     w : Field
         The contribution from the map with or without uncertainty. It is used
@@ -49,76 +53,72 @@ class CriticalPowerEnergy(Energy):
         default : None
     """
 
-    def __init__(self, position, m, D=None, alpha =1.0, q=0., sigma=0.,
-                 logarithmic = True, samples=3, w=None, inverter=None):
-        super(CriticalPowerEnergy, self).__init__(position = position)
+    def __init__(self, position, m, D=None, alpha=1.0, q=0.,
+                 smoothness_prior=0., logarithmic=True, samples=3, w=None):
+        super(CriticalPowerEnergy, self).__init__(position=position)
         self.m = m
         self.D = D
         self.samples = samples
-        self.sigma = sigma
+        self.smoothness_prior = np.float(smoothness_prior)
         self.alpha = Field(self.position.domain, val=alpha)
         self.q = Field(self.position.domain, val=q)
-        self.T = SmoothnessOperator(domain=self.position.domain[0], sigma=self.sigma,
+        self.T = SmoothnessOperator(domain=self.position.domain[0],
+                                    strength=self.smoothness_prior,
                                     logarithmic=logarithmic)
         self.rho = self.position.domain[0].rho
-        self.inverter = inverter
-        self.w = w
-        if self.w is None:
-            self.w = self._calculate_w(self.m, self.D, self.samples)
-        self.theta = (exp(-self.position) * (self.q + self.w / 2.))
-
+        self._w = w if w is not None else None
 
     def at(self, position):
-        return self.__class__(position, self.m, D=self.D,
-                              alpha =self.alpha,
-                              q=self.q,
-                              sigma=self.sigma, w=self.w,
-                              samples=self.samples)
+        return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
+                              q=self.q, smoothness_prior=self.smoothness_prior,
+                              w=self.w, samples=self.samples)
 
     @property
     def value(self):
-        energy = self._theta.vdot(Field(self.position.domain,val=1.), bare= True)
+        energy = self._theta.sum()
         energy += self.position.vdot(self._rho_prime, bare=True)
         energy += 0.5 * self.position.vdot(self._Tt)
         return energy.real
 
     @property
     def gradient(self):
-        gradient = - self._theta.weight(-1)
+        gradient = -self._theta.weight(-1)
         gradient += (self._rho_prime).weight(-1)
-        gradient +=  self._Tt
+        gradient += self._Tt
         gradient.val = gradient.val.real
         return gradient
 
     @property
     def curvature(self):
-        curvature = CriticalPowerCurvature(theta=self._theta.weight(-1), T=self.T,
-                                           inverter=self.inverter)
+        curvature = CriticalPowerCurvature(theta=self._theta.weight(-1),
+                                           T=self.T)
         return curvature
 
-    def _calculate_w(self, m, D, samples):
-        w = Field(domain=self.position.domain, val=0. , dtype=m.dtype)
-        if D is not None:
-            for i in range(samples):
-                posterior_sample = generate_posterior_sample(m, D, inverter = self.inverter)
-                projected_sample = posterior_sample.power_analyze(
-                    logarithmic=self.position.domain[0].config["logarithmic"],
-                    nbin= self.position.domain[0].config["nbin"])
-                w += (projected_sample) * self.rho
-            w /= float(samples)
-        else:
-            w = m.power_analyze(
-                    logarithmic=self.position.domain[0].config["logarithmic"],
-                        nbin=self.position.domain[0].config["nbin"])
-            w *= self.rho
-
-        return w
-
+    @property
+    def w(self):
+        if self._w is None:
+            w = Field(domain=self.position.domain, val=0., dtype=self.m.dtype)
+            if self.D is not None:
+                for i in range(self.samples):
+                    posterior_sample = generate_posterior_sample(
+                                                            self.m, self.D)
+                    projected_sample = posterior_sample.power_analyze(
+                     logarithmic=self.position.domain[0].config["logarithmic"],
+                     nbin=self.position.domain[0].config["nbin"])
+                    w += (projected_sample) * self.rho
+                w /= float(self.samples)
+            else:
+                w = self.m.power_analyze(
+                     logarithmic=self.position.domain[0].config["logarithmic"],
+                     nbin=self.position.domain[0].config["nbin"])
+                w *= self.rho
+            self._w = w
+        return self._w
 
     @property
     @memo
     def _theta(self):
-        return (exp(-self.position) * (self.q + self.w / 2.))
+        return exp(-self.position) * (self.q + self.w / 2.)
 
     @property
     @memo
@@ -129,4 +129,3 @@ class CriticalPowerEnergy(Energy):
     @memo
     def _Tt(self):
         return self.T(self.position)
-
