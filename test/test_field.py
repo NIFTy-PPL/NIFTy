@@ -119,3 +119,12 @@ class Test_Functionality(unittest.TestCase):
         assert_allclose(ps2.val.get_full_data()/samples,
                         fp2.val.get_full_data(),
                         rtol=0.1)
+
+    def test_vdot(self):
+        s=RGSpace((10,))
+        f1=Field.from_random("normal",domain=s,dtype=np.complex128)
+        f2=Field.from_random("normal",domain=s,dtype=np.complex128)
+        assert_allclose(f1.vdot(f2),f1.vdot(f2,spaces=0))
+        assert_allclose(f1.vdot(f2),np.conj(f2.vdot(f1)))
+
+
