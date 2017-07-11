@@ -121,11 +121,6 @@ class RGSpace(Space):
         ndlist = tuple(ndlist)
         fixed_points = []
         for index in np.ndindex(ndlist):
-            for k in range(dimensions):
-                if self.shape[k] % 2 != 0 and self.zerocenter[k]:
-                    index = list(index)
-                    index[k] = 1
-                    index = tuple(index)
             fixed_points += [tuple(index * mid_index)]
         return fixed_points
 
@@ -142,12 +137,8 @@ class RGSpace(Space):
             i = axes[k]
             slice_picker = slice_primitive[:]
             slice_inverter = slice_primitive[:]
-            if (not self.zerocenter[k]) or self.shape[k] % 2 == 0:
-                slice_picker[i] = slice(1, None, None)
-                slice_inverter[i] = slice(None, 0, -1)
-            else:
-                slice_picker[i] = slice(None)
-                slice_inverter[i] = slice(None, None, -1)
+            slice_picker[i] = slice(1, None, None)
+            slice_inverter[i] = slice(None, 0, -1)
             slice_picker = tuple(slice_picker)
             slice_inverter = tuple(slice_inverter)
 

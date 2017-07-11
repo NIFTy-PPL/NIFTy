@@ -58,14 +58,12 @@ class Test_Interface(unittest.TestCase):
 
 class Test_Functionality(unittest.TestCase):
     @expand(product([True, False], [True, False],
-                    [True, False], [True, False],
                     [(1,), (4,), (5,)], [(1,), (6,), (7,)]))
-    def test_hermitian_decomposition(self, z1, z2, preserve, complexdata,
-                                     s1, s2):
+    def test_hermitian_decomposition(self, preserve, complexdata, s1, s2):
         np.random.seed(123)
-        r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
-        r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
-        ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+        r1 = RGSpace(s1, harmonic=True)
+        r2 = RGSpace(s2, harmonic=True)
+        ra = RGSpace(s1+s2, harmonic=True)
 
         v = np.random.random(s1+s2)
         if complexdata:
@@ -84,12 +82,9 @@ class Test_Functionality(unittest.TestCase):
         assert_almost_equal(h1.get_full_data(), h3.get_full_data())
         assert_almost_equal(a1.get_full_data(), a3.get_full_data())
 
-    @expand(product([RGSpace((8,), harmonic=True,
-                             zerocenter=False),
-                     RGSpace((8, 8), harmonic=True, distances=0.123,
-                             zerocenter=True)],
-                    [RGSpace((8,), harmonic=True,
-                             zerocenter=False),
+    @expand(product([RGSpace((8,), harmonic=True),
+                     RGSpace((8, 8), harmonic=True, distances=0.123)],
+                    [RGSpace((8,), harmonic=True),
                      LMSpace(12)]))
     def test_power_synthesize_analyze(self, space1, space2):
         p1 = PowerSpace(space1)

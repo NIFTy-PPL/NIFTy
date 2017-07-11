@@ -126,10 +126,9 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
             assert_equal(getattr(x, key), value)
 
     @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
-                     (4, 6, 8), (17, 5, 3)],
-                    [True, False]))
-    def test_hermitian_decomposition(self, shape, zerocenter):
-        r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+                     (4, 6, 8), (17, 5, 3)]))
+    def test_hermitian_decomposition(self, shape):
+        r = RGSpace(shape, harmonic=True)
         v = np.empty(shape, dtype=np.complex128)
         v.real = np.random.random(shape)
         v.imag = np.random.random(shape)
@@ -147,20 +146,16 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
             i1 = it.multi_index
             i2 = []
             for i in range(len(i1)):
-                if r.zerocenter[i] and r.shape[i] % 2 != 0:
-                    i2.append(h.shape[i]-i1[i]-1)
-                else:
-                    i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
+                i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
             i2 = tuple(i2)
             assert_almost_equal(h[i1], np.conj(h[i2]))
             assert_almost_equal(a[i1], -np.conj(a[i2]))
             it.iternext()
 
     @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
-                     (4, 6, 8), (17, 5, 3)],
-                    [True, False]))
-    def test_hermitian_decomposition2(self, shape, zerocenter):
-        r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+                     (4, 6, 8), (17, 5, 3)]))
+    def test_hermitian_decomposition2(self, shape):
+        r = RGSpace(shape, harmonic=True)
         v = np.random.random(shape)
         h, a = r.hermitian_decomposition(v)
         # make sure that data == h + a
@@ -171,10 +166,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
             i1 = it.multi_index
             i2 = []
             for i in range(len(i1)):
-                if r.zerocenter[i] and r.shape[i] % 2 != 0:
-                    i2.append(h.shape[i]-i1[i]-1)
-                else:
-                    i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
+                i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
             i2 = tuple(i2)
             assert_almost_equal(h[i1], np.conj(h[i2]))
             assert_almost_equal(a[i1], -np.conj(a[i2]))
@@ -195,6 +187,6 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
             assert_(x is res)
 
     def test_hermitian_fixed_points(self):
-        x = RGSpace((5, 6, 5, 6), zerocenter=[False, False, True, True])
+        x = RGSpace((5, 6, 5, 6))
         assert_equal(x.hermitian_fixed_points(),
-                     [(0, 0, 2, 0), (0, 0, 2, 3), (0, 3, 2, 0), (0, 3, 2, 3)])
+                     [(0, 0, 0, 0), (0, 0, 0, 3), (0, 3, 0, 0), (0, 3, 0, 3)])
