@@ -165,7 +165,7 @@ class DescentMinimizer(Loggable, object):
 
             energy = new_energy
             # check convergence
-            delta = abs(gradient).max() * (step_length/gradient_norm)
+            delta = abs(gradient).max() * (step_length/np.sqrt(gradient_norm))
             self.logger.debug("Iteration:%08u step_length=%3.1E "
                               "delta=%3.1E energy=%3.1E" %
                               (iteration_number, step_length, delta,
