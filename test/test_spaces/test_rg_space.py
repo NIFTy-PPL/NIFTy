@@ -24,6 +24,7 @@ import numpy as np
 from numpy.testing import assert_, assert_equal, assert_almost_equal
 from nifty import RGSpace
 from test.common import expand
+from itertools import product
 
 # [shape, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -109,83 +110,6 @@ def get_weight_configs():
         ]
 
 
-def get_hermitian_configs():
-    h_0_x = np.array([
-        [0.88250339+0.12102381j,  0.54293435+0.7345584j, 0.87057998+0.20515315j,
-            0.16602950+0.09396132j],
-        [0.83853902+0.17974696j,  0.79735933+0.37104425j, 0.22057732+0.9498977j,
-            0.14329183+0.47899678j],
-        [0.96934284+0.3792878j, 0.13118669+0.45643055j, 0.16372149+0.48235714j,
-            0.66141537+0.20383357j],
-        [0.49168197+0.77572178j, 0.09570420+0.14219071j, 0.69735595+0.33017333j,
-            0.83692452+0.18544449j]])
-    h_0_res_real = np.array([
-        [0.88250339+0.j, 0.35448193+0.32029854j, 0.87057998+0.j,
-            0.35448193-0.32029854j],
-        [0.66511049-0.29798741j, 0.81714193+0.09279988j, 0.45896664+0.30986218j,
-            0.11949801+0.16840303j],
-        [0.96934284+0.j, 0.39630103+0.12629849j, 0.16372149+0.j,
-            0.39630103-0.12629849j],
-        [0.66511049+0.29798741j, 0.11949801-0.16840303j, 0.45896664-0.30986218j,
-            0.81714193-0.09279988j]])
-    h_0_res_imag = np.array([
-        [0.12102381+0.j, 0.41425986-0.18845242j, 0.20515315+0.j,
-            0.41425986+0.18845242j],
-        [0.47773437-0.17342852j, 0.27824437+0.0197826j, 0.64003551+0.23838932j,
-            0.31059374-0.02379381j],
-        [0.37928780+0.j, 0.33013206+0.26511434j, 0.48235714+0.j,
-            0.33013206-0.26511434j],
-        [0.47773437+0.17342852j, 0.31059374+0.02379381j, 0.64003551-0.23838932j,
-            0.27824437-0.0197826j]])*1j
-
-    h_1_x = np.array([
-        [[0.23987021+0.41617749j, 0.34605012+0.55462234j, 0.07947035+0.73360723j,
-            0.22853748+0.39275304j],
-         [0.90254910+0.02107809j, 0.28195470+0.56031588j, 0.23004043+0.33873536j,
-             0.56398377+0.68913034j],
-         [0.81897406+0.2050369j, 0.88724852+0.8137488j, 0.84645004+0.0059284j,
-             0.14950377+0.50013099j]],
-        [[0.93491597+0.73251066j, 0.74764790+0.11539037j, 0.48090736+0.04352568j,
-            0.49363732+0.97233093j],
-         [0.72761881+0.74636216j, 0.46390134+0.4343401j, 0.88436859+0.79415269j,
-             0.67027606+0.85498234j],
-         [0.86318727+0.19076379j, 0.36859448+0.89842333j, 0.73407193+0.85091112j,
-             0.44187657+0.08936409j]]
-        ])
-    h_1_res_real = np.array([
-        [[0.23987021+0.j, 0.28729380+0.08093465j, 0.07947035+0.j,
-            0.28729380-0.08093465j],
-         [0.90254910+0.j, 0.42296924-0.06440723j, 0.23004043+0.j,
-             0.42296924+0.06440723j],
-         [0.81897406+0.j, 0.51837614+0.1568089j, 0.84645004+0.j,
-             0.51837614-0.1568089j]],
-        [[0.93491597+0.j, 0.62064261-0.42847028j, 0.48090736+0.j,
-            0.62064261+0.42847028j],
-         [0.72761881+0.j, 0.56708870-0.21032112j, 0.88436859+0.j,
-             0.56708870+0.21032112j],
-         [0.86318727+0.j, 0.40523552+0.40452962j, 0.73407193+0.j,
-             0.40523552-0.40452962j]]
-        ])
-    h_1_res_imag = np.array([
-        [[0.41617749+0.j, 0.47368769-0.05875632j, 0.73360723+0.j,
-            0.47368769+0.05875632j],
-         [0.02107809+0.j, 0.62472311+0.14101454j, 0.33873536+0.j,
-             0.62472311-0.14101454j],
-         [0.20503690+0.j, 0.65693990-0.36887238j, 0.00592840+0.j,
-             0.65693990+0.36887238j]],
-        [[0.73251066+0.j, 0.54386065-0.12700529j, 0.04352568+0.j,
-            0.54386065+0.12700529j],
-         [0.74636216+0.j, 0.64466122+0.10318736j, 0.79415269+0.j,
-             0.64466122-0.10318736j],
-         [0.19076379+0.j, 0.49389371+0.03664104j, 0.85091112+0.j,
-             0.49389371-0.03664104j]]
-        ])*1j
-    return [
-        [h_0_x, None, h_0_res_real, h_0_res_imag],
-        [h_1_x, (2,), h_1_res_real, h_1_res_imag]
-    ]
-
-
 class RGSpaceInterfaceTests(unittest.TestCase):
     @expand([['distances', tuple]])
     def test_property_ret_type(self, attribute, expected_type):
@@ -201,11 +125,60 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         for key, value in expected.iteritems():
             assert_equal(getattr(x, key), value)
 
-    @expand(get_hermitian_configs())
-    def test_hermitian_decomposition(self, x, axes, real, imag):
-        r = RGSpace(5)
-        assert_almost_equal(r.hermitian_decomposition(x, axes=axes)[0], real)
-        assert_almost_equal(r.hermitian_decomposition(x, axes=axes)[1], imag)
+    @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
+                     (4, 6, 8), (17, 5, 3)],
+                    [True, False]))
+    def test_hermitian_decomposition(self, shape, zerocenter):
+        r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+        v = np.empty(shape, dtype=np.complex128)
+        v.real = np.random.random(shape)
+        v.imag = np.random.random(shape)
+        h, a = r.hermitian_decomposition(v)
+        # make sure that data == h + a
+        # NOTE: this is only correct for preserve_gaussian_variance==False,
+        #       but I consider this an intrinsic property of a hermitian
+        #       decomposition.
+        assert_almost_equal(v, h+a)
+        print (h, a)
+
+        # test hermitianity of h
+        it = np.nditer(h, flags=['multi_index'])
+        while not it.finished:
+            i1 = it.multi_index
+            i2 = []
+            for i in range(len(i1)):
+                if r.zerocenter[i] and r.shape[i] % 2 != 0:
+                    i2.append(h.shape[i]-i1[i]-1)
+                else:
+                    i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
+            i2 = tuple(i2)
+            assert_almost_equal(h[i1], np.conj(h[i2]))
+            assert_almost_equal(a[i1], -np.conj(a[i2]))
+            it.iternext()
+
+    @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
+                     (4, 6, 8), (17, 5, 3)],
+                    [True, False]))
+    def test_hermitian_decomposition2(self, shape, zerocenter):
+        r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+        v = np.random.random(shape)
+        h, a = r.hermitian_decomposition(v)
+        # make sure that data == h + a
+        assert_almost_equal(v, h+a)
+        # test hermitianity of h
+        it = np.nditer(h, flags=['multi_index'])
+        while not it.finished:
+            i1 = it.multi_index
+            i2 = []
+            for i in range(len(i1)):
+                if r.zerocenter[i] and r.shape[i] % 2 != 0:
+                    i2.append(h.shape[i]-i1[i]-1)
+                else:
+                    i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
+            i2 = tuple(i2)
+            assert_almost_equal(h[i1], np.conj(h[i2]))
+            assert_almost_equal(a[i1], -np.conj(a[i2]))
+            it.iternext()
 
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, expected):
@@ -220,3 +193,8 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         assert_almost_equal(res, expected)
         if inplace:
             assert_(x is res)
+
+    def test_hermitian_fixed_points(self):
+        x = RGSpace((5, 6, 5, 6), zerocenter=[False, False, True, True])
+        assert_equal(x.hermitian_fixed_points(),
+                     [(0, 0, 2, 0), (0, 0, 2, 3), (0, 3, 2, 0), (0, 3, 2, 3)])

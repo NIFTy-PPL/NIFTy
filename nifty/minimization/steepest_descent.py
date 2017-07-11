@@ -20,7 +20,7 @@ from .descent_minimizer import DescentMinimizer
 
 
 class SteepestDescent(DescentMinimizer):
-    def get_descend_direction(self, energy):
+    def get_descent_direction(self, energy):
         """ Implementation of the steepest descent minimization scheme.
 
         Also known as 'gradient descent'. This algorithm simply follows the
@@ -34,14 +34,9 @@ class SteepestDescent(DescentMinimizer):
 
         Returns
         -------
-        descend_direction : Field
+        descent_direction : Field
             Returns the descent direction.
 
         """
 
-        descend_direction = energy.gradient
-        norm = descend_direction.norm()
-        if norm != 1:
-            return descend_direction / -norm
-        else:
-            return descend_direction * -1
+        return -energy.gradient

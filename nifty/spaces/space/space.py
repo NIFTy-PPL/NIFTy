@@ -167,7 +167,7 @@ class Space(DomainObject):
             If the hermitian decomposition is done via computing the half
             sums and differences of `x` and mirrored `x`, all points except the
             fixed points lose half of their variance. If `x` is complex also
-            the lose half of their variance since the real(/imaginary) part
+            they lose half of their variance since the real(/imaginary) part
             gets lost.
 
         Returns

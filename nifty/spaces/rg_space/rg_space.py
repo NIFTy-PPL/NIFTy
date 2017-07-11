@@ -93,6 +93,12 @@ class RGSpace(Space):
 
     def hermitian_decomposition(self, x, axes=None,
                                 preserve_gaussian_variance=False):
+        # check axes
+        if axes is None:
+            axes = range(len(self.shape))
+        assert len(x.shape) >= len(self.shape), "shapes mismatch"
+        assert len(axes) == len(self.shape), "axes mismatch"
+
         # compute the hermitian part
         flipped_x = self._hermitianize_inverter(x, axes=axes)
         flipped_x = flipped_x.conjugate()
@@ -103,68 +109,46 @@ class RGSpace(Space):
         # use subtraction since it is faster than flipping another time
         anti_hermitian_part = (x-hermitian_part)
 
-        if preserve_gaussian_variance:
-            hermitian_part, anti_hermitian_part = \
-                self._hermitianize_correct_variance(hermitian_part,
-                                                    anti_hermitian_part,
-                                                    axes=axes)
-
         return (hermitian_part, anti_hermitian_part)
 
-    def _hermitianize_correct_variance(self, hermitian_part,
-                                       anti_hermitian_part, axes):
-        # Correct the variance by multiplying sqrt(2)
-        hermitian_part = hermitian_part * np.sqrt(2)
-        anti_hermitian_part = anti_hermitian_part * np.sqrt(2)
-
-        # If the dtype of the input is complex, the fixed points lose the power
-        # of their imaginary-part (or real-part, respectively). Therefore
-        # the factor of sqrt(2) also applies there
-        if not issubclass(hermitian_part.dtype.type, np.complexfloating):
-            # The fixed points of the point inversion must not be averaged.
-            # Hence one must divide out the sqrt(2) again
-            # -> Get the middle index of the array
-            mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
-            dimensions = mid_index.size
-            # Use ndindex to iterate over all combinations of zeros and the
-            # mid_index in order to correct all fixed points.
-            if axes is None:
-                axes = xrange(dimensions)
-
-            ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
-            ndlist = tuple(ndlist)
-            for i in np.ndindex(ndlist):
-                temp_index = tuple(i * mid_index)
-                hermitian_part[temp_index] /= np.sqrt(2)
-                anti_hermitian_part[temp_index] /= np.sqrt(2)
-        return hermitian_part, anti_hermitian_part
+    def hermitian_fixed_points(self):
+        dimensions = len(self.shape)
+        mid_index = np.array(self.shape)//2
+        ndlist = [1]*dimensions
+        for k in range(dimensions):
+            if self.shape[k] % 2 == 0:
+                ndlist[k] = 2
+        ndlist = tuple(ndlist)
+        fixed_points = []
+        for index in np.ndindex(ndlist):
+            for k in range(dimensions):
+                if self.shape[k] % 2 != 0 and self.zerocenter[k]:
+                    index = list(index)
+                    index[k] = 1
+                    index = tuple(index)
+            fixed_points += [tuple(index * mid_index)]
+        return fixed_points
 
     def _hermitianize_inverter(self, x, axes):
-        shape = x.shape
         # calculate the number of dimensions the input array has
-        dimensions = len(shape)
+        dimensions = len(x.shape)
         # prepare the slicing object which will be used for mirroring
         slice_primitive = [slice(None), ] * dimensions
         # copy the input data
         y = x.copy()
 
-        if axes is None:
-            axes = xrange(dimensions)
-
         # flip in the desired directions
-        for i in axes:
+        for k in range(len(axes)):
+            i = axes[k]
             slice_picker = slice_primitive[:]
-            if shape[i] % 2 == 0:
-                slice_picker[i] = slice(1, None, None)
-            else:
-                slice_picker[i] = slice(None)
-            slice_picker = tuple(slice_picker)
-
             slice_inverter = slice_primitive[:]
-            if shape[i] % 2 == 0:
+            if (not self.zerocenter[k]) or self.shape[k] % 2 == 0:
+                slice_picker[i] = slice(1, None, None)
                 slice_inverter[i] = slice(None, 0, -1)
             else:
+                slice_picker[i] = slice(None)
                 slice_inverter[i] = slice(None, None, -1)
+            slice_picker = tuple(slice_picker)
             slice_inverter = tuple(slice_inverter)
 
             try:
