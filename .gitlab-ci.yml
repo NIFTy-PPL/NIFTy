@@ -37,7 +37,7 @@ test_mpi_fftw:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - python setup.py build_ext --inplace
-    - mpiexec -n 2 nosetests -vv
+    - mpiexec --allow-run-as-root -n 2 nosetests -vv
 
 test_mpi_fftw_hdf5:
   stage: test
