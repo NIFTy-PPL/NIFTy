@@ -1073,7 +1073,7 @@ class Field(Loggable, Versionable, object):
         if spaces is None:
             x_val = x.get_val(copy=False)
             y_val = y.get_val(copy=False)
-            result = (x_val.conjugate() * y_val).sum()
+            result = (y_val.conjugate() * x_val).sum()
             return result
         else:
             # create a diagonal operator which is capable of taking care of the
