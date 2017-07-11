@@ -18,8 +18,9 @@
 
 from nifty import PowerSpace,\
                   Field,\
-                  DiagonalOperator
-
+                  DiagonalOperator,\
+                  sqrt
+from nifty.minimization.conjugate_gradient import ConjugateGradient
 __all__ = ['create_power_operator']
 
 
@@ -50,10 +51,56 @@ def create_power_operator(domain, power_spectrum, dtype=None,
 
     """
 
-    power_domain = PowerSpace(domain,
-                              distribution_strategy=distribution_strategy)
+    if isinstance(power_spectrum, Field):
+        power_domain = power_spectrum.domain
+    else:
+        power_domain = PowerSpace(domain,
+                                  distribution_strategy=distribution_strategy)
+
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
                distribution_strategy=distribution_strategy)
     f = fp.power_synthesize(mean=1, std=0, real_signal=False)
     f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
+
+
+def generate_posterior_sample(mean, covariance):
+    """ Generates a posterior sample from a Gaussian distribution with given
+    mean and covariance
+
+    This method generates samples by setting up the observation and
+    reconstruction of a mock signal in order to obtain residuals of the right
+    correlation which are added to the given mean.
+
+    Parameters
+    ----------
+    mean : Field
+        the mean of the posterior Gaussian distribution
+    covariance : WienerFilterCurvature
+        The posterior correlation structure consisting of a
+        response operator, noise covariance and prior signal covariance
+
+    Returns
+    -------
+    sample : Field
+        Returns the a sample from the Gaussian of given mean and covariance.
+
+    """
+
+    S = covariance.S
+    R = covariance.R
+    N = covariance.N
+
+    power = S.diagonal().power_analyze()**.5
+    mock_signal = power.power_synthesize(real_signal=True)
+
+    noise = N.diagonal(bare=True).val
+
+    mock_noise = Field.from_random(random_type="normal", domain=N.domain,
+                                   std=sqrt(noise), dtype=noise.dtype)
+    mock_data = R(mock_signal) + mock_noise
+
+    mock_j = R.adjoint_times(N.inverse_times(mock_data))
+    mock_m = covariance.inverse_times(mock_j)
+    sample = mock_signal - mock_m + mean
+    return sample
