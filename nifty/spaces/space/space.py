@@ -117,6 +117,20 @@ class Space(DomainObject):
         raise NotImplementedError(
             "There is no generic distance structure for Space base class.")
 
+    def get_unique_distances(self):
+        raise NotImplementedError
+
+    def get_natural_binbounds(self):
+        """ The boundaries for natural power spectrum binning.
+
+        Returns
+        -------
+        distributed_data_object
+            A numpy array containing the binbounds
+
+        """
+        raise NotImplementedError
+
     def get_fft_smoothing_kernel_function(self, sigma):
         """ This method returns a smoothing kernel function.
 
