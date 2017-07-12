@@ -1,4 +1,3 @@
-
 from nifty import *
 from nifty.library.wiener_filter import WienerFilterEnergy
 from nifty.library.critical_filter import CriticalPowerEnergy
@@ -113,7 +112,7 @@ if __name__ == "__main__":
         print (x, iteration)
 
 
-    minimizer1 = RelaxedNewton(convergence_tolerance=10e-2,
+    minimizer1 = RelaxedNewton(convergence_tolerance=1e-2,
                               convergence_level=2,
                               iteration_limit=3,
                               callback=convergence_measure)
@@ -124,7 +123,7 @@ if __name__ == "__main__":
                        max_history_length=3)
 
     # Setting starting position
-    flat_power = Field(p_space,val=10e-8)
+    flat_power = Field(p_space,val=1e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
     t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
@@ -136,7 +135,7 @@ if __name__ == "__main__":
                               distribution_strategy=distribution_strategy)
 
         # Initializing the  nonlinear Wiener Filter energy
-        map_energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0, inverter=inverter)
+        map_energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0)
         # Solving the Wiener Filter analytically
         D0 = map_energy.curvature
         m0 = D0.inverse_times(j)
