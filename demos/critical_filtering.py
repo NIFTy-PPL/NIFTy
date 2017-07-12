@@ -98,10 +98,8 @@ if __name__ == "__main__":
 
     # The information source
     j = R.adjoint_times(N.inverse_times(d))
-    realized_power = log(sh.power_analyze(logarithmic=p_space.config["logarithmic"],
-                                          nbin=p_space.config["nbin"]))
-    data_power = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
-                                          nbin=p_space.config["nbin"]))
+    realized_power = log(sh.power_analyze(binbounds=p_space.binbounds))
+    data_power = log(fft(d).power_analyze(binbounds=p_space.binbounds))
     d_data = d.val.get_full_data().real
     if rank == 0:
         pl.plot([go.Heatmap(z=d_data)], filename='data.html')
