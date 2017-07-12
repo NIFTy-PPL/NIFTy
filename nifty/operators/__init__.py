@@ -32,10 +32,10 @@ from invertible_operator_mixin import InvertibleOperatorMixin
 
 from projection_operator import ProjectionOperator
 
-from propagator_operator import PropagatorOperator
-
-from propagator_operator import HarmonicPropagatorOperator
-
 from composed_operator import ComposedOperator
 
 from response_operator import ResponseOperator
+
+from laplace_operator import LaplaceOperator
+
+from smoothness_operator import SmoothnessOperator
