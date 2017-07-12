@@ -20,7 +20,7 @@ if __name__ == "__main__":
     correlation_length = 0.1
     #variance of field in position space sqrt(<|s_x|^2>) (in unit of s)
     field_variance = 2.
-    #smoothing length that response (in same unit as L)
+    #smoothing length of response (in same unit as L)
     response_sigma = 0.1
 
     #defining resolution (pixels per dimension)
@@ -63,15 +63,8 @@ if __name__ == "__main__":
     d = R(ss) + n
 
     # Wiener filter
+
     j = R.adjoint_times(N.inverse_times(d))
     D = PropagatorOperator(S=S, N=N, R=R)
 
     m = D(j)
-
-    d_data = d.val.get_full_data().real
-    m_data = m.val.get_full_data().real
-    ss_data = ss.val.get_full_data().real
-#    if rank == 0:
-#        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
-#        pl.plot([go.Heatmap(z=m_data)], filename='map.html')
-#        pl.plot([go.Heatmap(z=ss_data)], filename='map_orig.html')

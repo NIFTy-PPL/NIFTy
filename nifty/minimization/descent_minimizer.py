@@ -146,14 +146,14 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
                 break
 
             # current position is encoded in energy object
-            descend_direction = self.get_descend_direction(energy)
+            descent_direction = self.get_descent_direction(energy)
 
             # compute the step length, which minimizes energy.value along the
             # search direction
             step_length, f_k, new_energy = \
                 self.line_searcher.perform_line_search(
                                                energy=energy,
-                                               pk=descend_direction,
+                                               pk=descent_direction,
                                                f_k_minus_1=f_k_minus_1)
             f_k_minus_1 = energy.value
 
@@ -165,7 +165,7 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
 
             energy = new_energy
             # check convergence
-            delta = abs(gradient).max() * (step_length/gradient_norm)
+            delta = abs(gradient).max() * (step_length/np.sqrt(gradient_norm))
             self.logger.debug("Iteration:%08u step_length=%3.1E "
                               "delta=%3.1E energy=%3.1E" %
                               (iteration_number, step_length, delta,
@@ -195,5 +195,5 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
         return energy, convergence
 
     @abc.abstractmethod
-    def get_descend_direction(self, energy):
+    def get_descent_direction(self, energy):
         raise NotImplementedError

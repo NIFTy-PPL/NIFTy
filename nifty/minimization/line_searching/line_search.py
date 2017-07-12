@@ -26,29 +26,31 @@ from future.utils import with_metaclass
 
 class LineSearch(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object), {}))):
     """Class for determining the optimal step size along some descent direction.
-    
+
     Initialize the line search procedure which can be used by a specific line
     search method. Its finds the step size in a specific direction in the
     minimization process.
-    
+
     Attributes
     ----------
     line_energy : LineEnergy Object
         LineEnergy object from which we can extract energy at a specific point.
     f_k_minus_1 : Field
         Value of the field at the k-1 iteration of the line search procedure.
-    prefered_initial_step_size : float
+    preferred_initial_step_size : float
         Initial guess for the step length.
-    
+
     """
+
+    __metaclass__ = abc.ABCMeta
 
     def __init__(self):
 
-        
+
 
         self.line_energy = None
         self.f_k_minus_1 = None
-        self.prefered_initial_step_size = None
+        self.preferred_initial_step_size = None
 
     def _set_line_energy(self, energy, pk, f_k_minus_1=None):
         """Set the coordinates for a new line search.
@@ -57,13 +59,13 @@ class LineSearch(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object),
         ----------
         energy : Energy object
             Energy object from which we can calculate the energy, gradient and
-            curvature at a specific point.        
+            curvature at a specific point.
         pk : Field
             Unit vector pointing into the search direction.
         f_k_minus_1 : float
-            Value of the fuction (energy) which will be minimized at the k-1 
+            Value of the fuction (energy) which will be minimized at the k-1
             iteration of the line search procedure. (Default: None)
-            
+
         """
         self.line_energy = LineEnergy(position=0.,
                                       energy=energy,

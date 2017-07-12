@@ -2,6 +2,11 @@
 setup.cfg
 .idea
 .DS_Store
+*.pyc
+*.html
+.document
+.svn/
+*.csv
 
 # from https://github.com/github/gitignore/blob/master/Python.gitignore
 

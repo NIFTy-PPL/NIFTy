@@ -32,8 +32,6 @@ from .config import dependency_injector,\
 
 from d2o import distributed_data_object, d2o_librarian
 
-from .energies import *
-
 from .field import Field
 
 from .random import Random
@@ -43,6 +41,8 @@ from .basic_arithmetics import *
 from .nifty_utilities import *
 
 from .field_types import *
+
+from .energies import *
 
 from .minimization import *
 
@@ -55,3 +55,5 @@ from .probing import *
 from .sugar import *
 
 from . import plotting
+
+from . import library

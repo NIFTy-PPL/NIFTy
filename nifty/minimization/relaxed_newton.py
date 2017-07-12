@@ -32,9 +32,9 @@ class RelaxedNewton(DescentMinimizer):
                                 convergence_level=convergence_level,
                                 iteration_limit=iteration_limit)
 
-        self.line_searcher.prefered_initial_step_size = 1.
+        self.line_searcher.preferred_initial_step_size = 1.
 
-    def get_descend_direction(self, energy):
+    def get_descent_direction(self, energy):
         """ Calculates the descent direction according to a Newton scheme.
 
         The descent direction is determined by weighting the gradient at the
@@ -50,12 +50,9 @@ class RelaxedNewton(DescentMinimizer):
 
         Returns
         -------
-        descend_direction : Field
+        descent_direction : Field
            Returns the descent direction with proposed step length. In a
            quadratic potential this corresponds to the optimal step.
 
         """
-        gradient = energy.gradient
-        curvature = energy.curvature
-        descend_direction = curvature.inverse_times(gradient)
-        return descend_direction * -1
+        return -energy.curvature.inverse_times(energy.gradient)

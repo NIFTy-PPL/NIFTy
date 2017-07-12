@@ -39,7 +39,8 @@ class InvertibleOperatorMixin(object):
         (default: ConjugateGradient)
 
     preconditioner : LinearOperator
-        Preconditions the minimizaion problem
+        Preconditioner that is used by ConjugateGraduent if no minimizer was
+        given.
 
     Attributes
     ----------
