@@ -129,7 +129,7 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 class PowerSpaceConsistencyCheck(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
     def test_rhopindexConsistency(self, harmonic_partner, distribution_strategy,
-                         binbounds, nbin,logarithmic):
+                                  binbounds, nbin, logarithmic):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
                 raise SkipTest
