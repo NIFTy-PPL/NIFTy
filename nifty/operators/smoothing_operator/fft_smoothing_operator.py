@@ -8,12 +8,21 @@ from .smoothing_operator import SmoothingOperator
 
 class FFTSmoothingOperator(SmoothingOperator):
 
-    def _smooth(self, x, spaces, inverse):
-        Transformator = FFTOperator(x.domain[spaces[0]])
+    def __init__(self, domain, sigma, log_distances=False,
+                 default_spaces=None):
+        super(FFTSmoothingOperator, self).__init__(
+                                                domain=domain,
+                                                sigma=sigma,
+                                                log_distances=log_distances,
+                                                default_spaces=default_spaces)
+        self._transformator_cache = {}
 
+    def _smooth(self, x, spaces, inverse):
         # transform to the (global-)default codomain and perform all remaining
         # steps therein
-        transformed_x = Transformator(x, spaces=spaces)
+        transformator = self._get_transformator(x.dtype)
+
+        transformed_x = transformator(x, spaces=spaces)
         codomain = transformed_x.domain[spaces[0]]
         coaxes = transformed_x.domain_axes[spaces[0]]
 
@@ -51,9 +60,17 @@ class FFTSmoothingOperator(SmoothingOperator):
 
         transformed_x.val.set_local_data(local_transformed_x, copy=False)
 
-        smoothed_x = Transformator.adjoint_times(transformed_x, spaces=spaces)
+        smoothed_x = transformator.adjoint_times(transformed_x,
+                                                 spaces=spaces)
 
         result = x.copy_empty()
         result.set_val(smoothed_x, copy=False)
 
         return result
+
+    def _get_transformator(self, dtype):
+        if dtype not in self._transformator_cache:
+            self._transformator_cache[dtype] = FFTOperator(self.domain,
+                                                           domain_dtype=dtype,
+                                                           target=np.complex)
+        return self._transformator_cache[dtype]
