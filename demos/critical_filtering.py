@@ -102,8 +102,8 @@ if __name__ == "__main__":
     data_power = log(fft(d).power_analyze(logarithmic=p_space.config["logarithmic"],
                                           nbin=p_space.config["nbin"]))
     d_data = d.val.get_full_data().real
-    if rank == 0:
-        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
+    #if rank == 0:
+    #    pl.plot([go.Heatmap(z=d_data)], filename='data.html')
 
     #  minimization strategy
 
@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
         # Plotting current estimate
         print i
-        if i%50 == 0:
-            plot_parameters(m0,t0,log(sp), data_power)
+        #if i%50 == 0:
+        #    plot_parameters(m0,t0,log(sp), data_power)
 
 

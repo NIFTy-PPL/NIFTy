@@ -103,16 +103,14 @@ class LineSearchStrongWolfe(LineSearch):
         """
 
         self._set_line_energy(energy, pk, f_k_minus_1=f_k_minus_1)
-        c1 = self.c1
-        c2 = self.c2
         max_step_size = self.max_step_size
         max_iterations = self.max_iterations
 
         # initialize the zero phis
         old_phi_0 = self.f_k_minus_1
-        energy_0 = self.line_energy.at(0)
-        phi_0 = energy_0.value
-        phiprime_0 = energy_0.gradient
+        le_0 = self.line_energy.at(0)
+        phi_0 = le_0.value
+        phiprime_0 = le_0.dd
 
         if phiprime_0 == 0:
             self.logger.warn("Flat gradient in search direction.")
@@ -135,45 +133,52 @@ class LineSearchStrongWolfe(LineSearch):
 
         # start the minimization loop
         for i in xrange(max_iterations):
-            energy_alpha1 = self.line_energy.at(alpha1)
-            phi_alpha1 = energy_alpha1.value
+            print "a0a1:",alpha0, alpha1
+            print "line search outer iteration", i
+            le_alpha1 = self.line_energy.at(alpha1)
+            print "position:", le_alpha1.energy.position.val[0]
+            phi_alpha1 = le_alpha1.value
+            print "energy:", le_alpha1.value
             if alpha1 == 0:
                 self.logger.warn("Increment size became 0.")
                 alpha_star = 0.
                 phi_star = phi_0
-                energy_star = energy_0
+                le_star = le_0
                 break
 
-            if (phi_alpha1 > phi_0 + c1*alpha1*phiprime_0) or \
+            if (phi_alpha1 > phi_0 + self.c1*alpha1*phiprime_0) or \
                ((phi_alpha1 >= phi_alpha0) and (i > 1)):
-                (alpha_star, phi_star, energy_star) = self._zoom(
+                (alpha_star, phi_star, le_star) = self._zoom(
                                                     alpha0, alpha1,
                                                     phi_0, phiprime_0,
                                                     phi_alpha0,
                                                     phiprime_alpha0,
-                                                    phi_alpha1,
-                                                    c1, c2)
+                                                    phi_alpha1)
                 break
 
-            phiprime_alpha1 = energy_alpha1.gradient
-            if abs(phiprime_alpha1) <= -c2*phiprime_0:
+            phiprime_alpha1 = le_alpha1.dd
+            if abs(phiprime_alpha1) <= -self.c2*phiprime_0:
                 alpha_star = alpha1
                 phi_star = phi_alpha1
-                energy_star = energy_alpha1
+                le_star = le_alpha1
                 break
 
             if phiprime_alpha1 >= 0:
-                (alpha_star, phi_star, energy_star) = self._zoom(
+                (alpha_star, phi_star, le_star) = self._zoom(
                                                     alpha1, alpha0,
                                                     phi_0, phiprime_0,
                                                     phi_alpha1,
                                                     phiprime_alpha1,
-                                                    phi_alpha0,
-                                                    c1, c2)
+                                                    phi_alpha0)
                 break
 
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, max_step_size)
+            if alpha1 == max_step_size:
+                alpha_star = alpha1
+                phi_star = phi_alpha1
+                le_star = le_alpha1
+                break
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
             # phi_alpha1 = self._phi(alpha1)
@@ -182,17 +187,17 @@ class LineSearchStrongWolfe(LineSearch):
             # max_iterations was reached
             alpha_star = alpha1
             phi_star = phi_alpha1
-            energy_star = energy_alpha1
+            le_star = le_alpha1
             self.logger.error("The line search algorithm did not converge.")
 
         # extract the full energy from the line_energy
-        energy_star = energy_star.energy
+        energy_star = le_star.energy
         direction_length = pk.norm()
         step_length = alpha_star * direction_length
         return step_length, phi_star, energy_star
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
-              phi_lo, phiprime_lo, phi_hi, c1, c2):
+              phi_lo, phiprime_lo, phi_hi):
         """Performs the second stage of the line search algorithm.
 
         If the first stage was not successful then the Zoom algorithm tries to
@@ -203,7 +208,7 @@ class LineSearchStrongWolfe(LineSearch):
         ----------
         alpha_lo : float
             The lower boundary for the step length interval.
-        alph_hi : float
+        alpha_hi : float
             The upper boundary for the step length interval.
         phi_0 : float
             Value of the energy at the starting point of the line search
@@ -219,10 +224,6 @@ class LineSearchStrongWolfe(LineSearch):
         phi_hi : float
             Value of the energy if we perform a step of length alpha_hi in
             descent direction.
-        c1 : float
-            Parameter for Armijo condition rule.
-        c2 : float
-            Parameter for curvature condition rule.
 
         Returns
         -------
@@ -234,6 +235,10 @@ class LineSearchStrongWolfe(LineSearch):
             The new Energy object on the new position.
 
         """
+        print "entering zoom"
+        print alpha_lo, alpha_hi
+        print "pos1:",self.line_energy.at(alpha_lo).energy.position.val[0]
+        print "pos2:",self.line_energy.at(alpha_hi).energy.position.val[0]
         max_iterations = self.max_zoom_iterations
         # define the cubic and quadratic interpolant checks
         cubic_delta = 0.2  # cubic
@@ -262,28 +267,28 @@ class LineSearchStrongWolfe(LineSearch):
                 quad_check = quad_delta * delta_alpha
                 alpha_j = self._quadmin(alpha_lo, phi_lo, phiprime_lo,
                                         alpha_hi, phi_hi)
-                # If quadratic was not successfull, try bisection
+                # If quadratic was not successful, try bisection
                 if (alpha_j is None) or (alpha_j > b - quad_check) or \
                    (alpha_j < a + quad_check):
                     alpha_j = alpha_lo + 0.5*delta_alpha
 
             # Check if the current value of alpha_j is already sufficient
-            energy_alphaj = self.line_energy.at(alpha_j)
-            phi_alphaj = energy_alphaj.value
+            le_alphaj = self.line_energy.at(alpha_j)
+            phi_alphaj = le_alphaj.value
 
             # If the first Wolfe condition is not met replace alpha_hi
             # by alpha_j
-            if (phi_alphaj > phi_0 + c1*alpha_j*phiprime_0) or\
+            if (phi_alphaj > phi_0 + self.c1*alpha_j*phiprime_0) or\
                (phi_alphaj >= phi_lo):
                 alpha_recent, phi_recent = alpha_hi, phi_hi
                 alpha_hi, phi_hi = alpha_j, phi_alphaj
             else:
-                phiprime_alphaj = energy_alphaj.gradient
+                phiprime_alphaj = le_alphaj.dd
                 # If the second Wolfe condition is met, return the result
-                if abs(phiprime_alphaj) <= -c2*phiprime_0:
+                if abs(phiprime_alphaj) <= -self.c2*phiprime_0:
                     alpha_star = alpha_j
                     phi_star = phi_alphaj
-                    energy_star = energy_alphaj
+                    le_star = le_alphaj
                     break
                 # If not, check the sign of the slope
                 if phiprime_alphaj*delta_alpha >= 0:
@@ -296,12 +301,12 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            alpha_star, phi_star, energy_star = \
-                alpha_j, phi_alphaj, energy_alphaj
+            alpha_star, phi_star, le_star = \
+                alpha_j, phi_alphaj, le_alphaj
             self.logger.error("The line search algorithm (zoom) did not "
                               "converge.")
 
-        return alpha_star, phi_star, energy_star
+        return alpha_star, phi_star, le_star
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):
         """Estimating the minimum with cubic interpolation.

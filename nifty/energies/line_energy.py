@@ -16,10 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .energy import Energy
 
-
-class LineEnergy(Energy):
+class LineEnergy:
     """ Evaluates an underlying Energy along a certain line direction.
 
     Given an Energy class and a line direction, its position is parametrized by
@@ -27,34 +25,31 @@ class LineEnergy(Energy):
 
     Parameters
     ----------
-    position : float
-        The step length parameter along the given line direction.
+    linepos : float
+        Defines the full spatial position of this energy via
+        self.energy.position = zero_point + linepos*line_direction
     energy : Energy
         The Energy object which will be evaluated along the given direction.
-    line_direction : Field
-        Direction used for line evaluation.
-    zero_point :  Field *optional*
-        Fixing the zero point of the line restriction. Used to memorize this
-        position in new initializations. By the default the current position
-        of the supplied `energy` instance is used (default : None).
+    linedir : Field
+        Direction used for line evaluation. Does not have to be normalized.
+    offset :  float *optional*
+        Indirectly defines the zero point of the line via the equation
+        energy.position = zero_point + offset*line_direction
+        (default : 0.).
 
     Attributes
     ----------
-    position : float
+    linepos : float
         The position along the given line direction relative to the zero point.
     value : float
-        The value of the energy functional at given `position`.
-    gradient : float
-        The gradient of the underlying energy instance along the line direction
-        projected on the line direction.
-    curvature : callable
-        A positive semi-definite operator or function describing the curvature
-        of the potential at given `position`.
-    line_direction : Field
+        The value of the energy functional at the given position
+    dd : float
+        The directional derivative at the given position
+    linedir : Field
         Direction along which the movement is restricted. Does not have to be
         normalized.
     energy : Energy
-        The underlying Energy at the `position` along the line direction.
+        The underlying Energy at the given position
 
     Raises
     ------
@@ -72,45 +67,44 @@ class LineEnergy(Energy):
 
     """
 
-    def __init__(self, position, energy, line_direction, zero_point=None):
-        super(LineEnergy, self).__init__(position=position)
-        self.line_direction = line_direction
+    def __init__(self, linepos, energy, linedir, offset=0.):
+        self._linepos = float(linepos)
+        self._linedir = linedir
 
-        if zero_point is None:
-            zero_point = energy.position
-        self._zero_point = zero_point
+        pos = energy.position + (self._linepos-float(offset))*self._linedir
+        self.energy = energy.at(position=pos)
 
-        position_on_line = self._zero_point + self.position*line_direction
-        self.energy = energy.at(position=position_on_line)
-
-    def at(self, position):
+    def at(self, linepos):
         """ Returns LineEnergy at new position, memorizing the zero point.
 
         Parameters
         ----------
-        position : float
+        linepos : float
             Parameter for the new position on the line direction.
 
         Returns
         -------
-        out : LineEnergy
             LineEnergy object at new position with same zero point as `self`.
 
         """
 
-        return self.__class__(position,
+        return self.__class__(linepos,
                               self.energy,
-                              self.line_direction,
-                              zero_point=self._zero_point)
+                              self.linedir,
+                              offset=self.linepos)
 
     @property
     def value(self):
         return self.energy.value
 
     @property
-    def gradient(self):
-        return self.energy.gradient.vdot(self.line_direction)
+    def linepos(self):
+        return self._linepos
 
     @property
-    def curvature(self):
-        return self.energy.curvature
+    def linedir(self):
+        return self._linedir
+
+    @property
+    def dd(self):
+        return self.energy.gradient.vdot(self.linedir)
