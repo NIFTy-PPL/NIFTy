@@ -21,6 +21,8 @@ from __future__ import division
 import unittest
 import numpy as np
 
+from d2o import distributed_data_object
+
 from numpy.testing import assert_, assert_equal, assert_almost_equal
 from nifty import RGSpace
 from test.common import expand
@@ -157,9 +159,8 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
                     [True, False]))
     def test_hermitianize_inverter(self, shape, zerocenter):
         r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
-        v = np.empty(shape, dtype=np.complex128)
-        v.real = np.random.random(shape)
-        v.imag = np.random.random(shape)
+        v = distributed_data_object(global_shape=shape, dtype=np.complex128)
+        v[:] = np.random.random(shape) + 1j*np.random.random(shape)
         inverted = r.hermitianize_inverter(v, axes=range(len(shape)))
 
         # test hermitian flipping of `inverted`
