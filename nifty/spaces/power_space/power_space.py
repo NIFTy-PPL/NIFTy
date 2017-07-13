@@ -116,6 +116,7 @@ class PowerSpace(Space):
                                   nbin=nbin,
                                   binbounds=binbounds)
             temp_pindex = self._compute_pindex(
+                                harmonic_partner=self.harmonic_partner,
                                 distance_array=distance_array,
                                 binbounds=temp_binbounds,
                                 distribution_strategy=distribution_strategy)
@@ -131,7 +132,8 @@ class PowerSpace(Space):
         (self._binbounds, self._pindex, self._kindex, self._rho) = \
             self._powerIndexCache[key]
 
-    def _compute_binbounds(self, harmonic_partner, distribution_strategy,
+    @staticmethod
+    def _compute_binbounds(harmonic_partner, distribution_strategy,
                            logarithmic, nbin, binbounds):
 
         if logarithmic is None and nbin is None and binbounds is None:
@@ -147,7 +149,7 @@ class PowerSpace(Space):
 
                 # equidistant binning (linear or log)
                 # MR FIXME: this needs to improve
-                kindex = self._harmonic_partner.get_unique_distances()
+                kindex = harmonic_partner.get_unique_distances()
                 if (logarithmic):
                     k = np.r_[0, np.log(kindex[1:])]
                 else:
@@ -167,7 +169,8 @@ class PowerSpace(Space):
             result = tuple(bb)
         return result
 
-    def _compute_pindex(self, distance_array, binbounds,
+    @staticmethod
+    def _compute_pindex(harmonic_partner, distance_array, binbounds,
                         distribution_strategy):
 
         # Compute pindex, kindex and rho according to bb
@@ -176,7 +179,7 @@ class PowerSpace(Space):
                                 dtype=np.int,
                                 distribution_strategy=distribution_strategy)
         if binbounds is None:
-            binbounds = self.harmonic_partner.get_natural_binbounds()
+            binbounds = harmonic_partner.get_natural_binbounds()
         pindex.set_local_data(
                 np.searchsorted(binbounds, distance_array.get_local_data()))
         return pindex
