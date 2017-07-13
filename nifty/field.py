@@ -600,22 +600,15 @@ class Field(Loggable, Versionable, object):
     @staticmethod
     def _hermitian_decomposition(domain, val, spaces, domain_axes,
                                  preserve_gaussian_variance=False):
-        # hermitianize for the first space
-        (h, a) = domain[spaces[0]].hermitian_decomposition(
-                       val,
-                       domain_axes[spaces[0]])
-        # hermitianize all remaining spaces using the iterative formula
-        for space in spaces[1:]:
-            (hh, ha) = domain[space].hermitian_decomposition(
-                                              h,
-                                              domain_axes[space])
-            (ah, aa) = domain[space].hermitian_decomposition(
-                                              a,
-                                              domain_axes[space])
-            c = (hh - ha - ah + aa).conjugate()
-            full = (hh + ha + ah + aa)
-            h = (full + c)/2.
-            a = (full - c)/2.
+
+        flipped_val = val
+        for space in spaces:
+            flipped_val = domain[space].hermitianize_inverter(
+                                                    x=flipped_val,
+                                                    axes=domain_axes[space])
+        flipped_val = flipped_val.conjugate()
+        h = (val + flipped_val)/2.
+        a = val - h
 
         # correct variance
         if preserve_gaussian_variance:

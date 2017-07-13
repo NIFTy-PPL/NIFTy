@@ -303,6 +303,9 @@ class PowerIndices(object):
             (temp_uniqued_pindex, local_temp_pundex) = np.unique(
                                                             local_pindex,
                                                             return_index=True)
+            # cure a bug in numpy
+            # https://github.com/numpy/numpy/issues/9405
+            local_temp_pundex = np.asarray(local_temp_pundex, dtype=np.int)
             # Shift the local pundices by the nodes' local_dim_offset
             local_temp_pundex += global_pindex.distributor.local_dim_offset
 

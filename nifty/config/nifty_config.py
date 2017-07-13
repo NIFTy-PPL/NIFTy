@@ -66,7 +66,7 @@ variable_default_field_dtype = keepers.Variable(
 variable_default_distribution_strategy = keepers.Variable(
                               'default_distribution_strategy',
                               ['not', 'fftw', 'equal'],
-                              lambda z: (('pyfftw' in dependency_injector)
+                              lambda z: (('fftw' in dependency_injector)
                                          if z == 'fftw' else True),
                               genus='str')
 

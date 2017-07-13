@@ -117,7 +117,6 @@ class FFTOperator(LinearOperator):
         super(FFTOperator, self).__init__(default_spaces)
 
         # Initialize domain and target
-
         self._domain = self._parse_domain(domain)
         if len(self.domain) != 1:
             raise ValueError("TransformationOperator accepts only exactly one "
