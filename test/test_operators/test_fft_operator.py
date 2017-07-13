@@ -76,10 +76,13 @@ class FFTOperatorTests(unittest.TestCase):
         b = RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
         fft = FFTOperator(domain=a, target=b, domain_dtype=itp,
                           target_dtype=_harmonic_type(itp), module=module)
+        np.random.seed(16)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=itp)
         out = fft.adjoint_times(fft.times(inp))
-        assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
+        assert_allclose(inp.val.get_full_data(),
+                        out.val.get_full_data(),
+                        rtol=tol, atol=tol)
 
     @expand(product(["numpy", "fftw", "fftw_mpi"],
                     [10, 11], [9, 12], [0.1, 1, 3.7],

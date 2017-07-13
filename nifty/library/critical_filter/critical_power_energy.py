@@ -103,14 +103,12 @@ class CriticalPowerEnergy(Energy):
                     posterior_sample = generate_posterior_sample(
                                                             self.m, self.D)
                     projected_sample = posterior_sample.power_analyze(
-                     logarithmic=self.position.domain[0].config["logarithmic"],
-                     nbin=self.position.domain[0].config["nbin"])
+                     binbounds=self.position.domain[0].binbounds)
                     w += (projected_sample) * self.rho
                 w /= float(self.samples)
             else:
                 w = self.m.power_analyze(
-                     logarithmic=self.position.domain[0].config["logarithmic"],
-                     nbin=self.position.domain[0].config["nbin"])
+                     binbounds=self.position.domain[0].binbounds)
                 w *= self.rho
             self._w = w
         return self._w
