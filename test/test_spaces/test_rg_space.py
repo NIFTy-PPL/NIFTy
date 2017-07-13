@@ -155,56 +155,25 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
                      (4, 6, 8), (17, 5, 3)],
                     [True, False]))
-    def test_hermitian_decomposition(self, shape, zerocenter):
+    def test_hermitianize_inverter(self, shape, zerocenter):
         r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
         v = np.empty(shape, dtype=np.complex128)
         v.real = np.random.random(shape)
         v.imag = np.random.random(shape)
-        h, a = r.hermitian_decomposition(v)
-        # make sure that data == h + a
-        # NOTE: this is only correct for preserve_gaussian_variance==False,
-        #       but I consider this an intrinsic property of a hermitian
-        #       decomposition.
-        assert_almost_equal(v, h+a)
-        print (h, a)
+        inverted = r.hermitianize_inverter(v, axes=range(len(shape)))
 
-        # test hermitianity of h
-        it = np.nditer(h, flags=['multi_index'])
+        # test hermitian flipping of `inverted`
+        it = np.nditer(v, flags=['multi_index'])
         while not it.finished:
             i1 = it.multi_index
             i2 = []
             for i in range(len(i1)):
                 if r.zerocenter[i] and r.shape[i] % 2 != 0:
-                    i2.append(h.shape[i]-i1[i]-1)
+                    i2.append(v.shape[i]-i1[i]-1)
                 else:
-                    i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
+                    i2.append(v.shape[i]-i1[i] if i1[i] > 0 else 0)
             i2 = tuple(i2)
-            assert_almost_equal(h[i1], np.conj(h[i2]))
-            assert_almost_equal(a[i1], -np.conj(a[i2]))
-            it.iternext()
-
-    @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
-                     (4, 6, 8), (17, 5, 3)],
-                    [True, False]))
-    def test_hermitian_decomposition2(self, shape, zerocenter):
-        r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
-        v = np.random.random(shape)
-        h, a = r.hermitian_decomposition(v)
-        # make sure that data == h + a
-        assert_almost_equal(v, h+a)
-        # test hermitianity of h
-        it = np.nditer(h, flags=['multi_index'])
-        while not it.finished:
-            i1 = it.multi_index
-            i2 = []
-            for i in range(len(i1)):
-                if r.zerocenter[i] and r.shape[i] % 2 != 0:
-                    i2.append(h.shape[i]-i1[i]-1)
-                else:
-                    i2.append(h.shape[i]-i1[i] if i1[i] > 0 else 0)
-            i2 = tuple(i2)
-            assert_almost_equal(h[i1], np.conj(h[i2]))
-            assert_almost_equal(a[i1], -np.conj(a[i2]))
+            assert_almost_equal(inverted[i1], v[i2])
             it.iternext()
 
     @expand(get_distance_array_configs())
