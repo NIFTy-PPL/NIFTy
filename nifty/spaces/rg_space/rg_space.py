@@ -91,26 +91,6 @@ class RGSpace(Space):
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
 
-    def hermitian_decomposition(self, x, axes=None,
-                                preserve_gaussian_variance=False):
-        # check axes
-        if axes is None:
-            axes = range(len(self.shape))
-        assert len(x.shape) >= len(self.shape), "shapes mismatch"
-        assert len(axes) == len(self.shape), "axes mismatch"
-
-        # compute the hermitian part
-        flipped_x = self._hermitianize_inverter(x, axes=axes)
-        flipped_x = flipped_x.conjugate()
-        # average x and flipped_x.
-        hermitian_part = x + flipped_x
-        hermitian_part /= 2.
-
-        # use subtraction since it is faster than flipping another time
-        anti_hermitian_part = (x-hermitian_part)
-
-        return (hermitian_part, anti_hermitian_part)
-
     def hermitian_fixed_points(self):
         dimensions = len(self.shape)
         mid_index = np.array(self.shape)//2
@@ -124,7 +104,7 @@ class RGSpace(Space):
             fixed_points += [tuple(index * mid_index)]
         return fixed_points
 
-    def _hermitianize_inverter(self, x, axes):
+    def hermitianize_inverter(self, x, axes):
         # calculate the number of dimensions the input array has
         dimensions = len(x.shape)
         # prepare the slicing object which will be used for mirroring

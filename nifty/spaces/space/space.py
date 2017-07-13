@@ -147,35 +147,34 @@ class Space(DomainObject):
         raise NotImplementedError(
             "There is no generic co-smoothing kernel for Space base class.")
 
-    def hermitian_decomposition(self, x, axes,
-                                preserve_gaussian_variance=False):
-        """ Decomposes x into its hermitian and anti-hermitian constituents.
+    def hermitian_fixed_points(self):
+        """ Returns the array points which remain invariant under the action
+        of `hermitianize_inverter`
 
-        This method decomposes a field's array x into its hermitian and
-        antihermitian part, which corresponds to  real and imaginary part
-        in a corresponding harmonic partner space. This is an internal function
-        that is mainly used for power-synthesizing and -analyzing Fields.
-
-        Parameters
-        ----------
-        x : distributed_data_object
-            The field's val object.
-        axes : tuple of ints
-            Specifies the axes of x which correspond to this space.
-
-        preserve_gaussian_variance : bool *optional*
-            If the hermitian decomposition is done via computing the half
-            sums and differences of `x` and mirrored `x`, all points except the
-            fixed points lose half of their variance. If `x` is complex also
-            they lose half of their variance since the real(/imaginary) part
-            gets lost.
 
         Returns
         -------
-        (distributed_data_object, distributed_data_object)
-            A tuple of two distributed_data_objects, the first being the
-            hermitian and the second the anti-hermitian part of x.
+        list of index-tuples
+            The list contains the index-coordinates of the invariant points.
 
         """
+        return None
 
-        raise NotImplementedError
+    def hermitianize_inverter(self, x, axes):
+        """ Inverts/flips x in the context of Hermitian decomposition.
+
+        This method is mainly used for power-synthesizing and -analyzing
+        Fields.
+
+        Parameters
+        ----------
+        axes : tuple of ints
+            Specifies the axes of x which correspond to this space.
+
+        Returns
+        -------
+        distributed_data_object
+            The Hermitian-flipped of x.
+        """
+
+        return x
