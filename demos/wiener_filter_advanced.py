@@ -1,8 +1,8 @@
-
 from nifty import *
 
 import plotly.offline as pl
 import plotly.graph_objs as go
+from nifty.library.wiener_filter import *
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     #
 
     inverter = ConjugateGradient(convergence_level=3,
-                                 convergence_tolerance=10e-5,
+                                 convergence_tolerance=1e-5,
                                  preconditioner=None)
     # Setting starting position
     m0 = Field(h_space, val=.0)
