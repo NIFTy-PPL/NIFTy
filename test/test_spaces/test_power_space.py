@@ -146,7 +146,8 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                        distribution_strategy=distribution_strategy,
                        logarithmic=logarithmic, nbin=nbin,
                        binbounds=binbounds)
-        assert_equal(p.pindex.flatten()[p.pundex], np.arange(p.dim),
+        assert_equal(p.pindex.flatten().get_full_data()[p.pundex],
+                     np.arange(p.dim),
                      err_msg='pundex is not right-inverse of pindex!')
 
     @expand(CONSISTENCY_CONFIGS)
@@ -155,7 +156,6 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                                   logarithmic):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                print (gdi.get('fftw'), "blub \n\n\n")
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
