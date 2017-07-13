@@ -190,8 +190,3 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         assert_almost_equal(res, expected)
         if inplace:
             assert_(x is res)
-
-    def test_hermitian_fixed_points(self):
-        x = RGSpace((5, 6, 5, 6), zerocenter=[False, False, True, True])
-        assert_equal(x.hermitian_fixed_points(),
-                     [(0, 0, 2, 0), (0, 0, 2, 3), (0, 3, 2, 0), (0, 3, 2, 3)])

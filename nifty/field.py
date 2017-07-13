@@ -608,39 +608,11 @@ class Field(Loggable, Versionable, object):
 
         # correct variance
         if preserve_gaussian_variance:
+            assert issubclass(val.dtype.type, np.complexfloating),\
+                    "complex input field is needed here"
             h *= np.sqrt(2)
             a *= np.sqrt(2)
 
-            if not issubclass(val.dtype.type, np.complexfloating):
-                # in principle one must not correct the variance for the fixed
-                # points of the hermitianization. However, for a complex field
-                # the input field loses half of its power at its fixed points
-                # in the `hermitian` part. Hence, here a factor of sqrt(2) is
-                # also necessary!
-                # => The hermitianization can be done on a space level since
-                # either nothing must be done (LMSpace) or ALL points need a
-                # factor of sqrt(2)
-                # => use the preserve_gaussian_variance flag in the
-                # hermitian_decomposition method above.
-
-                # This code is for educational purposes:
-                fixed_points = [domain[i].hermitian_fixed_points()
-                                for i in spaces]
-                fixed_points = [[fp] if fp is None else fp
-                                for fp in fixed_points]
-
-                for product_point in itertools.product(*fixed_points):
-                    slice_object = np.array((slice(None), )*len(val.shape),
-                                            dtype=np.object)
-                    for i, sp in enumerate(spaces):
-                        point_component = product_point[i]
-                        if point_component is None:
-                            point_component = slice(None)
-                        slice_object[list(domain_axes[sp])] = point_component
-
-                    slice_object = tuple(slice_object)
-                    h[slice_object] /= np.sqrt(2)
-                    a[slice_object] /= np.sqrt(2)
         return (h, a)
 
     def _spec_to_rescaler(self, spec, result_list, power_space_index):
