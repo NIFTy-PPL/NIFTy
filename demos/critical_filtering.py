@@ -76,8 +76,8 @@ if __name__ == "__main__":
 
 
     # Choosing the measurement instrument
-    Instrument = SmoothingOperator(s_space, sigma=0.01)
-    # Instrument = DiagonalOperator(s_space, diagonal=1.)
+    # Instrument = SmoothingOperator(s_space, sigma=0.01)
+    Instrument = DiagonalOperator(s_space, diagonal=1.)
     # Instrument._diagonal.val[200:400, 200:400] = 0
     #Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
@@ -100,8 +100,8 @@ if __name__ == "__main__":
     realized_power = log(sh.power_analyze(binbounds=p_space.binbounds))
     data_power = log(fft(d).power_analyze(binbounds=p_space.binbounds))
     d_data = d.val.get_full_data().real
-    #if rank == 0:
-    #    pl.plot([go.Heatmap(z=d_data)], filename='data.html')
+    if rank == 0:
+        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
 
     #  minimization strategy
 
@@ -110,17 +110,18 @@ if __name__ == "__main__":
         print (x, iteration)
 
 
-    minimizer1 = RelaxedNewton(convergence_tolerance=1e-2,
-                              convergence_level=2,
+    minimizer1 = RelaxedNewton(convergence_tolerance=1e-8,
+                              convergence_level=1,
                               iteration_limit=5,
                               callback=convergence_measure)
 
-    minimizer2 = VL_BFGS(convergence_tolerance=1e-3,
-                       iteration_limit=20,
+    minimizer2 = VL_BFGS(convergence_tolerance=1e-8,
+                       convergence_level=1,
+                       iteration_limit=1000,
                        callback=convergence_measure,
-                       max_history_length=10)
-    minimizer3 = SteepestDescent(convergence_tolerance=1e-3,
-                       iteration_limit=70,
+                       max_history_length=20)
+    minimizer3 = SteepestDescent(convergence_tolerance=1e-8,
+                       iteration_limit=500,
                        callback=convergence_measure)
 
     # Setting starting position
@@ -143,7 +144,7 @@ if __name__ == "__main__":
         # Initializing the power energy with updated parameters
         power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, smoothness_prior=10., samples=3)
 
-        (power_energy, convergence) = minimizer3(power_energy)
+        (power_energy, convergence) = minimizer2(power_energy)
 
 
         # Setting new power spectrum
@@ -151,7 +152,7 @@ if __name__ == "__main__":
 
         # Plotting current estimate
         print i
-        #if i%50 == 0:
-        #    plot_parameters(m0,t0,log(sp), data_power)
+        if i%50 == 0:
+            plot_parameters(m0,t0,log(sp), data_power)
 
 

@@ -108,6 +108,7 @@ class LineEnergy:
     @property
     def dd(self):
         res = self.energy.gradient.vdot(self.linedir)
-        assert abs(res-res.real)<1e-12, \
-               "directional derivative has non-negligible imaginary part"
+        if abs(res.imag)/max(abs(res.real),1.)>1e-12:
+               print "directional derivative has non-negligible " \
+                     "imaginary part:", res
         return res.real

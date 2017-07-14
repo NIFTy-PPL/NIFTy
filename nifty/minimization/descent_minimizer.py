@@ -154,6 +154,10 @@ class DescentMinimizer(Loggable, object):
                                                energy=energy,
                                                pk=descent_direction,
                                                f_k_minus_1=f_k_minus_1)
+            if f_k_minus_1 is None:
+                delta=1e30
+            else:
+                delta = abs(f_k -f_k_minus_1)/max(abs(f_k),abs(f_k_minus_1),1.)
             f_k_minus_1 = energy.value
             tx1=energy.position-new_energy.position
             # check if new energy value is bigger than old energy value
@@ -165,7 +169,6 @@ class DescentMinimizer(Loggable, object):
 
             energy = new_energy
             # check convergence
-            delta = abs(gradient).max() * step_length / gradient_norm
             self.logger.debug("Iteration:%08u step_length=%3.1E "
                               "delta=%3.1E energy=%3.1E" %
                               (iteration_number, step_length, delta,
