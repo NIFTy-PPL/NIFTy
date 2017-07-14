@@ -115,10 +115,13 @@ if __name__ == "__main__":
                               iteration_limit=3,
                               callback=convergence_measure)
 
-    minimizer2 = VL_BFGS(convergence_tolerance=0,
-                       iteration_limit=7,
+    minimizer2 = VL_BFGS(convergence_tolerance=1e-3,
+                       iteration_limit=70,
                        callback=convergence_measure,
-                       max_history_length=3)
+                       max_history_length=10)
+    minimizer3 = SteepestDescent(convergence_tolerance=1e-3,
+                       iteration_limit=70,
+                       callback=convergence_measure)
 
     # Setting starting position
     flat_power = Field(p_space,val=1e-8)
@@ -140,7 +143,7 @@ if __name__ == "__main__":
         # Initializing the power energy with updated parameters
         power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, smoothness_prior=10., samples=3)
 
-        (power_energy, convergence) = minimizer1(power_energy)
+        (power_energy, convergence) = minimizer2(power_energy)
 
 
         # Setting new power spectrum

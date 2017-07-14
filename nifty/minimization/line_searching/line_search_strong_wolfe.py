@@ -61,6 +61,9 @@ class LineSearchStrongWolfe(LineSearch):
 
     """
 
+#    def __init__(self, c1=1e-4, c2=0.9,
+#                 max_step_size=1000000000, max_iterations=100,
+#                 max_zoom_iterations=100):
     def __init__(self, c1=1e-4, c2=0.9,
                  max_step_size=50, max_iterations=10,
                  max_zoom_iterations=10):
@@ -111,6 +114,7 @@ class LineSearchStrongWolfe(LineSearch):
         le_0 = self.line_energy.at(0)
         phi_0 = le_0.value
         phiprime_0 = le_0.dd
+        assert phiprime_0<0, "input direction must be a descent direction"
 
         if phiprime_0 == 0:
             self.logger.warn("Flat gradient in search direction.")
@@ -133,12 +137,12 @@ class LineSearchStrongWolfe(LineSearch):
 
         # start the minimization loop
         for i in xrange(max_iterations):
-            print "a0a1:",alpha0, alpha1
-            print "line search outer iteration", i
+            #print "a0a1:",alpha0, alpha1
+            #print "line search outer iteration", i
             le_alpha1 = self.line_energy.at(alpha1)
-            print "position:", le_alpha1.energy.position.val[0]
+            #print "position:", le_alpha1.energy.position.val[0]
             phi_alpha1 = le_alpha1.value
-            print "energy:", le_alpha1.value
+            #print "energy:", le_alpha1.value
             if alpha1 == 0:
                 self.logger.warn("Increment size became 0.")
                 alpha_star = 0.
@@ -175,6 +179,7 @@ class LineSearchStrongWolfe(LineSearch):
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, max_step_size)
             if alpha1 == max_step_size:
+                print "bailout"
                 alpha_star = alpha1
                 phi_star = phi_alpha1
                 le_star = le_alpha1
@@ -235,10 +240,10 @@ class LineSearchStrongWolfe(LineSearch):
             The new Energy object on the new position.
 
         """
-        print "entering zoom"
-        print alpha_lo, alpha_hi
-        print "pos1:",self.line_energy.at(alpha_lo).energy.position.val[0]
-        print "pos2:",self.line_energy.at(alpha_hi).energy.position.val[0]
+        #print "entering zoom"
+        #print alpha_lo, alpha_hi
+        #print "pos1:",self.line_energy.at(alpha_lo).energy.position.val[0]
+        #print "pos2:",self.line_energy.at(alpha_hi).energy.position.val[0]
         max_iterations = self.max_zoom_iterations
         # define the cubic and quadratic interpolant checks
         cubic_delta = 0.2  # cubic
