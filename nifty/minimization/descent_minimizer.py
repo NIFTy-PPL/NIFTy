@@ -121,18 +121,12 @@ class DescentMinimizer(Loggable, object):
 
         """
 
-        #print "into line search:"
-        #print " pos: ",energy.position.val[0]
-        #print " ene: ",energy.value
         convergence = 0
         f_k_minus_1 = None
         step_length = 0
         iteration_number = 1
 
         while True:
-            #print "line search next iteration:"
-            #print " pos: ",energy.position.val[0]
-            #print " ene: ",energy.value
             if self.callback is not None:
                 try:
                     self.callback(energy, iteration_number)
@@ -153,7 +147,6 @@ class DescentMinimizer(Loggable, object):
 
             # current position is encoded in energy object
             descent_direction = self.get_descent_direction(energy)
-            #print "descent direction:",descent_direction.val[0]
             # compute the step length, which minimizes energy.value along the
             # search direction
             step_length, f_k, new_energy = \
@@ -161,17 +154,8 @@ class DescentMinimizer(Loggable, object):
                                                energy=energy,
                                                pk=descent_direction,
                                                f_k_minus_1=f_k_minus_1)
-            #print "out of wolfe:"
-            #print " old pos: ",energy.position.val[0]
-            #print " old ene: ",energy.value
-            #print " new pos: ",new_energy.position.val[0]
-            #print " new ene: ",new_energy.value
-            #print " f_k: ",f_k
             f_k_minus_1 = energy.value
-            #print " step length: ", step_length
             tx1=energy.position-new_energy.position
-            #print " step length 2: ", (energy.position-new_energy.position).norm()
-            #print " step length 3: ", new_energy.position.val[0]-energy.position.val[0]
             # check if new energy value is bigger than old energy value
             if (new_energy.value - energy.value) > 0:
                 print "Line search algorithm returned a new energy that was larger than the old one. Stopping."

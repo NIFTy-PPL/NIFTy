@@ -229,10 +229,6 @@ class LineSearchStrongWolfe(LineSearch):
             The new Energy object on the new position.
 
         """
-        #print "entering zoom"
-        #print alpha_lo, alpha_hi
-        #print "pos1:",self.line_energy.at(alpha_lo).energy.position.val[0]
-        #print "pos2:",self.line_energy.at(alpha_hi).energy.position.val[0]
         max_iterations = self.max_zoom_iterations
         # define the cubic and quadratic interpolant checks
         cubic_delta = 0.2  # cubic
