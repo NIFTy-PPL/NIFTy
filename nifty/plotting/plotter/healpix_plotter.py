@@ -21,3 +21,6 @@ class HealpixPlotter(PlotterBase):
 
     def _initialize_figure(self):
         return Figure2D(plots=None)
+
+    def _parse_data(self, data, field, spaces):
+        return data
