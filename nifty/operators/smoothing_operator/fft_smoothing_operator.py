@@ -21,7 +21,6 @@ class FFTSmoothingOperator(SmoothingOperator):
         # transform to the (global-)default codomain and perform all remaining
         # steps therein
         transformator = self._get_transformator(x.dtype)
-
         transformed_x = transformator(x, spaces=spaces)
         codomain = transformed_x.domain[spaces[0]]
         coaxes = transformed_x.domain_axes[spaces[0]]
