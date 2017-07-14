@@ -68,7 +68,7 @@ class CriticalPowerEnergy(Energy):
         self.rho = self.position.domain[0].rho
         self._w = w if w is not None else None
 
-    def at(self, position):
+    def at(self, position): #MR what about logarithmic?
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
                               q=self.q, smoothness_prior=self.smoothness_prior,
                               w=self.w, samples=self.samples)
