@@ -175,7 +175,6 @@ class LineSearchStrongWolfe(LineSearch):
                 break
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
-            # phi_alpha1 = self._phi(alpha1)
 
         else:
             # max_iterations was reached
@@ -201,9 +200,10 @@ class LineSearchStrongWolfe(LineSearch):
         Parameters
         ----------
         alpha_lo : float
-            The lower boundary for the step length interval.
+            A boundary for the step length interval.
+            Fulfills Wolfe condition 1.
         alpha_hi : float
-            The upper boundary for the step length interval.
+            The other boundary for the step length interval.
         phi_0 : float
             Value of the energy at the starting point of the line search
             algorithm.
