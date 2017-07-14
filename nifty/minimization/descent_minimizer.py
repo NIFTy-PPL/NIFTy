@@ -143,7 +143,7 @@ class DescentMinimizer(Loggable, object):
 
             # compute the the gradient for the current location
             gradient = energy.gradient
-            gradient_norm = gradient.vdot(gradient)
+            gradient_norm = gradient.norm()
 
             # check if position is at a flat point
             if gradient_norm == 0:
@@ -181,7 +181,7 @@ class DescentMinimizer(Loggable, object):
 
             energy = new_energy
             # check convergence
-            delta = abs(gradient).max() * (step_length/np.sqrt(gradient_norm))
+            delta = abs(gradient).max() * step_length / gradient_norm
             self.logger.debug("Iteration:%08u step_length=%3.1E "
                               "delta=%3.1E energy=%3.1E" %
                               (iteration_number, step_length, delta,
