@@ -61,12 +61,9 @@ class LineSearchStrongWolfe(LineSearch):
 
     """
 
-#    def __init__(self, c1=1e-4, c2=0.9,
-#                 max_step_size=1000000000, max_iterations=100,
-#                 max_zoom_iterations=100):
     def __init__(self, c1=1e-4, c2=0.9,
-                 max_step_size=50, max_iterations=10,
-                 max_zoom_iterations=10):
+                 max_step_size=1000000000, max_iterations=100,
+                 max_zoom_iterations=100):
 
         super(LineSearchStrongWolfe, self).__init__()
 
@@ -116,10 +113,6 @@ class LineSearchStrongWolfe(LineSearch):
         phiprime_0 = le_0.dd
         assert phiprime_0<0, "input direction must be a descent direction"
 
-        if phiprime_0 == 0:
-            self.logger.warn("Flat gradient in search direction.")
-            return 0., 0.
-
         # set alphas
         alpha0 = 0.
         if self.preferred_initial_step_size is not None:
@@ -137,12 +130,8 @@ class LineSearchStrongWolfe(LineSearch):
 
         # start the minimization loop
         for i in xrange(max_iterations):
-            #print "a0a1:",alpha0, alpha1
-            #print "line search outer iteration", i
             le_alpha1 = self.line_energy.at(alpha1)
-            #print "position:", le_alpha1.energy.position.val[0]
             phi_alpha1 = le_alpha1.value
-            #print "energy:", le_alpha1.value
             if alpha1 == 0:
                 self.logger.warn("Increment size became 0.")
                 alpha_star = 0.
@@ -151,7 +140,7 @@ class LineSearchStrongWolfe(LineSearch):
                 break
 
             if (phi_alpha1 > phi_0 + self.c1*alpha1*phiprime_0) or \
-               ((phi_alpha1 >= phi_alpha0) and (i > 1)):
+               ((phi_alpha1 >= phi_alpha0) and (i > 0)):
                 (alpha_star, phi_star, le_star) = self._zoom(
                                                     alpha0, alpha1,
                                                     phi_0, phiprime_0,
@@ -179,7 +168,7 @@ class LineSearchStrongWolfe(LineSearch):
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, max_step_size)
             if alpha1 == max_step_size:
-                print "bailout"
+                print "reached max step size, bailing out"
                 alpha_star = alpha1
                 phi_star = phi_alpha1
                 le_star = le_alpha1
@@ -250,8 +239,8 @@ class LineSearchStrongWolfe(LineSearch):
         quad_delta = 0.1  # quadratic
 
         # initialize the most recent versions (j-1) of phi and alpha
-        alpha_recent = 0
-        phi_recent = phi_0
+        alpha_recent = None
+        phi_recent = None
 
         for i in xrange(max_iterations):
             delta_alpha = alpha_hi - alpha_lo

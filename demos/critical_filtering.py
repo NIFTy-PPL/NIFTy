@@ -76,8 +76,8 @@ if __name__ == "__main__":
 
 
     # Choosing the measurement instrument
-    # Instrument = SmoothingOperator(s_space, sigma=0.01)
-    Instrument = DiagonalOperator(s_space, diagonal=1.)
+    Instrument = SmoothingOperator(s_space, sigma=0.01)
+    # Instrument = DiagonalOperator(s_space, diagonal=1.)
     # Instrument._diagonal.val[200:400, 200:400] = 0
     #Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
@@ -112,11 +112,11 @@ if __name__ == "__main__":
 
     minimizer1 = RelaxedNewton(convergence_tolerance=1e-2,
                               convergence_level=2,
-                              iteration_limit=3,
+                              iteration_limit=5,
                               callback=convergence_measure)
 
     minimizer2 = VL_BFGS(convergence_tolerance=1e-3,
-                       iteration_limit=70,
+                       iteration_limit=20,
                        callback=convergence_measure,
                        max_history_length=10)
     minimizer3 = SteepestDescent(convergence_tolerance=1e-3,
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         # Initializing the power energy with updated parameters
         power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0, smoothness_prior=10., samples=3)
 
-        (power_energy, convergence) = minimizer2(power_energy)
+        (power_energy, convergence) = minimizer3(power_energy)
 
 
         # Setting new power spectrum
