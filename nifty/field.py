@@ -18,6 +18,7 @@
 
 from __future__ import division
 
+import ast
 import itertools
 import numpy as np
 
@@ -1519,7 +1520,8 @@ class Field(Loggable, Versionable, object):
             temp_domain.append(repository.get('s_' + str(i), hdf5_group))
         new_field.domain = tuple(temp_domain)
 
-        exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
+        new_field.domain_axes = ast.literal_eval(
+                                hdf5_group.attrs['domain_axes'])
 
         try:
             new_field._val = repository.get('val', hdf5_group)
