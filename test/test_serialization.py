@@ -21,6 +21,7 @@ import unittest
 from numpy.testing import assert_equal
 from keepers import Repository
 from test.common import expand, generate_spaces
+from nifty import Field
 from nose.plugins.skip import SkipTest
 import os
 
@@ -37,6 +38,9 @@ class SpaceSerializationTests(unittest.TestCase):
             pass
         repo = Repository('test.h5')
         repo.add(space, 'space')
+        field = Field(space,val=42.)
+        repo.add(field, 'field')
         repo.commit()
         assert_equal(space, repo.get('space'))
+        assert_equal(field, repo.get('field'))
         os.remove('test.h5')
