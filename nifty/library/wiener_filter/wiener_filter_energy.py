@@ -29,7 +29,7 @@ class WienerFilterEnergy(Energy):
         self.R = R
         self.N = N
         self.S = S
-        self.inverter = inverter
+
     def at(self, position):
         return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
                               S=self.S, inverter=self.inverter)
@@ -47,9 +47,8 @@ class WienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return WienerFilterCurvature(R=self.R, N=self.N, S=self.S,
-                                     inverter=self.inverter)
-    @property
+        return WienerFilterCurvature(R=self.R, N=self.N, S=self.S)
+
     @memo
     def _Dx(self):
         return self.curvature(self.position)
