@@ -37,7 +37,7 @@ test_mpi_fftw:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - python setup.py build_ext --inplace
-    - mpiexec --allow-run-as-root -n 2 nosetests -vv
+    - nosetests -vv
 
 test_mpi_fftw_hdf5:
   stage: test
@@ -47,6 +47,8 @@ test_mpi_fftw_hdf5:
     - ci/install_pyfftw.sh
     - ci/install_h5py.sh
     - python setup.py build_ext --inplace
+    - mpiexec --allow-run-as-root -n 2 nosetests -vv
+    - mpiexec --allow-run-as-root -n 5 nosetests -vv
     - nosetests -vv --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
