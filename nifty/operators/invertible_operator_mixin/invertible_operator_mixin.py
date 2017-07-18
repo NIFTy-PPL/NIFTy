@@ -71,7 +71,8 @@ class InvertibleOperatorMixin(object):
 
     def _times(self, x, spaces, x0=None):
         if x0 is None:
-            x0 = Field(self.target, val=0., dtype=x.dtype)
+            x0 = Field(self.target, val=0., dtype=x.dtype,
+                       distribution_strategy=x.distribution_strategy)
 
         (result, convergence) = self.__inverter(A=self.inverse_times,
                                                 b=x,
@@ -80,7 +81,8 @@ class InvertibleOperatorMixin(object):
 
     def _adjoint_times(self, x, spaces, x0=None):
         if x0 is None:
-            x0 = Field(self.domain, val=0., dtype=x.dtype)
+            x0 = Field(self.domain, val=0., dtype=x.dtype,
+                       distribution_strategy=x.distribution_strategy)
 
         (result, convergence) = self.__inverter(A=self.adjoint_inverse_times,
                                                 b=x,
@@ -89,7 +91,8 @@ class InvertibleOperatorMixin(object):
 
     def _inverse_times(self, x, spaces, x0=None):
         if x0 is None:
-            x0 = Field(self.domain, val=0., dtype=x.dtype)
+            x0 = Field(self.domain, val=0., dtype=x.dtype,
+                       distribution_strategy=x.distribution_strategy)
 
         (result, convergence) = self.__inverter(A=self.times,
                                                 b=x,
@@ -98,7 +101,8 @@ class InvertibleOperatorMixin(object):
 
     def _adjoint_inverse_times(self, x, spaces, x0=None):
         if x0 is None:
-            x0 = Field(self.target, val=0., dtype=x.dtype)
+            x0 = Field(self.target, val=0., dtype=x.dtype,
+                       distribution_strategy=x.distribution_strategy)
 
         (result, convergence) = self.__inverter(A=self.adjoint_times,
                                                 b=x,
