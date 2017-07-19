@@ -18,6 +18,7 @@
 
 from __future__ import division
 
+import ast
 import itertools
 import numpy as np
 
@@ -465,7 +466,7 @@ class Field(Loggable, Versionable, object):
         return result_obj
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=None, std=None):
+                         mean=None, std=None, distribution_strategy=None):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner
@@ -540,13 +541,16 @@ class Field(Loggable, Versionable, object):
         else:
             result_list = [None, None]
 
+        if distribution_strategy is None:
+            distribution_strategy = gc['default_distribution_strategy']
+
         result_list = [self.__class__.from_random(
                              'normal',
                              mean=mean,
                              std=std,
                              domain=result_domain,
                              dtype=np.complex,
-                             distribution_strategy=self.distribution_strategy)
+                             distribution_strategy=distribution_strategy)
                        for x in result_list]
 
         # from now on extract the values from the random fields for further
@@ -1491,7 +1495,8 @@ class Field(Loggable, Versionable, object):
             temp_domain.append(repository.get('s_' + str(i), hdf5_group))
         new_field.domain = tuple(temp_domain)
 
-        exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
+        new_field.domain_axes = ast.literal_eval(
+                                hdf5_group.attrs['domain_axes'])
 
         try:
             new_field._val = repository.get('val', hdf5_group)

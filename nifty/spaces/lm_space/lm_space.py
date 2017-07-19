@@ -22,7 +22,7 @@ import numpy as np
 
 from nifty.spaces.space import Space
 
-from d2o import arange
+from d2o import arange, distributed_data_object
 
 
 class LMSpace(Space):
@@ -138,8 +138,10 @@ class LMSpace(Space):
             for l in range(1, lmax+1):
                 ldist[idx:idx+2*(lmax+1-l)] = tmp[2*l:]
                 idx += 2*(lmax+1-l)
-            dists = arange(start=0, stop=self.shape[0],
-                           distribution_strategy=distribution_strategy)
+            dists = distributed_data_object(
+                            global_shape=self.shape,
+                            dtype=np.float,
+                            distribution_strategy=distribution_strategy)
             dists.set_local_data(ldist)
             return dists
 
