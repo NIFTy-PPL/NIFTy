@@ -162,7 +162,6 @@ class DescentMinimizer(Loggable, object):
             tx1=energy.position-new_energy.position
             # check if new energy value is bigger than old energy value
             if (new_energy.value - energy.value) > 0:
-                print "Line search algorithm returned a new energy that was larger than the old one. Stopping."
                 self.logger.info("Line search algorithm returned a new energy "
                                  "that was larger than the old one. Stopping.")
                 break

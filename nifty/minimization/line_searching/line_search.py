@@ -63,9 +63,9 @@ class LineSearch(Loggable, object):
             iteration of the line search procedure. (Default: None)
 
         """
-        self.line_energy = LineEnergy(linepos=0.,
+        self.line_energy = LineEnergy(line_position=0.,
                                       energy=energy,
-                                      linedir=pk)
+                                      line_direction=pk)
         if f_k_minus_1 is not None:
             f_k_minus_1 = f_k_minus_1.copy()
         self.f_k_minus_1 = f_k_minus_1

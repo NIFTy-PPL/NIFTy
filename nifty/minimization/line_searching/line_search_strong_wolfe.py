@@ -110,7 +110,7 @@ class LineSearchStrongWolfe(LineSearch):
         old_phi_0 = self.f_k_minus_1
         le_0 = self.line_energy.at(0)
         phi_0 = le_0.value
-        phiprime_0 = le_0.dd
+        phiprime_0 = le_0.directional_derivative
         assert phiprime_0<0, "input direction must be a descent direction"
 
         # set alphas
@@ -141,7 +141,6 @@ class LineSearchStrongWolfe(LineSearch):
 
             if (phi_alpha1 > phi_0 + self.c1*alpha1*phiprime_0) or \
                ((phi_alpha1 >= phi_alpha0) and (i > 0)):
-                print "zoom1:",i
                 (alpha_star, phi_star, le_star) = self._zoom(
                                                     alpha0, alpha1,
                                                     phi_0, phiprime_0,
@@ -150,7 +149,7 @@ class LineSearchStrongWolfe(LineSearch):
                                                     phi_alpha1)
                 break
 
-            phiprime_alpha1 = le_alpha1.dd
+            phiprime_alpha1 = le_alpha1.directional_derivative
             if abs(phiprime_alpha1) <= -self.c2*phiprime_0:
                 alpha_star = alpha1
                 phi_star = phi_alpha1
@@ -158,7 +157,6 @@ class LineSearchStrongWolfe(LineSearch):
                 break
 
             if phiprime_alpha1 >= 0:
-                print "zoom2:",i
                 (alpha_star, phi_star, le_star) = self._zoom(
                                                     alpha1, alpha0,
                                                     phi_0, phiprime_0,
@@ -241,11 +239,9 @@ class LineSearchStrongWolfe(LineSearch):
         #phi_recent = None
         assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
         assert phiprime_lo*(alpha_hi-alpha_lo)<0.
-        print "enter:"
         for i in xrange(max_iterations):
             #assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
             #assert phiprime_lo*(alpha_hi-alpha_lo)<0.
-#            print alpha_lo, alpha_hi
             delta_alpha = alpha_hi - alpha_lo
             alpha_j = alpha_lo + 0.5*delta_alpha
 
@@ -255,18 +251,11 @@ class LineSearchStrongWolfe(LineSearch):
 
             # If the first Wolfe condition is not met replace alpha_hi
             # by alpha_j
-#            print "W1:", phi_alphaj, phi_0 + self.c1*alpha_j*phiprime_0
-            print alpha_lo, phi_lo
-            print alpha_hi, phi_hi
-#            print phi_lo, phi_hi, phi_alphaj
-#            print phiprime_lo, phiprime_alphaj
             if (phi_alphaj > phi_0 + self.c1*alpha_j*phiprime_0) or\
                (phi_alphaj >= phi_lo):
-#                print "beep"
                 alpha_hi, phi_hi = alpha_j, phi_alphaj
             else:
-#                print "boop"
-                phiprime_alphaj = le_alphaj.dd
+                phiprime_alphaj = le_alphaj.directional_derivative
                 # If the second Wolfe condition is met, return the result
                 if abs(phiprime_alphaj) <= -self.c2*phiprime_0:
                     alpha_star = alpha_j

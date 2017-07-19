@@ -25,12 +25,12 @@ class LineEnergy:
 
     Parameters
     ----------
-    linepos : float
+    line_position : float
         Defines the full spatial position of this energy via
-        self.energy.position = zero_point + linepos*line_direction
+        self.energy.position = zero_point + line_position*line_direction
     energy : Energy
         The Energy object which will be evaluated along the given direction.
-    linedir : Field
+    line_direction : Field
         Direction used for line evaluation. Does not have to be normalized.
     offset :  float *optional*
         Indirectly defines the zero point of the line via the equation
@@ -39,13 +39,13 @@ class LineEnergy:
 
     Attributes
     ----------
-    linepos : float
+    line_position : float
         The position along the given line direction relative to the zero point.
     value : float
         The value of the energy functional at the given position
-    dd : float
+    directional_derivative : float
         The directional derivative at the given position
-    linedir : Field
+    line_direction : Field
         Direction along which the movement is restricted. Does not have to be
         normalized.
     energy : Energy
@@ -67,19 +67,20 @@ class LineEnergy:
 
     """
 
-    def __init__(self, linepos, energy, linedir, offset=0.):
-        self._linepos = float(linepos)
-        self._linedir = linedir
+    def __init__(self, line_position, energy, line_direction, offset=0.):
+        self._line_position = float(line_position)
+        self._line_direction = line_direction
 
-        pos = energy.position + (self._linepos-float(offset))*self._linedir
+        pos = energy.position \
+            + (self._line_position-float(offset))*self._line_direction
         self.energy = energy.at(position=pos)
 
-    def at(self, linepos):
+    def at(self, line_position):
         """ Returns LineEnergy at new position, memorizing the zero point.
 
         Parameters
         ----------
-        linepos : float
+        line_position : float
             Parameter for the new position on the line direction.
 
         Returns
@@ -88,27 +89,27 @@ class LineEnergy:
 
         """
 
-        return self.__class__(linepos,
+        return self.__class__(line_position,
                               self.energy,
-                              self.linedir,
-                              offset=self.linepos)
+                              self.line_direction,
+                              offset=self.line_position)
 
     @property
     def value(self):
         return self.energy.value
 
     @property
-    def linepos(self):
-        return self._linepos
+    def line_position(self):
+        return self._line_position
 
     @property
-    def linedir(self):
-        return self._linedir
+    def line_direction(self):
+        return self._line_direction
 
     @property
-    def dd(self):
-        res = self.energy.gradient.vdot(self.linedir)
-        if abs(res.imag)/max(abs(res.real),1.)>1e-12:
-               print "directional derivative has non-negligible " \
-                     "imaginary part:", res
+    def directional_derivative(self):
+        res = self.energy.gradient.vdot(self.line_direction)
+        if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
+            print "directional derivative has non-negligible " \
+                  "imaginary part:", res
         return res.real
