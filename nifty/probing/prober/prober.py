@@ -40,7 +40,8 @@ class Prober(object):
     """
 
     def __init__(self, domain=None, distribution_strategy=None, probe_count=8,
-                 random_type='pm1', compute_variance=False):
+                 random_type='pm1', probe_dtype=np.float,
+                 compute_variance=False):
 
         self._domain = utilities.parse_domain(domain)
         self._distribution_strategy = \
@@ -48,6 +49,7 @@ class Prober(object):
         self._probe_count = self._parse_probe_count(probe_count)
         self._random_type = self._parse_random_type(random_type)
         self.compute_variance = bool(compute_variance)
+        self.probe_dtype = np.dtype(probe_dtype)
 
     # ---Properties---
 
@@ -107,6 +109,7 @@ class Prober(object):
         """ a random-probe generator """
         f = Field.from_random(random_type=self.random_type,
                               domain=self.domain,
+                              dtype=self.probe_dtype,
                               distribution_strategy=self.distribution_strategy)
         uid = np.random.randint(1e18)
         return (uid, f)

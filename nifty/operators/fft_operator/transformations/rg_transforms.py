@@ -376,6 +376,10 @@ class MPIFFT(Transform):
                 original_shape = inp.shape
                 inp = inp.reshape(inp.shape[0], 1)
                 axes = (0, )
+                if original_shape[0]%2!=0:
+                    raise AttributeError("MPI-FFTs of onedimensional arrays "
+                        "with odd length are currently not supported due to a "
+                        "bug in FFTW. Please use a grid with even length.")
 
             if current_info is None:
                 transform_shape = list(inp.shape)

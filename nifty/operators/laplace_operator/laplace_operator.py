@@ -48,7 +48,9 @@ class LaplaceOperator(EndomorphicOperator):
         if not isinstance(self.domain[0], PowerSpace):
             raise TypeError("The domain must contain exactly one PowerSpace.")
 
-        if logarithmic:
+        self._logarithmic = bool(logarithmic)
+
+        if self.logarithmic:
             self.positions = self.domain[0].kindex.copy()
             self.positions[1:] = np.log(self.positions[1:])
             self.positions[0] = -1.
@@ -77,6 +79,10 @@ class LaplaceOperator(EndomorphicOperator):
     @property
     def self_adjoint(self):
         return False
+
+    @property
+    def logarithmic(self):
+        return self._logarithmic
 
     def _times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
