@@ -53,24 +53,28 @@ class CriticalPowerEnergy(Energy):
         default : None
     """
 
+    # ---Overwritten properties and methods---
+
     def __init__(self, position, m, D=None, alpha=1.0, q=0.,
                  smoothness_prior=0., logarithmic=True, samples=3, w=None):
         super(CriticalPowerEnergy, self).__init__(position=position)
         self.m = m
         self.D = D
         self.samples = samples
-        self.smoothness_prior = np.float(smoothness_prior)
         self.alpha = Field(self.position.domain, val=alpha)
         self.q = Field(self.position.domain, val=q)
         self.T = SmoothnessOperator(domain=self.position.domain[0],
-                                    strength=self.smoothness_prior,
+                                    strength=smoothness_prior,
                                     logarithmic=logarithmic)
         self.rho = self.position.domain[0].rho
         self._w = w if w is not None else None
 
-    def at(self, position): #MR what about logarithmic?
+    # ---Mandatory properties and methods---
+
+    def at(self, position):
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
                               q=self.q, smoothness_prior=self.smoothness_prior,
+                              logarithmic=self.logarithmic,
                               w=self.w, samples=self.samples)
 
     @property
@@ -93,6 +97,16 @@ class CriticalPowerEnergy(Energy):
         curvature = CriticalPowerCurvature(theta=self._theta.weight(-1),
                                            T=self.T)
         return curvature
+
+    # ---Added properties and methods---
+
+    @property
+    def logarithmic(self):
+        return self.T.logarithmic
+
+    @property
+    def smoothness_prior(self):
+        return self.T.strength
 
     @property
     def w(self):
