@@ -39,4 +39,7 @@ class SpaceSerializationTests(unittest.TestCase):
         repo.commit()
         assert_equal(space, repo.get('space'))
         assert_equal(field, repo.get('field'))
-        os.remove('test.h5')
+        try:
+            os.remove('test.h5')
+        except OSError:
+            pass
