@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 
-class LineEnergy:
+class LineEnergy(object):
     """ Evaluates an underlying Energy along a certain line direction.
 
     Given an Energy class and a line direction, its position is parametrized by
