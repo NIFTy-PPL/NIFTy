@@ -40,3 +40,13 @@ class ScatterPlot(PlotlyWrapper):
             ply_object['marker'] = self.marker.to_plotly()
 
         return ply_object
+
+    def default_width(self):
+        return 700
+
+    def default_height(self):
+        return 700
+
+    @abc.abstractmethod
+    def default_axes(self):
+        raise NotImplementedError

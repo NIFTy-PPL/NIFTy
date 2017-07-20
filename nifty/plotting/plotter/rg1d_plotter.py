@@ -11,9 +11,9 @@ from .plotter_base import PlotterBase
 
 
 class RG1DPlotter(PlotterBase):
-    def __init__(self, interactive=False, path='.', title="",
-                 line=None, marker=None):
-        super(RG1DPlotter, self).__init__(interactive, path, title)
+    def __init__(self, interactive=False, path='plot.html', line=None,
+                 marker=None):
+        super(RG1DPlotter, self).__init__(interactive, path)
         self.line = line
         self.marker = marker
 
