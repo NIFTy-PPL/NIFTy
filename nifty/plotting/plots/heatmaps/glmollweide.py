@@ -4,6 +4,8 @@ from nifty import dependency_injector as gdi
 from .heatmap import Heatmap
 import numpy as np
 
+from nifty.plotting.descriptors import Axis
+
 from .mollweide_helper import mollweide_helper
 
 pyHealpix = gdi.get('pyHealpix')
@@ -11,14 +13,15 @@ pyHealpix = gdi.get('pyHealpix')
 
 class GLMollweide(Heatmap):
     def __init__(self, data, xsize=800, color_map=None,
-                 webgl=False, smoothing=False):
+                 webgl=False, smoothing=False, zmin=None, zmax=None):
         # smoothing 'best', 'fast', False
         if pyHealpix is None:
             raise ImportError(
                 "The module pyHealpix is needed but not available.")
         self.xsize = xsize
 
-        super(GLMollweide, self).__init__(data, color_map, webgl, smoothing)
+        super(GLMollweide, self).__init__(data, color_map, webgl, smoothing,
+                                          zmin, zmax)
 
     def at(self, data):
         if isinstance(data, list):
@@ -55,3 +58,12 @@ class GLMollweide(Heatmap):
         ilon = np.where(ilon == nlon, 0, ilon)
         res[mask] = x[ilat, ilon]
         return res
+
+    def default_width(self):
+        return 1400
+
+    def default_height(self):
+        return 700
+
+    def default_axes(self):
+        return (Axis(visible=False), Axis(visible=False))

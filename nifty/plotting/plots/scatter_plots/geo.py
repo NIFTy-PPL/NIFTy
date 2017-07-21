@@ -1,3 +1,4 @@
+from ...descriptors import Axis
 from .scatter_plot import ScatterPlot
 
 
@@ -30,3 +31,6 @@ class Geo(ScatterPlot):
         if self.line:
             plotly_object['mode'] = 'lines'
         return plotly_object
+
+    def default_axes(self):
+        return (Axis(), Axis())

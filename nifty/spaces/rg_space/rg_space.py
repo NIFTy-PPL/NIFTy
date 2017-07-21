@@ -102,23 +102,26 @@ class RGSpace(Space):
         self._distances = self._parse_distances(distances)
         self._zerocenter = self._parse_zerocenter(zerocenter)
 
-    def hermitian_fixed_points(self):
-        dimensions = len(self.shape)
-        mid_index = np.array(self.shape)//2
-        ndlist = [1]*dimensions
-        for k in range(dimensions):
-            if self.shape[k] % 2 == 0:
-                ndlist[k] = 2
-        ndlist = tuple(ndlist)
-        fixed_points = []
-        for index in np.ndindex(ndlist):
-            for k in range(dimensions):
-                if self.shape[k] % 2 != 0 and self.zerocenter[k]:
-                    index = list(index)
-                    index[k] = 1
-                    index = tuple(index)
-            fixed_points += [tuple(index * mid_index)]
-        return fixed_points
+# This code is unused but may be useful to keep around if it is ever needed
+# again in the future ...
+
+#    def hermitian_fixed_points(self):
+#        dimensions = len(self.shape)
+#        mid_index = np.array(self.shape)//2
+#        ndlist = [1]*dimensions
+#        for k in range(dimensions):
+#            if self.shape[k] % 2 == 0:
+#                ndlist[k] = 2
+#        ndlist = tuple(ndlist)
+#        fixed_points = []
+#        for index in np.ndindex(ndlist):
+#            for k in range(dimensions):
+#                if self.shape[k] % 2 != 0 and self.zerocenter[k]:
+#                    index = list(index)
+#                    index[k] = 1
+#                    index = tuple(index)
+#            fixed_points += [tuple(index * mid_index)]
+#        return fixed_points
 
     def hermitianize_inverter(self, x, axes):
         # calculate the number of dimensions the input array has
