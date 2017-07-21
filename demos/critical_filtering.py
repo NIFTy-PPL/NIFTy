@@ -113,17 +113,17 @@ if __name__ == "__main__":
         x = a_energy.value
         print(x, iteration)
 
-    minimizer1 = RelaxedNewton(convergence_tolerance=1e-8,
+    minimizer1 = RelaxedNewton(convergence_tolerance=1e-4,
                                convergence_level=1,
                                iteration_limit=5,
                                callback=convergence_measure)
-    minimizer2 = VL_BFGS(convergence_tolerance=1e-8,
+    minimizer2 = VL_BFGS(convergence_tolerance=1e-4,
                          convergence_level=1,
-                         iteration_limit=1000,
+                         iteration_limit=20,
                          callback=convergence_measure,
                          max_history_length=20)
-    minimizer3 = SteepestDescent(convergence_tolerance=1e-8,
-                                 iteration_limit=500,
+    minimizer3 = SteepestDescent(convergence_tolerance=1e-4,
+                                 iteration_limit=100,
                                  callback=convergence_measure)
 
     # Set starting position
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 
     t0 = Field(p_space, val=log(1./(1+p_space.kindex)**2))
 
-    for i in range(50):
+    for i in range(500):
         S0 = create_power_operator(h_space, power_spectrum=exp(t0),
                                    distribution_strategy=distribution_strategy)
 

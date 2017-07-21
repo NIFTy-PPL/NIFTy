@@ -182,7 +182,7 @@ class Field(Loggable, Versionable, object):
             elif isinstance(val, Field):
                 distribution_strategy = val.distribution_strategy
             else:
-                #self.logger.debug("distribution_strategy set to default!")
+                self.logger.debug("distribution_strategy set to default!")
                 distribution_strategy = gc['default_distribution_strategy']
         elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
             raise ValueError(
