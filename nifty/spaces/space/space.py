@@ -161,19 +161,6 @@ class Space(DomainObject):
         raise NotImplementedError(
             "There is no generic co-smoothing kernel for Space base class.")
 
-    def hermitian_fixed_points(self):
-        """ Returns the array points which remain invariant under the action
-        of `hermitianize_inverter`
-
-
-        Returns
-        -------
-        list of index-tuples
-            The list contains the index-coordinates of the invariant points.
-
-        """
-        return None
-
     def hermitianize_inverter(self, x, axes):
         """ Inverts/flips x in the context of Hermitian decomposition.
 
