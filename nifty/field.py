@@ -668,7 +668,7 @@ class Field(Loggable, Versionable, object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            self.logger.warn(
+            raise AttributeError(
                 "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
