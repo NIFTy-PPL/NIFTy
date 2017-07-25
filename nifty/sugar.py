@@ -19,13 +19,14 @@
 from nifty import PowerSpace,\
                   Field,\
                   DiagonalOperator,\
-                  sqrt
-from nifty.minimization.conjugate_gradient import ConjugateGradient
-__all__ = ['create_power_operator']
+                  sqrt,\
+                  nifty_configuration
+
+__all__ = ['create_power_operator', 'generate_posterior_sample']
 
 
 def create_power_operator(domain, power_spectrum, dtype=None,
-                          distribution_strategy='not'):
+                          distribution_strategy=None):
     """ Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that lives over the specified domain.
@@ -50,6 +51,10 @@ def create_power_operator(domain, power_spectrum, dtype=None,
     DiagonalOperator : An operator that implements the given power spectrum.
 
     """
+
+    if distribution_strategy is None:
+        distribution_strategy = \
+            nifty_configuration['default_distribution_strategy']
 
     if isinstance(power_spectrum, Field):
         power_domain = power_spectrum.domain
