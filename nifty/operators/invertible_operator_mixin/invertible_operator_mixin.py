@@ -60,17 +60,23 @@ class InvertibleOperatorMixin(object):
 
     """
 
-    def __init__(self, inverter=None, preconditioner=None, *args, **kwargs):
+    def __init__(self, inverter=None, preconditioner=None,
+                 forward_x0=None, backward_x0=None, *args, **kwargs):
         self.__preconditioner = preconditioner
         if inverter is not None:
             self.__inverter = inverter
         else:
             self.__inverter = ConjugateGradient(
                                         preconditioner=self.__preconditioner)
+
+        self.__forward_x0 = forward_x0
+        self.__backward_x0 = backward_x0
         super(InvertibleOperatorMixin, self).__init__(*args, **kwargs)
 
-    def _times(self, x, spaces, x0=None):
-        if x0 is None:
+    def _times(self, x, spaces):
+        if self.__forward_x0 is not None:
+            x0 = self.__forward_x0
+        else:
             x0 = Field(self.target, val=0., dtype=x.dtype,
                        distribution_strategy=x.distribution_strategy)
 
@@ -79,8 +85,10 @@ class InvertibleOperatorMixin(object):
                                                 x0=x0)
         return result
 
-    def _adjoint_times(self, x, spaces, x0=None):
-        if x0 is None:
+    def _adjoint_times(self, x, spaces):
+        if self.__backward_x0 is not None:
+            x0 = self.__backward_x0
+        else:
             x0 = Field(self.domain, val=0., dtype=x.dtype,
                        distribution_strategy=x.distribution_strategy)
 
@@ -89,8 +97,10 @@ class InvertibleOperatorMixin(object):
                                                 x0=x0)
         return result
 
-    def _inverse_times(self, x, spaces, x0=None):
-        if x0 is None:
+    def _inverse_times(self, x, spaces):
+        if self.__backward_x0 is not None:
+            x0 = self.__backward_x0
+        else:
             x0 = Field(self.domain, val=0., dtype=x.dtype,
                        distribution_strategy=x.distribution_strategy)
 
@@ -99,8 +109,10 @@ class InvertibleOperatorMixin(object):
                                                 x0=x0)
         return result
 
-    def _adjoint_inverse_times(self, x, spaces, x0=None):
-        if x0 is None:
+    def _adjoint_inverse_times(self, x, spaces):
+        if self.__forward_x0 is not None:
+            x0 = self.__forward_x0
+        else:
             x0 = Field(self.target, val=0., dtype=x.dtype,
                        distribution_strategy=x.distribution_strategy)
 

@@ -22,7 +22,7 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
     """
 
-    def __init__(self, R, N, S, inverter=None, preconditioner=None):
+    def __init__(self, R, N, S, inverter=None, preconditioner=None, **kwargs):
 
         self.R = R
         self.N = N
@@ -32,7 +32,8 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
         self._domain = self.S.domain
         super(WienerFilterCurvature, self).__init__(
                                                  inverter=inverter,
-                                                 preconditioner=preconditioner)
+                                                 preconditioner=preconditioner,
+                                                 **kwargs)
 
     @property
     def domain(self):
