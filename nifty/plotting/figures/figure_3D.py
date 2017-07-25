@@ -9,8 +9,9 @@ class Figure3D(FigureFromPlot):
             width = width if width is not None else plots[0].default_width()
             height = \
                 height if height is not None else plots[0].default_height()
-            (xaxis, yaxis, zaxis) = \
-                xaxis if xaxis is not None else plots[0].default_axes()
+            xaxis = xaxis if xaxis is not None else plots[0].default_axes()[0]
+            yaxis = yaxis if yaxis is not None else plots[0].default_axes()[1]
+            zaxis = zaxis if zaxis is not None else plots[0].default_axes()[2]
         super(Figure3D, self).__init__(plots, title, width, height)
         self.xaxis = xaxis
         self.yaxis = yaxis
