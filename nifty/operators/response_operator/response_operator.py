@@ -119,6 +119,8 @@ class ResponseOperator(LinearOperator):
     def _adjoint_times(self, x, spaces):
         # setting correct spaces
         res = Field(self.domain, val=x.val)
+        if spaces is not None:
+            spaces = range(spaces[0], spaces[0]+len(res.domain))
         res = self._composed_exposure.adjoint_times(res, spaces)
         res = res.weight(power=-1)
         res = self._composed_kernel.adjoint_times(res, spaces)
