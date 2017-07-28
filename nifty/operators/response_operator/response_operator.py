@@ -66,20 +66,11 @@ class ResponseOperator(LinearOperator):
 
     """
 
-    def __init__(self, domain,
-                 sigma=[1.], exposure=[1.],
+    def __init__(self, domain, sigma=[1.], exposure=[1.],
                  default_spaces=None):
         super(ResponseOperator, self).__init__(default_spaces)
 
         self._domain = self._parse_domain(domain)
-
-        shapes = len(self._domain)*[None]
-        shape_target = []
-        for ii in xrange(len(shapes)):
-            shapes[ii] = self._domain[ii].shape
-            shape_target = np.append(shape_target, self._domain[ii].shape)
-
-        self._target = self._parse_domain(FieldArray(shape_target))
 
         kernel_smoothing = len(self._domain)*[None]
         kernel_exposure = len(self._domain)*[None]
@@ -96,6 +87,12 @@ class ResponseOperator(LinearOperator):
 
         self._composed_kernel = ComposedOperator(kernel_smoothing)
         self._composed_exposure = ComposedOperator(kernel_exposure)
+
+        target_list = []
+        for space in self.domain:
+            target_list += [FieldArray(space.shape)]
+
+        self._target = self._parse_domain(target_list)
 
     @property
     def domain(self):
@@ -119,8 +116,6 @@ class ResponseOperator(LinearOperator):
     def _adjoint_times(self, x, spaces):
         # setting correct spaces
         res = Field(self.domain, val=x.val)
-        if spaces is not None:
-            spaces = range(spaces[0], spaces[0]+len(res.domain))
         res = self._composed_exposure.adjoint_times(res, spaces)
         res = res.weight(power=-1)
         res = self._composed_kernel.adjoint_times(res, spaces)
