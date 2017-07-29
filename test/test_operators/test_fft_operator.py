@@ -63,7 +63,7 @@ class FFTOperatorTests(unittest.TestCase):
         assert_equal(res[zc1 * (dim1 // 2), zc2 * (dim2 // 2)], 0.)
 
     @expand(product(["numpy", "fftw", "fftw_mpi"],
-                    [12, ], [False, True], [False, True],
+                    [16, ], [False, True], [False, True],
                     [0.1, 1, 3.7],
                     [np.float64, np.complex128, np.float32, np.complex64]))
     def test_fft1D(self, module, dim1, zc1, zc2, d, itp):
