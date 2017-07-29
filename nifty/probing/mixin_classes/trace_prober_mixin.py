@@ -16,10 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from nifty.sugar import create_composed_fft_operator
+
 
 class TraceProberMixin(object):
     def __init__(self, *args, **kwargs):
         self.reset()
+        self.__evaluate_probe_in_signal_space = True
         super(TraceProberMixin, self).__init__(*args, **kwargs)
 
     def reset(self):
@@ -30,7 +33,12 @@ class TraceProberMixin(object):
         super(TraceProberMixin, self).reset()
 
     def finish_probe(self, probe, pre_result):
-        result = probe[1].vdot(pre_result, bare=True)
+        if self.__evaluate_probe_in_signal_space:
+            fft = create_composed_fft_operator(self._domain, all_to='position')
+            result = fft(probe[1]).vdot(fft(pre_result), bare=True)
+        else:
+            result = probe[1].vdot(pre_result, bare=True)
+
         self.__sum_of_probings += result
         if self.compute_variance:
             self.__sum_of_squares += result.conjugate() * result

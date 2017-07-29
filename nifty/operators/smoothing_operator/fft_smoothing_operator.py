@@ -46,7 +46,7 @@ class FFTSmoothingOperator(SmoothingOperator):
         local_transformed_x = transformed_x.val.get_local_data(copy=False)
         local_kernel = kernel.get_local_data(copy=False)
 
-        reshaper = [transformed_x.shape[i] if i in coaxes else 1
+        reshaper = [local_transformed_x.shape[i] if i in coaxes else 1
                     for i in xrange(len(transformed_x.shape))]
         local_kernel = np.reshape(local_kernel, reshaper)
 

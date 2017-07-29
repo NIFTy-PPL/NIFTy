@@ -12,7 +12,7 @@ class FigureBase(PlotlyWrapper):
         self.height = height
 
     @abc.abstractmethod
-    def at(self):
+    def at(self, title=None):
         raise NotImplementedError
 
     @abc.abstractmethod

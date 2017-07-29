@@ -6,9 +6,9 @@ from .plotter_base import PlotterBase
 
 
 class HealpixPlotter(PlotterBase):
-    def __init__(self, interactive=False, path='.', title="", color_map=None):
+    def __init__(self, interactive=False, path='plot.html', color_map=None):
         self.color_map = color_map
-        super(HealpixPlotter, self).__init__(interactive, path, title)
+        super(HealpixPlotter, self).__init__(interactive, path)
 
     @property
     def domain_classes(self):

@@ -112,7 +112,6 @@ class Field(Loggable, Versionable, object):
 
     def __init__(self, domain=None, val=None, dtype=None,
                  distribution_strategy=None, copy=False):
-
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
 
@@ -127,6 +126,7 @@ class Field(Loggable, Versionable, object):
             self._val = None
         else:
             self.set_val(new_val=val, copy=copy)
+
 
     def _parse_domain(self, domain, val=None):
         if domain is None:
@@ -466,7 +466,7 @@ class Field(Loggable, Versionable, object):
         return result_obj
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=None, std=None):
+                         mean=None, std=None, distribution_strategy=None):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner
@@ -541,13 +541,16 @@ class Field(Loggable, Versionable, object):
         else:
             result_list = [None, None]
 
+        if distribution_strategy is None:
+            distribution_strategy = gc['default_distribution_strategy']
+
         result_list = [self.__class__.from_random(
                              'normal',
                              mean=mean,
                              std=std,
                              domain=result_domain,
                              dtype=np.complex,
-                             distribution_strategy=self.distribution_strategy)
+                             distribution_strategy=distribution_strategy)
                        for x in result_list]
 
         # from now on extract the values from the random fields for further
@@ -609,39 +612,47 @@ class Field(Loggable, Versionable, object):
 
         # correct variance
         if preserve_gaussian_variance:
+            assert issubclass(val.dtype.type, np.complexfloating),\
+                    "complex input field is needed here"
             h *= np.sqrt(2)
             a *= np.sqrt(2)
 
-            if not issubclass(val.dtype.type, np.complexfloating):
-                # in principle one must not correct the variance for the fixed
-                # points of the hermitianization. However, for a complex field
-                # the input field loses half of its power at its fixed points
-                # in the `hermitian` part. Hence, here a factor of sqrt(2) is
-                # also necessary!
-                # => The hermitianization can be done on a space level since
-                # either nothing must be done (LMSpace) or ALL points need a
-                # factor of sqrt(2)
-                # => use the preserve_gaussian_variance flag in the
-                # hermitian_decomposition method above.
+#            The code below should not be needed in practice, since it would
+#            only ever be called when hermitianizing a purely real field.
+#            However it might be of educational use and keep us from forgetting
+#            how these things are done ...
 
-                # This code is for educational purposes:
-                fixed_points = [domain[i].hermitian_fixed_points()
-                                for i in spaces]
-                fixed_points = [[fp] if fp is None else fp
-                                for fp in fixed_points]
+#            if not issubclass(val.dtype.type, np.complexfloating):
+#                # in principle one must not correct the variance for the fixed
+#                # points of the hermitianization. However, for a complex field
+#                # the input field loses half of its power at its fixed points
+#                # in the `hermitian` part. Hence, here a factor of sqrt(2) is
+#                # also necessary!
+#                # => The hermitianization can be done on a space level since
+#                # either nothing must be done (LMSpace) or ALL points need a
+#                # factor of sqrt(2)
+#                # => use the preserve_gaussian_variance flag in the
+#                # hermitian_decomposition method above.
+#
+#                # This code is for educational purposes:
+#                fixed_points = [domain[i].hermitian_fixed_points()
+#                                for i in spaces]
+#                fixed_points = [[fp] if fp is None else fp
+#                                for fp in fixed_points]
+#
+#                for product_point in itertools.product(*fixed_points):
+#                    slice_object = np.array((slice(None), )*len(val.shape),
+#                                            dtype=np.object)
+#                    for i, sp in enumerate(spaces):
+#                        point_component = product_point[i]
+#                        if point_component is None:
+#                            point_component = slice(None)
+#                        slice_object[list(domain_axes[sp])] = point_component
+#
+#                    slice_object = tuple(slice_object)
+#                    h[slice_object] /= np.sqrt(2)
+#                    a[slice_object] /= np.sqrt(2)
 
-                for product_point in itertools.product(*fixed_points):
-                    slice_object = np.array((slice(None), )*len(val.shape),
-                                            dtype=np.object)
-                    for i, sp in enumerate(spaces):
-                        point_component = product_point[i]
-                        if point_component is None:
-                            point_component = slice(None)
-                        slice_object[list(domain_axes[sp])] = point_component
-
-                    slice_object = tuple(slice_object)
-                    h[slice_object] /= np.sqrt(2)
-                    a[slice_object] /= np.sqrt(2)
         return (h, a)
 
     def _spec_to_rescaler(self, spec, result_list, power_space_index):
@@ -657,7 +668,7 @@ class Field(Loggable, Versionable, object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            self.logger.warn(
+            raise AttributeError(
                 "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
@@ -764,14 +775,14 @@ class Field(Loggable, Versionable, object):
         dim
 
         """
-
-        shape_tuple = tuple(sp.shape for sp in self.domain)
-        try:
-            global_shape = reduce(lambda x, y: x + y, shape_tuple)
-        except TypeError:
-            global_shape = ()
-
-        return global_shape
+        if not hasattr(self, '_shape'):
+            shape_tuple = tuple(sp.shape for sp in self.domain)
+            try:
+                global_shape = reduce(lambda x, y: x + y, shape_tuple)
+            except TypeError:
+                global_shape = ()
+            self._shape = global_shape
+        return self._shape
 
     @property
     def dim(self):

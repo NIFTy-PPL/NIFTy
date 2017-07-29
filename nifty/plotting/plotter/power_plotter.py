@@ -11,9 +11,9 @@ from .plotter_base import PlotterBase
 
 
 class PowerPlotter(PlotterBase):
-    def __init__(self, interactive=False, path='.', title="",
-                 line=None, marker=None):
-        super(PowerPlotter, self).__init__(interactive, path, title)
+    def __init__(self, interactive=False, path='plot.html', line=None,
+                 marker=None):
+        super(PowerPlotter, self).__init__(interactive, path)
         self.line = line
         self.marker = marker
 

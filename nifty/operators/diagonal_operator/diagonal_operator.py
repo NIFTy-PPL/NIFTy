@@ -286,7 +286,7 @@ class DiagonalOperator(EndomorphicOperator):
                 distribution_strategy=axes_local_distribution_strategy)
             local_diagonal = redistr_diagonal_val.get_local_data(copy=False)
 
-        reshaper = [x.shape[i] if i in active_axes else 1
+        reshaper = [x.val.data.shape[i] if i in active_axes else 1
                     for i in xrange(len(x.shape))]
         reshaped_local_diagonal = np.reshape(local_diagonal, reshaper)
 

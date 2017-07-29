@@ -47,6 +47,7 @@ class Prober(object):
         self._random_type = self._parse_random_type(random_type)
         self.compute_variance = bool(compute_variance)
         self.probe_dtype = np.dtype(probe_dtype)
+        self._uid_counter = 0
 
     # ---Properties---
 
@@ -108,7 +109,8 @@ class Prober(object):
                               domain=self.domain,
                               dtype=self.probe_dtype,
                               distribution_strategy=self.distribution_strategy)
-        uid = np.random.randint(1e18)
+        uid = self._uid_counter
+        self._uid_counter += 1
         return (uid, f)
 
     def process_probe(self, callee, probe, index):
