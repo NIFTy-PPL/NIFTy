@@ -1,8 +1,11 @@
 from nifty.operators import EndomorphicOperator,\
                             InvertibleOperatorMixin
+from nifty.energies.memoization import memo
 from nifty.basic_arithmetics import exp
 
-class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+
+class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
+                                     EndomorphicOperator):
     """The curvature of the LogNormalWienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -21,15 +24,18 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
     """
 
-    def __init__(self, R, N, S, inverter=None, preconditioner=None, **kwargs):
-
+    def __init__(self, R, N, S, d, position, inverter=None,
+                 preconditioner=None, **kwargs):
+        self._cache = {}
         self.R = R
         self.N = N
         self.S = S
+        self.d = d
+        self.position = position
         if preconditioner is None:
             preconditioner = self.S.times
         self._domain = self.S.domain
-        super(WienerFilterCurvature, self).__init__(
+        super(LogNormalWienerFilterCurvature, self).__init__(
                                                  inverter=inverter,
                                                  preconditioner=preconditioner,
                                                  **kwargs)
@@ -49,11 +55,28 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     # ---Added properties and methods---
 
     def _times(self, x, spaces):
-        expx = exp(x)
-        expxx = expx*x
         part1 = self.S.inverse_times(x)
-        part2 = (expx *   # is an adjoint necessary here?
-                 self.R.adjoint_times(self.N.inverse_times(self.R(expxx))))
-        part3 = (expxx *  # is an adjoint necessary here?
-                 self.R.adjoint_times(self.N.inverse_times(self.R(expx))))
+        part2 = self._exppRNRexppd * x
+        part3 = self._expp * self.R.adjoint_times(
+                                self.N.inverse_times(self.R(self._expp * x)))
         return part1 + part2 + part3
+
+    @property
+    @memo
+    def _expp(self):
+        return exp(self.position)
+
+    @property
+    @memo
+    def _Rexppd(self):
+        return self.R(self._expp) - self.d
+
+    @property
+    @memo
+    def _NRexppd(self):
+        return self.N.inverse_times(self._Rexppd)
+
+    @property
+    @memo
+    def _exppRNRexppd(self):
+        return self._expp * self.R.adjoint_times(self._NRexppd)

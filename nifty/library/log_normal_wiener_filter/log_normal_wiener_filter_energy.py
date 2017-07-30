@@ -1,7 +1,8 @@
 from nifty.energies.energy import Energy
 from nifty.energies.memoization import memo
-from nifty.library.wiener_filter import WienerFilterCurvature
-from nifty.basic_arithmetics import exp
+from nifty.library.log_normal_wiener_filter import \
+    LogNormalWienerFilterCurvature
+
 
 class LogNormalWienerFilterEnergy(Energy):
     """The Energy for the log-normal Wiener filter.
@@ -24,7 +25,7 @@ class LogNormalWienerFilterEnergy(Energy):
     """
 
     def __init__(self, position, d, R, N, S):
-        super(WienerFilterEnergy, self).__init__(position=position)
+        super(LogNormalWienerFilterEnergy, self).__init__(position=position)
         self.d = d
         self.R = R
         self.N = N
@@ -37,35 +38,37 @@ class LogNormalWienerFilterEnergy(Energy):
     @property
     @memo
     def value(self):
-        return (0.5*self.position.vdot(self._Sx) -
-                self._Rexpxd.vdot(self._NRexpxd))
+        return 0.5*(self.position.vdot(self._Sp) -
+                    self._Rexppd.vdot(self._NRexppd))
 
     @property
     @memo
     def gradient(self):
-        return self._Sx + self._expx * self.R.adjoint_times(self._NRexpxd)
+        return self._Sp + self._exppRNRexppd
 
     @property
     @memo
     def curvature(self):
-        return WienerFilterCurvature(R=self.R, N=self.N, S=self.S)
+        return LogNormalWienerFilterCurvature(R=self.R, N=self.N, S=self.S,
+                                              d=self.d, position=self.position)
+
+    @property
+    def _expp(self):
+        return self.curvature._expp
+
+    @property
+    def _Rexppd(self):
+        return self.curvature._Rexppd
+
+    @property
+    def _NRexppd(self):
+        return self.curvature._NRexppd
+
+    @property
+    def _exppRNRexppd(self):
+        return self.curvature._exppRNRexppd
 
     @property
     @memo
-    def _expx(self):
-        return exp(self.position)
-
-    @property
-    @memo
-    def _Rexpxd(self):
-        return self.R(self._expx) - self.d
-
-    @property
-    @memo
-    def _NRexpxd(self):
-        return self.N.inverse_times(self._Rexpxd)
-
-    @property
-    @memo
-    def _Sx(self):
+    def _Sp(self):
         return self.S.inverse_times(self.position)
