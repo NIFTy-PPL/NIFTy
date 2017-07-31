@@ -49,6 +49,7 @@ class WienerFilterEnergy(Energy):
     def curvature(self):
         return WienerFilterCurvature(R=self.R, N=self.N, S=self.S)
 
+    @property
     @memo
     def _Dx(self):
         return self.curvature(self.position)
