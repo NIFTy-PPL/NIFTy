@@ -116,7 +116,6 @@ class Field(Loggable, Versionable, object):
 
     def __init__(self, domain=None, val=None, dtype=None,
                  distribution_strategy=None, copy=False):
-
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
 
@@ -131,6 +130,7 @@ class Field(Loggable, Versionable, object):
             self._val = None
         else:
             self.set_val(new_val=val, copy=copy)
+
 
     def _parse_domain(self, domain, val=None):
         if domain is None:
@@ -672,7 +672,7 @@ class Field(Loggable, Versionable, object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            self.logger.warn(
+            raise AttributeError(
                 "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
@@ -779,14 +779,14 @@ class Field(Loggable, Versionable, object):
         dim
 
         """
-
-        shape_tuple = tuple(sp.shape for sp in self.domain)
-        try:
-            global_shape = reduce(lambda x, y: x + y, shape_tuple)
-        except TypeError:
-            global_shape = ()
-
-        return global_shape
+        if not hasattr(self, '_shape'):
+            shape_tuple = tuple(sp.shape for sp in self.domain)
+            try:
+                global_shape = reduce(lambda x, y: x + y, shape_tuple)
+            except TypeError:
+                global_shape = ()
+            self._shape = global_shape
+        return self._shape
 
     @property
     def dim(self):

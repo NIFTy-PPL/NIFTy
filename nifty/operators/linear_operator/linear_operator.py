@@ -270,8 +270,11 @@ class LinearOperator(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object
             raise ValueError(
                 "supplied object is not a `Field`.")
 
-        if spaces is None:
-            spaces = self.default_spaces
+        if spaces is None and self.default_spaces is not None:
+            if not inverse:
+                spaces = self.default_spaces
+            else:
+                spaces = self.default_spaces[::-1]
 
         # sanitize the `spaces` and `types` input
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))

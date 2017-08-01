@@ -20,10 +20,12 @@
 import ast
 import numpy as np
 
-from d2o import distributed_data_object
+from d2o import distributed_data_object,\
+    STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from ..space import Space
+from ...spaces.space import Space
 from functools import reduce
+from ...config import nifty_configuration as gc
 
 
 class PowerSpace(Space):
@@ -89,10 +91,17 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_partner, distribution_strategy='not',
+    def __init__(self, harmonic_partner, distribution_strategy=None,
                  logarithmic=None, nbin=None, binbounds=None):
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
+
+        if distribution_strategy is None:
+            distribution_strategy = gc['default_distribution_strategy']
+        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
+            raise ValueError(
+                    "distribution_strategy must be a global-type "
+                    "strategy.")
 
         if not (isinstance(harmonic_partner, Space) and
                 harmonic_partner.harmonic):

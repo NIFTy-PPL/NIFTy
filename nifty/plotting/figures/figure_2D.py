@@ -11,19 +11,15 @@ class Figure2D(FigureFromPlot):
             width = width if width is not None else plots[0].default_width()
             height = \
                 height if height is not None else plots[0].default_height()
-            (xaxis, yaxis) = \
-                xaxis if xaxis is not None else plots[0].default_axes()
+            xaxis = xaxis if xaxis is not None else plots[0].default_axes()[0]
+            yaxis = yaxis if yaxis is not None else plots[0].default_axes()[1]
 
             if isinstance(plots[0], Heatmap) and width is None and \
                height is None:
-                (x, y) = plots[0].data.shape
+                (y, x) = plots[0].data.shape
 
-                if x > y:
-                    width = 500
-                    height = int(500*y/x)
-                else:
-                    height = 500
-                    width = int(500 * y / x)
+                width = 500
+                height = int(500*y/x)
 
                 if isinstance(plots[0], GLMollweide) or \
                    isinstance(plots[0], HPMollweide):

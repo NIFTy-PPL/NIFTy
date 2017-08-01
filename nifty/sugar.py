@@ -16,16 +16,22 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from . import PowerSpace,\
-              Field,\
-              DiagonalOperator,\
-              sqrt
+from . import Space,\
+                  PowerSpace,\
+                  Field,\
+                  ComposedOperator,\
+                  DiagonalOperator,\
+                  FFTOperator,\
+                  sqrt,\
+                  nifty_configuration
 
-__all__ = ['create_power_operator']
+__all__ = ['create_power_operator',
+           'generate_posterior_sample',
+           'create_composed_fft_operator']
 
 
 def create_power_operator(domain, power_spectrum, dtype=None,
-                          distribution_strategy='not'):
+                          distribution_strategy=None):
     """ Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that lives over the specified domain.
@@ -51,6 +57,10 @@ def create_power_operator(domain, power_spectrum, dtype=None,
 
     """
 
+    if distribution_strategy is None:
+        distribution_strategy = \
+            nifty_configuration['default_distribution_strategy']
+
     if isinstance(power_spectrum, Field):
         power_domain = power_spectrum.domain
     else:
@@ -58,8 +68,9 @@ def create_power_operator(domain, power_spectrum, dtype=None,
                                   distribution_strategy=distribution_strategy)
 
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
-               distribution_strategy=distribution_strategy)
-    f = fp.power_synthesize(mean=1, std=0, real_signal=False)
+               distribution_strategy='not')
+    f = fp.power_synthesize(mean=1, std=0, real_signal=False,
+                            distribution_strategy=distribution_strategy)
     f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
 
@@ -104,3 +115,23 @@ def generate_posterior_sample(mean, covariance):
     mock_m = covariance.inverse_times(mock_j)
     sample = mock_signal - mock_m + mean
     return sample
+
+
+def create_composed_fft_operator(domain, codomain=None, all_to='other'):
+    fft_op_list = []
+    space_index_list = []
+
+    if codomain is None:
+        codomain = [None]*len(domain)
+    for i in range(len(domain)):
+        space = domain[i]
+        cospace = codomain[i]
+        if not isinstance(space, Space):
+            continue
+        if (all_to == 'other' or
+                (all_to == 'position' and space.harmonic) or
+                (all_to == 'harmonic' and not space.harmonic)):
+            fft_op_list += [FFTOperator(domain=space, target=cospace)]
+            space_index_list += [i]
+    result = ComposedOperator(fft_op_list, default_spaces=space_index_list)
+    return result

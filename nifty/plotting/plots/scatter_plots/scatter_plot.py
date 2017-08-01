@@ -42,7 +42,7 @@ class ScatterPlot(PlotlyWrapper):
         return ply_object
 
     def default_width(self):
-        return 700
+        return 1100
 
     def default_height(self):
         return 700

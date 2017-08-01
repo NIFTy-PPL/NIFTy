@@ -22,7 +22,8 @@ class Heatmap(PlotlyWrapper):
         self.data = data
         self.zmin = zmin
         self.zmax = zmax
-        self._font_size = 18
+        self._font_size = 22
+        self._font_family = 'Bento'
 
     def at(self, data):
         if isinstance(data, list):
@@ -50,7 +51,9 @@ class Heatmap(PlotlyWrapper):
         plotly_object['zmax'] = self.zmax
 
         plotly_object['showscale'] = True
-        plotly_object['colorbar'] = {'tickfont': {'size': self._font_size}}
+        plotly_object['colorbar'] = {'tickfont': {'size': self._font_size,
+                                                  'family': self._font_family},
+                                     'exponentformat': 'power'}
         if self.color_map:
             plotly_object['colorscale'] = self.color_map.to_plotly()
         if self.webgl:
@@ -65,7 +68,7 @@ class Heatmap(PlotlyWrapper):
         return 700
 
     def default_height(self):
-        (x, y) = self.data.shape
+        (y, x) = self.data.shape
         return int(700 * y / x)
 
     def default_axes(self):

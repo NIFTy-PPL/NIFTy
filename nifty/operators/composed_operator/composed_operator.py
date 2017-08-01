@@ -148,10 +148,11 @@ class ComposedOperator(LinearOperator):
     def _inverse_times_helper(self, x, spaces, func):
         space_index = 0
         if spaces is None:
-            spaces = list(range(len(self.target)))[::-1]
+            spaces = list(range(len(self.target)))
+        rev_spaces = spaces[::-1]
         for op in reversed(self._operator_store):
-            active_spaces = spaces[space_index:space_index+len(op.target)]
+            active_spaces = rev_spaces[space_index:space_index+len(op.target)]
             space_index += len(op.target)
 
-            x = getattr(op, func)(x, spaces=active_spaces)
+            x = getattr(op, func)(x, spaces=active_spaces[::-1])
         return x

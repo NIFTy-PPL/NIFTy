@@ -64,7 +64,7 @@ class LineSearch(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object),
             iteration of the line search procedure. (Default: None)
 
         """
-        self.line_energy = LineEnergy(position=0.,
+        self.line_energy = LineEnergy(line_position=0.,
                                       energy=energy,
                                       line_direction=pk)
         if f_k_minus_1 is not None:
