@@ -48,7 +48,9 @@ test_mpi_fftw_hdf5:
     - ci/install_pyfftw.sh
     - ci/install_h5py.sh
     - mpiexec --allow-run-as-root -n 2 nosetests -x
+    - mpiexec --allow-run-as-root -n 2 nosetests3 -x
     - mpiexec --allow-run-as-root -n 4 nosetests -x
+    - mpiexec --allow-run-as-root -n 4 nosetests3 -x
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
