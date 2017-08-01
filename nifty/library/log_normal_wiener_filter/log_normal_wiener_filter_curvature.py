@@ -1,7 +1,7 @@
 from nifty.operators import EndomorphicOperator,\
                             InvertibleOperatorMixin
 from nifty.energies.memoization import memo
-from nifty.basic_arithmetics import exp
+from nifty.basic_arithmetics import clipped_exp
 
 
 class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
@@ -56,15 +56,15 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
 
     def _times(self, x, spaces):
         part1 = self.S.inverse_times(x)
-        part2 = self._exppRNRexppd * x
+        # part2 = self._exppRNRexppd * x
         part3 = self._expp * self.R.adjoint_times(
                                 self.N.inverse_times(self.R(self._expp * x)))
-        return part1 + part2 + part3
+        return part1 + part3  # + part2
 
     @property
     @memo
     def _expp(self):
-        return exp(self.position)
+        return clipped_exp(self.position)
 
     @property
     @memo

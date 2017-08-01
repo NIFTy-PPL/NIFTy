@@ -38,7 +38,7 @@ class LogNormalWienerFilterEnergy(Energy):
     @property
     @memo
     def value(self):
-        return 0.5*(self.position.vdot(self._Sp) -
+        return 0.5*(self.position.vdot(self._Sp) +
                     self._Rexppd.vdot(self._NRexppd))
 
     @property

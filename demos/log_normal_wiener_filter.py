@@ -2,14 +2,15 @@
 
 from nifty import *
 
+
 if __name__ == "__main__":
     nifty_configuration['default_distribution_strategy'] = 'fftw'
 
     # Setting up parameters    |\label{code:wf_parameters}|
     correlation_length = 1.     # Typical distance over which the field is correlated
     field_variance = 2.         # Variance of field in position space
-    response_sigma = 0.05       # Smoothing length of response (in same unit as L)
-    signal_to_noise = 1.5       # The signal to noise ratio
+    response_sigma = 0.02       # Smoothing length of response (in same unit as L)
+    signal_to_noise = 100       # The signal to noise ratio
     np.random.seed(43)          # Fixing the random seed
     def power_spectrum(k):      # Defining the power spectrum
         a = 4 * correlation_length * field_variance**2
@@ -17,8 +18,9 @@ if __name__ == "__main__":
 
     # Setting up the geometry |\label{code:wf_geometry}|
     L = 2. # Total side-length of the domain
-    N_pixels = 512 # Grid resolution (pixels per axis)
+    N_pixels = 128 # Grid resolution (pixels per axis)
     signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
+    #signal_space = HPSpace(16)
     harmonic_space = FFTOperator.get_default_codomain(signal_space)
     fft = FFTOperator(harmonic_space, target=signal_space, target_dtype=np.float)
     power_space = PowerSpace(harmonic_space)
@@ -31,7 +33,7 @@ if __name__ == "__main__":
     # Setting up an exemplary response
     mask = Field(signal_space, val=1.)
     N10 = int(N_pixels/10)
-    mask.val[N10*5:N10*9, N10*5:N10*9] = 0.
+    #mask.val[N10*5:N10*9, N10*5:N10*9] = 0.
     R = ResponseOperator(signal_space, sigma=(response_sigma,), exposure=(mask,)) #|\label{code:wf_response}|
     data_domain = R.target[0]
     R_harmonic = ComposedOperator([fft, R], default_spaces=[0, 0])
@@ -47,15 +49,27 @@ if __name__ == "__main__":
     energy = library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S)
 
 
-    minimizer = VL_BFGS(convergence_tolerance=0,
-                        iteration_limit=50,
-                        #callback=convergence_measure,
-                        max_history_length=3)
+    minimizer1 = VL_BFGS(convergence_tolerance=1e-4,
+                         iteration_limit=1000,
+                         #callback=convergence_measure,
+                         max_history_length=3)
 
-    minimizer = RelaxedNewton(convergence_tolerance=0,
-                              iteration_limit=1,
-                              #callback=convergence_measure
-                              )
+    minimizer2 = RelaxedNewton(convergence_tolerance=1e-4,
+                               iteration_limit=1,
+                               #callback=convergence_measure
+                               )
+    minimizer3 = SteepestDescent(convergence_tolerance=1e-4, iteration_limit=1000)
+
+
+    me1 = minimizer1(energy)
+    me2 = minimizer2(energy)
+    me3 = minimizer3(energy)
+
+    m1 = fft(me1[0].position)
+    m2 = fft(me2[0].position)
+    m3 = fft(me3[0].position)
+
+
 
 #    # Probing the variance
 #    class Proby(DiagonalProberMixin, Prober): pass
@@ -67,18 +81,19 @@ if __name__ == "__main__":
 
     #Plotting #|\label{code:wf_plotting}|
     plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
+    #plotter = plotting.HealpixPlotter(color_map=plotting.colormaps.PlankCmap())
+
     plotter.figure.xaxis = plotting.Axis(label='Pixel Index')
     plotter.figure.yaxis = plotting.Axis(label='Pixel Index')
 
-    #plotter.plot.zmax = exp(mock_signal.max()); plotter.plot.zmin = 0
+    plotter.plot.zmax = 5; plotter.plot.zmin = -5
 #    plotter(variance, path = 'variance.html')
     #plotter.plot.zmin = exp(mock_signal.min());
-    plotter(mock_signal, path='mock_signal.html')
-    plotter(Field(signal_space, val=np.log(data.val.get_full_data()).reshape(signal_space.shape)),
-            path = 'data.html')
-#    plotter(m, path = 'map.html')
+    plotter(mock_signal.real, path='mock_signal.html')
+    plotter(Field(signal_space, val=np.log(data.val.get_full_data().real).reshape(signal_space.shape)),
+            path = 'log_of_data.html')
 
-
-
-
+    plotter(m1.real, path='m_LBFGS.html')
+    plotter(m2.real, path='m_Newton.html')
+    plotter(m3.real, path='m_SteepestDescent.html')
 

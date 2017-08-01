@@ -831,6 +831,24 @@ class Field(Loggable, Versionable, object):
         except TypeError:
             return 0.
 
+    @property
+    def real(self):
+        """ The real part of the field (data is not copied).
+        """
+        real_part = self.val.real
+        result = self.copy_empty(dtype=real_part.dtype)
+        result.set_val(new_val=real_part, copy=False)
+        return result
+
+    @property
+    def imag(self):
+        """ The imaginary part of the field (data is not copied).
+        """
+        real_part = self.val.imag
+        result = self.copy_empty(dtype=real_part.dtype)
+        result.set_val(new_val=real_part, copy=False)
+        return result
+
     # ---Special unary/binary operations---
 
     def cast(self, x=None, dtype=None):
