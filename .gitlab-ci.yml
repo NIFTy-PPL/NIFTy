@@ -29,6 +29,7 @@ test_mpi:
     - ci/install_pyHealpix.sh
     - ci/install_mpi4py.sh
     - nosetests -vv
+    - nosetests3 -vv
 
 test_mpi_fftw:
   stage: test
@@ -37,6 +38,7 @@ test_mpi_fftw:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - nosetests -vv
+    - nosetests3 -vv
 
 test_mpi_fftw_hdf5:
   stage: test
