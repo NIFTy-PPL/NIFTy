@@ -32,7 +32,9 @@ class GLMollweide(Heatmap):
                            xsize=self.xsize,
                            color_map=self.color_map,
                            webgl=self.webgl,
-                           smoothing=self.smoothing)
+                           smoothing=self.smoothing,
+                           zmin=self.zmin,
+                           zmax=self.zmax)
 
     @staticmethod
     def _find_closest(A, target):
