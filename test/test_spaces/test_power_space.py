@@ -48,14 +48,12 @@ HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
 
 #Try all sensible kinds of combinations of spaces, distributuion strategy and
 #binning parameters
-_maybe_fftw = ["fftw"] if ('pyfftw' in gdi) else []
-
 CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
                                        [None], [None, 3, 4], [True, False])
 CONSISTENCY_CONFIGS_EXPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
-                                       [[0., 1.3]], [None], [False])
+                                       [[0., 1.3]], [None], [None])
 CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT,
                             CONSISTENCY_CONFIGS_EXPLICIT)
 
@@ -64,18 +62,16 @@ CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT,
 CONSTRUCTOR_CONFIGS = [
     [1, 'not', False, None, None, {'error': ValueError}],
     [RGSpace((8,)), 'not', False, None, None, {'error': ValueError}],
-    [RGSpace((8,), harmonic=True), 'not', False, None, None, {
+    [RGSpace((8,), harmonic=True), 'not', None, None, None, {
         'harmonic': True,
         'shape': (5,),
         'dim': 5,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'config': {'logarithmic': False, 'nbin': None, 'binbounds': None},
+        'binbounds': None,
         'pindex': distributed_data_object([0, 1, 2, 3, 4, 3, 2, 1]),
         'kindex': np.array([0., 1., 2., 3., 4.]),
         'rho': np.array([1, 2, 2, 2, 1]),
-        'pundex': np.array([0, 1, 2, 3, 4]),
-        'k_array': np.array([0., 1., 2., 3., 4., 3., 2., 1.]),
         }],
     [RGSpace((8,), harmonic=True), 'not', True, None, None, {
         'harmonic': True,
@@ -83,13 +79,10 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 2,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'config': {'logarithmic': True, 'nbin': None, 'binbounds': None},
+        'binbounds': (0.70710678118654757,),
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
         'kindex': np.array([0., 2.28571429]),
         'rho': np.array([1, 7]),
-        'pundex': np.array([0, 1]),
-        'k_array': np.array([0., 2.28571429, 2.28571429, 2.28571429,
-                             2.28571429, 2.28571429, 2.28571429, 2.28571429]),
         }],
     ]
 
@@ -122,12 +115,10 @@ def get_weight_configs():
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
         ['harmonic_partner', Space],
-        ['config', dict],
+        ['binbounds', NoneType],
         ['pindex', distributed_data_object],
         ['kindex', np.ndarray],
         ['rho', np.ndarray],
-        ['pundex', np.ndarray],
-        ['k_array', distributed_data_object],
         ])
     def test_property_ret_type(self, attribute, expected_type):
         r = RGSpace((4, 4), harmonic=True)
@@ -137,32 +128,15 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 
 class PowerSpaceConsistencyCheck(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
-    def test_pipundexInversion(self, harmonic_partner, distribution_strategy,
-                               binbounds, nbin, logarithmic):
+    def test_rhopindexConsistency(self, harmonic_partner, distribution_strategy,
+                                  binbounds, nbin, logarithmic):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                raise SkipTest
-        p = PowerSpace(harmonic_partner=harmonic_partner,
-                       distribution_strategy=distribution_strategy,
-                       logarithmic=logarithmic, nbin=nbin,
-                       binbounds=binbounds)
-        assert_equal(p.pindex.flatten()[p.pundex], np.arange(p.dim),
-                     err_msg='pundex is not right-inverse of pindex!')
-
-    @expand(CONSISTENCY_CONFIGS)
-    def test_rhopindexConsistency(self, harmonic_partner,
-                                  distribution_strategy, binbounds, nbin,
-                                  logarithmic):
-        if distribution_strategy == "fftw":
-            if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                print (gdi.get('fftw'), "blub \n\n\n")
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
                            logarithmic=logarithmic, nbin=nbin,
                            binbounds=binbounds)
-        assert_equal(p.pindex.flatten()[p.pundex],np.arange(p.dim),
-            err_msg='pundex is not right-inverse of pindex!')
 
         assert_equal(p.pindex.flatten().bincount(), p.rho,
             err_msg='rho is not equal to pindex degeneracy')
@@ -174,7 +148,6 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
                 raise SkipTest
-            raise SkipTest
         if 'error' in expected:
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_partner=harmonic_partner,

@@ -16,15 +16,22 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nifty import PowerSpace,\
+from nifty import Space,\
+                  PowerSpace,\
                   Field,\
-                  DiagonalOperator
+                  ComposedOperator,\
+                  DiagonalOperator,\
+                  FFTOperator,\
+                  sqrt,\
+                  nifty_configuration
 
-__all__ = ['create_power_operator']
+__all__ = ['create_power_operator',
+           'generate_posterior_sample',
+           'create_composed_fft_operator']
 
 
 def create_power_operator(domain, power_spectrum, dtype=None,
-                          distribution_strategy='not'):
+                          distribution_strategy=None):
     """ Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that lives over the specified domain.
@@ -50,10 +57,81 @@ def create_power_operator(domain, power_spectrum, dtype=None,
 
     """
 
-    power_domain = PowerSpace(domain,
-                              distribution_strategy=distribution_strategy)
+    if distribution_strategy is None:
+        distribution_strategy = \
+            nifty_configuration['default_distribution_strategy']
+
+    if isinstance(power_spectrum, Field):
+        power_domain = power_spectrum.domain
+    else:
+        power_domain = PowerSpace(domain,
+                                  distribution_strategy=distribution_strategy)
+
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
-               distribution_strategy=distribution_strategy)
-    f = fp.power_synthesize(mean=1, std=0, real_signal=False)
+               distribution_strategy='not')
+    f = fp.power_synthesize(mean=1, std=0, real_signal=False,
+                            distribution_strategy=distribution_strategy)
     f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
+
+
+def generate_posterior_sample(mean, covariance):
+    """ Generates a posterior sample from a Gaussian distribution with given
+    mean and covariance
+
+    This method generates samples by setting up the observation and
+    reconstruction of a mock signal in order to obtain residuals of the right
+    correlation which are added to the given mean.
+
+    Parameters
+    ----------
+    mean : Field
+        the mean of the posterior Gaussian distribution
+    covariance : WienerFilterCurvature
+        The posterior correlation structure consisting of a
+        response operator, noise covariance and prior signal covariance
+
+    Returns
+    -------
+    sample : Field
+        Returns the a sample from the Gaussian of given mean and covariance.
+
+    """
+
+    S = covariance.S
+    R = covariance.R
+    N = covariance.N
+
+    power = S.diagonal().power_analyze()**.5
+    mock_signal = power.power_synthesize(real_signal=True)
+
+    noise = N.diagonal(bare=True).val
+
+    mock_noise = Field.from_random(random_type="normal", domain=N.domain,
+                                   std=sqrt(noise), dtype=noise.dtype)
+    mock_data = R(mock_signal) + mock_noise
+
+    mock_j = R.adjoint_times(N.inverse_times(mock_data))
+    mock_m = covariance.inverse_times(mock_j)
+    sample = mock_signal - mock_m + mean
+    return sample
+
+
+def create_composed_fft_operator(domain, codomain=None, all_to='other'):
+    fft_op_list = []
+    space_index_list = []
+
+    if codomain is None:
+        codomain = [None]*len(domain)
+    for i in range(len(domain)):
+        space = domain[i]
+        cospace = codomain[i]
+        if not isinstance(space, Space):
+            continue
+        if (all_to == 'other' or
+                (all_to == 'position' and space.harmonic) or
+                (all_to == 'harmonic' and not space.harmonic)):
+            fft_op_list += [FFTOperator(domain=space, target=cospace)]
+            space_index_list += [i]
+    result = ComposedOperator(fft_op_list, default_spaces=space_index_list)
+    return result

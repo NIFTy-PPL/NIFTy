@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from nifty.plotting.descriptors import Axis
 from cartesian import Cartesian
 
 
@@ -30,3 +31,6 @@ class Cartesian2D(Cartesian):
             plotly_object['type'] = 'scatter'
 
         return plotly_object
+
+    def default_axes(self):
+        return (Axis(), Axis())

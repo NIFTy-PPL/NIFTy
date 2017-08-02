@@ -8,9 +8,9 @@ from .plotter_base import PlotterBase
 
 
 class RG2DPlotter(PlotterBase):
-    def __init__(self, interactive=False, path='.', title="", color_map=None):
+    def __init__(self, interactive=False, path='plot.html', color_map=None):
         self.color_map = color_map
-        super(RG2DPlotter, self).__init__(interactive, path, title)
+        super(RG2DPlotter, self).__init__(interactive, path)
 
     @property
     def domain_classes(self):

@@ -137,7 +137,7 @@ class DescentMinimizer(Loggable, object):
 
             # compute the the gradient for the current location
             gradient = energy.gradient
-            gradient_norm = gradient.vdot(gradient)
+            gradient_norm = gradient.norm()
 
             # check if position is at a flat point
             if gradient_norm == 0:
@@ -146,23 +146,38 @@ class DescentMinimizer(Loggable, object):
                 break
 
             # current position is encoded in energy object
-            descend_direction = self.get_descend_direction(energy)
-
+            descent_direction = self.get_descent_direction(energy)
             # compute the step length, which minimizes energy.value along the
             # search direction
-            step_length, f_k, new_energy = \
-                self.line_searcher.perform_line_search(
-                                               energy=energy,
-                                               pk=descend_direction,
-                                               f_k_minus_1=f_k_minus_1)
-            f_k_minus_1 = energy.value
-            energy = new_energy
+            try:
+                step_length, f_k, new_energy = \
+                    self.line_searcher.perform_line_search(
+                                                   energy=energy,
+                                                   pk=descent_direction,
+                                                   f_k_minus_1=f_k_minus_1)
+            except RuntimeError:
+                self.logger.warn(
+                        "Stopping because of RuntimeError in line-search")
+                break
 
+            if f_k_minus_1 is None:
+                delta = 1e30
+            else:
+                delta = (abs(f_k-f_k_minus_1) /
+                         max(abs(f_k), abs(f_k_minus_1), 1.))
+            f_k_minus_1 = energy.value
+            # check if new energy value is bigger than old energy value
+            if (new_energy.value - energy.value) > 0:
+                self.logger.info("Line search algorithm returned a new energy "
+                                 "that was larger than the old one. Stopping.")
+                break
+
+            energy = new_energy
             # check convergence
-            delta = abs(gradient).max() * (step_length/gradient_norm)
-            self.logger.debug("Iteration : %08u   step_length = %3.1E   "
-                              "delta = %3.1E" %
-                              (iteration_number, step_length, delta))
+            self.logger.debug("Iteration:%08u step_length=%3.1E "
+                              "delta=%3.1E energy=%3.1E" %
+                              (iteration_number, step_length, delta,
+                               energy.value))
             if delta == 0:
                 convergence = self.convergence_level + 2
                 self.logger.info("Found minimum according to line-search. "
@@ -188,5 +203,5 @@ class DescentMinimizer(Loggable, object):
         return energy, convergence
 
     @abc.abstractmethod
-    def get_descend_direction(self, energy):
+    def get_descent_direction(self, energy):
         raise NotImplementedError

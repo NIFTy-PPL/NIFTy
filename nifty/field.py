@@ -18,6 +18,7 @@
 
 from __future__ import division
 
+import ast
 import itertools
 import numpy as np
 
@@ -111,7 +112,6 @@ class Field(Loggable, Versionable, object):
 
     def __init__(self, domain=None, val=None, dtype=None,
                  distribution_strategy=None, copy=False):
-
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
 
@@ -239,6 +239,15 @@ class Field(Loggable, Versionable, object):
         # random number generator to it
         sample = f.get_val(copy=False)
         generator_function = getattr(Random, random_type)
+
+        comm = sample.comm
+        size = comm.size
+        if (sample.distribution_strategy in DISTRIBUTION_STRATEGIES['not'] and
+                size > 1):
+            seed = np.random.randint(10000000)
+            seed = comm.bcast(seed, root=0)
+            np.random.seed(seed)
+
         sample.apply_generator(
             lambda shape: generator_function(dtype=f.dtype,
                                              shape=shape,
@@ -270,7 +279,7 @@ class Field(Loggable, Versionable, object):
 
     # ---Powerspectral methods---
 
-    def power_analyze(self, spaces=None, logarithmic=False, nbin=None,
+    def power_analyze(self, spaces=None, logarithmic=None, nbin=None,
                       binbounds=None, keep_phase_information=False):
         """ Computes the square root power spectrum for a subspace of `self`.
 
@@ -287,14 +296,15 @@ class Field(Loggable, Versionable, object):
             (default : None).
         logarithmic : boolean *optional*
             True if the output PowerSpace should use logarithmic binning.
-            {default : False}
+            {default : None}
         nbin : int *optional*
             The number of bins the resulting PowerSpace shall have
             (default : None).
             if nbin==None : maximum number of bins is used
         binbounds : array-like *optional*
             Inner bounds of the bins (default : None).
-            if binbounds==None : bins are inferred. Overwrites nbins and log
+            Overrides nbin and logarithmic.
+            if binbounds==None : bins are inferred.
         keep_phase_information : boolean, *optional*
             If False, return a real-valued result containing the power spectrum
             of the input Field.
@@ -397,14 +407,9 @@ class Field(Loggable, Versionable, object):
                                   logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
 
-        # extract pindex and rho from power_domain
-        pindex = power_domain.pindex
-        rho = power_domain.rho
-
         power_spectrum = cls._calculate_power_spectrum(
                                 field_val=work_field.val,
-                                pindex=pindex,
-                                rho=rho,
+                                pdomain=power_domain,
                                 axes=work_field.domain_axes[space_index])
 
         # create the result field and put power_spectrum into it
@@ -421,8 +426,11 @@ class Field(Loggable, Versionable, object):
         return result_field
 
     @classmethod
-    def _calculate_power_spectrum(cls, field_val, pindex, rho, axes=None):
+    def _calculate_power_spectrum(cls, field_val, pdomain, axes=None):
 
+        pindex = pdomain.pindex
+        # MR FIXME: how about iterating over slices, instead of replicating
+        # pindex? Would save memory and probably isn't slower.
         if axes is not None:
             pindex = cls._shape_up_pindex(
                             pindex=pindex,
@@ -431,6 +439,7 @@ class Field(Loggable, Versionable, object):
                             axes=axes)
         power_spectrum = pindex.bincount(weights=field_val,
                                          axis=axes)
+        rho = pdomain.rho
         if axes is not None:
             new_rho_shape = [1, ] * len(power_spectrum.shape)
             new_rho_shape[axes[0]] = len(rho)
@@ -465,7 +474,7 @@ class Field(Loggable, Versionable, object):
         return result_obj
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=None, std=None):
+                         mean=None, std=None, distribution_strategy=None):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner
@@ -540,13 +549,16 @@ class Field(Loggable, Versionable, object):
         else:
             result_list = [None, None]
 
+        if distribution_strategy is None:
+            distribution_strategy = gc['default_distribution_strategy']
+
         result_list = [self.__class__.from_random(
                              'normal',
                              mean=mean,
                              std=std,
                              domain=result_domain,
                              dtype=np.complex,
-                             distribution_strategy=self.distribution_strategy)
+                             distribution_strategy=distribution_strategy)
                        for x in result_list]
 
         # from now on extract the values from the random fields for further
@@ -596,60 +608,58 @@ class Field(Loggable, Versionable, object):
     @staticmethod
     def _hermitian_decomposition(domain, val, spaces, domain_axes,
                                  preserve_gaussian_variance=False):
-        # hermitianize for the first space
-        (h, a) = domain[spaces[0]].hermitian_decomposition(
-                       val,
-                       domain_axes[spaces[0]],
-                       preserve_gaussian_variance=preserve_gaussian_variance)
-        # hermitianize all remaining spaces using the iterative formula
-        for space in xrange(1, len(spaces)):
-            (hh, ha) = domain[space].hermitian_decomposition(
-                                              h,
-                                              domain_axes[space],
-                                              preserve_gaussian_variance=False)
-            (ah, aa) = domain[space].hermitian_decomposition(
-                                              a,
-                                              domain_axes[space],
-                                              preserve_gaussian_variance=False)
-            c = (hh - ha - ah + aa).conjugate()
-            full = (hh + ha + ah + aa)
-            h = (full + c)/2.
-            a = (full - c)/2.
+
+        flipped_val = val
+        for space in spaces:
+            flipped_val = domain[space].hermitianize_inverter(
+                                                    x=flipped_val,
+                                                    axes=domain_axes[space])
+        flipped_val = flipped_val.conjugate()
+        h = (val + flipped_val)/2.
+        a = val - h
 
         # correct variance
+        if preserve_gaussian_variance:
+            assert issubclass(val.dtype.type, np.complexfloating),\
+                    "complex input field is needed here"
+            h *= np.sqrt(2)
+            a *= np.sqrt(2)
 
-        # in principle one must not correct the variance for the fixed
-        # points of the hermitianization. However, for a complex field
-        # the input field loses half of its power at its fixed points
-        # in the `hermitian` part. Hence, here a factor of sqrt(2) is
-        # also necessary!
-        # => The hermitianization can be done on a space level since either
-        # nothing must be done (LMSpace) or ALL points need a factor of sqrt(2)
-        # => use the preserve_gaussian_variance flag in the
-        # hermitian_decomposition method above.
+#            The code below should not be needed in practice, since it would
+#            only ever be called when hermitianizing a purely real field.
+#            However it might be of educational use and keep us from forgetting
+#            how these things are done ...
 
-        # This code is for educational purposes:
-#        fixed_points = [domain[i].hermitian_fixed_points() for i in spaces]
-#        # check if there was at least one flipping during hermitianization
-#        flipped_Q = np.any([fp is not None for fp in fixed_points])
-#        # if the array got flipped, correct the variance
-#        if flipped_Q:
-#            h *= np.sqrt(2)
-#            a *= np.sqrt(2)
+#            if not issubclass(val.dtype.type, np.complexfloating):
+#                # in principle one must not correct the variance for the fixed
+#                # points of the hermitianization. However, for a complex field
+#                # the input field loses half of its power at its fixed points
+#                # in the `hermitian` part. Hence, here a factor of sqrt(2) is
+#                # also necessary!
+#                # => The hermitianization can be done on a space level since
+#                # either nothing must be done (LMSpace) or ALL points need a
+#                # factor of sqrt(2)
+#                # => use the preserve_gaussian_variance flag in the
+#                # hermitian_decomposition method above.
 #
-#            fixed_points = [[fp] if fp is None else fp for fp in fixed_points]
-#            for product_point in itertools.product(*fixed_points):
-#                slice_object = np.array((slice(None), )*len(val.shape),
-#                                        dtype=np.object)
-#                for i, sp in enumerate(spaces):
-#                    point_component = product_point[i]
-#                    if point_component is None:
-#                        point_component = slice(None)
-#                    slice_object[list(domain_axes[sp])] = point_component
+#                # This code is for educational purposes:
+#                fixed_points = [domain[i].hermitian_fixed_points()
+#                                for i in spaces]
+#                fixed_points = [[fp] if fp is None else fp
+#                                for fp in fixed_points]
 #
-#                slice_object = tuple(slice_object)
-#                h[slice_object] /= np.sqrt(2)
-#                a[slice_object] /= np.sqrt(2)
+#                for product_point in itertools.product(*fixed_points):
+#                    slice_object = np.array((slice(None), )*len(val.shape),
+#                                            dtype=np.object)
+#                    for i, sp in enumerate(spaces):
+#                        point_component = product_point[i]
+#                        if point_component is None:
+#                            point_component = slice(None)
+#                        slice_object[list(domain_axes[sp])] = point_component
+#
+#                    slice_object = tuple(slice_object)
+#                    h[slice_object] /= np.sqrt(2)
+#                    a[slice_object] /= np.sqrt(2)
 
         return (h, a)
 
@@ -666,8 +676,8 @@ class Field(Loggable, Versionable, object):
                 result_list[0].domain_axes[power_space_index])
 
         if pindex.distribution_strategy is not local_distribution_strategy:
-            self.logger.warn(
-                "The distribution_stragey of pindex does not fit the "
+            raise AttributeError(
+                "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
 
         # Now use numpy advanced indexing in order to put the entries of the
@@ -675,8 +685,11 @@ class Field(Loggable, Versionable, object):
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
         local_pindex = pindex.get_local_data(copy=False)
 
-        local_blow_up = [slice(None)]*len(self.shape)
-        local_blow_up[self.domain_axes[power_space_index][0]] = local_pindex
+        local_blow_up = [slice(None)]*len(spec.shape)
+        # it is important to count from behind, since spec potentially grows
+        # with every iteration
+        index = self.domain_axes[power_space_index][0]-len(self.shape)
+        local_blow_up[index] = local_pindex
         # here, the power_spectrum is distributed into the new shape
         local_rescaler = spec[local_blow_up]
         return local_rescaler
@@ -762,7 +775,7 @@ class Field(Loggable, Versionable, object):
         Returns
         -------
         out : tuple
-            The output object. The tuple contains the dimansions of the spaces
+            The output object. The tuple contains the dimensions of the spaces
             in domain.
 
         See Also
@@ -770,14 +783,14 @@ class Field(Loggable, Versionable, object):
         dim
 
         """
-
-        shape_tuple = tuple(sp.shape for sp in self.domain)
-        try:
-            global_shape = reduce(lambda x, y: x + y, shape_tuple)
-        except TypeError:
-            global_shape = ()
-
-        return global_shape
+        if not hasattr(self, '_shape'):
+            shape_tuple = tuple(sp.shape for sp in self.domain)
+            try:
+                global_shape = reduce(lambda x, y: x + y, shape_tuple)
+            except TypeError:
+                global_shape = ()
+            self._shape = global_shape
+        return self._shape
 
     @property
     def dim(self):
@@ -825,6 +838,24 @@ class Field(Loggable, Versionable, object):
             return reduce(lambda x, y: x * y, volume_tuple)
         except TypeError:
             return 0.
+
+    @property
+    def real(self):
+        """ The real part of the field (data is not copied).
+        """
+        real_part = self.val.real
+        result = self.copy_empty(dtype=real_part.dtype)
+        result.set_val(new_val=real_part, copy=False)
+        return result
+
+    @property
+    def imag(self):
+        """ The imaginary part of the field (data is not copied).
+        """
+        real_part = self.val.imag
+        result = self.copy_empty(dtype=real_part.dtype)
+        result.set_val(new_val=real_part, copy=False)
+        return result
 
     # ---Special unary/binary operations---
 
@@ -1073,7 +1104,7 @@ class Field(Loggable, Versionable, object):
         if spaces is None:
             x_val = x.get_val(copy=False)
             y_val = y.get_val(copy=False)
-            result = (x_val.conjugate() * y_val).sum()
+            result = (y_val.conjugate() * x_val).sum()
             return result
         else:
             # create a diagonal operator which is capable of taking care of the
@@ -1087,17 +1118,12 @@ class Field(Loggable, Versionable, object):
             return dotted.sum(spaces=spaces)
 
     def norm(self):
-        """ Computes the Lq-norm of the field values.
-
-        Parameters
-        ----------
-        q : scalar
-            Parameter q of the Lq-norm (default: 2).
+        """ Computes the L2-norm of the field values.
 
         Returns
         -------
         norm : scalar
-            The Lq-norm of the field values.
+            The L2-norm of the field values.
 
         """
         return np.sqrt(np.abs(self.vdot(x=self)))
@@ -1531,7 +1557,8 @@ class Field(Loggable, Versionable, object):
             temp_domain.append(repository.get('s_' + str(i), hdf5_group))
         new_field.domain = tuple(temp_domain)
 
-        exec('new_field.domain_axes = ' + hdf5_group.attrs['domain_axes'])
+        new_field.domain_axes = ast.literal_eval(
+                                hdf5_group.attrs['domain_axes'])
 
         try:
             new_field._val = repository.get('val', hdf5_group)

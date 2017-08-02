@@ -21,7 +21,6 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.basic_arithmetics import log as nifty_log
 from nifty.config import nifty_configuration as gc
 from nifty.field import Field
 from nifty.operators.endomorphic_operator import EndomorphicOperator
@@ -287,7 +286,7 @@ class DiagonalOperator(EndomorphicOperator):
                 distribution_strategy=axes_local_distribution_strategy)
             local_diagonal = redistr_diagonal_val.get_local_data(copy=False)
 
-        reshaper = [x.shape[i] if i in active_axes else 1
+        reshaper = [x.val.data.shape[i] if i in active_axes else 1
                     for i in xrange(len(x.shape))]
         reshaped_local_diagonal = np.reshape(local_diagonal, reshaper)
 
