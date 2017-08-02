@@ -2,6 +2,7 @@ from nifty.energies.energy import Energy
 from nifty.energies.memoization import memo
 from nifty.library.log_normal_wiener_filter import \
     LogNormalWienerFilterCurvature
+from nifty.sugar import create_composed_fft_operator
 
 
 class LogNormalWienerFilterEnergy(Energy):
@@ -24,16 +25,22 @@ class LogNormalWienerFilterEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, d, R, N, S):
+    def __init__(self, position, d, R, N, S, fft4exp=None):
         super(LogNormalWienerFilterEnergy, self).__init__(position=position)
         self.d = d
         self.R = R
         self.N = N
         self.S = S
 
+        if fft4exp is None:
+            self._fft = create_composed_fft_operator(self.S.domain,
+                                                     all_to='position')
+        else:
+            self._fft = fft4exp
+
     def at(self, position):
         return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
-                              S=self.S)
+                              S=self.S, fft4exp=self._fft)
 
     @property
     @memo
@@ -50,7 +57,8 @@ class LogNormalWienerFilterEnergy(Energy):
     @memo
     def curvature(self):
         return LogNormalWienerFilterCurvature(R=self.R, N=self.N, S=self.S,
-                                              d=self.d, position=self.position)
+                                              d=self.d, position=self.position,
+                                              fft4exp=self._fft)
 
     @property
     def _expp(self):

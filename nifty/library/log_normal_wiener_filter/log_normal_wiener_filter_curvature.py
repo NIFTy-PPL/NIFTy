@@ -2,6 +2,7 @@ from nifty.operators import EndomorphicOperator,\
                             InvertibleOperatorMixin
 from nifty.energies.memoization import memo
 from nifty.basic_arithmetics import clipped_exp
+from nifty.sugar import create_composed_fft_operator
 
 
 class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
@@ -25,7 +26,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     """
 
     def __init__(self, R, N, S, d, position, inverter=None,
-                 preconditioner=None, **kwargs):
+                 preconditioner=None, fft4exp=None, **kwargs):
         self._cache = {}
         self.R = R
         self.N = N
@@ -35,6 +36,13 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
         if preconditioner is None:
             preconditioner = self.S.times
         self._domain = self.S.domain
+
+        if fft4exp is None:
+            self._fft = create_composed_fft_operator(self.domain,
+                                                     all_to='position')
+        else:
+            self._fft = fft4exp
+
         super(LogNormalWienerFilterCurvature, self).__init__(
                                                  inverter=inverter,
                                                  preconditioner=preconditioner,
@@ -57,14 +65,22 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     def _times(self, x, spaces):
         part1 = self.S.inverse_times(x)
         # part2 = self._exppRNRexppd * x
-        part3 = self._expp * self.R.adjoint_times(
-                                self.N.inverse_times(self.R(self._expp * x)))
+        part3 = self._fft.adjoint_times(self._expp_sspace * self._fft(x))
+        part3 = self._fft.adjoint_times(
+                    self._expp_sspace *
+                    self._fft(self.R.adjoint_times(
+                                self.N.inverse_times(self.R(part3)))))
         return part1 + part3  # + part2
 
     @property
     @memo
+    def _expp_sspace(self):
+        return clipped_exp(self._fft(self.position))
+
+    @property
+    @memo
     def _expp(self):
-        return clipped_exp(self.position)
+        return self._fft.adjoint_times(self._expp_sspace)
 
     @property
     @memo
@@ -79,4 +95,6 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     @property
     @memo
     def _exppRNRexppd(self):
-        return self._expp * self.R.adjoint_times(self._NRexppd)
+        return self._fft.adjoint_times(
+                    self._expp_sspace *
+                    self._fft(self.R.adjoint_times(self._NRexppd)))

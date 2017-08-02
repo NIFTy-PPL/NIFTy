@@ -19,8 +19,8 @@ if __name__ == "__main__":
     # Setting up the geometry |\label{code:wf_geometry}|
     L = 2. # Total side-length of the domain
     N_pixels = 128 # Grid resolution (pixels per axis)
-    signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
-    #signal_space = HPSpace(16)
+    #signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
+    signal_space = HPSpace(16)
     harmonic_space = FFTOperator.get_default_codomain(signal_space)
     fft = FFTOperator(harmonic_space, target=signal_space, target_dtype=np.float)
     power_space = PowerSpace(harmonic_space)
@@ -49,26 +49,26 @@ if __name__ == "__main__":
     energy = library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S)
 
 
-    minimizer1 = VL_BFGS(convergence_tolerance=1e-4,
-                         iteration_limit=1000,
+    minimizer1 = VL_BFGS(convergence_tolerance=1e-5,
+                         iteration_limit=3000,
                          #callback=convergence_measure,
-                         max_history_length=3)
+                         max_history_length=20)
 
-    minimizer2 = RelaxedNewton(convergence_tolerance=1e-4,
-                               iteration_limit=1,
+    minimizer2 = RelaxedNewton(convergence_tolerance=1e-5,
+                               iteration_limit=10,
                                #callback=convergence_measure
                                )
-    minimizer3 = SteepestDescent(convergence_tolerance=1e-4, iteration_limit=1000)
+    minimizer3 = SteepestDescent(convergence_tolerance=1e-5, iteration_limit=1000)
 
 
-    me1 = minimizer1(energy)
-    me2 = minimizer2(energy)
-    me3 = minimizer3(energy)
+#    me1 = minimizer1(energy)
+#    me2 = minimizer2(energy)
+#    me3 = minimizer3(energy)
 
-    m1 = fft(me1[0].position)
-    m2 = fft(me2[0].position)
-    m3 = fft(me3[0].position)
-
+#    m1 = fft(me1[0].position)
+#    m2 = fft(me2[0].position)
+#    m3 = fft(me3[0].position)
+#
 
 
 #    # Probing the variance
@@ -80,20 +80,20 @@ if __name__ == "__main__":
 #    variance = sm(proby.diagonal.weight(-1))
 
     #Plotting #|\label{code:wf_plotting}|
-    plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
-    #plotter = plotting.HealpixPlotter(color_map=plotting.colormaps.PlankCmap())
+    #plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
+    plotter = plotting.HealpixPlotter(color_map=plotting.colormaps.PlankCmap())
 
     plotter.figure.xaxis = plotting.Axis(label='Pixel Index')
     plotter.figure.yaxis = plotting.Axis(label='Pixel Index')
 
     plotter.plot.zmax = 5; plotter.plot.zmin = -5
-#    plotter(variance, path = 'variance.html')
-    #plotter.plot.zmin = exp(mock_signal.min());
-    plotter(mock_signal.real, path='mock_signal.html')
-    plotter(Field(signal_space, val=np.log(data.val.get_full_data().real).reshape(signal_space.shape)),
-            path = 'log_of_data.html')
-
-    plotter(m1.real, path='m_LBFGS.html')
-    plotter(m2.real, path='m_Newton.html')
-    plotter(m3.real, path='m_SteepestDescent.html')
-
+##    plotter(variance, path = 'variance.html')
+#    #plotter.plot.zmin = exp(mock_signal.min());
+#    plotter(mock_signal.real, path='mock_signal.html')
+#    plotter(Field(signal_space, val=np.log(data.val.get_full_data().real).reshape(signal_space.shape)),
+#            path = 'log_of_data.html')
+#
+#    plotter(m1.real, path='m_LBFGS.html')
+#    plotter(m2.real, path='m_Newton.html')
+#    plotter(m3.real, path='m_SteepestDescent.html')
+#
