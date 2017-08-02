@@ -131,7 +131,6 @@ class Field(Loggable, Versionable, object):
         else:
             self.set_val(new_val=val, copy=copy)
 
-
     def _parse_domain(self, domain, val=None):
         if domain is None:
             if isinstance(val, Field):
@@ -244,6 +243,15 @@ class Field(Loggable, Versionable, object):
         # random number generator to it
         sample = f.get_val(copy=False)
         generator_function = getattr(Random, random_type)
+
+        comm = sample.comm
+        size = comm.size
+        if (sample.distribution_strategy in DISTRIBUTION_STRATEGIES['not'] and
+                size > 1):
+            seed = np.random.randint(10000000)
+            seed = comm.bcast(seed, root=0)
+            np.random.seed(seed)
+
         sample.apply_generator(
             lambda shape: generator_function(dtype=f.dtype,
                                              shape=shape,
@@ -834,6 +842,24 @@ class Field(Loggable, Versionable, object):
             return reduce(lambda x, y: x * y, volume_tuple)
         except TypeError:
             return 0.
+
+    @property
+    def real(self):
+        """ The real part of the field (data is not copied).
+        """
+        real_part = self.val.real
+        result = self.copy_empty(dtype=real_part.dtype)
+        result.set_val(new_val=real_part, copy=False)
+        return result
+
+    @property
+    def imag(self):
+        """ The imaginary part of the field (data is not copied).
+        """
+        real_part = self.val.imag
+        result = self.copy_empty(dtype=real_part.dtype)
+        result.set_val(new_val=real_part, copy=False)
+        return result
 
     # ---Special unary/binary operations---
 

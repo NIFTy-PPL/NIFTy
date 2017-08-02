@@ -114,7 +114,9 @@ class LineSearchStrongWolfe(LineSearch):
         le_0 = self.line_energy.at(0)
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
-        assert phiprime_0<0, "input direction must be a descent direction"
+        if phiprime_0 >= 0:
+            self.logger.error("Input direction must be a descent direction")
+            raise RuntimeError
 
         # set alphas
         alpha0 = 0.
@@ -237,12 +239,14 @@ class LineSearchStrongWolfe(LineSearch):
         cubic_delta = 0.2  # cubic
         quad_delta = 0.1  # quadratic
         phiprime_alphaj = 0.
+        alpha_recent = None
+        phi_recent = None
 
         assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
-        assert phiprime_lo*(alpha_hi-alpha_lo)<0.
+        assert phiprime_lo*(alpha_hi-alpha_lo) < 0.
         for i in range(max_iterations):
-            #assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
-            #assert phiprime_lo*(alpha_hi-alpha_lo)<0.
+            # assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
+            # assert phiprime_lo*(alpha_hi-alpha_lo)<0.
             delta_alpha = alpha_hi - alpha_lo
             if delta_alpha < 0:
                 a, b = alpha_hi, alpha_lo

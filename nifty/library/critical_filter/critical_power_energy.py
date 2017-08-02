@@ -1,4 +1,3 @@
-import numpy as np
 
 from nifty.energies.energy import Energy
 from nifty.operators.smoothness_operator import SmoothnessOperator

@@ -37,7 +37,7 @@ def _get_rtol(tp):
         return 1e-5
 
 class SmoothingOperator_Tests(unittest.TestCase):
-    spaces = [RGSpace(100)]
+    spaces = [RGSpace(128)]
 
     @expand(product(spaces, [0., .5, 5.], [True, False]))
     def test_property(self, space, sigma, log_distances):
@@ -83,7 +83,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
         tt2 = rand2.vdot(op.inverse_adjoint_times(rand1))
         assert_approx_equal(tt1, tt2)
 
-    @expand(product([100, 200], [1, 0.4], [0., 1.,  3.7],
+    @expand(product([128, 256], [1, 0.4], [0., 1.,  3.7],
                     [np.float64, np.complex128]))
     def test_smooth_regular1(self, sz, d, sigma, tp):
         tol = _get_rtol(tp)

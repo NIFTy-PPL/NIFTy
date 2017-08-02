@@ -264,6 +264,10 @@ class MPIFFT(Transform):
 
         if p.has_output:
             result = p.output_array
+            if result.shape != val.shape:
+                raise ValueError("Output shape is different than input shape. "
+                                 "Maybe fftw tries to optimize the "
+                                 "bit-alignment? Try a different array-size.")
         else:
             return None
 

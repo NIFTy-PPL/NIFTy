@@ -31,7 +31,9 @@ class HPMollweide(Heatmap):
                            xsize=self.xsize,
                            color_map=self.color_map,
                            webgl=self.webgl,
-                           smoothing=self.smoothing)
+                           smoothing=self.smoothing,
+                           zmin=self.zmin,
+                           zmax=self.zmax)
 
     def _mollview(self, x):
         xsize = self.xsize
