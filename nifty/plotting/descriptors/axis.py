@@ -33,6 +33,7 @@ class Axis(PlotlyWrapper):
         ply_object['tickfont'] = {'size': self.font_size,
                                   'family': self.font}
         ply_object['exponentformat'] = 'power'
+        ply_object['tickmode'] = 'linear'
 #        ply_object['domain'] = {'0': '0.04',
 #                                '1': '1'}
         return ply_object
