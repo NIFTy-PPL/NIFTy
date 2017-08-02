@@ -16,11 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+import ast
 import numpy as np
 
-from d2o import distributed_data_object
+from d2o import distributed_data_object,\
+    STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
+from nifty.config import nifty_configuration as gc
 
 
 class PowerSpace(Space):
@@ -86,10 +89,17 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_partner, distribution_strategy='not',
+    def __init__(self, harmonic_partner, distribution_strategy=None,
                  logarithmic=None, nbin=None, binbounds=None):
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
+
+        if distribution_strategy is None:
+            distribution_strategy = gc['default_distribution_strategy']
+        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
+            raise ValueError(
+                    "distribution_strategy must be a global-type "
+                    "strategy.")
 
         if not (isinstance(harmonic_partner, Space) and
                 harmonic_partner.harmonic):
@@ -311,6 +321,6 @@ class PowerSpace(Space):
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
         hp = repository.get('harmonic_partner', hdf5_group)
-        exec("bb = " + hdf5_group.attrs['binbounds'])
+        bb = ast.literal_eval(hdf5_group.attrs['binbounds'])
         ds = hdf5_group.attrs['distribution_strategy']
         return PowerSpace(hp, ds, binbounds=bb)

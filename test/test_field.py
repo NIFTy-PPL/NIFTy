@@ -65,6 +65,8 @@ class Test_Functionality(unittest.TestCase):
         r2 = RGSpace(s2, harmonic=True)
         ra = RGSpace(s1+s2, harmonic=True)
 
+        if preserve:
+            complexdata=True
         v = np.random.random(s1+s2)
         if complexdata:
             v = v + 1j*np.random.random(s1+s2)

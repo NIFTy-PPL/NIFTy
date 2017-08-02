@@ -44,9 +44,6 @@ class LineSearch(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
-
-
-
         self.line_energy = None
         self.f_k_minus_1 = None
         self.preferred_initial_step_size = None
@@ -66,7 +63,7 @@ class LineSearch(Loggable, object):
             iteration of the line search procedure. (Default: None)
 
         """
-        self.line_energy = LineEnergy(position=0.,
+        self.line_energy = LineEnergy(line_position=0.,
                                       energy=energy,
                                       line_direction=pk)
         if f_k_minus_1 is not None:

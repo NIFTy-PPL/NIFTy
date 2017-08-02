@@ -85,7 +85,7 @@ class FFTOperatorTests(unittest.TestCase):
                         rtol=tol, atol=tol)
 
     @expand(product(["numpy", "fftw", "fftw_mpi"],
-                    [10, 11], [9, 12], [0.1, 1, 3.7],
+                    [12, 15], [9, 12], [0.1, 1, 3.7],
                     [0.4, 1, 2.7],
                     [np.float64, np.complex128, np.float32, np.complex64]))
     def test_fft2D(self, module, dim1, dim2, d1, d2, itp):

@@ -30,12 +30,11 @@ rank = d2o.config.dependency_injector[
 class PlotterBase(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, interactive=False, path='.', title=""):
+    def __init__(self, interactive=False, path='plot.html'):
         if plotly is None:
             raise ImportError("The module plotly is needed but not available.")
         self.interactive = interactive
         self.path = path
-        self.title = str(title)
 
         self.plot = self._initialize_plot()
         self.figure = self._initialize_figure()
@@ -61,7 +60,8 @@ class PlotterBase(Loggable, object):
     def path(self, new_path):
         self._path = os.path.normpath(new_path)
 
-    def __call__(self, fields, spaces=None,  data_extractor=None, labels=None):
+    def __call__(self, fields, spaces=None, data_extractor=None, labels=None,
+                 path=None, title=None):
         if isinstance(fields, Field):
             fields = [fields]
         elif not isinstance(fields, list):
@@ -71,6 +71,9 @@ class PlotterBase(Loggable, object):
 
         if spaces is None:
             spaces = tuple(range(len(fields[0].domain)))
+
+        if len(spaces) != len(self.domain_classes):
+            raise ValueError("Domain mismatch between input and plotter.")
 
         axes = []
         plot_domain = []
@@ -83,17 +86,20 @@ class PlotterBase(Loggable, object):
                      for field in fields]
 
         # create plots
-        plots_list = []
-        for slice_list in utilities.get_slice_list(data_list[0].shape, axes):
-            plots_list += \
-                    [[self.plot.at(self._parse_data(current_data,
-                                                    field,
-                                                    spaces))
-                      for (current_data, field) in zip(data_list, fields)]]
+        if rank == 0:
+            plots_list = []
+            for slice_list in utilities.get_slice_list(data_list[0].shape,
+                                                       axes):
+                plots_list += \
+                        [[self.plot.at(self._parse_data(current_data,
+                                                        field,
+                                                        spaces))
+                          for (current_data, field) in zip(data_list, fields)]]
 
-        figures = [self.figure.at(plots) for plots in plots_list]
+            figures = [self.figure.at(plots, title=title)
+                       for plots in plots_list]
 
-        self._finalize_figure(figures)
+            self._finalize_figure(figures, path=path)
 
     def _get_data_from_field(self, field, spaces, data_extractor):
         for i, space_index in enumerate(spaces):
@@ -117,7 +123,7 @@ class PlotterBase(Loggable, object):
     def _initialize_multifigure(self):
         return MultiFigure(subfigures=None)
 
-    def _finalize_figure(self, figures):
+    def _finalize_figure(self, figures, path=None):
         if len(figures) > 1:
             rows = (len(figures) + 1)//2
             figure_array = np.empty((2*rows), dtype=np.object)
@@ -128,5 +134,6 @@ class PlotterBase(Loggable, object):
         else:
             final_figure = figures[0]
 
+        path = self.path if path is None else path
         plotly.offline.plot(final_figure.to_plotly(),
-                            filename=os.path.join(self.path, self.title))
+                            filename=path)

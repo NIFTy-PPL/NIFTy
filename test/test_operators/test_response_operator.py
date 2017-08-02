@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 from numpy.testing import assert_approx_equal
 
 from nifty import Field,\
@@ -10,7 +11,7 @@ from itertools import product
 from test.common import expand
 
 class ResponseOperator_Tests(unittest.TestCase):
-    spaces = [RGSpace(100)]
+    spaces = [RGSpace(128)]
 
     @expand(product(spaces, [0.,  5., 1.], [0., 1., .33] ))
     def test_property(self, space, sigma, exposure):

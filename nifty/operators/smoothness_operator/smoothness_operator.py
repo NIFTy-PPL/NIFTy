@@ -20,7 +20,7 @@ class SmoothnessOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    sigma: float,
+    strength: float,
         Specifies the strength of the SmoothnessOperator
     logarithmic : boolean,
         Whether smoothness is calculated on a logarithmic scale or linear scale
@@ -82,6 +82,10 @@ class SmoothnessOperator(EndomorphicOperator):
         return result
 
     # ---Added properties and methods---
+
+    @property
+    def logarithmic(self):
+        return self._laplace.logarithmic
 
     @property
     def strength(self):
