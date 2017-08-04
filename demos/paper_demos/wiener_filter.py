@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import nifty as ift
+from nifty import plotting
 import numpy as np
 from keepers import Repository
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     repo.commit()
 
     # Plotting #|\label{code:wf_plotting}|
-    plotter = ift.plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
+    plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
     plotter.figure.xaxis = ift.plotting.Axis(label='Pixel Index')
     plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
     plotter.plot.zmax = variance.max(); plotter.plot.zmin = 0
