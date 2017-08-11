@@ -2,6 +2,7 @@
 
 import numpy as np
 import nifty as ift
+from nifty import plotting
 
 from keepers import Repository
 
@@ -53,7 +54,7 @@ if __name__ == "__main__":
     harmonic_space_2 = ift.FFTOperator.get_default_codomain(signal_space_2)
     fft_2 = ift.FFTOperator(harmonic_space_2, target=signal_space_2,
                             domain_dtype=np.complex, target_dtype=np.complex)
-    power_space_2 = PowerSpace(harmonic_space_2, distribution_strategy='not')
+    power_space_2 = ift.PowerSpace(harmonic_space_2, distribution_strategy='not')
 
     mock_power_2 = ift.Field(power_space_2, val=power_spectrum_2,
                          distribution_strategy='not')
@@ -90,7 +91,7 @@ if __name__ == "__main__":
                              sigma=(response_sigma_1, response_sigma_2),
                              exposure=(mask_1, mask_2)) #|\label{code:wf_response}|
     data_domain = R.target
-    R_harmonic = ComposedOperator([fft, R], default_spaces=(0, 1, 0, 1))
+    R_harmonic = ift.ComposedOperator([fft, R], default_spaces=(0, 1, 0, 1))
 
     # Setting up the noise covariance and drawing a random noise realization
     N = ift.DiagonalOperator(data_domain, diagonal=mock_signal.var()/signal_to_noise,
@@ -126,14 +127,14 @@ if __name__ == "__main__":
     repo.commit()
 
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
-    plotter = ift.plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
+    plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
     plotter.figure.xaxis = ift.plotting.Axis(label='Pixel Index')
     plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
 
     plotter.plot.zmin = 0.
     plotter.plot.zmax = 3.
     sm = ift.SmoothingOperator(plot_space, sigma=0.03)
-    plotter(ift.log(sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), path='uncertainty.html')
+    plotter(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), path='uncertainty.html')
 
     plotter.plot.zmin = np.real(mock_signal.min());
     plotter.plot.zmax = np.real(mock_signal.max());
