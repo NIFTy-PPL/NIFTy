@@ -71,6 +71,9 @@ def create_power_operator(domain, power_spectrum, dtype=None,
                distribution_strategy='not')
     f = fp.power_synthesize(mean=1, std=0, real_signal=False,
                             distribution_strategy=distribution_strategy)
+    # MR FIXME: we need the real part here. Could this also be achieved
+    # by setting real_signal=True in the call above?
+    f = f.real
     f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
 

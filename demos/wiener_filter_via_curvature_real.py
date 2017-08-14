@@ -1,8 +1,8 @@
 import numpy as np
 
-from nifty import RGSpace, PowerSpace, Field, FFTOperator, ComposedOperator,\
-                  DiagonalOperator, ResponseOperator, plotting,\
-                  create_power_operator
+from nifty import RGSpace, PowerSpace, Field, RealFFTOperator,\
+                  ComposedOperator, DiagonalOperator, ResponseOperator,\
+                  plotting, create_power_operator
 from nifty.library import WienerFilterCurvature
 
 
@@ -35,9 +35,8 @@ if __name__ == "__main__":
     N_pixels = 512
 
     signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
-    harmonic_space = FFTOperator.get_default_codomain(signal_space)
-    fft = FFTOperator(harmonic_space, target=signal_space,
-                      domain_dtype=np.complex, target_dtype=np.float)
+    harmonic_space = RealFFTOperator.get_default_codomain(signal_space)
+    fft = RealFFTOperator(harmonic_space, target=signal_space)
     power_space = PowerSpace(harmonic_space,
                              distribution_strategy=distribution_strategy)
 
@@ -49,6 +48,7 @@ if __name__ == "__main__":
                        distribution_strategy=distribution_strategy)
     np.random.seed(43)
     mock_harmonic = mock_power.power_synthesize(real_signal=True)
+    mock_harmonic = mock_harmonic.real + mock_harmonic.imag
     mock_signal = fft(mock_harmonic)
 
     R = ResponseOperator(signal_space, sigma=(response_sigma,))
