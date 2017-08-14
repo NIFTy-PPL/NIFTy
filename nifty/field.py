@@ -463,8 +463,8 @@ class Field(Loggable, Versionable, object):
                     "something non-sliced.")
 
         semiscaled_local_shape = [1, ] * len(target_shape)
-        for i in axes:
-            semiscaled_local_shape[i] = pindex.local_shape[i]
+        for i in range(len(axes)):
+            semiscaled_local_shape[axes[i]] = pindex.local_shape[i]
         local_data = pindex.get_local_data(copy=False)
         semiscaled_local_data = local_data.reshape(semiscaled_local_shape)
         result_obj = pindex.copy_empty(global_shape=target_shape,
