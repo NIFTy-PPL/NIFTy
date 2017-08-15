@@ -618,7 +618,7 @@ class Field(Loggable, Versionable, object):
                                                     axes=domain_axes[space])
         # if no flips at all where performed `h` is a real field.
         # if all spaces use the default implementation of doing nothing when
-        # applying no flips, one can you object comparison to infer this case.
+        # no flips are applied, one can use `is` to infer this case.
 
         if flipped_val is val:
             h = flipped_val.real
