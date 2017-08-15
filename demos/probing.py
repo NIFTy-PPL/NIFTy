@@ -26,6 +26,3 @@ multiProber = MultiProber(domain=x)
 multiProber(diagOp)
 print((f - multiProber.diagonal).norm())
 print(f.sum() - multiProber.trace)
-
-
-
