@@ -29,7 +29,8 @@ from itertools import product
 from nifty import Field,\
                   RGSpace,\
                   LMSpace,\
-                  PowerSpace
+                  PowerSpace,\
+                  nifty_configuration
 
 from d2o import distributed_data_object
 
@@ -93,11 +94,14 @@ class Test_Functionality(unittest.TestCase):
     @expand(product([RGSpace((8,), harmonic=True,
                              zerocenter=False),
                      RGSpace((8, 8), harmonic=True, distances=0.123,
-                             zerocenter=True)],
+                             zerocenter=False)],
                     [RGSpace((8,), harmonic=True,
                              zerocenter=False),
-                     LMSpace(12)]))
-    def test_power_synthesize_analyze(self, space1, space2):
+                     LMSpace(12)],
+                    ['real', 'complex']))
+    def test_power_synthesize_analyze(self, space1, space2, base):
+        nifty_configuration['harmonic_rg_base'] = base
+
         p1 = PowerSpace(space1)
         spec1 = lambda k: 42/(1+k)**2
         fp1 = Field(p1, val=spec1)
