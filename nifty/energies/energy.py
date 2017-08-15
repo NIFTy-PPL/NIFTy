@@ -66,12 +66,9 @@ class Energy(Loggable, object):
     __metaclass__ = NiftyMeta
 
     def __init__(self, position):
+        super(Energy, self).__init__()
         self._cache = {}
-        try:
-            position = position.copy()
-        except AttributeError:
-            pass
-        self._position = position
+        self._position = position.copy()
 
     def at(self, position):
         """ Initializes and returns a new Energy object at the new position.

@@ -34,8 +34,6 @@ class LineSearch(Loggable, object):
     ----------
     line_energy : LineEnergy Object
         LineEnergy object from which we can extract energy at a specific point.
-    f_k_minus_1 : Field
-        Value of the field at the k-1 iteration of the line search procedure.
     preferred_initial_step_size : float
         Initial guess for the step length.
 
@@ -44,31 +42,7 @@ class LineSearch(Loggable, object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
-        self.line_energy = None
-        self.f_k_minus_1 = None
         self.preferred_initial_step_size = None
-
-    def _set_line_energy(self, energy, pk, f_k_minus_1=None):
-        """Set the coordinates for a new line search.
-
-        Parameters
-        ----------
-        energy : Energy object
-            Energy object from which we can calculate the energy, gradient and
-            curvature at a specific point.
-        pk : Field
-            Unit vector pointing into the search direction.
-        f_k_minus_1 : float
-            Value of the fuction (energy) which will be minimized at the k-1
-            iteration of the line search procedure. (Default: None)
-
-        """
-        self.line_energy = LineEnergy(line_position=0.,
-                                      energy=energy,
-                                      line_direction=pk)
-        if f_k_minus_1 is not None:
-            f_k_minus_1 = f_k_minus_1.copy()
-        self.f_k_minus_1 = f_k_minus_1
 
     @abc.abstractmethod
     def perform_line_search(self, energy, pk, f_k_minus_1=None):
