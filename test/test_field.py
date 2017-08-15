@@ -22,6 +22,7 @@ import numpy as np
 from numpy.testing import assert_,\
                           assert_almost_equal,\
                           assert_allclose
+from nose.plugins.skip import SkipTest
 
 from itertools import product
 
@@ -63,9 +64,12 @@ class Test_Functionality(unittest.TestCase):
     def test_hermitian_decomposition(self, z1, z2, preserve, complexdata,
                                      s1, s2):
         np.random.seed(123)
-        r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
-        r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
-        ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+        try:
+            r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
+            r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
+            ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+        except ValueError:
+            raise SkipTest
 
         if preserve:
             complexdata=True
