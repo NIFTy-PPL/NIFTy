@@ -33,15 +33,11 @@ from nifty import dependency_injector as gdi
 from nose.plugins.skip import SkipTest
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
-                   RGSpace((7,), harmonic=True, zerocenter=True),
                    RGSpace((8,), harmonic=True, zerocenter=True),
                    RGSpace((7, 8), harmonic=True),
-                   RGSpace((7, 8), harmonic=True, zerocenter=True),
                    RGSpace((6, 6), harmonic=True, zerocenter=True),
-                   RGSpace((7, 5), harmonic=True, zerocenter=True),
                    RGSpace((5, 5), harmonic=True),
                    RGSpace((4, 5, 7), harmonic=True),
-                   RGSpace((4, 5, 7), harmonic=True, zerocenter=True),
                    LMSpace(6),
                    LMSpace(9)]
 

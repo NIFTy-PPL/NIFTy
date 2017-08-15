@@ -22,14 +22,17 @@ import numpy as np
 from numpy.testing import assert_,\
                           assert_almost_equal,\
                           assert_allclose
+from nose.plugins.skip import SkipTest
 
 from itertools import product
 
 from nifty import Field,\
                   RGSpace,\
                   LMSpace,\
-                  PowerSpace
+                  PowerSpace,\
+                  nifty_configuration
 
+import d2o
 from d2o import distributed_data_object
 
 from test.common import expand
@@ -62,10 +65,12 @@ class Test_Functionality(unittest.TestCase):
                     [(1,), (4,), (5,)], [(1,), (6,), (7,)]))
     def test_hermitian_decomposition(self, z1, z2, preserve, complexdata,
                                      s1, s2):
-        np.random.seed(123)
-        r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
-        r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
-        ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+        try:
+            r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
+            r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
+            ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+        except ValueError:
+            raise SkipTest
 
         if preserve:
             complexdata=True
@@ -92,8 +97,13 @@ class Test_Functionality(unittest.TestCase):
                              zerocenter=True)],
                     [RGSpace((8,), harmonic=True,
                              zerocenter=False),
-                     LMSpace(12)]))
-    def test_power_synthesize_analyze(self, space1, space2):
+                     LMSpace(12)],
+                    ['real', 'complex']))
+    def test_power_synthesize_analyze(self, space1, space2, base):
+        nifty_configuration['harmonic_rg_base'] = base
+
+        d2o.random.seed(11)
+
         p1 = PowerSpace(space1)
         spec1 = lambda k: 42/(1+k)**2
         fp1 = Field(p1, val=spec1)
@@ -105,7 +115,7 @@ class Test_Functionality(unittest.TestCase):
         outer = np.outer(fp1.val.get_full_data(), fp2.val.get_full_data())
         fp = Field((p1, p2), val=outer)
 
-        samples = 1000
+        samples = 2000
         ps1 = 0.
         ps2 = 0.
         for ii in xrange(samples):
@@ -117,10 +127,10 @@ class Test_Functionality(unittest.TestCase):
 
         assert_allclose(ps1.val.get_full_data()/samples,
                         fp1.val.get_full_data(),
-                        rtol=0.1)
+                        rtol=0.2)
         assert_allclose(ps2.val.get_full_data()/samples,
                         fp2.val.get_full_data(),
-                        rtol=0.1)
+                        rtol=0.2)
 
     def test_vdot(self):
         s=RGSpace((10,))

@@ -2,22 +2,23 @@ import numpy as np
 
 from nifty import RGSpace, PowerSpace, Field, FFTOperator, ComposedOperator,\
                   DiagonalOperator, ResponseOperator, plotting,\
-                  create_power_operator
+                  create_power_operator, nifty_configuration
 from nifty.library import WienerFilterCurvature
 
 
 if __name__ == "__main__":
 
-    distribution_strategy = 'not'
+    nifty_configuration['default_distribution_strategy'] = 'fftw'
+    nifty_configuration['harmonic_rg_base'] = 'real'
 
     # Setting up variable parameters
 
     # Typical distance over which the field is correlated
-    correlation_length = 0.01
+    correlation_length = 0.05
     # Variance of field in position space sqrt(<|s_x|^2>)
     field_variance = 2.
     # smoothing length of response (in same unit as L)
-    response_sigma = 0.1
+    response_sigma = 0.01
     # The signal to noise ratio
     signal_to_noise = 0.7
 
@@ -36,19 +37,17 @@ if __name__ == "__main__":
 
     signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     harmonic_space = FFTOperator.get_default_codomain(signal_space)
-    fft = FFTOperator(harmonic_space, target=signal_space,
-                      domain_dtype=np.complex, target_dtype=np.float)
-    power_space = PowerSpace(harmonic_space,
-                             distribution_strategy=distribution_strategy)
+    fft = FFTOperator(harmonic_space, target=signal_space)
+    power_space = PowerSpace(harmonic_space)
 
     # Creating the mock data
-    S = create_power_operator(harmonic_space, power_spectrum=power_spectrum,
-                              distribution_strategy=distribution_strategy)
+    S = create_power_operator(harmonic_space, power_spectrum=power_spectrum)
 
-    mock_power = Field(power_space, val=power_spectrum,
-                       distribution_strategy=distribution_strategy)
+    mock_power = Field(power_space, val=power_spectrum)
     np.random.seed(43)
     mock_harmonic = mock_power.power_synthesize(real_signal=True)
+    if nifty_configuration['harmonic_rg_base'] == 'real':
+        mock_harmonic = mock_harmonic.real
     mock_signal = fft(mock_harmonic)
 
     R = ResponseOperator(signal_space, sigma=(response_sigma,))
@@ -73,9 +72,11 @@ if __name__ == "__main__":
     m_s = fft(m)
 
     plotter = plotting.RG2DPlotter()
-    plotter.title = 'mock_signal.html';
-    plotter(mock_signal)
-    plotter.title = 'data.html'
-    plotter(Field(signal_space,
-                  val=data.val.get_full_data().reshape(signal_space.shape)))
-    plotter.title = 'map.html'; plotter(m_s)
+    plotter.path = 'mock_signal.html'
+    plotter(mock_signal.real)
+    plotter.path = 'data.html'
+    plotter(Field(
+                signal_space,
+                val=data.val.get_full_data().real.reshape(signal_space.shape)))
+    plotter.path = 'map.html'
+    plotter(m_s.real)
