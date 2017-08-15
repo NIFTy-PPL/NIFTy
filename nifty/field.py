@@ -19,7 +19,6 @@
 from __future__ import division
 
 import ast
-import itertools
 import numpy as np
 
 from keepers import Versionable,\
@@ -406,7 +405,6 @@ class Field(Loggable, Versionable, object):
                                   distribution_strategy=distribution_strategy,
                                   logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
-
         power_spectrum = cls._calculate_power_spectrum(
                                 field_val=work_field.val,
                                 pdomain=power_domain,
@@ -437,6 +435,7 @@ class Field(Loggable, Versionable, object):
                             target_shape=field_val.shape,
                             target_strategy=field_val.distribution_strategy,
                             axes=axes)
+
         power_spectrum = pindex.bincount(weights=field_val,
                                          axis=axes)
         rho = pdomain.rho
@@ -462,14 +461,14 @@ class Field(Loggable, Versionable, object):
                     "A slicing distributor shall not be reshaped to "
                     "something non-sliced.")
 
-        semiscaled_shape = [1, ] * len(target_shape)
-        for i in axes:
-            semiscaled_shape[i] = target_shape[i]
+        semiscaled_local_shape = [1, ] * len(target_shape)
+        for i in range(len(axes)):
+            semiscaled_local_shape[axes[i]] = pindex.local_shape[i]
         local_data = pindex.get_local_data(copy=False)
-        semiscaled_local_data = local_data.reshape(semiscaled_shape)
+        semiscaled_local_data = local_data.reshape(semiscaled_local_shape)
         result_obj = pindex.copy_empty(global_shape=target_shape,
                                        distribution_strategy=target_strategy)
-        result_obj.set_full_data(semiscaled_local_data, copy=False)
+        result_obj.data[:] = semiscaled_local_data
 
         return result_obj
 

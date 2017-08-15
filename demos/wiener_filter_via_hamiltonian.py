@@ -10,6 +10,7 @@ rank = comm.rank
 
 np.random.seed(42)
 
+
 class AdjointFFTResponse(LinearOperator):
     def __init__(self, FFT, R, default_spaces=None):
         super(AdjointFFTResponse, self).__init__(default_spaces)
@@ -23,6 +24,7 @@ class AdjointFFTResponse(LinearOperator):
 
     def _adjoint_times(self, x, spaces=None):
         return self.FFT(self.R.adjoint_times(x))
+
     @property
     def domain(self):
         return self._domain
@@ -36,13 +38,12 @@ class AdjointFFTResponse(LinearOperator):
         return False
 
 
-
 if __name__ == "__main__":
 
     distribution_strategy = 'not'
 
     # Set up position space
-    s_space = RGSpace([128,128])
+    s_space = RGSpace([128, 128])
     # s_space = HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
@@ -52,7 +53,8 @@ if __name__ == "__main__":
     # Setting up power space
     p_space = PowerSpace(h_space, distribution_strategy=distribution_strategy)
 
-    # Choosing the prior correlation structure and defining correlation operator
+    # Choosing the prior correlation structure and defining
+    # correlation operator
     p_spec = (lambda k: (42 / (k + 1) ** 3))
 
     S = create_power_operator(h_space, power_spectrum=p_spec,
@@ -69,7 +71,7 @@ if __name__ == "__main__":
     Instrument = DiagonalOperator(s_space, diagonal=1.)
 #    Instrument._diagonal.val[200:400, 200:400] = 0
 
-    #Adding a harmonic transformation to the instrument
+    # Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
     signal_to_noise = 1.
     N = DiagonalOperator(s_space, diagonal=ss.var()/signal_to_noise, bare=True)
@@ -84,9 +86,9 @@ if __name__ == "__main__":
 
     # Choosing the minimization strategy
 
-    def convergence_measure(energy, iteration): # returns current energy
+    def convergence_measure(energy, iteration):  # returns current energy
         x = energy.value
-        print (x, iteration)
+        print(x, iteration)
 
 #    minimizer = SteepestDescent(convergence_tolerance=0,
 #                                iteration_limit=50,
@@ -109,20 +111,19 @@ if __name__ == "__main__":
     m0 = Field(h_space, val=.0)
 
     # Initializing the Wiener Filter energy
-    energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S, inverter=inverter)
+    energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S)
     D0 = energy.curvature
 
     # Solving the problem analytically
     m0 = D0.inverse_times(j)
 
-    sample_variance = Field(sh.domain,val=0. + 0j)
-    sample_mean = Field(sh.domain,val=0. + 0j)
+    sample_variance = Field(sh.domain, val=0. + 0j)
+    sample_mean = Field(sh.domain, val=0. + 0j)
 
     # sampling the uncertainty map
     n_samples = 1
     for i in range(n_samples):
-        sample = sugar.generate_posterior_sample(m0,D0)
+        sample = sugar.generate_posterior_sample(m0, D0)
         sample_variance += sample**2
         sample_mean += sample
     variance = sample_variance/n_samples - (sample_mean/n_samples)
-

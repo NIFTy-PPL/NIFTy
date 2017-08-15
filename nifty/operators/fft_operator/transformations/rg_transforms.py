@@ -111,7 +111,7 @@ class MPIFFT(Transform):
         p()
 
         if p.has_output:
-            result = p.output_array
+            result = p.output_array.copy()
             if result.shape != val.shape:
                 raise ValueError("Output shape is different than input shape. "
                                  "Maybe fftw tries to optimize the "
