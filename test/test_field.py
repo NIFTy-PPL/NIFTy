@@ -127,10 +127,10 @@ class Test_Functionality(unittest.TestCase):
 
         assert_allclose(ps1.val.get_full_data()/samples,
                         fp1.val.get_full_data(),
-                        rtol=0.1)
+                        rtol=0.2)
         assert_allclose(ps2.val.get_full_data()/samples,
                         fp2.val.get_full_data(),
-                        rtol=0.1)
+                        rtol=0.2)
 
     def test_vdot(self):
         s=RGSpace((10,))
