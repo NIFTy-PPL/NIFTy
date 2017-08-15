@@ -70,12 +70,16 @@ class LineEnergy(object):
     """
 
     def __init__(self, line_position, energy, line_direction, offset=0.):
+        super(LineEnergy, self).__init__()
         self._line_position = float(line_position)
         self._line_direction = line_direction
 
-        pos = energy.position \
-            + (self._line_position-float(offset))*self._line_direction
-        self.energy = energy.at(position=pos)
+        if self._line_position==float(offset):
+            self.energy = energy
+        else:
+            pos = energy.position \
+                + (self._line_position-float(offset))*self._line_direction
+            self.energy = energy.at(position=pos)
 
     def at(self, line_position):
         """ Returns LineEnergy at new position, memorizing the zero point.

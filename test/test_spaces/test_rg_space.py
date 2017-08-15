@@ -23,10 +23,12 @@ import numpy as np
 
 from d2o import distributed_data_object
 
-from numpy.testing import assert_, assert_equal, assert_almost_equal
-from nifty import RGSpace
+from numpy.testing import assert_, assert_equal, assert_almost_equal, \
+                          assert_array_equal
+from nifty import RGSpace, nifty_configuration
 from test.common import expand
 from itertools import product
+from nose.plugins.skip import SkipTest
 
 # [shape, zerocenter, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -66,23 +68,23 @@ CONSTRUCTOR_CONFIGS = [
                 'dim': 8,
                 'total_volume': 96.0
             }],
-        [(11, 11), (False, True), None, False,
+        [(11, 11), False, None, False,
             {
                 'shape': (11, 11),
-                'zerocenter': (False, True),
+                'zerocenter': (False, False),
                 'distances': (1/11, 1/11),
                 'harmonic': False,
                 'dim': 121,
                 'total_volume': 1.0
             }],
-        [(11, 11), True, (1.3, 1.3), True,
+        [(12, 12), True, (1.3, 1.3), True,
             {
-                'shape': (11, 11),
+                'shape': (12, 12),
                 'zerocenter': (True, True),
                 'distances': (1.3, 1.3),
                 'harmonic': True,
-                'dim': 121,
-                'total_volume': 204.49
+                'dim': 144,
+                'total_volume': 243.36
             }]
 
     ]
@@ -156,26 +158,35 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
 
     @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
                      (4, 6, 8), (17, 5, 3)],
-                    [True, False]))
-    def test_hermitianize_inverter(self, shape, zerocenter):
-        r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+                    [True, False],
+                    ['real', 'complex']))
+    def test_hermitianize_inverter(self, shape, zerocenter, base):
+        try:
+            r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+        except ValueError:
+            raise SkipTest
         v = distributed_data_object(global_shape=shape, dtype=np.complex128)
         v[:] = np.random.random(shape) + 1j*np.random.random(shape)
+
+        nifty_configuration['harmonic_rg_base'] = base
         inverted = r.hermitianize_inverter(v, axes=range(len(shape)))
 
-        # test hermitian flipping of `inverted`
-        it = np.nditer(v, flags=['multi_index'])
-        while not it.finished:
-            i1 = it.multi_index
-            i2 = []
-            for i in range(len(i1)):
-                if r.zerocenter[i] and r.shape[i] % 2 != 0:
-                    i2.append(v.shape[i]-i1[i]-1)
-                else:
-                    i2.append(v.shape[i]-i1[i] if i1[i] > 0 else 0)
-            i2 = tuple(i2)
-            assert_almost_equal(inverted[i1], v[i2])
-            it.iternext()
+        if base == 'complex':
+            # test hermitian flipping of `inverted`
+            it = np.nditer(v, flags=['multi_index'])
+            while not it.finished:
+                i1 = it.multi_index
+                i2 = []
+                for i in range(len(i1)):
+                    if r.zerocenter[i] and r.shape[i] % 2 != 0:
+                        i2.append(v.shape[i]-i1[i]-1)
+                    else:
+                        i2.append(v.shape[i]-i1[i] if i1[i] > 0 else 0)
+                i2 = tuple(i2)
+                assert_almost_equal(inverted[i1], v[i2])
+                it.iternext()
+        else:
+            assert_array_equal(v, inverted)
 
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, zerocenter, expected):
