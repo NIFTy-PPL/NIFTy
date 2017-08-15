@@ -32,6 +32,7 @@ from nifty import Field,\
                   PowerSpace,\
                   nifty_configuration
 
+import d2o
 from d2o import distributed_data_object
 
 from test.common import expand
@@ -93,13 +94,15 @@ class Test_Functionality(unittest.TestCase):
     @expand(product([RGSpace((8,), harmonic=True,
                              zerocenter=False),
                      RGSpace((8, 8), harmonic=True, distances=0.123,
-                             zerocenter=False)],
+                             zerocenter=True)],
                     [RGSpace((8,), harmonic=True,
                              zerocenter=False),
                      LMSpace(12)],
                     ['real', 'complex']))
     def test_power_synthesize_analyze(self, space1, space2, base):
         nifty_configuration['harmonic_rg_base'] = base
+
+        d2o.random.seed(11)
 
         p1 = PowerSpace(space1)
         spec1 = lambda k: 42/(1+k)**2
@@ -112,7 +115,7 @@ class Test_Functionality(unittest.TestCase):
         outer = np.outer(fp1.val.get_full_data(), fp2.val.get_full_data())
         fp = Field((p1, p2), val=outer)
 
-        samples = 1000
+        samples = 2000
         ps1 = 0.
         ps2 = 0.
         for ii in xrange(samples):
@@ -124,10 +127,10 @@ class Test_Functionality(unittest.TestCase):
 
         assert_allclose(ps1.val.get_full_data()/samples,
                         fp1.val.get_full_data(),
-                        rtol=0.1)
+                        rtol=0.2)
         assert_allclose(ps2.val.get_full_data()/samples,
                         fp2.val.get_full_data(),
-                        rtol=0.1)
+                        rtol=0.2)
 
     def test_vdot(self):
         s=RGSpace((10,))
