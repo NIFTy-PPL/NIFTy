@@ -64,7 +64,6 @@ class Test_Functionality(unittest.TestCase):
                     [(1,), (4,), (5,)], [(1,), (6,), (7,)]))
     def test_hermitian_decomposition(self, z1, z2, preserve, complexdata,
                                      s1, s2):
-        np.random.seed(123)
         try:
             r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
             r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
