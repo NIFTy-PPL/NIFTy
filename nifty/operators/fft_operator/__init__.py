@@ -18,4 +18,3 @@
 
 from transformations import *
 from .fft_operator import FFTOperator
-from .real_fft_operator import RealFFTOperator
