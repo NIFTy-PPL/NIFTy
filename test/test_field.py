@@ -32,6 +32,7 @@ from nifty import Field,\
                   PowerSpace,\
                   nifty_configuration
 
+import d2o
 from d2o import distributed_data_object
 
 from test.common import expand
@@ -100,6 +101,8 @@ class Test_Functionality(unittest.TestCase):
                     ['real', 'complex']))
     def test_power_synthesize_analyze(self, space1, space2, base):
         nifty_configuration['harmonic_rg_base'] = base
+
+        d2o.random.seed(11)
 
         p1 = PowerSpace(space1)
         spec1 = lambda k: 42/(1+k)**2
