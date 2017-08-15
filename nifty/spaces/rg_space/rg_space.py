@@ -330,6 +330,8 @@ class RGSpace(Space):
     def _parse_zerocenter(self, zerocenter):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
+        if np.any(np.logical_and(temp, np.array(self.shape) % 2)):
+            raise ValueError("All zerocentered axis must have even length!")
         return tuple(temp)
 
     # ---Serialization---
