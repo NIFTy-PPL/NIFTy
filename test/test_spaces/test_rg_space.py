@@ -27,6 +27,7 @@ from numpy.testing import assert_, assert_equal, assert_almost_equal
 from nifty import RGSpace
 from test.common import expand
 from itertools import product
+from nose.plugins.skip import SkipTest
 
 # [shape, zerocenter, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -158,7 +159,10 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
                      (4, 6, 8), (17, 5, 3)],
                     [True, False]))
     def test_hermitianize_inverter(self, shape, zerocenter):
-        r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+        try:
+            r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
+        except ValueError:
+            raise SkipTest
         v = distributed_data_object(global_shape=shape, dtype=np.complex128)
         v[:] = np.random.random(shape) + 1j*np.random.random(shape)
         inverted = r.hermitianize_inverter(v, axes=range(len(shape)))
