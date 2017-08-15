@@ -107,7 +107,7 @@ class FFTOperatorTests(unittest.TestCase):
         if module == "fftw" and "fftw" not in gdi:
             raise SkipTest
         tol = _get_rtol(dtype)
-        a = [a1, a2, a3] = [RGSpace((8,)), RGSpace((4, 4)), RGSpace((5, 6))]
+        a = [a1, a2, a3] = [RGSpace((32,)), RGSpace((4, 4)), RGSpace((5, 6))]
         fft = FFTOperator(domain=a[index], module=module,
                           default_spaces=(index,))
         fft._forward_transformation.harmonic_base = base
