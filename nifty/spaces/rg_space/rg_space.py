@@ -36,7 +36,7 @@ from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
-
+from nifty.config import nifty_configuration
 
 class RGSpace(Space):
     """
@@ -122,33 +122,36 @@ class RGSpace(Space):
 #        return fixed_points
 
     def hermitianize_inverter(self, x, axes):
-        # calculate the number of dimensions the input array has
-        dimensions = len(x.shape)
-        # prepare the slicing object which will be used for mirroring
-        slice_primitive = [slice(None), ] * dimensions
-        # copy the input data
-        y = x.copy()
+        if nifty_configuration['harmonic_rg_base'] == 'real':
+            return x
+        else:
+            # calculate the number of dimensions the input array has
+            dimensions = len(x.shape)
+            # prepare the slicing object which will be used for mirroring
+            slice_primitive = [slice(None), ] * dimensions
+            # copy the input data
+            y = x.copy()
 
-        # flip in the desired directions
-        for k in range(len(axes)):
-            i = axes[k]
-            slice_picker = slice_primitive[:]
-            slice_inverter = slice_primitive[:]
-            if (not self.zerocenter[k]) or self.shape[k] % 2 == 0:
-                slice_picker[i] = slice(1, None, None)
-                slice_inverter[i] = slice(None, 0, -1)
-            else:
-                slice_picker[i] = slice(None)
-                slice_inverter[i] = slice(None, None, -1)
-            slice_picker = tuple(slice_picker)
-            slice_inverter = tuple(slice_inverter)
+            # flip in the desired directions
+            for k in range(len(axes)):
+                i = axes[k]
+                slice_picker = slice_primitive[:]
+                slice_inverter = slice_primitive[:]
+                if (not self.zerocenter[k]) or self.shape[k] % 2 == 0:
+                    slice_picker[i] = slice(1, None, None)
+                    slice_inverter[i] = slice(None, 0, -1)
+                else:
+                    slice_picker[i] = slice(None)
+                    slice_inverter[i] = slice(None, None, -1)
+                slice_picker = tuple(slice_picker)
+                slice_inverter = tuple(slice_inverter)
 
-            try:
-                y.set_data(to_key=slice_picker, data=y,
-                           from_key=slice_inverter)
-            except(AttributeError):
-                y[slice_picker] = y[slice_inverter]
-        return y
+                try:
+                    y.set_data(to_key=slice_picker, data=y,
+                               from_key=slice_inverter)
+                except(AttributeError):
+                    y[slice_picker] = y[slice_inverter]
+            return y
 
     # ---Mandatory properties and methods---
 

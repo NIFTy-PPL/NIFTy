@@ -22,13 +22,15 @@ import numpy as np
 from numpy.testing import assert_,\
                           assert_almost_equal,\
                           assert_allclose
+from nose.plugins.skip import SkipTest
 
 from itertools import product
 
 from nifty import Field,\
                   RGSpace,\
                   LMSpace,\
-                  PowerSpace
+                  PowerSpace,\
+                  nifty_configuration
 
 from d2o import distributed_data_object
 
@@ -62,10 +64,12 @@ class Test_Functionality(unittest.TestCase):
                     [(1,), (4,), (5,)], [(1,), (6,), (7,)]))
     def test_hermitian_decomposition(self, z1, z2, preserve, complexdata,
                                      s1, s2):
-        np.random.seed(123)
-        r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
-        r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
-        ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+        try:
+            r1 = RGSpace(s1, harmonic=True, zerocenter=(z1,))
+            r2 = RGSpace(s2, harmonic=True, zerocenter=(z2,))
+            ra = RGSpace(s1+s2, harmonic=True, zerocenter=(z1, z2))
+        except ValueError:
+            raise SkipTest
 
         if preserve:
             complexdata=True
@@ -89,11 +93,14 @@ class Test_Functionality(unittest.TestCase):
     @expand(product([RGSpace((8,), harmonic=True,
                              zerocenter=False),
                      RGSpace((8, 8), harmonic=True, distances=0.123,
-                             zerocenter=True)],
+                             zerocenter=False)],
                     [RGSpace((8,), harmonic=True,
                              zerocenter=False),
-                     LMSpace(12)]))
-    def test_power_synthesize_analyze(self, space1, space2):
+                     LMSpace(12)],
+                    ['real', 'complex']))
+    def test_power_synthesize_analyze(self, space1, space2, base):
+        nifty_configuration['harmonic_rg_base'] = base
+
         p1 = PowerSpace(space1)
         spec1 = lambda k: 42/(1+k)**2
         fp1 = Field(p1, val=spec1)

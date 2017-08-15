@@ -19,7 +19,6 @@
 from __future__ import division
 
 import ast
-import itertools
 import numpy as np
 
 from keepers import Versionable,\
