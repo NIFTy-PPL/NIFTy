@@ -94,7 +94,7 @@ class Test_Functionality(unittest.TestCase):
     @expand(product([RGSpace((8,), harmonic=True,
                              zerocenter=False),
                      RGSpace((8, 8), harmonic=True, distances=0.123,
-                             zerocenter=False)],
+                             zerocenter=True)],
                     [RGSpace((8,), harmonic=True,
                              zerocenter=False),
                      LMSpace(12)],
@@ -115,7 +115,7 @@ class Test_Functionality(unittest.TestCase):
         outer = np.outer(fp1.val.get_full_data(), fp2.val.get_full_data())
         fp = Field((p1, p2), val=outer)
 
-        samples = 1000
+        samples = 2000
         ps1 = 0.
         ps2 = 0.
         for ii in xrange(samples):
