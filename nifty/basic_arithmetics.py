@@ -23,7 +23,7 @@ from nifty.field import Field
 
 __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
            'arccosh', 'arcsinh', 'arctan', 'arctanh', 'sqrt', 'exp', 'log',
-           'conjugate', 'clipped_exp', 'limited_exp']
+           'conjugate', 'clipped_exp', 'limited_exp', 'limited_exp_deriv']
 
 
 def _math_helper(x, function):
@@ -100,15 +100,28 @@ def clipped_exp(x):
 
 
 def limited_exp(x):
-    thr = 200
-    expthr = np.exp(thr)
-    return _math_helper(x, lambda z: _limited_exp_helper(z, thr, expthr))
+    return _math_helper(x, _limited_exp_helper)
 
+def _limited_exp_helper(x):
+    thr = 200.
+    mask = x>thr
+    if np.count_nonzero(mask) == 0:
+        return np.exp(x)
+    result = ((1.-thr) + x)*np.exp(thr)
+    result[~mask] = np.exp(x[~mask])
+    return result
 
-def _limited_exp_helper(x, thr, expthr):
-    mask = (x > thr)
-    result = np.exp(x)
-    result[mask] = ((1-thr) + x[mask])*expthr
+def limited_exp_deriv(x):
+    return _math_helper(x, _limited_exp_deriv_helper)
+
+def _limited_exp_deriv_helper(x):
+    thr = 200.
+    mask = x>thr
+    if np.count_nonzero(mask) == 0:
+        return np.exp(x)
+    result = np.empty_like(x)
+    result[mask] = np.exp(thr)
+    result[~mask] = np.exp(x[~mask])
     return result
 
 
