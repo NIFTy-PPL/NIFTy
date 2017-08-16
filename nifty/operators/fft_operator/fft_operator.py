@@ -29,8 +29,7 @@ from transformations import RGRGTransformation,\
                             LMGLTransformation,\
                             LMHPTransformation,\
                             GLLMTransformation,\
-                            HPLMTransformation,\
-                            TransformationCache
+                            HPLMTransformation
 
 
 class FFTOperator(LinearOperator):
@@ -135,11 +134,11 @@ class FFTOperator(LinearOperator):
         backward_class = self.transformation_dictionary[
                 (self.target[0].__class__, self.domain[0].__class__)]
 
-        self._forward_transformation = TransformationCache.create(
-            forward_class, self.domain[0], self.target[0], module=module)
+        self._forward_transformation = forward_class(
+            self.domain[0], self.target[0], module=module)
 
-        self._backward_transformation = TransformationCache.create(
-            backward_class, self.target[0], self.domain[0], module=module)
+        self._backward_transformation = backward_class(
+            self.target[0], self.domain[0], module=module)
 
         # Store the dtype information
         self.domain_dtype = \
