@@ -477,7 +477,7 @@ class Field(Loggable, Versionable, object):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner
-        domain of this fields domains, using this field as power spectrum.
+        domain of this field's domains, using this field as power spectrum.
 
         Parameters
         ----------
@@ -696,7 +696,7 @@ class Field(Loggable, Versionable, object):
     # ---Properties---
 
     def set_val(self, new_val=None, copy=False):
-        """ Sets the fields distributed_data_object.
+        """ Sets the field's distributed_data_object.
 
         Parameters
         ----------
@@ -869,7 +869,7 @@ class Field(Loggable, Versionable, object):
 
         dtype : type
             The datatype the output shall have. This can be used to override
-            the fields dtype.
+            the field's dtype.
 
         Returns
         -------
