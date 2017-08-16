@@ -42,19 +42,6 @@ def _get_rtol(tp):
 
 
 class FFTOperatorTests(unittest.TestCase):
-    @expand(product([10, 11], [0.1, 1, 3.7]))
-    def test_RG_distance_1D(self, dim1, d):
-        foo = RGSpace([dim1], distances=d)
-        res = foo.get_distance_array('not')
-        assert_equal(res[0], 0.)
-
-    @expand(product([10, 11], [9, 28],
-                    [0.1, 1, 3.7]))
-    def test_RG_distance_2D(self, dim1, dim2, d):
-        foo = RGSpace([dim1, dim2], distances=d)
-        res = foo.get_distance_array('not')
-        assert_equal(res[0,0], 0.)
-
     @expand(product(["numpy", "fftw", "fftw_mpi"],
                     [16, ], [0.1, 1, 3.7], STRATEGIES['global'],
                     [np.float64, np.float32, np.complex64, np.complex128],
