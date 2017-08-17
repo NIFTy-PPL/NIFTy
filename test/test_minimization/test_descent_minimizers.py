@@ -43,7 +43,7 @@ class Test_DescentMinimizers(unittest.TestCase):
         covariance = DiagonalOperator(space, diagonal=covariance_diagonal)
         energy = QuadraticPotential(position=starting_point,
                                     eigenvalues=covariance)
-        minimizer = minimizer_class(iteration_limit=30,
+        minimizer = minimizer_class(iteration_limit=100,
                                     convergence_tolerance=1e-10)
 
         (energy, convergence) = minimizer(energy)
