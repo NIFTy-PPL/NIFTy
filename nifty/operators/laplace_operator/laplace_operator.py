@@ -50,15 +50,14 @@ class LaplaceOperator(EndomorphicOperator):
 
         self._logarithmic = bool(logarithmic)
 
+        pos = self.domain[0].kindex.copy()
         if self.logarithmic:
-            self.positions = self.domain[0].kindex.copy()
-            self.positions[1:] = np.log(self.positions[1:])
-            self.positions[0] = -1.
-        else:
-            self.positions = self.domain[0].kindex.copy()
-            self.positions[0] = -1
+            pos[1:] = np.log(pos[1:])
+            pos[0] = pos[1]-1.
 
-        self.fwd_dist = self.positions[1:] - self.positions[:-1]
+        self._dist_l = pos[1:-1]-pos[:-2]
+        self._dist_r = pos[2:]-pos[1:-1]
+        self._dist_c = 0.5*(pos[2:]-pos[:-2])
 
     @property
     def target(self):
@@ -94,24 +93,20 @@ class LaplaceOperator(EndomorphicOperator):
         else:
             axes = x.domain_axes[spaces[0]]
         axis = axes[0]
+        nval = len(self._dist_l)
         prefix = (slice(None),) * axis
-        fwd_dist = self.fwd_dist.reshape((1,)*axis + self.fwd_dist.shape)
-        positions = self.positions.reshape((1,)*axis + self.positions.shape)
+        sl_c = prefix + slice(1,-1)
+        sl_l = prefix + slice(None,-2)
+        sl_r = prefix + slice(2,None)
+        dist_l = self._dist_l.reshape((1,)*axis + (nval,))
+        dist_r = self._dist_r.reshape((1,)*axis + (nval,))
+        dist_c = self._dist_c.reshape((1,)*axis + (nval,))
+        dx_r = x[sl_r] - x[sl_c]
+        dx_l = x[sl_c] - x[sl_l]
         ret = x.val.copy_empty()
-        x = x.val
-        ret[prefix + (slice(1, -1),)] = \
-            (-((x[prefix + (slice(1, -1),)] - x[prefix + (slice(0, -2),)]) /
-               fwd_dist[prefix + (slice(0, -1),)]) +
-             ((x[prefix + (slice(2, None),)] - x[prefix + (slice(1, -1),)]) /
-              fwd_dist[prefix + (slice(1, None),)]))
-        ret[prefix + (slice(1, -1),)] /= \
-            (positions[prefix + (slice(2, None),)] -
-             positions[prefix + (slice(None, -2),)])
-        ret *= 2.
-        ret[prefix + (slice(0, 2),)] = 0
-        ret[prefix + (slice(-1, -1),)] = 0
-        ret[prefix + (slice(2, None),)] *= \
-            np.sqrt(fwd_dist)[prefix + (slice(1, None),)]
+        ret[sl_c] = (dx_r/dist_r - dx_l/dist_l)/sqrt(dist_c)
+        ret[prefix + slice(None,2)] = 0.
+        res[prefix + slice(-1,None)] = 0.
         return Field(self.domain, val=ret).weight(power=-0.5, spaces=spaces)
 
     def _adjoint_times(self, x, spaces):
@@ -124,42 +119,32 @@ class LaplaceOperator(EndomorphicOperator):
         else:
             axes = x.domain_axes[spaces[0]]
         axis = axes[0]
+        nval = len(self._dist_l)
         prefix = (slice(None),) * axis
-        fwd_dist = self.fwd_dist.reshape((1,)*axis + self.fwd_dist.shape)
-        positions = self.positions.reshape((1,)*axis + self.positions.shape)
+        sl_c = prefix + slice(1,-1)
+        sl_l = prefix + slice(None,-2)
+        sl_r = prefix + slice(2,None)
+        dist_l = self._dist_l.reshape((1,)*axis + (nval,))
+        dist_r = self._dist_r.reshape((1,)*axis + (nval,))
+        dist_c = self._dist_c.reshape((1,)*axis + (nval,))
+        dx_r = x[sl_r] - x[sl_c]
+        dx_l = x[sl_c] - x[sl_l]
         y = x.copy().weight(power=0.5).val
-        y[prefix + (slice(2, None),)] *= \
-            np.sqrt(fwd_dist)[prefix + (slice(1, None),)]
-        y[prefix + (slice(0, 2),)] = 0
-        y[prefix + (slice(-1, -1),)] = 0
+        y[sl_c] *= sqrt(dist_c)
+        y[prefix + slice(None, 2)] = 0.
+        y[prefix + slice(-1, None)] = 0.
         ret = y.copy_empty()
-        y[prefix + (slice(1, -1),)] /= \
-            (positions[prefix + (slice(2, None),)] -
-             positions[prefix + (slice(None, -2),)])
-        y *= 2
-        ret[prefix + (slice(1, -1),)] = \
-            (-y[prefix + (slice(1, -1),)]/fwd_dist[prefix + (slice(0, -1),)] -
-             y[prefix + (slice(1, -1),)]/fwd_dist[prefix + (slice(1, None),)])
-        ret[prefix + (slice(0, -2),)] += \
-            y[prefix + (slice(1, -1),)] / fwd_dist[prefix + (slice(0, -1),)]
-        ret[prefix + (slice(2, None),)] += \
-            y[prefix + (slice(1, -1),)] / fwd_dist[prefix + (slice(1, None),)]
+        y[sl_c] /= dist_c
+        ret[sl_c] = (y[sl_r]-y[sl_c])/dist_r - (y[sl_c]-y[sl_l])/dist_l
+
+        ret[prefix + (0,)] = y[prefix+(1,)] / dist_l[prefix+(0,)]
+        ret[prefix + (-1,)] = y[prefix+(-2,)] / dist_r[prefix + (-1,)]
         return Field(self.domain, val=ret).weight(-1, spaces=spaces)
 
-    def _irregular_laplace(self, x):
-        ret = np.zeros_like(x)
-        ret[1:-1] = (-(x[1:-1] - x[0:-2]) / self.fwd_dist[:-1] +
-                      (x[2:] - x[1:-1]) / self.fwd_dist[1:])
-        ret[1:-1] /= self.positions[2:] - self.positions[:-2]
-        ret *= 2.
-        return ret
+Laplace:
+L = (dxr/dr - dxl/dl)/  sqrt(dc)
 
-    def _irregular_adj_laplace(self, x):
-        ret = np.zeros_like(x)
-        y = x.copy()
-        y[1:-1] /= self.positions[2:] - self.positions[:-2]
-        y *= 2
-        ret[1:-1] = -y[1:-1] / self.fwd_dist[:-1] - y[1:-1] / self.fwd_dist[1:]
-        ret[0:-2] += y[1:-1] / self.fwd_dist[:-1]
-        ret[2:] += y[1:-1] / self.fwd_dist[1:]
-        return ret
+adjoint Laplace:
+
+tmp = x/sqrt(dc)
+tmp2 = (tmpr-tmp)/dr - (tmp-tmpl)/dl
