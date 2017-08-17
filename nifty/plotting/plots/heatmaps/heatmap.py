@@ -23,7 +23,7 @@ class Heatmap(PlotlyWrapper):
         self.zmin = zmin
         self.zmax = zmax
         self._font_size = 22
-        self._font_family = 'Bento'
+        self._font_family = 'Balto'
 
     def at(self, data):
         if isinstance(data, list):
