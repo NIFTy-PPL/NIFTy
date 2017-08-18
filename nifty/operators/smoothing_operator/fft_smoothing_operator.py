@@ -8,12 +8,12 @@ from .smoothing_operator import SmoothingOperator
 
 class FFTSmoothingOperator(SmoothingOperator):
 
-    def __init__(self, domain, sigma, log_distances=False,
+    def __init__(self, domain, sigma,
                  default_spaces=None):
         super(FFTSmoothingOperator, self).__init__(
                                                 domain=domain,
                                                 sigma=sigma,
-                                                log_distances=log_distances,
+                                                log_distances=False,
                                                 default_spaces=default_spaces)
         self._transformator_cache = {}
 
@@ -32,10 +32,6 @@ class FFTSmoothingOperator(SmoothingOperator):
         kernel = codomain.get_distance_array(
             distribution_strategy=axes_local_distribution_strategy)
 
-        #MR FIXME: this causes calls of log(0.) which should probably be avoided
-        if self.log_distances:
-            kernel.apply_scalar_function(np.log, inplace=True)
-
         kernel.apply_scalar_function(
             codomain.get_fft_smoothing_kernel_function(self.sigma),
             inplace=True)
@@ -52,7 +48,8 @@ class FFTSmoothingOperator(SmoothingOperator):
 
         # apply the kernel
         if inverse:
-            #MR FIXME: danger of having division by zero or overflows
+            # avoid zeroes in the kernel to work around divisions by zero
+            local_kernel = np.maximum(1e-12,local_kernel)
             local_transformed_x /= local_kernel
         else:
             local_transformed_x *= local_kernel

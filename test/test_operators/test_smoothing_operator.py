@@ -18,8 +18,7 @@
 
 import unittest
 import numpy as np
-from numpy.testing import assert_equal, assert_approx_equal,\
-    assert_allclose
+from numpy.testing import assert_equal, assert_allclose
 
 from nifty import Field,\
     RGSpace,\
@@ -39,10 +38,9 @@ def _get_rtol(tp):
 class SmoothingOperator_Tests(unittest.TestCase):
     spaces = [RGSpace(128)]
 
-    @expand(product(spaces, [0., .5, 5.], [True, False]))
-    def test_property(self, space, sigma, log_distances):
-        op = SmoothingOperator(space, sigma=sigma,
-                              log_distances=log_distances)
+    @expand(product(spaces, [0., .5, 5.]))
+    def test_property(self, space, sigma):
+        op = SmoothingOperator(space, sigma=sigma)
         if op.domain[0] != space:
             raise TypeError
         if op.unitary != False:
@@ -51,37 +49,34 @@ class SmoothingOperator_Tests(unittest.TestCase):
             raise ValueError
         if op.sigma != sigma:
             raise ValueError
-        if op.log_distances != log_distances:
+        if op.log_distances != False:
             raise ValueError
 
-    @expand(product(spaces, [0., .5, 5.], [True, False]))
-    def test_adjoint_times(self, space, sigma, log_distances):
-        op = SmoothingOperator(space, sigma=sigma,
-                              log_distances=log_distances)
+    @expand(product(spaces, [0., .5, 5.]))
+    def test_adjoint_times(self, space, sigma):
+        op = SmoothingOperator(space, sigma=sigma)
         rand1 = Field.from_random('normal', domain=space)
         rand2 = Field.from_random('normal', domain=space)
         tt1 = rand1.vdot(op.times(rand2))
         tt2 = rand2.vdot(op.adjoint_times(rand1))
-        assert_approx_equal(tt1, tt2)
+        assert_allclose(tt1, tt2)
 
-    @expand(product(spaces, [0., .5, 5.], [False]))
-    def test_times(self, space, sigma, log_distances):
-        op = SmoothingOperator(space, sigma=sigma,
-                              log_distances=log_distances)
+    @expand(product(spaces, [0., .5, 5.]))
+    def test_times(self, space, sigma):
+        op = SmoothingOperator(space, sigma=sigma)
         rand1 = Field(space, val=0.)
         rand1.val[0] = 1.
         tt1 = op.times(rand1)
-        assert_approx_equal(1, tt1.sum())
+        assert_allclose(1, tt1.sum())
 
-    @expand(product(spaces, [0., .5, 5.], [True, False]))
-    def test_inverse_adjoint_times(self, space, sigma, log_distances):
-        op = SmoothingOperator(space, sigma=sigma,
-                              log_distances=log_distances)
+    @expand(product(spaces, [0., .5, 5.]))
+    def test_inverse_adjoint_times(self, space, sigma):
+        op = SmoothingOperator(space, sigma=sigma)
         rand1 = Field.from_random('normal', domain=space)
         rand2 = Field.from_random('normal', domain=space)
         tt1 = rand1.vdot(op.inverse_times(rand2))
         tt2 = rand2.vdot(op.inverse_adjoint_times(rand1))
-        assert_approx_equal(tt1, tt2)
+        assert_allclose(tt1, tt2)
 
     @expand(product([128, 256], [1, 0.4], [0., 1.,  3.7],
                     [np.float64, np.complex128]))
