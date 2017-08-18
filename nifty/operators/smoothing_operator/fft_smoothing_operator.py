@@ -17,7 +17,7 @@ class FFTSmoothingOperator(SmoothingOperator):
                                                 default_spaces=default_spaces)
         self._transformator_cache = {}
 
-    def _smooth(self, x, spaces, inverse):
+    def _smooth(self, x, spaces):
         # transform to the (global-)default codomain and perform all remaining
         # steps therein
         transformator = self._get_transformator(x.dtype)
@@ -46,13 +46,7 @@ class FFTSmoothingOperator(SmoothingOperator):
                     for i in xrange(len(transformed_x.shape))]
         local_kernel = np.reshape(local_kernel, reshaper)
 
-        # apply the kernel
-        if inverse:
-            # avoid zeroes in the kernel to work around divisions by zero
-            local_kernel = np.maximum(1e-12,local_kernel)
-            local_transformed_x /= local_kernel
-        else:
-            local_transformed_x *= local_kernel
+        local_transformed_x *= local_kernel
 
         transformed_x.val.set_local_data(local_transformed_x, copy=False)
 

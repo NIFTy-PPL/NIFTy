@@ -69,15 +69,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
         tt1 = op.times(rand1)
         assert_allclose(1, tt1.sum())
 
-    @expand(product(spaces, [0., .5, 5.]))
-    def test_inverse_adjoint_times(self, space, sigma):
-        op = SmoothingOperator(space, sigma=sigma)
-        rand1 = Field.from_random('normal', domain=space)
-        rand2 = Field.from_random('normal', domain=space)
-        tt1 = rand1.vdot(op.inverse_times(rand2))
-        tt2 = rand2.vdot(op.inverse_adjoint_times(rand1))
-        assert_allclose(tt1, tt2)
-
     @expand(product([128, 256], [1, 0.4], [0., 1.,  3.7],
                     [np.float64, np.complex128]))
     def test_smooth_regular1(self, sz, d, sigma, tp):

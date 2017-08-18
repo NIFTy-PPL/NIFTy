@@ -138,19 +138,6 @@ class SmoothingOperator(EndomorphicOperator):
         self._sigma = sigma
         self._log_distances = log_distances
 
-    def _inverse_times(self, x, spaces):
-        if self.sigma == 0:
-            return x.copy()
-
-        # the domain of the smoothing operator contains exactly one space.
-        # Hence, if spaces is None, but we passed LinearOperator's
-        # _check_input_compatibility, we know that x is also solely defined
-        # on that space
-        if spaces is None:
-            spaces = (0,)
-
-        return self._smooth(x, spaces, inverse=True)
-
     def _times(self, x, spaces):
         if self.sigma == 0:
             return x.copy()
@@ -162,7 +149,7 @@ class SmoothingOperator(EndomorphicOperator):
         if spaces is None:
             spaces = (0,)
 
-        return self._smooth(x, spaces, inverse=False)
+        return self._smooth(x, spaces)
 
     # ---Mandatory properties and methods---
     @property
@@ -188,5 +175,5 @@ class SmoothingOperator(EndomorphicOperator):
         return self._log_distances
 
     @abc.abstractmethod
-    def _smooth(self, x, spaces, inverse):
+    def _smooth(self, x, spaces):
         raise NotImplementedError

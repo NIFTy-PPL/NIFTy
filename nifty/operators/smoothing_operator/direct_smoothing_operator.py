@@ -132,7 +132,7 @@ class DirectSmoothingOperator(SmoothingOperator):
 
         return outarr
 
-    def _smooth(self, x, spaces, inverse):
+    def _smooth(self, x, spaces):
         # infer affected axes
         # we rely on the knowledge, that `spaces` is a tuple with length 1.
         affected_axes = x.domain_axes[spaces[0]]
@@ -203,18 +203,13 @@ class DirectSmoothingOperator(SmoothingOperator):
         # currently only one axis is supported
         data_axis = affected_axes[0]
 
-        if inverse:
-            true_sigma = 1. / self.sigma
-        else:
-            true_sigma = self.sigma
-
         local_result = self._apply_along_axis(
                               data_axis,
                               augmented_data,
                               startindex=true_start,
                               endindex=true_end,
                               distances=augmented_distance_array,
-                              smooth_length=true_sigma,
+                              smooth_length=self.sigma,
                               smoothing_width=self.effective_smoothing_width)
 
         result = x.copy_empty()
