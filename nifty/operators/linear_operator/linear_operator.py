@@ -62,12 +62,6 @@ class LinearOperator(Loggable, object):
     the LinearOperator. A LinearOperator must have the attributes domain,
     target and unitary to be properly defined.
 
-    See Also
-    --------
-    EndomorphicOperator, ProjectionOperator,
-    DiagonalOperator, SmoothingOperator, ResponseOperator,
-    PropagatorOperator, ComposedOperator
-
     """
 
     __metaclass__ = NiftyMeta

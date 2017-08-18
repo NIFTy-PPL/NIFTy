@@ -37,7 +37,7 @@ class FFTSmoothingOperator(SmoothingOperator):
             inplace=True)
 
         # now, apply the kernel to transformed_x
-        # this is done node-locally utilizing numpys reshaping in order to
+        # this is done node-locally utilizing numpy's reshaping in order to
         # apply the kernel to the correct axes
         local_transformed_x = transformed_x.val.get_local_data(copy=False)
         local_kernel = kernel.get_local_data(copy=False)

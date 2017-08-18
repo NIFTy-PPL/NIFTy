@@ -81,12 +81,6 @@ class SmoothingOperator(EndomorphicOperator):
     <distributed_data_object>
     array([ 3.,  3.,  3.,  3.,  3.])
 
-    See Also
-    --------
-    DiagonalOperator, SmoothingOperator,
-    PropagatorOperator, ProjectionOperator,
-    ComposedOperator
-
     """
 
     _fft_smoothing_spaces = [RGSpace,
