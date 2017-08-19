@@ -33,38 +33,18 @@ class DescentMinimizer(Minimizer):
 
     Parameters
     ----------
+    controller : IterationController
+        Object that decides when to terminate the minimization.
     line_searcher : callable *optional*
         Function which infers the step size in the descent direction
         (default : LineSearchStrongWolfe()).
-    callback : callable *optional*
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed. (default: None)
-
-    Attributes
-    ----------
-    line_searcher : LineSearch
-        Function which infers the optimal step size for functional minization
-        given a descent direction.
-    callback : function
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed.
-
-    Notes
-    ------
-    The callback function can be used to externally stop the minimization by
-    raising a `StopIteration` exception.
-    Check `get_descent_direction` of a derived class for information on the
-    concrete minization scheme.
 
     """
 
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
         super(DescentMinimizer, self).__init__()
-
-        self.line_searcher = line_searcher
         self._controller = controller
+        self.line_searcher = line_searcher
 
     def __call__(self, energy):
         """ Performs the minimization of the provided Energy functional.
@@ -79,18 +59,15 @@ class DescentMinimizer(Minimizer):
         -------
         energy : Energy object
             Latest `energy` of the minimization.
-        convergence : integer
-            Latest convergence level indicating whether the minimization
-            has converged or not.
+        status : integer
+            Can be controller.CONVERGED or controller.ERROR
 
         Note
         ----
         The minimization is stopped if
-            * the callback function raises a `StopIteration` exception,
+            * the controller returns controller.CONVERGED or controller.ERROR,
             * a perfectly flat point is reached,
             * according to the line-search the minimum is found,
-            * the target convergence level is reached,
-            * the iteration limit is reached.
 
         """
 

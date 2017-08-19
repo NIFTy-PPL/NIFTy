@@ -25,7 +25,6 @@ class QuadraticEnergy(Energy):
         return self._Ax - self._b
 
     @property
-    @memo
     def curvature(self):
         return self._A
 

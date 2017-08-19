@@ -26,9 +26,8 @@ class VL_BFGS(DescentMinimizer):
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
                  max_history_length=5):
 
-        super(VL_BFGS, self).__init__(
-                                controller=controller,
-                                line_searcher=line_searcher)
+        super(VL_BFGS, self).__init__(controller=controller,
+                                      line_searcher=line_searcher)
 
         self.max_history_length = max_history_length
 
