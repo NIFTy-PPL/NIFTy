@@ -4,6 +4,8 @@ from nifty.energies.memoization import memo
 
 class QuadraticEnergy(Energy):
     """The Energy for a quadratic form.
+    The most important aspect of this energy is that its curvature must be
+    position-independent.
     """
 
     def __init__(self, position, A, b):

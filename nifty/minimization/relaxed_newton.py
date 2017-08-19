@@ -21,7 +21,6 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class RelaxedNewton(DescentMinimizer):
-
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
         super(RelaxedNewton, self).__init__(
                                 controller=controller,
