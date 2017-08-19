@@ -19,10 +19,10 @@
 from __future__ import division
 import numpy as np
 
-from keepers import Loggable
+from .minimizer import Minimizer
 
 
-class ConjugateGradient(Loggable, object):
+class ConjugateGradient(Minimizer):
     """ Implementation of the Conjugate Gradient scheme.
 
     It is an iterative method for solving a linear system of equations:
@@ -30,43 +30,22 @@ class ConjugateGradient(Loggable, object):
 
     Parameters
     ----------
-    convergence_tolerance : float *optional*
-        Tolerance specifying the case of convergence. (default: 1E-4)
-    convergence_level : integer *optional*
-        Number of times the tolerance must be undershot before convergence
-        is reached. (default: 3)
-    iteration_limit : integer *optional*
-        Maximum number of iterations performed (default: None).
     reset_count : integer *optional*
         Number of iterations after which to restart; i.e., forget previous
         conjugated directions (default: None).
     preconditioner : Operator *optional*
         This operator can be provided which transforms the variables of the
         system to improve the conditioning (default: None).
-    callback : callable *optional*
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed. (default: None)
 
     Attributes
     ----------
-    convergence_tolerance : float
-        Tolerance specifying the case of convergence.
-    convergence_level : integer
-        Number of times the tolerance must be undershot before convergence
-        is reached. (default: 3)
-    iteration_limit : integer
-        Maximum number of iterations performed.
     reset_count : integer
         Number of iterations after which to restart; i.e., forget previous
         conjugated directions.
     preconditioner : function
         This operator can be provided which transforms the variables of the
         system to improve the conditioning (default: None).
-    callback : callable
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed. (default: None)
+    controller : IterationController
 
     References
     ----------
@@ -75,23 +54,13 @@ class ConjugateGradient(Loggable, object):
 
     """
 
-    def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
-                 iteration_limit=None, reset_count=None,
-                 preconditioner=None, callback=None):
-
-        self.convergence_tolerance = np.float(convergence_tolerance)
-        self.convergence_level = np.float(convergence_level)
-
-        if iteration_limit is not None:
-            iteration_limit = int(iteration_limit)
-        self.iteration_limit = iteration_limit
-
+    def __init__(self, controller, reset_count=None, preconditioner=None):
         if reset_count is not None:
             reset_count = int(reset_count)
         self.reset_count = reset_count
 
         self.preconditioner = preconditioner
-        self.callback = callback
+        self._controller = controller
 
     def __call__(self, E):
         """ Runs the conjugate gradient minimization.
@@ -111,6 +80,11 @@ class ConjugateGradient(Loggable, object):
 
         """
 
+        controller = self._controller
+        status = controller.start(E)
+        if status != controller.CONTINUE:
+            return E, status
+
         r = -E.gradient
         if self.preconditioner is not None:
             d = self.preconditioner(r)
@@ -118,26 +92,20 @@ class ConjugateGradient(Loggable, object):
             d = r.copy()
         previous_gamma = (r.vdot(d)).real
         if previous_gamma == 0:
-            self.logger.info("The starting guess is already perfect solution "
-                             "for the inverse problem.")
-            return E, self.convergence_level+1
-
-        convergence = 0
-        iteration_number = 1
-        self.logger.info("Starting conjugate gradient.")
+            return E, controller.CONVERGED
 
         while True:
-            if self.callback is not None:
-                self.callback(E, iteration_number)
-
             q = E.curvature(d)
             alpha = previous_gamma/(d.vdot(q).real)
 
             if not np.isfinite(alpha):
                 self.logger.error("Alpha became infinite! Stopping.")
-                return E, 0
+                return E, controller.ERROR
 
             E = E.at(E.position+d*alpha)
+            status = self._controller.check(E)
+            if status != controller.CONTINUE:
+                return E, status
 
             reset = False
             if alpha < 0:
@@ -155,42 +123,14 @@ class ConjugateGradient(Loggable, object):
                 s = self.preconditioner(r)
             else:
                 s = r.copy()
-            gamma = r.vdot(s).real
 
+            gamma = r.vdot(s).real
             if gamma < 0:
                 self.logger.warn("Positive definiteness of preconditioner "
                                  "violated!")
-
-            beta = max(0, gamma/previous_gamma)
-
-            delta = r.norm()
-
-            self.logger.debug("Iteration : %08u   alpha = %3.1E   "
-                              "beta = %3.1E   delta = %3.1E" %
-                              (iteration_number, alpha, beta, delta))
-
             if gamma == 0:
-                convergence = self.convergence_level+1
-                self.logger.info("Reached infinite convergence.")
-                break
-            elif abs(delta) < self.convergence_tolerance:
-                convergence += 1
-                self.logger.info("Updated convergence level to: %u" %
-                                 convergence)
-                if convergence == self.convergence_level:
-                    self.logger.info("Reached target convergence level.")
-                    break
-            else:
-                convergence = max(0, convergence-1)
+                return E, controller.CONVERGED
 
-            if self.iteration_limit is not None:
-                if iteration_number == self.iteration_limit:
-                    self.logger.warn("Reached iteration limit. Stopping.")
-                    break
+            d = s + d * max(0, gamma/previous_gamma)
 
-            d = s + d * beta
-
-            iteration_number += 1
             previous_gamma = gamma
-
-        return E, convergence

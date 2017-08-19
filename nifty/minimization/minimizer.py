@@ -16,12 +16,33 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from line_searching import *
-from iteration_controller import IterationController
-from default_iteration_controller import DefaultIterationController
-from minimizer import Minimizer
-from conjugate_gradient import ConjugateGradient
-from descent_minimizer import DescentMinimizer
-from steepest_descent import SteepestDescent
-from vl_bfgs import VL_BFGS
-from relaxed_newton import RelaxedNewton
+import abc
+from nifty.nifty_meta import NiftyMeta
+
+import numpy as np
+
+from keepers import Loggable
+
+class Minimizer(Loggable, object):
+    """ A base class used by all minimizers.
+    """
+    __metaclass__ = NiftyMeta
+
+    @abc.abstractmethod
+    def __call__(self, energy):
+        """ Performs the minimization of the provided Energy functional.
+
+        Parameters
+        ----------
+        energy : Energy object
+           Energy object which provides value, gradient and curvature at a
+           specific position in parameter space.
+
+        Returns
+        -------
+        energy : Energy object
+            Latest `energy` of the minimization.
+        status : integer
+        """
+
+        raise NotImplementedError

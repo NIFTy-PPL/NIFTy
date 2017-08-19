@@ -23,16 +23,12 @@ from .line_searching import LineSearchStrongWolfe
 
 
 class VL_BFGS(DescentMinimizer):
-    def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
-                 convergence_tolerance=1E-4, convergence_level=3,
-                 iteration_limit=None, max_history_length=5):
+    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
+                 max_history_length=5):
 
         super(VL_BFGS, self).__init__(
-                                line_searcher=line_searcher,
-                                callback=callback,
-                                convergence_tolerance=convergence_tolerance,
-                                convergence_level=convergence_level,
-                                iteration_limit=iteration_limit)
+                                controller=controller,
+                                line_searcher=line_searcher)
 
         self.max_history_length = max_history_length
 
