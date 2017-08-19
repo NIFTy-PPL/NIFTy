@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from nifty.nifty_meta import NiftyMeta
+from nifty.energies.memoization import memo
 
 from keepers import Loggable
 
@@ -40,7 +41,7 @@ class Energy(Loggable, object):
     value : np.float
         The value of the energy functional at given `position`.
     gradient : Field
-        The gradient at given `position` in parameter direction.
+        The gradient at given `position`.
     curvature : LinearOperator, callable
         A positive semi-definite operator or function describing the curvature
         of the potential at the given `position`.
@@ -109,11 +110,31 @@ class Energy(Loggable, object):
     @property
     def gradient(self):
         """
-        The gradient at given `position` in parameter direction.
+        The gradient at given `position`.
 
         """
 
         raise NotImplementedError
+
+    @property
+    @memo
+    def gradient_norm(self):
+        """
+        The length of the gradient at given `position`.
+
+        """
+
+        return self.gradient.norm()
+
+    @property
+    @memo
+    def gradient_infnorm(self):
+        """
+        The infinity norm of the gradient at given `position`.
+
+        """
+
+        return abs(self.gradient).max()
 
     @property
     def curvature(self):

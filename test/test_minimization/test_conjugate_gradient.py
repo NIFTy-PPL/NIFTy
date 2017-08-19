@@ -1,10 +1,10 @@
 import unittest
 
 import numpy as np
-from numpy.testing import assert_equal, assert_almost_equal
+from numpy.testing import assert_equal, assert_allclose
 
 from nifty import Field, DiagonalOperator, RGSpace, HPSpace
-from nifty import ConjugateGradient
+from nifty import ConjugateGradient, QuadraticEnergy
 
 from test.common import expand
 
@@ -38,10 +38,11 @@ class Test_ConjugateGradient(unittest.TestCase):
         required_result = Field(space, val=1.)
 
         minimizer = ConjugateGradient()
+        energy = QuadraticEnergy(A=covariance, b=required_result,
+                                 position=starting_point)
 
-        (position, convergence) = minimizer(A=covariance, x0=starting_point,
-                                            b=required_result)
+        (energy, convergence) = minimizer(energy)
 
-        assert_almost_equal(position.val.get_full_data(),
+        assert_allclose(energy.position.val.get_full_data(),
                             1./covariance_diagonal.val.get_full_data(),
-                            decimal=3)
+                            rtol=1e-3)

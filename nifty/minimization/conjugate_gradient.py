@@ -90,60 +90,54 @@ class ConjugateGradient(Loggable, object):
             reset_count = int(reset_count)
         self.reset_count = reset_count
 
-        if preconditioner is None:
-            preconditioner = lambda z: z
-
         self.preconditioner = preconditioner
         self.callback = callback
 
-    def __call__(self, A, b, x0):
+    def __call__(self, E):
         """ Runs the conjugate gradient minimization.
-        For `Ax = b` the variable `x` is infered.
 
         Parameters
         ----------
-        A : Operator
-            Operator `A` applicable to a Field.
-        b : Field
-            Result of the operation `A(x)`.
-        x0 : Field
-            Starting guess for the minimization.
+        E : Energy object at the starting point of the iteration.
+            E's curvature operator must be independent of position, otherwise
+            linear conjugate gradient minimization will fail.
 
         Returns
         -------
-        x : Field
-            Latest `x` of the minimization.
+        E : QuadraticEnergy at last point of the iteration
         convergence : integer
             Latest convergence level indicating whether the minimization
             has converged or not.
 
         """
 
-        r = b - A(x0)
-        d = self.preconditioner(r)
+        r = -E.gradient
+        if self.preconditioner is not None:
+            d = self.preconditioner(r)
+        else:
+            d = r.copy()
         previous_gamma = (r.vdot(d)).real
         if previous_gamma == 0:
             self.logger.info("The starting guess is already perfect solution "
                              "for the inverse problem.")
-            return x0, self.convergence_level+1
-        norm_b = np.sqrt((b.vdot(b)).real)
-        x = x0.copy()
+            return E, self.convergence_level+1
+
         convergence = 0
         iteration_number = 1
         self.logger.info("Starting conjugate gradient.")
 
         while True:
             if self.callback is not None:
-                self.callback(x, iteration_number)
+                self.callback(E, iteration_number)
 
-            q = A(d)
-            alpha = previous_gamma/d.vdot(q).real
+            q = E.curvature(d)
+            alpha = previous_gamma/(d.vdot(q).real)
 
             if not np.isfinite(alpha):
                 self.logger.error("Alpha became infinite! Stopping.")
-                return x0, 0
+                return E, 0
 
-            x += d * alpha
+            E = E.at(E.position+d*alpha)
 
             reset = False
             if alpha < 0:
@@ -153,20 +147,23 @@ class ConjugateGradient(Loggable, object):
                 reset += (iteration_number % self.reset_count == 0)
             if reset:
                 self.logger.info("Resetting conjugate directions.")
-                r = b - A(x)
+                r = -E.gradient
             else:
                 r -= q * alpha
 
-            s = self.preconditioner(r)
+            if self.preconditioner is not None:
+                s = self.preconditioner(r)
+            else:
+                s = r.copy()
             gamma = r.vdot(s).real
 
             if gamma < 0:
-                self.logger.warn("Positive definitness of preconditioner "
+                self.logger.warn("Positive definiteness of preconditioner "
                                  "violated!")
 
             beta = max(0, gamma/previous_gamma)
 
-            delta = np.sqrt(gamma)/norm_b
+            delta = r.norm()
 
             self.logger.debug("Iteration : %08u   alpha = %3.1E   "
                               "beta = %3.1E   delta = %3.1E" %
@@ -196,4 +193,4 @@ class ConjugateGradient(Loggable, object):
             iteration_number += 1
             previous_gamma = gamma
 
-        return x, convergence
+        return E, convergence
