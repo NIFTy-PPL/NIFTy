@@ -32,9 +32,6 @@ class ConjugateGradient(Minimizer):
     ----------
     controller : IterationController
         Object that decides when to terminate the minimization.
-    reset_count : integer *optional*
-        Number of iterations after which to restart; i.e., forget previous
-        conjugated directions (default: None).
     preconditioner : Operator *optional*
         This operator can be provided which transforms the variables of the
         system to improve the conditioning (default: None).
@@ -46,9 +43,7 @@ class ConjugateGradient(Minimizer):
 
     """
 
-    def __init__(self, controller, reset_count=None, preconditioner=None):
-        self._reset_count = None if reset_count is None else int(reset_count)
-
+    def __init__(self, controller, preconditioner=None):
         self._preconditioner = preconditioner
         self._controller = controller
 
@@ -92,19 +87,12 @@ class ConjugateGradient(Minimizer):
                 return energy, controller.ERROR
             alpha = previous_gamma/ddotq
 
-            reset = False
             if alpha < 0:
                 self.logger.warn("Positive definiteness of A violated!")
-                reset = True
-            if self._reset_count is not None:
-                reset += (iteration_number % self._reset_count == 0)
-            if reset:
-                self.logger.info("Resetting conjugate directions.")
-                energy = energy.at(energy.position+d*alpha)
-                r = -energy.gradient
-            else:
-                r -= q * alpha
-                energy = energy.at_with_grad(energy.position+d*alpha,-r)
+                return energy, controller.ERROR
+
+            r -= q * alpha
+            energy = energy.at_with_grad(energy.position+d*alpha,-r)
 
             status = self._controller.check(energy)
             if status != controller.CONTINUE:
