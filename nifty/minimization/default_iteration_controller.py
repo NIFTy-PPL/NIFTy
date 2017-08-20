@@ -19,30 +19,34 @@
 from .iteration_controller import IterationController
 
 class DefaultIterationController(IterationController):
-    def __init__ (self, tol_gradnorm=None, convergence_level=1,
-                  iteration_limit=None):
+    def __init__ (self, tol_gradnorm=None, tol_rel_gradnorm=None,
+                  convergence_level=1, iteration_limit=None):
         super(DefaultIterationController, self).__init__()
         self._tol_gradnorm = tol_gradnorm
+        self._tol_rel_gradnorm = tol_rel_gradnorm
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
 
     def start(self, energy):
         self._itcount = -1
         self._ccount = 0
+        if self._tol_rel_gradnorm is not None:
+            self._tol_rel_gradnorm *= energy.gradient_norm
         return self.check(energy)
 
     def check(self, energy):
         self._itcount += 1
-        print "iteration",self._itcount,"gradnorm",energy.gradient_norm,"level",self._ccount
+        print "iteration",self._itcount,"gradnorm",energy.gradient_norm,"level",self._ccount, self._tol_rel_gradnorm
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
                 return self.CONVERGED
         if self._tol_gradnorm is not None:
             if energy.gradient_norm <= self._tol_gradnorm:
                 self._ccount += 1
-            if self._ccount >= self._convergence_level:
-                return self.CONVERGED
-        else:
-            self._ccount = max(0, self._ccount-1)
+        if self._tol_rel_gradnorm is not None:
+            if energy.gradient_norm <= self._tol_rel_gradnorm:
+                self._ccount += 1
+        if self._ccount >= self._convergence_level:
+            return self.CONVERGED
 
         return self.CONTINUE

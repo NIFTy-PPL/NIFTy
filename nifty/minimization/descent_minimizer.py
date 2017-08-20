@@ -75,7 +75,7 @@ class DescentMinimizer(Minimizer):
         controller = self._controller
         status = controller.start(energy)
         if status != controller.CONTINUE:
-            return E, status
+            return energy, status
 
         while True:
             # check if position is at a flat point

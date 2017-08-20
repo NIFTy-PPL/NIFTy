@@ -22,9 +22,8 @@ from .line_searching import LineSearchStrongWolfe
 
 class RelaxedNewton(DescentMinimizer):
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
-        super(RelaxedNewton, self).__init__(
-                                controller=controller,
-                                line_searcher=line_searcher)
+        super(RelaxedNewton, self).__init__(controller=controller,
+                                            line_searcher=line_searcher)
 
         self.line_searcher.preferred_initial_step_size = 1.
 

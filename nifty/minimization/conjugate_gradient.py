@@ -79,7 +79,7 @@ class ConjugateGradient(Minimizer):
         if self._preconditioner is not None:
             d = self._preconditioner(r)
         else:
-            d = r
+            d = r.copy()
         previous_gamma = (r.vdot(d)).real
         if previous_gamma == 0:
             return energy, controller.CONVERGED
@@ -92,11 +92,6 @@ class ConjugateGradient(Minimizer):
                 return energy, controller.ERROR
             alpha = previous_gamma/ddotq
 
-            energy = energy.at(energy.position+d*alpha)
-            status = self._controller.check(energy)
-            if status != controller.CONTINUE:
-                return energy, status
-
             reset = False
             if alpha < 0:
                 self.logger.warn("Positive definiteness of A violated!")
@@ -105,9 +100,15 @@ class ConjugateGradient(Minimizer):
                 reset += (iteration_number % self._reset_count == 0)
             if reset:
                 self.logger.info("Resetting conjugate directions.")
+                energy = energy.at(energy.position+d*alpha)
                 r = -energy.gradient
             else:
                 r -= q * alpha
+                energy = energy.at_with_grad(energy.position+d*alpha,-r)
+
+            status = self._controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
 
             if self._preconditioner is not None:
                 s = self._preconditioner(r)
