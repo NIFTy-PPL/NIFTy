@@ -111,10 +111,12 @@ def generate_posterior_sample(mean, covariance):
     power = S.diagonal().power_analyze()**.5
     mock_signal = power.power_synthesize(real_signal=True)
 
-    noise = N.diagonal(bare=True).val
+    noise = N.diagonal(bare=True)
 
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,
-                                   std=sqrt(noise), dtype=noise.dtype)
+                                   dtype=noise.dtype)
+    mock_noise *= sqrt(noise)
+
     mock_data = R(mock_signal) + mock_noise
 
     mock_j = R.adjoint_times(N.inverse_times(mock_data))
