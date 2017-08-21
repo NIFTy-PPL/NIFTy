@@ -10,13 +10,13 @@ from test.common import expand
 
 spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
 minimizers = [ift.SteepestDescent, ift.RelaxedNewton, ift.VL_BFGS,
-              ift.ConjugateGradient]
+              ift.ConjugateGradient, ift.NonlinearCG]
 
 
 class Test_Minimizers(unittest.TestCase):
 
     @expand(product(minimizers, spaces))
-    def test_minimization(self, minimizer_class, space):
+    def test_quadratic_minimization(self, minimizer_class, space):
         np.random.seed(42)
         starting_point = ift.Field.from_random('normal', domain=space)*10
         covariance_diagonal = ift.Field.from_random(

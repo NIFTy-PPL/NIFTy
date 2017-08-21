@@ -21,6 +21,7 @@ from iteration_controller import IterationController
 from default_iteration_controller import DefaultIterationController
 from minimizer import Minimizer
 from conjugate_gradient import ConjugateGradient
+from nonlinear_cg import NonlinearCG
 from descent_minimizer import DescentMinimizer
 from steepest_descent import SteepestDescent
 from vl_bfgs import VL_BFGS

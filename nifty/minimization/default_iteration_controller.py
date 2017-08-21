@@ -37,7 +37,7 @@ class DefaultIterationController(IterationController):
 
     def check(self, energy):
         self._itcount += 1
-        print "iteration",self._itcount,"gradnorm",energy.gradient_norm,"level",self._ccount, self._tol_rel_gradnorm
+        print "iteration",self._itcount,"gradnorm",energy.gradient_norm,"level",self._ccount, energy.value
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
                 return self.CONVERGED

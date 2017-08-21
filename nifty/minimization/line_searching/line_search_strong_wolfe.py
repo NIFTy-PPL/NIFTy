@@ -121,7 +121,7 @@ class LineSearchStrongWolfe(LineSearch):
             if alpha1 < 0:
                 alpha1 = 1.0
         else:
-            alpha1 = 1.0
+            alpha1 = 1.0/pk.norm()
 
         # start the minimization loop
         for i in xrange(self.max_iterations):
@@ -181,14 +181,15 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 : float
             Value of the energy at the starting point of the line search
             algorithm.
-        phiprime_0 : Field
-            Gradient at the starting point of the line search algorithm.
+        phiprime_0 : float
+            directional derivative at the starting point of the line search
+            algorithm.
         phi_lo : float
             Value of the energy if we perform a step of length alpha_lo in
             descent direction.
-        phiprime_lo : Field
-            Gradient at the nwe position if we perform a step of length
-            alpha_lo in descent direction.
+        phiprime_lo : float
+            directional derivative at the new position if we perform a step of
+            length alpha_lo in descent direction.
         phi_hi : float
             Value of the energy if we perform a step of length alpha_hi in
             descent direction.
