@@ -116,7 +116,7 @@ class LineSearchStrongWolfe(LineSearch):
 
         if self.preferred_initial_step_size is not None:
             alpha1 = self.preferred_initial_step_size
-        elif old_phi_0 is not None and phiprime_0 != 0:
+        elif old_phi_0 is not None:
             alpha1 = min(1.0, 1.01*2*(phi_0 - old_phi_0)/phiprime_0)
             if alpha1 < 0:
                 alpha1 = 1.0

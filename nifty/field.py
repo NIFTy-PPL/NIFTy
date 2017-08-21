@@ -599,6 +599,9 @@ class Field(Loggable, Versionable, object):
 
         if real_power:
             result = result_list[0]
+            if not issubclass(result_val_list[0].dtype.type,
+                              np.complexfloating):
+                result = result.real
         else:
             result = result_list[0] + 1j*result_list[1]
 
@@ -613,9 +616,17 @@ class Field(Loggable, Versionable, object):
             flipped_val = domain[space].hermitianize_inverter(
                                                     x=flipped_val,
                                                     axes=domain_axes[space])
-        flipped_val = flipped_val.conjugate()
-        h = (val + flipped_val)/2.
-        a = val - h
+        # if no flips at all where performed `h` is a real field.
+        # if all spaces use the default implementation of doing nothing when
+        # no flips are applied, one can use `is` to infer this case.
+
+        if flipped_val is val:
+            h = flipped_val.real
+            a = 1j * flipped_val.imag
+        else:
+            flipped_val = flipped_val.conjugate()
+            h = (val + flipped_val)/2.
+            a = val - h
 
         # correct variance
         if preserve_gaussian_variance:
