@@ -73,7 +73,7 @@ class LinearOperator(Loggable, object):
     __metaclass__ = NiftyMeta
 
     def __init__(self, default_spaces=None):
-        self.default_spaces = default_spaces
+        self._default_spaces = default_spaces
 
     @staticmethod
     def _parse_domain(domain):
@@ -118,10 +118,6 @@ class LinearOperator(Loggable, object):
     @property
     def default_spaces(self):
         return self._default_spaces
-
-    @default_spaces.setter
-    def default_spaces(self, spaces):
-        self._default_spaces = utilities.cast_axis_to_tuple(spaces)
 
     def __call__(self, *args, **kwargs):
         return self.times(*args, **kwargs)
@@ -274,8 +270,11 @@ class LinearOperator(Loggable, object):
             raise ValueError(
                 "supplied object is not a `Field`.")
 
-        if spaces is None:
-            spaces = self.default_spaces
+        if spaces is None and self.default_spaces is not None:
+            if not inverse:
+                spaces = self.default_spaces
+            else:
+                spaces = self.default_spaces[::-1]
 
         # sanitize the `spaces` and `types` input
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))

@@ -36,7 +36,7 @@ from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from nifty.spaces.space import Space
-
+from nifty.config import nifty_configuration
 
 class RGSpace(Space):
     """
@@ -100,88 +100,58 @@ class RGSpace(Space):
         self._distances = self._parse_distances(distances)
         self._zerocenter = self._parse_zerocenter(zerocenter)
 
-    def hermitian_decomposition(self, x, axes=None,
-                                preserve_gaussian_variance=False):
-        # compute the hermitian part
-        flipped_x = self._hermitianize_inverter(x, axes=axes)
-        flipped_x = flipped_x.conjugate()
-        # average x and flipped_x.
-        hermitian_part = x + flipped_x
-        hermitian_part /= 2.
+# This code is unused but may be useful to keep around if it is ever needed
+# again in the future ...
 
-        # use subtraction since it is faster than flipping another time
-        anti_hermitian_part = (x-hermitian_part)
+#    def hermitian_fixed_points(self):
+#        dimensions = len(self.shape)
+#        mid_index = np.array(self.shape)//2
+#        ndlist = [1]*dimensions
+#        for k in range(dimensions):
+#            if self.shape[k] % 2 == 0:
+#                ndlist[k] = 2
+#        ndlist = tuple(ndlist)
+#        fixed_points = []
+#        for index in np.ndindex(ndlist):
+#            for k in range(dimensions):
+#                if self.shape[k] % 2 != 0 and self.zerocenter[k]:
+#                    index = list(index)
+#                    index[k] = 1
+#                    index = tuple(index)
+#            fixed_points += [tuple(index * mid_index)]
+#        return fixed_points
 
-        if preserve_gaussian_variance:
-            hermitian_part, anti_hermitian_part = \
-                self._hermitianize_correct_variance(hermitian_part,
-                                                    anti_hermitian_part,
-                                                    axes=axes)
+    def hermitianize_inverter(self, x, axes):
+        if nifty_configuration['harmonic_rg_base'] == 'real':
+            return x
+        else:
+            # calculate the number of dimensions the input array has
+            dimensions = len(x.shape)
+            # prepare the slicing object which will be used for mirroring
+            slice_primitive = [slice(None), ] * dimensions
+            # copy the input data
+            y = x.copy()
 
-        return (hermitian_part, anti_hermitian_part)
+            # flip in the desired directions
+            for k in range(len(axes)):
+                i = axes[k]
+                slice_picker = slice_primitive[:]
+                slice_inverter = slice_primitive[:]
+                if (not self.zerocenter[k]) or self.shape[k] % 2 == 0:
+                    slice_picker[i] = slice(1, None, None)
+                    slice_inverter[i] = slice(None, 0, -1)
+                else:
+                    slice_picker[i] = slice(None)
+                    slice_inverter[i] = slice(None, None, -1)
+                slice_picker = tuple(slice_picker)
+                slice_inverter = tuple(slice_inverter)
 
-    def _hermitianize_correct_variance(self, hermitian_part,
-                                       anti_hermitian_part, axes):
-        # Correct the variance by multiplying sqrt(2)
-        hermitian_part = hermitian_part * np.sqrt(2)
-        anti_hermitian_part = anti_hermitian_part * np.sqrt(2)
-
-        # If the dtype of the input is complex, the fixed points lose the power
-        # of their imaginary-part (or real-part, respectively). Therefore
-        # the factor of sqrt(2) also applies there
-        if not issubclass(hermitian_part.dtype.type, np.complexfloating):
-            # The fixed points of the point inversion must not be averaged.
-            # Hence one must divide out the sqrt(2) again
-            # -> Get the middle index of the array
-            mid_index = np.array(hermitian_part.shape, dtype=np.int) // 2
-            dimensions = mid_index.size
-            # Use ndindex to iterate over all combinations of zeros and the
-            # mid_index in order to correct all fixed points.
-            if axes is None:
-                axes = xrange(dimensions)
-
-            ndlist = [2 if i in axes else 1 for i in xrange(dimensions)]
-            ndlist = tuple(ndlist)
-            for i in np.ndindex(ndlist):
-                temp_index = tuple(i * mid_index)
-                hermitian_part[temp_index] /= np.sqrt(2)
-                anti_hermitian_part[temp_index] /= np.sqrt(2)
-        return hermitian_part, anti_hermitian_part
-
-    def _hermitianize_inverter(self, x, axes):
-        shape = x.shape
-        # calculate the number of dimensions the input array has
-        dimensions = len(shape)
-        # prepare the slicing object which will be used for mirroring
-        slice_primitive = [slice(None), ] * dimensions
-        # copy the input data
-        y = x.copy()
-
-        if axes is None:
-            axes = xrange(dimensions)
-
-        # flip in the desired directions
-        for i in axes:
-            slice_picker = slice_primitive[:]
-            if shape[i] % 2 == 0:
-                slice_picker[i] = slice(1, None, None)
-            else:
-                slice_picker[i] = slice(None)
-            slice_picker = tuple(slice_picker)
-
-            slice_inverter = slice_primitive[:]
-            if shape[i] % 2 == 0:
-                slice_inverter[i] = slice(None, 0, -1)
-            else:
-                slice_inverter[i] = slice(None, None, -1)
-            slice_inverter = tuple(slice_inverter)
-
-            try:
-                y.set_data(to_key=slice_picker, data=y,
-                           from_key=slice_inverter)
-            except(AttributeError):
-                y[slice_picker] = y[slice_inverter]
-        return y
+                try:
+                    y.set_data(to_key=slice_picker, data=y,
+                               from_key=slice_inverter)
+                except(AttributeError):
+                    y[slice_picker] = y[slice_inverter]
+            return y
 
     # ---Mandatory properties and methods---
 
@@ -283,8 +253,38 @@ class RGSpace(Space):
         dists = np.sqrt(dists)
         return dists
 
+    def get_unique_distances(self):
+        dimensions = len(self.shape)
+        if dimensions == 1:  # extra easy
+            maxdist = self.shape[0]//2
+            return np.arange(maxdist+1, dtype=np.float64) * self.distances[0]
+        if np.all(self.distances == self.distances[0]):  # shortcut
+            maxdist = np.asarray(self.shape)//2
+            tmp = np.sum(maxdist*maxdist)
+            tmp = np.zeros(tmp+1, dtype=np.bool)
+            t2 = np.arange(maxdist[0]+1, dtype=np.int64)
+            t2 *= t2
+            for i in range(1, dimensions):
+                t3 = np.arange(maxdist[i]+1, dtype=np.int64)
+                t3 *= t3
+                t2 = np.add.outer(t2, t3)
+            tmp[t2] = True
+            return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
+        else:  # do it the hard way
+            tmp = self.get_distance_array('not').unique()  # expensive!
+            tol = 1e-12*tmp[-1]
+            # remove all points that are closer than tol to their right
+            # neighbors.
+            # I'm appending the last value*2 to the array to treat the
+            # rightmost point correctly.
+            return tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
+
+    def get_natural_binbounds(self):
+        tmp = self.get_unique_distances()
+        return 0.5*(tmp[:-1]+tmp[1:])
+
     def get_fft_smoothing_kernel_function(self, sigma):
-        return lambda x: np.exp(-0.5 * np.pi*np.pi * x*x * sigma*sigma)
+        return lambda x: np.exp(-2. * np.pi*np.pi * x*x * sigma*sigma)
 
     # ---Added properties and methods---
 
@@ -333,6 +333,8 @@ class RGSpace(Space):
     def _parse_zerocenter(self, zerocenter):
         temp = np.empty(len(self.shape), dtype=bool)
         temp[:] = zerocenter
+        if np.any(np.logical_and(temp, np.array(self.shape) % 2)):
+            raise ValueError("All zerocentered axis must have even length!")
         return tuple(temp)
 
     # ---Serialization---

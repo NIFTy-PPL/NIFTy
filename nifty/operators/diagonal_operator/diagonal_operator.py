@@ -21,7 +21,6 @@ import numpy as np
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.basic_arithmetics import log as nifty_log
 from nifty.config import nifty_configuration as gc
 from nifty.field import Field
 from nifty.operators.endomorphic_operator import EndomorphicOperator
@@ -169,89 +168,8 @@ class DiagonalOperator(EndomorphicOperator):
         out : Field
             The inverse of the diagonal of the Operator.
 
-        """        
+        """
         return 1./self.diagonal(bare=bare, copy=False)
-
-    def trace(self, bare=False):
-        """ Returns the trace the operator.
-
-        Parameters
-        ----------
-        bare : boolean
-            Whether the returned Field values should be bare or not.
-
-        Returns
-        -------
-        out : scalar
-            The trace of the Operator.
-
-        """
-        return self.diagonal(bare=bare, copy=False).sum()
-
-    def inverse_trace(self, bare=False):
-        """ Returns the inverse-trace of the operator.
-
-        Parameters
-        ----------
-        bare : boolean
-            Whether the returned Field values should be bare or not.
-
-        Returns
-        -------
-        out : scalar
-            The inverse of the trace of the Operator.
-
-        """
-        return self.inverse_diagonal(bare=bare).sum()
-
-    def trace_log(self):
-        """ Returns the trave-log of the operator.
-
-        Returns
-        -------
-        out : scalar
-            the trace of the logarithm of the Operator.
-
-        """
-        log_diagonal = nifty_log(self.diagonal(copy=False))
-        return log_diagonal.sum()
-
-    def determinant(self):
-        """ Returns the determinant of the operator.
-
-        Returns
-        -------
-        out : scalar
-        out : scalar
-            the determinant of the Operator
-
-        """
-
-        return self.diagonal(copy=False).val.prod()
-
-    def inverse_determinant(self):
-        """ Returns the inverse-determinant of the operator.
-
-        Returns
-        -------
-        out : scalar
-            the inverse-determinant of the Operator
-
-        """
-
-        return 1/self.determinant()
-
-    def log_determinant(self):
-        """ Returns the log-eterminant of the operator.
-
-        Returns
-        -------
-        out : scalar
-            the log-determinant of the Operator
-
-        """
-
-        return np.log(self.determinant())
 
     # ---Mandatory properties and methods---
 
@@ -368,7 +286,7 @@ class DiagonalOperator(EndomorphicOperator):
                 distribution_strategy=axes_local_distribution_strategy)
             local_diagonal = redistr_diagonal_val.get_local_data(copy=False)
 
-        reshaper = [x.shape[i] if i in active_axes else 1
+        reshaper = [x.val.data.shape[i] if i in active_axes else 1
                     for i in xrange(len(x.shape))]
         reshaped_local_diagonal = np.reshape(local_diagonal, reshaper)
 

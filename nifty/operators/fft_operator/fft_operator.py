@@ -117,7 +117,6 @@ class FFTOperator(LinearOperator):
         super(FFTOperator, self).__init__(default_spaces)
 
         # Initialize domain and target
-
         self._domain = self._parse_domain(domain)
         if len(self.domain) != 1:
             raise ValueError("TransformationOperator accepts only exactly one "
@@ -143,17 +142,11 @@ class FFTOperator(LinearOperator):
             backward_class, self.target[0], self.domain[0], module=module)
 
         # Store the dtype information
-        if domain_dtype is None:
-            self.logger.info("Setting domain_dtype to np.complex.")
-            self.domain_dtype = np.complex
-        else:
-            self.domain_dtype = np.dtype(domain_dtype)
+        self.domain_dtype = \
+            None if domain_dtype is None else np.dtype(domain_dtype)
 
-        if target_dtype is None:
-            self.logger.info("Setting target_dtype to np.complex.")
-            self.target_dtype = np.complex
-        else:
-            self.target_dtype = np.dtype(target_dtype)
+        self.target_dtype = \
+            None if target_dtype is None else np.dtype(target_dtype)
 
     def _times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
@@ -173,8 +166,10 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.target[0]
 
+        result_dtype = \
+            new_val.dtype if self.target_dtype is None else self.target_dtype
         result_field = x.copy_empty(domain=result_domain,
-                                    dtype=self.target_dtype)
+                                    dtype=result_dtype)
         result_field.set_val(new_val=new_val, copy=True)
 
         return result_field
@@ -197,8 +192,11 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.domain[0]
 
+        result_dtype = \
+            new_val.dtype if self.domain_dtype is None else self.domain_dtype
+
         result_field = x.copy_empty(domain=result_domain,
-                                    dtype=self.domain_dtype)
+                                    dtype=result_dtype)
         result_field.set_val(new_val=new_val, copy=True)
 
         return result_field

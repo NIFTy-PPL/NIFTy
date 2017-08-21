@@ -250,12 +250,21 @@ class MPIFFT(Transform):
         p = info.plan
         # Load the value into the plan
         if p.has_input:
-            p.input_array[None] = val
+            try:
+                p.input_array[None] = val
+            except ValueError:
+                raise ValueError("Failed to load data into input_array of "
+                                 "FFTW MPI-plan. Maybe the 1D slicing differs"
+                                 "from n-D slicing?")
         # Execute the plan
         p()
 
         if p.has_output:
-            result = p.output_array
+            result = p.output_array.copy()
+            if result.shape != val.shape:
+                raise ValueError("Output shape is different than input shape. "
+                                 "Maybe fftw tries to optimize the "
+                                 "bit-alignment? Try a different array-size.")
         else:
             return None
 
@@ -363,17 +372,6 @@ class MPIFFT(Transform):
                     )
                 inp = local_val[slice_list]
 
-            # This is in order to make FFTW behave properly when slicing input
-            # over MPI ranks when the input is 1-dimensional. The default
-            # behaviour is to optimize to take advantage of byte-alignment,
-            # which doesn't match the slicing strategy for multi-dimensional
-            # data.
-            original_shape = None
-            if len(inp.shape) == 1:
-                original_shape = inp.shape
-                inp = inp.reshape(inp.shape[0], 1)
-                axes = (0, )
-
             if current_info is None:
                 transform_shape = list(inp.shape)
                 transform_shape[0] = val.shape[0]
@@ -398,10 +396,6 @@ class MPIFFT(Transform):
             elif slice_list == [slice(None, None)]:
                 temp_val = result
             else:
-                # Reverting to the original shape i.e. before the input was
-                # augmented with 1 to make FFTW behave properly.
-                if original_shape is not None:
-                    result = result.reshape(original_shape)
                 temp_val[slice_list] = result
 
         return_val.set_local_data(data=temp_val, copy=False)

@@ -32,7 +32,7 @@ from config import dependency_injector,\
 
 from d2o import distributed_data_object, d2o_librarian
 
-from energies import *
+
 
 from field import Field
 
@@ -44,6 +44,8 @@ from nifty_utilities import *
 
 from field_types import *
 
+from energies import *
+
 from minimization import *
 
 from spaces import *
@@ -53,5 +55,7 @@ from operators import *
 from probing import *
 
 from sugar import *
+
+import library
 
 import plotting

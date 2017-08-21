@@ -7,35 +7,33 @@ from nifty.plotting.plots import Heatmap, HPMollweide, GLMollweide
 class Figure2D(FigureFromPlot):
     def __init__(self, plots, title=None, width=None, height=None,
                  xaxis=None, yaxis=None):
-
         if plots is not None:
+            width = width if width is not None else plots[0].default_width()
+            height = \
+                height if height is not None else plots[0].default_height()
+            xaxis = xaxis if xaxis is not None else plots[0].default_axes()[0]
+            yaxis = yaxis if yaxis is not None else plots[0].default_axes()[1]
+
             if isinstance(plots[0], Heatmap) and width is None and \
                height is None:
-                (x, y) = plots[0].data.shape
+                (y, x) = plots[0].data.shape
 
-                if x > y:
-                    width = 500
-                    height = int(500*y/x)
-                else:
-                    height = 500
-                    width = int(500 * y / x)
+                width = 500
+                height = int(500*y/x)
 
                 if isinstance(plots[0], GLMollweide) or \
                    isinstance(plots[0], HPMollweide):
                     xaxis = False if (xaxis is None) else xaxis
                     yaxis = False if (yaxis is None) else yaxis
 
-            else:
-                width = None
-                height = None
-
         super(Figure2D, self).__init__(plots, title, width, height)
         self.xaxis = xaxis
         self.yaxis = yaxis
 
-    def at(self, plots):
+    def at(self, plots, title=None):
+        title = title if title is not None else self.title
         return Figure2D(plots=plots,
-                        title=self.title,
+                        title=title,
                         width=self.width,
                         height=self.height,
                         xaxis=self.xaxis,

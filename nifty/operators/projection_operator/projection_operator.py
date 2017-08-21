@@ -163,3 +163,9 @@ class ProjectionOperator(EndomorphicOperator):
     @property
     def self_adjoint(self):
         return True
+
+    # ---Added properties and methods---
+
+    @property
+    def projection_field(self):
+        return self._projection_field

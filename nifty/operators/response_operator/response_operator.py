@@ -33,8 +33,7 @@ class ResponseOperator(LinearOperator):
     domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
         The domain on which the Operator's input Field lives.
     target : tuple of DomainObjects, i.e. Spaces and FieldTypes
-        The domain in which the outcome of the operator lives. As the Operator
-        is endomorphic this is the same as its domain.
+        The domain in which the outcome of the operator lives.
     unitary : boolean
         Indicates whether the Operator is unitary or not.
 
@@ -67,25 +66,16 @@ class ResponseOperator(LinearOperator):
 
     """
 
-    def __init__(self, domain,
-                 sigma=[1.], exposure=[1.],
+    def __init__(self, domain, sigma=[1.], exposure=[1.],
                  default_spaces=None):
         super(ResponseOperator, self).__init__(default_spaces)
 
         self._domain = self._parse_domain(domain)
 
-        shapes = len(self._domain)*[None]
-        shape_target = []
-        for ii in xrange(len(shapes)):
-            shapes[ii] = self._domain[ii].shape
-            shape_target = np.append(shape_target, self._domain[ii].shape)
-
-        self._target = self._parse_domain(FieldArray(shape_target))
-
         kernel_smoothing = len(self._domain)*[None]
         kernel_exposure = len(self._domain)*[None]
 
-        if len(sigma)!= len(exposure):
+        if len(sigma) != len(exposure):
             raise ValueError("Length of smoothing kernel and length of"
                              "exposure do not match")
 
@@ -97,6 +87,12 @@ class ResponseOperator(LinearOperator):
 
         self._composed_kernel = ComposedOperator(kernel_smoothing)
         self._composed_exposure = ComposedOperator(kernel_exposure)
+
+        target_list = []
+        for space in self.domain:
+            target_list += [FieldArray(space.shape)]
+
+        self._target = self._parse_domain(target_list)
 
     @property
     def domain(self):

@@ -23,7 +23,7 @@ from nifty.field import Field
 
 __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
            'arccosh', 'arcsinh', 'arctan', 'arctanh', 'sqrt', 'exp', 'log',
-           'conjugate']
+           'conjugate', 'clipped_exp', 'limited_exp']
 
 
 def _math_helper(x, function):
@@ -93,6 +93,23 @@ def sqrt(x):
 
 def exp(x):
     return _math_helper(x, np.exp)
+
+
+def clipped_exp(x):
+    return _math_helper(x, lambda z: np.exp(np.minimum(200, z)))
+
+
+def limited_exp(x):
+    thr = 200
+    expthr = np.exp(thr)
+    return _math_helper(x, lambda z: _limited_exp_helper(z, thr, expthr))
+
+
+def _limited_exp_helper(x, thr, expthr):
+    mask = (x > thr)
+    result = np.exp(x)
+    result[mask] = ((1-thr) + x[mask])*expthr
+    return result
 
 
 def log(x, base=None):
