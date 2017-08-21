@@ -84,7 +84,6 @@ class VL_BFGS(DescentMinimizer):
         for i in xrange(1, len(delta)):
             descent_direction += delta[i] * b[i]
 
-        descent_direction *= 1./descent_direction.norm()
         return descent_direction
 
 

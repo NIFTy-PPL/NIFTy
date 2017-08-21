@@ -39,6 +39,4 @@ class SteepestDescent(DescentMinimizer):
 
         """
 
-        res = energy.gradient.copy()
-        res *= -1./res.norm()
-        return res
+        return -energy.gradient

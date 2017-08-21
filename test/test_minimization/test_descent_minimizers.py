@@ -21,7 +21,7 @@ class Test_DescentMinimizers(unittest.TestCase):
 
     @expand([[minimizer] for minimizer in minimizers])
     def test_interface(self, minimizer):
-        iteration_limit = 100
+        iteration_limit = 30
         convergence_level = 4
         convergence_tolerance = 1E-6
         callback = lambda z: z
