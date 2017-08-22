@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import print_function
+
 
 class LineEnergy(object):
     """ Evaluates an underlying Energy along a certain line direction.
@@ -114,6 +116,6 @@ class LineEnergy(object):
     def directional_derivative(self):
         res = self.energy.gradient.vdot(self.line_direction)
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
-            print "directional derivative has non-negligible " \
-                  "imaginary part:", res
+            print ("directional derivative has non-negligible "
+                  "imaginary part:", res)
         return res.real

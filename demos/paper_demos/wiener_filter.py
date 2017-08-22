@@ -57,7 +57,7 @@ if __name__ == "__main__":
     proby = Proby(signal_space, probe_count=800)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))  #|\label{code:wf_variance_fft_wrap}|
 
-    sm = ift.SmoothingOperator(signal_space, sigma=0.03)
+    sm = ift.SmoothingOperator.make(signal_space, sigma=0.03)
     variance = ift.sqrt(sm(proby.diagonal.weight(-1)))  #|\label{code:wf_variance_weighting}|
 
     repo = Repository('repo_800.h5')
