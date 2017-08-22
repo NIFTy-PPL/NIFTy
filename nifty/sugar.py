@@ -16,7 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nifty import Space,\
+import numpy as np
+
+from . import Space,\
                   PowerSpace,\
                   Field,\
                   ComposedOperator,\
@@ -71,6 +73,10 @@ def create_power_operator(domain, power_spectrum, dtype=None,
                distribution_strategy='not')
     f = fp.power_synthesize(mean=1, std=0, real_signal=False,
                             distribution_strategy=distribution_strategy)
+
+    if not issubclass(fp.dtype.type, np.complexfloating):
+        f = f.real
+
     f **= 2
     return DiagonalOperator(domain, diagonal=f, bare=True)
 
@@ -105,10 +111,12 @@ def generate_posterior_sample(mean, covariance):
     power = S.diagonal().power_analyze()**.5
     mock_signal = power.power_synthesize(real_signal=True)
 
-    noise = N.diagonal(bare=True).val
+    noise = N.diagonal(bare=True)
 
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,
-                                   std=sqrt(noise), dtype=noise.dtype)
+                                   dtype=noise.dtype)
+    mock_noise *= sqrt(noise)
+
     mock_data = R(mock_signal) + mock_noise
 
     mock_j = R.adjoint_times(N.inverse_times(mock_data))

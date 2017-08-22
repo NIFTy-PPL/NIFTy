@@ -19,9 +19,10 @@
 from nifty.nifty_meta import NiftyMeta
 
 from keepers import Loggable
+from future.utils import with_metaclass
 
 
-class Energy(Loggable, object):
+class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """ Provides the functional used by minimization schemes.
 
    The Energy object is an implementation of a scalar function including its
@@ -63,15 +64,10 @@ class Energy(Loggable, object):
 
     """
 
-    __metaclass__ = NiftyMeta
-
     def __init__(self, position):
+        super(Energy, self).__init__()
         self._cache = {}
-        try:
-            position = position.copy()
-        except AttributeError:
-            pass
-        self._position = position
+        self._position = position.copy()
 
     def at(self, position):
         """ Initializes and returns a new Energy object at the new position.

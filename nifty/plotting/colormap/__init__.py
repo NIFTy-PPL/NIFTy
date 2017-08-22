@@ -1,2 +1,2 @@
-from colormap import Colormap
-import colormaps
+from .colormap import Colormap
+from . import colormaps

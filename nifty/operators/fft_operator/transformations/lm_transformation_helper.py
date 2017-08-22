@@ -1,10 +1,11 @@
+from __future__ import division
 import numpy as np
 
 
 def buildLm(nr, lmax):
     new_dtype = np.result_type(nr.dtype, np.complex64)
 
-    size = (len(nr)-lmax-1)/2+lmax+1
+    size = (len(nr)-lmax-1)//2+lmax+1
     res = np.zeros([size], dtype=new_dtype)
     res[0:lmax+1] = nr[0:lmax+1]
     res[lmax+1:] = np.sqrt(0.5)*(nr[lmax+1::2] + 1j*nr[lmax+2::2])

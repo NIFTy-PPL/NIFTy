@@ -16,10 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import numpy as np
-from transformation import Transformation
-from rg_transforms import MPIFFT, SerialFFT
-from nifty import RGSpace, nifty_configuration
+from .transformation import Transformation
+from .rg_transforms import MPIFFT, SerialFFT
+from .... import RGSpace, nifty_configuration
 
 
 class RGRGTransformation(Transformation):
@@ -42,6 +43,8 @@ class RGRGTransformation(Transformation):
                                         use_fftw=False)
         else:
             raise ValueError('Unsupported FFT module:' + module)
+
+        self.harmonic_base = nifty_configuration['harmonic_rg_base']
 
     # ---Mandatory properties and methods---
 
@@ -82,8 +85,8 @@ class RGRGTransformation(Transformation):
             zerocenter = temp
 
         # calculate the initialization parameters
-        distances = 1 / (np.array(domain.shape) *
-                         np.array(domain.distances))
+        distances = 1. / (np.array(domain.shape) *
+                          np.array(domain.distances))
 
         new_space = RGSpace(domain.shape,
                             zerocenter=zerocenter,
@@ -144,7 +147,31 @@ class RGRGTransformation(Transformation):
             val = self._transform.domain.weight(val, power=1, axes=axes)
 
         # Perform the transformation
-        Tval = self._transform.transform(val, axes, **kwargs)
+        if self.harmonic_base == 'complex':
+            Tval = self._transform.transform(val, axes, **kwargs)
+        else:
+            if issubclass(val.dtype.type, np.complexfloating):
+                Tval_real = self._transform.transform(val.real, axes,
+                                                      **kwargs)
+                Tval_imag = self._transform.transform(val.imag, axes,
+                                                      **kwargs)
+                if self.codomain.harmonic:
+                    Tval_real.data.real += Tval_real.data.imag
+                    Tval_real.data.imag = \
+                        Tval_imag.data.real + Tval_imag.data.imag
+                else:
+                    Tval_real.data.real -= Tval_real.data.imag
+                    Tval_real.data.imag = \
+                        Tval_imag.data.real - Tval_imag.data.imag
+
+                Tval = Tval_real
+            else:
+                Tval = self._transform.transform(val, axes, **kwargs)
+                if self.codomain.harmonic:
+                    Tval.data.real += Tval.data.imag
+                else:
+                    Tval.data.real -= Tval.data.imag
+                Tval = Tval.real
 
         if not self._transform.codomain.harmonic:
             # correct for inverse fft.

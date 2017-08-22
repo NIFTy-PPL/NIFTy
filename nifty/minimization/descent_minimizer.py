@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import abc
 from nifty.nifty_meta import NiftyMeta
 
@@ -24,9 +25,10 @@ import numpy as np
 from keepers import Loggable
 
 from .line_searching import LineSearchStrongWolfe
+from future.utils import with_metaclass
 
 
-class DescentMinimizer(Loggable, object):
+class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """ A base class used by gradient methods to find a local minimum.
 
     Descent minimization methods are used to find a local minimum of a scalar
@@ -77,8 +79,6 @@ class DescentMinimizer(Loggable, object):
 
     """
 
-    __metaclass__ = NiftyMeta
-
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,
                  iteration_limit=None):
@@ -123,7 +123,6 @@ class DescentMinimizer(Loggable, object):
 
         convergence = 0
         f_k_minus_1 = None
-        step_length = 0
         iteration_number = 1
 
         while True:
@@ -150,7 +149,7 @@ class DescentMinimizer(Loggable, object):
             # compute the step length, which minimizes energy.value along the
             # search direction
             try:
-                step_length, f_k, new_energy = \
+                new_energy = \
                     self.line_searcher.perform_line_search(
                                                    energy=energy,
                                                    pk=descent_direction,
@@ -160,12 +159,10 @@ class DescentMinimizer(Loggable, object):
                         "Stopping because of RuntimeError in line-search")
                 break
 
-            if f_k_minus_1 is None:
-                delta = 1e30
-            else:
-                delta = (abs(f_k-f_k_minus_1) /
-                         max(abs(f_k), abs(f_k_minus_1), 1.))
             f_k_minus_1 = energy.value
+            f_k = new_energy.value
+            delta = (abs(f_k-f_k_minus_1) /
+                     max(abs(f_k), abs(f_k_minus_1), 1.))
             # check if new energy value is bigger than old energy value
             if (new_energy.value - energy.value) > 0:
                 self.logger.info("Line search algorithm returned a new energy "
@@ -174,9 +171,9 @@ class DescentMinimizer(Loggable, object):
 
             energy = new_energy
             # check convergence
-            self.logger.debug("Iteration:%08u step_length=%3.1E "
+            self.logger.debug("Iteration:%08u "
                               "delta=%3.1E energy=%3.1E" %
-                              (iteration_number, step_length, delta,
+                              (iteration_number, delta,
                                energy.value))
             if delta == 0:
                 convergence = self.convergence_level + 2

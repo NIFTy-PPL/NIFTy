@@ -16,14 +16,16 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+#from builtins import str
 import ast
 import numpy as np
 
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.spaces.space import Space
-from nifty.config import nifty_configuration as gc
+from ...spaces.space import Space
+from functools import reduce
+from ...config import nifty_configuration as gc
 
 
 class PowerSpace(Space):

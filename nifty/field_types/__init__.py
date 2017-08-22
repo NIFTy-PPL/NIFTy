@@ -16,5 +16,5 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from field_type import FieldType
-from field_array import FieldArray
+from .field_type import FieldType
+from .field_array import FieldArray

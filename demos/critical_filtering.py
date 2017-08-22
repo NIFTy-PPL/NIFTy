@@ -23,9 +23,9 @@ def plot_parameters(m, t, p, p_d):
     t = t.val.get_full_data().real
     p = p.val.get_full_data().real
     p_d = p_d.val.get_full_data().real
-    pl.plot([go.Heatmap(z=m)], filename='map.html')
+    pl.plot([go.Heatmap(z=m)], filename='map.html', auto_open=False)
     pl.plot([go.Scatter(x=x, y=t), go.Scatter(x=x, y=p),
-             go.Scatter(x=x, y=p_d)], filename="t.html")
+             go.Scatter(x=x, y=p_d)], filename="t.html", auto_open=False)
 
 
 class AdjointFFTResponse(LinearOperator):
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     data_power = log(fft(d).power_analyze(binbounds=p_space.binbounds))
     d_data = d.val.get_full_data().real
     if rank == 0:
-        pl.plot([go.Heatmap(z=d_data)], filename='data.html')
+        pl.plot([go.Heatmap(z=d_data)], filename='data.html', auto_open=False)
 
     #  Minimization strategy
     def convergence_measure(a_energy, iteration):  # returns current energy
@@ -117,9 +117,9 @@ if __name__ == "__main__":
                                convergence_level=1,
                                iteration_limit=5,
                                callback=convergence_measure)
-    minimizer2 = VL_BFGS(convergence_tolerance=1e-4,
+    minimizer2 = VL_BFGS(convergence_tolerance=1e-10,
                          convergence_level=1,
-                         iteration_limit=20,
+                         iteration_limit=30,
                          callback=convergence_measure,
                          max_history_length=20)
     minimizer3 = SteepestDescent(convergence_tolerance=1e-4,

@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-import matplotlib_init
+from . import matplotlib_init
 
 import os
 
@@ -70,11 +70,18 @@ variable_default_distribution_strategy = keepers.Variable(
                                          if z == 'fftw' else True),
                               genus='str')
 
+variable_harmonic_rg_base = keepers.Variable(
+                                'harmonic_rg_base',
+                                ['real', 'complex'],
+                                lambda z: z in ['real', 'complex'],
+                                genus='str')
+
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
                  variables=[variable_fft_module,
                             variable_default_field_dtype,
-                            variable_default_distribution_strategy],
+                            variable_default_distribution_strategy,
+                            variable_harmonic_rg_base],
                  file_name='NIFTy.conf',
                  search_paths=[os.path.expanduser('~') + "/.config/nifty/",
                                os.path.expanduser('~') + "/.config/",

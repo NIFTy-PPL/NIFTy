@@ -2,12 +2,14 @@
 
 import numpy as np
 import nifty as ift
+from nifty import plotting
 
 from keepers import Repository
 
 if __name__ == "__main__":
+    ift.nifty_configuration['default_distribution_strategy'] = 'fftw'
 
-    signal_to_noise = 1.5 # The signal to noise ratioa
+    signal_to_noise = 1.5 # The signal to noise ratio
 
 
     # Setting up parameters    |\label{code:wf_parameters}|
@@ -28,7 +30,7 @@ if __name__ == "__main__":
     harmonic_space_1 = ift.FFTOperator.get_default_codomain(signal_space_1)
     fft_1 = ift.FFTOperator(harmonic_space_1, target=signal_space_1,
                             domain_dtype=np.complex, target_dtype=np.complex)
-    power_space_1 = ift.PowerSpace(harmonic_space_1, distribution_strategy='fftw')
+    power_space_1 = ift.PowerSpace(harmonic_space_1)
 
     mock_power_1 = ift.Field(power_space_1, val=power_spectrum_1,
                              distribution_strategy='not')
@@ -53,7 +55,7 @@ if __name__ == "__main__":
     harmonic_space_2 = ift.FFTOperator.get_default_codomain(signal_space_2)
     fft_2 = ift.FFTOperator(harmonic_space_2, target=signal_space_2,
                             domain_dtype=np.complex, target_dtype=np.complex)
-    power_space_2 = PowerSpace(harmonic_space_2, distribution_strategy='not')
+    power_space_2 = ift.PowerSpace(harmonic_space_2, distribution_strategy='not')
 
     mock_power_2 = ift.Field(power_space_2, val=power_spectrum_2,
                          distribution_strategy='not')
@@ -66,20 +68,18 @@ if __name__ == "__main__":
                                         distribution_strategy='not')
 
     diagonal = mock_power.power_synthesize(spaces=(0, 1), mean=1, std=0,
-                                           real_signal=False,
-                                           distribution_strategy='fftw')**2
+                                           real_signal=False)**2
 
     S = ift.DiagonalOperator(domain=(harmonic_space_1, harmonic_space_2),
                              diagonal=diagonal)
 
 
     np.random.seed(10)
-    mock_signal = fft(mock_power.power_synthesize(real_signal=True,
-                                                  distribution_strategy='fftw'))
+    mock_signal = fft(mock_power.power_synthesize(real_signal=True))
 
     # Setting up a exemplary response
     N1_10 = int(N_pixels_1/10)
-    mask_1 = ift.Field(signal_space_1, val=1., distribution_strategy='fftw')
+    mask_1 = ift.Field(signal_space_1, val=1.)
     mask_1.val[N1_10*7:N1_10*9] = 0.
 
     N2_10 = int(N_pixels_2/10)
@@ -90,16 +90,14 @@ if __name__ == "__main__":
                              sigma=(response_sigma_1, response_sigma_2),
                              exposure=(mask_1, mask_2)) #|\label{code:wf_response}|
     data_domain = R.target
-    R_harmonic = ComposedOperator([fft, R], default_spaces=(0, 1, 0, 1))
+    R_harmonic = ift.ComposedOperator([fft, R], default_spaces=(0, 1, 0, 1))
 
     # Setting up the noise covariance and drawing a random noise realization
     N = ift.DiagonalOperator(data_domain, diagonal=mock_signal.var()/signal_to_noise,
-                             bare=True,
-                             distribution_strategy='fftw')
+                             bare=True)
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                                   std=mock_signal.std()/np.sqrt(signal_to_noise),
-                                  mean=0,
-                                  distribution_strategy='fftw')
+                                  mean=0)
     data = R(mock_signal) + noise #|\label{code:wf_mock_data}|
 
     # Wiener filter
@@ -126,14 +124,14 @@ if __name__ == "__main__":
     repo.commit()
 
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
-    plotter = ift.plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
+    plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
     plotter.figure.xaxis = ift.plotting.Axis(label='Pixel Index')
     plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
 
     plotter.plot.zmin = 0.
     plotter.plot.zmax = 3.
-    sm = ift.SmoothingOperator(plot_space, sigma=0.03)
-    plotter(ift.log(sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), path='uncertainty.html')
+    sm = ift.SmoothingOperator.make(plot_space, sigma=0.03)
+    plotter(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), path='uncertainty.html')
 
     plotter.plot.zmin = np.real(mock_signal.min());
     plotter.plot.zmax = np.real(mock_signal.max());

@@ -14,21 +14,22 @@ before_script:
   - chmod +x ci/*.sh
   - ci/install_basics.sh
   - pip install --upgrade -r ci/requirements.txt
+  - pip3 install --upgrade -r ci/requirements.txt
 
 
 test_min:
   stage: test
   script:
-    - python setup.py build_ext --inplace
     - nosetests -vv
+    - nosetests3 -vv
 
 test_mpi:
   stage: test
   script:
     - ci/install_pyHealpix.sh
     - ci/install_mpi4py.sh
-    - python setup.py build_ext --inplace
     - nosetests -vv
+    - nosetests3 -vv
 
 test_mpi_fftw:
   stage: test
@@ -36,8 +37,8 @@ test_mpi_fftw:
     - ci/install_pyHealpix.sh
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
-    - python setup.py build_ext --inplace
     - nosetests -vv
+    - nosetests3 -vv
 
 test_mpi_fftw_hdf5:
   stage: test
@@ -46,9 +47,10 @@ test_mpi_fftw_hdf5:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - ci/install_h5py.sh
-    - python setup.py build_ext --inplace
     - mpiexec --allow-run-as-root -n 2 nosetests -x
+    - mpiexec --allow-run-as-root -n 2 nosetests3 -x
     - mpiexec --allow-run-as-root -n 4 nosetests -x
+    - mpiexec --allow-run-as-root -n 4 nosetests3 -x
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'

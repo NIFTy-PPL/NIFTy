@@ -1,6 +1,5 @@
-
-from nifty.plotting.descriptors import Axis
-from scatter_plot import ScatterPlot
+from ...descriptors import Axis
+from .scatter_plot import ScatterPlot
 
 
 class Geo(ScatterPlot):

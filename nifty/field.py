@@ -17,9 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+from builtins import zip
+#from builtins import str
+from builtins import range
 
 import ast
-import itertools
 import numpy as np
 
 from keepers import Versionable,\
@@ -28,14 +30,15 @@ from keepers import Versionable,\
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import nifty_configuration as gc
+from .config import nifty_configuration as gc
 
-from nifty.domain_object import DomainObject
+from .domain_object import DomainObject
 
-from nifty.spaces.power_space import PowerSpace
+from .spaces.power_space import PowerSpace
 
-import nifty.nifty_utilities as utilities
-from nifty.random import Random
+from . import nifty_utilities as utilities
+from .random import Random
+from functools import reduce
 
 
 class Field(Loggable, Versionable, object):
@@ -347,7 +350,7 @@ class Field(Loggable, Versionable, object):
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
-            spaces = range(len(self.domain))
+            spaces = list(range(len(self.domain)))
 
         if len(spaces) == 0:
             raise ValueError(
@@ -406,7 +409,6 @@ class Field(Loggable, Versionable, object):
                                   distribution_strategy=distribution_strategy,
                                   logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
-
         power_spectrum = cls._calculate_power_spectrum(
                                 field_val=work_field.val,
                                 pdomain=power_domain,
@@ -437,6 +439,7 @@ class Field(Loggable, Versionable, object):
                             target_shape=field_val.shape,
                             target_strategy=field_val.distribution_strategy,
                             axes=axes)
+
         power_spectrum = pindex.bincount(weights=field_val,
                                          axis=axes)
         rho = pdomain.rho
@@ -462,14 +465,14 @@ class Field(Loggable, Versionable, object):
                     "A slicing distributor shall not be reshaped to "
                     "something non-sliced.")
 
-        semiscaled_shape = [1, ] * len(target_shape)
-        for i in axes:
-            semiscaled_shape[i] = target_shape[i]
+        semiscaled_local_shape = [1, ] * len(target_shape)
+        for i in range(len(axes)):
+            semiscaled_local_shape[axes[i]] = pindex.local_shape[i]
         local_data = pindex.get_local_data(copy=False)
-        semiscaled_local_data = local_data.reshape(semiscaled_shape)
+        semiscaled_local_data = local_data.reshape(semiscaled_local_shape)
         result_obj = pindex.copy_empty(global_shape=target_shape,
                                        distribution_strategy=target_strategy)
-        result_obj.set_full_data(semiscaled_local_data, copy=False)
+        result_obj.data[:] = semiscaled_local_data
 
         return result_obj
 
@@ -478,7 +481,7 @@ class Field(Loggable, Versionable, object):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner
-        domain of this fields domains, using this field as power spectrum.
+        domain of this field's domains, using this field as power spectrum.
 
         Parameters
         ----------
@@ -527,7 +530,7 @@ class Field(Loggable, Versionable, object):
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
 
         if spaces is None:
-            spaces = range(len(self.domain))
+            spaces = list(range(len(self.domain)))
 
         for power_space_index in spaces:
             power_space = self.domain[power_space_index]
@@ -600,6 +603,9 @@ class Field(Loggable, Versionable, object):
 
         if real_power:
             result = result_list[0]
+            if not issubclass(result_val_list[0].dtype.type,
+                              np.complexfloating):
+                result = result.real
         else:
             result = result_list[0] + 1j*result_list[1]
 
@@ -614,9 +620,17 @@ class Field(Loggable, Versionable, object):
             flipped_val = domain[space].hermitianize_inverter(
                                                     x=flipped_val,
                                                     axes=domain_axes[space])
-        flipped_val = flipped_val.conjugate()
-        h = (val + flipped_val)/2.
-        a = val - h
+        # if no flips at all where performed `h` is a real field.
+        # if all spaces use the default implementation of doing nothing when
+        # no flips are applied, one can use `is` to infer this case.
+
+        if flipped_val is val:
+            h = flipped_val.real
+            a = 1j * flipped_val.imag
+        else:
+            flipped_val = flipped_val.conjugate()
+            h = (val + flipped_val)/2.
+            a = val - h
 
         # correct variance
         if preserve_gaussian_variance:
@@ -697,7 +711,7 @@ class Field(Loggable, Versionable, object):
     # ---Properties---
 
     def set_val(self, new_val=None, copy=False):
-        """ Sets the fields distributed_data_object.
+        """ Sets the field's distributed_data_object.
 
         Parameters
         ----------
@@ -811,7 +825,7 @@ class Field(Loggable, Versionable, object):
 
         dim_tuple = tuple(sp.dim for sp in self.domain)
         try:
-            return reduce(lambda x, y: x * y, dim_tuple)
+            return int(reduce(lambda x, y: x * y, dim_tuple))
         except TypeError:
             return 0
 
@@ -870,7 +884,7 @@ class Field(Loggable, Versionable, object):
 
         dtype : type
             The datatype the output shall have. This can be used to override
-            the fields dtype.
+            the field's dtype.
 
         Returns
         -------
@@ -1000,7 +1014,7 @@ class Field(Loggable, Versionable, object):
 
         fast_copyable = True
         try:
-            for i in xrange(len(self.domain)):
+            for i in range(len(self.domain)):
                 if self.domain[i] is not domain[i]:
                     fast_copyable = False
                     break
@@ -1022,7 +1036,7 @@ class Field(Loggable, Versionable, object):
         # repair its class
         new_field.__class__ = self.__class__
         # copy domain, codomain and val
-        for key, value in self.__dict__.items():
+        for key, value in list(self.__dict__.items()):
             if key != '_val':
                 new_field.__dict__[key] = value
             else:
@@ -1059,7 +1073,7 @@ class Field(Loggable, Versionable, object):
 
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
-            spaces = range(len(self.domain))
+            spaces = list(range(len(self.domain)))
 
         for ind, sp in enumerate(self.domain):
             if ind in spaces:
@@ -1192,7 +1206,7 @@ class Field(Loggable, Versionable, object):
     def _contraction_helper(self, op, spaces):
         # build a list of all axes
         if spaces is None:
-            spaces = xrange(len(self.domain))
+            spaces = range(len(self.domain))
         else:
             spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
 
@@ -1212,7 +1226,7 @@ class Field(Loggable, Versionable, object):
             return data
         else:
             return_domain = tuple(self.domain[i]
-                                  for i in xrange(len(self.domain))
+                                  for i in range(len(self.domain))
                                   if i not in spaces)
 
             return_field = Field(domain=return_domain,
@@ -1260,7 +1274,7 @@ class Field(Loggable, Versionable, object):
         if isinstance(other, Field):
             try:
                 assert len(other.domain) == len(self.domain)
-                for index in xrange(len(self.domain)):
+                for index in range(len(self.domain)):
                     assert other.domain[index] == self.domain[index]
             except AssertionError:
                 raise ValueError(
@@ -1388,6 +1402,17 @@ class Field(Loggable, Versionable, object):
 
         return self._binary_helper(other, op='__div__')
 
+    def __truediv__(self, other):
+        """ x.__truediv__(y) <==> x/y
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
+        return self._binary_helper(other, op='__truediv__')
+
     def __rdiv__(self, other):
         """ x.__rdiv__(y) <==> y/x
 
@@ -1398,6 +1423,17 @@ class Field(Loggable, Versionable, object):
         """
 
         return self._binary_helper(other, op='__rdiv__')
+
+    def __rtruediv__(self, other):
+        """ x.__rtruediv__(y) <==> y/x
+
+        See Also
+        --------
+        _builtin_helper
+
+        """
+
+        return self._binary_helper(other, op='__rtruediv__')
 
     def __idiv__(self, other):
         """ x.__idiv__(y) <==> x/=y
