@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 
-from nifty_config import dependency_injector,\
+from .nifty_config import dependency_injector,\
                          nifty_configuration
 
-from d2o_config import d2o_configuration
+from .d2o_config import d2o_configuration

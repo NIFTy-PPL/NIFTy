@@ -16,6 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import print_function
+from __future__ import division
+from builtins import range
 import numpy as np
 
 from .line_search import LineSearch
@@ -116,15 +119,15 @@ class LineSearchStrongWolfe(LineSearch):
 
         if self.preferred_initial_step_size is not None:
             alpha1 = self.preferred_initial_step_size
-        elif old_phi_0 is not None and phiprime_0 != 0:
+        elif old_phi_0 is not None:
             alpha1 = min(1.0, 1.01*2*(phi_0 - old_phi_0)/phiprime_0)
             if alpha1 < 0:
                 alpha1 = 1.0
         else:
-            alpha1 = 1.0
+            alpha1 = 1.0/pk.norm()
 
         # start the minimization loop
-        for i in xrange(self.max_iterations):
+        for i in range(self.max_iterations):
             if alpha1 == 0:
                 self.logger.warn("Increment size became 0.")
                 return le_0.energy
@@ -152,7 +155,7 @@ class LineSearchStrongWolfe(LineSearch):
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, self.max_step_size)
             if alpha1 == self.max_step_size:
-                print "reached max step size, bailing out"
+                print ("reached max step size, bailing out")
                 return le_alpha1.energy
 
             phi_alpha0 = phi_alpha1
@@ -207,7 +210,7 @@ class LineSearchStrongWolfe(LineSearch):
 
         assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
         assert phiprime_lo*(alpha_hi-alpha_lo) < 0.
-        for i in xrange(self.max_zoom_iterations):
+        for i in range(self.max_zoom_iterations):
             # assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
             # assert phiprime_lo*(alpha_hi-alpha_lo)<0.
             delta_alpha = alpha_hi - alpha_lo

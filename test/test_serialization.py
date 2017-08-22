@@ -32,6 +32,10 @@ class SpaceSerializationTests(unittest.TestCase):
             import h5py
         except ImportError:
             raise SkipTest
+        try:
+            os.remove('test.h5')
+        except:
+            pass
         repo = Repository('test.h5')
         repo.add(space, 'space')
         field = Field(space,val=42.)

@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import unittest
 import numpy as np
 
@@ -54,9 +55,9 @@ def _distance_array_helper(index_arr, lmax):
         index_half = index_arr
     else:
         if (index_arr - lmax) % 2 == 0:
-            index_half = (index_arr + lmax)/2
+            index_half = (index_arr + lmax)//2
         else:
-            index_half = (index_arr + lmax + 1)/2
+            index_half = (index_arr + lmax + 1)//2
 
     m = np.ceil(((2*lmax + 1) - np.sqrt((2*lmax + 1)**2 -
                  8*(index_half - lmax)))/2).astype(int)
@@ -105,7 +106,7 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
                 LMSpace(lmax)
         else:
             l = LMSpace(lmax)
-            for key, value in expected.iteritems():
+            for key, value in expected.items():
                 assert_equal(getattr(l, key), value)
 
     def test_hermitianize_inverter(self):

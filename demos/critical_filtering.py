@@ -117,9 +117,9 @@ if __name__ == "__main__":
                                convergence_level=1,
                                iteration_limit=5,
                                callback=convergence_measure)
-    minimizer2 = VL_BFGS(convergence_tolerance=1e-4,
+    minimizer2 = VL_BFGS(convergence_tolerance=1e-10,
                          convergence_level=1,
-                         iteration_limit=20,
+                         iteration_limit=30,
                          callback=convergence_measure,
                          max_history_length=20)
     minimizer3 = SteepestDescent(convergence_tolerance=1e-4,
