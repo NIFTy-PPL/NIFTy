@@ -16,10 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from rgrgtransformation import RGRGTransformation
-from gllmtransformation import GLLMTransformation
-from hplmtransformation import HPLMTransformation
-from lmgltransformation import LMGLTransformation
-from lmhptransformation import LMHPTransformation
+from .rgrgtransformation import RGRGTransformation
+from .gllmtransformation import GLLMTransformation
+from .hplmtransformation import HPLMTransformation
+from .lmgltransformation import LMGLTransformation
+from .lmhptransformation import LMHPTransformation
 
-from transformation_cache import TransformationCache
+from .transformation_cache import TransformationCache

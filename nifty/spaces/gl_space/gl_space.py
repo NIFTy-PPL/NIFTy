@@ -21,8 +21,8 @@ from __future__ import division
 import itertools
 import numpy as np
 
-from nifty.spaces.space import Space
-from nifty.config import dependency_injector as gdi
+from ..space import Space
+from ...config import dependency_injector as gdi
 
 pyHealpix = gdi.get('pyHealpix')
 

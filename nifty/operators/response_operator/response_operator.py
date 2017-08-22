@@ -1,3 +1,4 @@
+from builtins import range
 import numpy as np
 from nifty import Field,\
                   FieldArray
@@ -79,8 +80,8 @@ class ResponseOperator(LinearOperator):
             raise ValueError("Length of smoothing kernel and length of"
                              "exposure do not match")
 
-        for ii in xrange(len(kernel_smoothing)):
-            kernel_smoothing[ii] = SmoothingOperator(self._domain[ii],
+        for ii in range(len(kernel_smoothing)):
+            kernel_smoothing[ii] = SmoothingOperator.make(self._domain[ii],
                                                      sigma=sigma[ii])
             kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
                                                    diagonal=exposure[ii])

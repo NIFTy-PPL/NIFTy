@@ -26,36 +26,34 @@ logger = MPILogger()
 
 # it is important to import config before d2o such that NIFTy is able to
 # pre-create d2o's configuration object with the corrected path
-from config import dependency_injector,\
+from .config import dependency_injector,\
                    nifty_configuration,\
                    d2o_configuration
 
 from d2o import distributed_data_object, d2o_librarian
 
+from .field import Field
 
+from .random import Random
 
-from field import Field
+from .basic_arithmetics import *
 
-from random import Random
+from .nifty_utilities import *
 
-from basic_arithmetics import *
+from .field_types import *
 
-from nifty_utilities import *
+from .energies import *
 
-from field_types import *
+from .minimization import *
 
-from energies import *
+from .spaces import *
 
-from minimization import *
+from .operators import *
 
-from spaces import *
+from .probing import *
 
-from operators import *
+from .sugar import *
 
-from probing import *
+from . import plotting
 
-from sugar import *
-
-import library
-
-import plotting
+from . import library

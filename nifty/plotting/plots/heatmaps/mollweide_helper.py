@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import division
 import numpy as np
 
 
 def mollweide_helper(xsize):
     xsize = int(xsize)
-    ysize = int(xsize/2)
+    ysize = xsize//2
     res = np.full(shape=(ysize, xsize), fill_value=np.nan,
                   dtype=np.float64)
     xc = (xsize-1)*0.5
