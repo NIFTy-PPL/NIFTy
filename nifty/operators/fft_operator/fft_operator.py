@@ -18,14 +18,14 @@
 
 import numpy as np
 
-import nifty.nifty_utilities as utilities
-from nifty.spaces import RGSpace,\
-                         GLSpace,\
-                         HPSpace,\
-                         LMSpace
+from ... import nifty_utilities as utilities
+from ...spaces import RGSpace,\
+                      GLSpace,\
+                      HPSpace,\
+                      LMSpace
 
-from nifty.operators.linear_operator import LinearOperator
-from transformations import RGRGTransformation,\
+from ..linear_operator import LinearOperator
+from .transformations import RGRGTransformation,\
                             LMGLTransformation,\
                             LMHPTransformation,\
                             GLLMTransformation,\

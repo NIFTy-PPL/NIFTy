@@ -1,2 +1,2 @@
-from scatter_plots import *
-from heatmaps import *
+from .scatter_plots import *
+from .heatmaps import *

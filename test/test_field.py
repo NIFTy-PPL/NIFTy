@@ -118,7 +118,7 @@ class Test_Functionality(unittest.TestCase):
         samples = 2000
         ps1 = 0.
         ps2 = 0.
-        for ii in xrange(samples):
+        for ii in range(samples):
             sk = fp.power_synthesize(spaces=(0, 1), real_signal=True)
 
             sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)

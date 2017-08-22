@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import unittest
 import numpy as np
 
@@ -82,7 +83,7 @@ class HPSpaceFunctionalityTests(unittest.TestCase):
                 HPSpace(nside)
         else:
             h = HPSpace(nside)
-            for key, value in expected.iteritems():
+            for key, value in expected.items():
                 assert_equal(getattr(h, key), value)
 
     @expand(get_weight_configs())

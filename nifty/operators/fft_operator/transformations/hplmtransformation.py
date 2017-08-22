@@ -18,11 +18,11 @@
 
 import numpy as np
 
-from nifty.config import dependency_injector as gdi
-from nifty import HPSpace, LMSpace
-from slicing_transformation import SlicingTransformation
+from ....config import dependency_injector as gdi
+from .... import HPSpace, LMSpace
+from .slicing_transformation import SlicingTransformation
 
-import lm_transformation_helper
+from . import lm_transformation_helper
 
 pyHealpix = gdi.get('pyHealpix')
 

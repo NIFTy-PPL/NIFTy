@@ -18,24 +18,24 @@
 
 from __future__ import division
 
-from linear_operator import LinearOperator
+from .linear_operator import LinearOperator
 
-from diagonal_operator import DiagonalOperator
+from .diagonal_operator import DiagonalOperator
 
-from endomorphic_operator import EndomorphicOperator
+from .endomorphic_operator import EndomorphicOperator
 
-from smoothing_operator import *
+from .smoothing_operator import *
 
-from fft_operator import *
+from .fft_operator import *
 
-from invertible_operator_mixin import InvertibleOperatorMixin
+from .invertible_operator_mixin import InvertibleOperatorMixin
 
-from projection_operator import ProjectionOperator
+from .projection_operator import ProjectionOperator
 
-from composed_operator import ComposedOperator
+from .composed_operator import ComposedOperator
 
-from response_operator import ResponseOperator
+from .response_operator import ResponseOperator
 
-from laplace_operator import LaplaceOperator
+from .laplace_operator import LaplaceOperator
 
-from smoothness_operator import SmoothnessOperator
+from .smoothness_operator import SmoothnessOperator
