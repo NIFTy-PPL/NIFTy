@@ -1,7 +1,6 @@
-
-from nifty.spaces.power_space import PowerSpace
-from nifty.operators.endomorphic_operator import EndomorphicOperator
-from nifty.operators.laplace_operator import LaplaceOperator
+from ...spaces.power_space import PowerSpace
+from ..endomorphic_operator import EndomorphicOperator
+from ..laplace_operator import LaplaceOperator
 
 
 class SmoothnessOperator(EndomorphicOperator):

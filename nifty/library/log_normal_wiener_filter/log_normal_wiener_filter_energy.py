@@ -1,8 +1,7 @@
-from nifty.energies.energy import Energy
-from nifty.energies.memoization import memo
-from nifty.library.log_normal_wiener_filter import \
-    LogNormalWienerFilterCurvature
-from nifty.sugar import create_composed_fft_operator
+from ...energies.energy import Energy
+from ...energies.memoization import memo
+from . import LogNormalWienerFilterCurvature
+from ...sugar import create_composed_fft_operator
 
 
 class LogNormalWienerFilterEnergy(Energy):

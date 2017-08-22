@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from nifty.plotting.plotly_wrapper import PlotlyWrapper
+from ..plotly_wrapper import PlotlyWrapper
 
 
 class Axis(PlotlyWrapper):
