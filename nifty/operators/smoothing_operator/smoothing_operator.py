@@ -83,34 +83,6 @@ class SmoothingOperator(EndomorphicOperator):
 
     """
 
-    @staticmethod
-    def make(domain, sigma, log_distances=False, default_spaces=None):
-        _fft_smoothing_spaces = [RGSpace,
-                                 GLSpace,
-                                 HPSpace]
-        _direct_smoothing_spaces = [PowerSpace]
-
-        domain = SmoothingOperator._parse_domain(domain)
-
-        if len(domain) != 1:
-            raise ValueError("SmoothingOperator only accepts exactly one "
-                             "space as input domain.")
-
-        if np.any([isinstance(domain[0], sp)
-                   for sp in _fft_smoothing_spaces]):
-            from .fft_smoothing_operator import FFTSmoothingOperator
-            return FFTSmoothingOperator (domain, sigma, default_spaces)
-
-        elif np.any([isinstance(domain[0], sp)
-                     for sp in _direct_smoothing_spaces]):
-            from .direct_smoothing_operator import DirectSmoothingOperator
-            return DirectSmoothingOperator (domain, sigma, log_distances,\
-                                         default_spaces)
-
-        else:
-            raise NotImplementedError("For the given Space smoothing "
-                                      " is not available.")
-
     # ---Overwritten properties and methods---
     def __init__(self, domain, sigma, log_distances=False,
                  default_spaces=None):

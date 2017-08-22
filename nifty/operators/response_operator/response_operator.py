@@ -3,7 +3,7 @@ import numpy as np
 from nifty import Field,\
                   FieldArray
 from nifty.operators.linear_operator import LinearOperator
-from nifty.operators.smoothing_operator import SmoothingOperator
+from nifty.operators.smoothing_operator import FFTSmoothingOperator
 from nifty.operators.composed_operator import ComposedOperator
 from nifty.operators.diagonal_operator import DiagonalOperator
 
@@ -81,7 +81,7 @@ class ResponseOperator(LinearOperator):
                              "exposure do not match")
 
         for ii in range(len(kernel_smoothing)):
-            kernel_smoothing[ii] = SmoothingOperator.make(self._domain[ii],
+            kernel_smoothing[ii] = FFTSmoothingOperator(self._domain[ii],
                                                      sigma=sigma[ii])
             kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
                                                    diagonal=exposure[ii])
