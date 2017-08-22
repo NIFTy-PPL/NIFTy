@@ -16,7 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nifty.operators.linear_operator import LinearOperator
+from builtins import range
+from ..linear_operator import LinearOperator
 
 
 class ComposedOperator(LinearOperator):
@@ -130,7 +131,7 @@ class ComposedOperator(LinearOperator):
     def _times_helper(self, x, spaces, func):
         space_index = 0
         if spaces is None:
-            spaces = range(len(self.domain))
+            spaces = list(range(len(self.domain)))
         for op in self._operator_store:
             active_spaces = spaces[space_index:space_index+len(op.domain)]
             space_index += len(op.domain)
@@ -141,7 +142,7 @@ class ComposedOperator(LinearOperator):
     def _inverse_times_helper(self, x, spaces, func):
         space_index = 0
         if spaces is None:
-            spaces = range(len(self.target))
+            spaces = list(range(len(self.target)))
         rev_spaces = spaces[::-1]
         for op in reversed(self._operator_store):
             active_spaces = rev_spaces[space_index:space_index+len(op.target)]

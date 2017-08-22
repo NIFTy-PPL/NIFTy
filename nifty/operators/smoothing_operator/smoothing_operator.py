@@ -83,51 +83,43 @@ class SmoothingOperator(EndomorphicOperator):
 
     """
 
-    _fft_smoothing_spaces = [RGSpace,
-                             GLSpace,
-                             HPSpace]
-    _direct_smoothing_spaces = [PowerSpace]
+    @staticmethod
+    def make(domain, sigma, log_distances=False, default_spaces=None):
+        _fft_smoothing_spaces = [RGSpace,
+                                 GLSpace,
+                                 HPSpace]
+        _direct_smoothing_spaces = [PowerSpace]
 
-    def __new__(cls, domain, *args, **kwargs):
-        if cls is SmoothingOperator:
-            domain = cls._parse_domain(domain)
+        domain = SmoothingOperator._parse_domain(domain)
 
-            if len(domain) != 1:
-                raise ValueError("SmoothingOperator only accepts exactly one "
-                                 "space as input domain.")
+        if len(domain) != 1:
+            raise ValueError("SmoothingOperator only accepts exactly one "
+                             "space as input domain.")
 
-            if np.any([isinstance(domain[0], sp)
-                       for sp in cls._fft_smoothing_spaces]):
-                from .fft_smoothing_operator import FFTSmoothingOperator
-                return super(SmoothingOperator, cls).__new__(
-                        FFTSmoothingOperator, domain, *args, **kwargs)
+        if np.any([isinstance(domain[0], sp)
+                   for sp in _fft_smoothing_spaces]):
+            from .fft_smoothing_operator import FFTSmoothingOperator
+            return FFTSmoothingOperator (domain, sigma, default_spaces)
 
-            elif np.any([isinstance(domain[0], sp)
-                         for sp in cls._direct_smoothing_spaces]):
-                from .direct_smoothing_operator import DirectSmoothingOperator
-                return super(SmoothingOperator, cls).__new__(
-                        DirectSmoothingOperator, domain, *args, **kwargs)
+        elif np.any([isinstance(domain[0], sp)
+                     for sp in _direct_smoothing_spaces]):
+            from .direct_smoothing_operator import DirectSmoothingOperator
+            return DirectSmoothingOperator (domain, sigma, log_distances,\
+                                         default_spaces)
 
-            else:
-                raise NotImplementedError("For the given Space smoothing "
-                                          " is not available.")
         else:
-            return super(SmoothingOperator, cls).__new__(cls,
-                                                         domain,
-                                                         *args,
-                                                         **kwargs)
+            raise NotImplementedError("For the given Space smoothing "
+                                      " is not available.")
 
     # ---Overwritten properties and methods---
     def __init__(self, domain, sigma, log_distances=False,
                  default_spaces=None):
         super(SmoothingOperator, self).__init__(default_spaces)
 
-        # # the _parse_domain is already done in the __new__ method
-        # self._domain = self._parse_domain(domain)
-        # if len(self.domain) != 1:
-        #     raise ValueError("SmoothingOperator only accepts exactly one "
-        #                      "space as input domain.")
         self._domain = self._parse_domain(domain)
+        if len(self._domain) != 1:
+            raise ValueError("SmoothingOperator only accepts exactly one "
+                             "space as input domain.")
 
         self._sigma = sigma
         self._log_distances = log_distances

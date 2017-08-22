@@ -4,4 +4,5 @@ apt-get install -y libatlas-base-dev libfftw3-bin libfftw3-dev libfftw3-double3 
 
 git clone -b mpi https://github.com/fredros/pyFFTW.git
 (cd pyFFTW && CC=mpicc python setup.py build_ext install)
+(cd pyFFTW && CC=mpicc python3 setup.py build_ext install)
 rm -rf pyFFTW

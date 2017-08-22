@@ -1,5 +1,7 @@
 # -*- coding: utf8 -*-
 
+from __future__ import division
+from builtins import range
 import numpy as np
 
 from d2o import STRATEGIES
@@ -71,7 +73,7 @@ class DirectSmoothingOperator(SmoothingOperator):
             return power[startindex:endindex]
 
         p_smooth = np.zeros(endindex-startindex, dtype=power.dtype)
-        for i in xrange(startindex, endindex):
+        for i in range(startindex, endindex):
             imin = max(startindex, ibegin[i])
             imax = min(endindex, ibegin[i]+nval[i])
             p_smooth[imin:imax] += (power[i] *
@@ -95,7 +97,7 @@ class DirectSmoothingOperator(SmoothingOperator):
         ind = np.zeros(nd-1, dtype=np.int)
         i = np.zeros(nd, dtype=object)
         shape = arr.shape
-        indlist = np.asarray(range(nd))
+        indlist = np.asarray(list(range(nd)))
         indlist = np.delete(indlist, axis)
         i[axis] = slice(None, None)
         outshape = np.asarray(shape).take(indlist)
