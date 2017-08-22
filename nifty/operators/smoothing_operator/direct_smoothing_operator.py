@@ -6,17 +6,58 @@ import numpy as np
 
 from d2o import STRATEGIES
 
-from .smoothing_operator import SmoothingOperator
+from ..endomorphic_operator import EndomorphicOperator
 
 
-class DirectSmoothingOperator(SmoothingOperator):
+class DirectSmoothingOperator(EndomorphicOperator):
     def __init__(self, domain, sigma, log_distances=False,
                  default_spaces=None):
-        super(DirectSmoothingOperator, self).__init__(domain,
-                                                      sigma,
-                                                      log_distances,
-                                                      default_spaces)
-        self.effective_smoothing_width = 3.01
+        super(DirectSmoothingOperator, self).__init__(default_spaces)
+
+        self._domain = self._parse_domain(domain)
+        if len(self._domain) != 1:
+            raise ValueError("DirectSmoothingOperator only accepts exactly one"
+                             " space as input domain.")
+
+        self._sigma = sigma
+        self._log_distances = log_distances
+        self._effective_smoothing_width = 3.01
+
+    def _times(self, x, spaces):
+        if self.sigma == 0:
+            return x.copy()
+
+        # the domain of the smoothing operator contains exactly one space.
+        # Hence, if spaces is None, but we passed LinearOperator's
+        # _check_input_compatibility, we know that x is also solely defined
+        # on that space
+        if spaces is None:
+            spaces = (0,)
+
+        return self._smooth(x, spaces)
+
+    # ---Mandatory properties and methods---
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def self_adjoint(self):
+        return True
+
+    @property
+    def unitary(self):
+        return False
+
+    # ---Added properties and methods---
+
+    @property
+    def sigma(self):
+        return self._sigma
+
+    @property
+    def log_distances(self):
+        return self._log_distances
 
     def _precompute(self, x, sigma, dxmax=None):
         """ Does precomputations for Gaussian smoothing on a 1D irregular grid.
@@ -45,7 +86,7 @@ class DirectSmoothingOperator(SmoothingOperator):
         """
 
         if dxmax is None:
-            dxmax = self.effective_smoothing_width*sigma
+            dxmax = self._effective_smoothing_width*sigma
 
         x = np.asarray(x)
 
@@ -168,14 +209,14 @@ class DirectSmoothingOperator(SmoothingOperator):
                 start_distance = distance_array[start_index]
                 augmented_start_distance = \
                     (start_distance -
-                     self.effective_smoothing_width*self.sigma)
+                     self._effective_smoothing_width*self.sigma)
                 augmented_start_index = \
                     np.searchsorted(distance_array, augmented_start_distance)
                 true_start = start_index - augmented_start_index
                 end_index = x.val.distributor.local_end
                 end_distance = distance_array[end_index-1]
                 augmented_end_distance = \
-                    (end_distance + self.effective_smoothing_width*self.sigma)
+                    (end_distance + self._effective_smoothing_width*self.sigma)
                 augmented_end_index = \
                     np.searchsorted(distance_array, augmented_end_distance)
                 true_end = true_start + x.val.distributor.local_length
@@ -212,7 +253,7 @@ class DirectSmoothingOperator(SmoothingOperator):
                               endindex=true_end,
                               distances=augmented_distance_array,
                               smooth_length=self.sigma,
-                              smoothing_width=self.effective_smoothing_width)
+                              smoothing_width=self._effective_smoothing_width)
 
         result = x.copy_empty()
         result.val.set_local_data(local_result, copy=False)

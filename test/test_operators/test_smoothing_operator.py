@@ -50,8 +50,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
             raise ValueError
         if op.sigma != sigma:
             raise ValueError
-        if op.log_distances != False:
-            raise ValueError
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_adjoint_times(self, space, sigma):

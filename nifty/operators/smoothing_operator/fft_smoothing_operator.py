@@ -3,21 +3,55 @@
 from builtins import range
 import numpy as np
 
-from nifty.operators.fft_operator import FFTOperator
+from ..endomorphic_operator import EndomorphicOperator
+from ..fft_operator import FFTOperator
 
-from .smoothing_operator import SmoothingOperator
 
-
-class FFTSmoothingOperator(SmoothingOperator):
+class FFTSmoothingOperator(EndomorphicOperator):
 
     def __init__(self, domain, sigma,
                  default_spaces=None):
-        super(FFTSmoothingOperator, self).__init__(
-                                                domain=domain,
-                                                sigma=sigma,
-                                                log_distances=False,
-                                                default_spaces=default_spaces)
+        super(FFTSmoothingOperator, self).__init__(default_spaces)
+
+        self._domain = self._parse_domain(domain)
+        if len(self._domain) != 1:
+            raise ValueError("SmoothingOperator only accepts exactly one "
+                             "space as input domain.")
+
+        self._sigma = sigma
         self._transformator_cache = {}
+
+    def _times(self, x, spaces):
+        if self.sigma == 0:
+            return x.copy()
+
+        # the domain of the smoothing operator contains exactly one space.
+        # Hence, if spaces is None, but we passed LinearOperator's
+        # _check_input_compatibility, we know that x is also solely defined
+        # on that space
+        if spaces is None:
+            spaces = (0,)
+
+        return self._smooth(x, spaces)
+
+    # ---Mandatory properties and methods---
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def self_adjoint(self):
+        return True
+
+    @property
+    def unitary(self):
+        return False
+
+    # ---Added properties and methods---
+
+    @property
+    def sigma(self):
+        return self._sigma
 
     def _smooth(self, x, spaces):
         # transform to the (global-)default codomain and perform all remaining
