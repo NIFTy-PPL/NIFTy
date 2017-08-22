@@ -126,7 +126,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     def test_constructor(self, shape, distances,
                          harmonic, expected):
         x = RGSpace(shape, distances, harmonic)
-        for key, value in expected.iteritems():
+        for key, value in expected.items():
             assert_equal(getattr(x, key), value)
 
     @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),

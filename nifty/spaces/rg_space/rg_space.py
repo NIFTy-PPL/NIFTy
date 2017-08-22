@@ -29,14 +29,17 @@
 
 """
 from __future__ import division
+from builtins import range
+from functools import reduce
 
 import numpy as np
 
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.spaces.space import Space
-from nifty.config import nifty_configuration
+from ..space import Space
+from ...config import nifty_configuration
+
 
 class RGSpace(Space):
     """
@@ -156,7 +159,7 @@ class RGSpace(Space):
 
     @property
     def dim(self):
-        return reduce(lambda x, y: x*y, self.shape)
+        return int(reduce(lambda x, y: x*y, self.shape))
 
     @property
     def total_volume(self):

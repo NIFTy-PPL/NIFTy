@@ -16,9 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import numpy as np
 
-from nifty.spaces.space import Space
+from ..space import Space
 
 
 class HPSpace(Space):

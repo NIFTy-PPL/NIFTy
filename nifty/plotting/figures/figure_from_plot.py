@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# -*- coding: utf-8 -*-
-
-from figure_base import FigureBase
+from .figure_base import FigureBase
 
 
 class FigureFromPlot(FigureBase):

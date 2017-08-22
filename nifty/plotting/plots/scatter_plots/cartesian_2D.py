@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from nifty.plotting.descriptors import Axis
-from cartesian import Cartesian
+from ...descriptors import Axis
+from .cartesian import Cartesian
 
 
 class Cartesian2D(Cartesian):

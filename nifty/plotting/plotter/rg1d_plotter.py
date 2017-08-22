@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import division
 import numpy as np
 
 from nifty.spaces import RGSpace

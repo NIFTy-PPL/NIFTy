@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from abc import abstractmethod
-from scatter_plot import ScatterPlot
+from .scatter_plot import ScatterPlot
 
 
 class Cartesian(ScatterPlot):
