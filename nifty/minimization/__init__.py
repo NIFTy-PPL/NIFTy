@@ -16,13 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from line_searching import *
-from iteration_controller import IterationController
-from default_iteration_controller import DefaultIterationController
-from minimizer import Minimizer
-from conjugate_gradient import ConjugateGradient
-from nonlinear_cg import NonlinearCG
-from descent_minimizer import DescentMinimizer
-from steepest_descent import SteepestDescent
-from vl_bfgs import VL_BFGS
-from relaxed_newton import RelaxedNewton
+from .line_searching import *
+from .iteration_controller import IterationController
+from .default_iteration_controller import DefaultIterationController
+from .minimizer import Minimizer
+from .conjugate_gradient import ConjugateGradient
+from .nonlinear_cg import NonlinearCG
+from .descent_minimizer import DescentMinimizer
+from .steepest_descent import SteepestDescent
+from .vl_bfgs import VL_BFGS
+from .relaxed_newton import RelaxedNewton

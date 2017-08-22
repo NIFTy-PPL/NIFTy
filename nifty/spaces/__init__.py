@@ -16,9 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from gl_space import GLSpace
-from hp_space import HPSpace
-from lm_space import LMSpace
-from power_space import PowerSpace
-from rg_space import RGSpace
-from space import Space
+from .gl_space import GLSpace
+from .hp_space import HPSpace
+from .lm_space import LMSpace
+from .power_space import PowerSpace
+from .rg_space import RGSpace
+from .space import Space

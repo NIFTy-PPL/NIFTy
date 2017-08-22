@@ -16,6 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
+from builtins import range
+from builtins import object
 import numpy as np
 
 from .descent_minimizer import DescentMinimizer
@@ -76,7 +79,7 @@ class VL_BFGS(DescentMinimizer):
         delta = self._information_store.delta
 
         descent_direction = delta[0] * b[0]
-        for i in xrange(1, len(delta)):
+        for i in range(1, len(delta)):
             descent_direction += delta[i] * b[i]
 
         return descent_direction
@@ -149,14 +152,15 @@ class InformationStore(object):
         result = []
         m = self.history_length
         mmax = self.max_history_length
-        k = self.k
 
+        k = self.k
         s = self.s
-        for i in xrange(m):
+
+        for i in range(m):
             result.append(s[(k-m+i) % mmax])
 
         y = self.y
-        for i in xrange(m):
+        for i in range(m):
             result.append(y[(k-m+i) % mmax])
 
         result.append(self.last_gradient)
@@ -183,18 +187,18 @@ class InformationStore(object):
 
         # update the stores
         k1 = (k-1) % mmax
-        for i in xrange(m):
+        for i in range(m):
             kmi = (k-m+i) % mmax
             self.ss[kmi, k1] = self.ss[k1, kmi] = self.s[kmi].vdot(self.s[k1])
             self.yy[kmi, k1] = self.yy[k1, kmi] = self.y[kmi].vdot(self.y[k1])
             self.sy[kmi, k1] = self.s[kmi].vdot(self.y[k1])
-        for j in xrange(m-1):
+        for j in range(m-1):
             kmj = (k-m+j) % mmax
             self.sy[k1, kmj] = self.s[k1].vdot(self.y[kmj])
 
-        for i in xrange(m):
+        for i in range(m):
             kmi = (k-m+i) % mmax
-            for j in xrange(m):
+            for j in range(m):
                 kmj = (k-m+j) % mmax
                 result[i, j] = self.ss[kmi, kmj]
                 result[i, m+j] = result[m+j, i] = self.sy[kmi, kmj]
@@ -228,16 +232,16 @@ class InformationStore(object):
 
         alpha = np.empty(m, dtype=np.float)
 
-        for j in xrange(m-1, -1, -1):
-            delta_b_b = sum([delta[l] * b_dot_b[l, j] for l in xrange(2*m+1)])
+        for j in range(m-1, -1, -1):
+            delta_b_b = sum([delta[l] * b_dot_b[l, j] for l in range(2*m+1)])
             alpha[j] = delta_b_b/b_dot_b[j, m+j]
             delta[m+j] -= alpha[j]
 
-        for i in xrange(2*m+1):
+        for i in range(2*m+1):
             delta[i] *= b_dot_b[m-1, 2*m-1]/b_dot_b[2*m-1, 2*m-1]
 
-        for j in xrange(m):
-            delta_b_b = sum([delta[l]*b_dot_b[m+j, l] for l in xrange(2*m+1)])
+        for j in range(m):
+            delta_b_b = sum([delta[l]*b_dot_b[m+j, l] for l in range(2*m+1)])
             beta = delta_b_b/b_dot_b[j, m+j]
             delta[j] += (alpha[j] - beta)
 

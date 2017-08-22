@@ -16,14 +16,16 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import range
 import abc
 from nifty.nifty_meta import NiftyMeta
 
 import numpy as np
 
 from keepers import Loggable
+from future.utils import with_metaclass
 
-class IterationController(Loggable, object):
+class IterationController(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """The abstract base class for all iteration controllers.
     An iteration controller is an object that monitors the progress of a
     minimization iteration. At the begin of the minimization, its start()
@@ -41,9 +43,7 @@ class IterationController(Loggable, object):
     the information passed to the controller during the iteration process.
     """
 
-    __metaclass__ = NiftyMeta
-
-    CONVERGED, CONTINUE, ERROR = range(3)
+    CONVERGED, CONTINUE, ERROR = list(range(3))
 
     @abc.abstractmethod
     def start(self, energy):

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+from builtins import range
 import numpy as np
 
 from nifty.operators.fft_operator import FFTOperator
@@ -47,7 +49,7 @@ class FFTSmoothingOperator(SmoothingOperator):
         local_kernel = kernel.get_local_data(copy=False)
 
         reshaper = [local_transformed_x.shape[i] if i in coaxes else 1
-                    for i in xrange(len(transformed_x.shape))]
+                    for i in range(len(transformed_x.shape))]
         local_kernel = np.reshape(local_kernel, reshaper)
 
         # apply the kernel

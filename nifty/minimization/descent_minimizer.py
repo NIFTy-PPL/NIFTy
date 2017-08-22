@@ -16,11 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import abc
 import numpy as np
 
 from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
+from future.utils import with_metaclass
 
 
 class DescentMinimizer(Minimizer):

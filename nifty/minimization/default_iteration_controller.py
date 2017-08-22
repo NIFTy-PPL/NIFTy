@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import print_function
 from .iteration_controller import IterationController
 
 class DefaultIterationController(IterationController):
@@ -37,7 +38,7 @@ class DefaultIterationController(IterationController):
 
     def check(self, energy):
         self._itcount += 1
-        print "iteration",self._itcount,"gradnorm",energy.gradient_norm,"level",self._ccount, energy.value
+        print("iteration",self._itcount,"gradnorm",energy.gradient_norm,"level",self._ccount, energy.value)
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
                 return self.CONVERGED

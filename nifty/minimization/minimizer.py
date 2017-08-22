@@ -22,11 +22,11 @@ from nifty.nifty_meta import NiftyMeta
 import numpy as np
 
 from keepers import Loggable
+from future.utils import with_metaclass
 
-class Minimizer(Loggable, object):
+class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """ A base class used by all minimizers.
     """
-    __metaclass__ = NiftyMeta
 
     @abc.abstractmethod
     def __call__(self, energy):

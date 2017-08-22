@@ -16,14 +16,16 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
+from builtins import range
 import numpy as np
 
 from d2o import distributed_data_object,\
                 STRATEGIES as DISTRIBUTION_STRATEGIES
 
-from nifty.config import nifty_configuration as gc
-from nifty.field import Field
-from nifty.operators.endomorphic_operator import EndomorphicOperator
+from ...config import nifty_configuration as gc
+from ...field import Field
+from ..endomorphic_operator import EndomorphicOperator
 
 
 class DiagonalOperator(EndomorphicOperator):
@@ -125,11 +127,11 @@ class DiagonalOperator(EndomorphicOperator):
                                   operation=lambda z: z.adjoint().__mul__)
 
     def _inverse_times(self, x, spaces):
-        return self._times_helper(x, spaces, operation=lambda z: z.__rdiv__)
+        return self._times_helper(x, spaces, operation=lambda z: z.__rtruediv__)
 
     def _adjoint_inverse_times(self, x, spaces):
         return self._times_helper(x, spaces,
-                                  operation=lambda z: z.adjoint().__rdiv__)
+                                  operation=lambda z: z.adjoint().__rtruediv__)
 
     def diagonal(self, bare=False, copy=True):
         """ Returns the diagonal of the Operator.
@@ -269,7 +271,7 @@ class DiagonalOperator(EndomorphicOperator):
         # the one of x, reshape the local data of self and apply it directly
         active_axes = []
         if spaces is None:
-            active_axes = range(len(x.shape))
+            active_axes = list(range(len(x.shape)))
         else:
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
@@ -287,7 +289,7 @@ class DiagonalOperator(EndomorphicOperator):
             local_diagonal = redistr_diagonal_val.get_local_data(copy=False)
 
         reshaper = [x.val.data.shape[i] if i in active_axes else 1
-                    for i in xrange(len(x.shape))]
+                    for i in range(len(x.shape))]
         reshaped_local_diagonal = np.reshape(local_diagonal, reshaper)
 
         # here the actual multiplication takes place
