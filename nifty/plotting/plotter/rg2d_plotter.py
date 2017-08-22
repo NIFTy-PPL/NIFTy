@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 
-from nifty.spaces import RGSpace
-from nifty.plotting.figures import Figure2D
-from nifty.plotting.plots import Heatmap
+from ...spaces import RGSpace
+from ..figures import Figure2D
+from ..plots import Heatmap
 from .plotter_base import PlotterBase
 
 

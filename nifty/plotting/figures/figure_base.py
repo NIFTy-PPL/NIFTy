@@ -2,7 +2,7 @@
 
 import abc
 
-from nifty.plotting.plotly_wrapper import PlotlyWrapper
+from ..plotly_wrapper import PlotlyWrapper
 
 
 class FigureBase(PlotlyWrapper):
