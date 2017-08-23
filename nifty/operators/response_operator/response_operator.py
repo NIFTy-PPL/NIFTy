@@ -1,11 +1,11 @@
 from builtins import range
 import numpy as np
-from nifty import Field,\
-                  FieldArray
-from nifty.operators.linear_operator import LinearOperator
-from nifty.operators.smoothing_operator import FFTSmoothingOperator
-from nifty.operators.composed_operator import ComposedOperator
-from nifty.operators.diagonal_operator import DiagonalOperator
+from ... import Field,\
+                FieldArray
+from ..linear_operator import LinearOperator
+from ..fft_smoothing_operator import FFTSmoothingOperator
+from ..composed_operator import ComposedOperator
+from ..diagonal_operator import DiagonalOperator
 
 
 class ResponseOperator(LinearOperator):

@@ -20,7 +20,7 @@ import abc
 
 from keepers import Loggable
 
-from nifty import LineEnergy
+from ...energies import LineEnergy
 from future.utils import with_metaclass
 
 

@@ -1123,7 +1123,7 @@ class Field(Loggable, Versionable, object):
         else:
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
-            from nifty.operators.diagonal_operator import DiagonalOperator
+            from .operators.diagonal_operator import DiagonalOperator
             diagonal = y.val.conjugate()
             diagonalOperator = DiagonalOperator(domain=y.domain,
                                                 diagonal=diagonal,

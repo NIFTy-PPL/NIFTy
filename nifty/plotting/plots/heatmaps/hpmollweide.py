@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division
-from nifty import dependency_injector as gdi
+from .... import dependency_injector as gdi
 from .heatmap import Heatmap
 import numpy as np
 
-from nifty.plotting.descriptors import Axis
+from ...descriptors import Axis
 
 from .mollweide_helper import mollweide_helper
 
