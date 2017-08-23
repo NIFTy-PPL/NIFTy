@@ -108,7 +108,7 @@ def generate_posterior_sample(mean, covariance):
     R = covariance.R
     N = covariance.N
 
-    power = S.diagonal().power_analyze()**.5
+    power = sqrt(S.diagonal().power_analyze())
     mock_signal = power.power_synthesize(real_signal=True)
 
     noise = N.diagonal(bare=True)
