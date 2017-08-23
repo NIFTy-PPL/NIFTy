@@ -16,12 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import str
+from builtins import range
+from builtins import object
 import numpy as np
 
-from nifty.field import Field
-import nifty.nifty_utilities as utilities
-
-from nifty import nifty_configuration as nc
+from ...field import Field
+from ... import nifty_utilities as utilities
+from ... import nifty_configuration as nc
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 
@@ -91,7 +93,7 @@ class Prober(object):
     def probing_run(self, callee):
         """ controls the generation, evaluation and finalization of probes """
         self.reset()
-        for index in xrange(self.probe_count):
+        for index in range(self.probe_count):
             current_probe = self.get_probe(index)
             pre_result = self.process_probe(callee, current_probe, index)
             self.finish_probe(current_probe, pre_result)

@@ -16,9 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nifty.minimization import ConjugateGradient
-
-from nifty.field import Field
+from builtins import object
+from ...minimization import ConjugateGradient
+from ...field import Field
 
 
 class InvertibleOperatorMixin(object):

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from nifty import dependency_injector as gdi
-from heatmap import Heatmap
+from __future__ import division
+from .... import dependency_injector as gdi
+from .heatmap import Heatmap
 import numpy as np
 
-from nifty.plotting.descriptors import Axis
+from ...descriptors import Axis
 
 from .mollweide_helper import mollweide_helper
 
@@ -41,7 +42,7 @@ class HPMollweide(Heatmap):
         ptg = np.empty((phi.size, 2), dtype=np.float64)
         ptg[:, 0] = theta
         ptg[:, 1] = phi
-        base = pyHealpix.Healpix_Base(int(np.sqrt(x.size/12)), "RING")
+        base = pyHealpix.Healpix_Base(int(np.sqrt(x.size//12)), "RING")
         res[mask] = x[base.ang2pix(ptg)]
         return res
 

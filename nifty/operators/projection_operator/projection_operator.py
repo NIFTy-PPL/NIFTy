@@ -16,11 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import range
 import numpy as np
 
-from nifty.field import Field
-
-from nifty.operators.endomorphic_operator import EndomorphicOperator
+from ...field import Field
+from ..endomorphic_operator import EndomorphicOperator
 
 
 class ProjectionOperator(EndomorphicOperator):
@@ -99,7 +99,7 @@ class ProjectionOperator(EndomorphicOperator):
         # the one of x, reshape the local data of self and apply it directly
         active_axes = []
         if spaces is None:
-            active_axes = range(len(x.shape))
+            active_axes = list(range(len(x.shape)))
         else:
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
@@ -124,10 +124,10 @@ class ProjectionOperator(EndomorphicOperator):
         local_x = x.val.get_local_data(copy=False)
 
         l = len(local_projection_vector.shape)
-        sublist_projector = range(l)
+        sublist_projector = list(range(l))
         sublist_x = np.arange(len(local_x.shape)) + l
 
-        for i in xrange(l):
+        for i in range(l):
             a = active_axes[i]
             sublist_x[a] = i
 

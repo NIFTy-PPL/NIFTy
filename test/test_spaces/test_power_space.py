@@ -25,7 +25,6 @@ from d2o import distributed_data_object
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
 from nifty import PowerSpace, RGSpace, Space, LMSpace
-from types import NoneType
 from test.common import expand
 from itertools import product, chain
 # needed to check wether fftw is available
@@ -111,7 +110,7 @@ def get_weight_configs():
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
         ['harmonic_partner', Space],
-        ['binbounds', NoneType],
+        ['binbounds', type(None)],
         ['pindex', distributed_data_object],
         ['kindex', np.ndarray],
         ['rho', np.ndarray],
@@ -155,7 +154,7 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
                            distribution_strategy=distribution_strategy,
                            logarithmic=logarithmic, nbin=nbin,
                            binbounds=binbounds)
-            for key, value in expected.iteritems():
+            for key, value in expected.items():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)
                 else:

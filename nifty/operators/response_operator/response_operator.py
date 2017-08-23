@@ -1,10 +1,11 @@
+from builtins import range
 import numpy as np
-from nifty import Field,\
-                  FieldArray
-from nifty.operators.linear_operator import LinearOperator
-from nifty.operators.smoothing_operator import SmoothingOperator
-from nifty.operators.composed_operator import ComposedOperator
-from nifty.operators.diagonal_operator import DiagonalOperator
+from ... import Field,\
+                FieldArray
+from ..linear_operator import LinearOperator
+from ..smoothing_operator import SmoothingOperator
+from ..composed_operator import ComposedOperator
+from ..diagonal_operator import DiagonalOperator
 
 
 class ResponseOperator(LinearOperator):
@@ -79,8 +80,8 @@ class ResponseOperator(LinearOperator):
             raise ValueError("Length of smoothing kernel and length of"
                              "exposure do not match")
 
-        for ii in xrange(len(kernel_smoothing)):
-            kernel_smoothing[ii] = SmoothingOperator(self._domain[ii],
+        for ii in range(len(kernel_smoothing)):
+            kernel_smoothing[ii] = SmoothingOperator.make(self._domain[ii],
                                                      sigma=sigma[ii])
             kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
                                                    diagonal=exposure[ii])

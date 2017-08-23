@@ -16,12 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from nifty.nifty_meta import NiftyMeta
+from ..nifty_meta import NiftyMeta
 
 from keepers import Loggable
+from future.utils import with_metaclass
 
 
-class Energy(Loggable, object):
+class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """ Provides the functional used by minimization schemes.
 
    The Energy object is an implementation of a scalar function including its
@@ -62,8 +63,6 @@ class Energy(Loggable, object):
     memo
 
     """
-
-    __metaclass__ = NiftyMeta
 
     def __init__(self, position):
         super(Energy, self).__init__()

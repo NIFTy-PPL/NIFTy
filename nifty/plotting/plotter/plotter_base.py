@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+from builtins import str
+from builtins import zip
+from builtins import range
 import abc
 import os
 import sys
@@ -10,13 +13,14 @@ import d2o
 
 from keepers import Loggable
 
-from nifty.config import dependency_injector as gdi
+from ...config import dependency_injector as gdi
 
-from nifty.spaces.space import Space
-from nifty.field import Field
-import nifty.nifty_utilities as utilities
+from ...spaces.space import Space
+from ...field import Field
+from ... import nifty_utilities as utilities
 
-from nifty.plotting.figures import MultiFigure
+from ..figures import MultiFigure
+from future.utils import with_metaclass
 
 plotly = gdi.get('plotly')
 
@@ -27,10 +31,8 @@ rank = d2o.config.dependency_injector[
         d2o.configuration['mpi_module']].COMM_WORLD.rank
 
 
-class PlotterBase(Loggable, object):
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, interactive=False, path='plot.html'):
+class PlotterBase(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object), {}))):
+    def __init__(self, interactive=False, path='plot.html', title=""):
         if plotly is None:
             raise ImportError("The module plotly is needed but not available.")
         self.interactive = interactive

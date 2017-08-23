@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import next
+from builtins import range
 import numpy as np
 from itertools import product
 
@@ -53,7 +55,7 @@ def get_slice_list(shape, axes):
             raise ValueError("axes(axis) does not match shape.")
         axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
         axes_iterables = \
-            [range(y) for x, y in enumerate(shape) if x not in axes]
+            [list(range(y)) for x, y in enumerate(shape) if x not in axes]
         for index in product(*axes_iterables):
             it_iter = iter(index)
             slice_list = [
@@ -94,7 +96,7 @@ def cast_axis_to_tuple(axis, length=None):
 
 
 def parse_domain(domain):
-    from nifty.domain_object import DomainObject
+    from .domain_object import DomainObject
     if domain is None:
         domain = ()
     elif isinstance(domain, DomainObject):

@@ -17,11 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from nifty.config import dependency_injector as gdi
-from nifty import GLSpace, LMSpace
+from ....config import dependency_injector as gdi
+from .... import GLSpace, LMSpace
 
-from slicing_transformation import SlicingTransformation
-import lm_transformation_helper
+from .slicing_transformation import SlicingTransformation
+from . import lm_transformation_helper
 
 pyHealpix = gdi.get('pyHealpix')
 

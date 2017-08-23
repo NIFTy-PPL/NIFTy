@@ -16,17 +16,19 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import division
 import abc
-from nifty.nifty_meta import NiftyMeta
+from ..nifty_meta import NiftyMeta
 
 import numpy as np
 
 from keepers import Loggable
 
 from .line_searching import LineSearchStrongWolfe
+from future.utils import with_metaclass
 
 
-class DescentMinimizer(Loggable, object):
+class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """ A base class used by gradient methods to find a local minimum.
 
     Descent minimization methods are used to find a local minimum of a scalar
@@ -76,8 +78,6 @@ class DescentMinimizer(Loggable, object):
     concrete minization scheme.
 
     """
-
-    __metaclass__ = NiftyMeta
 
     def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
                  convergence_tolerance=1E-4, convergence_level=3,

@@ -18,7 +18,7 @@
 
 import numpy as np
 
-from nifty import Space,\
+from . import Space,\
                   PowerSpace,\
                   Field,\
                   ComposedOperator,\
