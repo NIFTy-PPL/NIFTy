@@ -1,8 +1,8 @@
-from nifty.operators import EndomorphicOperator,\
+from ...operators import EndomorphicOperator,\
                             InvertibleOperatorMixin
-from nifty.energies.memoization import memo
-from nifty.basic_arithmetics import clipped_exp
-from nifty.sugar import create_composed_fft_operator
+from ...energies.memoization import memo
+from ...basic_arithmetics import clipped_exp
+from ...sugar import create_composed_fft_operator
 
 
 class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,

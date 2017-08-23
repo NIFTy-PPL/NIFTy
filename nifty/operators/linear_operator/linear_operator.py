@@ -18,11 +18,11 @@
 
 from builtins import str
 import abc
-from nifty.nifty_meta import NiftyMeta
+from ...nifty_meta import NiftyMeta
 
 from keepers import Loggable
-from nifty.field import Field
-import nifty.nifty_utilities as utilities
+from ...field import Field
+from ... import nifty_utilities as utilities
 from future.utils import with_metaclass
 
 

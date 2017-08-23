@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import abc
-from nifty.plotting.plotly_wrapper import PlotlyWrapper
-from nifty.plotting.descriptors import Marker,\
-                                       Line
+from ...plotly_wrapper import PlotlyWrapper
+from ...descriptors import Marker,\
+                           Line
 
 
 class ScatterPlot(PlotlyWrapper):

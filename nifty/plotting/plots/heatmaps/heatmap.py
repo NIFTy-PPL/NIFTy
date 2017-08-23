@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from nifty.plotting.descriptors import Axis
-from nifty.plotting.colormap import Colormap
-from nifty.plotting.plotly_wrapper import PlotlyWrapper
+from ...descriptors import Axis
+from ...colormap import Colormap
+from ...plotly_wrapper import PlotlyWrapper
 
 
 class Heatmap(PlotlyWrapper):
