@@ -3,7 +3,7 @@ import numpy as np
 from ... import Field,\
                 FieldArray
 from ..linear_operator import LinearOperator
-from ..fft_smoothing_operator import FFTSmoothingOperator
+from ..smoothing_operator import FFTSmoothingOperator
 from ..composed_operator import ComposedOperator
 from ..diagonal_operator import DiagonalOperator
 
