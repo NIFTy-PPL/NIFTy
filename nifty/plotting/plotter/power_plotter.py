@@ -2,11 +2,11 @@
 
 import numpy as np
 
-from nifty.spaces import PowerSpace
+from ...spaces import PowerSpace
 
-from nifty.plotting.descriptors import Axis
-from nifty.plotting.figures import Figure2D
-from nifty.plotting.plots import Cartesian2D
+from ..descriptors import Axis
+from ..figures import Figure2D
+from ..plots import Cartesian2D
 from .plotter_base import PlotterBase
 
 

@@ -1,5 +1,5 @@
-from nifty.operators import EndomorphicOperator,\
-                            InvertibleOperatorMixin
+from ...operators import EndomorphicOperator,\
+                         InvertibleOperatorMixin
 
 
 class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
