@@ -1,5 +1,5 @@
-from nifty.energies.energy import Energy
-from nifty.energies.memoization import memo
+from .energy import Energy
+from .memoization import memo
 
 
 class QuadraticEnergy(Energy):

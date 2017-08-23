@@ -18,7 +18,7 @@
 
 from builtins import range
 import abc
-from nifty.nifty_meta import NiftyMeta
+from ..nifty_meta import NiftyMeta
 
 import numpy as np
 

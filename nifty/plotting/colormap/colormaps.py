@@ -1,4 +1,4 @@
-from nifty.plotting.colormap.colormap import Colormap
+from ..colormap.colormap import Colormap
 
 
 def HighEnergyCmap():

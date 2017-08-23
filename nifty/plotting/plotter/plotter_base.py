@@ -13,13 +13,13 @@ import d2o
 
 from keepers import Loggable
 
-from nifty.config import dependency_injector as gdi
+from ...config import dependency_injector as gdi
 
-from nifty.spaces.space import Space
-from nifty.field import Field
-import nifty.nifty_utilities as utilities
+from ...spaces.space import Space
+from ...field import Field
+from ... import nifty_utilities as utilities
 
-from nifty.plotting.figures import MultiFigure
+from ..figures import MultiFigure
 from future.utils import with_metaclass
 
 plotly = gdi.get('plotly')

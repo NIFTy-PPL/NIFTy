@@ -1,11 +1,10 @@
+from ...energies.energy import Energy
+from ...operators.smoothness_operator import SmoothnessOperator
+from . import CriticalPowerCurvature
+from ...energies.memoization import memo
 
-from nifty.energies.energy import Energy
-from nifty.operators.smoothness_operator import SmoothnessOperator
-from nifty.library.critical_filter import CriticalPowerCurvature
-from nifty.energies.memoization import memo
-
-from nifty.sugar import generate_posterior_sample
-from nifty import Field, exp
+from ...sugar import generate_posterior_sample
+from ... import Field, exp
 
 
 class CriticalPowerEnergy(Energy):

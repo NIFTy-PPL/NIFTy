@@ -21,10 +21,9 @@ from builtins import range
 from builtins import object
 import numpy as np
 
-from nifty.field import Field
-import nifty.nifty_utilities as utilities
-
-from nifty import nifty_configuration as nc
+from ...field import Field
+from ... import nifty_utilities as utilities
+from ... import nifty_configuration as nc
 
 from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
 

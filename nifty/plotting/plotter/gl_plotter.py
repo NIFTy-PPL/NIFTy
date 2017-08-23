@@ -1,10 +1,10 @@
 
 import numpy as np
 
-from nifty.spaces import GLSpace
+from ...spaces import GLSpace
 
-from nifty.plotting.figures import Figure2D
-from nifty.plotting.plots import GLMollweide
+from ..figures import Figure2D
+from ..plots import GLMollweide
 from .plotter_base import PlotterBase
 
 

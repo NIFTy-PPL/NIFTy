@@ -19,9 +19,8 @@
 from builtins import range
 import numpy as np
 
-from nifty.field import Field
-
-from nifty.operators.endomorphic_operator import EndomorphicOperator
+from ...field import Field
+from ..endomorphic_operator import EndomorphicOperator
 
 
 class ProjectionOperator(EndomorphicOperator):

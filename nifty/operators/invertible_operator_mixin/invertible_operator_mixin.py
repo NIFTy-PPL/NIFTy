@@ -17,10 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from builtins import object
-from nifty.minimization import ConjugateGradient
-
-from nifty.field import Field
-from nifty.energies import QuadraticEnergy
+from ...energies import QuadraticEnergy
+from ...minimization import ConjugateGradient
+from ...field import Field
 
 
 class InvertibleOperatorMixin(object):
