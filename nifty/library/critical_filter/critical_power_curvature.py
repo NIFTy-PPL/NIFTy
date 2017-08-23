@@ -1,6 +1,6 @@
-from nifty.operators.endomorphic_operator import EndomorphicOperator
-from nifty.operators.invertible_operator_mixin import InvertibleOperatorMixin
-from nifty.operators.diagonal_operator import DiagonalOperator
+from ...operators.endomorphic_operator import EndomorphicOperator
+from ...operators.invertible_operator_mixin import InvertibleOperatorMixin
+from ...operators.diagonal_operator import DiagonalOperator
 
 
 class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):

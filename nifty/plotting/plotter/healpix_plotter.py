@@ -1,7 +1,7 @@
-from nifty.spaces import HPSpace
+from ...spaces import HPSpace
 
-from nifty.plotting.figures import Figure2D
-from nifty.plotting.plots import HPMollweide
+from ..figures import Figure2D
+from ..plots import HPMollweide
 from .plotter_base import PlotterBase
 
 
