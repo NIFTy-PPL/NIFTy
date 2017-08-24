@@ -96,7 +96,7 @@ def cast_axis_to_tuple(axis, length=None):
 
 
 def parse_domain(domain):
-    from nifty.domain_object import DomainObject
+    from .domain_object import DomainObject
     if domain is None:
         domain = ()
     elif isinstance(domain, DomainObject):

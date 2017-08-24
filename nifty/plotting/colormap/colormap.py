@@ -1,6 +1,6 @@
 from __future__ import division
 from builtins import str
-from nifty.plotting.plotly_wrapper import PlotlyWrapper
+from ..plotly_wrapper import PlotlyWrapper
 
 
 class Colormap(PlotlyWrapper):

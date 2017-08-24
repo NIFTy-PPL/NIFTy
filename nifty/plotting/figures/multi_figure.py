@@ -3,7 +3,7 @@
 from builtins import map
 from builtins import str
 import numpy as np
-from nifty import dependency_injector as gdi
+from ... import dependency_injector as gdi
 from .figure_base import FigureBase
 from .figure_3D import Figure3D
 

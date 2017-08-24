@@ -20,13 +20,16 @@ from __future__ import print_function
 from .iteration_controller import IterationController
 
 class DefaultIterationController(IterationController):
-    def __init__ (self, tol_gradnorm=None, tol_rel_gradnorm=None,
-                  convergence_level=1, iteration_limit=None):
+    def __init__ (self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
+                  convergence_level=1, iteration_limit=None, name=None,
+                  verbose=None):
         super(DefaultIterationController, self).__init__()
-        self._tol_gradnorm = tol_gradnorm
+        self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
+        self._name = name
+        self._verbose = verbose
 
     def start(self, energy):
         self._itcount = -1
@@ -38,16 +41,29 @@ class DefaultIterationController(IterationController):
 
     def check(self, energy):
         self._itcount += 1
-        print("iteration",self._itcount,"gradnorm",energy.gradient_norm,"level",self._ccount, energy.value)
-        if self._iteration_limit is not None:
-            if self._itcount >= self._iteration_limit:
-                return self.CONVERGED
-        if self._tol_gradnorm is not None:
-            if energy.gradient_norm <= self._tol_gradnorm:
+
+        if self._tol_abs_gradnorm is not None:
+            if energy.gradient_norm <= self._tol_abs_gradnorm:
                 self._ccount += 1
         if self._tol_rel_gradnorm is not None:
             if energy.gradient_norm <= self._tol_rel_gradnorm_now:
                 self._ccount += 1
+
+        # report
+        if self._verbose:
+            msg = ""
+            if self._name is not None:
+                msg += self._name+":"
+            msg += " Iteration #" + str(self._itcount)
+            msg += " gradnorm=" + str(energy.gradient_norm)
+            msg += " convergence level=" + str(self._ccount)
+            print (msg)
+            self.logger.info(msg)
+
+        # Are we done?
+        if self._iteration_limit is not None:
+            if self._itcount >= self._iteration_limit:
+                return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED
 

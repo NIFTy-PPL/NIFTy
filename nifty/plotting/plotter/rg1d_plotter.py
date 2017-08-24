@@ -3,11 +3,11 @@
 from __future__ import division
 import numpy as np
 
-from nifty.spaces import RGSpace
+from ...spaces import RGSpace
 
-from nifty.plotting.descriptors import Axis
-from nifty.plotting.figures import Figure2D
-from nifty.plotting.plots import Cartesian2D
+from ..descriptors import Axis
+from ..figures import Figure2D
+from ..plots import Cartesian2D
 from .plotter_base import PlotterBase
 
 

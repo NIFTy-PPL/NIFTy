@@ -117,13 +117,13 @@ if __name__ == "__main__":
     # Solving the problem analytically
     m0 = D0.inverse_times(j)
 
-    sample_variance = Field(sh.domain, val=0. + 0j)
-    sample_mean = Field(sh.domain, val=0. + 0j)
+    sample_variance = Field(sh.domain, val=0.)
+    sample_mean = Field(sh.domain, val=0.)
 
     # sampling the uncertainty map
-    n_samples = 1
+    n_samples = 10
     for i in range(n_samples):
-        sample = sugar.generate_posterior_sample(m0, D0)
+        sample = fft(sugar.generate_posterior_sample(0., D0))
         sample_variance += sample**2
         sample_mean += sample
-    variance = sample_variance/n_samples - (sample_mean/n_samples)
+    variance = (sample_variance - sample_mean**2)/n_samples
