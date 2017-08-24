@@ -28,7 +28,7 @@ class LineSearch(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object),
     """Class for determining the optimal step size along some descent direction.
 
     Initialize the line search procedure which can be used by a specific line
-    search method. Its finds the step size in a specific direction in the
+    search method. It finds the step size in a specific direction in the
     minimization process.
 
     Attributes
