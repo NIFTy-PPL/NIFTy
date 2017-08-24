@@ -330,7 +330,7 @@ class Field(Loggable, Versionable, object):
         Returns
         -------
         out : Field
-            The output object. It's domain is a PowerSpace and it contains
+            The output object. Its domain is a PowerSpace and it contains
             the power spectrum of 'self's field.
 
         See Also
