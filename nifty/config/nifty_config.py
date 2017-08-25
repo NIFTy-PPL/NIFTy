@@ -76,12 +76,19 @@ variable_harmonic_rg_base = keepers.Variable(
                                 lambda z: z in ['real', 'complex'],
                                 genus='str')
 
+variable_threads = keepers.Variable(
+                                'threads',
+                                [1],
+                                lambda z: np.int(abs(z)) == z,
+                                genus='int')
+
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
                  variables=[variable_fft_module,
                             variable_default_field_dtype,
                             variable_default_distribution_strategy,
-                            variable_harmonic_rg_base],
+                            variable_harmonic_rg_base,
+                            variable_threads],
                  file_name='NIFTy.conf',
                  search_paths=[os.path.expanduser('~') + "/.config/nifty/",
                                os.path.expanduser('~') + "/.config/",
