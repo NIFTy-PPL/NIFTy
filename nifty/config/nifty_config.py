@@ -82,13 +82,20 @@ variable_threads = keepers.Variable(
                                 lambda z: np.int(abs(z)) == z,
                                 genus='int')
 
+variable_loglevel = keepers.Variable(
+                                'loglevel',
+                                [10],
+                                lambda z: np.int(z) == z and 0 <= z <= 50,
+                                genus='int')
+
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
                  variables=[variable_fft_module,
                             variable_default_field_dtype,
                             variable_default_distribution_strategy,
                             variable_harmonic_rg_base,
-                            variable_threads],
+                            variable_threads,
+                            variable_loglevel],
                  file_name='NIFTy.conf',
                  search_paths=[os.path.expanduser('~') + "/.config/nifty/",
                                os.path.expanduser('~') + "/.config/",
