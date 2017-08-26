@@ -54,7 +54,8 @@ class CriticalPowerEnergy(Energy):
     # ---Overwritten properties and methods---
 
     def __init__(self, position, m, D=None, alpha=1.0, q=0.,
-                 smoothness_prior=0., logarithmic=True, samples=3, w=None):
+                 smoothness_prior=0., logarithmic=True, samples=3, w=None,
+                 old_curvature=None):
         super(CriticalPowerEnergy, self).__init__(position=position)
         self.m = m
         self.D = D
@@ -66,6 +67,8 @@ class CriticalPowerEnergy(Energy):
                                     logarithmic=logarithmic)
         self.rho = self.position.domain[0].rho
         self._w = w if w is not None else None
+        self._old_curvature = old_curvature
+        self._curvature = None
 
     # ---Mandatory properties and methods---
 
@@ -73,9 +76,11 @@ class CriticalPowerEnergy(Energy):
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
                               q=self.q, smoothness_prior=self.smoothness_prior,
                               logarithmic=self.logarithmic,
-                              w=self.w, samples=self.samples)
+                              w=self.w, samples=self.samples,
+                              old_curvature=self._curvature)
 
     @property
+    @memo
     def value(self):
         energy = self._theta.sum()
         energy += self.position.vdot(self._rho_prime, bare=True)
@@ -83,6 +88,7 @@ class CriticalPowerEnergy(Energy):
         return energy.real
 
     @property
+    @memo
     def gradient(self):
         gradient = -self._theta.weight(-1)
         gradient += (self._rho_prime).weight(-1)
@@ -92,9 +98,14 @@ class CriticalPowerEnergy(Energy):
 
     @property
     def curvature(self):
-        curvature = CriticalPowerCurvature(theta=self._theta.weight(-1),
-                                           T=self.T)
-        return curvature
+        if self._curvature is None:
+            if self._old_curvature is None:
+                self._curvature = CriticalPowerCurvature(
+                                        theta=self._theta.weight(-1), T=self.T)
+            else:
+                self._curvature = self._old_curvature.copy(
+                                        theta=self._theta.weight(-1), T=self.T)
+        return self._curvature
 
     # ---Added properties and methods---
 

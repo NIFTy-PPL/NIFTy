@@ -26,7 +26,8 @@ from ... import nifty_utilities as utilities
 from future.utils import with_metaclass
 
 
-class LinearOperator(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
+class LinearOperator(
+        with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """NIFTY base class for linear operators.
 
     The base NIFTY operator class is an abstract class from which
@@ -74,6 +75,20 @@ class LinearOperator(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object
 
     def __init__(self, default_spaces=None):
         self._default_spaces = default_spaces
+
+    def copy(self, **kwargs):
+        class EmptyCopy(self.__class__):
+            def __init__(self):
+                pass
+
+        result = EmptyCopy()
+        result.__class__ = self.__class__
+        result = self._add_attributes_to_copy(result, **kwargs)
+        return result
+
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._default_spaces = self.default_spaces
+        return copy
 
     @staticmethod
     def _parse_domain(domain):
