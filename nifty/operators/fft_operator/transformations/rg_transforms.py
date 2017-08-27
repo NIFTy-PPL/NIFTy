@@ -23,6 +23,7 @@ import warnings
 import numpy as np
 from d2o import distributed_data_object, STRATEGIES
 from ....config import dependency_injector as gdi
+from ....config import nifty_configuration as gc
 from .... import nifty_utilities as utilities
 
 from keepers import Loggable
@@ -337,7 +338,8 @@ class FFTWMPITransfromInfo(FFTWTransformInfo):
             input_dtype='complex128',
             output_dtype='complex128',
             direction='FFTW_FORWARD' if codomain.harmonic else 'FFTW_BACKWARD',
-            flags=["FFTW_ESTIMATE"],
+            flags=['FFTW_ESTIMATE'],
+            threads=gc['threads'],
             **kwargs
         )
 

@@ -82,7 +82,7 @@ class ResponseOperator(LinearOperator):
 
         for ii in range(len(kernel_smoothing)):
             kernel_smoothing[ii] = SmoothingOperator.make(self._domain[ii],
-                                                     sigma=sigma[ii])
+                                                          sigma=sigma[ii])
             kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
                                                    diagonal=exposure[ii])
 
@@ -94,6 +94,15 @@ class ResponseOperator(LinearOperator):
             target_list += [FieldArray(space.shape)]
 
         self._target = self._parse_domain(target_list)
+
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._domain = self._domain
+        copy._target = self._target
+        copy._composed_kernel = self._composed_kernel.copy()
+        copy._composed_exposure = self._composed_exposure.copy()
+        copy = super(DiagonalOperator, self)._add_attributes_to_copy(copy,
+                                                                     **kwargs)
+        return copy
 
     @property
     def domain(self):
