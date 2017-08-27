@@ -117,7 +117,19 @@ class DiagonalOperator(EndomorphicOperator):
                                distribution_strategy=distribution_strategy,
                                val=diagonal)
 
+        self._self_adjoint = None
+        self._unitary = None
         self.set_diagonal(diagonal=diagonal, bare=bare, copy=copy)
+
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._domain = self._domain
+        copy._distribution_strategy = self._distribution_strategy
+        copy.set_diagonal(diagonal=self.diagonal(bare=True), bare=True)
+        copy._self_adjoint = self._self_adjoint
+        copy._unitary = self._unitary
+        copy = super(DiagonalOperator, self)._add_attributes_to_copy(copy,
+                                                                     **kwargs)
+        return copy
 
     def _times(self, x, spaces):
         return self._times_helper(x, spaces, operation=lambda z: z.__mul__)
@@ -127,7 +139,8 @@ class DiagonalOperator(EndomorphicOperator):
                                   operation=lambda z: z.adjoint().__mul__)
 
     def _inverse_times(self, x, spaces):
-        return self._times_helper(x, spaces, operation=lambda z: z.__rtruediv__)
+        return self._times_helper(
+                            x, spaces, operation=lambda z: z.__rtruediv__)
 
     def _adjoint_inverse_times(self, x, spaces):
         return self._times_helper(x, spaces,

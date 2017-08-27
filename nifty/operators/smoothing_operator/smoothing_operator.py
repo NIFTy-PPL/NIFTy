@@ -131,6 +131,14 @@ class SmoothingOperator(EndomorphicOperator):
         self._sigma = sigma
         self._log_distances = log_distances
 
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._domain = self._domain
+        copy._sigma = self._sigma
+        copy._log_distances = self._log_distances
+        copy = super(SmoothingOperator, self)._add_attributes_to_copy(copy,
+                                                                      **kwargs)
+        return copy
+
     def _inverse_times(self, x, spaces):
         if self.sigma == 0:
             return x.copy()
