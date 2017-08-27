@@ -48,6 +48,15 @@ class SmoothnessOperator(EndomorphicOperator):
         self._laplace = LaplaceOperator(domain=self.domain,
                                         logarithmic=logarithmic)
 
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._domain = self._domain
+        copy._strength = self._strength
+        copy._laplace = self._laplace.copy()
+
+        copy = super(SmoothnessOperator, self)._add_attributes_to_copy(
+                                                                copy, **kwargs)
+        return copy
+
     # ---Mandatory properties and methods---
 
     @property

@@ -85,6 +85,14 @@ class ComposedOperator(LinearOperator):
                                 "instances of the LinearOperator-baseclass")
             self._operator_store += (op,)
 
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._operator_store = ()
+        for op in self._operator_store:
+            copy._operator_store += (op.copy(),)
+        copy = super(ComposedOperator, self)._add_attributes_to_copy(
+                                                                copy, **kwargs)
+        return copy
+
     def _check_input_compatibility(self, x, spaces, inverse=False):
         """
         The input check must be disabled for the ComposedOperator, since it

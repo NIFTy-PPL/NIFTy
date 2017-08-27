@@ -87,6 +87,13 @@ class ProjectionOperator(EndomorphicOperator):
         self._projection_field = projection_field
         self._unitary = None
 
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._projection_field = self._projection_field
+        copy._unitary = self._unitary
+        copy = super(ProjectionOperator, self)._add_attributes_to_copy(
+                                                                copy, **kwargs)
+        return copy
+
     def _times(self, x, spaces):
         # if the domain matches directly
         # -> multiply the fields directly
