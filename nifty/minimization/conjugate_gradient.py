@@ -79,9 +79,6 @@ class ConjugateGradient(Minimizer):
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
-        beta = np.inf
-        delta = np.inf
-
         while True:
             q = energy.curvature(d)
             ddotq = d.vdot(q).real
