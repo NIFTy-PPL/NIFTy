@@ -127,10 +127,13 @@ class LineSearchStrongWolfe(LineSearch):
             alpha1 = 1.0/pk.norm()
 
         # start the minimization loop
-        for i in range(self.max_iterations):
+        iteration_number = 0
+        while iteration_number < self.max_iterations:
+            iteration_number += 1
             if alpha1 == 0:
                 self.logger.warn("Increment size became 0.")
-                return le_0.energy
+                result_energy = le_0.energy
+                break
 
             le_alpha1 = le_0.at(alpha1)
             phi_alpha1 = le_alpha1.value
@@ -140,31 +143,37 @@ class LineSearchStrongWolfe(LineSearch):
                 le_star = self._zoom(alpha0, alpha1, phi_0, phiprime_0,
                                      phi_alpha0, phiprime_alpha0, phi_alpha1,
                                      le_0)
-                return le_star.energy
+                result_energy = le_star.energy
+                break
 
             phiprime_alpha1 = le_alpha1.directional_derivative
             if abs(phiprime_alpha1) <= -self.c2*phiprime_0:
-                return le_alpha1.energy
+                result_energy = le_alpha1.energy
+                break
 
             if phiprime_alpha1 >= 0:
                 le_star = self._zoom(alpha1, alpha0, phi_0, phiprime_0,
                                      phi_alpha1, phiprime_alpha1, phi_alpha0,
                                      le_0)
-                return le_star.energy
+                result_energy = le_star.energy
+                break
 
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, self.max_step_size)
             if alpha1 == self.max_step_size:
-                print ("reached max step size, bailing out")
+                self.logger.info("Reached max step size, bailing out")
                 return le_alpha1.energy
 
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
-
         else:
             # max_iterations was reached
             self.logger.error("The line search algorithm did not converge.")
             return le_alpha1.energy
+        if iteration_number > 1:
+            self.logger.debug("Finished line-search after %08u steps" %
+                              iteration_number)
+        return result_energy
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
               phi_lo, phiprime_lo, phi_hi, le_0):

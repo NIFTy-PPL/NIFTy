@@ -25,8 +25,8 @@ from keepers import Loggable,\
 from future.utils import with_metaclass
 
 
-class DomainObject(with_metaclass(NiftyMeta, type('NewBase',
-        (Versionable, Loggable, object), {}))):
+class DomainObject(with_metaclass(
+        NiftyMeta, type('NewBase', (Versionable, Loggable, object), {}))):
     """The abstract class that can be used as a domain for a field.
 
     This holds all the information and functionality a field needs to know
