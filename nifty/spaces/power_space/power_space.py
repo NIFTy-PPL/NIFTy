@@ -101,12 +101,7 @@ class PowerSpace(Space):
         """
         nbin = int(nbin)
         assert nbin>=3, "nbin must be at least 3"
-        first_bound = float(first_bound)
-        last_bound = float(last_bound)
-        binbounds = np.arange(nbin-1,dtype=np.float64)/(nbin-2)
-        binbounds*=last_bound-first_bound
-        binbounds+=first_bound
-        return binbounds
+        return np.linspace(float(first_bound),float(last_bound),nbin-1)
 
     @staticmethod
     def logarithmic_binbounds (nbin, first_bound, last_bound):
@@ -122,7 +117,11 @@ class PowerSpace(Space):
         values equidistantly spaced (in natural logarithmic scale)
         between these two.
         """
-        return np.exp(linear_binbounds(np.log(first_bound),np.log(last_bound)))
+        nbin = int(nbin)
+        assert nbin>=3, "nbin must be at least 3"
+        return np.logspace(np.log(float(first_bound)),
+                           np.log(float(last_bound)),
+                           nbin-1, base=np.e)
 
     def __init__(self, harmonic_partner, distribution_strategy=None,
                  binbounds=None):

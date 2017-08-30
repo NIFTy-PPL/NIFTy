@@ -25,7 +25,7 @@ from d2o import distributed_data_object
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
 from nifty import PowerSpace, RGSpace, Space, LMSpace
-from test.common import expand
+from test.common import expand, marco_binbounds
 from itertools import product, chain
 # needed to check wether fftw is available
 from nifty import dependency_injector as gdi
@@ -41,7 +41,7 @@ HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
                    LMSpace(9)]
 
 
-#Try all sensible kinds of combinations of spaces, distributuion strategy and
+#Try all sensible kinds of combinations of spaces, distribution strategy and
 #binning parameters
 CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
@@ -130,8 +130,8 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                           binbounds=marco_binbounds(harmonic_partner,
+                                                     logarithmic, nbin))
 
         assert_equal(p.pindex.flatten().bincount(), p.rho,
             err_msg='rho is not equal to pindex degeneracy')
@@ -147,13 +147,13 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                           binbounds=marco_binbounds(harmonic_partner,
+                                                     logarithmic, nbin))
         else:
             p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                           binbounds=marco_binbounds(harmonic_partner,
+                                                     logarithmic, nbin))
             for key, value in expected.items():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)

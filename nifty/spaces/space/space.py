@@ -96,10 +96,8 @@ class Space(DomainObject):
         return self.__class__()
 
     def get_distance_array(self, distribution_strategy):
-        """ The distances of the pixel to zero.
-
-        This returns an array that gives for each pixel its distance to the
-        center of the manifolds grid.
+        """ The length of the k vector for every pixel.
+        This method is only implemented for harmonic spaces.
 
         Parameters
         ----------
@@ -110,18 +108,21 @@ class Space(DomainObject):
         Returns
         -------
         distributed_data_object
-            A d2o containing the distances
+            A d2o containing the k vector lengths
 
         """
-
-        raise NotImplementedError(
-            "There is no generic distance structure for Space base class.")
+        raise NotImplementedError
 
     def get_unique_distances(self):
+        """ Returns an array of floats containing the unique k vector lengths
+        for this space.
+        This method is only implemented for harmonic spaces.
+        """
         raise NotImplementedError
 
     def get_natural_binbounds(self):
         """ The boundaries for natural power spectrum binning.
+        This method is only implemented for harmonic spaces.
 
         Returns
         -------

@@ -91,7 +91,8 @@ CONSTRUCTOR_CONFIGS = [
 
 
 def get_distance_array_configs():
-    # for RGSpace(shape=(4, 4), distances=None, zerocenter=[False, False])
+    # for RGSpace(shape=(4, 4), distances=(0.25,0.25),
+    #             zerocenter=[False, False])
     cords_0 = np.ogrid[0:4, 0:4]
     da_0 = ((cords_0[0] - 4 // 2) * 0.25)**2
     da_0 = np.fft.ifftshift(da_0)
@@ -99,7 +100,7 @@ def get_distance_array_configs():
     temp = np.fft.ifftshift(temp)
     da_0 = da_0 + temp
     da_0 = np.sqrt(da_0)
-    # for RGSpace(shape=(4, 4), distances=None, zerocenter=[True, True])
+    # for RGSpace(shape=(4, 4), distances=(0.25,0.25), zerocenter=[True, True])
     da_1 = ((cords_0[0] - 4 // 2) * 0.25)**2
     temp = ((cords_0[1] - 4 // 2) * 0.25)**2
     da_1 = da_1 + temp
@@ -110,8 +111,8 @@ def get_distance_array_configs():
     da_2 = da_2 + temp
     da_2 = np.sqrt(da_2)
     return [
-        [(4, 4),  None, [False, False], da_0],
-        [(4, 4),  None, [True, True], da_1],
+        [(4, 4),  (0.25, 0.25), [False, False], da_0],
+        [(4, 4),  (0.25, 0.25), [True, True], da_1],
         [(4, 4),  (12, 12), [True, True], da_2]
         ]
 
@@ -190,7 +191,8 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
 
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, zerocenter, expected):
-        r = RGSpace(shape=shape, distances=distances, zerocenter=zerocenter)
+        r = RGSpace(shape=shape, distances=distances, zerocenter=zerocenter,
+                    harmonic=True)
         assert_almost_equal(r.get_distance_array('not'), expected)
 
     @expand(get_weight_configs())

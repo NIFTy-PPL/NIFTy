@@ -210,6 +210,7 @@ class RGSpace(Space):
 
         """
 
+        if (not self.harmonic): raise NotImplementedError
         shape = self.shape
         # prepare the distributed_data_object
         nkdict = distributed_data_object(
@@ -257,6 +258,7 @@ class RGSpace(Space):
         return dists
 
     def get_unique_distances(self):
+        if (not self.harmonic): raise NotImplementedError
         dimensions = len(self.shape)
         if dimensions == 1:  # extra easy
             maxdist = self.shape[0]//2
@@ -283,10 +285,12 @@ class RGSpace(Space):
             return tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
 
     def get_natural_binbounds(self):
+        if (not self.harmonic): raise NotImplementedError
         tmp = self.get_unique_distances()
         return 0.5*(tmp[:-1]+tmp[1:])
 
     def get_fft_smoothing_kernel_function(self, sigma):
+        if (not self.harmonic): raise NotImplementedError
         return lambda x: np.exp(-2. * np.pi*np.pi * x*x * sigma*sigma)
 
     # ---Added properties and methods---
