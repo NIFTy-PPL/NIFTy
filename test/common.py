@@ -47,7 +47,8 @@ def generate_harmonic_spaces():
     spaces = [RGSpace(4, harmonic=True), LMSpace(5)]
     return spaces
 
-def marco_binbounds (space, logarithmic, nbin=None):
+
+def marco_binbounds(space, logarithmic, nbin=None):
     """Only for testing purposes. DO NOT USE IN REAL LIFE!"""
     if logarithmic is None and nbin is None:
         return None
@@ -55,8 +56,8 @@ def marco_binbounds (space, logarithmic, nbin=None):
         raise ValueError("space must be a harmonic space.")
     logarithmic = bool(logarithmic)
     if nbin is not None:
-        nbin=int(nbin)
-        assert nbin>=3, "nbin must be at least 3"
+        nbin = int(nbin)
+        assert nbin >= 3, "nbin must be at least 3"
     # equidistant binning (linear or log)
     # MR FIXME: this needs to improve
     kindex = space.get_unique_distances()

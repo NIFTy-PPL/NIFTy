@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-#from builtins import str
 import ast
 import numpy as np
 
@@ -87,7 +86,7 @@ class PowerSpace(Space):
     # ---Overwritten properties and methods---
 
     @staticmethod
-    def linear_binbounds (nbin, first_bound, last_bound):
+    def linear_binbounds(nbin, first_bound, last_bound):
         """
         nbin: integer
             the number of bins
@@ -100,11 +99,11 @@ class PowerSpace(Space):
         values equidistantly spaced (in linear scale) between these two.
         """
         nbin = int(nbin)
-        assert nbin>=3, "nbin must be at least 3"
-        return np.linspace(float(first_bound),float(last_bound),nbin-1)
+        assert nbin >= 3, "nbin must be at least 3"
+        return np.linspace(float(first_bound), float(last_bound), nbin-1)
 
     @staticmethod
-    def logarithmic_binbounds (nbin, first_bound, last_bound):
+    def logarithmic_binbounds(nbin, first_bound, last_bound):
         """
         nbin: integer
             the number of bins
@@ -118,7 +117,7 @@ class PowerSpace(Space):
         between these two.
         """
         nbin = int(nbin)
-        assert nbin>=3, "nbin must be at least 3"
+        assert nbin >= 3, "nbin must be at least 3"
         return np.logspace(np.log(float(first_bound)),
                            np.log(float(last_bound)),
                            nbin-1, base=np.e)
@@ -153,7 +152,7 @@ class PowerSpace(Space):
                                 binbounds=binbounds,
                                 distribution_strategy=distribution_strategy)
             temp_rho = temp_pindex.bincount().get_full_data()
-            assert not np.any(temp_rho==0), "empty bins detected"
+            assert not np.any(temp_rho == 0), "empty bins detected"
             temp_kindex = \
                 (temp_pindex.bincount(weights=distance_array).get_full_data() /
                  temp_rho)

@@ -51,21 +51,18 @@ class Space(DomainObject):
     Notes
     -----
     `Space` is an abstract base class. In order to allow for instantiation
-    the methods `get_distance_array`, `total_volume` and `copy` must be
-    implemented as well as the abstract methods inherited from
-    `DomainObject`.
+    the methods `total_volume` and `copy` must be implemented as well as the
+    abstract methods inherited from `DomainObject`.
 
     """
 
     def __init__(self):
-
         super(Space, self).__init__()
 
     @abc.abstractproperty
     def harmonic(self):
         """ Returns True if this space is a harmonic space.
         """
-
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -76,9 +73,7 @@ class Space(DomainObject):
         -------
         float
             A real number representing the sum of all pixel volumes.
-
         """
-
         raise NotImplementedError(
             "There is no generic volume for the Space base class.")
 
@@ -90,9 +85,7 @@ class Space(DomainObject):
         -------
         Space
             A copy of this instance.
-
         """
-
         return self.__class__()
 
     def get_distance_array(self, distribution_strategy):
@@ -165,6 +158,7 @@ class Space(DomainObject):
     def hermitianize_inverter(self, x, axes):
         """ Inverts/flips x in the context of Hermitian decomposition.
 
+        This method is only implemented for harmonic spaces.
         This method is mainly used for power-synthesizing and -analyzing
         Fields.
 

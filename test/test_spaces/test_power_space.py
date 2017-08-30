@@ -41,8 +41,8 @@ HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
                    LMSpace(9)]
 
 
-#Try all sensible kinds of combinations of spaces, distribution strategy and
-#binning parameters
+# Try all sensible kinds of combinations of spaces, distribution strategy and
+# binning parameters
 CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
                                        [None], [None, 3, 4], [True, False])
@@ -123,18 +123,20 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 
 class PowerSpaceConsistencyCheck(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
-    def test_rhopindexConsistency(self, harmonic_partner, distribution_strategy,
+    def test_rhopindexConsistency(self, harmonic_partner,
+                                  distribution_strategy,
                                   binbounds, nbin, logarithmic):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
-                           distribution_strategy=distribution_strategy,
-                           binbounds=marco_binbounds(harmonic_partner,
-                                                     logarithmic, nbin))
+                       distribution_strategy=distribution_strategy,
+                       binbounds=marco_binbounds(harmonic_partner,
+                                                 logarithmic, nbin))
 
         assert_equal(p.pindex.flatten().bincount(), p.rho,
-            err_msg='rho is not equal to pindex degeneracy')
+                     err_msg='rho is not equal to pindex degeneracy')
+
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
