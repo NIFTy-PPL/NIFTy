@@ -158,7 +158,7 @@ class ConjugateGradient(Loggable, object):
             if self.reset_count is not None:
                 reset += (iteration_number % self.reset_count == 0)
             if reset:
-                self.logger.info("Resetting conjugate directions.")
+                self.logger.info("Computing accurate residuum.")
                 r = b - A(x)
             else:
                 r -= q * alpha
