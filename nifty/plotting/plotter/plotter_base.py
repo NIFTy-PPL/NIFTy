@@ -9,8 +9,6 @@ import sys
 
 import numpy as np
 
-import d2o
-
 from keepers import Loggable
 
 from ...spaces.space import Space
