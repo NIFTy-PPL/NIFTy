@@ -37,7 +37,7 @@ class RGRGTransformation(Transformation):
         return True
 
     @classmethod
-    def get_codomain(cls, domain, zerocenter=None):
+    def get_codomain(cls, domain):
         """
             Generates a compatible codomain to which transformations are
             reasonable, i.e.\  either a shifted grid or a Fourier conjugate
@@ -47,9 +47,6 @@ class RGRGTransformation(Transformation):
             ----------
             domain: RGSpace
                 Space for which a codomain is to be generated
-            zerocenter : {bool, numpy.ndarray}, *optional*
-                Whether or not the grid is zerocentered for each axis or not
-                (default: None).
 
             Returns
             -------
@@ -59,21 +56,11 @@ class RGRGTransformation(Transformation):
         if not isinstance(domain, RGSpace):
             raise TypeError("domain needs to be a RGSpace")
 
-        # parse the zerocenter input
-        if zerocenter is None:
-            zerocenter = domain.zerocenter
-        # if the input is something scalar, cast it to a boolean
-        else:
-            temp = np.empty_like(domain.zerocenter)
-            temp[:] = zerocenter
-            zerocenter = temp
-
         # calculate the initialization parameters
         distances = 1. / (np.array(domain.shape) *
                           np.array(domain.distances))
 
         new_space = RGSpace(domain.shape,
-                            zerocenter=zerocenter,
                             distances=distances,
                             harmonic=(not domain.harmonic))
 

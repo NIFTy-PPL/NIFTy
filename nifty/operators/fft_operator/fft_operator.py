@@ -29,8 +29,7 @@ from .transformations import RGRGTransformation,\
                             LMGLTransformation,\
                             LMHPTransformation,\
                             GLLMTransformation,\
-                            HPLMTransformation,\
-                            TransformationCache
+                            HPLMTransformation
 
 
 class FFTOperator(LinearOperator):
@@ -57,7 +56,7 @@ class FFTOperator(LinearOperator):
         "adjoint_times".
         If omitted, a co-domain will be chosen automatically.
         Whenever "domain" is an RGSpace, the codomain (and its parameters) are
-        uniquely determined (except for "zerocenter").
+        uniquely determined.
         For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
         co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
@@ -120,11 +119,11 @@ class FFTOperator(LinearOperator):
         backward_class = self.transformation_dictionary[
                 (self.target[0].__class__, self.domain[0].__class__)]
 
-        self._forward_transformation = TransformationCache.create(
-            forward_class, self.domain[0], self.target[0])
+        self._forward_transformation = forward_class(
+            self.domain[0], self.target[0])
 
-        self._backward_transformation = TransformationCache.create(
-            backward_class, self.target[0], self.domain[0])
+        self._backward_transformation = backward_class(
+            self.target[0], self.domain[0])
 
     def _add_attributes_to_copy(self, copy, **kwargs):
         copy._domain = self._domain
@@ -218,7 +217,7 @@ class FFTOperator(LinearOperator):
             A (more or less perfect) counterpart to "domain" with respect
             to a FFT operation.
             Whenever "domain" is an RGSpace, the codomain (and its parameters)
-            are uniquely determined (except for "zerocenter").
+            are uniquely determined.
             For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
             co-domain is chosen that should work satisfactorily in most
             situations. For full control however, the user should not rely on

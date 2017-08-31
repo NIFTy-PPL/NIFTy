@@ -28,9 +28,8 @@ from test.common import expand
 from itertools import product, chain
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
-                   RGSpace((8,), harmonic=True, zerocenter=True),
                    RGSpace((7, 8), harmonic=True),
-                   RGSpace((6, 6), harmonic=True, zerocenter=True),
+                   RGSpace((6, 6), harmonic=True),
                    RGSpace((5, 5), harmonic=True),
                    RGSpace((4, 5, 7), harmonic=True),
                    LMSpace(6),
