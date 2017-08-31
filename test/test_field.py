@@ -29,8 +29,7 @@ from itertools import product
 from nifty import Field,\
                   RGSpace,\
                   LMSpace,\
-                  PowerSpace,\
-                  nifty_configuration
+                  PowerSpace
 
 from test.common import expand
 

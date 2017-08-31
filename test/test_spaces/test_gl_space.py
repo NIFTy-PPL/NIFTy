@@ -22,7 +22,6 @@ import itertools
 
 from numpy.testing import assert_, assert_equal, assert_raises,\
         assert_almost_equal
-from nose.plugins.skip import SkipTest
 from nifty import GLSpace
 from test.common import expand
 
@@ -67,21 +66,14 @@ class GLSpaceInterfaceTests(unittest.TestCase):
     @expand([['nlat', int],
             ['nlon', int]])
     def test_property_ret_type(self, attribute, expected_type):
-        try:
-            g = GLSpace(2)
-        except ImportError:
-            raise SkipTest
-        else:
-            assert_(isinstance(getattr(g, attribute), expected_type))
+        g = GLSpace(2)
+        assert_(isinstance(getattr(g, attribute), expected_type))
 
 
 class GLSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, nlat, nlon, expected):
-        try:
-            g = GLSpace(4)
-        except ImportError:
-            raise SkipTest
+        g = GLSpace(4)
 
         if 'error' in expected:
             with assert_raises(expected['error']):

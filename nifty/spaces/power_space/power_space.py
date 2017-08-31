@@ -22,7 +22,6 @@ import numpy as np
 
 from ...spaces.space import Space
 from functools import reduce
-from ...config import nifty_configuration as gc
 
 
 class PowerSpace(Space):

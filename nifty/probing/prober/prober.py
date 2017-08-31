@@ -23,7 +23,6 @@ import numpy as np
 
 from ...field import Field
 from ... import nifty_utilities as utilities
-from ... import nifty_configuration as nc
 
 
 class Prober(object):

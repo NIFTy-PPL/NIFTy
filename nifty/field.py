@@ -26,8 +26,6 @@ import numpy as np
 from keepers import Versionable,\
                     Loggable
 
-from .config import nifty_configuration as gc
-
 from .domain_object import DomainObject
 
 from .spaces.power_space import PowerSpace

@@ -29,7 +29,6 @@ from nifty import Field,\
     FFTOperator
 from itertools import product
 from test.common import expand
-from nose.plugins.skip import SkipTest
 
 
 def _get_rtol(tp):

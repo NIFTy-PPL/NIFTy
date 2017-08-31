@@ -20,7 +20,6 @@ from __future__ import division
 from builtins import range
 import numpy as np
 
-from ...config import nifty_configuration as gc
 from ...field import Field
 from ..endomorphic_operator import EndomorphicOperator
 

@@ -24,8 +24,7 @@ from . import Space,\
                   ComposedOperator,\
                   DiagonalOperator,\
                   FFTOperator,\
-                  sqrt,\
-                  nifty_configuration
+                  sqrt
 
 __all__ = ['create_power_operator',
            'generate_posterior_sample',
