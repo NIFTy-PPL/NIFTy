@@ -20,21 +20,17 @@ from __future__ import division
 import numpy as np
 
 from .minimizer import Minimizer
+from .line_searching import LineSearchStrongWolfe
 
 
-class ConjugateGradient(Minimizer):
-    """ Implementation of the Conjugate Gradient scheme.
-
-    It is an iterative method for solving a linear system of equations:
-                                    Ax = b
+class NonlinearCG(Minimizer):
+    """ Implementation of the nonlinear Conjugate Gradient scheme according to
+        Polak-Ribiere.
 
     Parameters
     ----------
     controller : IterationController
         Object that decides when to terminate the minimization.
-    preconditioner : Operator *optional*
-        This operator can be provided which transforms the variables of the
-        system to improve the conditioning (default: None).
 
     References
     ----------
@@ -43,22 +39,22 @@ class ConjugateGradient(Minimizer):
 
     """
 
-    def __init__(self, controller, preconditioner=None):
-        self._preconditioner = preconditioner
+    def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
         self._controller = controller
+        self._line_searcher = line_searcher
 
     def __call__(self, energy):
         """ Runs the conjugate gradient minimization.
+        Algorithm 5.4 from Nocedal & Wright
+        Eq. (5.41a) has been replaced by eq. (5.49)
 
         Parameters
         ----------
         energy : Energy object at the starting point of the iteration.
-            Its curvature operator must be independent of position, otherwise
-            linear conjugate gradient minimization will fail.
 
         Returns
         -------
-        energy : QuadraticEnergy
+        energy :
             state at last point of the iteration
         status : integer
             Can be controller.CONVERGED or controller.ERROR
@@ -69,47 +65,21 @@ class ConjugateGradient(Minimizer):
         status = controller.start(energy)
         if status != controller.CONTINUE:
             return energy, status
+        f_k_minus_1 = None
 
-        r = -energy.gradient
-        if self._preconditioner is not None:
-            d = self._preconditioner(r)
-        else:
-            d = r.copy()
-        previous_gamma = (r.vdot(d)).real
-        if previous_gamma == 0:
-            return energy, controller.CONVERGED
+        p = -energy.gradient
 
         while True:
-            q = energy.curvature(d)
-            ddotq = d.vdot(q).real
-            if ddotq==0.:
-                self.logger.error("Alpha became infinite! Stopping.")
-                return energy, controller.ERROR
-            alpha = previous_gamma/ddotq
-
-            if alpha < 0:
-                self.logger.warn("Positive definiteness of A violated!")
-                return energy, controller.ERROR
-
-            r -= q * alpha
-            energy = energy.at_with_grad(energy.position+d*alpha,-r)
-
+            grad_old = energy.gradient
+            gnold = energy.gradient_norm
+            f_k = energy.value
+            energy = self._line_searcher.perform_line_search(energy, p,
+                                                             f_k_minus_1)
+            f_k_minus_1 = f_k
             status = self._controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
-
-            if self._preconditioner is not None:
-                s = self._preconditioner(r)
-            else:
-                s = r
-
-            gamma = r.vdot(s).real
-            if gamma < 0:
-                self.logger.warn(
-                    "Positive definiteness of preconditioner violated!")
-            if gamma == 0:
-                return energy, controller.CONVERGED
-
-            d = s + d * max(0, gamma/previous_gamma)
-
-            previous_gamma = gamma
+            grad_new = energy.gradient
+            gnnew = energy.gradient_norm
+            beta = gnnew*gnnew/(grad_new-grad_old).vdot(p).real
+            p = beta*p - grad_new
