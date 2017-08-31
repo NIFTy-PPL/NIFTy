@@ -56,6 +56,5 @@ class ComposedOperator_Tests(unittest.TestCase):
         rand1 = Field.from_random('normal', domain=(space1, space2))
         tt1 = op.inverse_times(op.times(rand1))
 
-        assert_allclose(tt1.val.get_full_data(),
-                        rand1.val.get_full_data())
+        assert_allclose(tt1.val, rand1.val)
 

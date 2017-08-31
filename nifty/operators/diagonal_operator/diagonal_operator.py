@@ -37,7 +37,7 @@ class DiagonalOperator(EndomorphicOperator):
     ----------
     domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
         The domain on which the Operator's input Field lives.
-    diagonal : {scalar, list, array, Field, d2o-object}
+    diagonal : {scalar, list, array, Field}
         The diagonal entries of the operator.
     bare : boolean
         Indicates whether the input for the diagonal is bare or not
@@ -181,7 +181,7 @@ class DiagonalOperator(EndomorphicOperator):
 
         Parameters
         ----------
-        diagonal : {scalar, list, array, Field, d2o-object}
+        diagonal : {scalar, list, array, Field}
             The diagonal entries of the operator.
         bare : boolean
             Indicates whether the input for the diagonal is bare or not
@@ -226,16 +226,15 @@ class DiagonalOperator(EndomorphicOperator):
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
 
-        local_diagonal = self._diagonal.val.get_local_data(copy=False)
+        local_diagonal = self._diagonal.val
 
-        reshaper = [x.val.data.shape[i] if i in active_axes else 1
+        reshaper = [x.val.shape[i] if i in active_axes else 1
                     for i in range(len(x.shape))]
         reshaped_local_diagonal = np.reshape(local_diagonal, reshaper)
 
         # here the actual multiplication takes place
-        local_result = operation(reshaped_local_diagonal)(
-                           x.val.get_local_data(copy=False))
+        local_result = operation(reshaped_local_diagonal)(x.val)
 
         result_field = x.copy_empty(dtype=local_result.dtype)
-        result_field.val.set_local_data(local_result, copy=False)
+        result_field.val=local_result
         return result_field

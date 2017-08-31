@@ -19,7 +19,7 @@
 from __future__ import division
 import numpy as np
 from .transformation import Transformation
-from .rg_transforms import MPIFFT, SerialFFT
+from .rg_transforms import SerialFFT
 from .... import RGSpace, nifty_configuration
 
 
@@ -33,9 +33,7 @@ class RGRGTransformation(Transformation):
         if module is None:
             module = nifty_configuration['fft_module']
 
-        if module == 'fftw_mpi':
-            self._transform = MPIFFT(self.domain, self.codomain)
-        elif module == 'fftw':
+        if module == 'fftw':
             self._transform = SerialFFT(self.domain, self.codomain,
                                         use_fftw=True)
         elif module == 'numpy':

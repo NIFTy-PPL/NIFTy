@@ -34,11 +34,8 @@ setup(name="ift_nifty",
       zip_safe=False,
       include_dirs=[numpy.get_include()],
       dependency_links=[
-        'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers-0.3.7',
-        'git+https://gitlab.mpcdf.mpg.de/ift/d2o.git#egg=d2o-1.1.1'],
-      install_requires=['keepers>=0.3.7', 'd2o>=1.1.1'],
-      package_data={'nifty.demos': ['demo_faraday_map.npy'],
-                    },
+        'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers-0.3.7'],
+      install_requires=['keepers>=0.3.7'],
       license="GPLv3",
       classifiers=[
         "Development Status :: 4 - Beta",

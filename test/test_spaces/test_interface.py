@@ -24,7 +24,6 @@ from itertools import product
 from types import LambdaType
 from test.common import expand, generate_spaces, generate_harmonic_spaces
 
-from d2o import distributed_data_object
 from nifty.spaces import *
 
 
@@ -39,7 +38,7 @@ class SpaceInterfaceTests(unittest.TestCase):
                            attr_expected_type[1]))
 
     @expand(product(generate_harmonic_spaces(), [
-        ['get_distance_array', 'not', distributed_data_object],
+        ['get_distance_array', np.ndarray],
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
     def test_method_ret_type(self, space, method_expected_type):

@@ -42,6 +42,5 @@ class Test_ConjugateGradient(unittest.TestCase):
         (position, convergence) = minimizer(A=covariance, x0=starting_point,
                                             b=required_result)
 
-        assert_almost_equal(position.val.get_full_data(),
-                            1./covariance_diagonal.val.get_full_data(),
-                            decimal=3)
+        assert_almost_equal(position.val,
+                            1./covariance_diagonal.val, decimal=3)

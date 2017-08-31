@@ -34,8 +34,6 @@ dependency_injector = keepers.DependencyInjector(
 
 
 def _fft_module_checker(z):
-    if z == 'fftw_mpi':
-        return hasattr(dependency_injector.get('fftw'), 'FFTW_MPI')
     if z == 'fftw':
         return ('fftw' in dependency_injector)
     if z == 'numpy':
@@ -45,7 +43,7 @@ def _fft_module_checker(z):
 # Initialize the variables
 variable_fft_module = keepers.Variable(
                                'fft_module',
-                               ['fftw_mpi', 'fftw', 'numpy'],
+                               ['fftw', 'numpy'],
                                _fft_module_checker)
 
 

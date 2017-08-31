@@ -49,4 +49,4 @@ class Test_DescentMinimizers(unittest.TestCase):
         (energy, convergence) = minimizer(energy)
 
         assert_almost_equal(energy.value, 0, decimal=5)
-        assert_almost_equal(energy.position.val.get_full_data(), 0., decimal=5)
+        assert_almost_equal(energy.position.val, 0., decimal=5)

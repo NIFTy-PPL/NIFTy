@@ -370,7 +370,7 @@ class Field(Loggable, Versionable, object):
                             target_shape=field_val.shape,
                             axes=axes)
 
-        power_spectrum = pindex.bincount(weights=field_val,
+        power_spectrum = utilities.bincount_axis(pindex, weights=field_val,
                                          axis=axes)
         rho = pdomain.rho
         if axes is not None:
@@ -382,14 +382,14 @@ class Field(Loggable, Versionable, object):
         return power_spectrum
 
     @staticmethod
-    def _shape_up_pindex(pindex, target_shape, target_strategy, axes):
+    def _shape_up_pindex(pindex, target_shape, axes):
         semiscaled_local_shape = [1, ] * len(target_shape)
         for i in range(len(axes)):
-            semiscaled_local_shape[axes[i]] = pindex.local_shape[i]
-        local_data = pindex.get_local_data(copy=False)
+            semiscaled_local_shape[axes[i]] = pindex.shape[i]
+        local_data = pindex
         semiscaled_local_data = local_data.reshape(semiscaled_local_shape)
-        result_obj = pindex.copy_empty(global_shape=target_shape)
-        result_obj.data[:] = semiscaled_local_data
+        result_obj = np.empty(target_shape, dtype=pindex.dtype)
+        result_obj[:] = semiscaled_local_data
 
         return result_obj
 
@@ -492,14 +492,10 @@ class Field(Loggable, Versionable, object):
         result_val_list = [x.val for x in result_list]
 
         # apply the rescaler to the random fields
-        result_val_list[0].apply_scalar_function(
-                                            lambda x: x * local_rescaler.real,
-                                            inplace=True)
+        result_val_list[0] *= local_rescaler.real
 
         if not real_power:
-            result_val_list[1].apply_scalar_function(
-                                            lambda x: x * local_rescaler.imag,
-                                            inplace=True)
+            result_val_list[1] *= local_rescaler.imag
 
         if real_signal:
             result_val_list = [self._hermitian_decomposition(
@@ -538,8 +534,8 @@ class Field(Loggable, Versionable, object):
         # no flips are applied, one can use `is` to infer this case.
 
         if flipped_val is val:
-            h = flipped_val.real
-            a = 1j * flipped_val.imag
+            h = flipped_val.real.copy()
+            a = 1j * flipped_val.imag.copy()
         else:
             flipped_val = flipped_val.conjugate()
             h = (val + flipped_val)/2.
@@ -600,7 +596,7 @@ class Field(Loggable, Versionable, object):
         # Now use numpy advanced indexing in order to put the entries of the
         # power spectrum into the appropriate places of the pindex array.
         # Do this for every 'pindex-slice' in parallel using the 'slice(None)'s
-        local_pindex = pindex.get_local_data(copy=False)
+        local_pindex = pindex
 
         local_blow_up = [slice(None)]*len(spec.shape)
         # it is important to count from behind, since spec potentially grows

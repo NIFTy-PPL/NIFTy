@@ -25,8 +25,6 @@ from ...field import Field
 from ... import nifty_utilities as utilities
 from ... import nifty_configuration as nc
 
-from d2o import STRATEGIES as DISTRIBUTION_STRATEGIES
-
 
 class Prober(object):
     """
@@ -38,13 +36,11 @@ class Prober(object):
 
     """
 
-    def __init__(self, domain=None, distribution_strategy=None, probe_count=8,
+    def __init__(self, domain=None, probe_count=8,
                  random_type='pm1', probe_dtype=np.float,
                  compute_variance=False):
 
         self._domain = utilities.parse_domain(domain)
-        self._distribution_strategy = \
-            self._parse_distribution_strategy(distribution_strategy)
         self._probe_count = self._parse_probe_count(probe_count)
         self._random_type = self._parse_random_type(random_type)
         self.compute_variance = bool(compute_variance)
@@ -56,20 +52,6 @@ class Prober(object):
     @property
     def domain(self):
         return self._domain
-
-    @property
-    def distribution_strategy(self):
-        return self._distribution_strategy
-
-    def _parse_distribution_strategy(self, distribution_strategy):
-        if distribution_strategy is None:
-            distribution_strategy = nc['default_distribution_strategy']
-        else:
-            distribution_strategy = str(distribution_strategy)
-        if distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
-            raise ValueError("distribution_strategy must be a global-type "
-                             "strategy.")
-        self._distribution_strategy = distribution_strategy
 
     @property
     def probe_count(self):
@@ -109,8 +91,7 @@ class Prober(object):
         """ a random-probe generator """
         f = Field.from_random(random_type=self.random_type,
                               domain=self.domain,
-                              dtype=self.probe_dtype,
-                              distribution_strategy=self.distribution_strategy)
+                              dtype=self.probe_dtype)
         uid = self._uid_counter
         self._uid_counter += 1
         return (uid, f)

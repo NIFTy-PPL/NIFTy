@@ -22,7 +22,6 @@ import numpy as np
 
 from numpy.testing import assert_, assert_equal, assert_raises,\
         assert_almost_equal, assert_array_almost_equal
-from d2o import distributed_data_object
 from nifty import LMSpace
 from test.common import expand
 
@@ -111,10 +110,10 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
 
     def test_hermitianize_inverter(self):
         l = LMSpace(5)
-        v = distributed_data_object(global_shape=l.shape, dtype=np.complex128)
+        v = np.empty(l.shape, dtype=np.complex128)
         v[:] = np.random.random(l.shape) + 1j*np.random.random(l.shape)
         inverted = l.hermitianize_inverter(v, axes=(0,))
-        assert_array_almost_equal(inverted.get_full_data(), v.get_full_data())
+        assert_array_almost_equal(inverted, v)
 
     @expand(get_weight_configs())
     def test_weight(self, x, power, axes, inplace, expected):
@@ -127,4 +126,4 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_distance_array_configs())
     def test_distance_array(self, lmax, expected):
         l = LMSpace(lmax)
-        assert_almost_equal(l.get_distance_array().data, expected)
+        assert_almost_equal(l.get_distance_array(), expected)
