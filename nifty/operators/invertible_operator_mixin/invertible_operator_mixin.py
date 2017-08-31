@@ -57,23 +57,6 @@ class InvertibleOperatorMixin(object):
         self.__backward_x0 = backward_x0
         super(InvertibleOperatorMixin, self).__init__(*args, **kwargs)
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy.__preconditioner = self.__preconditioner
-        copy.__inverter = self.__inverter
-        try:
-            copy.__forward_x0 = self.__forward_x0.copy()
-        except AttributeError:
-            copy.__forward_x0 = self.__forward_x0
-
-        try:
-            copy.__backward_x0 = self.__backward_x0.copy()
-        except AttributeError:
-            copy.__backward_x0 = self.__backward_x0
-
-        copy = super(InvertibleOperatorMixin, self)._add_attributes_to_copy(
-                                                                copy, **kwargs)
-        return copy
-
     def _times(self, x, spaces):
         if self.__forward_x0 is not None:
             x0 = self.__forward_x0

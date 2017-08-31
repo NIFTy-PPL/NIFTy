@@ -57,13 +57,6 @@ class DirectSmoothingOperator(EndomorphicOperator):
     def log_distances(self):
         return self._log_distances
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy.effective_smoothing_width = self.effective_smoothing_width
-
-        copy = super(DirectSmoothingOperator, self)._add_attributes_to_copy(
-                                                                copy, **kwargs)
-        return copy
-
     def _precompute(self, x, sigma, dxmax=None):
         """ Does precomputations for Gaussian smoothing on a 1D irregular grid.
 

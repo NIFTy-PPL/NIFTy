@@ -48,23 +48,6 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
                                                  preconditioner=preconditioner,
                                                  **kwargs)
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._cache = {}
-        copy._domain = self._domain
-        copy.R = self.R.copy()
-        copy.N = self.N.copy()
-        copy.S = self.S.copy()
-        copy.d = self.d.copy()
-        if 'position' in kwargs:
-            copy.position = kwargs['position']
-        else:
-            copy.position = self.position.copy()
-        copy._fft = self._fft
-
-        copy = super(LogNormalWienerFilterCurvature,
-                     self)._add_attributes_to_copy(copy, **kwargs)
-        return copy
-
     @property
     def domain(self):
         return self._domain

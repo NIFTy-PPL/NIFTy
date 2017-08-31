@@ -53,13 +53,6 @@ class FFTSmoothingOperator(EndomorphicOperator):
     def sigma(self):
         return self._sigma
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._transformator_cache = self._transformator_cache
-
-        copy = super(FFTSmoothingOperator, self)._add_attributes_to_copy(
-                                                                copy, **kwargs)
-        return copy
-
     def _smooth(self, x, spaces):
         # transform to the (global-)default codomain and perform all remaining
         # steps therein

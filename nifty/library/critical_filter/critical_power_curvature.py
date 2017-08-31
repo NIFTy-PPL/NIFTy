@@ -33,23 +33,6 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
                                                  preconditioner=preconditioner,
                                                  **kwargs)
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._domain = self._domain
-        if 'theta' in kwargs:
-            theta = kwargs['theta']
-            copy.theta = DiagonalOperator(theta.domain, diagonal=theta)
-        else:
-            copy.theta = self.theta.copy()
-
-        if 'T' in kwargs:
-            copy.T = kwargs['T']
-        else:
-            copy.T = self.T
-
-        copy = super(CriticalPowerCurvature,
-                     self)._add_attributes_to_copy(copy, **kwargs)
-        return copy
-
     def _times(self, x, spaces):
         return self.T(x) + self.theta(x)
 

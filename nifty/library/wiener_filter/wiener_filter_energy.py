@@ -23,17 +23,16 @@ class WienerFilterEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, d, R, N, S, old_curvature=None):
+    def __init__(self, position, d, R, N, S):
         super(WienerFilterEnergy, self).__init__(position=position)
         self.d = d
         self.R = R
         self.N = N
         self.S = S
-        self._curvature = old_curvature
 
     def at(self, position):
         return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
-                              S=self.S, old_curvature=self.curvature)
+                              S=self.S)
 
     @property
     @memo
@@ -46,12 +45,9 @@ class WienerFilterEnergy(Energy):
         return self._Dx - self._j
 
     @property
+    @memo
     def curvature(self):
-        if self._curvature is None:
-            self._curvature = WienerFilterCurvature(R=self.R,
-                                                    N=self.N,
-                                                    S=self.S)
-        return self._curvature
+        return WienerFilterCurvature(R=self.R, N=self.N, S=self.S)
 
     @property
     @memo

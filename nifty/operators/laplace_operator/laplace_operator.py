@@ -64,15 +64,6 @@ class LaplaceOperator(EndomorphicOperator):
         self._dposc[1:] += self._dpos
         self._dposc *= 0.5
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._domain = self._domain
-        copy._logarithmic = self._logarithmic
-        copy._dpos = self._dpos
-        copy._dposc = self._dposc
-        copy = super(LaplaceOperator, self)._add_attributes_to_copy(copy,
-                                                                    **kwargs)
-        return copy
-
     @property
     def target(self):
         return self._domain
