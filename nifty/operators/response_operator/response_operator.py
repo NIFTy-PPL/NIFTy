@@ -3,7 +3,7 @@ import numpy as np
 from ... import Field,\
                 FieldArray
 from ..linear_operator import LinearOperator
-from ..smoothing_operator import SmoothingOperator
+from ..smoothing_operator import FFTSmoothingOperator
 from ..composed_operator import ComposedOperator
 from ..diagonal_operator import DiagonalOperator
 
@@ -60,8 +60,8 @@ class ResponseOperator(LinearOperator):
                              "exposure do not match")
 
         for ii in range(len(kernel_smoothing)):
-            kernel_smoothing[ii] = SmoothingOperator.make(self._domain[ii],
-                                                          sigma=sigma[ii])
+            kernel_smoothing[ii] = FFTSmoothingOperator(self._domain[ii],
+                                                     sigma=sigma[ii])
             kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
                                                    diagonal=exposure[ii])
 

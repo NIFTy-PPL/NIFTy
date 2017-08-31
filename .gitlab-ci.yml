@@ -19,7 +19,6 @@ test_min:
   stage: test
   script:
     - nosetests
-    - nosetests3
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'

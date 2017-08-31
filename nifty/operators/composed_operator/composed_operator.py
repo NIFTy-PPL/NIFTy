@@ -72,12 +72,6 @@ class ComposedOperator(LinearOperator):
     >>> f = Field.from_random('normal', domain=(x1,x2))
     >>> FFT.times(f)
 
-    See Also
-    --------
-    EndomorphicOperator, ProjectionOperator,
-    DiagonalOperator, SmoothingOperator, ResponseOperator,
-    PropagatorOperator, ComposedOperator
-
     """
 
     # ---Overwritten properties and methods---

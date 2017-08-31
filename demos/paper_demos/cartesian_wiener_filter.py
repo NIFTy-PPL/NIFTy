@@ -130,7 +130,7 @@ if __name__ == "__main__":
 
     plotter.plot.zmin = 0.
     plotter.plot.zmax = 3.
-    sm = ift.SmoothingOperator.make(plot_space, sigma=0.03)
+    sm = ift.FFTSmoothingOperator(plot_space, sigma=0.03)
     plotter(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), path='uncertainty.html')
 
     plotter.plot.zmin = np.real(mock_signal.min());

@@ -4,17 +4,58 @@ from __future__ import division
 from builtins import range
 import numpy as np
 
-from .smoothing_operator import SmoothingOperator
+from ..endomorphic_operator import EndomorphicOperator
 
 
-class DirectSmoothingOperator(SmoothingOperator):
+class DirectSmoothingOperator(EndomorphicOperator):
     def __init__(self, domain, sigma, log_distances=False,
                  default_spaces=None):
-        super(DirectSmoothingOperator, self).__init__(domain,
-                                                      sigma,
-                                                      log_distances,
-                                                      default_spaces)
-        self.effective_smoothing_width = 3.01
+        super(DirectSmoothingOperator, self).__init__(default_spaces)
+
+        self._domain = self._parse_domain(domain)
+        if len(self._domain) != 1:
+            raise ValueError("DirectSmoothingOperator only accepts exactly one"
+                             " space as input domain.")
+
+        self._sigma = sigma
+        self._log_distances = log_distances
+        self._effective_smoothing_width = 3.01
+
+    def _times(self, x, spaces):
+        if self.sigma == 0:
+            return x.copy()
+
+        # the domain of the smoothing operator contains exactly one space.
+        # Hence, if spaces is None, but we passed LinearOperator's
+        # _check_input_compatibility, we know that x is also solely defined
+        # on that space
+        if spaces is None:
+            spaces = (0,)
+
+        return self._smooth(x, spaces)
+
+    # ---Mandatory properties and methods---
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def self_adjoint(self):
+        return True
+
+    @property
+    def unitary(self):
+        return False
+
+    # ---Added properties and methods---
+
+    @property
+    def sigma(self):
+        return self._sigma
+
+    @property
+    def log_distances(self):
+        return self._log_distances
 
     def _add_attributes_to_copy(self, copy, **kwargs):
         copy.effective_smoothing_width = self.effective_smoothing_width
@@ -50,7 +91,7 @@ class DirectSmoothingOperator(SmoothingOperator):
         """
 
         if dxmax is None:
-            dxmax = self.effective_smoothing_width*sigma
+            dxmax = self._effective_smoothing_width*sigma
 
         x = np.asarray(x)
 
@@ -139,7 +180,7 @@ class DirectSmoothingOperator(SmoothingOperator):
 
         return outarr
 
-    def _smooth(self, x, spaces, inverse):
+    def _smooth(self, x, spaces):
         # infer affected axes
         # we rely on the knowledge, that `spaces` is a tuple with length 1.
         affected_axes = x.domain_axes[spaces[0]]
@@ -165,18 +206,13 @@ class DirectSmoothingOperator(SmoothingOperator):
         # currently only one axis is supported
         data_axis = affected_axes[0]
 
-        if inverse:
-            true_sigma = 1. / self.sigma
-        else:
-            true_sigma = self.sigma
-
         local_result = self._apply_along_axis(
                               data_axis,
                               augmented_data,
                               startindex=true_start,
                               endindex=true_end,
                               distances=augmented_distance_array,
-                              smooth_length=true_sigma,
-                              smoothing_width=self.effective_smoothing_width)
+                              smooth_length=self.sigma,
+                              smoothing_width=self._effective_smoothing_width)
 
         return local_result
