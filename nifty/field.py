@@ -825,6 +825,8 @@ class Field(Loggable, Versionable, object):
         if dtype is None:
             dtype = self.dtype
         if x is not None:
+            if np.isscalar(x):
+                return np.full(self.shape,x, dtype=dtype)
             return np.asarray(x, dtype=dtype).reshape(self.shape)
         else:
             return np.empty(self.shape, dtype=dtype)

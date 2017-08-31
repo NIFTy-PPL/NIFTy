@@ -114,7 +114,7 @@ class LaplaceOperator(EndomorphicOperator):
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
         deriv = (x.val[sl_r]-x.val[sl_l])/dpos  # defined between points
-        ret = x.val.copy_empty()
+        ret = np.empty_like(x.val)
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
@@ -144,7 +144,7 @@ class LaplaceOperator(EndomorphicOperator):
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
         deriv = (y[sl_r]-y[sl_l])/dpos  # defined between points
-        ret = x.val.copy_empty()
+        ret = np.empty_like(x.val)
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv

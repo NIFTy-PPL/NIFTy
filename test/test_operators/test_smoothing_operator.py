@@ -92,7 +92,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
-        inp = inp.val.get_full_data()
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
 
     @expand(product([10, 15], [7, 10], [1, 0.4], [2, 0.3], [0., 1.,  3.7],
@@ -104,7 +103,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
-        inp = inp.val.get_full_data()
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
 
     @expand(product([100, 200], [False, True], [0., 1.,  3.7],
@@ -117,7 +115,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
-        inp = inp.val.get_full_data()
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
 
     @expand(product([10, 15], [7, 10], [False, True], [0., 1.,  3.7],
@@ -130,5 +127,4 @@ class SmoothingOperator_Tests(unittest.TestCase):
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
-        inp = inp.val.get_full_data()
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)

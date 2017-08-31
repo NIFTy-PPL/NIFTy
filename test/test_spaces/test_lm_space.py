@@ -127,4 +127,4 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_distance_array_configs())
     def test_distance_array(self, lmax, expected):
         l = LMSpace(lmax)
-        assert_almost_equal(l.get_distance_array('not').data, expected)
+        assert_almost_equal(l.get_distance_array().data, expected)

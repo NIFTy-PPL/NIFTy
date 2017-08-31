@@ -4,8 +4,6 @@ from __future__ import division
 from builtins import range
 import numpy as np
 
-from d2o import STRATEGIES
-
 from .smoothing_operator import SmoothingOperator
 
 
@@ -152,61 +150,16 @@ class DirectSmoothingOperator(SmoothingOperator):
 
         affected_axis = affected_axes[0]
 
-        distance_array = x.domain[spaces[0]].get_distance_array(
-            distribution_strategy='not')
-        distance_array = distance_array.get_local_data(copy=False)
+        distance_array = x.domain[spaces[0]].get_distance_array()
 
         #MR FIXME: this causes calls of log(0.) which should probably be avoided
         if self.log_distances:
             np.log(np.maximum(distance_array,1e-15), out=distance_array)
 
-        # collect the local data + ghost cells
-        local_data_Q = False
-
-        if x.distribution_strategy == 'not':
-            local_data_Q = True
-        elif x.distribution_strategy in STRATEGIES['slicing']:
-            # infer the local start/end based on the slicing information of
-            # x's d2o. Only gets non-trivial for axis==0.
-            if 0 != affected_axis:
-                local_data_Q = True
-            else:
-                start_index = x.val.distributor.local_start
-                start_distance = distance_array[start_index]
-                augmented_start_distance = \
-                    (start_distance -
-                     self.effective_smoothing_width*self.sigma)
-                augmented_start_index = \
-                    np.searchsorted(distance_array, augmented_start_distance)
-                true_start = start_index - augmented_start_index
-                end_index = x.val.distributor.local_end
-                end_distance = distance_array[end_index-1]
-                augmented_end_distance = \
-                    (end_distance + self.effective_smoothing_width*self.sigma)
-                augmented_end_index = \
-                    np.searchsorted(distance_array, augmented_end_distance)
-                true_end = true_start + x.val.distributor.local_length
-                augmented_slice = slice(augmented_start_index,
-                                        augmented_end_index)
-
-                augmented_data = x.val.get_data(augmented_slice,
-                                                local_keys=True,
-                                                copy=False)
-                augmented_data = augmented_data.get_local_data(copy=False)
-
-                augmented_distance_array = distance_array[augmented_slice]
-
-        else:
-            raise ValueError("Direct smoothing not implemented for given"
-                             "distribution strategy.")
-
-        if local_data_Q:
-            # if the needed data resides on the nodes already, the necessary
-            # are the same; no matter what the distribution strategy was.
-            augmented_data = x.val.get_local_data(copy=False)
-            augmented_distance_array = distance_array
-            true_start = 0
-            true_end = x.shape[affected_axis]
+        augmented_data = x.val
+        augmented_distance_array = distance_array
+        true_start = 0
+        true_end = x.shape[affected_axis]
 
         # perform the convolution along the affected axes
         # currently only one axis is supported
@@ -226,6 +179,4 @@ class DirectSmoothingOperator(SmoothingOperator):
                               smooth_length=true_sigma,
                               smoothing_width=self.effective_smoothing_width)
 
-        result = x.copy_empty()
-        result.val.set_local_data(local_result, copy=False)
-        return result
+        return local_result
