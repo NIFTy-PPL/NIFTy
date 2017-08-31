@@ -28,7 +28,7 @@ class Transformation(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, obje
         method for all transforms.
     """
 
-    def __init__(self, domain, codomain, module=None):
+    def __init__(self, domain, codomain):
         if codomain is None:
             self.domain = domain
             self.codomain = self.get_codomain(domain)

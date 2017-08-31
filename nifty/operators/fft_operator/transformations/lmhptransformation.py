@@ -17,30 +17,19 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from ....config import dependency_injector as gdi
 from .... import HPSpace, LMSpace
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
 
-pyHealpix = gdi.get('pyHealpix')
+import pyHealpix
 
 
 class LMHPTransformation(SlicingTransformation):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain, codomain=None, module=None):
-        if module is None:
-            module = 'pyHealpix'
-
-        if module != 'pyHealpix':
-            raise ValueError("Unsupported SHT module.")
-
-        if pyHealpix is None:
-            raise ImportError(
-                "The module pyHealpix is needed but not available.")
-
-        super(LMHPTransformation, self).__init__(domain, codomain, module)
+    def __init__(self, domain, codomain=None):
+        super(LMHPTransformation, self).__init__(domain, codomain)
 
     # ---Mandatory properties and methods---
 

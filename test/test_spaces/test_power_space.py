@@ -26,8 +26,6 @@ from numpy.testing import assert_, assert_equal, assert_almost_equal,\
 from nifty import PowerSpace, RGSpace, Space, LMSpace
 from test.common import expand
 from itertools import product, chain
-# needed to check wether fftw is available
-from nifty import dependency_injector as gdi
 from nose.plugins.skip import SkipTest
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True),

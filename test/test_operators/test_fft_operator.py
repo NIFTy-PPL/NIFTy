@@ -21,7 +21,6 @@ import unittest
 import numpy as np
 from numpy.testing import assert_equal,\
     assert_allclose
-from nifty.config import dependency_injector as gdi
 from nifty import Field,\
     RGSpace,\
     LMSpace,\
@@ -41,17 +40,14 @@ def _get_rtol(tp):
 
 
 class FFTOperatorTests(unittest.TestCase):
-    @expand(product(["numpy", "fftw"],
-                    [16, ], [0.1, 1, 3.7],
+    @expand(product([16, ], [0.1, 1, 3.7],
                     [np.float64, np.float32, np.complex64, np.complex128],
                     ['real', 'complex']))
-    def test_fft1D(self, module, dim1, d, itp, base):
-        if module == "fftw" and "fftw" not in gdi:
-            raise SkipTest
+    def test_fft1D(self, dim1, d, itp, base):
         tol = _get_rtol(itp)
         a = RGSpace(dim1, distances=d)
         b = RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
-        fft = FFTOperator(domain=a, target=b, module=module)
+        fft = FFTOperator(domain=a, target=b)
         fft._forward_transformation.harmonic_base = base
         fft._backward_transformation.harmonic_base = base
 
@@ -61,20 +57,17 @@ class FFTOperatorTests(unittest.TestCase):
         out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
-    @expand(product(["numpy", "fftw"],
-                    [12, 15], [9, 12], [0.1, 1, 3.7],
+    @expand(product([12, 15], [9, 12], [0.1, 1, 3.7],
                     [0.4, 1, 2.7],
                     [np.float64, np.float32, np.complex64, np.complex128],
                     ['real', 'complex']))
-    def test_fft2D(self, module, dim1, dim2, d1, d2,
+    def test_fft2D(self, dim1, dim2, d1, d2,
                    itp, base):
-        if module == "fftw" and "fftw" not in gdi:
-            raise SkipTest
         tol = _get_rtol(itp)
         a = RGSpace([dim1, dim2], distances=[d1, d2])
         b = RGSpace([dim1, dim2],
                     distances=[1./(dim1*d1), 1./(dim2*d2)], harmonic=True)
-        fft = FFTOperator(domain=a, target=b, module=module)
+        fft = FFTOperator(domain=a, target=b)
         fft._forward_transformation.harmonic_base = base
         fft._backward_transformation.harmonic_base = base
 
@@ -83,17 +76,14 @@ class FFTOperatorTests(unittest.TestCase):
         out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
-    @expand(product(["numpy", "fftw"],
-                    [0, 1, 2],
+    @expand(product([0, 1, 2],
                     [np.float64, np.float32, np.complex64, np.complex128],
                     ['real', 'complex']))
-    def test_composed_fft(self, module, index, dtype,
+    def test_composed_fft(self, index, dtype,
                           base):
-        if module == "fftw" and "fftw" not in gdi:
-            raise SkipTest
         tol = _get_rtol(dtype)
         a = [a1, a2, a3] = [RGSpace((32,)), RGSpace((4, 4)), RGSpace((5, 6))]
-        fft = FFTOperator(domain=a[index], module=module,
+        fft = FFTOperator(domain=a[index],
                           default_spaces=(index,))
         fft._forward_transformation.harmonic_base = base
         fft._backward_transformation.harmonic_base = base
@@ -106,8 +96,6 @@ class FFTOperatorTests(unittest.TestCase):
     @expand(product([0, 3, 6, 11, 30],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_sht(self, lm, tp):
-        if 'pyHealpix' not in gdi:
-            raise SkipTest
         tol = _get_rtol(tp)
         a = LMSpace(lmax=lm)
         b = GLSpace(nlat=lm+1)
@@ -120,8 +108,6 @@ class FFTOperatorTests(unittest.TestCase):
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_sht2(self, lm, tp):
-        if 'pyHealpix' not in gdi:
-            raise SkipTest
         a = LMSpace(lmax=lm)
         b = HPSpace(nside=lm//2)
         fft = FFTOperator(domain=a, target=b)
@@ -133,8 +119,6 @@ class FFTOperatorTests(unittest.TestCase):
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_dotsht(self, lm, tp):
-        if 'pyHealpix' not in gdi:
-            raise SkipTest
         tol = _get_rtol(tp)
         a = LMSpace(lmax=lm)
         b = GLSpace(nlat=lm+1)
@@ -149,8 +133,6 @@ class FFTOperatorTests(unittest.TestCase):
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_dotsht2(self, lm, tp):
-        if 'pyHealpix' not in gdi:
-            raise SkipTest
         tol = _get_rtol(tp)
         a = LMSpace(lmax=lm)
         b = HPSpace(nside=lm//2)

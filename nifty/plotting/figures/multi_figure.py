@@ -3,18 +3,15 @@
 from builtins import map
 from builtins import str
 import numpy as np
-from ... import dependency_injector as gdi
 from .figure_base import FigureBase
 from .figure_3D import Figure3D
 
-plotly = gdi.get('plotly')
+import plotly
 
 
 # TODO: add nice height and width defaults for multifigure
 class MultiFigure(FigureBase):
     def __init__(self, subfigures, title=None, width=None, height=None):
-        if 'plotly' not in gdi:
-            raise ImportError("The module plotly is needed but not available.")
         super(MultiFigure, self).__init__(title, width, height)
         if subfigures is not None:
             self.subfigures = np.asarray(subfigures, dtype=np.object)

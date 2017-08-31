@@ -13,8 +13,6 @@ import d2o
 
 from keepers import Loggable
 
-from ...config import dependency_injector as gdi
-
 from ...spaces.space import Space
 from ...field import Field
 from ... import nifty_utilities as utilities
@@ -22,13 +20,10 @@ from ... import nifty_utilities as utilities
 from ..figures import MultiFigure
 from future.utils import with_metaclass
 
-plotly = gdi.get('plotly')
+import plotly
 
 if plotly is not None and 'IPython' in sys.modules:
     plotly.offline.init_notebook_mode()
-
-rank = d2o.config.dependency_injector[
-        d2o.configuration['mpi_module']].COMM_WORLD.rank
 
 
 class PlotterBase(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object), {}))):

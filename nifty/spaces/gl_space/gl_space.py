@@ -22,10 +22,7 @@ import itertools
 import numpy as np
 
 from ..space import Space
-from ...config import dependency_injector as gdi
-
-pyHealpix = gdi.get('pyHealpix')
-
+import pyHealpix
 
 class GLSpace(Space):
     """

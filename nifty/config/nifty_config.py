@@ -23,28 +23,9 @@ import os
 import numpy as np
 import keepers
 
-__all__ = ['dependency_injector', 'nifty_configuration']
-
-# Setup the dependency injector
-dependency_injector = keepers.DependencyInjector(
-                                   [('mpi4py.MPI', 'MPI'),
-                                    ('pyfftw', 'fftw'),
-                                    'pyHealpix',
-                                    'plotly'])
-
-
-def _fft_module_checker(z):
-    if z == 'fftw':
-        return ('fftw' in dependency_injector)
-    if z == 'numpy':
-        return True
-    return False
+__all__ = ['nifty_configuration']
 
 # Initialize the variables
-variable_fft_module = keepers.Variable(
-                               'fft_module',
-                               ['fftw', 'numpy'],
-                               _fft_module_checker)
 
 variable_harmonic_rg_base = keepers.Variable(
                                 'harmonic_rg_base',
@@ -60,8 +41,7 @@ variable_loglevel = keepers.Variable(
 
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
-                 variables=[variable_fft_module,
-                            variable_harmonic_rg_base,
+                 variables=[variable_harmonic_rg_base,
                             variable_loglevel],
                  file_name='NIFTy.conf',
                  search_paths=[os.path.expanduser('~') + "/.config/nifty/",

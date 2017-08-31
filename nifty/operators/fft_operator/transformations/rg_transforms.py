@@ -21,14 +21,12 @@ from builtins import object
 import warnings
 
 import numpy as np
-from ....config import dependency_injector as gdi
-from ....config import nifty_configuration as gc
 from .... import nifty_utilities as utilities
 
 from keepers import Loggable
 from functools import reduce
 
-fftw = gdi.get('fftw')
+import pyfftw
 
 
 class Transform(Loggable, object):
@@ -208,17 +206,10 @@ class SerialFFT(Transform):
         The numpy fft pendant of a fft object.
 
     """
-    def __init__(self, domain, codomain, use_fftw):
+    def __init__(self, domain, codomain):
         super(SerialFFT, self).__init__(domain, codomain)
 
-        if use_fftw and (fftw is None):
-            raise ImportError(
-                "The serial FFTW module is needed but not available.")
-
-        self._use_fftw = use_fftw
-        # Enable caching
-        if self._use_fftw:
-            fftw.interfaces.cache.enable()
+        pyfftw.interfaces.cache.enable()
 
     def transform(self, val, axes, **kwargs):
         """
@@ -274,18 +265,12 @@ class SerialFFT(Transform):
             local_val = self._apply_mask(temp_val, mask, axes)
 
         # perform the transformation
-        if self._use_fftw:
-            if self.codomain.harmonic:
-                result_val = fftw.interfaces.numpy_fft.fftn(
-                             local_val, axes=axes)
-            else:
-                result_val = fftw.interfaces.numpy_fft.ifftn(
-                             local_val, axes=axes)
+        if self.codomain.harmonic:
+            result_val = pyfftw.interfaces.numpy_fft.fftn(
+                         local_val, axes=axes)
         else:
-            if self.codomain.harmonic:
-                result_val = np.fft.fftn(local_val, axes=axes)
-            else:
-                result_val = np.fft.ifftn(local_val, axes=axes)
+            result_val = pyfftw.interfaces.numpy_fft.ifftn(
+                         local_val, axes=axes)
 
         # Apply domain centering mask
         if reduce(lambda x, y: x + y, self.domain.zerocenter):

@@ -61,14 +61,6 @@ class FFTOperator(LinearOperator):
         For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
         co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
-    module: String (optional)
-        Software module employed for carrying out the transform operations.
-        For RGSpace pairs this can be "scalar" or "mpi", where "scalar" is
-        always available (using pyfftw if available, else numpy.fft), and "mpi"
-        requires pyfftw and offers MPI parallelization.
-        For sphere-related domains, only "pyHealpix" is
-        available. If omitted, "fftw" is selected for RGSpaces if available,
-        else "numpy"; on the sphere the default is "pyHealpix".
     domain_dtype: data type (optional)
         Data type of the fields that go into "times" and come out of
         "adjoint_times". Default is "numpy.complex".
@@ -112,7 +104,7 @@ class FFTOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain, target=None, module=None,
+    def __init__(self, domain, target=None,
                  domain_dtype=None, target_dtype=None, default_spaces=None):
         super(FFTOperator, self).__init__(default_spaces)
 
@@ -136,10 +128,10 @@ class FFTOperator(LinearOperator):
                 (self.target[0].__class__, self.domain[0].__class__)]
 
         self._forward_transformation = TransformationCache.create(
-            forward_class, self.domain[0], self.target[0], module=module)
+            forward_class, self.domain[0], self.target[0])
 
         self._backward_transformation = TransformationCache.create(
-            backward_class, self.target[0], self.domain[0], module=module)
+            backward_class, self.target[0], self.domain[0])
 
         # Store the dtype information
         self.domain_dtype = \

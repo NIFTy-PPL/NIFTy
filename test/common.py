@@ -19,7 +19,6 @@
 from builtins import str
 from parameterized import parameterized
 from nifty import RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
-from nifty.config import dependency_injector as gdi
 
 
 def custom_name_func(testcase_func, param_num, param):
@@ -36,9 +35,7 @@ def expand(*args, **kwargs):
 
 def generate_spaces():
     spaces = [RGSpace(4), PowerSpace(RGSpace((4, 4), harmonic=True)),
-              LMSpace(5), HPSpace(4)]
-    if 'pyHealpix' in gdi:
-        spaces.append(GLSpace(4))
+              LMSpace(5), HPSpace(4), GLSpace(4)]
     return spaces
 
 

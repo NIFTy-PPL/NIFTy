@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from .... import dependency_injector as gdi
 from .heatmap import Heatmap
 import numpy as np
 
@@ -8,16 +7,13 @@ from ...descriptors import Axis
 
 from .mollweide_helper import mollweide_helper
 
-pyHealpix = gdi.get('pyHealpix')
+import pyHealpix
 
 
 class GLMollweide(Heatmap):
     def __init__(self, data, xsize=800, color_map=None,
                  webgl=False, smoothing=False, zmin=None, zmax=None):
         # smoothing 'best', 'fast', False
-        if pyHealpix is None:
-            raise ImportError(
-                "The module pyHealpix is needed but not available.")
         self.xsize = xsize
 
         super(GLMollweide, self).__init__(data, color_map, webgl, smoothing,

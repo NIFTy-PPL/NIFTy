@@ -24,7 +24,6 @@ from numpy.testing import assert_, assert_equal, assert_raises,\
         assert_almost_equal
 from nose.plugins.skip import SkipTest
 from nifty import GLSpace
-from nifty.config import dependency_injector as gdi
 from test.common import expand
 
 # [nlat, nlon, expected]
@@ -94,16 +93,8 @@ class GLSpaceFunctionalityTests(unittest.TestCase):
 
     @expand(get_weight_configs())
     def test_weight(self, x, power, axes, inplace, expected):
-        try:
-            g = GLSpace(4)
-        except ImportError:
-            raise SkipTest
-
-        if 'pyHealpix' not in gdi:
-            raise SkipTest
-        else:
-            g = GLSpace(2)
-            res = g.weight(x, power, axes, inplace)
-            assert_almost_equal(res, expected)
-            if inplace:
-                assert_(x is res)
+        g = GLSpace(2)
+        res = g.weight(x, power, axes, inplace)
+        assert_almost_equal(res, expected)
+        if inplace:
+            assert_(x is res)

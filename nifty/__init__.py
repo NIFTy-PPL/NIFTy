@@ -24,8 +24,7 @@ from .version import __version__
 from keepers import MPILogger
 logger = MPILogger()
 
-from .config import dependency_injector,\
-                   nifty_configuration
+from .config import nifty_configuration
 
 logger.logger.setLevel(nifty_configuration['loglevel'])
 

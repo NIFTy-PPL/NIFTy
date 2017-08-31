@@ -27,20 +27,9 @@ class RGRGTransformation(Transformation):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain, codomain=None, module=None):
-        super(RGRGTransformation, self).__init__(domain, codomain, module)
-
-        if module is None:
-            module = nifty_configuration['fft_module']
-
-        if module == 'fftw':
-            self._transform = SerialFFT(self.domain, self.codomain,
-                                        use_fftw=True)
-        elif module == 'numpy':
-            self._transform = SerialFFT(self.domain, self.codomain,
-                                        use_fftw=False)
-        else:
-            raise ValueError('Unsupported FFT module:' + module)
+    def __init__(self, domain, codomain=None):
+        super(RGRGTransformation, self).__init__(domain, codomain)
+        self._transform = SerialFFT(self.domain, self.codomain)
 
         self.harmonic_base = nifty_configuration['harmonic_rg_base']
 
