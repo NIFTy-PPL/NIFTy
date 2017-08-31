@@ -216,8 +216,8 @@ class Field(Loggable, object):
 
     # ---Powerspectral methods---
 
-    def power_analyze(self, spaces=None, logarithmic=None, nbin=None,
-                      binbounds=None, keep_phase_information=False):
+    def power_analyze(self, spaces=None, binbounds=None,
+                      keep_phase_information=False):
         """ Computes the square root power spectrum for a subspace of `self`.
 
         Creates a PowerSpace for the space addressed by `spaces` with the given
@@ -231,16 +231,8 @@ class Field(Loggable, object):
         spaces : int *optional*
             The subspace for which the powerspectrum shall be computed
             (default : None).
-        logarithmic : boolean *optional*
-            True if the output PowerSpace should use logarithmic binning.
-            {default : None}
-        nbin : int *optional*
-            The number of bins the resulting PowerSpace shall have
-            (default : None).
-            if nbin==None : maximum number of bins is used
         binbounds : array-like *optional*
             Inner bounds of the bins (default : None).
-            Overrides nbin and logarithmic.
             if binbounds==None : bins are inferred.
         keep_phase_information : boolean, *optional*
             If False, return a real-valued result containing the power spectrum
@@ -308,8 +300,6 @@ class Field(Loggable, object):
             parts = [self._single_power_analyze(
                                 work_field=part,
                                 space_index=space_index,
-                                logarithmic=logarithmic,
-                                nbin=nbin,
                                 binbounds=binbounds)
                      for part in parts]
 
@@ -321,8 +311,7 @@ class Field(Loggable, object):
         return result_field
 
     @classmethod
-    def _single_power_analyze(cls, work_field, space_index, logarithmic, nbin,
-                              binbounds):
+    def _single_power_analyze(cls, work_field, space_index, binbounds):
 
         if not work_field.domain[space_index].harmonic:
             raise ValueError(
@@ -336,7 +325,6 @@ class Field(Loggable, object):
 
         harmonic_domain = work_field.domain[space_index]
         power_domain = PowerSpace(harmonic_partner=harmonic_domain,
-                                  logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
         power_spectrum = cls._calculate_power_spectrum(
                                 field_val=work_field.val,

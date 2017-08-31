@@ -24,7 +24,7 @@ import numpy as np
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
 from nifty import PowerSpace, RGSpace, Space, LMSpace
-from test.common import expand
+from test.common import expand, marco_binbounds
 from itertools import product, chain
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
@@ -117,11 +117,12 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
     def test_rhopindexConsistency(self, harmonic_partner,
                                   binbounds, nbin, logarithmic):
         p = PowerSpace(harmonic_partner=harmonic_partner,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                       binbounds=marco_binbounds(harmonic_partner,
+                                                 logarithmic, nbin))
 
         assert_equal(np.bincount(p.pindex.flatten()), p.rho,
-            err_msg='rho is not equal to pindex degeneracy')
+                     err_msg='rho is not equal to pindex degeneracy')
+
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
@@ -130,12 +131,12 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         if 'error' in expected:
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_partner=harmonic_partner,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                           binbounds=marco_binbounds(harmonic_partner,
+                                                     logarithmic, nbin))
         else:
             p = PowerSpace(harmonic_partner=harmonic_partner,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                           binbounds=marco_binbounds(harmonic_partner,
+                                                     logarithmic, nbin))
             for key, value in expected.items():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)

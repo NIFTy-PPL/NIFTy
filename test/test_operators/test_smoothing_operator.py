@@ -27,7 +27,7 @@ from nifty import Field,\
     DirectSmoothingOperator
 
 from itertools import product
-from test.common import expand
+from test.common import expand, marco_binbounds
 
 
 def _get_rtol(tp):
@@ -72,7 +72,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def test_smooth_regular1(self, sz, d, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace(sz, harmonic=True, distances=d)
+        sp = RGSpace(sz, distances=d)
         smo = FFTSmoothingOperator(sp, sigma=sigma)
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
@@ -83,7 +83,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def test_smooth_regular2(self, sz1, sz2, d1, d2, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace([sz1, sz2], distances=[d1, d2], harmonic=True)
+        sp = RGSpace([sz1, sz2], distances=[d1, d2])
         smo = FFTSmoothingOperator(sp, sigma=sigma)
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
@@ -95,7 +95,8 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_irregular1(self, sz, log, sigma, tp):
         tol = _get_rtol(tp)
         sp = RGSpace(sz, harmonic=True)
-        ps = PowerSpace(sp, nbin=sz, logarithmic=log)
+        ps = PowerSpace(sp, binbounds=marco_binbounds(
+                                                sp, logarithmic=log, nbin=sz))
         smo = DirectSmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
@@ -107,7 +108,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_irregular2(self, sz1, sz2, log, sigma, tp):
         tol = _get_rtol(tp)
         sp = RGSpace([sz1, sz2], harmonic=True)
-        ps = PowerSpace(sp, logarithmic=log)
+        ps = PowerSpace(sp, binbounds=marco_binbounds(sp, logarithmic=log))
         smo = DirectSmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)

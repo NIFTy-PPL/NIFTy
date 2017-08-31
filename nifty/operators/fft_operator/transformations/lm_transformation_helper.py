@@ -17,8 +17,6 @@ def buildIdx(nr, lmax):
         new_dtype = np.float32
     elif nr.dtype == np.dtype('complex128'):
         new_dtype = np.float64
-    elif nr.dtype == np.dtype('complex256'):
-        new_dtype = np.float128
     else:
         raise TypeError("dtype of nr not supported.")
 

@@ -119,12 +119,6 @@ class HPSpace(Space):
 
         return result_x
 
-    def get_distance_array(self, distribution_strategy):
-        raise NotImplementedError
-
-    def get_fft_smoothing_kernel_function(self, sigma):
-        raise NotImplementedError
-
     # ---Added properties and methods---
 
     @property
