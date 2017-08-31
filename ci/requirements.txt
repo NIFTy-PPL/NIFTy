@@ -1,5 +1,4 @@
 numpy
-cython
 matplotlib
 plotly
 nose
@@ -7,4 +6,3 @@ parameterized
 coverage
 git+https://gitlab.mpcdf.mpg.de/ift/mpi_dummy.git
 git+https://gitlab.mpcdf.mpg.de/ift/keepers.git
-git+https://gitlab.mpcdf.mpg.de/ift/D2O.git
