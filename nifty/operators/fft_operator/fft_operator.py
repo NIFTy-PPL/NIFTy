@@ -61,12 +61,6 @@ class FFTOperator(LinearOperator):
         For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
         co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
-    domain_dtype: data type (optional)
-        Data type of the fields that go into "times" and come out of
-        "adjoint_times". Default is "numpy.complex".
-    target_dtype: data type (optional)
-        Data type of the fields that go into "adjoint_times" and come out of
-        "times". Default is "numpy.complex".
 
     Attributes
     ----------
@@ -104,8 +98,7 @@ class FFTOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain, target=None,
-                 domain_dtype=None, target_dtype=None, default_spaces=None):
+    def __init__(self, domain, target=None, default_spaces=None):
         super(FFTOperator, self).__init__(default_spaces)
 
         # Initialize domain and target
@@ -133,20 +126,11 @@ class FFTOperator(LinearOperator):
         self._backward_transformation = TransformationCache.create(
             backward_class, self.target[0], self.domain[0])
 
-        # Store the dtype information
-        self.domain_dtype = \
-            None if domain_dtype is None else np.dtype(domain_dtype)
-
-        self.target_dtype = \
-            None if target_dtype is None else np.dtype(target_dtype)
-
     def _add_attributes_to_copy(self, copy, **kwargs):
         copy._domain = self._domain
         copy._target = self._target
         copy._forward_transformation = self._forward_transformation
         copy._backward_transformation = self._backward_transformation
-        copy.domain_dtype = self.domain_dtype
-        copy.target_dtype = self.target_dtype
         copy = super(FFTOperator, self)._add_attributes_to_copy(copy,
                                                                 **kwargs)
         return copy
@@ -169,8 +153,7 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.target[0]
 
-        result_dtype = \
-            new_val.dtype if self.target_dtype is None else self.target_dtype
+        result_dtype = new_val.dtype
         result_field = x.copy_empty(domain=result_domain,
                                     dtype=result_dtype)
         result_field.set_val(new_val=new_val, copy=True)
@@ -195,8 +178,7 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.domain[0]
 
-        result_dtype = \
-            new_val.dtype if self.domain_dtype is None else self.domain_dtype
+        result_dtype = new_val.dtype
 
         result_field = x.copy_empty(domain=result_domain,
                                     dtype=result_dtype)

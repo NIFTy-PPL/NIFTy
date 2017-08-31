@@ -74,8 +74,5 @@ class FFTSmoothingOperator(SmoothingOperator):
 
     def _get_transformator(self, dtype):
         if dtype not in self._transformator_cache:
-            self._transformator_cache[dtype] = FFTOperator(
-                                                    self.domain,
-                                                    domain_dtype=dtype,
-                                                    target_dtype=np.complex)
+            self._transformator_cache[dtype] = FFTOperator(self.domain)
         return self._transformator_cache[dtype]

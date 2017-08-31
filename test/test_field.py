@@ -93,11 +93,8 @@ class Test_Functionality(unittest.TestCase):
                              zerocenter=True)],
                     [RGSpace((8,), harmonic=True,
                              zerocenter=False),
-                     LMSpace(12)],
-                    ['real', 'complex']))
-    def test_power_synthesize_analyze(self, space1, space2, base):
-        nifty_configuration['harmonic_rg_base'] = base
-
+                     LMSpace(12)]))
+    def test_power_synthesize_analyze(self, space1, space2):
         np.random.seed(11)
 
         p1 = PowerSpace(space1)

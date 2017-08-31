@@ -20,8 +20,7 @@ from __future__ import division
 import numpy as np
 from .transformation import Transformation
 from .rg_transforms import SerialFFT
-from .... import RGSpace, nifty_configuration
-
+from .... import RGSpace
 
 class RGRGTransformation(Transformation):
 
@@ -30,8 +29,6 @@ class RGRGTransformation(Transformation):
     def __init__(self, domain, codomain=None):
         super(RGRGTransformation, self).__init__(domain, codomain)
         self._transform = SerialFFT(self.domain, self.codomain)
-
-        self.harmonic_base = nifty_configuration['harmonic_rg_base']
 
     # ---Mandatory properties and methods---
 
@@ -134,31 +131,28 @@ class RGRGTransformation(Transformation):
             val = self._transform.domain.weight(val, power=1, axes=axes)
 
         # Perform the transformation
-        if self.harmonic_base == 'complex':
-            Tval = self._transform.transform(val, axes, **kwargs)
-        else:
-            if issubclass(val.dtype.type, np.complexfloating):
-                Tval_real = self._transform.transform(val.real, axes,
-                                                      **kwargs)
-                Tval_imag = self._transform.transform(val.imag, axes,
-                                                      **kwargs)
-                if self.codomain.harmonic:
-                    Tval_real.real += Tval_real.imag
-                    Tval_real.imag = \
-                        Tval_imag.real + Tval_imag.imag
-                else:
-                    Tval_real.real -= Tval_real.imag
-                    Tval_real.imag = \
-                        Tval_imag.real - Tval_imag.imag
-
-                Tval = Tval_real
+        if issubclass(val.dtype.type, np.complexfloating):
+            Tval_real = self._transform.transform(val.real, axes,
+                                                  **kwargs)
+            Tval_imag = self._transform.transform(val.imag, axes,
+                                                  **kwargs)
+            if self.codomain.harmonic:
+                Tval_real.real += Tval_real.imag
+                Tval_real.imag = \
+                    Tval_imag.real + Tval_imag.imag
             else:
-                Tval = self._transform.transform(val, axes, **kwargs)
-                if self.codomain.harmonic:
-                    Tval.real += Tval.imag
-                else:
-                    Tval.real -= Tval.imag
-                Tval = Tval.real
+                Tval_real.real -= Tval_real.imag
+                Tval_real.imag = \
+                    Tval_imag.real - Tval_imag.imag
+
+            Tval = Tval_real
+        else:
+            Tval = self._transform.transform(val, axes, **kwargs)
+            if self.codomain.harmonic:
+                Tval.real += Tval.imag
+            else:
+                Tval.real -= Tval.imag
+            Tval = Tval.real
 
         if not self._transform.codomain.harmonic:
             # correct for inverse fft.

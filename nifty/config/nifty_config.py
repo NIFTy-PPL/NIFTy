@@ -27,12 +27,6 @@ __all__ = ['nifty_configuration']
 
 # Initialize the variables
 
-variable_harmonic_rg_base = keepers.Variable(
-                                'harmonic_rg_base',
-                                ['real', 'complex'],
-                                lambda z: z in ['real', 'complex'],
-                                genus='str')
-
 variable_loglevel = keepers.Variable(
                                 'loglevel',
                                 [10],
@@ -41,8 +35,7 @@ variable_loglevel = keepers.Variable(
 
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
-                 variables=[variable_harmonic_rg_base,
-                            variable_loglevel],
+                 variables=[variable_loglevel],
                  file_name='NIFTy.conf',
                  search_paths=[os.path.expanduser('~') + "/.config/nifty/",
                                os.path.expanduser('~') + "/.config/",

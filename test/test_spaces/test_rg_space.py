@@ -156,9 +156,8 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
 
     @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
                      (4, 6, 8), (17, 5, 3)],
-                    [True, False],
-                    ['real', 'complex']))
-    def test_hermitianize_inverter(self, shape, zerocenter, base):
+                    [True, False]))
+    def test_hermitianize_inverter(self, shape, zerocenter):
         try:
             r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
         except ValueError:
@@ -166,25 +165,9 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         v = np.empty(shape, dtype=np.complex128)
         v[:] = np.random.random(shape) + 1j*np.random.random(shape)
 
-        nifty_configuration['harmonic_rg_base'] = base
         inverted = r.hermitianize_inverter(v, axes=range(len(shape)))
 
-        if base == 'complex':
-            # test hermitian flipping of `inverted`
-            it = np.nditer(v, flags=['multi_index'])
-            while not it.finished:
-                i1 = it.multi_index
-                i2 = []
-                for i in range(len(i1)):
-                    if r.zerocenter[i] and r.shape[i] % 2 != 0:
-                        i2.append(v.shape[i]-i1[i]-1)
-                    else:
-                        i2.append(v.shape[i]-i1[i] if i1[i] > 0 else 0)
-                i2 = tuple(i2)
-                assert_almost_equal(inverted[i1], v[i2])
-                it.iternext()
-        else:
-            assert_array_equal(v, inverted)
+        assert_array_equal(v, inverted)
 
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, zerocenter, expected):
