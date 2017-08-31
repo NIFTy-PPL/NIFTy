@@ -21,6 +21,7 @@ from builtins import range
 import numpy as np
 from itertools import product
 import itertools
+from functools import reduce
 
 def get_slice_list(shape, axes):
     """
