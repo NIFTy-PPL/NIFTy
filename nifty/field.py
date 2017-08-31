@@ -135,7 +135,7 @@ class Field(Loggable, Versionable, object):
                         raise TypeError
                     dtype = np.result_type(val)
                 except(TypeError):
-                    dtype = np.dtype(gc['default_field_dtype'])
+                    dtype = np.dtype(np.float64)
         else:
             dtype = np.dtype(dtype)
 

@@ -46,39 +46,11 @@ variable_fft_module = keepers.Variable(
                                ['fftw', 'numpy'],
                                _fft_module_checker)
 
-
-def dtype_validator(dtype):
-    try:
-        np.dtype(dtype)
-    except(TypeError):
-        return False
-    else:
-        return True
-
-variable_default_field_dtype = keepers.Variable(
-                              'default_field_dtype',
-                              ['float'],
-                              dtype_validator,
-                              genus='str')
-
-variable_default_distribution_strategy = keepers.Variable(
-                              'default_distribution_strategy',
-                              ['not', 'fftw', 'equal'],
-                              lambda z: (('fftw' in dependency_injector)
-                                         if z == 'fftw' else True),
-                              genus='str')
-
 variable_harmonic_rg_base = keepers.Variable(
                                 'harmonic_rg_base',
                                 ['real', 'complex'],
                                 lambda z: z in ['real', 'complex'],
                                 genus='str')
-
-variable_threads = keepers.Variable(
-                                'threads',
-                                [1],
-                                lambda z: np.int(abs(z)) == z,
-                                genus='int')
 
 variable_loglevel = keepers.Variable(
                                 'loglevel',
@@ -89,10 +61,7 @@ variable_loglevel = keepers.Variable(
 nifty_configuration = keepers.get_Configuration(
                  name='NIFTy',
                  variables=[variable_fft_module,
-                            variable_default_field_dtype,
-                            variable_default_distribution_strategy,
                             variable_harmonic_rg_base,
-                            variable_threads,
                             variable_loglevel],
                  file_name='NIFTy.conf',
                  search_paths=[os.path.expanduser('~') + "/.config/nifty/",
