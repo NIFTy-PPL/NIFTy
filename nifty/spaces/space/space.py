@@ -95,22 +95,16 @@ class Space(DomainObject):
 
         return self.__class__()
 
-    def get_distance_array(self, distribution_strategy):
+    def get_distance_array(self):
         """ The distances of the pixel to zero.
 
         This returns an array that gives for each pixel its distance to the
         center of the manifolds grid.
 
-        Parameters
-        ----------
-        distribution_strategy : str
-            The distribution_strategy which shall be used the returned
-            distributed_data_object.
-
         Returns
         -------
-        distributed_data_object
-            A d2o containing the distances
+        numpy.ndarray
+            An array containing the distances
 
         """
 
@@ -125,7 +119,7 @@ class Space(DomainObject):
 
         Returns
         -------
-        distributed_data_object
+        np.ndarray
             A numpy array containing the binbounds
 
         """
@@ -174,7 +168,7 @@ class Space(DomainObject):
 
         Returns
         -------
-        distributed_data_object
+        numpy.ndarray
             The Hermitian-flipped of x.
         """
 

@@ -20,9 +20,6 @@
 import ast
 import numpy as np
 
-from d2o import distributed_data_object,\
-    STRATEGIES as DISTRIBUTION_STRATEGIES
-
 from ...spaces.space import Space
 from functools import reduce
 from ...config import nifty_configuration as gc
@@ -35,10 +32,6 @@ class PowerSpace(Space):
     ----------
     harmonic_partner : Space
         The harmonic Space of which this is the power space.
-    distribution_strategy : str *optional*
-        The distribution strategy used for the distributed_data_objects
-        derived from this PowerSpace, e.g. the pindex.
-        (default : 'not')
     logarithmic : bool *optional*
         True if logarithmic binning should be used (default : None).
     nbin : {int, None} *optional*
@@ -61,7 +54,7 @@ class PowerSpace(Space):
 
     Attributes
     ----------
-    pindex : distributed_data_object
+    pindex : numpy.ndarray
         This holds the information which pixel of the harmonic partner gets
         mapped to which power bin
     kindex : numpy.ndarray
@@ -91,17 +84,10 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, harmonic_partner, distribution_strategy=None,
+    def __init__(self, harmonic_partner,
                  logarithmic=None, nbin=None, binbounds=None):
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
-
-        if distribution_strategy is None:
-            distribution_strategy = gc['default_distribution_strategy']
-        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
-            raise ValueError(
-                    "distribution_strategy must be a global-type "
-                    "strategy.")
 
         if not (isinstance(harmonic_partner, Space) and
                 harmonic_partner.harmonic):
@@ -116,26 +102,25 @@ class PowerSpace(Space):
         if binbounds is not None:
             binbounds = tuple(binbounds)
 
-        key = (harmonic_partner, distribution_strategy, logarithmic, nbin,
-               binbounds)
+        key = (harmonic_partner, logarithmic, nbin, binbounds)
         if self._powerIndexCache.get(key) is None:
             distance_array = \
-                self.harmonic_partner.get_distance_array(distribution_strategy)
+                self.harmonic_partner.get_distance_array()
             temp_binbounds = self._compute_binbounds(
                                   harmonic_partner=self.harmonic_partner,
-                                  distribution_strategy=distribution_strategy,
                                   logarithmic=logarithmic,
                                   nbin=nbin,
                                   binbounds=binbounds)
             temp_pindex = self._compute_pindex(
                                 harmonic_partner=self.harmonic_partner,
                                 distance_array=distance_array,
-                                binbounds=temp_binbounds,
-                                distribution_strategy=distribution_strategy)
-            temp_rho = temp_pindex.bincount().get_full_data()
-            temp_kindex = \
-                (temp_pindex.bincount(weights=distance_array).get_full_data() /
-                 temp_rho)
+                                binbounds=temp_binbounds)
+            #temp_rho = temp_pindex.bincount().get_full_data()
+            temp_rho = np.bincount(temp_pindex.flatten())
+            #temp_kindex = \
+            #    (temp_pindex.bincount(weights=distance_array).get_full_data() /
+            #     temp_rho)
+            temp_kindex = np.bincount(temp_pindex.flatten(),weights=distance_array.flatten())/temp_rho
             self._powerIndexCache[key] = (temp_binbounds,
                                           temp_pindex,
                                           temp_kindex,
@@ -145,7 +130,7 @@ class PowerSpace(Space):
             self._powerIndexCache[key]
 
     @staticmethod
-    def _compute_binbounds(harmonic_partner, distribution_strategy,
+    def _compute_binbounds(harmonic_partner,
                            logarithmic, nbin, binbounds):
 
         if logarithmic is None and nbin is None and binbounds is None:
@@ -182,19 +167,10 @@ class PowerSpace(Space):
         return result
 
     @staticmethod
-    def _compute_pindex(harmonic_partner, distance_array, binbounds,
-                        distribution_strategy):
-
-        # Compute pindex, kindex and rho according to bb
-        pindex = distributed_data_object(
-                                global_shape=distance_array.shape,
-                                dtype=np.int,
-                                distribution_strategy=distribution_strategy)
+    def _compute_pindex(harmonic_partner, distance_array, binbounds):
         if binbounds is None:
             binbounds = harmonic_partner.get_natural_binbounds()
-        pindex.set_local_data(
-                np.searchsorted(binbounds, distance_array.get_local_data()))
-        return pindex
+        return np.searchsorted(binbounds, distance_array)
 
     def pre_cast(self, x, axes):
         """ Casts power spectrum functions to discretized power spectra.
@@ -224,10 +200,8 @@ class PowerSpace(Space):
     # ---Mandatory properties and methods---
 
     def __repr__(self):
-        return ("PowerSpace(harmonic_partner=%r, distribution_strategy=%r, "
-                "binbounds=%r)"
-                % (self.harmonic_partner, self.pindex.distribution_strategy,
-                   self._binbounds))
+        return ("PowerSpace(harmonic_partner=%r, binbounds=%r)"
+                % (self.harmonic_partner, self._binbounds))
 
     @property
     def harmonic(self):
@@ -247,9 +221,7 @@ class PowerSpace(Space):
         return float(reduce(lambda x, y: x*y, self.pindex.shape))
 
     def copy(self):
-        distribution_strategy = self.pindex.distribution_strategy
         return self.__class__(harmonic_partner=self.harmonic_partner,
-                              distribution_strategy=distribution_strategy,
                               binbounds=self._binbounds)
 
     def weight(self, x, power, axes, inplace=False):
@@ -269,10 +241,8 @@ class PowerSpace(Space):
 
         return result_x
 
-    def get_distance_array(self, distribution_strategy):
-        return distributed_data_object(
-                                self.kindex, dtype=np.float64,
-                                distribution_strategy=distribution_strategy)
+    def get_distance_array(self):
+        return self.kindex.copy()
 
     def get_fft_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(
@@ -292,7 +262,7 @@ class PowerSpace(Space):
 
     @property
     def pindex(self):
-        """ A distributed_data_object having the shape of the harmonic partner
+        """ A numpy.ndarray having the shape of the harmonic partner
         space containing the indices of the power bin a pixel belongs to.
         """
         return self._pindex
@@ -313,8 +283,6 @@ class PowerSpace(Space):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group.attrs['binbounds'] = str(self._binbounds)
-        hdf5_group.attrs['distribution_strategy'] = \
-            self._pindex.distribution_strategy
 
         return {
             'harmonic_partner': self.harmonic_partner,
@@ -324,5 +292,4 @@ class PowerSpace(Space):
     def _from_hdf5(cls, hdf5_group, repository):
         hp = repository.get('harmonic_partner', hdf5_group)
         bb = ast.literal_eval(hdf5_group.attrs['binbounds'])
-        ds = hdf5_group.attrs['distribution_strategy']
-        return PowerSpace(hp, ds, binbounds=bb)
+        return PowerSpace(hp, binbounds=bb)

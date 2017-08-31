@@ -34,9 +34,6 @@ from functools import reduce
 
 import numpy as np
 
-from d2o import distributed_data_object,\
-                STRATEGIES as DISTRIBUTION_STRATEGIES
-
 from ..space import Space
 from ...config import nifty_configuration
 
@@ -193,42 +190,23 @@ class RGSpace(Space):
             result_x = x*weight
         return result_x
 
-    def get_distance_array(self, distribution_strategy):
+    def get_distance_array(self):
         """ Calculates an n-dimensional array with its entries being the
         lengths of the vectors from the zero point of the grid.
 
-        Parameters
-        ----------
-        distribution_strategy : str
-            The distribution_strategy which shall be used the returned
-            distributed_data_object.
-
         Returns
         -------
-        distributed_data_object
-            A d2o containing the distances.
+        numpy.ndarray
+            An array containing the distances.
 
         """
 
         shape = self.shape
-        # prepare the distributed_data_object
-        nkdict = distributed_data_object(
-                        global_shape=shape, dtype=np.float64,
-                        distribution_strategy=distribution_strategy)
 
-        if distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
-            # get the node's individual slice of the first dimension
-            slice_of_first_dimension = slice(
-                                    *nkdict.distributor.local_slice[0:2])
-        elif distribution_strategy in DISTRIBUTION_STRATEGIES['not']:
-            slice_of_first_dimension = slice(0, shape[0])
-        else:
-            raise ValueError(
-                "Unsupported distribution strategy")
+        slice_of_first_dimension = slice(0, shape[0])
         dists = self._distance_array_helper(slice_of_first_dimension)
-        nkdict.set_local_data(dists)
 
-        return nkdict
+        return dists
 
     def _distance_array_helper(self, slice_of_first_dimension):
         dk = self.distances

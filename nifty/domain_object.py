@@ -142,7 +142,7 @@ class DomainObject(with_metaclass(
 
         Parameters
         ----------
-        x : distributed_data_object
+        x : numpy.ndarray
             The fields data array.
         power : int, *optional*
             The power to which the volume-weight is raised (default: 1).
@@ -158,7 +158,7 @@ class DomainObject(with_metaclass(
 
         Returns
         -------
-        distributed_data_object
+        numpy.ndarray
             A weighted version of x, with volume-weights raised to the
             given power.
 
@@ -217,7 +217,7 @@ class DomainObject(with_metaclass(
 
         Returns
         -------
-        distributed_data_object
+        numpy.ndarray
             Processed input where casting that needs Space-specific knowledge
             (for example location of pixels on the manifold) was performed.
 

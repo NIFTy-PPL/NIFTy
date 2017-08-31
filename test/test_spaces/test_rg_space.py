@@ -21,8 +21,6 @@ from __future__ import division
 import unittest
 import numpy as np
 
-from d2o import distributed_data_object
-
 from numpy.testing import assert_, assert_equal, assert_almost_equal, \
                           assert_array_equal
 from nifty import RGSpace, nifty_configuration
@@ -165,7 +163,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
             r = RGSpace(shape, harmonic=True, zerocenter=zerocenter)
         except ValueError:
             raise SkipTest
-        v = distributed_data_object(global_shape=shape, dtype=np.complex128)
+        v = np.empty(shape, dtype=np.complex128)
         v[:] = np.random.random(shape) + 1j*np.random.random(shape)
 
         nifty_configuration['harmonic_rg_base'] = base
@@ -191,7 +189,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, zerocenter, expected):
         r = RGSpace(shape=shape, distances=distances, zerocenter=zerocenter)
-        assert_almost_equal(r.get_distance_array('not'), expected)
+        assert_almost_equal(r.get_distance_array(), expected)
 
     @expand(get_weight_configs())
     def test_weight(self, shape, distances, harmonic, x, power, axes,

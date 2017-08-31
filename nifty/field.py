@@ -18,7 +18,6 @@
 
 from __future__ import division
 from builtins import zip
-#from builtins import str
 from builtins import range
 
 import ast
@@ -26,9 +25,6 @@ import numpy as np
 
 from keepers import Versionable,\
                     Loggable
-
-from d2o import distributed_data_object,\
-    STRATEGIES as DISTRIBUTION_STRATEGIES
 
 from .config import nifty_configuration as gc
 
@@ -55,7 +51,7 @@ class Field(Loggable, Versionable, object):
         LMSpace or PowerSpace. It might also be a FieldArray, which is
         an unstructured domain.
 
-    val : scalar, numpy.ndarray, distributed_data_object, Field
+    val : scalar, numpy.ndarray, Field
         The values the array should contain after init. A scalar input will
         fill the whole array with this scalar. If an array is provided the
         array's dimensions must match the domain's.
@@ -63,18 +59,11 @@ class Field(Loggable, Versionable, object):
     dtype : type
         A numpy.type. Most common are int, float and complex.
 
-    distribution_strategy: optional[{'fftw', 'equal', 'not', 'freeform'}]
-        Specifies which distributor will be created and used.
-        'fftw'      uses the distribution strategy of pyfftw,
-        'equal'     tries to  distribute the data as uniform as possible
-        'not'       does not distribute the data at all
-        'freeform'  distribute the data according to the given local data/shape
-
     copy: boolean
 
     Attributes
     ----------
-    val : distributed_data_object
+    val : numpy.ndarray
 
     domain : DomainObject
         See Parameters.
@@ -82,8 +71,6 @@ class Field(Loggable, Versionable, object):
         Enumerates the axes of the Field
     dtype : type
         Contains the datatype stored in the Field.
-    distribution_strategy : string
-        Name of the used distribution_strategy.
 
     Raise
     -----
@@ -93,37 +80,16 @@ class Field(Loggable, Versionable, object):
              instance
             *val is an array that has a different dimension than the domain
 
-    Examples
-    --------
-    >>> a = Field(RGSpace([4,5]),val=2)
-    >>> a.val
-    <distributed_data_object>
-    array([[2, 2, 2, 2, 2],
-           [2, 2, 2, 2, 2],
-           [2, 2, 2, 2, 2],
-           [2, 2, 2, 2, 2]])
-    >>> a.dtype
-    dtype('int64')
-
-    See Also
-    --------
-    distributed_data_object
-
     """
 
     # ---Initialization methods---
 
-    def __init__(self, domain=None, val=None, dtype=None,
-                 distribution_strategy=None, copy=False):
+    def __init__(self, domain=None, val=None, dtype=None, copy=False):
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
 
         self.dtype = self._infer_dtype(dtype=dtype,
                                        val=val)
-
-        self.distribution_strategy = self._parse_distribution_strategy(
-                                distribution_strategy=distribution_strategy,
-                                val=val)
 
         if val is None:
             self._val = None
@@ -177,26 +143,10 @@ class Field(Loggable, Versionable, object):
 
         return dtype
 
-    def _parse_distribution_strategy(self, distribution_strategy, val):
-        if distribution_strategy is None:
-            if isinstance(val, distributed_data_object):
-                distribution_strategy = val.distribution_strategy
-            elif isinstance(val, Field):
-                distribution_strategy = val.distribution_strategy
-            else:
-                self.logger.debug("distribution_strategy set to default!")
-                distribution_strategy = gc['default_distribution_strategy']
-        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['global']:
-            raise ValueError(
-                    "distribution_strategy must be a global-type "
-                    "strategy.")
-        return distribution_strategy
-
     # ---Factory methods---
 
     @classmethod
-    def from_random(cls, random_type, domain=None, dtype=None,
-                    distribution_strategy=None, **kwargs):
+    def from_random(cls, random_type, domain=None, dtype=None, **kwargs):
         """ Draws a random field with the given parameters.
 
         Parameters
@@ -213,9 +163,6 @@ class Field(Loggable, Versionable, object):
         dtype : type
             The datatype of the output random field
 
-        distribution_strategy : all supported distribution strategies
-            The distribution strategy of the output random field
-
         Returns
         -------
         out : Field
@@ -229,8 +176,7 @@ class Field(Loggable, Versionable, object):
         """
 
         # create a initially empty field
-        f = cls(domain=domain, dtype=dtype,
-                distribution_strategy=distribution_strategy)
+        f = cls(domain=domain, dtype=dtype)
 
         # now use the processed input in terms of f in order to parse the
         # random arguments
@@ -238,23 +184,14 @@ class Field(Loggable, Versionable, object):
                                                        f=f,
                                                        **kwargs)
 
-        # extract the distributed_data_object from f and apply the appropriate
+        # extract the data from f and apply the appropriate
         # random number generator to it
         sample = f.get_val(copy=False)
         generator_function = getattr(Random, random_type)
 
-        comm = sample.comm
-        size = comm.size
-        if (sample.distribution_strategy in DISTRIBUTION_STRATEGIES['not'] and
-                size > 1):
-            seed = np.random.randint(10000000)
-            seed = comm.bcast(seed, root=0)
-            np.random.seed(seed)
-
-        sample.apply_generator(
-            lambda shape: generator_function(dtype=f.dtype,
-                                             shape=shape,
-                                             **random_arguments))
+        sample[:]=generator_function(dtype=f.dtype,
+                                             shape=sample.shape,
+                                             **random_arguments)
         return f
 
     @staticmethod
@@ -400,13 +337,8 @@ class Field(Loggable, Versionable, object):
         # into the real and imaginary parts of the power spectrum.
         # If it was complex, all the power is put into a real power spectrum.
 
-        distribution_strategy = \
-            work_field.val.get_axes_local_distribution_strategy(
-                work_field.domain_axes[space_index])
-
         harmonic_domain = work_field.domain[space_index]
         power_domain = PowerSpace(harmonic_partner=harmonic_domain,
-                                  distribution_strategy=distribution_strategy,
                                   logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
         power_spectrum = cls._calculate_power_spectrum(
@@ -421,8 +353,7 @@ class Field(Loggable, Versionable, object):
 
         result_field = work_field.copy_empty(
                    domain=result_domain,
-                   dtype=result_dtype,
-                   distribution_strategy=power_spectrum.distribution_strategy)
+                   dtype=result_dtype)
         result_field.set_val(new_val=power_spectrum, copy=False)
 
         return result_field
@@ -437,7 +368,6 @@ class Field(Loggable, Versionable, object):
             pindex = cls._shape_up_pindex(
                             pindex=pindex,
                             target_shape=field_val.shape,
-                            target_strategy=field_val.distribution_strategy,
                             axes=axes)
 
         power_spectrum = pindex.bincount(weights=field_val,
@@ -453,31 +383,18 @@ class Field(Loggable, Versionable, object):
 
     @staticmethod
     def _shape_up_pindex(pindex, target_shape, target_strategy, axes):
-        if pindex.distribution_strategy not in \
-                DISTRIBUTION_STRATEGIES['global']:
-            raise ValueError("pindex's distribution strategy must be "
-                             "global-type")
-
-        if pindex.distribution_strategy in DISTRIBUTION_STRATEGIES['slicing']:
-            if ((0 not in axes) or
-                    (target_strategy is not pindex.distribution_strategy)):
-                raise ValueError(
-                    "A slicing distributor shall not be reshaped to "
-                    "something non-sliced.")
-
         semiscaled_local_shape = [1, ] * len(target_shape)
         for i in range(len(axes)):
             semiscaled_local_shape[axes[i]] = pindex.local_shape[i]
         local_data = pindex.get_local_data(copy=False)
         semiscaled_local_data = local_data.reshape(semiscaled_local_shape)
-        result_obj = pindex.copy_empty(global_shape=target_shape,
-                                       distribution_strategy=target_strategy)
+        result_obj = pindex.copy_empty(global_shape=target_shape)
         result_obj.data[:] = semiscaled_local_data
 
         return result_obj
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=None, std=None, distribution_strategy=None):
+                         mean=None, std=None):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner
@@ -552,16 +469,12 @@ class Field(Loggable, Versionable, object):
         else:
             result_list = [None, None]
 
-        if distribution_strategy is None:
-            distribution_strategy = gc['default_distribution_strategy']
-
         result_list = [self.__class__.from_random(
                              'normal',
                              mean=mean,
                              std=std,
                              domain=result_domain,
-                             dtype=np.complex,
-                             distribution_strategy=distribution_strategy)
+                             dtype=np.complex)
                        for x in result_list]
 
         # from now on extract the values from the random fields for further
@@ -569,7 +482,7 @@ class Field(Loggable, Versionable, object):
         # if the signal-space field should be real, hermitianize the field
         # components
 
-        spec = self.val.get_full_data()
+        spec = self.val.copy()
         spec = np.sqrt(spec)
 
         for power_space_index in spaces:
@@ -683,16 +596,6 @@ class Field(Loggable, Versionable, object):
         # weight the random fields with the power spectrum
         # therefore get the pindex from the power space
         pindex = power_space.pindex
-        # take the local data from pindex. This data must be compatible to the
-        # local data of the field given the slice of the PowerSpace
-        local_distribution_strategy = \
-            result_list[0].val.get_axes_local_distribution_strategy(
-                result_list[0].domain_axes[power_space_index])
-
-        if pindex.distribution_strategy is not local_distribution_strategy:
-            raise AttributeError(
-                "The distribution_strategy of pindex does not fit the "
-                "slice_local distribution strategy of the synthesized field.")
 
         # Now use numpy advanced indexing in order to put the entries of the
         # power spectrum into the appropriate places of the pindex array.
@@ -711,7 +614,7 @@ class Field(Loggable, Versionable, object):
     # ---Properties---
 
     def set_val(self, new_val=None, copy=False):
-        """ Sets the field's distributed_data_object.
+        """ Sets the field's data object.
 
         Parameters
         ----------
@@ -736,17 +639,17 @@ class Field(Loggable, Versionable, object):
         return self
 
     def get_val(self, copy=False):
-        """ Returns the distributed_data_object associated with this Field.
+        """ Returns the data object associated with this Field.
 
         Parameters
         ----------
         copy : boolean
-            If true, a copy of the Field's underlying distributed_data_object
+            If true, a copy of the Field's underlying data object
             is returned.
 
         Returns
         -------
-        out : distributed_data_object
+        out : numpy.ndarray
 
         See Also
         --------
@@ -764,11 +667,11 @@ class Field(Loggable, Versionable, object):
 
     @property
     def val(self):
-        """ Returns the distributed_data_object associated with this Field.
+        """ Returns the data object associated with this Field.
 
         Returns
         -------
-        out : distributed_data_object
+        out : numpy.ndarray
 
         See Also
         --------
@@ -874,13 +777,13 @@ class Field(Loggable, Versionable, object):
     # ---Special unary/binary operations---
 
     def cast(self, x=None, dtype=None):
-        """ Transforms x to a d2o with the correct dtype and shape.
+        """ Transforms x to an object with the correct dtype and shape.
 
         Parameters
         ----------
-        x : scalar, d2o, Field, array_like
-            The input that shall be casted on a d2o of the same shape like the
-            domain.
+        x : scalar, numpy.ndarray, Field, array_like
+            The input that shall be casted on a numpy.ndarray of the same shape
+            like the domain.
 
         dtype : type
             The datatype the output shall have. This can be used to override
@@ -888,7 +791,7 @@ class Field(Loggable, Versionable, object):
 
         Returns
         -------
-        out : distributed_data_object
+        out : numpy.ndarray
             The output object.
 
         See Also
@@ -921,21 +824,17 @@ class Field(Loggable, Versionable, object):
 
         if dtype is None:
             dtype = self.dtype
+        if x is not None:
+            return np.asarray(x, dtype=dtype).reshape(self.shape)
+        else:
+            return np.empty(self.shape, dtype=dtype)
 
-        return_x = distributed_data_object(
-                            global_shape=self.shape,
-                            dtype=dtype,
-                            distribution_strategy=self.distribution_strategy)
-        return_x.set_full_data(x, copy=False)
-        return return_x
-
-    def copy(self, domain=None, dtype=None, distribution_strategy=None):
+    def copy(self, domain=None, dtype=None):
         """ Returns a full copy of the Field.
 
         If no keyword arguments are given, the returned object will be an
         identical copy of the original Field. By explicit specification one is
-        able to define the domain, the dtype and the distribution_strategy of
-        the returned Field.
+        able to define the domain and the dtype of the returned Field.
 
         Parameters
         ----------
@@ -944,9 +843,6 @@ class Field(Loggable, Versionable, object):
 
         dtype : type
             The new dtype the Field shall have.
-
-        distribution_strategy : all supported distribution strategies
-            The new distribution strategy the Field shall have.
 
         Returns
         -------
@@ -962,20 +858,18 @@ class Field(Loggable, Versionable, object):
         copied_val = self.get_val(copy=True)
         new_field = self.copy_empty(
                                 domain=domain,
-                                dtype=dtype,
-                                distribution_strategy=distribution_strategy)
+                                dtype=dtype)
         new_field.set_val(new_val=copied_val, copy=False)
         return new_field
 
-    def copy_empty(self, domain=None, dtype=None, distribution_strategy=None):
+    def copy_empty(self, domain=None, dtype=None):
         """ Returns an empty copy of the Field.
 
         If no keyword arguments are given, the returned object will be an
         identical copy of the original Field. The memory for the data array
         is only allocated but not actively set to any value
         (c.f. numpy.ndarray.copy_empty). By explicit specification one is able
-        to change the domain, the dtype and the distribution_strategy of the
-        returned Field.
+        to change the domain and the dtype of the returned Field.
 
         Parameters
         ----------
@@ -984,9 +878,6 @@ class Field(Loggable, Versionable, object):
 
         dtype : type
             The new dtype the Field shall have.
-
-        distribution_strategy : string, all supported distribution strategies
-            The distribution strategy the new Field should have.
 
         Returns
         -------
@@ -1009,9 +900,6 @@ class Field(Loggable, Versionable, object):
         else:
             dtype = np.dtype(dtype)
 
-        if distribution_strategy is None:
-            distribution_strategy = self.distribution_strategy
-
         fast_copyable = True
         try:
             for i in range(len(self.domain)):
@@ -1021,13 +909,10 @@ class Field(Loggable, Versionable, object):
         except IndexError:
             fast_copyable = False
 
-        if (fast_copyable and dtype == self.dtype and
-                distribution_strategy == self.distribution_strategy):
+        if (fast_copyable and dtype == self.dtype):
             new_field = self._fast_copy_empty()
         else:
-            new_field = Field(domain=domain,
-                              dtype=dtype,
-                              distribution_strategy=distribution_strategy)
+            new_field = Field(domain=domain, dtype=dtype)
         return new_field
 
     def _fast_copy_empty(self):
@@ -1040,7 +925,7 @@ class Field(Loggable, Versionable, object):
             if key != '_val':
                 new_field.__dict__[key] = value
             else:
-                new_field.__dict__[key] = self.val.copy_empty()
+                new_field.__dict__[key] = np.empty_like(self.val)
         return new_field
 
     def weight(self, power=1, inplace=False, spaces=None):
@@ -1217,7 +1102,7 @@ class Field(Loggable, Versionable, object):
         except TypeError:
             axes_list = ()
 
-        # perform the contraction on the d2o
+        # perform the contraction on the data
         data = self.get_val(copy=False)
         data = getattr(data, op)(axis=axes_list)
 
@@ -1567,7 +1452,6 @@ class Field(Loggable, Versionable, object):
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group.attrs['dtype'] = self.dtype.name
-        hdf5_group.attrs['distribution_strategy'] = self.distribution_strategy
         hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
         hdf5_group['num_domain'] = len(self.domain)
 
@@ -1602,8 +1486,6 @@ class Field(Loggable, Versionable, object):
             new_field._val = None
 
         new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
-        new_field.distribution_strategy =\
-            hdf5_group.attrs['distribution_strategy']
 
         return new_field
 

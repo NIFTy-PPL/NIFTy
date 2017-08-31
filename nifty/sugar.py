@@ -32,8 +32,7 @@ __all__ = ['create_power_operator',
            'create_composed_fft_operator']
 
 
-def create_power_operator(domain, power_spectrum, dtype=None,
-                          distribution_strategy=None):
+def create_power_operator(domain, power_spectrum, dtype=None):
     """ Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that lives over the specified domain.
@@ -49,9 +48,6 @@ def create_power_operator(domain, power_spectrum, dtype=None,
         dtype that the field holding the power spectrum shall use
         (default : None).
         if dtype == None: the dtype of `power_spectrum` will be used.
-    distribution_strategy : string *optional*
-        Distributed strategy to be used by the underlying d2o objects.
-        (default : 'not')
 
     Returns
     -------
@@ -59,20 +55,13 @@ def create_power_operator(domain, power_spectrum, dtype=None,
 
     """
 
-    if distribution_strategy is None:
-        distribution_strategy = \
-            nifty_configuration['default_distribution_strategy']
-
     if isinstance(power_spectrum, Field):
         power_domain = power_spectrum.domain
     else:
-        power_domain = PowerSpace(domain,
-                                  distribution_strategy=distribution_strategy)
+        power_domain = PowerSpace(domain)
 
-    fp = Field(power_domain, val=power_spectrum, dtype=dtype,
-               distribution_strategy='not')
-    f = fp.power_synthesize(mean=1, std=0, real_signal=False,
-                            distribution_strategy=distribution_strategy)
+    fp = Field(power_domain, val=power_spectrum, dtype=dtype)
+    f = fp.power_synthesize(mean=1, std=0, real_signal=False)
 
     if not issubclass(fp.dtype.type, np.complexfloating):
         f = f.real

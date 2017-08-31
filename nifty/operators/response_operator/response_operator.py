@@ -44,27 +44,6 @@ class ResponseOperator(LinearOperator):
         raised if:
             * len of sigma-list and exposure-list are not equal
 
-    Notes
-    -----
-
-    Examples
-    --------
-    >>> x1 = RGSpace(5)
-    >>> x2 = RGSpace(10)
-    >>> R = ResponseOperator(domain=(x1,x2), sigma=[.5, .25],
-                             exposure=[2.,3.])
-    >>> f = Field((x1,x2), val=4.)
-    >>> R.times(f)
-    <distributed_data_object>
-    array([[ 24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.],
-           [ 24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.],
-           [ 24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.],
-           [ 24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.],
-           [ 24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.,  24.]])
-
-    See Also
-    --------
-
     """
 
     def __init__(self, domain, sigma=[1.], exposure=[1.],

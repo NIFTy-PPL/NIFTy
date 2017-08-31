@@ -32,8 +32,6 @@ from itertools import product
 from test.common import expand
 from nose.plugins.skip import SkipTest
 
-from d2o import STRATEGIES
-
 
 def _get_rtol(tp):
     if (tp == np.float64) or (tp == np.complex128):
@@ -43,14 +41,11 @@ def _get_rtol(tp):
 
 
 class FFTOperatorTests(unittest.TestCase):
-    @expand(product(["numpy", "fftw", "fftw_mpi"],
-                    [16, ], [0.1, 1, 3.7], STRATEGIES['global'],
+    @expand(product(["numpy", "fftw"],
+                    [16, ], [0.1, 1, 3.7],
                     [np.float64, np.float32, np.complex64, np.complex128],
                     ['real', 'complex']))
-    def test_fft1D(self, module, dim1, d, distribution_strategy, itp, base):
-        if module == "fftw_mpi":
-            if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                raise SkipTest
+    def test_fft1D(self, module, dim1, d, itp, base):
         if module == "fftw" and "fftw" not in gdi:
             raise SkipTest
         tol = _get_rtol(itp)
@@ -62,23 +57,17 @@ class FFTOperatorTests(unittest.TestCase):
 
         np.random.seed(16)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
-                                dtype=itp,
-                                distribution_strategy=distribution_strategy)
+                                dtype=itp)
         out = fft.adjoint_times(fft.times(inp))
-        assert_allclose(inp.val.get_full_data(),
-                        out.val.get_full_data(),
-                        rtol=tol, atol=tol)
+        assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
-    @expand(product(["numpy", "fftw", "fftw_mpi"],
+    @expand(product(["numpy", "fftw"],
                     [12, 15], [9, 12], [0.1, 1, 3.7],
-                    [0.4, 1, 2.7], STRATEGIES['global'],
+                    [0.4, 1, 2.7],
                     [np.float64, np.float32, np.complex64, np.complex128],
                     ['real', 'complex']))
-    def test_fft2D(self, module, dim1, dim2, d1, d2, distribution_strategy,
+    def test_fft2D(self, module, dim1, dim2, d1, d2,
                    itp, base):
-        if module == "fftw_mpi":
-            if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                raise SkipTest
         if module == "fftw" and "fftw" not in gdi:
             raise SkipTest
         tol = _get_rtol(itp)
@@ -90,21 +79,16 @@ class FFTOperatorTests(unittest.TestCase):
         fft._backward_transformation.harmonic_base = base
 
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
-                                dtype=itp,
-                                distribution_strategy=distribution_strategy)
+                                dtype=itp)
         out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 
-    @expand(product(["numpy", "fftw", "fftw_mpi"],
+    @expand(product(["numpy", "fftw"],
                     [0, 1, 2],
-                    STRATEGIES['global'],
                     [np.float64, np.float32, np.complex64, np.complex128],
                     ['real', 'complex']))
-    def test_composed_fft(self, module, index, distribution_strategy, dtype,
+    def test_composed_fft(self, module, index, dtype,
                           base):
-        if module == "fftw_mpi":
-            if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
-                raise SkipTest
         if module == "fftw" and "fftw" not in gdi:
             raise SkipTest
         tol = _get_rtol(dtype)
@@ -115,8 +99,7 @@ class FFTOperatorTests(unittest.TestCase):
         fft._backward_transformation.harmonic_base = base
 
         inp = Field.from_random(domain=(a1, a2, a3), random_type='normal',
-                                std=7, mean=3, dtype=dtype,
-                                distribution_strategy=distribution_strategy)
+                                std=7, mean=3, dtype=dtype)
         out = fft.adjoint_times(fft.times(inp))
         assert_allclose(inp.val, out.val, rtol=tol, atol=tol)
 

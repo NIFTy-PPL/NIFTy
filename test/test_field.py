@@ -32,9 +32,6 @@ from nifty import Field,\
                   PowerSpace,\
                   nifty_configuration
 
-import d2o
-from d2o import distributed_data_object
-
 from test.common import expand
 
 
@@ -44,10 +41,9 @@ SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 
 class Test_Interface(unittest.TestCase):
     @expand(product(SPACE_COMBINATIONS,
-                    [['distribution_strategy', str],
-                     ['domain', tuple],
+                    [['domain', tuple],
                      ['domain_axes', tuple],
-                     ['val', distributed_data_object],
+                     ['val', np.ndarray],
                      ['shape', tuple],
                      ['dim', np.int],
                      ['dof', np.int],
@@ -86,10 +82,10 @@ class Test_Functionality(unittest.TestCase):
         h3, a3 = Field._hermitian_decomposition((r1, r2), f2.val, (1, 0),
                                                 ((0,), (1,)), preserve)
 
-        assert_almost_equal(h1.get_full_data(), h2.get_full_data())
-        assert_almost_equal(a1.get_full_data(), a2.get_full_data())
-        assert_almost_equal(h1.get_full_data(), h3.get_full_data())
-        assert_almost_equal(a1.get_full_data(), a3.get_full_data())
+        assert_almost_equal(h1, h2)
+        assert_almost_equal(a1, a2)
+        assert_almost_equal(h1, h3)
+        assert_almost_equal(a1, a3)
 
     @expand(product([RGSpace((8,), harmonic=True,
                              zerocenter=False),
@@ -102,7 +98,7 @@ class Test_Functionality(unittest.TestCase):
     def test_power_synthesize_analyze(self, space1, space2, base):
         nifty_configuration['harmonic_rg_base'] = base
 
-        d2o.random.seed(11)
+        np.random.seed(11)
 
         p1 = PowerSpace(space1)
         spec1 = lambda k: 42/(1+k)**2
@@ -112,7 +108,7 @@ class Test_Functionality(unittest.TestCase):
         spec2 = lambda k: 42/(1+k)**3
         fp2 = Field(p2, val=spec2)
 
-        outer = np.outer(fp1.val.get_full_data(), fp2.val.get_full_data())
+        outer = np.outer(fp1.val, fp2.val)
         fp = Field((p1, p2), val=outer)
 
         samples = 2000
@@ -125,11 +121,11 @@ class Test_Functionality(unittest.TestCase):
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
-        assert_allclose(ps1.val.get_full_data()/samples,
-                        fp1.val.get_full_data(),
+        assert_allclose(ps1.val/samples,
+                        fp1.val,
                         rtol=0.2)
-        assert_allclose(ps2.val.get_full_data()/samples,
-                        fp2.val.get_full_data(),
+        assert_allclose(ps2.val/samples,
+                        fp2.val,
                         rtol=0.2)
 
     def test_vdot(self):

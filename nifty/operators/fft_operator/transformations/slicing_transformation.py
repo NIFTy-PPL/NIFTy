@@ -35,14 +35,12 @@ class SlicingTransformation(Transformation):
 
         for slice_list in utilities.get_slice_list(val.shape, axes):
             if return_val is None:
-                return_val = val.copy_empty(global_shape=return_shape)
+                return_val = np.empty(return_shape,dtype=val.dtype)
 
-            data = val.get_data(slice_list, copy=False)
-            data = data.get_full_data()
-
+            data = val[slice_list]
             data = self._transformation_of_slice(data, **kwargs)
 
-            return_val.set_data(data=data, to_key=slice_list, copy=False)
+            return_val[slice_list] = data
 
         return return_val
 

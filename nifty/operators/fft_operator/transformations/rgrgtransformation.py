@@ -156,21 +156,21 @@ class RGRGTransformation(Transformation):
                 Tval_imag = self._transform.transform(val.imag, axes,
                                                       **kwargs)
                 if self.codomain.harmonic:
-                    Tval_real.data.real += Tval_real.data.imag
-                    Tval_real.data.imag = \
-                        Tval_imag.data.real + Tval_imag.data.imag
+                    Tval_real.real += Tval_real.imag
+                    Tval_real.imag = \
+                        Tval_imag.real + Tval_imag.imag
                 else:
-                    Tval_real.data.real -= Tval_real.data.imag
-                    Tval_real.data.imag = \
-                        Tval_imag.data.real - Tval_imag.data.imag
+                    Tval_real.real -= Tval_real.imag
+                    Tval_real.imag = \
+                        Tval_imag.real - Tval_imag.imag
 
                 Tval = Tval_real
             else:
                 Tval = self._transform.transform(val, axes, **kwargs)
                 if self.codomain.harmonic:
-                    Tval.data.real += Tval.data.imag
+                    Tval.real += Tval.imag
                 else:
-                    Tval.data.real -= Tval.data.imag
+                    Tval.real -= Tval.imag
                 Tval = Tval.real
 
         if not self._transform.codomain.harmonic:

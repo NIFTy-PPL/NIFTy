@@ -21,7 +21,6 @@ from builtins import object
 import warnings
 
 import numpy as np
-from d2o import distributed_data_object, STRATEGIES
 from ....config import dependency_injector as gdi
 from ....config import nifty_configuration as gc
 from .... import nifty_utilities as utilities
@@ -331,15 +330,13 @@ class MPIFFT(Transform):
         return return_val
 
     def _repack_to_fftw_and_transform(self, val, axes, **kwargs):
-        temp_val = val.copy_empty(distribution_strategy='fftw')
-        self.logger.info("Repacking d2o to fftw distribution strategy")
+        temp_val = val.copy_empty()
         temp_val.set_full_data(val, copy=False)
 
         # Recursive call to transform
         result = self.transform(temp_val, axes, **kwargs)
 
-        return_val = result.copy_empty(
-            distribution_strategy=val.distribution_strategy)
+        return_val = result.copy_empty()
         return_val.set_full_data(data=result, copy=False)
 
         return return_val
@@ -433,32 +430,10 @@ class MPIFFT(Transform):
             raise ValueError("Provided axes does not match array shape")
 
         # If the input is a numpy array we transform it locally
-        if not isinstance(val, distributed_data_object):
-            # Cast to a np.ndarray
-            temp_val = np.asarray(val)
+        temp_val = np.asarray(val)
 
-            # local transform doesn't apply transforms inplace
-            return_val = self._local_transform(temp_val, axes)
-        else:
-            if val.distribution_strategy in STRATEGIES['slicing']:
-                if axes is None or 0 in axes:
-                    if val.distribution_strategy != 'fftw':
-                        return_val = \
-                            self._repack_to_fftw_and_transform(
-                                val, axes, **kwargs
-                            )
-                    else:
-                        return_val = self._mpi_transform(
-                            val, axes, **kwargs
-                        )
-                else:
-                    return_val = self._local_transform(
-                        val, axes, **kwargs
-                    )
-            else:
-                return_val = self._repack_to_fftw_and_transform(
-                    val, axes, **kwargs
-                )
+        # local transform doesn't apply transforms inplace
+        return_val = self._local_transform(temp_val, axes)
 
         return return_val
 
@@ -590,35 +565,14 @@ class SerialFFT(Transform):
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
-        return_val = val.copy_empty(global_shape=val.shape,
-                                    dtype=np.complex)
+        return_val = np.empty(val.shape, dtype=np.complex)
 
-        if (axes is None) or (0 in axes) or \
-           (val.distribution_strategy not in STRATEGIES['slicing']):
+        local_val = val
 
-            if val.distribution_strategy == 'not':
-                local_val = val.get_local_data(copy=False)
-            else:
-                local_val = val.get_full_data()
-
-            result_data = self._atomic_transform(local_val=local_val,
-                                                 axes=axes,
-                                                 local_offset_Q=False)
-            return_val.set_full_data(result_data, copy=False)
-
-        else:
-            local_offset_list = np.cumsum(
-                    np.concatenate([[0, ],
-                                    val.distributor.all_local_slices[:, 2]]))
-            local_offset_Q = \
-                bool(local_offset_list[val.distributor.comm.rank] % 2)
-
-            local_val = val.get_local_data()
-            result_data = self._atomic_transform(local_val=local_val,
-                                                 axes=axes,
-                                                 local_offset_Q=local_offset_Q)
-
-            return_val.set_local_data(result_data, copy=False)
+        result_data = self._atomic_transform(local_val=local_val,
+                                             axes=axes,
+                                             local_offset_Q=False)
+        return_val=result_data
 
         return return_val
 

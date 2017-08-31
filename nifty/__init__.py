@@ -24,15 +24,10 @@ from .version import __version__
 from keepers import MPILogger
 logger = MPILogger()
 
-# it is important to import config before d2o such that NIFTy is able to
-# pre-create d2o's configuration object with the corrected path
 from .config import dependency_injector,\
-                   nifty_configuration,\
-                   d2o_configuration
+                   nifty_configuration
 
 logger.logger.setLevel(nifty_configuration['loglevel'])
-
-from d2o import distributed_data_object, d2o_librarian
 
 from .field import Field
 

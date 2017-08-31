@@ -20,9 +20,6 @@ from __future__ import division
 from builtins import range
 import numpy as np
 
-from d2o import distributed_data_object,\
-                STRATEGIES as DISTRIBUTION_STRATEGIES
-
 from ...config import nifty_configuration as gc
 from ...field import Field
 from ..endomorphic_operator import EndomorphicOperator
@@ -47,10 +44,6 @@ class DiagonalOperator(EndomorphicOperator):
         (default: False).
     copy : boolean
         Internal copy of the diagonal (default: True)
-    distribution_strategy : string
-        setting the prober distribution_strategy of the
-        diagonal (default : None). In case diagonal is d2o-object or Field,
-        their distribution_strategy is used as a fallback.
     default_spaces : tuple of ints *optional*
         Defines on which space(s) of a given field the Operator acts by
         default (default: None)
@@ -66,9 +59,6 @@ class DiagonalOperator(EndomorphicOperator):
         Indicates whether the Operator is unitary or not.
     self_adjoint : boolean
         Indicates whether the operator is self_adjoint or not.
-    distribution_strategy : string
-        Defines the distribution_strategy of the distributed_data_object
-        in which the diagonal entries are stored in.
 
     Raises
     ------
@@ -83,16 +73,6 @@ class DiagonalOperator(EndomorphicOperator):
     deals with the bare entries that allow for correct interpretation
     of the matrix entries; e.g., as variance in case of an covariance operator.
 
-    Examples
-    --------
-    >>> x_space = RGSpace(5)
-    >>> D = DiagonalOperator(x_space, diagonal=[1., 3., 2., 4., 6.])
-    >>> f = Field(x_space, val=2.)
-    >>> res = D.times(f)
-    >>> res.val
-    <distributed_data_object>
-    array([ 2.,  6.,  4.,  8.,  12.])
-
     See Also
     --------
     EndomorphicOperator
@@ -102,20 +82,10 @@ class DiagonalOperator(EndomorphicOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, domain=(), diagonal=None, bare=False, copy=True,
-                 distribution_strategy=None, default_spaces=None):
+                 default_spaces=None):
         super(DiagonalOperator, self).__init__(default_spaces)
 
         self._domain = self._parse_domain(domain)
-
-        if distribution_strategy is None:
-            if isinstance(diagonal, distributed_data_object):
-                distribution_strategy = diagonal.distribution_strategy
-            elif isinstance(diagonal, Field):
-                distribution_strategy = diagonal.distribution_strategy
-
-        self._distribution_strategy = self._parse_distribution_strategy(
-                               distribution_strategy=distribution_strategy,
-                               val=diagonal)
 
         self._self_adjoint = None
         self._unitary = None
@@ -123,7 +93,6 @@ class DiagonalOperator(EndomorphicOperator):
 
     def _add_attributes_to_copy(self, copy, **kwargs):
         copy._domain = self._domain
-        copy._distribution_strategy = self._distribution_strategy
         copy.set_diagonal(diagonal=self.diagonal(bare=True), bare=True)
         copy._self_adjoint = self._self_adjoint
         copy._unitary = self._unitary
@@ -207,35 +176,6 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Added properties and methods---
 
-    @property
-    def distribution_strategy(self):
-        """
-        distribution_strategy : string
-            Defines the way how the diagonal operator is distributed
-            among the nodes. Available distribution_strategies are:
-            'fftw', 'equal' and 'not'.
-
-        Notes :
-            https://arxiv.org/abs/1606.05385
-
-        """
-
-        return self._distribution_strategy
-
-    def _parse_distribution_strategy(self, distribution_strategy, val):
-        if distribution_strategy is None:
-            if isinstance(val, distributed_data_object):
-                distribution_strategy = val.distribution_strategy
-            elif isinstance(val, Field):
-                distribution_strategy = val.distribution_strategy
-            else:
-                self.logger.info("Datamodel set to default!")
-                distribution_strategy = gc['default_distribution_strategy']
-        elif distribution_strategy not in DISTRIBUTION_STRATEGIES['all']:
-            raise ValueError(
-                    "Invalid distribution_strategy!")
-        return distribution_strategy
-
     def set_diagonal(self, diagonal, bare=False, copy=True):
         """ Sets the diagonal of the Operator.
 
@@ -254,7 +194,6 @@ class DiagonalOperator(EndomorphicOperator):
         # use the casting functionality from Field to process `diagonal`
         f = Field(domain=self.domain,
                   val=diagonal,
-                  distribution_strategy=self.distribution_strategy,
                   copy=copy)
 
         # weight if the given values were `bare` is True
@@ -280,8 +219,6 @@ class DiagonalOperator(EndomorphicOperator):
             # here the actual multiplication takes place
             return operation(self.diagonal(copy=False))(x)
 
-        # if the distribution_strategy of self is sub-slice compatible to
-        # the one of x, reshape the local data of self and apply it directly
         active_axes = []
         if spaces is None:
             active_axes = list(range(len(x.shape)))
@@ -289,17 +226,7 @@ class DiagonalOperator(EndomorphicOperator):
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
 
-        axes_local_distribution_strategy = \
-            x.val.get_axes_local_distribution_strategy(active_axes)
-        if axes_local_distribution_strategy == self.distribution_strategy:
-            local_diagonal = self._diagonal.val.get_local_data(copy=False)
-        else:
-            # create an array that is sub-slice compatible
-            self.logger.warn("The input field is not sub-slice compatible to "
-                             "the distribution strategy of the operator.")
-            redistr_diagonal_val = self._diagonal.val.copy(
-                distribution_strategy=axes_local_distribution_strategy)
-            local_diagonal = redistr_diagonal_val.get_local_data(copy=False)
+        local_diagonal = self._diagonal.val.get_local_data(copy=False)
 
         reshaper = [x.val.data.shape[i] if i in active_axes else 1
                     for i in range(len(x.shape))]
