@@ -23,8 +23,7 @@ from builtins import range
 import ast
 import numpy as np
 
-from keepers import Versionable,\
-                    Loggable
+from keepers import Loggable
 
 from .domain_object import DomainObject
 
@@ -35,7 +34,7 @@ from .random import Random
 from functools import reduce
 
 
-class Field(Loggable, Versionable, object):
+class Field(Loggable, object):
     """ The discrete representation of a continuous field over multiple spaces.
 
     In NIFTY, Fields are used to store data arrays and carry all the needed
@@ -1443,47 +1442,6 @@ class Field(Loggable, Versionable, object):
                "\n- val         = " + repr(self.get_val()) + \
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group.attrs['dtype'] = self.dtype.name
-        hdf5_group.attrs['domain_axes'] = str(self.domain_axes)
-        hdf5_group['num_domain'] = len(self.domain)
-
-        if self._val is None:
-            ret_dict = {}
-        else:
-            ret_dict = {'val': self.val}
-
-        for i in range(len(self.domain)):
-            ret_dict['s_' + str(i)] = self.domain[i]
-
-        return ret_dict
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        # create empty field
-        new_field = EmptyField()
-        # reset class
-        new_field.__class__ = cls
-        # set values
-        temp_domain = []
-        for i in range(hdf5_group['num_domain'][()]):
-            temp_domain.append(repository.get('s_' + str(i), hdf5_group))
-        new_field.domain = tuple(temp_domain)
-
-        new_field.domain_axes = ast.literal_eval(
-                                hdf5_group.attrs['domain_axes'])
-
-        try:
-            new_field._val = repository.get('val', hdf5_group)
-        except(KeyError):
-            new_field._val = None
-
-        new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
-
-        return new_field
 
 
 class EmptyField(Field):

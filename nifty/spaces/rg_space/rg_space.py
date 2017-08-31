@@ -252,21 +252,3 @@ class RGSpace(Space):
             temp = np.empty(len(self.shape), dtype=np.float64)
             temp[:] = distances
         return tuple(temp)
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group['shape'] = self.shape
-        hdf5_group['distances'] = self.distances
-        hdf5_group['harmonic'] = self.harmonic
-
-        return None
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        result = cls(
-            shape=hdf5_group['shape'][:],
-            distances=hdf5_group['distances'][:],
-            harmonic=hdf5_group['harmonic'][()],
-            )
-        return result

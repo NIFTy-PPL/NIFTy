@@ -39,14 +39,3 @@ class FieldArray(FieldType):
     @property
     def dim(self):
         return reduce(lambda x, y: x*y, self.shape)
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group['shape'] = self.shape
-        return None
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, loopback_get):
-        result = cls(shape=hdf5_group['shape'][:])
-        return result

@@ -139,16 +139,3 @@ class HPSpace(Space):
         if nside < 1:
             raise ValueError("nside must be >=1.")
         return nside
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group['nside'] = self.nside
-        return None
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        result = cls(
-            nside=hdf5_group['nside'][()],
-            )
-        return result

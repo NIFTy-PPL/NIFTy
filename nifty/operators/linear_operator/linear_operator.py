@@ -20,15 +20,14 @@ from builtins import str
 import abc
 from ...nifty_meta import NiftyMeta
 
-from keepers import Loggable,\
-                    Versionable
+from keepers import Loggable
 from ...field import Field
 from ... import nifty_utilities as utilities
 from future.utils import with_metaclass
 
 
 class LinearOperator(with_metaclass(
-        NiftyMeta, type('NewBase', (Versionable, Loggable, object), {}))):
+        NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """NIFTY base class for linear operators.
 
     The base NIFTY operator class is an abstract class from which

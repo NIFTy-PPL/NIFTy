@@ -277,18 +277,3 @@ class PowerSpace(Space):
         """Degeneracy factor of the individual k-vectors.
         """
         return self._rho
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group.attrs['binbounds'] = str(self._binbounds)
-
-        return {
-            'harmonic_partner': self.harmonic_partner,
-        }
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        hp = repository.get('harmonic_partner', hdf5_group)
-        bb = ast.literal_eval(hdf5_group.attrs['binbounds'])
-        return PowerSpace(hp, binbounds=bb)

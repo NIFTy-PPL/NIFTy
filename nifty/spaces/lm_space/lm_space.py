@@ -187,16 +187,3 @@ class LMSpace(Space):
         if lmax < 0:
             raise ValueError("lmax must be >=0.")
         return lmax
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group['lmax'] = self.lmax
-        return None
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        result = cls(
-            lmax=hdf5_group['lmax'][()],
-            )
-        return result

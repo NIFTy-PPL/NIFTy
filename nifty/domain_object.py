@@ -20,13 +20,12 @@ from __future__ import division
 import abc
 from .nifty_meta import NiftyMeta
 
-from keepers import Loggable,\
-                    Versionable
+from keepers import Loggable
 from future.utils import with_metaclass
 
 
 class DomainObject(with_metaclass(
-        NiftyMeta, type('NewBase', (Versionable, Loggable, object), {}))):
+        NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """The abstract class that can be used as a domain for a field.
 
     This holds all the information and functionality a field needs to know
@@ -224,13 +223,3 @@ class DomainObject(with_metaclass(
         """
 
         return x
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        return None
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        result = cls()
-        return result

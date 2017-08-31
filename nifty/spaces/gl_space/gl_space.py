@@ -180,20 +180,3 @@ class GLSpace(Space):
             if nlon < 1:
                 raise ValueError("nlon must be a positive number.")
         return nlon
-
-    # ---Serialization---
-
-    def _to_hdf5(self, hdf5_group):
-        hdf5_group['nlat'] = self.nlat
-        hdf5_group['nlon'] = self.nlon
-
-        return None
-
-    @classmethod
-    def _from_hdf5(cls, hdf5_group, repository):
-        result = cls(
-            nlat=hdf5_group['nlat'][()],
-            nlon=hdf5_group['nlon'][()],
-            )
-
-        return result
