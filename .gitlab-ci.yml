@@ -2,12 +2,9 @@ image: ubuntu:latest
 
 stages:
   - test
-  - release
 
 variables:
   DOCKER_DRIVER: overlay
-  RELEASE_IMAGE_MASTER: iftmpa/nifty:dev
-  RELEASE_IMAGE_TAGGED: iftmpa/nifty:$CI_BUILD_TAG
 
 before_script:
   - apt-get update
@@ -20,65 +17,10 @@ before_script:
 test_min:
   stage: test
   script:
-    - nosetests -vv
-    - nosetests3 -vv
-
-test_mpi:
-  stage: test
-  script:
     - ci/install_pyHealpix.sh
-    - ci/install_mpi4py.sh
-    - nosetests -vv
-    - nosetests3 -vv
-
-test_mpi_fftw:
-  stage: test
-  script:
-    - ci/install_pyHealpix.sh
-    - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
-    - nosetests -vv
-    - nosetests3 -vv
-
-test_mpi_fftw_hdf5:
-  stage: test
-  script:
-    - ci/install_pyHealpix.sh
-    - ci/install_mpi4py.sh
-    - ci/install_pyfftw.sh
-    - ci/install_h5py.sh
-    - mpiexec --allow-run-as-root -n 2 nosetests -x
-    - mpiexec --allow-run-as-root -n 2 nosetests3 -x
-    - mpiexec --allow-run-as-root -n 4 nosetests -x
-    - mpiexec --allow-run-as-root -n 4 nosetests3 -x
+    - nosetests
+    - nosetests3
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
-
-release_image_master:
-  image: docker:latest
-  stage: release
-  before_script:
-    - pwd
-  services:
-    - docker:dind
-  script:
-    - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
-    - docker build -t $RELEASE_IMAGE_MASTER .
-    - docker push $RELEASE_IMAGE_MASTER
-  only:
-    - master
-
-release_image_tagged:
-  image: docker:latest
-  stage: release
-  before_script:
-    - pwd
-  services:
-    - docker:dind
-  script:
-    - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
-    - docker build -t $RELEASE_IMAGE_TAGGED .
-    - docker push $RELEASE_IMAGE_TAGGED
-  only:
-    - tags
