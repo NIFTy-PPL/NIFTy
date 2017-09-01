@@ -78,16 +78,6 @@ def get_weight_configs():
         ]
 
 
-def get_hermitian_configs():
-    np.random.seed(42)
-    h_0_res_real = np.random.rand(32, 16, 6).astype(np.complex128)
-    h_0_res_imag = np.random.rand(32, 16, 6).astype(np.complex128)
-    h_0_x = h_0_res_real + h_0_res_imag * 1j
-    return [
-        [h_0_x, h_0_res_real, h_0_res_imag]
-    ]
-
-
 class LMSpaceInterfaceTests(unittest.TestCase):
     @expand([['lmax', int],
             ['mmax', int],
