@@ -3,5 +3,5 @@ plotly
 nose
 parameterized
 coverage
-git+https://gitlab.mpcdf.mpg.de/ift/mpi_dummy.git
 pyfftw
+future
