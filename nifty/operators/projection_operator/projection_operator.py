@@ -55,20 +55,6 @@ class ProjectionOperator(EndomorphicOperator):
         Raised if
             * if projection_field is not a Field
 
-    Notes
-    -----
-
-
-    Examples
-    --------
-    >>> x_space = RGSpace(5)
-    >>> f1 = Field(x_space, val=3.)
-    >>> f2 = Field(x_space, val=5.)
-    >>> P = ProjectionOperator(f1)
-    >>> res = P.times(f2)
-    >>> res.val
-    <distributed_data_object>
-    array([ 225.,  225.,  225.,  225.,  225.])
 
     See Also
     --------
@@ -104,24 +90,9 @@ class ProjectionOperator(EndomorphicOperator):
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
 
-        axes_local_distribution_strategy = \
-            x.val.get_axes_local_distribution_strategy(active_axes)
-        if axes_local_distribution_strategy == \
-           self._projection_field.distribution_strategy:
-            local_projection_vector = \
-                self._projection_field.val.get_local_data(copy=False)
-        else:
-            # create an array that is sub-slice compatible
-            self.logger.warn("The input field is not sub-slice compatible to "
-                             "the distribution strategy of the operator. "
-                             "Performing an probably expensive "
-                             "redistribution.")
-            redistr_projection_val = self._projection_field.val.copy(
-                distribution_strategy=axes_local_distribution_strategy)
-            local_projection_vector = \
-                redistr_projection_val.get_local_data(copy=False)
+        local_projection_vector = self._projection_field.val
 
-        local_x = x.val.get_local_data(copy=False)
+        local_x = x.val
 
         l = len(local_projection_vector.shape)
         sublist_projector = list(range(l))
@@ -141,7 +112,7 @@ class ProjectionOperator(EndomorphicOperator):
                                  dotted, sublist_dotted,
                                  sublist_x)
         result_field = x.copy_empty(dtype=remultiplied.dtype)
-        result_field.val.set_local_data(remultiplied, copy=False)
+        result_field.val=remultiplied
         return result_field
 
     def _inverse_times(self, x, spaces):

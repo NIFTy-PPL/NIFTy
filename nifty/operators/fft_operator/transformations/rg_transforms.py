@@ -23,13 +23,12 @@ import warnings
 import numpy as np
 from .... import nifty_utilities as utilities
 
-from keepers import Loggable
 from functools import reduce
 
 import pyfftw
 
 
-class Transform(Loggable, object):
+class Transform(object):
     """
         A generic fft object without any implementation.
     """

@@ -83,12 +83,10 @@ class ConjugateGradient(Minimizer):
             q = energy.curvature(d)
             ddotq = d.vdot(q).real
             if ddotq==0.:
-                self.logger.error("Alpha became infinite! Stopping.")
                 return energy, controller.ERROR
             alpha = previous_gamma/ddotq
 
             if alpha < 0:
-                self.logger.warn("Positive definiteness of A violated!")
                 return energy, controller.ERROR
 
             r -= q * alpha
@@ -105,7 +103,7 @@ class ConjugateGradient(Minimizer):
 
             gamma = r.vdot(s).real
             if gamma < 0:
-                self.logger.warn(
+                raise RuntimeError(
                     "Positive definiteness of preconditioner violated!")
             if gamma == 0:
                 return energy, controller.CONVERGED

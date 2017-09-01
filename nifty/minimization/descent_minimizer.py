@@ -82,7 +82,6 @@ class DescentMinimizer(Minimizer):
         while True:
             # check if position is at a flat point
             if energy.gradient_norm == 0:
-                self.logger.info("Reached perfectly flat point. Stopping.")
                 return energy, controller.CONVERGED
 
             # current position is encoded in energy object
@@ -96,15 +95,11 @@ class DescentMinimizer(Minimizer):
                                                    pk=descent_direction,
                                                    f_k_minus_1=f_k_minus_1)
             except RuntimeError:
-                self.logger.warn(
-                        "Stopping because of RuntimeError in line-search")
                 return energy, controller.ERROR
 
             f_k_minus_1 = energy.value
             # check if new energy value is bigger than old energy value
             if (new_energy.value - energy.value) > 0:
-                self.logger.info("Line search algorithm returned a new energy "
-                                 "that was larger than the old one. Stopping.")
                 return energy, controller.ERROR
 
             energy = new_energy

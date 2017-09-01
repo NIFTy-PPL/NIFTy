@@ -33,9 +33,8 @@ setup(name="ift_nifty",
       package_dir={"nifty": "nifty"},
       zip_safe=False,
       include_dirs=[numpy.get_include()],
-      dependency_links=[
-        'git+https://gitlab.mpcdf.mpg.de/ift/keepers.git#egg=keepers-0.3.7'],
-      install_requires=['keepers>=0.3.7'],
+      dependency_links=[],
+      install_requires=[],
       license="GPLv3",
       classifiers=[
         "Development Status :: 4 - Beta",

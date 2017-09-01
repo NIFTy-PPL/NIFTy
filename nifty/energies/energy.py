@@ -19,11 +19,10 @@
 from ..nifty_meta import NiftyMeta
 from .memoization import memo
 
-from keepers import Loggable
 from future.utils import with_metaclass
 
 
-class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
+class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     """ Provides the functional used by minimization schemes.
 
    The Energy object is an implementation of a scalar function including its

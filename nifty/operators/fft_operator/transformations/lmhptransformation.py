@@ -77,9 +77,6 @@ class LMHPTransformation(SlicingTransformation):
         nside = codomain.nside
         lmax = domain.lmax
 
-        if lmax != 2*nside:
-            cls.logger.warn("Unrecommended: lmax != 2*nside.")
-
         super(LMHPTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):

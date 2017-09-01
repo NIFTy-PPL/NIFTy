@@ -56,9 +56,9 @@ class DefaultIterationController(IterationController):
                 msg += self._name+":"
             msg += " Iteration #" + str(self._itcount)
             msg += " gradnorm=" + str(energy.gradient_norm)
-            msg += " convergence level=" + str(self._ccount)
+            msg += " clvl=" + str(self._ccount)
             print (msg)
-            self.logger.info(msg)
+            #self.logger.info(msg)
 
         # Are we done?
         if self._iteration_limit is not None:

@@ -20,14 +20,6 @@ from __future__ import division
 
 from .version import __version__
 
-# initialize the logger instance
-from keepers import MPILogger
-logger = MPILogger()
-
-from .config import nifty_configuration
-
-logger.logger.setLevel(nifty_configuration['loglevel'])
-
 from .field import Field
 
 from .random import Random

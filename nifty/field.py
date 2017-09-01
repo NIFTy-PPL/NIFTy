@@ -23,8 +23,6 @@ from builtins import range
 import ast
 import numpy as np
 
-from keepers import Loggable
-
 from .domain_object import DomainObject
 
 from .spaces.power_space import PowerSpace
@@ -34,7 +32,7 @@ from .random import Random
 from functools import reduce
 
 
-class Field(Loggable, object):
+class Field(object):
     """ The discrete representation of a continuous field over multiple spaces.
 
     In NIFTY, Fields are used to store data arrays and carry all the needed
@@ -269,7 +267,7 @@ class Field(Loggable, object):
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                self.logger.info(
+                raise TypeError(
                     "Field has a space in `domain` which is neither "
                     "harmonic nor a PowerSpace.")
 

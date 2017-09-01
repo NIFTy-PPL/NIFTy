@@ -20,12 +20,11 @@ from __future__ import division
 import abc
 from .nifty_meta import NiftyMeta
 
-from keepers import Loggable
 from future.utils import with_metaclass
 
 
 class DomainObject(with_metaclass(
-        NiftyMeta, type('NewBase', (Loggable, object), {}))):
+        NiftyMeta, type('NewBase', (object,), {}))):
     """The abstract class that can be used as a domain for a field.
 
     This holds all the information and functionality a field needs to know
@@ -42,8 +41,7 @@ class DomainObject(with_metaclass(
     """
 
     def __init__(self):
-        # _global_id is used in the Versioning module from keepers
-        self._ignore_for_hash = ['_global_id']
+        self._ignore_for_hash = []
 
     @abc.abstractmethod
     def __repr__(self):

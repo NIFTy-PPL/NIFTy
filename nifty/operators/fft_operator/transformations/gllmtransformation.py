@@ -77,15 +77,6 @@ class GLLMTransformation(SlicingTransformation):
         lmax = codomain.lmax
         mmax = codomain.mmax
 
-        if lmax != mmax:
-            cls.logger.warn("Unrecommended: codomain has lmax != mmax.")
-
-        if lmax != nlat - 1:
-            cls.logger.warn("Unrecommended: codomain has lmax != nlat - 1.")
-
-        if nlon != 2*nlat - 1:
-            cls.logger.warn("Unrecommended: domain has nlon != 2*nlat - 1.")
-
         super(GLLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):

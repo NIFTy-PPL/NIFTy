@@ -109,8 +109,7 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 >= 0:
-            self.logger.error("Input direction must be a descent direction")
-            raise RuntimeError
+            raise RuntimeError ("search direction must be a descent direction")
 
         # set alphas
         alpha0 = 0.
@@ -131,7 +130,6 @@ class LineSearchStrongWolfe(LineSearch):
         while iteration_number < self.max_iterations:
             iteration_number += 1
             if alpha1 == 0:
-                self.logger.warn("Increment size became 0.")
                 result_energy = le_0.energy
                 break
 
@@ -161,18 +159,13 @@ class LineSearchStrongWolfe(LineSearch):
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, self.max_step_size)
             if alpha1 == self.max_step_size:
-                self.logger.info("Reached max step size, bailing out")
                 return le_alpha1.energy
 
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
         else:
             # max_iterations was reached
-            self.logger.error("The line search algorithm did not converge.")
             return le_alpha1.energy
-        if iteration_number > 1:
-            self.logger.debug("Finished line-search after %08u steps" %
-                              iteration_number)
         return result_energy
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
@@ -269,8 +262,8 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            self.logger.error("The line search algorithm (zoom) did not "
-                              "converge.")
+            #self.logger.error("The line search algorithm (zoom) did not "
+            #                  "converge.")
             return le_alphaj
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):

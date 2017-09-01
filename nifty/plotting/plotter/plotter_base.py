@@ -9,8 +9,6 @@ import sys
 
 import numpy as np
 
-from keepers import Loggable
-
 from ...spaces.space import Space
 from ...field import Field
 from ... import nifty_utilities as utilities
@@ -24,7 +22,7 @@ if plotly is not None and 'IPython' in sys.modules:
     plotly.offline.init_notebook_mode()
 
 
-class PlotterBase(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object), {}))):
+class PlotterBase(with_metaclass(abc.ABCMeta, type('NewBase', (object,), {}))):
     def __init__(self, interactive=False, path='plot.html', title=""):
         if plotly is None:
             raise ImportError("The module plotly is needed but not available.")

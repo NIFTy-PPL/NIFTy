@@ -18,11 +18,10 @@
 
 import abc
 
-from keepers import Loggable
 from future.utils import with_metaclass
 
 
-class Transformation(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object), {}))):
+class Transformation(with_metaclass(abc.ABCMeta, type('NewBase', (object,), {}))):
     """
         A generic transformation which defines a static check_codomain
         method for all transforms.

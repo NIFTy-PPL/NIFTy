@@ -75,9 +75,6 @@ class HPLMTransformation(SlicingTransformation):
         lmax = codomain.lmax
         nside = domain.nside
 
-        if lmax != 2*nside:
-            cls.logger.warn("Unrecommended: lmax != 2*nside.")
-
         super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
     def _transformation_of_slice(self, inp, **kwargs):
