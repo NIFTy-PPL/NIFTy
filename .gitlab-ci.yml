@@ -17,9 +17,37 @@ before_script:
 test_min:
   stage: test
   script:
+    - nosetests -vv
+    - nosetests3 -vv
+
+test_mpi:
+  stage: test
+  script:
     - ci/install_pyHealpix.sh
-    - nosetests
-    - nosetests3
+    - ci/install_mpi4py.sh
+    - nosetests -vv
+    - nosetests3 -vv
+
+test_mpi_fftw:
+  stage: test
+  script:
+    - ci/install_pyHealpix.sh
+    - ci/install_mpi4py.sh
+    - ci/install_pyfftw.sh
+    - nosetests -vv
+    - nosetests3 -vv
+
+test_mpi_fftw_hdf5:
+  stage: test
+  script:
+    - ci/install_pyHealpix.sh
+    - ci/install_mpi4py.sh
+    - ci/install_pyfftw.sh
+    - ci/install_h5py.sh
+    - mpiexec --allow-run-as-root -n 2 nosetests -x
+    - mpiexec --allow-run-as-root -n 2 nosetests3 -x
+    - mpiexec --allow-run-as-root -n 4 nosetests -x
+    - mpiexec --allow-run-as-root -n 4 nosetests3 -x
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
