@@ -12,7 +12,6 @@ before_script:
   - ci/install_basics.sh
   - pip install --upgrade -r ci/requirements.txt
   - pip3 install --upgrade -r ci/requirements.txt
-  - ci/install_pyHealpix.sh
 
 
 test_min:
@@ -20,6 +19,7 @@ test_min:
   script:
     - ci/install_pyHealpix.sh
     - nosetests
+    - nosetests3
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
