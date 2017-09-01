@@ -113,8 +113,8 @@ class LinearOperator(with_metaclass(
     def default_spaces(self):
         return self._default_spaces
 
-    def __call__(self, *args, **kwargs):
-        return self.times(*args, **kwargs)
+    def __call__(self, x, spaces=None):
+        return self.times(x, spaces)
 
     def times(self, x, spaces=None):
         """ Applies the Operator to a given Field.

@@ -25,35 +25,22 @@ from .transformation import Transformation
 
 class SlicingTransformation(Transformation):
 
-    def transform(self, val, axes=None, **kwargs):
-
+    def transform(self, val, axes=None):
         return_shape = np.array(val.shape)
         return_shape[list(axes)] = self.codomain.shape
         return_shape = tuple(return_shape)
-
         return_val = None
 
         for slice_list in utilities.get_slice_list(val.shape, axes):
             if return_val is None:
                 return_val = np.empty(return_shape,dtype=val.dtype)
 
-            data = val[slice_list]
-            data = self._transformation_of_slice(data, **kwargs)
-
-            return_val[slice_list] = data
-
+            return_val[slice_list] = self._transformation_of_slice(
+                                                               val[slice_list])
         return return_val
 
     def _combine_complex_result(self, resultReal, resultImag):
-        # construct correct complex dtype
-        one = resultReal.dtype.type(1)
-        result_dtype = np.dtype(type(one + 1j))
-
-        result = np.empty_like(resultReal, dtype=result_dtype)
-        result.real = resultReal
-        result.imag = resultImag
-
-        return result
+        return resultReal + 1j*resultImag
 
     @abc.abstractmethod
     def _transformation_of_slice(self, inp):

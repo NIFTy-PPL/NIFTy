@@ -64,28 +64,18 @@ class LMGLTransformation(SlicingTransformation):
         if not isinstance(domain, LMSpace):
             raise TypeError("domain needs to be a LMSpace")
 
-        nlat = domain.lmax + 1
-        nlon = domain.lmax*2 + 1
-
-        result = GLSpace(nlat=nlat, nlon=nlon)
-        return result
+        return GLSpace(nlat=domain.lmax+1, nlon=domain.mmax*2+1)
 
     @classmethod
     def check_codomain(cls, domain, codomain):
         if not isinstance(domain, LMSpace):
             raise TypeError("domain is not a LMSpace")
-
         if not isinstance(codomain, GLSpace):
             raise TypeError("codomain must be a GLSpace.")
 
-        nlat = codomain.nlat
-        nlon = codomain.nlon
-        lmax = domain.lmax
-        mmax = domain.mmax
-
         super(LMGLTransformation, cls).check_codomain(domain, codomain)
 
-    def _transformation_of_slice(self, inp, **kwargs):
+    def _transformation_of_slice(self, inp):
         nlat = self.codomain.nlat
         nlon = self.codomain.nlon
         lmax = self.domain.lmax

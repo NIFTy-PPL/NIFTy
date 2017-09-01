@@ -27,12 +27,8 @@ import pyHealpix
 
 class GLLMTransformation(SlicingTransformation):
 
-    # ---Overwritten properties and methods---
-
     def __init__(self, domain, codomain=None):
         super(GLLMTransformation, self).__init__(domain, codomain)
-
-    # ---Mandatory properties and methods---
 
     @property
     def unitary(self):
@@ -42,7 +38,7 @@ class GLLMTransformation(SlicingTransformation):
     def get_codomain(cls, domain):
         """
             Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
+            reasonable, i.e.\  an instance of the :py:class:`LMSpace` class.
 
             Parameters
             ----------
@@ -58,28 +54,17 @@ class GLLMTransformation(SlicingTransformation):
         if not isinstance(domain, GLSpace):
             raise TypeError("domain needs to be a GLSpace")
 
-        nlat = domain.nlat
-        lmax = nlat - 1
-
-        result = LMSpace(lmax=lmax)
-        return result
+        return LMSpace(lmax=domain.nlat-1,mmax=(domain.nlon-1)//2)
 
     @classmethod
     def check_codomain(cls, domain, codomain):
         if not isinstance(domain, GLSpace):
             raise TypeError("domain is not a GLSpace")
-
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")
-
-        nlat = domain.nlat
-        nlon = domain.nlon
-        lmax = codomain.lmax
-        mmax = codomain.mmax
-
         super(GLLMTransformation, cls).check_codomain(domain, codomain)
 
-    def _transformation_of_slice(self, inp, **kwargs):
+    def _transformation_of_slice(self, inp):
         nlat = self.domain.nlat
         nlon = self.domain.nlon
         lmax = self.codomain.lmax
@@ -89,16 +74,11 @@ class GLLMTransformation(SlicingTransformation):
         sjob.set_Gauss_geometry(nlat, nlon)
         sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal, resultImag] = [sjob.map2alm(x)
-                                        for x in (inp.real, inp.imag)]
-
-            [resultReal,
-             resultImag] = [lm_transformation_helper.buildIdx(x, lmax=lmax)
-                            for x in [resultReal, resultImag]]
-
-            result = self._combine_complex_result(resultReal, resultImag)
+            return self._combine_complex_result(
+                lm_transformation_helper.buildIdx(sjob.map2alm(inp.real),
+                                                  lmax=lmax),
+                lm_transformation_helper.buildIdx(sjob.map2alm(inp.imag),
+                                                  lmax=lmax))
         else:
-            result = sjob.map2alm(inp)
-            result = lm_transformation_helper.buildIdx(result, lmax=lmax)
-
-        return result
+            return lm_transformation_helper.buildIdx(sjob.map2alm(inp),
+                                                     lmax=lmax)

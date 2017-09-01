@@ -37,7 +37,7 @@ class Transform(object):
         self.domain = domain
         self.codomain = codomain
 
-    def transform(self, val, axes, **kwargs):
+    def transform(self, val, axes):
         """
             A generic ff-transform function.
 
@@ -66,25 +66,22 @@ class SerialFFT(Transform):
 
         pyfftw.interfaces.cache.enable()
 
-    def transform(self, val, axes, **kwargs):
+    def transform(self, val, axes):
         """
             The scalar FFT transform function.
 
             Parameters
             ----------
-            val : distributed_data_object or numpy.ndarray
+            val : or numpy.ndarray
                 The value-array of the field which is supposed to
                 be transformed.
 
             axes: tuple, None
                 The axes which should be transformed.
 
-            **kwargs : *optional*
-                Further kwargs are passed to the create_mpi_plan routine.
-
             Returns
             -------
-            result : np.ndarray or distributed_data_object
+            result : numpy.ndarray
                 Fourier-transformed pendant of the input field.
         """
 
@@ -93,24 +90,13 @@ class SerialFFT(Transform):
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
-        return_val = np.empty(val.shape, dtype=np.complex)
-
-        local_val = val
-
-        result_data = self._atomic_transform(local_val=local_val,
-                                             axes=axes,
-                                             local_offset_Q=False)
-        return_val=result_data
-
-        return return_val
+        return self._atomic_transform(local_val=val,
+                                      axes=axes,
+                                      local_offset_Q=False)
 
     def _atomic_transform(self, local_val, axes, local_offset_Q):
         # perform the transformation
         if self.codomain.harmonic:
-            result_val = pyfftw.interfaces.numpy_fft.fftn(
-                         local_val, axes=axes)
+            return pyfftw.interfaces.numpy_fft.fftn(local_val, axes=axes)
         else:
-            result_val = pyfftw.interfaces.numpy_fft.ifftn(
-                         local_val, axes=axes)
-
-        return result_val
+            return pyfftw.interfaces.numpy_fft.ifftn(local_val, axes=axes)

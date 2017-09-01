@@ -48,5 +48,5 @@ class Transformation(with_metaclass(abc.ABCMeta, type('NewBase', (object,), {}))
     def check_codomain(cls, domain, codomain):
         pass
 
-    def transform(self, val, axes=None, **kwargs):
+    def transform(self, val, axes=None):
         raise NotImplementedError

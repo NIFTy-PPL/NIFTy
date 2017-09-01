@@ -26,12 +26,8 @@ import pyHealpix
 
 class LMHPTransformation(SlicingTransformation):
 
-    # ---Overwritten properties and methods---
-
     def __init__(self, domain, codomain=None):
         super(LMHPTransformation, self).__init__(domain, codomain)
-
-    # ---Mandatory properties and methods---
 
     @property
     def unitary(self):
@@ -70,16 +66,12 @@ class LMHPTransformation(SlicingTransformation):
     def check_codomain(cls, domain, codomain):
         if not isinstance(domain, LMSpace):
             raise TypeError("domain is not a LMSpace.")
-
         if not isinstance(codomain, HPSpace):
             raise TypeError("codomain must be a HPSpace.")
 
-        nside = codomain.nside
-        lmax = domain.lmax
-
         super(LMHPTransformation, cls).check_codomain(domain, codomain)
 
-    def _transformation_of_slice(self, inp, **kwargs):
+    def _transformation_of_slice(self, inp):
         nside = self.codomain.nside
         lmax = self.domain.lmax
         mmax = lmax

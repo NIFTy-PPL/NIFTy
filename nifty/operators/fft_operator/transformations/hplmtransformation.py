@@ -28,12 +28,8 @@ import pyHealpix
 
 class HPLMTransformation(SlicingTransformation):
 
-    # ---Overwritten properties and methods---
-
     def __init__(self, domain, codomain=None):
         super(HPLMTransformation, self).__init__(domain, codomain)
-
-    # ---Mandatory properties and methods---
 
     @property
     def unitary(self):
@@ -59,25 +55,17 @@ class HPLMTransformation(SlicingTransformation):
         if not isinstance(domain, HPSpace):
             raise TypeError("domain needs to be a HPSpace")
 
-        lmax = 2*domain.nside
-
-        result = LMSpace(lmax=lmax)
-        return result
+        return LMSpace(lmax=2*domain.nside)
 
     @classmethod
     def check_codomain(cls, domain, codomain):
         if not isinstance(domain, HPSpace):
             raise TypeError("domain is not a HPSpace")
-
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")
-
-        lmax = codomain.lmax
-        nside = domain.nside
-
         super(HPLMTransformation, cls).check_codomain(domain, codomain)
 
-    def _transformation_of_slice(self, inp, **kwargs):
+    def _transformation_of_slice(self, inp):
         lmax = self.codomain.lmax
         mmax = lmax
 

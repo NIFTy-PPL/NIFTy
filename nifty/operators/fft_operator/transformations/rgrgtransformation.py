@@ -96,7 +96,7 @@ class RGRGTransformation(Transformation):
 
         super(RGRGTransformation, cls).check_codomain(domain, codomain)
 
-    def transform(self, val, axes=None, **kwargs):
+    def transform(self, val, axes=None):
         """
         RG -> RG transform method.
 
@@ -119,22 +119,18 @@ class RGRGTransformation(Transformation):
 
         # Perform the transformation
         if issubclass(val.dtype.type, np.complexfloating):
-            Tval_real = self._transform.transform(val.real, axes,
-                                                  **kwargs)
-            Tval_imag = self._transform.transform(val.imag, axes,
-                                                  **kwargs)
+            Tval_real = self._transform.transform(val.real, axes)
+            Tval_imag = self._transform.transform(val.imag, axes)
             if self.codomain.harmonic:
                 Tval_real.real += Tval_real.imag
-                Tval_real.imag = \
-                    Tval_imag.real + Tval_imag.imag
+                Tval_real.imag = Tval_imag.real + Tval_imag.imag
             else:
                 Tval_real.real -= Tval_real.imag
-                Tval_real.imag = \
-                    Tval_imag.real - Tval_imag.imag
+                Tval_real.imag = Tval_imag.real - Tval_imag.imag
 
             Tval = Tval_real
         else:
-            Tval = self._transform.transform(val, axes, **kwargs)
+            Tval = self._transform.transform(val, axes)
             if self.codomain.harmonic:
                 Tval.real += Tval.imag
             else:
