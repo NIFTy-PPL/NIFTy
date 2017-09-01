@@ -82,9 +82,7 @@ class Field(object):
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
-
-        self.dtype = self._infer_dtype(dtype=dtype,
-                                       val=val)
+        self.dtype = self._infer_dtype(dtype=dtype, val=val)
 
         if val is None:
             self._val = None
@@ -134,9 +132,7 @@ class Field(object):
         else:
             dtype = np.dtype(dtype)
 
-        dtype = np.result_type(dtype, np.float)
-
-        return dtype
+        return np.result_type(dtype, np.float)
 
     # ---Factory methods---
 
@@ -173,12 +169,6 @@ class Field(object):
         # create a initially empty field
         f = cls(domain=domain, dtype=dtype)
 
-        # now use the processed input in terms of f in order to parse the
-        # random arguments
-        random_arguments = cls._parse_random_arguments(random_type=random_type,
-                                                       f=f,
-                                                       **kwargs)
-
         # extract the data from f and apply the appropriate
         # random number generator to it
         sample = f.get_val(copy=False)
@@ -186,31 +176,8 @@ class Field(object):
 
         sample[:]=generator_function(dtype=f.dtype,
                                              shape=sample.shape,
-                                             **random_arguments)
+                                             **kwargs)
         return f
-
-    @staticmethod
-    def _parse_random_arguments(random_type, f, **kwargs):
-        if random_type == "pm1":
-            random_arguments = {}
-
-        elif random_type == "normal":
-            mean = kwargs.get('mean', 0)
-            std = kwargs.get('std', 1)
-            random_arguments = {'mean': mean,
-                                'std': std}
-
-        elif random_type == "uniform":
-            low = kwargs.get('low', 0)
-            high = kwargs.get('high', 1)
-            random_arguments = {'low': low,
-                                'high': high}
-
-        else:
-            raise KeyError(
-                "unsupported random key '" + str(random_type) + "'.")
-
-        return random_arguments
 
     # ---Powerspectral methods---
 
@@ -507,22 +474,8 @@ class Field(object):
     def _hermitian_decomposition(domain, val, spaces, domain_axes,
                                  preserve_gaussian_variance=False):
 
-        flipped_val = val
-        for space in spaces:
-            flipped_val = domain[space].hermitianize_inverter(
-                                                    x=flipped_val,
-                                                    axes=domain_axes[space])
-        # if no flips at all where performed `h` is a real field.
-        # if all spaces use the default implementation of doing nothing when
-        # no flips are applied, one can use `is` to infer this case.
-
-        if flipped_val is val:
-            h = flipped_val.real.copy()
-            a = 1j * flipped_val.imag.copy()
-        else:
-            flipped_val = flipped_val.conjugate()
-            h = (val + flipped_val)/2.
-            a = val - h
+        h = val.real.copy()
+        a = 1j * val.imag.copy()
 
         # correct variance
         if preserve_gaussian_variance:
@@ -530,42 +483,6 @@ class Field(object):
                     "complex input field is needed here"
             h *= np.sqrt(2)
             a *= np.sqrt(2)
-
-#            The code below should not be needed in practice, since it would
-#            only ever be called when hermitianizing a purely real field.
-#            However it might be of educational use and keep us from forgetting
-#            how these things are done ...
-
-#            if not issubclass(val.dtype.type, np.complexfloating):
-#                # in principle one must not correct the variance for the fixed
-#                # points of the hermitianization. However, for a complex field
-#                # the input field loses half of its power at its fixed points
-#                # in the `hermitian` part. Hence, here a factor of sqrt(2) is
-#                # also necessary!
-#                # => The hermitianization can be done on a space level since
-#                # either nothing must be done (LMSpace) or ALL points need a
-#                # factor of sqrt(2)
-#                # => use the preserve_gaussian_variance flag in the
-#                # hermitian_decomposition method above.
-#
-#                # This code is for educational purposes:
-#                fixed_points = [domain[i].hermitian_fixed_points()
-#                                for i in spaces]
-#                fixed_points = [[fp] if fp is None else fp
-#                                for fp in fixed_points]
-#
-#                for product_point in itertools.product(*fixed_points):
-#                    slice_object = np.array((slice(None), )*len(val.shape),
-#                                            dtype=np.object)
-#                    for i, sp in enumerate(spaces):
-#                        point_component = product_point[i]
-#                        if point_component is None:
-#                            point_component = slice(None)
-#                        slice_object[list(domain_axes[sp])] = point_component
-#
-#                    slice_object = tuple(slice_object)
-#                    h[slice_object] /= np.sqrt(2)
-#                    a[slice_object] /= np.sqrt(2)
 
         return (h, a)
 
@@ -1159,262 +1076,78 @@ class Field(object):
         return working_field
 
     def __add__(self, other):
-        """ x.__add__(y) <==> x+y
-
-        See Also
-        --------
-        _binary_helper
-
-        """
-
         return self._binary_helper(other, op='__add__')
 
     def __radd__(self, other):
-        """ x.__radd__(y) <==> y+x
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__radd__')
 
     def __iadd__(self, other):
-        """ x.__iadd__(y) <==> x+=y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__iadd__', inplace=True)
 
     def __sub__(self, other):
-        """ x.__sub__(y) <==> x-y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__sub__')
 
     def __rsub__(self, other):
-        """ x.__rsub__(y) <==> y-x
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__rsub__')
 
     def __isub__(self, other):
-        """ x.__isub__(y) <==> x-=y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__isub__', inplace=True)
 
     def __mul__(self, other):
-        """ x.__mul__(y) <==> x*y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__mul__')
 
     def __rmul__(self, other):
-        """ x.__rmul__(y) <==> y*x
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__rmul__')
 
     def __imul__(self, other):
-        """ x.__imul__(y) <==> x*=y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__imul__', inplace=True)
 
     def __div__(self, other):
-        """ x.__div__(y) <==> x/y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__div__')
 
     def __truediv__(self, other):
-        """ x.__truediv__(y) <==> x/y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__truediv__')
 
     def __rdiv__(self, other):
-        """ x.__rdiv__(y) <==> y/x
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__rdiv__')
 
     def __rtruediv__(self, other):
-        """ x.__rtruediv__(y) <==> y/x
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__rtruediv__')
 
     def __idiv__(self, other):
-        """ x.__idiv__(y) <==> x/=y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__idiv__', inplace=True)
 
     def __pow__(self, other):
-        """ x.__pow__(y) <==> x**y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__pow__')
 
     def __rpow__(self, other):
-        """ x.__rpow__(y) <==> y**x
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__rpow__')
 
     def __ipow__(self, other):
-        """ x.__ipow__(y) <==> x**=y
-
-        See Also
-        --------
-        _builtin_helper
-
-        """
-
         return self._binary_helper(other, op='__ipow__', inplace=True)
 
     def __lt__(self, other):
-        """ x.__lt__(y) <==> x<y
-
-        See Also
-        --------
-        _binary_helper
-
-        """
-
         return self._binary_helper(other, op='__lt__')
 
     def __le__(self, other):
-        """ x.__le__(y) <==> x<=y
-
-        See Also
-        --------
-        _binary_helper
-
-        """
-
         return self._binary_helper(other, op='__le__')
 
     def __ne__(self, other):
-        """ x.__ne__(y) <==> x!=y
-
-        See Also
-        --------
-        _binary_helper
-
-        """
-
         if other is None:
             return True
         else:
             return self._binary_helper(other, op='__ne__')
 
     def __eq__(self, other):
-        """ x.__eq__(y) <==> x=y
-
-        See Also
-        --------
-        _binary_helper
-
-        """
-
         if other is None:
             return False
         else:
             return self._binary_helper(other, op='__eq__')
 
     def __ge__(self, other):
-        """ x.__ge__(y) <==> x>=y
-
-        See Also
-        --------
-        _binary_helper
-
-        """
-
         return self._binary_helper(other, op='__ge__')
 
     def __gt__(self, other):
-        """ x.__gt__(y) <==> x>y
-
-        See Also
-        --------
-        _binary_helper
-
-        """
-
         return self._binary_helper(other, op='__gt__')
 
     def __repr__(self):

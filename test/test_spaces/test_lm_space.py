@@ -108,13 +108,6 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(l, key), value)
 
-    def test_hermitianize_inverter(self):
-        l = LMSpace(5)
-        v = np.empty(l.shape, dtype=np.complex128)
-        v[:] = np.random.random(l.shape) + 1j*np.random.random(l.shape)
-        inverted = l.hermitianize_inverter(v, axes=(0,))
-        assert_array_almost_equal(inverted, v)
-
     @expand(get_weight_configs())
     def test_weight(self, x, power, axes, inplace, expected):
         l = LMSpace(5)

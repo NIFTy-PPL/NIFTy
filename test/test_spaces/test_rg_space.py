@@ -127,20 +127,6 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         for key, value in expected.items():
             assert_equal(getattr(x, key), value)
 
-    @expand(product([(10,), (11,), (1, 1), (4, 4), (5, 7), (8, 12), (7, 16),
-                     (4, 6, 8), (17, 5, 3)]))
-    def test_hermitianize_inverter(self, shape):
-        try:
-            r = RGSpace(shape, harmonic=True)
-        except ValueError:
-            raise SkipTest
-        v = np.empty(shape, dtype=np.complex128)
-        v[:] = np.random.random(shape) + 1j*np.random.random(shape)
-
-        inverted = r.hermitianize_inverter(v, axes=range(len(shape)))
-
-        assert_array_equal(v, inverted)
-
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, expected):
         r = RGSpace(shape=shape, distances=distances, harmonic=True)

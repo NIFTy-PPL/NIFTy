@@ -87,8 +87,6 @@ class LMSpace(Space):
         super(LMSpace, self).__init__()
         self._lmax = self._parse_lmax(lmax)
 
-    # ---Mandatory properties and methods---
-
     def __repr__(self):
         return ("LMSpace(lmax=%r)" % self.lmax)
 
@@ -143,21 +141,11 @@ class LMSpace(Space):
     def get_natural_binbounds(self):
         return np.arange(self.lmax, dtype=np.float64) + 0.5
 
-    @staticmethod
-    def _distance_array_helper(index_array, lmax):
-        u = 2*lmax + 1
-        index_half = (index_array+np.minimum(lmax, index_array)+1)//2
-        m = (np.ceil((u - np.sqrt(u*u - 8*(index_half - lmax)))/2)).astype(int)
-        res = (index_half - m*(u - m)//2).astype(np.float64)
-        return res
-
     def get_fft_smoothing_kernel_function(self, sigma):
         # cf. "All-sky convolution for polarimetry experiments"
         # by Challinor et al.
         # http://arxiv.org/abs/astro-ph/0008228
         return lambda x: np.exp(-0.5 * x * (x + 1) * sigma*sigma)
-
-    # ---Added properties and methods---
 
     @property
     def lmax(self):

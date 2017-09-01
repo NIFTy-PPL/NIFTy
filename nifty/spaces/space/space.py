@@ -148,23 +148,3 @@ class Space(DomainObject):
 
         raise NotImplementedError(
             "There is no generic co-smoothing kernel for Space base class.")
-
-    def hermitianize_inverter(self, x, axes):
-        """ Inverts/flips x in the context of Hermitian decomposition.
-
-        This method is only implemented for harmonic spaces.
-        This method is mainly used for power-synthesizing and -analyzing
-        Fields.
-
-        Parameters
-        ----------
-        axes : tuple of ints
-            Specifies the axes of x which correspond to this space.
-
-        Returns
-        -------
-        numpy.ndarray
-            The Hermitian-flipped of x.
-        """
-
-        return x
