@@ -3,3 +3,4 @@ plotly
 parameterized
 coverage
 future
+pyfftw
