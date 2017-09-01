@@ -1,7 +1,5 @@
 matplotlib
 plotly
-nose
 parameterized
 coverage
-pyfftw
 future
