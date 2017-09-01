@@ -18,7 +18,6 @@
 
 from builtins import object
 from ...energies import QuadraticEnergy
-from ...minimization import ConjugateGradient
 from ...field import Field
 
 
@@ -36,22 +35,12 @@ class InvertibleOperatorMixin(object):
     ----------
     inverter : Inverter
         An instance of an Inverter class.
-        (default: ConjugateGradient)
-
-    preconditioner : LinearOperator
-        Preconditioner that is used by ConjugateGradient if no minimizer was
-        given.
 
     """
 
-    def __init__(self, inverter=None, preconditioner=None,
+    def __init__(self, inverter,
                  forward_x0=None, backward_x0=None, *args, **kwargs):
-        self.__preconditioner = preconditioner
-        if inverter is not None:
-            self.__inverter = inverter
-        else:
-            self.__inverter = ConjugateGradient(
-                                        preconditioner=self.__preconditioner)
+        self.__inverter = inverter
 
         self.__forward_x0 = forward_x0
         self.__backward_x0 = backward_x0
@@ -61,8 +50,7 @@ class InvertibleOperatorMixin(object):
         if self.__forward_x0 is not None:
             x0 = self.__forward_x0
         else:
-            x0 = Field(self.target, val=0., dtype=x.dtype,
-                       distribution_strategy=x.distribution_strategy)
+            x0 = Field(self.target, val=0., dtype=x.dtype)
 
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                                 A=self.inverse_times,
@@ -74,8 +62,7 @@ class InvertibleOperatorMixin(object):
         if self.__backward_x0 is not None:
             x0 = self.__backward_x0
         else:
-            x0 = Field(self.domain, val=0., dtype=x.dtype,
-                       distribution_strategy=x.distribution_strategy)
+            x0 = Field(self.domain, val=0., dtype=x.dtype)
 
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                                 A=self.adjoint_inverse_times,
@@ -87,8 +74,7 @@ class InvertibleOperatorMixin(object):
         if self.__backward_x0 is not None:
             x0 = self.__backward_x0
         else:
-            x0 = Field(self.domain, val=0., dtype=x.dtype,
-                       distribution_strategy=x.distribution_strategy)
+            x0 = Field(self.domain, val=0., dtype=x.dtype)
 
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                                 A=self.times,
@@ -100,8 +86,7 @@ class InvertibleOperatorMixin(object):
         if self.__forward_x0 is not None:
             x0 = self.__forward_x0
         else:
-            x0 = Field(self.target, val=0., dtype=x.dtype,
-                       distribution_strategy=x.distribution_strategy)
+            x0 = Field(self.target, val=0., dtype=x.dtype)
 
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                                 A=self.adjoint_times,

@@ -3,12 +3,9 @@
 import nifty as ift
 from nifty import plotting
 import numpy as np
-from keepers import Repository
 
 
 if __name__ == "__main__":
-    ift.nifty_configuration['default_distribution_strategy'] = 'fftw'
-
     # Setting up parameters    |\label{code:wf_parameters}|
     correlation_length_scale = 1.  # Typical distance over which the field is correlated
     fluctuation_scale = 2.         # Variance of field in position space
@@ -24,7 +21,7 @@ if __name__ == "__main__":
     N_pixels = 512  # Grid resolution (pixels per axis)
     signal_space = ift.RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     harmonic_space = ift.FFTOperator.get_default_codomain(signal_space)
-    fft = ift.FFTOperator(harmonic_space, target=signal_space, target_dtype=np.float)
+    fft = ift.FFTOperator(harmonic_space, target=signal_space)
     power_space = ift.PowerSpace(harmonic_space)
 
     # Creating the mock signal |\label{code:wf_mock_signal}|
@@ -48,24 +45,19 @@ if __name__ == "__main__":
 
     # Wiener filter
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic)
+    ctrl = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=0.1)
+    inverter = ift.ConjugateGradient(controller=ctrl,preconditioner=S.times)
+    wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic,inverter=inverter)
     m_k = wiener_curvature.inverse_times(j)  #|\label{code:wf_wiener_filter}|
     m = fft(m_k)
 
     # Probing the uncertainty |\label{code:wf_uncertainty_probing}|
     class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby(signal_space, probe_count=800)
+    proby = Proby(signal_space, probe_count=20)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))  #|\label{code:wf_variance_fft_wrap}|
 
-    sm = ift.SmoothingOperator.make(signal_space, sigma=0.03)
+    sm = ift.FFTSmoothingOperator(signal_space, sigma=0.03)
     variance = ift.sqrt(sm(proby.diagonal.weight(-1)))  #|\label{code:wf_variance_weighting}|
-
-    repo = Repository('repo_800.h5')
-    repo.add(mock_signal, 'mock_signal')
-    repo.add(data, 'data')
-    repo.add(m, 'm')
-    repo.add(variance, 'variance')
-    repo.commit()
 
     # Plotting #|\label{code:wf_plotting}|
     plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())

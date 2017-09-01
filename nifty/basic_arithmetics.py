@@ -28,7 +28,7 @@ __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
 
 def _math_helper(x, function):
     if isinstance(x, Field):
-        result_val = x.val.apply_scalar_function(function)
+        result_val = function(x.val)
         result = x.copy_empty(dtype=result_val.dtype)
         result.val = result_val
     else:

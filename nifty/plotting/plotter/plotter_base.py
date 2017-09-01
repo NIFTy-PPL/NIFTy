@@ -81,20 +81,19 @@ class PlotterBase(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object)
                      for field in fields]
 
         # create plots
-        if rank == 0:
-            plots_list = []
-            for slice_list in utilities.get_slice_list(data_list[0].shape,
-                                                       axes):
-                plots_list += \
-                        [[self.plot.at(self._parse_data(current_data,
-                                                        field,
-                                                        spaces))
-                          for (current_data, field) in zip(data_list, fields)]]
+        plots_list = []
+        for slice_list in utilities.get_slice_list(data_list[0].shape,
+                                                   axes):
+            plots_list += \
+                    [[self.plot.at(self._parse_data(current_data,
+                                                    field,
+                                                    spaces))
+                      for (current_data, field) in zip(data_list, fields)]]
 
-            figures = [self.figure.at(plots, title=title)
-                       for plots in plots_list]
+        figures = [self.figure.at(plots, title=title)
+                   for plots in plots_list]
 
-            self._finalize_figure(figures, path=path)
+        self._finalize_figure(figures, path=path)
 
     def _get_data_from_field(self, field, spaces, data_extractor):
         for i, space_index in enumerate(spaces):
@@ -104,7 +103,7 @@ class PlotterBase(with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object)
                                      "not match the plotters domain.")
 
         # TODO: add data_extractor functionality here
-        data = field.val.get_full_data(target_rank=0)
+        data = field.val
         return data
 
     @abc.abstractmethod

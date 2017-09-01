@@ -2,14 +2,12 @@ import numpy as np
 
 from nifty import RGSpace, PowerSpace, Field, FFTOperator, ComposedOperator,\
                   DiagonalOperator, ResponseOperator, plotting,\
-                  create_power_operator, nifty_configuration
+                  create_power_operator
 from nifty.library import WienerFilterCurvature
+import nifty as ift
 
 
 if __name__ == "__main__":
-
-    nifty_configuration['default_distribution_strategy'] = 'fftw'
-    nifty_configuration['harmonic_rg_base'] = 'real'
 
     # Setting up variable parameters
 
@@ -46,8 +44,7 @@ if __name__ == "__main__":
     mock_power = Field(power_space, val=power_spectrum)
     np.random.seed(43)
     mock_harmonic = mock_power.power_synthesize(real_signal=True)
-    if nifty_configuration['harmonic_rg_base'] == 'real':
-        mock_harmonic = mock_harmonic.real
+    mock_harmonic = mock_harmonic.real
     mock_signal = fft(mock_harmonic)
 
     R = ResponseOperator(signal_space, sigma=(response_sigma,))
@@ -66,7 +63,9 @@ if __name__ == "__main__":
     # Wiener filter
 
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    wiener_curvature = WienerFilterCurvature(S=S, N=N, R=R_harmonic)
+    ctrl = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=1e-2)
+    inverter = ift.ConjugateGradient(controller=ctrl)
+    wiener_curvature = WienerFilterCurvature(S=S, N=N, R=R_harmonic, inverter=inverter)
 
     m = wiener_curvature.inverse_times(j)
     m_s = fft(m)
@@ -77,6 +76,6 @@ if __name__ == "__main__":
     plotter.path = 'data.html'
     plotter(Field(
                 signal_space,
-                val=data.val.get_full_data().real.reshape(signal_space.shape)))
+                val=data.val.real.reshape(signal_space.shape)))
     plotter.path = 'map.html'
     plotter(m_s.real)

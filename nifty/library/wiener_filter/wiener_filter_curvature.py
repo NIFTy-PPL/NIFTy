@@ -1,7 +1,6 @@
 from ...operators import EndomorphicOperator,\
                          InvertibleOperatorMixin
 
-
 class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     """The curvature of the WienerFilterEnergy.
 
@@ -22,17 +21,14 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
     """
 
-    def __init__(self, R, N, S, inverter=None, preconditioner=None, **kwargs):
+    def __init__(self, R, N, S, inverter, **kwargs):
 
         self.R = R
         self.N = N
         self.S = S
-        if preconditioner is None:
-            preconditioner = self.S.times
         self._domain = self.S.domain
         super(WienerFilterCurvature, self).__init__(
                                                  inverter=inverter,
-                                                 preconditioner=preconditioner,
                                                  **kwargs)
 
     @property
