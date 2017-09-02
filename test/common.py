@@ -21,6 +21,8 @@ from parameterized import parameterized
 from nifty import Space, RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
 import numpy as np
 
+np.seterr(all='raise',under='ignore')
+
 def custom_name_func(testcase_func, param_num, param):
     return "%s_%s" % (
         testcase_func.__name__,
