@@ -70,17 +70,11 @@ class Test_Functionality(unittest.TestCase):
             v = v + 1j*np.random.random(s1+s2)
         f1 = Field(ra, val=v, copy=True)
         f2 = Field((r1, r2), val=v, copy=True)
-        h1, a1 = Field._hermitian_decomposition((ra,), f1.val, (0,),
-                                                ((0, 1,),), preserve)
-        h2, a2 = Field._hermitian_decomposition((r1, r2), f2.val, (0, 1),
-                                                ((0,), (1,)), preserve)
-        h3, a3 = Field._hermitian_decomposition((r1, r2), f2.val, (1, 0),
-                                                ((0,), (1,)), preserve)
+        h1, a1 = Field._hermitian_decomposition(f1.val, preserve)
+        h2, a2 = Field._hermitian_decomposition(f2.val, preserve)
 
         assert_almost_equal(h1, h2)
         assert_almost_equal(a1, a2)
-        assert_almost_equal(h1, h3)
-        assert_almost_equal(a1, a3)
 
     @expand(product([RGSpace((8,), harmonic=True),
                      RGSpace((8, 8), harmonic=True, distances=0.123)],
