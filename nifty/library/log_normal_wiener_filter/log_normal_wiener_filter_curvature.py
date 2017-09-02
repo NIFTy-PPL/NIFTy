@@ -1,7 +1,7 @@
 from ...operators import EndomorphicOperator,\
                             InvertibleOperatorMixin
 from ...energies.memoization import memo
-from ...basic_arithmetics import clipped_exp
+from ...basic_arithmetics import exp
 from ...sugar import create_composed_fft_operator
 
 
@@ -71,7 +71,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     @property
     @memo
     def _expp_sspace(self):
-        return clipped_exp(self._fft(self.position))
+        return exp(self._fft(self.position))
 
     @property
     @memo

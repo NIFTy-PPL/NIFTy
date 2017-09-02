@@ -89,8 +89,21 @@ class Field(object):
         else:
             global_shape = reduce(lambda x, y: x + y, shape_tuple)
         dtype = self._infer_dtype(dtype=dtype, val=val)
-        self._val = np.empty(global_shape,dtype=dtype)
-        self.set_val(new_val=val, copy=copy)
+        if isinstance(val, Field):
+            if self.domain!=val.domain:
+                raise ValueError("Domain mismatch")
+            self._val = np.array(val.val,dtype=dtype,copy=copy)
+        elif (np.isscalar(val)):
+            self._val=np.full(global_shape,dtype=dtype,fill_value=val)
+        elif isinstance(val, np.ndarray):
+            if global_shape==val.shape:
+                self._val = np.array(val,dtype=dtype,copy=copy)
+            else:
+                raise ValueError("Shape mismatch")
+        elif val is None:
+            self._val = np.empty(global_shape,dtype=dtype)
+        else:
+            raise TypeError("unknown source type")
 
     def _parse_domain(self, domain, val=None):
         if domain is None:
@@ -412,7 +425,6 @@ class Field(object):
 
         # apply the rescaler to the random fields
         result_list[0].val *= spec.real
-
         if not real_power:
             result_list[1].val *= spec.imag
 
@@ -481,7 +493,7 @@ class Field(object):
             if copy:
                 self._val[()] = new_val.val
             else:
-                self._val = new_val.val
+                self._val = np.array(new_val.val,dtype=self.dtype,copy=False)
         elif (np.isscalar(new_val)):
             self._val[()]=new_val
         elif isinstance(new_val, np.ndarray):
@@ -490,7 +502,7 @@ class Field(object):
             else:
                 if self.shape!=new_val.shape:
                     raise ValueError("Shape mismatch")
-                self._val = new_val
+                self._val = np.array(new_val,dtype=self.dtype,copy=False)
         else:
             raise TypeError("unknown source type")
         return self
@@ -573,12 +585,7 @@ class Field(object):
         shape
 
         """
-
-        dim_tuple = tuple(sp.dim for sp in self.domain)
-        try:
-            return int(reduce(lambda x, y: x * y, dim_tuple))
-        except TypeError:
-            return 0
+        return self._val.size
 
     @property
     def dof(self):

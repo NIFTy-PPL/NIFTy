@@ -23,18 +23,14 @@ from .field import Field
 
 __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
            'arccosh', 'arcsinh', 'arctan', 'arctanh', 'sqrt', 'exp', 'log',
-           'conjugate', 'clipped_exp', 'limited_exp', 'limited_exp_deriv']
+           'conjugate']
 
 
 def _math_helper(x, function):
     if isinstance(x, Field):
-        result_val = function(x.val)
-        result = x.copy_empty(dtype=result_val.dtype)
-        result.val = result_val
+        return Field(val=function(x.val))
     else:
-        result = function(np.asarray(x))
-
-    return result
+        return function(np.asarray(x))
 
 
 def cos(x):
@@ -91,36 +87,6 @@ def sqrt(x):
 
 def exp(x):
     return _math_helper(x, np.exp)
-
-
-def clipped_exp(x):
-    return _math_helper(x, lambda z: np.exp(np.minimum(200, z)))
-
-
-def limited_exp(x):
-    return _math_helper(x, _limited_exp_helper)
-
-def _limited_exp_helper(x):
-    thr = 200.
-    mask = x>thr
-    if np.count_nonzero(mask) == 0:
-        return np.exp(x)
-    result = ((1.-thr) + x)*np.exp(thr)
-    result[~mask] = np.exp(x[~mask])
-    return result
-
-def limited_exp_deriv(x):
-    return _math_helper(x, _limited_exp_deriv_helper)
-
-def _limited_exp_deriv_helper(x):
-    thr = 200.
-    mask = x>thr
-    if np.count_nonzero(mask) == 0:
-        return np.exp(x)
-    result = np.empty_like(x)
-    result[mask] = np.exp(thr)
-    result[~mask] = np.exp(x[~mask])
-    return result
 
 
 def log(x, base=None):
