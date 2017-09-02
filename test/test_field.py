@@ -91,11 +91,11 @@ class Test_Functionality(unittest.TestCase):
 
         p1 = PowerSpace(space1)
         spec1 = lambda k: 42/(1+k)**2
-        fp1 = Field(p1, val=spec1)
+        fp1 = Field(p1, val=spec1(p1.kindex))
 
         p2 = PowerSpace(space2)
         spec2 = lambda k: 42/(1+k)**3
-        fp2 = Field(p2, val=spec2)
+        fp2 = Field(p2, val=spec2(p2.kindex))
 
         outer = np.outer(fp1.val, fp2.val)
         fp = Field((p1, p2), val=outer)

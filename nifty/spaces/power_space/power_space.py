@@ -153,31 +153,6 @@ class PowerSpace(Space):
             binbounds = harmonic_partner.get_natural_binbounds()
         return np.searchsorted(binbounds, distance_array)
 
-    def pre_cast(self, x, axes):
-        """ Casts power spectrum functions to discretized power spectra.
-
-        This function takes an array or a function. If it is an array it does
-        nothing, otherwise it interpretes the function as power spectrum and
-        evaluates it at every k-mode.
-
-        Parameters
-        ----------
-        x : {array-like, function array-like -> array-like}
-            power spectrum given either in discretized form or implicitly as a
-            function
-        axes : tuple of ints
-            Specifies the axes of x which correspond to this space. For
-            explicifying the power spectrum function, this is ignored.
-
-        Returns
-        -------
-        array-like
-            discretized power spectrum
-
-        """
-
-        return x(self.kindex) if callable(x) else x
-
     # ---Mandatory properties and methods---
 
     def __repr__(self):

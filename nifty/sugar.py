@@ -40,9 +40,9 @@ def create_power_operator(domain, power_spectrum, dtype=None):
     ----------
     domain : DomainObject
         Domain over which the power operator shall live.
-    power_spectrum : (array-like, method)
-        An array-like object, or a method that implements the square root
-        of a power spectrum as a function of k.
+    power_spectrum : callable
+        A method that implements the square root of a power spectrum as a
+        function of k.
     dtype : type *optional*
         dtype that the field holding the power spectrum shall use
         (default : None).
@@ -54,12 +54,12 @@ def create_power_operator(domain, power_spectrum, dtype=None):
 
     """
 
-    if isinstance(power_spectrum, Field):
-        power_domain = power_spectrum.domain
-    else:
-        power_domain = PowerSpace(domain)
+    if not callable(power_spectrum):
+        raise TypeError("power_spectrum must be callable")
+    power_domain = PowerSpace(domain)
 
-    fp = Field(power_domain, val=power_spectrum, dtype=dtype)
+    fp = Field(power_domain,
+               val=power_spectrum(power_domain.kindex), dtype=dtype)
     f = fp.power_synthesize(mean=1, std=0, real_signal=False)
 
     if not issubclass(fp.dtype.type, np.complexfloating):

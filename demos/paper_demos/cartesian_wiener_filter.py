@@ -26,7 +26,7 @@ if __name__ == "__main__":
     fft_1 = ift.FFTOperator(harmonic_space_1, target=signal_space_1)
     power_space_1 = ift.PowerSpace(harmonic_space_1)
 
-    mock_power_1 = ift.Field(power_space_1, val=power_spectrum_1)
+    mock_power_1 = ift.Field(power_space_1, val=power_spectrum_1(power_space_1.kindex))
 
 
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     fft_2 = ift.FFTOperator(harmonic_space_2, target=signal_space_2)
     power_space_2 = ift.PowerSpace(harmonic_space_2)
 
-    mock_power_2 = ift.Field(power_space_2, val=power_spectrum_2)
+    mock_power_2 = ift.Field(power_space_2, val=power_spectrum_2(power_space_2.kindex))
 
     fft = ift.ComposedOperator((fft_1, fft_2))
 

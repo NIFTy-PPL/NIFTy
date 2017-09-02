@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from nifty import *
+import nifty as ift
 
 
 if __name__ == "__main__":
-    nifty_configuration['default_distribution_strategy'] = 'fftw'
-
     # Setting up parameters    |\label{code:wf_parameters}|
     correlation_length = 1.     # Typical distance over which the field is correlated
     field_variance = 2.         # Variance of field in position space
@@ -22,7 +21,7 @@ if __name__ == "__main__":
     #signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     signal_space = HPSpace(16)
     harmonic_space = FFTOperator.get_default_codomain(signal_space)
-    fft = FFTOperator(harmonic_space, target=signal_space, target_dtype=np.float)
+    fft = FFTOperator(harmonic_space, target=signal_space)
     power_space = PowerSpace(harmonic_space)
 
     # Creating the mock signal |\label{code:wf_mock_signal}|
@@ -46,24 +45,18 @@ if __name__ == "__main__":
 
     # Wiener filter
     m0 = Field(harmonic_space, val=0.j)
-    energy = library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S)
-
-
-    minimizer1 = VL_BFGS(convergence_tolerance=1e-5,
-                         iteration_limit=3000,
-                         #callback=convergence_measure,
-                         max_history_length=20)
-
-    minimizer2 = RelaxedNewton(convergence_tolerance=1e-5,
-                               iteration_limit=10,
-                               #callback=convergence_measure
-                               )
-    minimizer3 = SteepestDescent(convergence_tolerance=1e-5, iteration_limit=1000)
+    ctrl = ift.DefaultIterationController(verbose=False,tol_abs_gradnorm=1)
+    ctrl2 = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=0.1, name="outer")
+    inverter = ift.ConjugateGradient(controller=ctrl, preconditioner=S.times)
+    energy = library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S, inverter=inverter)
+    minimizer1 = VL_BFGS(controller=ctrl2,max_history_length=20)
+    minimizer2 = RelaxedNewton(controller=ctrl2)
+    minimizer3 = SteepestDescent(controller=ctrl2)
 
 
 #    me1 = minimizer1(energy)
 #    me2 = minimizer2(energy)
-#    me3 = minimizer3(energy)
+    me3 = minimizer3(energy)
 
 #    m1 = fft(me1[0].position)
 #    m2 = fft(me2[0].position)

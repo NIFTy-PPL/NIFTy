@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # Creating the mock data
     S = create_power_operator(harmonic_space, power_spectrum=power_spectrum)
 
-    mock_power = Field(power_space, val=power_spectrum)
+    mock_power = Field(power_space, val=power_spectrum(power_space.kindex))
     np.random.seed(43)
     mock_harmonic = mock_power.power_synthesize(real_signal=True)
     mock_harmonic = mock_harmonic.real

@@ -82,19 +82,24 @@ class Field(object):
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
         self.domain = self._parse_domain(domain=domain, val=val)
         self.domain_axes = self._get_axes_tuple(self.domain)
-        self.dtype = self._infer_dtype(dtype=dtype, val=val)
 
-        if val is None:
-            self._val = None
+        shape_tuple = tuple(sp.shape for sp in self.domain)
+        if len(shape_tuple)==0:
+            global_shape = ()
         else:
-            self.set_val(new_val=val, copy=copy)
+            global_shape = reduce(lambda x, y: x + y, shape_tuple)
+        dtype = self._infer_dtype(dtype=dtype, val=val)
+        self._val = np.empty(global_shape,dtype=dtype)
+        self.set_val(new_val=val, copy=copy)
 
     def _parse_domain(self, domain, val=None):
         if domain is None:
             if isinstance(val, Field):
                 domain = val.domain
-            else:
+            elif np.isscalar(val):
                 domain = ()
+            else:
+                raise TypeError("could not infer domain from value")
         elif isinstance(domain, DomainObject):
             domain = (domain,)
         elif not isinstance(domain, tuple):
@@ -528,10 +533,26 @@ class Field(object):
 
         """
 
-        new_val = self.cast(new_val)
-        if copy:
-            new_val = new_val.copy()
-        self._val = new_val
+        if new_val is None:
+            pass
+        elif isinstance(new_val, Field):
+            if self.domain!=new_val.domain:
+                raise ValueError("Domain mismatch")
+            if copy:
+                self._val[()] = new_val.val
+            else:
+                self._val = new_val.val
+        elif (np.isscalar(new_val)):
+            self._val[()]=new_val
+        elif isinstance(new_val, np.ndarray):
+            if copy:
+                self._val[()] = new_val
+            else:
+                if self.shape!=new_val.shape:
+                    raise ValueError("Shape mismatch")
+                self._val = new_val
+        else:
+            raise TypeError("unknown source type")
         return self
 
     def get_val(self, copy=False):
@@ -553,13 +574,7 @@ class Field(object):
 
         """
 
-        if self._val is None:
-            self.set_val(None)
-
-        if copy:
-            return self._val.copy()
-        else:
-            return self._val
+        return self._val.copy() if copy else self._val
 
     @property
     def val(self):
@@ -575,11 +590,15 @@ class Field(object):
 
         """
 
-        return self.get_val(copy=False)
+        return self._val
 
     @val.setter
     def val(self, new_val):
         self.set_val(new_val=new_val, copy=False)
+
+    @property
+    def dtype(self):
+        return self._val.dtype
 
     @property
     def shape(self):
@@ -596,14 +615,7 @@ class Field(object):
         dim
 
         """
-        if not hasattr(self, '_shape'):
-            shape_tuple = tuple(sp.shape for sp in self.domain)
-            try:
-                global_shape = reduce(lambda x, y: x + y, shape_tuple)
-            except TypeError:
-                global_shape = ()
-            self._shape = global_shape
-        return self._shape
+        return self._val.shape
 
     @property
     def dim(self):
@@ -672,60 +684,6 @@ class Field(object):
 
     # ---Special unary/binary operations---
 
-    def cast(self, x=None, dtype=None):
-        """ Transforms x to an object with the correct dtype and shape.
-
-        Parameters
-        ----------
-        x : scalar, numpy.ndarray, Field, array_like
-            The input that shall be casted on a numpy.ndarray of the same shape
-            like the domain.
-
-        dtype : type
-            The datatype the output shall have. This can be used to override
-            the field's dtype.
-
-        Returns
-        -------
-        out : numpy.ndarray
-            The output object.
-
-        See Also
-        --------
-        _actual_cast
-
-        """
-        if dtype is None:
-            dtype = self.dtype
-        else:
-            dtype = np.dtype(dtype)
-
-        casted_x = x
-
-        for ind, sp in enumerate(self.domain):
-            casted_x = sp.pre_cast(casted_x,
-                                   axes=self.domain_axes[ind])
-
-        casted_x = self._actual_cast(casted_x, dtype=dtype)
-
-        for ind, sp in enumerate(self.domain):
-            casted_x = sp.post_cast(casted_x,
-                                    axes=self.domain_axes[ind])
-
-        return casted_x
-
-    def _actual_cast(self, x, dtype=None):
-        if isinstance(x, Field):
-            x = x.get_val()
-
-        if dtype is None:
-            dtype = self.dtype
-        if x is not None:
-            if np.isscalar(x):
-                return np.full(self.shape,x, dtype=dtype)
-            return np.asarray(x, dtype=dtype).reshape(self.shape)
-        else:
-            return np.empty(self.shape, dtype=dtype)
 
     def copy(self, domain=None, dtype=None):
         """ Returns a full copy of the Field.
