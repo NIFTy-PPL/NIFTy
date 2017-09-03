@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
-from nifty import Field, RGSpace, DiagonalProberMixin, TraceProberMixin,\
-                  Prober, DiagonalOperator
+import nifty2go as ift
+import numpy as np
 
+np.random.seed(42)
 
-class DiagonalProber(DiagonalProberMixin, Prober):
+class DiagonalProber(ift.DiagonalProberMixin, ift.Prober):
     pass
 
 
-class MultiProber(DiagonalProberMixin, TraceProberMixin, Prober):
+class MultiProber(ift.DiagonalProberMixin, ift.TraceProberMixin, ift.Prober):
     pass
 
 
-x = RGSpace((8, 8))
+x = ift.RGSpace((8, 8))
 
-f = Field.from_random(domain=x, random_type='normal')
-diagOp = DiagonalOperator(domain=x, diagonal=f)
+f = ift.Field.from_random(domain=x, random_type='normal')
+diagOp = ift.DiagonalOperator(domain=x, diagonal=f)
 
 diagProber = DiagonalProber(domain=x)
 diagProber(diagOp)

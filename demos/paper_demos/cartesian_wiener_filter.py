@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import nifty as ift
-from nifty import plotting
+import nifty2go as ift
+from nifty2go import plotting
 
 if __name__ == "__main__":
     signal_to_noise = 1.5 # The signal to noise ratio
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     N_pixels_1 = 512 # Grid resolution (pixels per axis)
 
     signal_space_1 = ift.RGSpace([N_pixels_1], distances=L_1/N_pixels_1)
-    harmonic_space_1 = ift.FFTOperator.get_default_codomain(signal_space_1)
+    harmonic_space_1 = signal_space_1.get_default_codomain()
     fft_1 = ift.FFTOperator(harmonic_space_1, target=signal_space_1)
     power_space_1 = ift.PowerSpace(harmonic_space_1)
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     N_pixels_2 = 512 # Grid resolution (pixels per axis)
 
     signal_space_2 = ift.RGSpace([N_pixels_2], distances=L_2/N_pixels_2)
-    harmonic_space_2 = ift.FFTOperator.get_default_codomain(signal_space_2)
+    harmonic_space_2 = signal_space_2.get_default_codomain()
     fft_2 = ift.FFTOperator(harmonic_space_2, target=signal_space_2)
     power_space_2 = ift.PowerSpace(harmonic_space_2)
 

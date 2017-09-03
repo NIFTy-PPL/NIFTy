@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import nifty as ift
-from nifty import plotting
+import nifty2go as ift
+from nifty2go import plotting
 import numpy as np
 
 
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     L = 2.  # Total side-length of the domain
     N_pixels = 512  # Grid resolution (pixels per axis)
     signal_space = ift.RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
-    harmonic_space = ift.FFTOperator.get_default_codomain(signal_space)
+    harmonic_space = signal_space.get_default_codomain()
     fft = ift.FFTOperator(harmonic_space, target=signal_space)
     power_space = ift.PowerSpace(harmonic_space)
 

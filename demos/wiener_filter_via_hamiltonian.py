@@ -1,4 +1,4 @@
-import nifty as ift
+import nifty2go as ift
 import numpy as np
 
 np.random.seed(42)
