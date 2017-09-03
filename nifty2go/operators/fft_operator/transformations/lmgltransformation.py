@@ -38,43 +38,6 @@ class LMGLTransformation(SlicingTransformation):
     def unitary(self):
         return False
 
-    @classmethod
-    def get_codomain(cls, domain):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  a pixelization of the two-sphere.
-
-            Parameters
-            ----------
-            domain : LMSpace
-                Space for which a codomain is to be generated
-
-            Returns
-            -------
-            codomain : HPSpace
-                A compatible codomain.
-
-            References
-            ----------
-            .. [#] M. Reinecke and D. Sverre Seljebotn, 2013,
-                   "Libsharp - spherical
-                   harmonic transforms revisited";
-                   `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-        """
-        if not isinstance(domain, LMSpace):
-            raise TypeError("domain needs to be a LMSpace")
-
-        return GLSpace(nlat=domain.lmax+1, nlon=domain.mmax*2+1)
-
-    @classmethod
-    def check_codomain(cls, domain, codomain):
-        if not isinstance(domain, LMSpace):
-            raise TypeError("domain is not a LMSpace")
-        if not isinstance(codomain, GLSpace):
-            raise TypeError("codomain must be a GLSpace.")
-
-        super(LMGLTransformation, cls).check_codomain(domain, codomain)
-
     def _transformation_of_slice(self, inp):
         nlat = self.codomain.nlat
         nlon = self.codomain.nlon
@@ -92,7 +55,7 @@ class LMGLTransformation(SlicingTransformation):
             [resultReal, resultImag] = [sjob.alm2map(x)
                                         for x in [resultReal, resultImag]]
 
-            result = self._combine_complex_result(resultReal, resultImag)
+            result = resultReal + 1j*resultImag
 
         else:
             result = lm_transformation_helper.buildLm(inp, lmax=lmax)

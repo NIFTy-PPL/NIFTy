@@ -174,3 +174,12 @@ class GLSpace(Space):
             if nlon < 1:
                 raise ValueError("nlon must be a positive number.")
         return nlon
+
+    def get_default_codomain(self):
+        from .. import LMSpace
+        return LMSpace(lmax=self.nlat-1,mmax=(self.nlon-1)//2)
+
+    def check_codomain(self, codomain):
+        from .. import LMSpace
+        if not isinstance(codomain, LMSpace):
+            raise TypeError("codomain must be a LMSpace.")

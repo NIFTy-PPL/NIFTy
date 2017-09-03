@@ -121,12 +121,11 @@ class DiagonalOperator(EndomorphicOperator):
 
         """
         if bare:
-            diagonal = self._diagonal.weight(power=-1)
+            return self._diagonal.weight(power=-1)
         elif copy:
-            diagonal = self._diagonal.copy()
+            return self._diagonal.copy()
         else:
-            diagonal = self._diagonal
-        return diagonal
+            return self._diagonal
 
     def inverse_diagonal(self, bare=False):
         """ Returns the inverse-diagonal of the operator.
@@ -181,9 +180,7 @@ class DiagonalOperator(EndomorphicOperator):
         """
 
         # use the casting functionality from Field to process `diagonal`
-        f = Field(domain=self.domain,
-                  val=diagonal,
-                  copy=copy)
+        f = Field(domain=self.domain, val=diagonal, copy=copy)
 
         # weight if the given values were `bare` is True
         # do inverse weightening if the other way around
@@ -224,6 +221,4 @@ class DiagonalOperator(EndomorphicOperator):
         # here the actual multiplication takes place
         local_result = operation(reshaped_local_diagonal)(x.val)
 
-        result_field = x.copy_empty(dtype=local_result.dtype)
-        result_field.val=local_result
-        return result_field
+        return Field (x.domain,val=local_result)

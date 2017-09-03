@@ -133,3 +133,12 @@ class HPSpace(Space):
         if nside < 1:
             raise ValueError("nside must be >=1.")
         return nside
+
+    def get_default_codomain(self):
+        from .. import LMSpace
+        return LMSpace(lmax=2*domain.nside)
+
+    def check_codomain(self, codomain):
+        from .. import LMSpace
+        if not isinstance(codomain, LMSpace):
+            raise TypeError("codomain must be a LMSpace.")

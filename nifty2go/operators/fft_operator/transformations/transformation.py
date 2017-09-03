@@ -22,31 +22,14 @@ from future.utils import with_metaclass
 
 
 class Transformation(with_metaclass(abc.ABCMeta, type('NewBase', (object,), {}))):
-    """
-        A generic transformation which defines a static check_codomain
-        method for all transforms.
-    """
 
     def __init__(self, domain, codomain):
-        if codomain is None:
-            self.domain = domain
-            self.codomain = self.get_codomain(domain)
-        else:
-            self.check_codomain(domain, codomain)
-            self.domain = domain
-            self.codomain = codomain
+        self.domain = domain
+        self.codomain = codomain
 
     @abc.abstractproperty
     def unitary(self):
         raise NotImplementedError
-
-    @classmethod
-    def get_codomain(cls, domain):
-        raise NotImplementedError
-
-    @classmethod
-    def check_codomain(cls, domain, codomain):
-        pass
 
     def transform(self, val, axes=None):
         raise NotImplementedError

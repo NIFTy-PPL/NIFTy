@@ -35,36 +35,6 @@ class HPLMTransformation(SlicingTransformation):
     def unitary(self):
         return False
 
-    @classmethod
-    def get_codomain(cls, domain):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`lm_space` class.
-
-            Parameters
-            ----------
-            domain: HPSpace
-                Space for which a codomain is to be generated
-
-            Returns
-            -------
-            codomain : LMSpace
-                A compatible codomain.
-        """
-
-        if not isinstance(domain, HPSpace):
-            raise TypeError("domain needs to be a HPSpace")
-
-        return LMSpace(lmax=2*domain.nside)
-
-    @classmethod
-    def check_codomain(cls, domain, codomain):
-        if not isinstance(domain, HPSpace):
-            raise TypeError("domain is not a HPSpace")
-        if not isinstance(codomain, LMSpace):
-            raise TypeError("codomain must be a LMSpace.")
-        super(HPLMTransformation, cls).check_codomain(domain, codomain)
-
     def _transformation_of_slice(self, inp):
         lmax = self.codomain.lmax
         mmax = lmax
@@ -78,7 +48,7 @@ class HPLMTransformation(SlicingTransformation):
              resultImag] = [lm_transformation_helper.buildIdx(x, lmax=lmax)
                             for x in [resultReal, resultImag]]
 
-            result = self._combine_complex_result(resultReal, resultImag)
+            result = resultReal +1j*resultImag
 
         else:
             result = pyHealpix.map2alm(inp, lmax, mmax)

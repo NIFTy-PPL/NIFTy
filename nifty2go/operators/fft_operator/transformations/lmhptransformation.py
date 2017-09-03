@@ -33,44 +33,6 @@ class LMHPTransformation(SlicingTransformation):
     def unitary(self):
         return False
 
-    @classmethod
-    def get_codomain(cls, domain):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  a pixelization of the two-sphere.
-
-            Parameters
-            ----------
-            domain : LMSpace
-                Space for which a codomain is to be generated
-
-            Returns
-            -------
-            codomain : HPSpace
-                A compatible codomain.
-
-            References
-            ----------
-            .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-                   High-Resolution Discretization and Fast Analysis of Data
-                   Distributed on the Sphere", *ApJ* 622..759G.
-        """
-        if not isinstance(domain, LMSpace):
-            raise TypeError("domain needs to be a LMSpace.")
-
-        nside = max((domain.lmax + 1)//2, 1)
-        result = HPSpace(nside=nside)
-        return result
-
-    @classmethod
-    def check_codomain(cls, domain, codomain):
-        if not isinstance(domain, LMSpace):
-            raise TypeError("domain is not a LMSpace.")
-        if not isinstance(codomain, HPSpace):
-            raise TypeError("codomain must be a HPSpace.")
-
-        super(LMHPTransformation, cls).check_codomain(domain, codomain)
-
     def _transformation_of_slice(self, inp):
         nside = self.codomain.nside
         lmax = self.domain.lmax
@@ -84,7 +46,7 @@ class LMHPTransformation(SlicingTransformation):
             [resultReal, resultImag] = [pyHealpix.alm2map(x, lmax, mmax, nside)
                                         for x in [resultReal, resultImag]]
 
-            result = self._combine_complex_result(resultReal, resultImag)
+            result = resultReal + 1j*resultImag
 
         else:
             result = lm_transformation_helper.buildLm(inp, lmax=lmax)

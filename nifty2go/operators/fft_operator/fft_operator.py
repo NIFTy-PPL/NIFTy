@@ -107,11 +107,13 @@ class FFTOperator(LinearOperator):
                              "space as input domain.")
 
         if target is None:
-            target = (self.get_default_codomain(self.domain[0]), )
+            target = (self.domain[0].get_default_codomain(), )
         self._target = self._parse_domain(target)
         if len(self.target) != 1:
             raise ValueError("TransformationOperator accepts only exactly one "
                              "space as output target.")
+        self.domain[0].check_codomain(self.target[0])
+        self.target[0].check_codomain(self.domain[0])
 
         # Create transformation instances
         forward_class = self.transformation_dictionary[
@@ -190,47 +192,3 @@ class FFTOperator(LinearOperator):
     def unitary(self):
         return (self._forward_transformation.unitary and
                 self._backward_transformation.unitary)
-
-    # ---Added properties and methods---
-
-    @classmethod
-    def get_default_codomain(cls, domain):
-        """Returns a codomain to the given domain.
-
-        Parameters
-        ----------
-        domain: Space
-            An instance of RGSpace, HPSpace, GLSpace or LMSpace.
-
-        Returns
-        -------
-        target: Space
-            A (more or less perfect) counterpart to "domain" with respect
-            to a FFT operation.
-            Whenever "domain" is an RGSpace, the codomain (and its parameters)
-            are uniquely determined.
-            For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
-            co-domain is chosen that should work satisfactorily in most
-            situations. For full control however, the user should not rely on
-            this method.
-
-        Raises
-        ------
-        ValueError:
-            if no default codomain is defined for "domain".
-
-        """
-        domain_class = domain.__class__
-        try:
-            codomain_class = cls.default_codomain_dictionary[domain_class]
-        except KeyError:
-            raise ValueError("Unknown domain")
-
-        try:
-            transform_class = cls.transformation_dictionary[(domain_class,
-                                                             codomain_class)]
-        except KeyError:
-            raise ValueError(
-                "No transformation for domain-codomain pair found.")
-
-        return transform_class.get_codomain(domain)

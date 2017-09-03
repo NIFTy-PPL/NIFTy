@@ -34,36 +34,6 @@ class GLLMTransformation(SlicingTransformation):
     def unitary(self):
         return False
 
-    @classmethod
-    def get_codomain(cls, domain):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  an instance of the :py:class:`LMSpace` class.
-
-            Parameters
-            ----------
-            domain: GLSpace
-                Space for which a codomain is to be generated
-
-            Returns
-            -------
-            codomain : LMSpace
-                A compatible codomain.
-        """
-
-        if not isinstance(domain, GLSpace):
-            raise TypeError("domain needs to be a GLSpace")
-
-        return LMSpace(lmax=domain.nlat-1,mmax=(domain.nlon-1)//2)
-
-    @classmethod
-    def check_codomain(cls, domain, codomain):
-        if not isinstance(domain, GLSpace):
-            raise TypeError("domain is not a GLSpace")
-        if not isinstance(codomain, LMSpace):
-            raise TypeError("codomain must be a LMSpace.")
-        super(GLLMTransformation, cls).check_codomain(domain, codomain)
-
     def _transformation_of_slice(self, inp):
         nlat = self.domain.nlat
         nlon = self.domain.nlon
@@ -74,11 +44,11 @@ class GLLMTransformation(SlicingTransformation):
         sjob.set_Gauss_geometry(nlat, nlon)
         sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            return self._combine_complex_result(
+            return \
                 lm_transformation_helper.buildIdx(sjob.map2alm(inp.real),
-                                                  lmax=lmax),
-                lm_transformation_helper.buildIdx(sjob.map2alm(inp.imag),
-                                                  lmax=lmax))
+                                                  lmax=lmax)\
+                +1j*lm_transformation_helper.buildIdx(sjob.map2alm(inp.imag),
+                                                  lmax=lmax)
         else:
             return lm_transformation_helper.buildIdx(sjob.map2alm(inp),
                                                      lmax=lmax)

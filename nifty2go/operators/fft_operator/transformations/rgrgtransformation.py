@@ -36,65 +36,6 @@ class RGRGTransformation(Transformation):
     def unitary(self):
         return True
 
-    @classmethod
-    def get_codomain(cls, domain):
-        """
-            Generates a compatible codomain to which transformations are
-            reasonable, i.e.\  either a shifted grid or a Fourier conjugate
-            grid.
-
-            Parameters
-            ----------
-            domain: RGSpace
-                Space for which a codomain is to be generated
-
-            Returns
-            -------
-            codomain : nifty.rg_space
-                A compatible codomain.
-        """
-        if not isinstance(domain, RGSpace):
-            raise TypeError("domain needs to be a RGSpace")
-
-        # calculate the initialization parameters
-        distances = 1. / (np.array(domain.shape) *
-                          np.array(domain.distances))
-
-        new_space = RGSpace(domain.shape,
-                            distances=distances,
-                            harmonic=(not domain.harmonic))
-
-        # better safe than sorry
-        cls.check_codomain(domain, new_space)
-        return new_space
-
-    @classmethod
-    def check_codomain(cls, domain, codomain):
-        if not isinstance(domain, RGSpace):
-            raise TypeError("domain is not a RGSpace")
-
-        if not isinstance(codomain, RGSpace):
-            raise TypeError("domain is not a RGSpace")
-
-        if not np.all(np.array(domain.shape) ==
-                      np.array(codomain.shape)):
-            raise AttributeError("The shapes of domain and codomain must be "
-                                 "identical.")
-
-        if domain.harmonic == codomain.harmonic:
-            raise AttributeError("domain.harmonic and codomain.harmonic must "
-                                 "not be the same.")
-
-        # Check if the distances match, i.e. dist' = 1 / (num * dist)
-        if not np.all(
-            np.absolute(np.array(domain.shape) *
-                        np.array(domain.distances) *
-                        np.array(codomain.distances) - 1) <
-                1e-7):
-            raise AttributeError("The grid-distances of domain and codomain "
-                                 "do not match.")
-
-        super(RGRGTransformation, cls).check_codomain(domain, codomain)
 
     def transform(self, val, axes=None):
         """

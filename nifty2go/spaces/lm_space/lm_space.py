@@ -175,3 +175,12 @@ class LMSpace(Space):
         if lmax < 0:
             raise ValueError("lmax must be >=0.")
         return lmax
+
+    def get_default_codomain(self):
+        from .. import GLSpace
+        return GLSpace(self.lmax+1, self.mmax*2+1)
+
+    def check_codomain(self, codomain):
+        from .. import GLSpace, HPSpace
+        if not isinstance(codomain, (GLSpace, HPSpace)):
+            raise TypeError("codomain must be a GLSpace.")

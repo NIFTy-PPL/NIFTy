@@ -206,6 +206,31 @@ class RGSpace(Space):
             raise NotImplementedError
         return lambda x: np.exp(-2. * np.pi*np.pi * x*x * sigma*sigma)
 
+    def get_default_codomain(self):
+        distances = 1. / (np.array(self.shape)*np.array(self.distances))
+        return RGSpace(self.shape, distances, not self.harmonic)
+
+    def check_codomain(self, codomain):
+        if not isinstance(codomain, RGSpace):
+            raise TypeError("domain is not a RGSpace")
+
+        if self.shape != codomain.shape:
+            raise AttributeError("The shapes of domain and codomain must be "
+                                 "identical.")
+
+        if self.harmonic == codomain.harmonic:
+            raise AttributeError("domain.harmonic and codomain.harmonic must "
+                                 "not be the same.")
+
+        # Check if the distances match, i.e. dist' = 1 / (num * dist)
+        if not np.all(
+            np.absolute(np.array(self.shape) *
+                        np.array(self.distances) *
+                        np.array(codomain.distances) - 1) < 1e-7):
+            raise AttributeError("The grid-distances of domain and codomain "
+                                 "do not match.")
+
+
     # ---Added properties and methods---
 
     @property

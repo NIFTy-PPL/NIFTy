@@ -39,9 +39,6 @@ class SlicingTransformation(Transformation):
                                                                val[slice_list])
         return return_val
 
-    def _combine_complex_result(self, resultReal, resultImag):
-        return resultReal + 1j*resultImag
-
     @abc.abstractmethod
     def _transformation_of_slice(self, inp):
         raise NotImplementedError
