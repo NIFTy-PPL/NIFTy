@@ -24,7 +24,7 @@ from itertools import product
 from types import LambdaType
 from test.common import expand, generate_spaces, generate_harmonic_spaces
 
-from nifty.spaces import *
+from nifty2go.spaces import *
 
 
 class SpaceInterfaceTests(unittest.TestCase):

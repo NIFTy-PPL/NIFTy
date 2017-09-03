@@ -22,7 +22,7 @@ import numpy as np
 
 from numpy.testing import assert_, assert_equal, assert_raises,\
         assert_almost_equal, assert_array_almost_equal
-from nifty import LMSpace
+from nifty2go import LMSpace
 from test.common import expand
 
 # [lmax, expected]

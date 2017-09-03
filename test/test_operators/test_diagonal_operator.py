@@ -6,7 +6,7 @@ from numpy.testing import assert_equal,\
     assert_allclose,\
     assert_approx_equal
 
-from nifty import Field,\
+from nifty2go import Field,\
     DiagonalOperator
 
 from test.common import generate_spaces

@@ -18,7 +18,7 @@
 
 import unittest
 import numpy as np
-import nifty as ift
+import nifty2go as ift
 from numpy.testing import assert_allclose
 from itertools import product
 from test.common import expand, marco_binbounds

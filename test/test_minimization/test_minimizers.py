@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_allclose
 
-import nifty as ift
+import nifty2go as ift
 
 from itertools import product
 from test.common import expand

@@ -22,7 +22,7 @@ import itertools
 
 from numpy.testing import assert_, assert_equal, assert_raises,\
         assert_almost_equal
-from nifty import GLSpace
+from nifty2go import GLSpace
 from test.common import expand
 
 # [nlat, nlon, expected]

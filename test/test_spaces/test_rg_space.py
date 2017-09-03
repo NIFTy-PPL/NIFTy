@@ -23,7 +23,7 @@ import numpy as np
 
 from numpy.testing import assert_, assert_equal, assert_almost_equal, \
                           assert_array_equal
-from nifty import RGSpace
+from nifty2go import RGSpace
 from test.common import expand
 from itertools import product
 from nose.plugins.skip import SkipTest

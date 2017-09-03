@@ -18,7 +18,7 @@
 
 from builtins import str
 from parameterized import parameterized
-from nifty import Space, RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
+from nifty2go import Space, RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
 import numpy as np
 
 np.seterr(all='raise',under='ignore')

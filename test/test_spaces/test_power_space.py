@@ -23,7 +23,7 @@ import numpy as np
 
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
-from nifty import PowerSpace, RGSpace, Space, LMSpace
+from nifty2go import PowerSpace, RGSpace, Space, LMSpace
 from test.common import expand, marco_binbounds
 from itertools import product, chain
 

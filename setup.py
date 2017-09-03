@@ -18,23 +18,18 @@
 
 from setuptools import setup, find_packages
 
-import numpy
-
-exec(open('nifty/version.py').read())
+exec(open('nifty2go/version.py').read())
 
 
-setup(name="ift_nifty",
+setup(name="nifty2go",
       version=__version__,
-      author="Theo Steininger",
+      author="Theo Steininger, Martin Reinecke",
       author_email="theos@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
       packages=find_packages(),
-      package_dir={"nifty": "nifty"},
+      package_dir={"nifty2go": "nifty2go"},
       zip_safe=False,
-      include_dirs=[numpy.get_include()],
-      dependency_links=[],
-      install_requires=[],
       license="GPLv3",
       classifiers=[
         "Development Status :: 4 - Beta",

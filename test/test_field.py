@@ -26,7 +26,7 @@ from nose.plugins.skip import SkipTest
 
 from itertools import product
 
-from nifty import Field,\
+from nifty2go import Field,\
                   RGSpace,\
                   LMSpace,\
                   PowerSpace

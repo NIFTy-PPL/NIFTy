@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_approx_equal
 
-from nifty import Field,\
+from nifty2go import Field,\
     RGSpace,\
     ResponseOperator
 
