@@ -50,28 +50,22 @@ class ResponseOperator(LinearOperator):
                  default_spaces=None):
         super(ResponseOperator, self).__init__(default_spaces)
 
-        self._domain = self._parse_domain(domain)
-
-        kernel_smoothing = len(self._domain)*[None]
-        kernel_exposure = len(self._domain)*[None]
-
         if len(sigma) != len(exposure):
             raise ValueError("Length of smoothing kernel and length of"
                              "exposure do not match")
+        nsigma = len(sigma)
 
-        for ii in range(len(kernel_smoothing)):
-            kernel_smoothing[ii] = FFTSmoothingOperator(self._domain[ii],
-                                                    sigma=sigma[ii])
-            kernel_exposure[ii] = DiagonalOperator(self._domain[ii],
-                                                   diagonal=exposure[ii])
+        self._domain = self._parse_domain(domain)
+
+        kernel_smoothing = [FFTSmoothingOperator(self._domain[x], sigma[x])
+                            for x in range(nsigma)]
+        kernel_exposure = [DiagonalOperator(self._domain[x],
+                           diagonal=exposure[x]) for x in range(nsigma)]
 
         self._composed_kernel = ComposedOperator(kernel_smoothing)
         self._composed_exposure = ComposedOperator(kernel_exposure)
 
-        target_list = []
-        for space in self.domain:
-            target_list += [FieldArray(space.shape)]
-
+        target_list = [FieldArray(x.shape) for x in self.domain]
         self._target = self._parse_domain(target_list)
 
     @property
@@ -89,7 +83,6 @@ class ResponseOperator(LinearOperator):
     def _times(self, x, spaces):
         res = self._composed_kernel.times(x, spaces)
         res = self._composed_exposure.times(res, spaces)
-        # res = res.weight(power=1)
         # removing geometric information
         return Field(self._target, val=res.val)
 
@@ -98,5 +91,4 @@ class ResponseOperator(LinearOperator):
         res = Field(self.domain, val=x.val)
         res = self._composed_exposure.adjoint_times(res, spaces)
         res = res.weight(power=-1)
-        res = self._composed_kernel.adjoint_times(res, spaces)
-        return res
+        return self._composed_kernel.adjoint_times(res, spaces)

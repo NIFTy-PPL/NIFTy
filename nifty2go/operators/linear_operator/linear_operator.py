@@ -224,9 +224,6 @@ class LinearOperator(with_metaclass(
         If the operator has an `inverse` then the inverse adjoint is identical
         to the adjoint inverse. We provide both names for convenience.
 
-        See Also
-        --------
-
         """
 
         spaces = self._check_input_compatibility(x, spaces)
@@ -261,8 +258,7 @@ class LinearOperator(with_metaclass(
 
     def _check_input_compatibility(self, x, spaces, inverse=False):
         if not isinstance(x, Field):
-            raise ValueError(
-                "supplied object is not a `Field`.")
+            raise ValueError("supplied object is not a `Field`.")
 
         if spaces is None and self.default_spaces is not None:
             if not inverse:
@@ -281,10 +277,7 @@ class LinearOperator(with_metaclass(
         # 2. Case:
         #   The domains of self and x match completely.
 
-        if not inverse:
-            self_domain = self.domain
-        else:
-            self_domain = self.target
+        self_domain = self.target if inverse else self.domain
 
         if spaces is None:
             if self_domain != x.domain:

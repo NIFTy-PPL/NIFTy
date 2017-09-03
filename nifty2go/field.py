@@ -37,7 +37,7 @@ class Field(object):
 
     In NIFTY, Fields are used to store data arrays and carry all the needed
     metainformation (i.e. the domain) for operators to be able to work on them.
-    In addition Field has methods to work with power-spectra.
+    In addition, Field has methods to work with power spectra.
 
     Parameters
     ----------
@@ -52,7 +52,7 @@ class Field(object):
         array's dimensions must match the domain's.
 
     dtype : type
-        A numpy.type. Most common are int, float and complex.
+        A numpy.type. Most common are float and complex.
 
     copy: boolean
 
@@ -265,11 +265,9 @@ class Field(object):
                      for part in parts]
 
         if keep_phase_information:
-            result_field = parts[0] + 1j*parts[1]
+            return parts[0] + 1j*parts[1]
         else:
-            result_field = parts[0]
-
-        return result_field
+            return parts[0]
 
     @classmethod
     def _single_power_analyze(cls, work_field, space_index, binbounds):
@@ -295,21 +293,14 @@ class Field(object):
         # create the result field and put power_spectrum into it
         result_domain = list(work_field.domain)
         result_domain[space_index] = power_domain
-        result_dtype = power_spectrum.dtype
 
-        result_field = work_field.copy_empty(
-                   domain=result_domain,
-                   dtype=result_dtype)
-        result_field.set_val(new_val=power_spectrum, copy=False)
-
-        return result_field
+        return Field(domain=result_domain,val=power_spectrum,
+                     dtype=power_spectrum.dtype)
 
     @classmethod
     def _calculate_power_spectrum(cls, field_val, pdomain, axes=None):
 
         pindex = pdomain.pindex
-        # MR FIXME: how about iterating over slices, instead of replicating
-        # pindex? Would save memory and probably isn't slower.
         if axes is not None:
             pindex = cls._shape_up_pindex(
                             pindex=pindex,
@@ -711,8 +702,6 @@ class Field(object):
             The weighted field.
 
         """
-        new_field = self if inplace else self.copy_empty()
-
         new_val = self.get_val(copy=False)
 
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
@@ -725,9 +714,10 @@ class Field(object):
                                     power=power,
                                     axes=self.domain_axes[ind],
                                     inplace=inplace)
+                # we need at most one copy, the rest can happen in place
+                inplace = True
 
-        new_field.set_val(new_val=new_val, copy=False)
-        return new_field
+        return Field(self.domain, new_val, self.dtype)
 
     def vdot(self, x=None, spaces=None, bare=False):
         """ Computes the volume-factor-aware dot product of 'self' with x.
@@ -794,7 +784,6 @@ class Field(object):
             The complex conjugated field.
 
         """
-
         if inplace:
             self.imag*=-1
             return self
@@ -837,10 +826,7 @@ class Field(object):
                                   for i in range(len(self.domain))
                                   if i not in spaces)
 
-            return_field = Field(domain=return_domain,
-                                 val=data,
-                                 copy=False)
-            return return_field
+            return Field(domain=return_domain, val=data, copy=False)
 
     def sum(self, spaces=None):
         return self._contraction_helper('sum', spaces)
