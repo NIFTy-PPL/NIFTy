@@ -136,7 +136,7 @@ class HPSpace(Space):
 
     def get_default_codomain(self):
         from .. import LMSpace
-        return LMSpace(lmax=2*domain.nside)
+        return LMSpace(lmax=2*self.nside)
 
     def check_codomain(self, codomain):
         from .. import LMSpace
