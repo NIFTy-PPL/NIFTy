@@ -17,10 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .... import HPSpace, LMSpace
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
-
 import pyHealpix
 
 
@@ -39,17 +37,12 @@ class LMHPTransformation(SlicingTransformation):
         mmax = lmax
 
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal,
-             resultImag] = [lm_transformation_helper.buildLm(x, lmax=lmax)
-                            for x in (inp.real, inp.imag)]
-
-            [resultReal, resultImag] = [pyHealpix.alm2map(x, lmax, mmax, nside)
-                                        for x in [resultReal, resultImag]]
-
-            result = resultReal + 1j*resultImag
+            rr = lm_transformation_helper.buildLm(inp.real, lmax=lmax)
+            ri = lm_transformation_helper.buildLm(inp.imag, lmax=lmax)
+            rr = pyHealpix.alm2map(rr, lmax, mmax, nside)
+            ri = pyHealpix.alm2map(ri, lmax, mmax, nside)
+            return rr + 1j*ri
 
         else:
-            result = lm_transformation_helper.buildLm(inp, lmax=lmax)
-            result = pyHealpix.alm2map(result, lmax, mmax, nside)
-
-        return result
+            rr = lm_transformation_helper.buildLm(inp, lmax=lmax)
+            return pyHealpix.alm2map(rr, lmax, mmax, nside)

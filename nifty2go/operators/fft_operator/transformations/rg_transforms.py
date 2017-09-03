@@ -16,53 +16,17 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from builtins import range
-from builtins import object
-import warnings
-
-import numpy as np
-from .... import nifty_utilities as utilities
-
-from functools import reduce
-
+from builtins import object, range
 import pyfftw
 
 
-class Transform(object):
+class SerialFFT(object):
     """
-        A generic fft object without any implementation.
+        The pyfftw pendant of a fft object.
     """
-
     def __init__(self, domain, codomain):
         self.domain = domain
         self.codomain = codomain
-
-    def transform(self, val, axes):
-        """
-            A generic ff-transform function.
-
-            Parameters
-            ----------
-            field_val : distributed_data_object
-                The value-array of the field which is supposed to
-                be transformed.
-
-            domain : nifty.rg.nifty_rg.rg_space
-                The domain of the space which should be transformed.
-
-            codomain : nifty.rg.nifty_rg.rg_space
-                The taget into which the field should be transformed.
-        """
-        raise NotImplementedError
-
-
-class SerialFFT(Transform):
-    """
-        The numpy fft pendant of a fft object.
-
-    """
-    def __init__(self, domain, codomain):
-        super(SerialFFT, self).__init__(domain, codomain)
 
         pyfftw.interfaces.cache.enable()
 
@@ -72,7 +36,7 @@ class SerialFFT(Transform):
 
             Parameters
             ----------
-            val : or numpy.ndarray
+            val : numpy.ndarray
                 The value-array of the field which is supposed to
                 be transformed.
 
@@ -90,13 +54,7 @@ class SerialFFT(Transform):
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
-        return self._atomic_transform(local_val=val,
-                                      axes=axes,
-                                      local_offset_Q=False)
-
-    def _atomic_transform(self, local_val, axes, local_offset_Q):
-        # perform the transformation
         if self.codomain.harmonic:
-            return pyfftw.interfaces.numpy_fft.fftn(local_val, axes=axes)
+            return pyfftw.interfaces.numpy_fft.fftn(val, axes=axes)
         else:
-            return pyfftw.interfaces.numpy_fft.ifftn(local_val, axes=axes)
+            return pyfftw.interfaces.numpy_fft.ifftn(val, axes=axes)

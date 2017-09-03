@@ -17,48 +17,31 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .... import GLSpace, LMSpace
-
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
-
 import pyHealpix
 
 
 class LMGLTransformation(SlicingTransformation):
-
-    # ---Overwritten properties and methods---
-
     def __init__(self, domain, codomain=None):
         super(LMGLTransformation, self).__init__(domain, codomain)
-
-    # ---Mandatory properties and methods---
 
     @property
     def unitary(self):
         return False
 
     def _transformation_of_slice(self, inp):
-        nlat = self.codomain.nlat
-        nlon = self.codomain.nlon
         lmax = self.domain.lmax
         mmax = self.domain.mmax
 
         sjob = pyHealpix.sharpjob_d()
-        sjob.set_Gauss_geometry(nlat, nlon)
+        sjob.set_Gauss_geometry(self.codomain.nlat, self.codomain.nlon)
         sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            [resultReal,
-             resultImag] = [lm_transformation_helper.buildLm(x, lmax=lmax)
-                            for x in (inp.real, inp.imag)]
-
-            [resultReal, resultImag] = [sjob.alm2map(x)
-                                        for x in [resultReal, resultImag]]
-
-            result = resultReal + 1j*resultImag
+            rr = lm_transformation_helper.buildLm(inp.real, lmax=lmax)
+            ri = lm_transformation_helper.buildLm(inp.imag, lmax=lmax)
+            return sjob.alm2map(rr) + 1j*sjob.alm2map(ri)
 
         else:
             result = lm_transformation_helper.buildLm(inp, lmax=lmax)
-            result = sjob.alm2map(result)
-
-        return result
+            return sjob.alm2map(result)

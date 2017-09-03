@@ -29,12 +29,9 @@ class SlicingTransformation(Transformation):
         return_shape = np.array(val.shape)
         return_shape[list(axes)] = self.codomain.shape
         return_shape = tuple(return_shape)
-        return_val = None
+        return_val = np.empty(return_shape,dtype=val.dtype)
 
         for slice_list in utilities.get_slice_list(val.shape, axes):
-            if return_val is None:
-                return_val = np.empty(return_shape,dtype=val.dtype)
-
             return_val[slice_list] = self._transformation_of_slice(
                                                                val[slice_list])
         return return_val

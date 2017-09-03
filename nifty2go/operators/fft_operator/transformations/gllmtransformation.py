@@ -17,16 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-
-from .... import GLSpace, LMSpace
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
-
 import pyHealpix
 
 
 class GLLMTransformation(SlicingTransformation):
-
     def __init__(self, domain, codomain=None):
         super(GLLMTransformation, self).__init__(domain, codomain)
 
@@ -35,20 +31,18 @@ class GLLMTransformation(SlicingTransformation):
         return False
 
     def _transformation_of_slice(self, inp):
-        nlat = self.domain.nlat
-        nlon = self.domain.nlon
         lmax = self.codomain.lmax
         mmax = self.codomain.mmax
 
         sjob = pyHealpix.sharpjob_d()
-        sjob.set_Gauss_geometry(nlat, nlon)
+        sjob.set_Gauss_geometry(self.domain.nlat, self.domain.nlon)
         sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):
-            return \
-                lm_transformation_helper.buildIdx(sjob.map2alm(inp.real),
-                                                  lmax=lmax)\
-                +1j*lm_transformation_helper.buildIdx(sjob.map2alm(inp.imag),
-                                                  lmax=lmax)
+            rr = sjob.map2alm(inp.real)
+            rr = lm_transformation_helper.buildIdx(rr, lmax=lmax)
+            ri = sjob.map2alm(inp.imag)
+            ri = lm_transformation_helper.buildIdx(ri, lmax=lmax)
+            return rr + 1j*ri
         else:
-            return lm_transformation_helper.buildIdx(sjob.map2alm(inp),
-                                                     lmax=lmax)
+            rr = sjob.map2alm(inp)
+            return lm_transformation_helper.buildIdx(rr, lmax=lmax)
