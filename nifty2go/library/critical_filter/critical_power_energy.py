@@ -109,11 +109,11 @@ class CriticalPowerEnergy(Energy):
     @property
     def w(self):
         if self._w is None:
-            self.logger.info("Initializing w")
+            #self.logger.info("Initializing w")
             w = Field(domain=self.position.domain, val=0., dtype=self.m.dtype)
             if self.D is not None:
                 for i in range(self.samples):
-                    self.logger.info("Drawing sample %i" % i)
+                    #self.logger.info("Drawing sample %i" % i)
                     posterior_sample = generate_posterior_sample(
                                                             self.m, self.D)
                     projected_sample = posterior_sample.power_analyze(
