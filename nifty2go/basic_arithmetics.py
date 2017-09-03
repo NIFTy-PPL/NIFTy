@@ -28,7 +28,7 @@ __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
 
 def _math_helper(x, function):
     if isinstance(x, Field):
-        return Field(val=function(x.val))
+        return Field(domain=x.domain, val=function(x.val))
     else:
         return function(np.asarray(x))
 

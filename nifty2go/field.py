@@ -429,10 +429,10 @@ class Field(object):
             result_list[1].val *= spec.imag
 
         if real_signal:
-            for i in result_list:
-                i.val = self._hermitian_decomposition(
-                                            i.val,
-                                            preserve_gaussian_variance=True)[0]
+            result_list=[Field(i.domain,self._hermitian_decomposition(
+                                     i.val,
+                                     preserve_gaussian_variance=True)[0])
+                         for i in result_list]
 
         if real_power:
             result = result_list[0]
