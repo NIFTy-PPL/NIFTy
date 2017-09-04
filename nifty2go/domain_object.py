@@ -127,37 +127,16 @@ class DomainObject(with_metaclass(
             "There is no generic dim for DomainObject.")
 
     @abc.abstractmethod
-    def weight(self, x, power=1, axes=None, inplace=False):
-        """ Weights the field on this domain with the space's volume-weights.
+    def weight(self):
+        """ Returns the volume factors of this domain, either as a floating
+        point scalar (if the volume factors are all identical) or as a
+        floating point array with a shape of `self.shape`.
 
-        Weights hereby refer to integration weights, as they appear in
-        discretized integrals. Per default, this function mutliplies each bin
-        of the field x by its volume, which lets it behave like a density
-        (top form). However, different powers of the volume can be applied
-        with the power parameter. The axes parameter specifies which of the
-        field array's indices correspond to this domain.
-
-        Parameters
-        ----------
-        x : numpy.ndarray
-            The fields data array.
-        power : int, *optional*
-            The power to which the volume-weight is raised (default: 1).
-        axes : {int, tuple}, *optional*
-            Specifies the axes of x which represent this domain
-            (default: None).
-            If axes==None:
-                weighting is applied with respect to all axes
-        inplace : bool, *optional*
-            If this is True, the weighting is done on the values of x,
-            if it is False, x is not modified and this method returns a
-            weighted copy of x (default: False).
 
         Returns
         -------
-        numpy.ndarray
-            A weighted version of x, with volume-weights raised to the
-            given power.
+        float or numpy.ndarray(dtype=float)
+            Volume factors
 
         Raises
         ------
@@ -166,4 +145,4 @@ class DomainObject(with_metaclass(
 
         """
         raise NotImplementedError(
-            "There is no generic weight-method for DomainObject.")
+            "There is no generic weight method for DomainObject.")

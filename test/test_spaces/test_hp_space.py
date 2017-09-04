@@ -54,20 +54,6 @@ CONSTRUCTOR_CONFIGS = [
     ]
 
 
-def get_weight_configs():
-    np.random.seed(42)
-
-    # for HPSpace(nside=2)
-    w_0_x = np.random.rand(48)
-    w_0_res = w_0_x * ((4 * np.pi) / 48)
-    w_1_res = w_0_x * (((4 * np.pi) / 48)**2)
-    return [
-        [w_0_x, 1, None, False, w_0_res],
-        [w_0_x.copy(), 1, None, True, w_0_res],
-        [w_0_x, 2, None, False, w_1_res],
-        ]
-
-
 class HPSpaceInterfaceTests(unittest.TestCase):
     @expand([['nside', int]])
     def test_property_ret_type(self, attribute, expected_type):
@@ -86,10 +72,5 @@ class HPSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(h, key), value)
 
-    @expand(get_weight_configs())
-    def test_weight(self, x, power, axes, inplace, expected):
-        h = HPSpace(2)
-        res = h.weight(x, power, axes, inplace)
-        assert_almost_equal(res, expected)
-        if inplace:
-            assert_(x is res)
+    def test_weight(self):
+        assert_almost_equal(HPSpace(2).weight(), np.pi/12)

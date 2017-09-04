@@ -79,8 +79,7 @@ def cast_axis_to_tuple(axis, length=None):
         if np.isscalar(axis):
             axis = (int(axis),)
         else:
-            raise TypeError(
-                "Could not convert axis-input to tuple of ints")
+            raise TypeError("Could not convert axis-input to tuple of ints")
 
     if length is not None:
         # shift negative indices to positive ones

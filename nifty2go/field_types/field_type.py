@@ -20,5 +20,5 @@ from ..domain_object import DomainObject
 
 
 class FieldType(DomainObject):
-    def weight(self, x, power=1, axes=None, inplace=False):
-        return x if inplace else x.copy()
+    def weight(self):
+        return 1.

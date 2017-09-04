@@ -116,11 +116,8 @@ class LMSpace(Space):
     def copy(self):
         return self.__class__(lmax=self.lmax)
 
-    def weight(self, x, power=1, axes=None, inplace=False):
-        if inplace:
-            return x
-        else:
-            return x.copy()
+    def weight(self):
+        return 1.
 
     def get_distance_array(self):
         lmax = self.lmax

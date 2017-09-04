@@ -69,15 +69,6 @@ def get_distance_array_configs():
     return [[5, da_0]]
 
 
-def get_weight_configs():
-    np.random.seed(42)
-    w_0_x = np.random.rand(32, 16, 6)
-    return [
-        [w_0_x, 1, None, False, w_0_x],
-        [w_0_x.copy(), 1, None,  True, w_0_x]
-        ]
-
-
 class LMSpaceInterfaceTests(unittest.TestCase):
     @expand([['lmax', int],
             ['mmax', int],
@@ -98,13 +89,8 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(l, key), value)
 
-    @expand(get_weight_configs())
-    def test_weight(self, x, power, axes, inplace, expected):
-        l = LMSpace(5)
-        res = l.weight(x, power, axes, inplace)
-        assert_almost_equal(res, expected)
-        if inplace:
-            assert_(x is res)
+    def test_weight(self):
+        assert_almost_equal(LMSpace(5).weight(), 1.)
 
     @expand(get_distance_array_configs())
     def test_distance_array(self, lmax, expected):

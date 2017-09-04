@@ -49,13 +49,14 @@ class RGRGTransformation(Transformation):
             The axes along which the transformation should take place
 
         """
+        fct=1.
         if self._transform.codomain.harmonic:
             # correct for forward fft.
             # naively one would set power to 0.5 here in order to
             # apply effectively a factor of 1/sqrt(N) to the field.
             # BUT: the pixel volumes of the domain and codomain are different.
             # Hence, in order to produce the same scalar product, power===1.
-            val = self._transform.domain.weight(val, power=1, axes=axes)
+            fct *= self._transform.domain.weight()
 
         # Perform the transformation
         if issubclass(val.dtype.type, np.complexfloating):
@@ -80,6 +81,7 @@ class RGRGTransformation(Transformation):
         if not self._transform.codomain.harmonic:
             # correct for inverse fft.
             # See discussion above.
-            Tval = self._transform.codomain.weight(Tval, power=-1, axes=axes)
+            fct /= self._transform.codomain.weight()
 
+        Tval *= fct
         return Tval

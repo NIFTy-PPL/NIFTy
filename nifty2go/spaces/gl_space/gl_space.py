@@ -109,31 +109,12 @@ class GLSpace(Space):
         return 4 * np.pi
 
     def copy(self):
-        return self.__class__(nlat=self.nlat,
-                              nlon=self.nlon)
+        return self.__class__(nlat=self.nlat, nlon=self.nlon)
 
-    def weight(self, x, power=1, axes=None, inplace=False):
+    def weight(self):
         from pyHealpix import GL_weights
-        nlon = self.nlon
-        nlat = self.nlat
-        vol = GL_weights(nlat, nlon) ** np.float(power)
-        weight = np.array(list(itertools.chain.from_iterable(
-                          itertools.repeat(x, nlon) for x in vol)))
-
-        if axes is not None:
-            # reshape the weight array to match the input shape
-            new_shape = np.ones(len(x.shape), dtype=np.int)
-            # we know len(axes) is always 1
-            new_shape[axes[0]] = len(weight)
-            weight = weight.reshape(new_shape)
-
-        if inplace:
-            x *= weight
-            result_x = x
-        else:
-            result_x = x * weight
-
-        return result_x
+        vol = GL_weights(self.nlat, self.nlon)
+        return np.outer(vol, np.ones(self.nlon,dtype=np.float64)).flatten()
 
     # ---Added properties and methods---
 
@@ -142,21 +123,18 @@ class GLSpace(Space):
         """ Number of latitudinal bins (or rings) that are used for this
         pixelization.
         """
-
         return self._nlat
 
     @property
     def nlon(self):
         """ Number of longitudinal bins that are used for this pixelization.
         """
-
         return self._nlon
 
     def _parse_nlat(self, nlat):
         nlat = int(nlat)
         if nlat < 1:
-            raise ValueError(
-                "nlat must be a positive number.")
+            raise ValueError("nlat must be a positive number.")
         return nlat
 
     def _parse_nlon(self, nlon):

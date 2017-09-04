@@ -685,20 +685,25 @@ class Field(object):
             The weighted field.
 
         """
-        new_val = self.get_val(copy=False)
+        new_val = self.get_val(copy=not inplace)
 
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
             spaces = list(range(len(self.domain)))
 
-        for ind, sp in enumerate(self.domain):
-            if ind in spaces:
-                new_val = sp.weight(new_val,
-                                    power=power,
-                                    axes=self.domain_axes[ind],
-                                    inplace=inplace)
-                # we need at most one copy, the rest can happen in place
-                inplace = True
+        fct = 1.
+        for ind in spaces:
+            wgt = self.domain[ind].weight()
+            if np.isscalar(wgt):
+                fct *= wgt
+            else:
+                new_shape = np.ones(len(self.shape), dtype=np.int)
+                new_shape[self.domain_axes[ind][0]:self.domain_axes[ind][-1]+1]=wgt.shape
+                wgt = wgt.reshape(new_shape)
+                new_val *= wgt**power
+        fct = fct**power
+        if fct!=1:
+            new_val *= fct
 
         return Field(self.domain, new_val, self.dtype)
 

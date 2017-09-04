@@ -80,24 +80,6 @@ def get_distance_array_configs():
         ]
 
 
-def get_weight_configs():
-    np.random.seed(42)
-
-    # power 1
-    w_0_x = np.random.rand(32, 16, 6)
-    # RGSpace((4, 4), harmonic=True)
-    # using rho directly
-    weight_0 = np.array([1, 4, 4, 2, 4, 1])
-    weight_0 = weight_0.reshape([1, 1, 6])
-    w_0_res = w_0_x * weight_0
-    return [
-        [RGSpace((4, 4), harmonic=True),
-            w_0_x, 1, (2,), False, w_0_res],
-        [RGSpace((4, 4), harmonic=True),
-            w_0_x.copy(), 1, (2,), True, w_0_res],
-        ]
-
-
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
         ['harmonic_partner', Space],
@@ -148,11 +130,6 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         p = PowerSpace(harmonic_partner=harmonic_partner)
         assert_almost_equal(p.get_distance_array(), expected)
 
-    @expand(get_weight_configs())
-    def test_weight(self, harmonic_partner, x, power, axes,
-                    inplace, expected):
-        p = PowerSpace(harmonic_partner=harmonic_partner)
-        res = p.weight(x, power, axes, inplace)
-        assert_almost_equal(res, expected)
-        if inplace:
-            assert_(x is res)
+    def test_weight(self):
+        p = PowerSpace(harmonic_partner=RGSpace(10,harmonic=True))
+        assert_almost_equal(p.weight(),1.)

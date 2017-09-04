@@ -80,7 +80,6 @@ class HPSpace(Space):
 
     def __init__(self, nside):
         super(HPSpace, self).__init__()
-
         self._nside = self._parse_nside(nside)
 
     # ---Mandatory properties and methods---
@@ -94,7 +93,7 @@ class HPSpace(Space):
 
     @property
     def shape(self):
-        return (np.int(12 * self.nside * self.nside),)
+        return (self.dim,)
 
     @property
     def dim(self):
@@ -107,17 +106,8 @@ class HPSpace(Space):
     def copy(self):
         return self.__class__(nside=self.nside)
 
-    def weight(self, x, power=1, axes=None, inplace=False):
-
-        weight = ((4*np.pi) / (12*self.nside*self.nside)) ** np.float(power)
-
-        if inplace:
-            x *= weight
-            result_x = x
-        else:
-            result_x = x * weight
-
-        return result_x
+    def weight(self):
+        return np.pi / (3*self._nside*self._nside)
 
     # ---Added properties and methods---
 

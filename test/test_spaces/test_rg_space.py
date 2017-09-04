@@ -90,25 +90,15 @@ def get_distance_array_configs():
 
 def get_weight_configs():
     np.random.seed(42)
-    # power 1
-    w_0_x = np.random.rand(32, 12, 6)
-    # for RGSpace(shape=(11,11), distances=None, harmonic=False)
-    w_0_res = w_0_x * (1/11 * 1/11)
-    # for RGSpace(shape=(11, 11), distances=(1.3,1.3), harmonic=False)
-    w_1_res = w_0_x * (1.3 * 1.3)
-    # for RGSpace(shape=(11,11), distances=None, harmonic=True)
-    w_2_res = w_0_x * (1.0 * 1.0)
-    # for RGSpace(shape=(11,11), distances=(1.3, 1,3), harmonic=True)
-    w_3_res = w_0_x * (1.3 * 1.3)
     return [
-        [(11, 11), None, False, w_0_x, 1, None, False, w_0_res],
-        [(11, 11), None, False, w_0_x.copy(), 1, None,  True, w_0_res],
-        [(11, 11), (1.3, 1.3), False, w_0_x, 1, None, False, w_1_res],
-        [(11, 11), (1.3, 1.3), False, w_0_x.copy(), 1, None,  True, w_1_res],
-        [(11, 11), None, True, w_0_x, 1, None, False, w_2_res],
-        [(11, 11), None, True, w_0_x.copy(), 1, None,  True, w_2_res],
-        [(11, 11), (1.3, 1.3), True, w_0_x, 1, None, False, w_3_res],
-        [(11, 11), (1.3, 1.3), True, w_0_x.copy(), 1, None,  True, w_3_res]
+        [(11, 11), None, False, 1],
+        [(11, 11), None, False, 1],
+        [(11, 11), (1.3, 1.3), False, 1],
+        [(11, 11), (1.3, 1.3), False, 1],
+        [(11, 11), None, True, 1],
+        [(11, 11), None, True, 1],
+        [(11, 11), (1.3, 1.3), True, 1],
+        [(11, 11), (1.3, 1.3), True, 1]
         ]
 
 
@@ -133,10 +123,6 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         assert_almost_equal(r.get_distance_array(), expected)
 
     @expand(get_weight_configs())
-    def test_weight(self, shape, distances, harmonic, x, power, axes,
-                    inplace, expected):
+    def test_weight(self, shape, distances, harmonic, power):
         r = RGSpace(shape=shape, distances=distances, harmonic=harmonic)
-        res = r.weight(x, power, axes, inplace)
-        assert_almost_equal(res, expected)
-        if inplace:
-            assert_(x is res)
+        assert_almost_equal(r.weight(), np.prod(r.distances)**power)

@@ -115,14 +115,8 @@ class RGSpace(Space):
                               distances=self.distances,
                               harmonic=self.harmonic)
 
-    def weight(self, x, power=1, axes=None, inplace=False):
-        weight = reduce(lambda x, y: x*y, self.distances) ** np.float(power)
-        if inplace:
-            x *= weight
-            result_x = x
-        else:
-            result_x = x*weight
-        return result_x
+    def weight(self):
+        return reduce(lambda x, y: x*y, self.distances)
 
     def get_distance_array(self):
         """ Calculates an n-dimensional array with its entries being the

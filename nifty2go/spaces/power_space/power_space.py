@@ -178,22 +178,8 @@ class PowerSpace(Space):
         return self.__class__(harmonic_partner=self.harmonic_partner,
                               binbounds=self._binbounds)
 
-    def weight(self, x, power, axes, inplace=False):
-        reshaper = [1, ] * len(x.shape)
-        # we know len(axes) is always 1
-        reshaper[axes[0]] = self.shape[0]
-
-        weight = self.rho.reshape(reshaper)
-        if power != 1:
-            weight = weight ** np.float(power)
-
-        if inplace:
-            x *= weight
-            result_x = x
-        else:
-            result_x = x*weight
-
-        return result_x
+    def weight(self):
+        return 1.
 
     def get_distance_array(self):
         return self.kindex.copy()

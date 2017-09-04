@@ -47,18 +47,8 @@ def get_weight_configs():
     # for GLSpace(nlat=2, nlon=3)
     weight_0 = np.array(list(itertools.chain.from_iterable(
         itertools.repeat(x, 3) for x in wgt)))
-    w_0_x = np.random.rand(6)
-    w_0_res = w_0_x * weight_0
-
-    weight_1 = np.array(list(itertools.chain.from_iterable(
-        itertools.repeat(x, 3) for x in wgt)))
-    weight_1 = weight_1.reshape([1, 1, 6])
-    w_1_x = np.random.rand(32, 16, 6)
-    w_1_res = w_1_x * weight_1
     return [
-        [w_0_x, 1, None, False, w_0_res],
-        [w_0_x.copy(), 1, None, True, w_0_res],
-        [w_1_x.copy(), 1, (2,), True, w_1_res],
+        [1, weight_0],
         ]
 
 
@@ -84,9 +74,5 @@ class GLSpaceFunctionalityTests(unittest.TestCase):
                 assert_equal(getattr(g, key), value)
 
     @expand(get_weight_configs())
-    def test_weight(self, x, power, axes, inplace, expected):
-        g = GLSpace(2)
-        res = g.weight(x, power, axes, inplace)
-        assert_almost_equal(res, expected)
-        if inplace:
-            assert_(x is res)
+    def test_weight(self, power, expected):
+        assert_almost_equal(GLSpace(2).weight(), expected)
