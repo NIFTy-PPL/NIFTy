@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from builtins import object, range
-import pyfftw
 
 
 class SerialFFT(object):
@@ -25,6 +24,8 @@ class SerialFFT(object):
         The pyfftw pendant of a fft object.
     """
     def __init__(self, domain, codomain):
+        import pyfftw
+
         self.domain = domain
         self.codomain = codomain
 
@@ -48,6 +49,7 @@ class SerialFFT(object):
             result : numpy.ndarray
                 Fourier-transformed pendant of the input field.
         """
+        from pyfftw.interfaces.numpy_fft import fftn, ifftn
 
         # Check if the axes provided are valid given the shape
         if axes is not None and \
@@ -55,6 +57,6 @@ class SerialFFT(object):
             raise ValueError("Provided axes does not match array shape")
 
         if self.codomain.harmonic:
-            return pyfftw.interfaces.numpy_fft.fftn(val, axes=axes)
+            return fftn(val, axes=axes)
         else:
-            return pyfftw.interfaces.numpy_fft.ifftn(val, axes=axes)
+            return ifftn(val, axes=axes)

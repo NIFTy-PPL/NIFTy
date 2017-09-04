@@ -17,12 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-
 import itertools
 import numpy as np
-
 from ..space import Space
-import pyHealpix
 
 
 class GLSpace(Space):
@@ -65,8 +62,6 @@ class GLSpace(Space):
         ------
         ValueError
             If input `nlat` or `nlon` is invalid.
-        ImportError
-            If the pyHealpix module is not available
 
         See Also
         --------
@@ -87,10 +82,6 @@ class GLSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, nlat, nlon=None):
-        if pyHealpix is None:
-            raise ImportError(
-                "The module pyHealpix is needed but not available.")
-
         super(GLSpace, self).__init__()
 
         self._nlat = self._parse_nlat(nlat)
@@ -122,9 +113,10 @@ class GLSpace(Space):
                               nlon=self.nlon)
 
     def weight(self, x, power=1, axes=None, inplace=False):
+        from pyHealpix import GL_weights
         nlon = self.nlon
         nlat = self.nlat
-        vol = pyHealpix.GL_weights(nlat, nlon) ** np.float(power)
+        vol = GL_weights(nlat, nlon) ** np.float(power)
         weight = np.array(list(itertools.chain.from_iterable(
                           itertools.repeat(x, nlon) for x in vol)))
 

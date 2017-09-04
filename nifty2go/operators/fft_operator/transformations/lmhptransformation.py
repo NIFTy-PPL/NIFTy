@@ -19,7 +19,6 @@
 import numpy as np
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
-import pyHealpix
 
 
 class LMHPTransformation(SlicingTransformation):
@@ -32,6 +31,8 @@ class LMHPTransformation(SlicingTransformation):
         return False
 
     def _transformation_of_slice(self, inp):
+        from pyHealpix import alm2map
+
         nside = self.codomain.nside
         lmax = self.domain.lmax
         mmax = lmax
@@ -39,10 +40,10 @@ class LMHPTransformation(SlicingTransformation):
         if issubclass(inp.dtype.type, np.complexfloating):
             rr = lm_transformation_helper.buildLm(inp.real, lmax=lmax)
             ri = lm_transformation_helper.buildLm(inp.imag, lmax=lmax)
-            rr = pyHealpix.alm2map(rr, lmax, mmax, nside)
-            ri = pyHealpix.alm2map(ri, lmax, mmax, nside)
+            rr = alm2map(rr, lmax, mmax, nside)
+            ri = alm2map(ri, lmax, mmax, nside)
             return rr + 1j*ri
 
         else:
             rr = lm_transformation_helper.buildLm(inp, lmax=lmax)
-            return pyHealpix.alm2map(rr, lmax, mmax, nside)
+            return alm2map(rr, lmax, mmax, nside)

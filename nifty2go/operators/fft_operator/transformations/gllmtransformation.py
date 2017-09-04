@@ -19,7 +19,6 @@
 import numpy as np
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
-import pyHealpix
 
 
 class GLLMTransformation(SlicingTransformation):
@@ -31,10 +30,12 @@ class GLLMTransformation(SlicingTransformation):
         return False
 
     def _transformation_of_slice(self, inp):
+        from pyHealpix import sharpjob_d
+
         lmax = self.codomain.lmax
         mmax = self.codomain.mmax
 
-        sjob = pyHealpix.sharpjob_d()
+        sjob = sharpjob_d()
         sjob.set_Gauss_geometry(self.domain.nlat, self.domain.nlon)
         sjob.set_triangular_alm_info(lmax, mmax)
         if issubclass(inp.dtype.type, np.complexfloating):

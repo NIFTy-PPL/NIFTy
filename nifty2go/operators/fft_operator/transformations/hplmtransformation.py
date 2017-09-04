@@ -19,7 +19,6 @@
 import numpy as np
 from .slicing_transformation import SlicingTransformation
 from . import lm_transformation_helper
-import pyHealpix
 
 
 class HPLMTransformation(SlicingTransformation):
@@ -31,16 +30,18 @@ class HPLMTransformation(SlicingTransformation):
         return False
 
     def _transformation_of_slice(self, inp):
+        from pyHealpix import map2alm
+
         lmax = self.codomain.lmax
         mmax = lmax
 
         if issubclass(inp.dtype.type, np.complexfloating):
-            rr = pyHealpix.map2alm(inp.real, lmax, mmax)
+            rr = map2alm(inp.real, lmax, mmax)
             rr = lm_transformation_helper.buildIdx(rr, lmax=lmax)
-            ri = pyHealpix.map2alm(inp.imag, lmax, mmax)
+            ri = map2alm(inp.imag, lmax, mmax)
             ri = lm_transformation_helper.buildIdx(ri, lmax=lmax)
             return rr + 1j*ri
 
         else:
-            rr = pyHealpix.map2alm(inp, lmax, mmax)
+            rr = map2alm(inp, lmax, mmax)
             return lm_transformation_helper.buildIdx(rr, lmax=lmax)
