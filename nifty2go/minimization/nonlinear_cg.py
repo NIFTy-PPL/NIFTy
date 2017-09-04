@@ -17,8 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-import numpy as np
-
 from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
 
@@ -71,7 +69,6 @@ class NonlinearCG(Minimizer):
 
         while True:
             grad_old = energy.gradient
-            gnold = energy.gradient_norm
             f_k = energy.value
             energy = self._line_searcher.perform_line_search(energy, p,
                                                              f_k_minus_1)

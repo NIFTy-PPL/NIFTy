@@ -109,7 +109,7 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 >= 0:
-            raise RuntimeError ("search direction must be a descent direction")
+            raise RuntimeError("search direction must be a descent direction")
 
         # set alphas
         alpha0 = 0.
@@ -262,7 +262,7 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            #self.logger.error("The line search algorithm (zoom) did not "
+            # self.logger.error("The line search algorithm (zoom) did not "
             #                  "converge.")
             return le_alphaj
 

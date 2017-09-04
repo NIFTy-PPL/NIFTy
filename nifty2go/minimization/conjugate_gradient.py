@@ -17,8 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-import numpy as np
-
 from .minimizer import Minimizer
 
 
@@ -82,7 +80,7 @@ class ConjugateGradient(Minimizer):
         while True:
             q = energy.curvature(d)
             ddotq = d.vdot(q).real
-            if ddotq==0.:
+            if ddotq == 0.:
                 return energy, controller.ERROR
             alpha = previous_gamma/ddotq
 
@@ -90,7 +88,7 @@ class ConjugateGradient(Minimizer):
                 return energy, controller.ERROR
 
             r -= q * alpha
-            energy = energy.at_with_grad(energy.position+d*alpha,-r)
+            energy = energy.at_with_grad(energy.position+d*alpha, -r)
 
             status = self._controller.check(energy)
             if status != controller.CONTINUE:

@@ -18,10 +18,8 @@
 
 import abc
 from ..nifty_meta import NiftyMeta
-
-import numpy as np
-
 from future.utils import with_metaclass
+
 
 class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     """ A base class used by all minimizers.

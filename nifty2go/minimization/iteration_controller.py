@@ -19,10 +19,8 @@
 from builtins import range
 import abc
 from ..nifty_meta import NiftyMeta
-
-import numpy as np
-
 from future.utils import with_metaclass
+
 
 class IterationController(with_metaclass(NiftyMeta, type('NewBase',
                                          (object,), {}))):
