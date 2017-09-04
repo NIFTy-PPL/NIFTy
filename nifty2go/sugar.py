@@ -60,6 +60,7 @@ def create_power_operator(domain, power_spectrum, dtype=None):
 
     fp = Field(power_domain,
                val=power_spectrum(power_domain.kindex), dtype=dtype)
+    # MR FIXME: why generate a non-random random field?
     f = fp.power_synthesize(mean=1, std=0, real_signal=False)
 
     if not issubclass(fp.dtype.type, np.complexfloating):
