@@ -17,10 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-from builtins import zip
 from builtins import range
 
-import ast
 import numpy as np
 
 from .domain_object import DomainObject
@@ -84,24 +82,24 @@ class Field(object):
         self.domain_axes = self._get_axes_tuple(self.domain)
 
         shape_tuple = tuple(sp.shape for sp in self.domain)
-        if len(shape_tuple)==0:
+        if len(shape_tuple) == 0:
             global_shape = ()
         else:
             global_shape = reduce(lambda x, y: x + y, shape_tuple)
         dtype = self._infer_dtype(dtype=dtype, val=val)
         if isinstance(val, Field):
-            if self.domain!=val.domain:
+            if self.domain != val.domain:
                 raise ValueError("Domain mismatch")
-            self._val = np.array(val.val,dtype=dtype,copy=copy)
+            self._val = np.array(val.val, dtype=dtype, copy=copy)
         elif (np.isscalar(val)):
-            self._val=np.full(global_shape,dtype=dtype,fill_value=val)
+            self._val = np.full(global_shape, dtype=dtype, fill_value=val)
         elif isinstance(val, np.ndarray):
-            if global_shape==val.shape:
-                self._val = np.array(val,dtype=dtype,copy=copy)
+            if global_shape == val.shape:
+                self._val = np.array(val, dtype=dtype, copy=copy)
             else:
                 raise ValueError("Shape mismatch")
         elif val is None:
-            self._val = np.empty(global_shape,dtype=dtype)
+            self._val = np.empty(global_shape, dtype=dtype)
         else:
             raise TypeError("unknown source type")
 
@@ -130,7 +128,7 @@ class Field(object):
         axes_list = []
         for thing in things_with_shape:
             nax = len(thing.shape)
-            axes_list += [tuple(range(i,i+nax))]
+            axes_list += [tuple(range(i, i+nax))]
             i += nax
         return tuple(axes_list)
 
@@ -138,7 +136,7 @@ class Field(object):
         if val is None:
             return np.float64 if dtype is None else dtype
         if dtype is None:
-            if isinstance(val,Field):
+            if isinstance(val, Field):
                 return val.dtype
             return np.result_type(val)
 
@@ -176,7 +174,7 @@ class Field(object):
 
         f = cls(domain=domain, dtype=dtype)
         generator_function = getattr(Random, random_type)
-        f.val=generator_function(dtype=f.dtype, shape=f.shape, **kwargs)
+        f.val = generator_function(dtype=f.dtype, shape=f.shape, **kwargs)
         return f
 
     # ---Powerspectral methods---
@@ -294,7 +292,7 @@ class Field(object):
         result_domain = list(work_field.domain)
         result_domain[space_index] = power_domain
 
-        return Field(domain=result_domain,val=power_spectrum,
+        return Field(domain=result_domain, val=power_spectrum,
                      dtype=power_spectrum.dtype)
 
     @classmethod
@@ -308,7 +306,7 @@ class Field(object):
                             axes=axes)
 
         power_spectrum = utilities.bincount_axis(pindex, weights=field_val,
-                                         axis=axes)
+                                                 axis=axes)
         rho = pdomain.rho
         if axes is not None:
             new_rho_shape = [1, ] * len(power_spectrum.shape)
@@ -420,10 +418,10 @@ class Field(object):
             result_list[1].val *= spec.imag
 
         if real_signal:
-            result_list=[Field(i.domain,self._hermitian_decomposition(
+            result_list = [Field(i.domain, self._hermitian_decomposition(
                                      i.val,
                                      preserve_gaussian_variance=True)[0])
-                         for i in result_list]
+                           for i in result_list]
 
         if real_power:
             result = result_list[0]
@@ -479,21 +477,21 @@ class Field(object):
         if new_val is None:
             pass
         elif isinstance(new_val, Field):
-            if self.domain!=new_val.domain:
+            if self.domain != new_val.domain:
                 raise ValueError("Domain mismatch")
             if copy:
                 self._val[()] = new_val.val
             else:
-                self._val = np.array(new_val.val,dtype=self.dtype,copy=False)
+                self._val = np.array(new_val.val, dtype=self.dtype, copy=False)
         elif (np.isscalar(new_val)):
-            self._val[()]=new_val
+            self._val[()] = new_val
         elif isinstance(new_val, np.ndarray):
             if copy:
                 self._val[()] = new_val
             else:
-                if self.shape!=new_val.shape:
+                if self.shape != new_val.shape:
                     raise ValueError("Shape mismatch")
-                self._val = np.array(new_val,dtype=self.dtype,copy=False)
+                self._val = np.array(new_val, dtype=self.dtype, copy=False)
         else:
             raise TypeError("unknown source type")
         return self
@@ -514,14 +512,13 @@ class Field(object):
         See Also
         --------
         val
-
         """
-
         return self._val.copy() if copy else self._val
 
     @property
     def val(self):
         """ Returns the data object associated with this Field.
+        No copy is made.
 
         Returns
         -------
@@ -530,9 +527,7 @@ class Field(object):
         See Also
         --------
         get_val
-
         """
-
         return self._val
 
     @val.setter
@@ -552,12 +547,7 @@ class Field(object):
         out : tuple
             The output object. The tuple contains the dimensions of the spaces
             in domain.
-
-        See Also
-        --------
-        dim
-
-        """
+       """
         return self._val.shape
 
     @property
@@ -570,11 +560,6 @@ class Field(object):
         -------
         out : int
             The dimension of the Field.
-
-        See Also
-        --------
-        shape
-
         """
         return self._val.size
 
@@ -595,7 +580,6 @@ class Field(object):
     def total_volume(self):
         """ Returns the total volume of all spaces in the domain.
         """
-
         volume_tuple = tuple(sp.total_volume for sp in self.domain)
         try:
             return reduce(lambda x, y: x * y, volume_tuple)
@@ -606,16 +590,15 @@ class Field(object):
     def real(self):
         """ The real part of the field (data is not copied).
         """
-        return Field(self.domain,self.val.real)
+        return Field(self.domain, self.val.real)
 
     @property
     def imag(self):
         """ The imaginary part of the field (data is not copied).
         """
-        return Field(self.domain,self.val.imag)
+        return Field(self.domain, self.val.imag)
 
     # ---Special unary/binary operations---
-
 
     def copy(self, domain=None, dtype=None):
         """ Returns a full copy of the Field.
@@ -645,7 +628,7 @@ class Field(object):
 
         if domain is None:
             domain = self.domain
-        return Field(domain=domain,val=self._val,dtype=dtype,copy=True)
+        return Field(domain=domain, val=self._val, dtype=dtype, copy=True)
 
     def copy_empty(self, domain=None, dtype=None):
         """ Returns an empty copy of the Field.
@@ -747,7 +730,7 @@ class Field(object):
         y = self if bare else self.weight(power=1)
 
         if spaces is None:
-            return np.vdot(y.val.flatten(),x.val.flatten())
+            return np.vdot(y.val.flatten(), x.val.flatten())
         else:
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
@@ -785,10 +768,10 @@ class Field(object):
 
         """
         if inplace:
-            self.imag*=-1
+            self.imag *= -1
             return self
         else:
-            return Field(self.domain,np.conj(self.val),self.dtype)
+            return Field(self.domain, np.conj(self.val), self.dtype)
 
     # ---General unary/contraction methods---
 
@@ -796,10 +779,10 @@ class Field(object):
         return self.copy()
 
     def __neg__(self):
-        return Field(self.domain,-self.val,self.dtype)
+        return Field(self.domain, -self.val, self.dtype)
 
     def __abs__(self):
-        return Field(self.domain,np.abs(self.val),self.dtype)
+        return Field(self.domain, np.abs(self.val), self.dtype)
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
@@ -868,9 +851,9 @@ class Field(object):
         if isinstance(other, Field):
             if other.domain != self.domain:
                 raise ValueError("domains are incompatible.")
-            return Field(self.domain,getattr(self.val,op)(other.val))
+            return Field(self.domain, getattr(self.val, op)(other.val))
 
-        return Field(self.domain,getattr(self.val,op)(other))
+        return Field(self.domain, getattr(self.val, op)(other))
 
     def __add__(self, other):
         return self._binary_helper(other, op='__add__')
