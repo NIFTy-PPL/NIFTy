@@ -104,12 +104,8 @@ class Test_Functionality(unittest.TestCase):
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
-        assert_allclose(ps1.val/samples,
-                        fp1.val,
-                        rtol=0.2)
-        assert_allclose(ps2.val/samples,
-                        fp2.val,
-                        rtol=0.2)
+        assert_allclose(ps1.val/samples, fp1.val, rtol=0.2)
+        assert_allclose(ps2.val/samples, fp2.val, rtol=0.2)
 
     def test_vdot(self):
         s=RGSpace((10,))
