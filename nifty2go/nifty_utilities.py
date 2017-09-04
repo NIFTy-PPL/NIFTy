@@ -23,6 +23,7 @@ from itertools import product
 import itertools
 from functools import reduce
 
+
 def get_slice_list(shape, axes):
     """
     Helper function which generates slice list(s) to traverse over all
@@ -111,6 +112,8 @@ def parse_domain(domain):
                 "Given object contains something that is not an "
                 "instance of DomainObject-class.")
     return domain
+
+
 def slicing_generator(shape, axes):
     """
     Helper function which generates slice list(s) to traverse over all
@@ -153,6 +156,7 @@ def slicing_generator(shape, axes):
     else:
         yield [slice(None, None)]
         return
+
 
 def bincount_axis(obj, minlength=None, weights=None, axis=None):
     if minlength is not None:

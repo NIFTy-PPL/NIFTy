@@ -62,7 +62,6 @@ class FFTSmoothingOperator(EndomorphicOperator):
         coaxes = transformed_x.domain_axes[spaces[0]]
 
         kernel = codomain.get_distance_array()
-
         kernel = codomain.get_fft_smoothing_kernel_function(self.sigma)(kernel)
 
         # now, apply the kernel to transformed_x
@@ -77,15 +76,9 @@ class FFTSmoothingOperator(EndomorphicOperator):
 
         local_transformed_x *= local_kernel
 
-        transformed_x.val=local_transformed_x
+        transformed_x.val = local_transformed_x
 
-        smoothed_x = transformator.adjoint_times(transformed_x,
-                                                 spaces=spaces)
-
-        result = x.copy_empty()
-        result=smoothed_x
-
-        return result
+        return transformator.adjoint_times(transformed_x, spaces=spaces)
 
     def _get_transformator(self, dtype):
         if dtype not in self._transformator_cache:

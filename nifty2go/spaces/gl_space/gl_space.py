@@ -24,6 +24,7 @@ import numpy as np
 from ..space import Space
 import pyHealpix
 
+
 class GLSpace(Space):
     """
         ..                 __
@@ -177,7 +178,7 @@ class GLSpace(Space):
 
     def get_default_codomain(self):
         from .. import LMSpace
-        return LMSpace(lmax=self.nlat-1,mmax=(self.nlon-1)//2)
+        return LMSpace(lmax=self.nlat-1, mmax=(self.nlon-1)//2)
 
     def check_codomain(self, codomain):
         from .. import LMSpace

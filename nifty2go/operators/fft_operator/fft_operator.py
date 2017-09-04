@@ -16,8 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-import numpy as np
-
 from ... import nifty_utilities as utilities
 from ...spaces import RGSpace,\
                       GLSpace,\

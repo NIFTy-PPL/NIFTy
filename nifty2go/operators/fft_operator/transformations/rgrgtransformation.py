@@ -20,7 +20,7 @@ from __future__ import division
 import numpy as np
 from .transformation import Transformation
 from .rg_transforms import SerialFFT
-from .... import RGSpace
+
 
 class RGRGTransformation(Transformation):
 
@@ -35,7 +35,6 @@ class RGRGTransformation(Transformation):
     @property
     def unitary(self):
         return True
-
 
     def transform(self, val, axes=None):
         """

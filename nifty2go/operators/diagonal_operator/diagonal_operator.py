@@ -98,7 +98,8 @@ class DiagonalOperator(EndomorphicOperator):
                                   operation=lambda z: z.adjoint().__mul__)
 
     def _inverse_times(self, x, spaces):
-        return self._times_helper(x, spaces, operation=lambda z: z.__rtruediv__)
+        return self._times_helper(x, spaces,
+                                  operation=lambda z: z.__rtruediv__)
 
     def _adjoint_inverse_times(self, x, spaces):
         return self._times_helper(x, spaces,
@@ -221,4 +222,4 @@ class DiagonalOperator(EndomorphicOperator):
         # here the actual multiplication takes place
         local_result = operation(reshaped_local_diagonal)(x.val)
 
-        return Field (x.domain,val=local_result)
+        return Field(x.domain, val=local_result)

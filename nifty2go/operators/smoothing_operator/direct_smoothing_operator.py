@@ -186,9 +186,8 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
         distance_array = x.domain[spaces[0]].get_distance_array()
 
-        #MR FIXME: this causes calls of log(0.) which should probably be avoided
         if self.log_distances:
-            np.log(np.maximum(distance_array,1e-15), out=distance_array)
+            np.log(np.maximum(distance_array, 1e-15), out=distance_array)
 
         augmented_data = x.val
         augmented_distance_array = distance_array

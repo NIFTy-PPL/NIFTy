@@ -230,7 +230,6 @@ class RGSpace(Space):
             raise AttributeError("The grid-distances of domain and codomain "
                                  "do not match.")
 
-
     # ---Added properties and methods---
 
     @property

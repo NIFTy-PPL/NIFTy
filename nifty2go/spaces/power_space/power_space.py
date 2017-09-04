@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-import ast
 import numpy as np
 
 from ...spaces.space import Space
@@ -137,7 +136,7 @@ class PowerSpace(Space):
             temp_rho = np.bincount(temp_pindex.flatten())
             assert not np.any(temp_rho == 0), "empty bins detected"
             temp_kindex = np.bincount(temp_pindex.flatten(),
-                weights=distance_array.flatten()) / temp_rho
+                                   weights=distance_array.flatten()) / temp_rho
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
                                           temp_kindex,
@@ -148,7 +147,6 @@ class PowerSpace(Space):
 
     @staticmethod
     def _compute_pindex(harmonic_partner, distance_array, binbounds):
-        pindex = np.empty(distance_array.shape,dtype=np.int)
         if binbounds is None:
             binbounds = harmonic_partner.get_natural_binbounds()
         return np.searchsorted(binbounds, distance_array)

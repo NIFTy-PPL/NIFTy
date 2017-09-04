@@ -21,7 +21,8 @@ import abc
 from future.utils import with_metaclass
 
 
-class Transformation(with_metaclass(abc.ABCMeta, type('NewBase', (object,), {}))):
+class Transformation(with_metaclass(abc.ABCMeta,
+                                    type('NewBase', (object,), {}))):
 
     def __init__(self, domain, codomain):
         self.domain = domain
