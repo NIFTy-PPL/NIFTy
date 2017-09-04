@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     # Wiener filter
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    ctrl = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=0.1)
+    ctrl = ift.DefaultIterationController(verbose=False,tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl,preconditioner=S.times)
     wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic,inverter=inverter)
     m_k = wiener_curvature.inverse_times(j)  #|\label{code:wf_wiener_filter}|
@@ -53,7 +53,9 @@ if __name__ == "__main__":
 
     # Probing the uncertainty |\label{code:wf_uncertainty_probing}|
     class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby(signal_space, probe_count=800)
+    proby = Proby(signal_space, probe_count=10)
+#    class Proby(ift.DiagonalProberMixin, ift.ParallelProber): pass
+#    proby = Proby(signal_space, probe_count=10,ncpu=2)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))  #|\label{code:wf_variance_fft_wrap}|
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.03)
