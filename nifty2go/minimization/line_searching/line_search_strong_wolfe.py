@@ -205,9 +205,8 @@ class LineSearchStrongWolfe(LineSearch):
             The new Energy object on the new position.
 
         """
-        # define the cubic and quadratic interpolant checks
-        cubic_delta = 0.2  # cubic
-        quad_delta = 0.1  # quadratic
+        cubic_delta = 0.2  # cubic interpolant checks
+        quad_delta = 0.1  # quadratic interpolant checks
         alpha_recent = None
         phi_recent = None
 
@@ -270,33 +269,22 @@ class LineSearchStrongWolfe(LineSearch):
         """Estimating the minimum with cubic interpolation.
 
         Finds the minimizer for a cubic polynomial that goes through the
-        points ( a,f(a) ), ( b,f(b) ), and ( c,f(c) ) with derivative at point
-        a of fpa.
-        f(x) = A *(x-a)^3 + B*(x-a)^2 + C*(x-a) + D
+        points (a,a), (b,fb), and (c,fc) with derivative at point a of fpa.
         If no minimizer can be found return None
 
         Parameters
         ----------
-        a : float
-            Selected point.
-        fa : float
-            Value of polynomial at point a.
-        fpa : Field
-            Derivative at point a.
-        b : float
-            Selected point.
-        fb : float
-            Value of polynomial at point b.
-        c : float
-            Selected point.
-        fc : float
-            Value of polynomial at point c.
+        a, fa, fpa : float
+            abscissa, function value and derivative at first point
+        b, fb : float
+            abscissa and function value at second point
+        c, fc : float
+            abscissa and function value at third point
 
         Returns
         -------
         xmin : float
             Position of the approximated minimum.
-
         """
 
         with np.errstate(divide='raise', over='raise', invalid='raise'):
@@ -326,35 +314,25 @@ class LineSearchStrongWolfe(LineSearch):
         """Estimating the minimum with quadratic interpolation.
 
         Finds the minimizer for a quadratic polynomial that goes through
-        the points ( a,f(a) ), ( b,f(b) ) with derivative at point a of fpa.
-        f(x) = B*(x-a)^2 + C*(x-a) + D
+        the points (a,fa), (b,fb) with derivative at point a of fpa.
 
         Parameters
         ----------
-        a : float
-            Selected point.
-        fa : float
-            Value of polynomial at point a.
-        fpa : Field
-            Derivative at point a.
-        b : float
-            Selected point.
-        fb : float
-            Value of polynomial at point b.
+        a, fa, fpa : float
+            abscissa, function value and derivative at first point
+        b, fb : float
+            abscissa and function value at second point
 
         Returns
         -------
         xmin : float
             Position of the approximated minimum.
         """
-        # f(x) = B*(x-a)^2 + C*(x-a) + D
         with np.errstate(divide='raise', over='raise', invalid='raise'):
             try:
-                D = fa
-                C = fpa
                 db = b - a * 1.0
-                B = (fb - D - C * db) / (db * db)
-                xmin = a - C / (2.0 * B)
+                B = (fb - fa - fpa * db) / (db * db)
+                xmin = a - fpa / (2.0 * B)
             except ArithmeticError:
                 return None
         if not np.isfinite(xmin):

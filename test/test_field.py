@@ -94,7 +94,7 @@ class Test_Functionality(unittest.TestCase):
         outer = np.outer(fp1.val, fp2.val)
         fp = Field((p1, p2), val=outer)
 
-        samples = 2000
+        samples = 500
         ps1 = 0.
         ps2 = 0.
         for ii in range(samples):

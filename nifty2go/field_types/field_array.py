@@ -21,7 +21,6 @@ from functools import reduce
 
 
 class FieldArray(FieldType):
-
     def __init__(self, shape):
         super(FieldArray, self).__init__()
         try:
