@@ -17,4 +17,3 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .prober import Prober
-from .parallel_prober import ParallelProber
