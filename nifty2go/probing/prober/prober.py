@@ -75,7 +75,7 @@ class Prober(object):
     def probing_run(self, callee):
         """ controls the generation, evaluation and finalization of probes """
         self.reset()
-        if self._ncpu==1:
+        if self._ncpu == 1:
             for index in range(self.probe_count):
                 current_probe = self.get_probe(index)
                 pre_result = self.process_probe(callee, current_probe, index)
@@ -89,7 +89,8 @@ class Prober(object):
 
             from pathos.multiprocessing import ProcessingPool as Pool
             pool = Pool(ncpus=self._ncpu)
-            pre_results = pool.map(self.evaluate_probe_parallel, callee, probes)
+            pre_results = pool.map(self.evaluate_probe_parallel, callee,
+                                   probes)
             for ii in xrange(self.probe_count):
                 self.finish_probe(probes[ii], pre_results[ii])
 

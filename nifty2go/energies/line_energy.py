@@ -74,7 +74,7 @@ class LineEnergy(object):
         self._line_position = float(line_position)
         self._line_direction = line_direction
 
-        if self._line_position==float(offset):
+        if self._line_position == float(offset):
             self.energy = energy
         else:
             pos = energy.position \
@@ -116,6 +116,6 @@ class LineEnergy(object):
     def directional_derivative(self):
         res = self.energy.gradient.vdot(self.line_direction)
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
-            print ("directional derivative has non-negligible "
+            print("directional derivative has non-negligible "
                   "imaginary part:", res)
         return res.real
