@@ -56,6 +56,7 @@ class DefaultIterationController(IterationController):
             if self._name is not None:
                 msg += self._name+":"
             msg += " Iteration #" + str(self._itcount)
+            msg += " energy=" + str(energy.value)
             msg += " gradnorm=" + str(energy.gradient_norm)
             msg += " clvl=" + str(self._ccount)
             print(msg)

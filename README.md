@@ -49,15 +49,13 @@ that apply to fields.
 <!-- -->
 
     Field.conjugate     Field.dim          Field.norm
-    Field.dot           Field.set_val      Field.weight
+    Field.vdot          Field.set_val      Field.weight
 
 -   [Operators](http://www.mpa-garching.mpg.de/ift/nifty/operator.html)
     -   `DiagonalOperator` - purely diagonal matrices in a specified
         basis
     -   `ProjectionOperator` - projections onto subsets of a specified
         basis
-    -   `PropagatorOperator` - information propagator in Wiener filter
-        theory
     -   (and more)
 -   (and more)
 
@@ -69,7 +67,7 @@ Installation
 
 ### Requirements
 
--   [Python](http://www.python.org/) (v2.7.x)
+-   [Python](http://www.python.org/) (v2.7.x or 3.5.x)
     -   [NumPy](http://www.numpy.org/)
 
 ### Download
