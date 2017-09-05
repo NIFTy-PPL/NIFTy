@@ -27,7 +27,7 @@ from nifty2go import Field,\
     DirectSmoothingOperator
 
 from itertools import product
-from test.common import expand, marco_binbounds
+from test.common import expand
 
 
 def _get_rtol(tp):
@@ -94,8 +94,8 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_irregular1(self, sz, log, sigma, tp):
         tol = _get_rtol(tp)
         sp = RGSpace(sz, harmonic=True)
-        ps = PowerSpace(sp, binbounds=marco_binbounds(
-                                                sp, logarithmic=log, nbin=sz))
+        bb = PowerSpace.useful_binbounds(sp, logarithmic=log)
+        ps = PowerSpace(sp, binbounds=bb)
         smo = DirectSmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
@@ -107,7 +107,8 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_irregular2(self, sz1, sz2, log, sigma, tp):
         tol = _get_rtol(tp)
         sp = RGSpace([sz1, sz2], harmonic=True)
-        ps = PowerSpace(sp, binbounds=marco_binbounds(sp, logarithmic=log))
+        bb = PowerSpace.useful_binbounds(sp, logarithmic=log)
+        ps = PowerSpace(sp, binbounds=bb)
         smo = DirectSmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)

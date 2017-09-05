@@ -24,7 +24,7 @@ import numpy as np
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
 from nifty2go import PowerSpace, RGSpace, Space, LMSpace
-from test.common import expand, marco_binbounds
+from test.common import expand
 from itertools import product, chain
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
@@ -46,7 +46,7 @@ CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT,
 
 # [harmonic_partner, logarithmic, nbin, binbounds, expected]
 CONSTRUCTOR_CONFIGS = [
-    [1, False, None, None, {'error': ValueError}],
+    [1, False, None, None, {'error': (ValueError, NotImplementedError)}],
     [RGSpace((8,)), False, None, None, {'error': ValueError}],
     [RGSpace((8,), harmonic=True), None, None, None, {
         'harmonic': True,
@@ -61,14 +61,14 @@ CONSTRUCTOR_CONFIGS = [
         }],
     [RGSpace((8,), harmonic=True), True, None, None, {
         'harmonic': True,
-        'shape': (2,),
-        'dim': 2,
+        'shape': (4,),
+        'dim': 4,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'binbounds': (0.70710678118654757,),
-        'pindex': np.array([0, 1, 1, 1, 1, 1, 1, 1]),
-        'kindex': np.array([0., 2.28571429]),
-        'rho': np.array([1, 7]),
+        'binbounds': (0.5, 1.3228756555322954, 3.5),
+        'pindex': np.array([0, 1, 2, 2, 3, 2, 2, 1]),
+        'kindex': np.array([0., 1., 2.5, 4.]),
+        'rho': np.array([1, 2, 4, 1]),
         }],
     ]
 
@@ -98,9 +98,8 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
     def test_rhopindexConsistency(self, harmonic_partner,
                                   binbounds, nbin, logarithmic):
-        p = PowerSpace(harmonic_partner=harmonic_partner,
-                       binbounds=marco_binbounds(harmonic_partner,
-                                                 logarithmic, nbin))
+        bb = PowerSpace.useful_binbounds(harmonic_partner, logarithmic, nbin)
+        p = PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
         assert_equal(np.bincount(p.pindex.flatten()), p.rho,
                      err_msg='rho is not equal to pindex degeneracy')
@@ -112,13 +111,13 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
                          logarithmic, nbin, binbounds, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
-                PowerSpace(harmonic_partner=harmonic_partner,
-                           binbounds=marco_binbounds(harmonic_partner,
-                                                     logarithmic, nbin))
+                bb = PowerSpace.useful_binbounds(harmonic_partner,
+                                                 logarithmic, nbin)
+                PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
         else:
-            p = PowerSpace(harmonic_partner=harmonic_partner,
-                           binbounds=marco_binbounds(harmonic_partner,
-                                                     logarithmic, nbin))
+            bb = PowerSpace.useful_binbounds(harmonic_partner,
+                                             logarithmic, nbin)
+            p = PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
             for key, value in expected.items():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)
@@ -132,4 +131,4 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
 
     def test_weight(self):
         p = PowerSpace(harmonic_partner=RGSpace(10,harmonic=True))
-        assert_almost_equal(p.weight(),1.)
+        assert_almost_equal(p.weight(),p.rho)

@@ -44,35 +44,3 @@ def generate_spaces():
 def generate_harmonic_spaces():
     spaces = [RGSpace(4, harmonic=True), LMSpace(5)]
     return spaces
-
-
-def marco_binbounds(space, logarithmic, nbin=None):
-    """Only for testing purposes. DO NOT USE IN REAL LIFE!"""
-    if logarithmic is None and nbin is None:
-        return None
-    if not (isinstance(space, Space) and space.harmonic):
-        raise ValueError("space must be a harmonic space.")
-    logarithmic = bool(logarithmic)
-    if nbin is not None:
-        nbin = int(nbin)
-        assert nbin >= 3, "nbin must be at least 3"
-    # equidistant binning (linear or log)
-    # MR FIXME: this needs to improve
-    kindex = space.get_unique_distances()
-    if (logarithmic):
-        k = np.r_[0, np.log(kindex[1:])]
-    else:
-        k = kindex
-    dk = np.max(k[2:] - k[1:-1])  # minimum dk to avoid empty bins
-    if(nbin is None):
-        nbin = int((k[-1] - 0.5 * (k[2] + k[1])) /
-                   dk - 0.5)  # maximal nbin
-    else:
-        nbin = min(int(nbin), int(
-            (k[-1] - 0.5 * (k[2] + k[1])) / dk + 2.5))
-        dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
-    bb = np.r_[0.5 * (3 * k[1] - k[2]),
-               0.5 * (k[1] + k[2]) + dk * np.arange(nbin-2)]
-    if(logarithmic):
-        bb = np.exp(bb)
-    return bb

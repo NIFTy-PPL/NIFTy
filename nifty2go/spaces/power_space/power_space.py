@@ -113,6 +113,35 @@ class PowerSpace(Space):
                            np.log(float(last_bound)),
                            nbin-1, base=np.e)
 
+    @staticmethod
+    def useful_binbounds(space, logarithmic, nbin=None):
+        if not (isinstance(space, Space) and space.harmonic):
+            raise ValueError("first argument must be a harmonic space.")
+        if logarithmic is None and nbin is None:
+            return None
+        nbin = None if nbin is None else int(nbin)
+        logarithmic = bool(logarithmic)
+        dists = space.get_unique_distances()
+        if len(dists) < 3:
+            raise ValueError("Space does not have enough unique k lengths")
+        lbound = 0.5*(dists[0]+dists[1])
+        rbound = 0.5*(dists[-2]+dists[-1])
+        dists[0] = lbound
+        dists[-1] = rbound
+        if logarithmic:
+            dists = np.log(dists)
+        binsz_min = np.max(np.diff(dists))
+        nbin_max = int((dists[-1]-dists[0])/binsz_min)+2
+        if nbin is None:
+            nbin = nbin_max
+        assert nbin >= 3, "nbin must be at least 3"
+        if nbin > nbin_max:
+            raise ValueError("nbin is too large")
+        if logarithmic:
+            return PowerSpace.logarithmic_binbounds(nbin, lbound, rbound)
+        else:
+            return PowerSpace.linear_binbounds(nbin, lbound, rbound)
+
     def __init__(self, harmonic_partner, binbounds=None):
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
@@ -179,7 +208,8 @@ class PowerSpace(Space):
                               binbounds=self._binbounds)
 
     def weight(self):
-        return 1.
+        # MR FIXME: this will probably change to 1 soon
+        return np.asarray(self.rho, dtype=np.float64)
 
     def get_distance_array(self):
         return self.kindex.copy()
