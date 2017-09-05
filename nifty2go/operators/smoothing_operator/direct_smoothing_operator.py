@@ -17,22 +17,19 @@ class DirectSmoothingOperator(EndomorphicOperator):
             raise ValueError("DirectSmoothingOperator only accepts exactly one"
                              " space as input domain.")
 
-        self._sigma = sigma
+        self._sigma = float(sigma)
         self._log_distances = log_distances
         self._effective_smoothing_width = 3.01
 
     def _times(self, x, spaces):
-        if self.sigma == 0:
+        if self._sigma == 0:
             return x.copy()
 
         # the domain of the smoothing operator contains exactly one space.
         # Hence, if spaces is None, but we passed LinearOperator's
         # _check_input_compatibility, we know that x is also solely defined
         # on that space
-        if spaces is None:
-            spaces = (0,)
-
-        return self._smooth(x, spaces)
+        return self._smooth(x, (0,) if spaces is None else spaces)
 
     # ---Mandatory properties and methods---
     @property
@@ -48,14 +45,6 @@ class DirectSmoothingOperator(EndomorphicOperator):
         return False
 
     # ---Added properties and methods---
-
-    @property
-    def sigma(self):
-        return self._sigma
-
-    @property
-    def log_distances(self):
-        return self._log_distances
 
     def _precompute(self, x, sigma, dxmax=None):
         """ Does precomputations for Gaussian smoothing on a 1D irregular grid.
@@ -186,7 +175,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
         distance_array = x.domain[spaces[0]].get_distance_array()
 
-        if self.log_distances:
+        if self._log_distances:
             np.log(np.maximum(distance_array, 1e-15), out=distance_array)
 
         augmented_data = x.val
@@ -198,13 +187,11 @@ class DirectSmoothingOperator(EndomorphicOperator):
         # currently only one axis is supported
         data_axis = affected_axes[0]
 
-        local_result = self._apply_along_axis(
+        return self._apply_along_axis(
                               data_axis,
                               augmented_data,
                               startindex=true_start,
                               endindex=true_end,
                               distances=augmented_distance_array,
-                              smooth_length=self.sigma,
+                              smooth_length=self._sigma,
                               smoothing_width=self._effective_smoothing_width)
-
-        return local_result

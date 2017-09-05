@@ -18,7 +18,7 @@
 
 import unittest
 import numpy as np
-from numpy.testing import assert_equal, assert_allclose
+from numpy.testing import assert_allclose
 
 from nifty2go import Field,\
     RGSpace,\
@@ -36,6 +36,7 @@ def _get_rtol(tp):
     else:
         return 1e-5
 
+
 class SmoothingOperator_Tests(unittest.TestCase):
     spaces = [RGSpace(128)]
 
@@ -44,11 +45,9 @@ class SmoothingOperator_Tests(unittest.TestCase):
         op = FFTSmoothingOperator(space, sigma=sigma)
         if op.domain[0] != space:
             raise TypeError
-        if op.unitary != False:
+        if op.unitary:
             raise ValueError
-        if op.self_adjoint != True:
-            raise ValueError
-        if op.sigma != sigma:
+        if not op.self_adjoint:
             raise ValueError
 
     @expand(product(spaces, [0., .5, 5.]))
