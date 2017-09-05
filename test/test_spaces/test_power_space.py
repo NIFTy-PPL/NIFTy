@@ -101,7 +101,7 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
         bb = PowerSpace.useful_binbounds(harmonic_partner, logarithmic, nbin)
         p = PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
-        assert_equal(np.bincount(p.pindex.flatten()), p.rho,
+        assert_equal(np.bincount(p.pindex.reshape(-1)), p.rho,
                      err_msg='rho is not equal to pindex degeneracy')
 
 
