@@ -162,10 +162,11 @@ class PowerSpace(Space):
                                 harmonic_partner=self.harmonic_partner,
                                 distance_array=distance_array,
                                 binbounds=binbounds)
-            temp_rho = np.bincount(temp_pindex.flatten())
+            temp_rho = np.bincount(temp_pindex.reshape(-1))
             assert not np.any(temp_rho == 0), "empty bins detected"
-            temp_kindex = np.bincount(temp_pindex.flatten(),
-                                   weights=distance_array.flatten()) / temp_rho
+            temp_kindex = np.bincount(temp_pindex.reshape(-1),
+                                      weights=distance_array.reshape(-1)) \
+                                      / temp_rho
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
                                           temp_kindex,

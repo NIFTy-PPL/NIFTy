@@ -735,7 +735,7 @@ class Field(object):
         y = self if bare else self.weight(power=1)
 
         if spaces is None:
-            return np.vdot(y.val.flatten(), x.val.flatten())
+            return np.vdot(y.val.reshape(-1), x.val.reshape(-1))
         else:
             # create a diagonal operator which is capable of taking care of the
             # axes-matching

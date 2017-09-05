@@ -299,7 +299,7 @@ class LineSearchStrongWolfe(LineSearch):
                 d1[1, 0] = -(dc*dc*dc)
                 d1[1, 1] = db*db*db
                 [A, B] = np.dot(d1, np.asarray([fb - fa - C * db,
-                                                fc - fa - C * dc]).flatten())
+                                                fc - fa - C * dc]).reshape(-1))
                 A /= denom
                 B /= denom
                 radical = B * B - 3 * A * C
