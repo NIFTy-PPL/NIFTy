@@ -45,7 +45,6 @@ class Test_Interface(unittest.TestCase):
                      ['val', np.ndarray],
                      ['shape', tuple],
                      ['dim', np.int],
-                     ['dof', np.int],
                      ['total_volume', np.float]]))
     def test_return_types(self, domain, attribute_desired_type):
         attribute = attribute_desired_type[0]

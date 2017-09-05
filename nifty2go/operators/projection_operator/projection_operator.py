@@ -111,9 +111,7 @@ class ProjectionOperator(EndomorphicOperator):
         remultiplied = np.einsum(local_projection_vector, sublist_projector,
                                  dotted, sublist_dotted,
                                  sublist_x)
-        result_field = x.copy_empty(dtype=remultiplied.dtype)
-        result_field.val=remultiplied
-        return result_field
+        return Field(x.domain, remultiplied, x.dtype)
 
     def _inverse_times(self, x, spaces):
         raise NotImplementedError("The ProjectionOperator is a singular "

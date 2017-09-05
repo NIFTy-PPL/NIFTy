@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ... import nifty_utilities as utilities
+from ... import Field, nifty_utilities as utilities
 from ...spaces import RGSpace,\
                       GLSpace,\
                       HPSpace,\
@@ -143,12 +143,7 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.target[0]
 
-        result_dtype = new_val.dtype
-        result_field = x.copy_empty(domain=result_domain,
-                                    dtype=result_dtype)
-        result_field.set_val(new_val=new_val, copy=True)
-
-        return result_field
+        return Field(result_domain, new_val, copy=False)
 
     def _adjoint_times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
@@ -168,13 +163,7 @@ class FFTOperator(LinearOperator):
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.domain[0]
 
-        result_dtype = new_val.dtype
-
-        result_field = x.copy_empty(domain=result_domain,
-                                    dtype=result_dtype)
-        result_field.set_val(new_val=new_val, copy=True)
-
-        return result_field
+        return Field(result_domain, new_val, copy=False)
 
     # ---Mandatory properties and methods---
 

@@ -1,6 +1,7 @@
 from ...spaces.power_space import PowerSpace
 from ..endomorphic_operator import EndomorphicOperator
 from ..laplace_operator import LaplaceOperator
+from ... import Field
 
 
 class SmoothnessOperator(EndomorphicOperator):
@@ -76,8 +77,7 @@ class SmoothnessOperator(EndomorphicOperator):
                                                  spaces)
             result *= self._strength**2
         else:
-            result = x.copy_empty()
-            result.val[:] = 0
+            result = Field(x.domain, 0., x.dtype)
         return result
 
     # ---Added properties and methods---

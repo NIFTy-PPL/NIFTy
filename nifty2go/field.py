@@ -248,7 +248,7 @@ class Field(object):
             parts_val = self._hermitian_decomposition(
                                               val=self.val,
                                               preserve_gaussian_variance=False)
-            parts = [self.copy_empty().set_val(part_val, copy=False)
+            parts = [Field(self.domain, part_val, self.dtype, copy=False)
                      for part_val in parts_val]
         else:
             parts = [self]
@@ -564,19 +564,6 @@ class Field(object):
         return self._val.size
 
     @property
-    def dof(self):
-        """ Returns the total number of degrees of freedom the Field has. For
-        real Fields this is equal to `self.dim`. For complex Fields it is
-        2*`self.dim`.
-
-        """
-
-        dof = self.dim
-        if issubclass(self.dtype.type, np.complexfloating):
-            dof *= 2
-        return dof
-
-    @property
     def total_volume(self):
         """ Returns the total volume of all spaces in the domain.
         """
@@ -620,49 +607,11 @@ class Field(object):
         out : Field
             The output object. An identical copy of 'self'.
 
-        See Also
-        --------
-        copy_empty
-
         """
 
         if domain is None:
             domain = self.domain
         return Field(domain=domain, val=self._val, dtype=dtype, copy=True)
-
-    def copy_empty(self, domain=None, dtype=None):
-        """ Returns an empty copy of the Field.
-
-        If no keyword arguments are given, the returned object will be an
-        identical copy of the original Field. The memory for the data array
-        is only allocated but not actively set to any value
-        (c.f. numpy.ndarray.copy_empty). By explicit specification one is able
-        to change the domain and the dtype of the returned Field.
-
-        Parameters
-        ----------
-        domain : DomainObject
-            The new domain the Field shall have.
-
-        dtype : type
-            The new dtype the Field shall have.
-
-        Returns
-        -------
-        out : Field
-            The output object.
-
-        See Also
-        --------
-        copy
-
-        """
-
-        if domain is None:
-            domain = self.domain
-        if dtype is None:
-            dtype = self.dtype
-        return Field(domain=domain, dtype=dtype)
 
     def weight(self, power=1, inplace=False, spaces=None):
         """ Weights the pixels of `self` with their invidual pixel-volume.
@@ -702,7 +651,7 @@ class Field(object):
                 wgt = wgt.reshape(new_shape)
                 new_val *= wgt**power
         fct = fct**power
-        if fct!=1:
+        if fct != 1.:
             new_val *= fct
 
         return Field(self.domain, new_val, self.dtype)
