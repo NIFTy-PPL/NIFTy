@@ -1,3 +1,12 @@
+WARNING:
+========
+
+The code on this branch is not meant to be an official version of NIFTy.
+As a consequence, it does not install as package "nifty", but rather as
+"nifty2go", to allow parallel installation alongside the official NIFTy and
+avoid any conflicts.
+
+
 NIFTY - Numerical Information Field Theory
 ==========================================
 [![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/master/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/master)
