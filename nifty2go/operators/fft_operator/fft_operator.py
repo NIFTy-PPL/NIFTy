@@ -132,17 +132,13 @@ class FFTOperator(LinearOperator):
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
             axes = x.domain_axes[0]
-        else:
-            axes = x.domain_axes[spaces[0]]
-
-        new_val = self._forward_transformation.transform(x.val, axes=axes)
-
-        if spaces is None:
             result_domain = self.target
         else:
+            axes = x.domain_axes[spaces[0]]
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.target[0]
 
+        new_val = self._forward_transformation.transform(x.val, axes=axes)
         return Field(result_domain, new_val, copy=False)
 
     def _adjoint_times(self, x, spaces):
@@ -152,17 +148,13 @@ class FFTOperator(LinearOperator):
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
             axes = x.domain_axes[0]
-        else:
-            axes = x.domain_axes[spaces[0]]
-
-        new_val = self._backward_transformation.transform(x.val, axes=axes)
-
-        if spaces is None:
             result_domain = self.domain
         else:
+            axes = x.domain_axes[spaces[0]]
             result_domain = list(x.domain)
             result_domain[spaces[0]] = self.domain[0]
 
+        new_val = self._backward_transformation.transform(x.val, axes=axes)
         return Field(result_domain, new_val, copy=False)
 
     # ---Mandatory properties and methods---

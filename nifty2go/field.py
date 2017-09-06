@@ -106,16 +106,15 @@ class Field(object):
     def _parse_domain(self, domain, val=None):
         if domain is None:
             if isinstance(val, Field):
-                domain = val.domain
-            elif np.isscalar(val):
-                domain = ()
-            else:
-                raise TypeError("could not infer domain from value")
-        elif isinstance(domain, DomainObject):
-            domain = (domain,)
-        elif not isinstance(domain, tuple):
-            domain = tuple(domain)
+                return val.domain
+            if np.isscalar(val):
+                return ()  # empty domain tuple
+            raise TypeError("could not infer domain from value")
+        if isinstance(domain, DomainObject):
+            return (domain,)
 
+        if not isinstance(domain, tuple):
+            domain = tuple(domain)
         for d in domain:
             if not isinstance(d, DomainObject):
                 raise TypeError(
