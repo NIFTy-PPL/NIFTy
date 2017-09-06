@@ -37,3 +37,7 @@ class QuadraticEnergy(Energy):
     @property
     def curvature(self):
         return self._A
+
+    @property
+    def norm_b(self):
+        return self._b.norm()

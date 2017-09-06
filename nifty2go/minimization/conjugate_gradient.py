@@ -18,6 +18,7 @@
 
 from __future__ import division
 from .minimizer import Minimizer
+import numpy as np
 
 
 class ConjugateGradient(Minimizer):
@@ -68,6 +69,7 @@ class ConjugateGradient(Minimizer):
         if status != controller.CONTINUE:
             return energy, status
 
+        norm_b = energy.norm_b
         r = -energy.gradient
         if self._preconditioner is not None:
             d = self._preconditioner(r)
@@ -90,10 +92,6 @@ class ConjugateGradient(Minimizer):
             r -= q * alpha
             energy = energy.at_with_grad(energy.position+d*alpha, -r)
 
-            status = self._controller.check(energy)
-            if status != controller.CONTINUE:
-                return energy, status
-
             if self._preconditioner is not None:
                 s = self._preconditioner(r)
             else:
@@ -105,6 +103,12 @@ class ConjugateGradient(Minimizer):
                     "Positive definiteness of preconditioner violated!")
             if gamma == 0:
                 return energy, controller.CONVERGED
+
+            status = self._controller.check(energy,
+                                            custom_measure=np.sqrt(gamma) /
+                                            norm_b)
+            if status != controller.CONTINUE:
+                return energy, status
 
             d = s + d * max(0, gamma/previous_gamma)
 

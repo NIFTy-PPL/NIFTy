@@ -22,33 +22,42 @@ from .iteration_controller import IterationController
 
 class DefaultIterationController(IterationController):
     def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
-                 convergence_level=1, iteration_limit=None, name=None,
-                 verbose=None):
+                 tol_custom=None, convergence_level=1, iteration_limit=None,
+                 name=None, verbose=None):
         super(DefaultIterationController, self).__init__()
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
+        self._tol_custom = tol_custom
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
         self._name = name
         self._verbose = verbose
 
-    def start(self, energy):
+    def start(self, energy, custom_measure=None):
         self._itcount = -1
         self._ccount = 0
         if self._tol_rel_gradnorm is not None:
             self._tol_rel_gradnorm_now = self._tol_rel_gradnorm \
                                        * energy.gradient_norm
-        return self.check(energy)
+        return self.check(energy, custom_measure)
 
-    def check(self, energy):
+    def check(self, energy, custom_measure=None):
         self._itcount += 1
 
+        inclvl = False
         if self._tol_abs_gradnorm is not None:
             if energy.gradient_norm <= self._tol_abs_gradnorm:
-                self._ccount += 1
+                inclvl = True
         if self._tol_rel_gradnorm is not None:
             if energy.gradient_norm <= self._tol_rel_gradnorm_now:
-                self._ccount += 1
+                inclvl = True
+        if self._tol_custom is not None and custom_measure is not None:
+            if custom_measure <= self._tol_custom:
+                inclvl = True
+        if inclvl:
+            self._ccount += 1
+        else:
+            self._ccount = max(0, self._ccount-1)
 
         # report
         if self._verbose:
@@ -58,6 +67,8 @@ class DefaultIterationController(IterationController):
             msg += " Iteration #" + str(self._itcount)
             msg += " energy=" + str(energy.value)
             msg += " gradnorm=" + str(energy.gradient_norm)
+            if custom_measure is not None:
+                msg += " custom=" + str(custom_measure)
             msg += " clvl=" + str(self._ccount)
             print(msg)
             # self.logger.info(msg)

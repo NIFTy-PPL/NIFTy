@@ -58,6 +58,7 @@ if __name__ == "__main__":
 
     diagonal = mock_power.power_synthesize(spaces=(0, 1), mean=1, std=0,
                                            real_signal=False)**2
+    #diagonal = diagonal.real
 
     S = ift.DiagonalOperator(domain=(harmonic_space_1, harmonic_space_2),
                              diagonal=diagonal)
@@ -91,9 +92,7 @@ if __name__ == "__main__":
 
     # Wiener filter
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    ctrl = ift.DefaultIterationController(verbose=True,
-                                          tol_abs_gradnorm=1.0,
-                                          tol_rel_gradnorm=1e-4)
+    ctrl = ift.DefaultIterationController(verbose=True, tol_custom=1e-3, convergence_level=3)
     inverter = ift.ConjugateGradient(controller=ctrl,preconditioner=S.times)
     wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic, inverter=inverter)
 
