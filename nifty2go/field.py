@@ -612,6 +612,20 @@ class Field(object):
             domain = self.domain
         return Field(domain=domain, val=self._val, dtype=dtype, copy=True)
 
+    def scalar_weight(self, spaces=None):
+        if np.isscalar(spaces):
+            return self.domain[spaces].scalar_weight()
+
+        res = 1.
+        if spaces is None:
+            spaces = range(len(self.domain))
+        for i in spaces:
+            tmp = self.domain[i].scalar_weight()
+            if tmp is None:
+                return None
+            res *= tmp
+        return res
+
     def weight(self, power=1, inplace=False, spaces=None):
         """ Weights the pixels of `self` with their invidual pixel-volume.
 
@@ -680,10 +694,19 @@ class Field(object):
                              "the NIFTy field class")
 
         # Compute the dot respecting the fact of discrete/continuous spaces
-        y = self if bare else self.weight(power=1)
+        fct = 1.
+        if bare:
+            y = self
+        else:
+            tmp = self.scalar_weight(spaces)
+            if tmp is None:
+                y = self.weight(power=1)
+            else:
+                y = self
+                fct = tmp
 
         if spaces is None:
-            return np.vdot(y.val.reshape(-1), x.val.reshape(-1))
+            return fct*np.vdot(y.val.reshape(-1), x.val.reshape(-1))
         else:
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
@@ -693,7 +716,7 @@ class Field(object):
                                                 diagonal=diagonal,
                                                 copy=False)
             dotted = diagonalOperator(x, spaces=spaces)
-            return dotted.sum(spaces=spaces)
+            return fct*dotted.sum(spaces=spaces)
 
     def norm(self):
         """ Computes the L2-norm of the field values.

@@ -111,6 +111,9 @@ class GLSpace(Space):
     def copy(self):
         return self.__class__(nlat=self.nlat, nlon=self.nlon)
 
+    def scalar_weight(self):
+        return None
+
     def weight(self):
         from pyHealpix import GL_weights
         vol = GL_weights(self.nlat, self.nlon)

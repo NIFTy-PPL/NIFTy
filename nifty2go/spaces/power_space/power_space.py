@@ -208,8 +208,11 @@ class PowerSpace(Space):
         return self.__class__(harmonic_partner=self.harmonic_partner,
                               binbounds=self._binbounds)
 
+    def scalar_weight(self):
+        return None
+
     def weight(self):
-        # MR FIXME: this will probably change to 1 soon
+       # MR FIXME: this will probably change to 1 soon
         return np.asarray(self.rho, dtype=np.float64)
 
     def get_distance_array(self):

@@ -20,5 +20,8 @@ from ..domain_object import DomainObject
 
 
 class FieldType(DomainObject):
+    def scalar_weight(self):
+        return 1.
+
     def weight(self):
         return 1.

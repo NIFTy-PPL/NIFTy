@@ -115,6 +115,9 @@ class RGSpace(Space):
                               distances=self.distances,
                               harmonic=self.harmonic)
 
+    def scalar_weight(self):
+        return reduce(lambda x, y: x*y, self.distances)
+
     def weight(self):
         return reduce(lambda x, y: x*y, self.distances)
 

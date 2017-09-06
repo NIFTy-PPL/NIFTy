@@ -127,6 +127,26 @@ class DomainObject(with_metaclass(
             "There is no generic dim for DomainObject.")
 
     @abc.abstractmethod
+    def scalar_weight(self):
+        """ Returns the volume factors of this domain as a floating
+        point scalar, if the volume factors are all identical, otherwise
+        returns None.
+
+        Returns
+        -------
+        float or None
+            Volume factor
+
+        Raises
+        ------
+        NotImplementedError
+            If called for this abstract class.
+
+        """
+        raise NotImplementedError(
+            "There is no generic scalar_weight method for DomainObject.")
+
+    @abc.abstractmethod
     def weight(self):
         """ Returns the volume factors of this domain, either as a floating
         point scalar (if the volume factors are all identical) or as a

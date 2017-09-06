@@ -106,6 +106,9 @@ class HPSpace(Space):
     def copy(self):
         return self.__class__(nside=self.nside)
 
+    def scalar_weight(self):
+        return np.pi / (3*self._nside*self._nside)
+
     def weight(self):
         return np.pi / (3*self._nside*self._nside)
 
