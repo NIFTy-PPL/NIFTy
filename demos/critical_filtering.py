@@ -5,7 +5,7 @@ import plotly.graph_objs as go
 import plotly.offline as pl
 
 np.random.seed(42)
-
+#np.seterr(all="raise",under="ignore")
 
 def plot_parameters(m, t, p, p_d):
     x = ift.log(t.domain[0].kindex)
@@ -92,14 +92,9 @@ if __name__ == "__main__":
     d_data = d.val.real
     pl.plot([go.Heatmap(z=d_data)], filename='data.html', auto_open=False)
 
-    #  Minimization strategy
-    def convergence_measure(a_energy, iteration):  # returns current energy
-        x = a_energy.value
-        print(x, iteration)
-
-    IC1 = ift.DefaultIterationController(verbose=True,iteration_limit=5)
+    IC1 = ift.DefaultIterationController(verbose=True,iteration_limit=100)
     minimizer1 = ift.RelaxedNewton(IC1)
-    IC2 = ift.DefaultIterationController(verbose=True,iteration_limit=30)
+    IC2 = ift.DefaultIterationController(verbose=True,iteration_limit=100)
     minimizer2 = ift.VL_BFGS(IC2, max_history_length=20)
     IC3 = ift.DefaultIterationController(verbose=True,iteration_limit=100)
     minimizer3 = ift.SteepestDescent(IC3)
@@ -116,17 +111,19 @@ if __name__ == "__main__":
         S0 = ift.create_power_operator(h_space, power_spectrum=ps0)
 
         # Initialize non-linear Wiener Filter energy
-        ICI = ift.DefaultIterationController(verbose=True,iteration_limit=60)
-        inverter = ift.ConjugateGradient(controller=ICI,preconditioner=S0.times)
-        map_energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0, inverter=inverter)
+        ICI = ift.DefaultIterationController(verbose=False,iteration_limit=60)
+        map_inverter = ift.ConjugateGradient(controller=ICI)
+        map_energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0, inverter=map_inverter)
         # Solve the Wiener Filter analytically
         D0 = map_energy.curvature
         m0 = D0.inverse_times(j)
         # Initialize power energy with updated parameters
+        ICI2 = ift.DefaultIterationController(verbose=False,iteration_limit=60)
+        power_inverter = ift.ConjugateGradient(controller=ICI2)
         power_energy = ift.library.CriticalPowerEnergy(position=t0, m=m0, D=D0,
-                                           smoothness_prior=10., samples=3)
+                                           smoothness_prior=10., samples=3, inverter=power_inverter)
 
-        (power_energy, convergence) = minimizer2(power_energy)
+        (power_energy, convergence) = minimizer3(power_energy)
 
         # Set new power spectrum
         t0.val = power_energy.position.val.real
