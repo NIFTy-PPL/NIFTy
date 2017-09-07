@@ -117,7 +117,7 @@ class GLSpace(Space):
     def weight(self):
         from pyHealpix import GL_weights
         vol = GL_weights(self.nlat, self.nlon)
-        return np.outer(vol, np.ones(self.nlon,dtype=np.float64)).reshape(-1)
+        return np.outer(vol, np.ones(self.nlon,dtype=np.float64)).ravel()
 
     # ---Added properties and methods---
 

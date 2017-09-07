@@ -706,7 +706,7 @@ class Field(object):
                 fct = tmp
 
         if spaces is None:
-            return fct*np.vdot(y.val.reshape(-1), x.val.reshape(-1))
+            return fct*np.vdot(y.val.ravel(), x.val.ravel())
         else:
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
