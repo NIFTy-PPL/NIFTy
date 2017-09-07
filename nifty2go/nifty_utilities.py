@@ -65,7 +65,6 @@ def get_slice_list(shape, axes):
             yield slice_list
     else:
         yield [slice(None, None)]
-        return
 
 
 def cast_axis_to_tuple(axis, length=None):
@@ -152,20 +151,14 @@ def bincount_axis(obj, minlength=None, weights=None, axis=None):
 
     # compute the local bincount results
     # -> prepare the local result array
-    if weights is None:
-        result_dtype = np.int
-    else:
-        result_dtype = np.float
+    result_dtype = np.int if weights is None else np.float
     local_counts = np.empty(flat_shape[:-1] + (length, ),
                             dtype=result_dtype)
     # iterate over all entries in the surviving axes and compute the local
     # bincounts
     for slice_list in get_slice_list(flat_shape,
                                      axes=(len(flat_shape)-1, )):
-        if weights is not None:
-            current_weights = weights[slice_list]
-        else:
-            current_weights = None
+        current_weights = None if weights is None else weights[slice_list]
         local_counts[slice_list] = np.bincount(
                                         data[slice_list],
                                         weights=current_weights,
