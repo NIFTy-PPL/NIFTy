@@ -89,8 +89,14 @@ class ConjugateGradient(Minimizer):
             if alpha < 0:
                 return energy, controller.ERROR
 
-            r -= q * alpha
-            energy = energy.at_with_grad(energy.position+d*alpha, -r)
+            # MR: BLAS candidate
+            q *= alpha
+            r -= q
+
+            # MR: BLAS candidate
+            tpos = d*alpha
+            tpos += energy.position
+            energy = energy.at_with_grad(tpos, -r)
 
             if self._preconditioner is not None:
                 s = self._preconditioner(r)
@@ -110,6 +116,8 @@ class ConjugateGradient(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
 
-            d = s + d * max(0, gamma/previous_gamma)
+            # MR: BLAS candidate
+            d *= max(0, gamma/previous_gamma)
+            d += s
 
             previous_gamma = gamma
