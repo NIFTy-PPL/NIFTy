@@ -23,7 +23,6 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     """
 
     def __init__(self, R, N, S, inverter, **kwargs):
-
         self.R = R
         self.N = N
         self.S = S
