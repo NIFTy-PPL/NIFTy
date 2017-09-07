@@ -132,17 +132,16 @@ class Field(object):
         return tuple(axes_list)
 
     def _infer_dtype(self, dtype, val):
-        if val is None:
-            return np.float64 if dtype is None else dtype
-        if dtype is None:
-            if isinstance(val, Field):
-                return val.dtype
-            return np.result_type(val)
+        if val is None or dtype is not None:
+            return np.result_type(dtype, np.float64)
+        if isinstance(val, Field):
+            return val.dtype
+        return np.result_type(val, np.float64)
 
     # ---Factory methods---
 
     @classmethod
-    def from_random(cls, random_type, domain=None, dtype=None, **kwargs):
+    def from_random(cls, random_type, domain, dtype=None, **kwargs):
         """ Draws a random field with the given parameters.
 
         Parameters
@@ -171,10 +170,10 @@ class Field(object):
 
         """
 
-        f = cls(domain=domain, dtype=dtype)
         generator_function = getattr(Random, random_type)
-        f.val = generator_function(dtype=f.dtype, shape=f.shape, **kwargs)
-        return f
+        return Field(domain=domain,
+                     val=generator_function(dtype=np.dtype(dtype),
+                     shape=utilities.domains2shape(domain), **kwargs))
 
     # ---Powerspectral methods---
 
@@ -412,9 +411,9 @@ class Field(object):
             spec = self._spec_to_rescaler(spec, power_space_index)
 
         # apply the rescaler to the random fields
-        result_list[0].val *= spec.real
+        result_list[0] *= spec.real
         if not real_power:
-            result_list[1].val *= spec.imag
+            result_list[1] *= spec.imag
 
         if real_signal:
             result_list = [Field(i.domain, self._hermitian_decomposition(
@@ -454,7 +453,8 @@ class Field(object):
 
     # ---Properties---
 
-    def set_val(self, new_val=None, copy=False):
+    # MR FIXME: unused for the moment, remove after some time
+    def _donotuse_set_val(self, new_val=None, copy=False):
         """ Sets the field's data object.
 
         Parameters
@@ -529,9 +529,9 @@ class Field(object):
         """
         return self._val
 
-    @val.setter
-    def val(self, new_val):
-        self.set_val(new_val=new_val, copy=False)
+    #@val.setter
+    #def val(self, new_val):
+    #    self.set_val(new_val=new_val, copy=False)
 
     @property
     def dtype(self):

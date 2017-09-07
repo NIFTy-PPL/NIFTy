@@ -109,6 +109,13 @@ def parse_domain(domain):
                 "instance of DomainObject-class.")
     return domain
 
+def domains2shape(domain):
+    domain = parse_domain(domain)
+    shape_tuple = tuple(sp.shape for sp in domain)
+    if len(shape_tuple) == 0:
+        return ()
+    else:
+        return reduce(lambda x, y: x + y, shape_tuple)
 
 def bincount_axis(obj, minlength=None, weights=None, axis=None):
     if minlength is not None:

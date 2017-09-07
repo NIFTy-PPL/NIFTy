@@ -66,8 +66,6 @@ class FFTSmoothingOperator(EndomorphicOperator):
         reshaper = [transformed_x.shape[i] if i in coaxes else 1
                     for i in range(len(transformed_x.shape))]
 
-        local_transformed_x = transformed_x.val
-        local_transformed_x *= np.reshape(self._kernel, reshaper)
-        transformed_x.val = local_transformed_x
+        transformed_x *= np.reshape(self._kernel, reshaper)
 
         return self._transformator.adjoint_times(transformed_x, spaces=spaces)
