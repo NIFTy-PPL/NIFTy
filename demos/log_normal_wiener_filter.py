@@ -47,7 +47,7 @@ if __name__ == "__main__":
     m0 = ift.Field(harmonic_space, val=0.)
     ctrl = ift.DefaultIterationController(verbose=False,tol_abs_gradnorm=1)
     ctrl2 = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=0.1, name="outer")
-    inverter = ift.ConjugateGradient(controller=ctrl, preconditioner=S.times)
+    inverter = ift.ConjugateGradient(controller=ctrl)
     energy = ift.library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S, inverter=inverter)
     minimizer1 = ift.VL_BFGS(controller=ctrl2,max_history_length=20)
     minimizer2 = ift.RelaxedNewton(controller=ctrl2)
@@ -64,12 +64,12 @@ if __name__ == "__main__":
 
 
     # Probing the variance
-    class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby(signal_space, probe_count=100)
-    proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))
+    #class Proby(ift.DiagonalProberMixin, ift.Prober): pass
+    #proby = Proby(signal_space, probe_count=100)
+    #proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))
 
-    sm = SmoothingOperator(signal_space, sigma=0.02)
-    variance = sm(proby.diagonal.weight(-1))
+    #sm = SmoothingOperator(signal_space, sigma=0.02)
+    #variance = sm(proby.diagonal.weight(-1))
 
     #Plotting #|\label{code:wf_plotting}|
     #plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
 
     plotter.plot.zmax = 5; plotter.plot.zmin = -5
-    plotter(variance, path = 'variance.html')
+    #plotter(variance, path = 'variance.html')
 #    #plotter.plot.zmin = exp(mock_signal.min());
 #    plotter(mock_signal.real, path='mock_signal.html')
 #    plotter(Field(signal_space, val=np.log(data.val.get_full_data().real).reshape(signal_space.shape)),

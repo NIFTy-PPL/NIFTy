@@ -75,7 +75,7 @@ if __name__ == "__main__":
     # Choosing the minimization strategy
 
     ctrl = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=0.1)
-    inverter = ift.ConjugateGradient(controller=ctrl, preconditioner=S.times)
+    inverter = ift.ConjugateGradient(controller=ctrl)
     # Setting starting position
     m0 = ift.Field(h_space, val=.0)
 

@@ -46,7 +46,7 @@ class ConjugateGradient(Minimizer):
         self._preconditioner = preconditioner
         self._controller = controller
 
-    def __call__(self, energy):
+    def __call__(self, energy, preconditioner=None):
         """ Runs the conjugate gradient minimization.
 
         Parameters
@@ -64,6 +64,9 @@ class ConjugateGradient(Minimizer):
 
         """
 
+        if preconditioner is None:
+            preconditioner = self._preconditioner
+
         controller = self._controller
         status = controller.start(energy)
         if status != controller.CONTINUE:
@@ -71,8 +74,8 @@ class ConjugateGradient(Minimizer):
 
         norm_b = energy.norm_b
         r = -energy.gradient
-        if self._preconditioner is not None:
-            d = self._preconditioner(r)
+        if preconditioner is not None:
+            d = preconditioner(r)
         else:
             d = r.copy()
         previous_gamma = (r.vdot(d)).real
@@ -98,8 +101,8 @@ class ConjugateGradient(Minimizer):
             tpos += energy.position
             energy = energy.at_with_grad(tpos, -r)
 
-            if self._preconditioner is not None:
-                s = self._preconditioner(r)
+            if preconditioner is not None:
+                s = preconditioner(r)
             else:
                 s = r
 

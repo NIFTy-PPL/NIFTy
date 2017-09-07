@@ -26,7 +26,7 @@ class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     """
 
     @abc.abstractmethod
-    def __call__(self, energy):
+    def __call__(self, energy, preconditioner=None):
         """ Performs the minimization of the provided Energy functional.
 
         Parameters
@@ -34,6 +34,9 @@ class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
         energy : Energy object
            Energy object which provides value, gradient and curvature at a
            specific position in parameter space.
+
+        preconditioner : LinearOperator, optional
+           Preconditioner to accelerate the minimization
 
         Returns
         -------
