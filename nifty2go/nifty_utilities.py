@@ -99,12 +99,12 @@ def cast_axis_to_tuple(axis, length=None):
 def parse_domain(domain):
     from .domain_object import DomainObject
     if domain is None:
-        domain = ()
-    elif isinstance(domain, DomainObject):
-        domain = (domain,)
-    elif not isinstance(domain, tuple):
-        domain = tuple(domain)
+        return ()
+    if isinstance(domain, DomainObject):
+        return (domain,)
 
+    if not isinstance(domain, tuple):
+        domain = tuple(domain)
     for d in domain:
         if not isinstance(d, DomainObject):
             raise TypeError(

@@ -616,9 +616,9 @@ class Field(object):
         if np.isscalar(spaces):
             return self.domain[spaces].scalar_weight()
 
-        res = 1.
         if spaces is None:
             spaces = range(len(self.domain))
+        res = 1.
         for i in spaces:
             tmp = self.domain[i].scalar_weight()
             if tmp is None:
@@ -723,7 +723,7 @@ class Field(object):
 
         Returns
         -------
-        norm : scalar
+        norm : float
             The L2-norm of the field values.
 
         """
