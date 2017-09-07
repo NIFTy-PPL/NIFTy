@@ -52,18 +52,6 @@ class EndomorphicOperator(LinearOperator):
         Raised if
             * self_adjoint is not defined
 
-    Notes
-    -----
-
-    Examples
-    --------
-
-
-    See Also
-    --------
-    DiagonalOperator, SmoothingOperator,
-    PropagatorOperator, ProjectionOperator
-
     """
 
     # ---Overwritten properties and methods---
