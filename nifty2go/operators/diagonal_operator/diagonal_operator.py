@@ -95,7 +95,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     def _adjoint_times(self, x, spaces):
         return self._times_helper(x, spaces,
-                                  operation=lambda z: z.adjoint().__mul__)
+                                  operation=lambda z: z.conjugate().__mul__)
 
     def _inverse_times(self, x, spaces):
         return self._times_helper(x, spaces,
@@ -103,7 +103,8 @@ class DiagonalOperator(EndomorphicOperator):
 
     def _adjoint_inverse_times(self, x, spaces):
         return self._times_helper(x, spaces,
-                                  operation=lambda z: z.adjoint().__rtruediv__)
+                                  operation=lambda z:
+                                     z.conjugate().__rtruediv__)
 
     def diagonal(self, bare=False, copy=True):
         """ Returns the diagonal of the Operator.
@@ -204,22 +205,18 @@ class DiagonalOperator(EndomorphicOperator):
         # -> multiply the fields directly
         if x.domain == self.domain:
             # here the actual multiplication takes place
-            return operation(self.diagonal(copy=False))(x)
+            return operation(self._diagonal)(x)
 
-        active_axes = []
         if spaces is None:
             active_axes = list(range(len(x.shape)))
         else:
+            active_axes = []
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
 
-        local_diagonal = self._diagonal.val
-
         reshaper = [x.val.shape[i] if i in active_axes else 1
                     for i in range(len(x.shape))]
-        reshaped_local_diagonal = np.reshape(local_diagonal, reshaper)
+        reshaped_local_diagonal = np.reshape(self._diagonal.val, reshaper)
 
         # here the actual multiplication takes place
-        local_result = operation(reshaped_local_diagonal)(x.val)
-
-        return Field(x.domain, val=local_result)
+        return Field(x.domain,val=operation(reshaped_local_diagonal)(x.val))
