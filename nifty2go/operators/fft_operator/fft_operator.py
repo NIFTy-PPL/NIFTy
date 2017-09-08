@@ -17,17 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ... import Field, nifty_utilities as utilities
-from ...spaces import RGSpace,\
-                      GLSpace,\
-                      HPSpace,\
-                      LMSpace
+from ...spaces import RGSpace, GLSpace, HPSpace, LMSpace
 
 from ..linear_operator import LinearOperator
-from .transformations import RGRGTransformation,\
-                            LMGLTransformation,\
-                            LMHPTransformation,\
-                            GLLMTransformation,\
-                            HPLMTransformation
+from .fft_operator_support import RGRGTransformation,\
+                                  LMGLTransformation,\
+                                  LMHPTransformation,\
+                                  GLLMTransformation,\
+                                  HPLMTransformation
 
 
 class FFTOperator(LinearOperator):
