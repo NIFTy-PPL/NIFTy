@@ -1,5 +1,4 @@
 from __future__ import division
-import matplotlib.pyplot as plt
 import numpy as np
 from ..import Field, RGSpace, HPSpace, GLSpace, PowerSpace
 import os
@@ -42,6 +41,7 @@ def _find_closest(A, target):
     return idx
 
 def _makeplot(name):
+    import matplotlib.pyplot as plt
     if name is None:
         plt.show()
         return
@@ -66,6 +66,7 @@ def _makeplot(name):
         raise ValueError("file format not understood")
 
 def plot (f,name=None):
+    import matplotlib.pyplot as plt
     if not isinstance(f,Field):
         raise TypeError("incorrect data type")
     if len(f.domain)!=1:
