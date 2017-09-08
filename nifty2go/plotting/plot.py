@@ -12,6 +12,7 @@ import os
 # - title
 # - axis labels
 
+
 def _mollweide_helper(xsize):
     xsize = int(xsize)
     ysize = xsize//2
@@ -31,6 +32,7 @@ def _mollweide_helper(xsize):
     phi = np.where(phi < 0, phi+2*np.pi, phi)
     return res, mask, theta, phi
 
+
 def _find_closest(A, target):
     # A must be sorted
     idx = A.searchsorted(target)
@@ -40,34 +42,36 @@ def _find_closest(A, target):
     idx -= target - left < right - target
     return idx
 
+
 def _makeplot(name):
     import matplotlib.pyplot as plt
     if name is None:
         plt.show()
         return
     extension = os.path.splitext(name)[1]
-    if extension==".pdf":
+    if extension == ".pdf":
         plt.savefig(name)
         plt.close()
-    elif extension==".png":
+    elif extension == ".png":
         plt.savefig(name)
         plt.close()
-    #elif extension==".html":
-        #import mpld3
-        #mpld3.save_html(plt.gcf(),fileobj=name,no_extras=True)
-        #import plotly.offline as py
-        #import plotly.tools as tls
-        #plotly_fig = tls.mpl_to_plotly(plt.gcf())
-        #py.plot(plotly_fig,filename=name)
-        #py.plot_mpl(plt.gcf(),filename=name)
-        #import bokeh
-        #bokeh.mpl.to_bokeh(plt.gcf())
+    # elif extension==".html":
+        # import mpld3
+        # mpld3.save_html(plt.gcf(),fileobj=name,no_extras=True)
+        # import plotly.offline as py
+        # import plotly.tools as tls
+        # plotly_fig = tls.mpl_to_plotly(plt.gcf())
+        # py.plot(plotly_fig,filename=name)
+        # py.plot_mpl(plt.gcf(),filename=name)
+        # import bokeh
+        # bokeh.mpl.to_bokeh(plt.gcf())
     else:
         raise ValueError("file format not understood")
 
+
 def _limit_xy(**kwargs):
     import matplotlib.pyplot as plt
-    x1,x2,y1,y2 = plt.axis()
+    x1, x2, y1, y2 = plt.axis()
     if (kwargs.get("xmin")) is not None:
         x1 = kwargs.get("xmin")
     if (kwargs.get("xmax")) is not None:
@@ -76,25 +80,26 @@ def _limit_xy(**kwargs):
         y1 = kwargs.get("ymin")
     if (kwargs.get("ymax")) is not None:
         y2 = kwargs.get("ymax")
-    plt.axis((x1,x2,y1,y2))
+    plt.axis((x1, x2, y1, y2))
 
-def plot(f,**kwargs):
+
+def plot(f, **kwargs):
     import matplotlib.pyplot as plt
-    if not isinstance(f,Field):
+    if not isinstance(f, Field):
         raise TypeError("incorrect data type")
-    if len(f.domain)!=1:
+    if len(f.domain) != 1:
         raise ValueError("input field must have exactly one domain")
 
     dom = f.domain[0]
     fig = plt.figure()
-    ax = fig.add_subplot(1,1,1)
+    ax = fig.add_subplot(1, 1, 1)
 
-    xsize,ysize = 6,6
+    xsize, ysize = 6, 6
     if kwargs.get("xsize") is not None:
         xsize = kwargs.get("xsize")
     if kwargs.get("ysize") is not None:
         ysize = kwargs.get("ysize")
-    fig.set_size_inches(xsize,ysize)
+    fig.set_size_inches(xsize, ysize)
 
     if kwargs.get("title") is not None:
         ax.set_title(kwargs.get("title"))
@@ -102,31 +107,33 @@ def plot(f,**kwargs):
         ax.set_xlabel(kwargs.get("xlabel"))
     if kwargs.get("ylabel") is not None:
         ax.set_ylabel(kwargs.get("ylabel"))
-    cmap=plt.rcParams['image.cmap']
+    cmap = plt.rcParams['image.cmap']
     if kwargs.get("colormap") is not None:
         cmap = kwargs.get("colormap")
     if isinstance(dom, RGSpace):
-        if len(dom.shape)==1:
+        if len(dom.shape) == 1:
             npoints = dom.shape[0]
             dist = dom.distances[0]
-            xcoord = np.arange(npoints,dtype=np.float64)*dist
+            xcoord = np.arange(npoints, dtype=np.float64)*dist
             ycoord = f.val
             plt.plot(xcoord, ycoord)
             _limit_xy(**kwargs)
             _makeplot(kwargs.get("name"))
             return
-        elif len(dom.shape)==2:
+        elif len(dom.shape) == 2:
             nx = dom.shape[0]
             ny = dom.shape[1]
             dx = dom.distances[0]
             dy = dom.distances[1]
-            xc = np.arange(nx,dtype=np.float64)*dx
-            yc = np.arange(ny,dtype=np.float64)*dy
-            im=ax.imshow(f.val,extent=[xc[0],xc[-1],yc[0],yc[-1]],vmin=kwargs.get("zmin"),vmax=kwargs.get("zmax"),cmap=cmap)
-            #from mpl_toolkits.axes_grid1 import make_axes_locatable
-            #divider = make_axes_locatable(ax)
-            #cax = divider.append_axes("right", size="5%", pad=0.05)
-            #plt.colorbar(im,cax=cax)
+            xc = np.arange(nx, dtype=np.float64)*dx
+            yc = np.arange(ny, dtype=np.float64)*dy
+            im = ax.imshow(f.val, extent=[xc[0], xc[-1], yc[0], yc[-1]],
+                           vmin=kwargs.get("zmin"),
+                           vmax=kwargs.get("zmax"), cmap=cmap)
+            # from mpl_toolkits.axes_grid1 import make_axes_locatable
+            # divider = make_axes_locatable(ax)
+            # cax = divider.append_axes("right", size="5%", pad=0.05)
+            # plt.colorbar(im,cax=cax)
             plt.colorbar(im)
             _limit_xy(**kwargs)
             _makeplot(kwargs.get("name"))
@@ -152,7 +159,8 @@ def plot(f,**kwargs):
         base = pyHealpix.Healpix_Base(int(np.sqrt(f.val.size//12)), "RING")
         res[mask] = f.val[base.ang2pix(ptg)]
         plt.axis('off')
-        plt.imshow(res,vmin=kwargs.get("zmin"),vmax=kwargs.get("zmax"),cmap=cmap)
+        plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                   cmap=cmap)
         plt.colorbar(orientation="horizontal")
         _makeplot(kwargs.get("name"))
         return
@@ -168,7 +176,8 @@ def plot(f,**kwargs):
         res[mask] = f.val[ilat*dom.nlon + ilon]
 
         plt.axis('off')
-        plt.imshow(res,vmin=kwargs.get("zmin"),vmax=kwargs.get("zmax"),cmap=cmap)
+        plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                   cmap=cmap)
         plt.colorbar(orientation="horizontal")
         _makeplot(kwargs.get("name"))
         return
