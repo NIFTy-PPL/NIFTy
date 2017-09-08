@@ -66,12 +66,8 @@ if __name__ == "__main__":
     m = wiener_curvature.inverse_times(j)
     m_s = fft(m)
 
-    plotter = ift.plotting.RG2DPlotter()
-    plotter.path = 'mock_signal.html'
-    plotter(mock_signal.real)
-    plotter.path = 'data.html'
-    plotter(ift.Field(
-                signal_space,
-                val=data.val.real.reshape(signal_space.shape)))
-    plotter.path = 'map.html'
-    plotter(m_s.real)
+    ift.plotting.plot(mock_signal.real,"mock_signal.pdf")
+    ift.plotting.plot(mock_power.real,"power.pdf")
+    ift.plotting.plot(ift.Field(signal_space,
+                val=data.val.real.reshape(signal_space.shape)), "data.pdf")
+    ift.plotting.plot(m_s.real, "map.pdf")
