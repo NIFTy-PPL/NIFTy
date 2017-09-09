@@ -36,50 +36,66 @@ def _math_helper(x, function):
 def cos(x):
     return _math_helper(x, np.cos)
 
+
 def sin(x):
     return _math_helper(x, np.sin)
+
 
 def cosh(x):
     return _math_helper(x, np.cosh)
 
+
 def sinh(x):
     return _math_helper(x, np.sinh)
+
 
 def tan(x):
     return _math_helper(x, np.tan)
 
+
 def tanh(x):
     return _math_helper(x, np.tanh)
+
 
 def arccos(x):
     return _math_helper(x, np.arccos)
 
+
 def arcsin(x):
     return _math_helper(x, np.arcsin)
+
 
 def arccosh(x):
     return _math_helper(x, np.arccosh)
 
+
 def arcsinh(x):
     return _math_helper(x, np.arcsinh)
+
 
 def arctan(x):
     return _math_helper(x, np.arctan)
 
+
 def arctanh(x):
     return _math_helper(x, np.arctanh)
+
 
 def sqrt(x):
     return _math_helper(x, np.sqrt)
 
+
 def exp(x):
     return _math_helper(x, np.exp)
+
 
 def log(x):
     return _math_helper(x, np.log)
 
+
 def conjugate(x):
     return _math_helper(x, np.conjugate)
+
 
 def conj(x):
     return _math_helper(x, np.conjugate)
