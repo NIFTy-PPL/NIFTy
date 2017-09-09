@@ -129,7 +129,7 @@ def plot(f, **kwargs):
             yc = np.arange(ny, dtype=np.float64)*dy
             im = ax.imshow(f.val, extent=[xc[0], xc[-1], yc[0], yc[-1]],
                            vmin=kwargs.get("zmin"),
-                           vmax=kwargs.get("zmax"), cmap=cmap)
+                           vmax=kwargs.get("zmax"), cmap=cmap, origin="lower")
             # from mpl_toolkits.axes_grid1 import make_axes_locatable
             # divider = make_axes_locatable(ax)
             # cax = divider.append_axes("right", size="5%", pad=0.05)
@@ -160,7 +160,7 @@ def plot(f, **kwargs):
         res[mask] = f.val[base.ang2pix(ptg)]
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-                   cmap=cmap)
+                   cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
         _makeplot(kwargs.get("name"))
         return
@@ -177,7 +177,7 @@ def plot(f, **kwargs):
 
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
-                   cmap=cmap)
+                   cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
         _makeplot(kwargs.get("name"))
         return
