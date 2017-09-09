@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     diagonal = mock_power.power_synthesize(spaces=(0, 1), mean=1, std=0,
                                            real_signal=False)**2
-    #diagonal = diagonal.real
+    diagonal = diagonal.real
 
     S = ift.DiagonalOperator(domain=(harmonic_space_1, harmonic_space_2),
                              diagonal=diagonal)
@@ -101,20 +101,19 @@ if __name__ == "__main__":
 
     # Probing the variance
     class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby((signal_space_1, signal_space_2), probe_count=100)
+    proby = Proby((signal_space_1, signal_space_2), probe_count=2,ncpu=2)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))
 #    sm = SmoothingOperator(signal_space, sigma=0.02)
 #    variance = sm(proby.diagonal.weight(-1))
     variance = proby.diagonal.weight(-1)
 
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
-    plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
-    plotter.figure.xaxis = ift.plotting.Axis(label='Pixel Index')
-    plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
-
-    plotter.plot.zmin = 0.
-    plotter.plot.zmax = 3.
     sm = ift.FFTSmoothingOperator(plot_space, sigma=0.03)
+    ift.plotting.plot(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), name='uncertainty.pdf',zmin=0.,zmax=3.,title="Uncertainty map",xlabel="x")
+    ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real), name='mock_signal.pdf')
+    ift.plotting.plot(ift.Field(plot_space, val=data.val.real), name='data.pdf')
+    ift.plotting.plot(ift.Field(plot_space, val=m.val.real), name='map.pdf')
+    exit()
     plotter(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), path='uncertainty.html')
 
     plotter.plot.zmin = np.real(mock_signal.min());

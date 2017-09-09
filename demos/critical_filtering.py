@@ -1,22 +1,18 @@
 import numpy as np
 import nifty2go as ift
 
-import plotly.graph_objs as go
-import plotly.offline as pl
-
 np.random.seed(42)
 #np.seterr(all="raise",under="ignore")
 
 def plot_parameters(m, t, p, p_d):
     x = ift.log(t.domain[0].kindex)
     m = fft.adjoint_times(m)
-    m = m.val.real
     t = t.val.real
     p = p.val.real
     p_d = p_d.val.real
-    pl.plot([go.Heatmap(z=m)], filename='map.html', auto_open=False)
-    pl.plot([go.Scatter(x=x, y=t), go.Scatter(x=x, y=p),
-             go.Scatter(x=x, y=p_d)], filename="t.html", auto_open=False)
+    ift.plotting.plot(m.real, name='map.pdf')
+    #pl.plot([go.Scatter(x=x, y=t), go.Scatter(x=x, y=p),
+    #         go.Scatter(x=x, y=p_d)], filename="t.html", auto_open=False)
 
 
 class AdjointFFTResponse(ift.LinearOperator):
@@ -90,7 +86,7 @@ if __name__ == "__main__":
     realized_power = ift.log(sh.power_analyze(binbounds=p_space.binbounds))
     data_power = ift.log(fft(d).power_analyze(binbounds=p_space.binbounds))
     d_data = d.val.real
-    pl.plot([go.Heatmap(z=d_data)], filename='data.html', auto_open=False)
+    ift.plotting.plot(d.real, name="data.pdf")
 
     IC1 = ift.DefaultIterationController(verbose=True,iteration_limit=100)
     minimizer1 = ift.RelaxedNewton(IC1)

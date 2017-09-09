@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # Setting up the geometry |\label{code:wf_geometry}|
     L = 2. # Total side-length of the domain
     N_pixels = 128 # Grid resolution (pixels per axis)
-    #signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
+    #signal_space = ift.RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     signal_space = ift.HPSpace(16)
     harmonic_space = signal_space.get_default_codomain()
     fft = ift.FFTOperator(harmonic_space, target=signal_space)
@@ -53,39 +53,27 @@ if __name__ == "__main__":
     minimizer2 = ift.RelaxedNewton(controller=ctrl2)
     minimizer3 = ift.SteepestDescent(controller=ctrl2)
 
-    print type(energy.value)
-    me1 = minimizer1(energy)
+    #me1 = minimizer1(energy)
     me2 = minimizer2(energy)
-    me3 = minimizer3(energy)
+    #me3 = minimizer3(energy)
 
-    m1 = fft(me1[0].position)
+    #m1 = fft(me1[0].position)
     m2 = fft(me2[0].position)
-    m3 = fft(me3[0].position)
+    #m3 = fft(me3[0].position)
 
-
-    # Probing the variance
-    #class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    #proby = Proby(signal_space, probe_count=100)
-    #proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))
-
-    #sm = SmoothingOperator(signal_space, sigma=0.02)
-    #variance = sm(proby.diagonal.weight(-1))
 
     #Plotting #|\label{code:wf_plotting}|
-    #plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
-    plotter = ift.plotting.HealpixPlotter(color_map=ift.plotting.colormaps.PlankCmap())
+    ift.plotting.plot(mock_signal.real,name='mock_signal.pdf', colormap="plasma",xlabel="Pixel Index",ylabel="Pixel Index")
+    ift.plotting.plot(ift.Field(signal_space, val=np.log(data.val.real).reshape(signal_space.shape)),name="log_of_data.pdf", colormap="plasma",xlabel="Pixel Index",ylabel="Pixel Index")
+    #ift.plotting.plot(m1.real,name='m_LBFGS.pdf', colormap="plasma",xlabel="Pixel Index",ylabel="Pixel Index")
+    ift.plotting.plot(m2.real,name='m_Newton.pdf', colormap="plasma",xlabel="Pixel Index",ylabel="Pixel Index")
+    #ift.plotting.plot(m3.real,name='m_SteepestDescent.pdf', colormap="plasma",xlabel="Pixel Index",ylabel="Pixel Index")
 
-    plotter.figure.xaxis = ift.plotting.Axis(label='Pixel Index')
-    plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
+    # Probing the variance
+    class Proby(ift.DiagonalProberMixin, ift.Prober): pass
+    proby = Proby(signal_space, probe_count=1)
+    proby(lambda z: fft(me2[0].curvature.inverse_times(fft.adjoint_times(z))))
 
-    plotter.plot.zmax = 5; plotter.plot.zmin = -5
-    #plotter(variance, path = 'variance.html')
-#    #plotter.plot.zmin = exp(mock_signal.min());
-#    plotter(mock_signal.real, path='mock_signal.html')
-#    plotter(Field(signal_space, val=np.log(data.val.get_full_data().real).reshape(signal_space.shape)),
-#            path = 'log_of_data.html')
-#
-    plotter(m1.real, path='m_LBFGS.html')
-    plotter(m2.real, path='m_Newton.html')
-    plotter(m3.real, path='m_SteepestDescent.html')
-#
+    sm = ift.FFTSmoothingOperator(signal_space, sigma=0.02)
+    variance = sm(proby.diagonal.weight(-1))
+    ift.plotting.plot(variance, name = 'variance.pdf')
