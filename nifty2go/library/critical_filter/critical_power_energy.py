@@ -90,7 +90,7 @@ class CriticalPowerEnergy(Energy):
         gradient = -self._theta.weight(-1)
         gradient += (self._rho_prime).weight(-1)
         gradient += self._Tt
-        gradient.val = gradient.val.real
+        gradient = gradient.real
         return gradient
 
     @property
