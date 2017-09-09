@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-import itertools
 import numpy as np
 from ..space import Space
 

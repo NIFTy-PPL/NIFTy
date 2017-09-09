@@ -1,5 +1,4 @@
 from builtins import range
-import numpy as np
 from ... import Field,\
                 FieldArray
 from ..linear_operator import LinearOperator
