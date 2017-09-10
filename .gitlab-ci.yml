@@ -12,7 +12,6 @@ before_script:
   - ci/install_basics.sh
   - pip install --upgrade -r ci/requirements.txt
   - pip3 install --upgrade -r ci/requirements.txt
-  - ci/install_pyHealpix.sh
 
 test_min:
   stage: test
