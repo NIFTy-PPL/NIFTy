@@ -113,12 +113,6 @@ class DirectSmoothingOperator(EndomorphicOperator):
                           smooth_length, smoothing_width):
 
         nd = arr.ndim
-        if axis < 0:
-            axis += nd
-        if (axis >= nd):
-            raise ValueError(
-                "axis must be less than arr.ndim; axis=%d, rank=%d."
-                % (axis, nd))
         ibegin, nval, wgt = self._precompute(
                 distances, smooth_length, smooth_length*smoothing_width)
 
@@ -166,32 +160,20 @@ class DirectSmoothingOperator(EndomorphicOperator):
         # infer affected axes
         # we rely on the knowledge, that `spaces` is a tuple with length 1.
         affected_axes = x.domain_axes[spaces[0]]
-
         if len(affected_axes) > 1:
             raise ValueError("By this implementation only one-dimensional "
                              "spaces can be smoothed directly.")
-
         affected_axis = affected_axes[0]
 
         distance_array = x.domain[spaces[0]].get_distance_array()
-
         if self._log_distances:
             np.log(np.maximum(distance_array, 1e-15), out=distance_array)
 
-        augmented_data = x.val
-        augmented_distance_array = distance_array
-        true_start = 0
-        true_end = x.shape[affected_axis]
-
-        # perform the convolution along the affected axes
-        # currently only one axis is supported
-        data_axis = affected_axes[0]
-
         return self._apply_along_axis(
-                              data_axis,
-                              augmented_data,
-                              startindex=true_start,
-                              endindex=true_end,
-                              distances=augmented_distance_array,
+                              affected_axis,
+                              x.val,
+                              startindex=0,
+                              endindex=x.shape[affected_axis],
+                              distances=distance_array,
                               smooth_length=self._sigma,
                               smoothing_width=self._effective_smoothing_width)
