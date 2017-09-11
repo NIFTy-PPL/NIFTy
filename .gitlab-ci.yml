@@ -16,6 +16,8 @@ before_script:
 test_min:
   stage: test
   script:
+    - python setup.py install --user
+    - python3 setup.py install --user
     - nosetests
     - nosetests3 -x --with-coverage --cover-package=nifty2go --cover-branches
     - >
