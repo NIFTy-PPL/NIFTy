@@ -46,7 +46,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
     # ---Added properties and methods---
 
-    def _precompute(self, x, sigma, dxmax=None):
+    def _precompute(self, x):
         """ Does precomputations for Gaussian smoothing on a 1D irregular grid.
 
         Parameters
@@ -54,10 +54,6 @@ class DirectSmoothingOperator(EndomorphicOperator):
         x: 1D floating point array or list containing the individual grid
             positions. Points must be given in ascending order.
 
-        sigma: The sigma of the Gaussian with which the function living on x
-            should be smoothed, in the same units as x.
-        dxmax: (optional) The maximum distance up to which smoothing is
-            performed, in the same units as x. Default is 3.01*sigma.
 
         Returns
         -------
@@ -72,8 +68,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
             normalized smoothing weights.
         """
 
-        if dxmax is None:
-            dxmax = self._effective_smoothing_width*sigma
+        dxmax = self._effective_smoothing_width*self._sigma
 
         x = np.asarray(x)
 
@@ -81,7 +76,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
         nval = np.searchsorted(x, x+dxmax) - ibegin
 
         wgt = []
-        expfac = 1. / (2. * sigma*sigma)
+        expfac = 1. / (2. * self._sigma*self._sigma)
         for i in range(x.size):
             if nval[i] > 0:
                 t = x[ibegin[i]:ibegin[i]+nval[i]]-x[i]
@@ -94,11 +89,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
         return ibegin, nval, wgt
 
     def _apply_kernel_along_array(self, power, startindex, endindex,
-                                  distances, smooth_length, smoothing_width,
                                   ibegin, nval, wgt):
-
-        if smooth_length == 0.0:
-            return power[startindex:endindex]
 
         p_smooth = np.zeros(endindex-startindex, dtype=power.dtype)
         for i in range(startindex, endindex):
@@ -109,12 +100,10 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
         return p_smooth
 
-    def _apply_along_axis(self, axis, arr, startindex, endindex, distances,
-                          smooth_length, smoothing_width):
+    def _apply_along_axis(self, axis, arr, startindex, endindex, distances):
 
         nd = arr.ndim
-        ibegin, nval, wgt = self._precompute(
-                distances, smooth_length, smooth_length*smoothing_width)
+        ibegin, nval, wgt = self._precompute(distances)
 
         ind = np.zeros(nd-1, dtype=np.int)
         i = np.zeros(nd, dtype=object)
@@ -130,8 +119,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
         holdshape = outshape
         slicedArr = arr[tuple(i.tolist())]
         res = self._apply_kernel_along_array(
-                    slicedArr, startindex, endindex, distances,
-                    smooth_length, smoothing_width, ibegin, nval, wgt)
+                    slicedArr, startindex, endindex, ibegin, nval, wgt)
 
         outshape = np.asarray(arr.shape)
         outshape[axis] = endindex - startindex
@@ -149,8 +137,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
             i.put(indlist, ind)
             slicedArr = arr[tuple(i.tolist())]
             res = self._apply_kernel_along_array(
-                    slicedArr, startindex, endindex, distances,
-                    smooth_length, smoothing_width, ibegin, nval, wgt)
+                    slicedArr, startindex, endindex, ibegin, nval, wgt)
             outarr[tuple(i.tolist())] = res
             k += 1
 
@@ -158,9 +145,9 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
     def _smooth(self, x, spaces):
         # infer affected axes
-        # we rely on the knowledge, that `spaces` is a tuple with length 1.
+        # we rely on the knowledge that `spaces` is a tuple with length 1.
         affected_axes = x.domain_axes[spaces[0]]
-        if len(affected_axes) > 1:
+        if len(affected_axes) != 1:
             raise ValueError("By this implementation only one-dimensional "
                              "spaces can be smoothed directly.")
         affected_axis = affected_axes[0]
@@ -174,6 +161,4 @@ class DirectSmoothingOperator(EndomorphicOperator):
                               x.val,
                               startindex=0,
                               endindex=x.shape[affected_axis],
-                              distances=distance_array,
-                              smooth_length=self._sigma,
-                              smoothing_width=self._effective_smoothing_width)
+                              distances=distance_array)
