@@ -30,7 +30,7 @@ setup(name="nifty2go",
       packages=find_packages(include=["nifty2go", "nifty2go.*"]),
       zip_safe=False,
       dependency_links=[
-               'git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git@setuptools-test#egg=pyHealpix-0.0.1'],
+               'git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git#egg=pyHealpix-0.0.1'],
       license="GPLv3",
       install_requires=['pyHealpix>=0.0.1', 'numpy>=1.13', 'pyfftw>=0.10.4'],
       classifiers=[
