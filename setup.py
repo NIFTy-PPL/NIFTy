@@ -32,7 +32,7 @@ setup(name="nifty2go",
       dependency_links=[
                'git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git@setuptools_test#egg=pyHealpix-0.0.1'],
       license="GPLv3",
-      setup_requires=['future', 'pyHealpix>=0.0.1', 'numpy>=1.13', 'pyfftw>=0.10.4', 'matplotlib'],
+      setup_requires=['future', 'pyHealpix>=0.0.1', 'numpy>=1.13', 'pyfftw>=0.10.4'],
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
