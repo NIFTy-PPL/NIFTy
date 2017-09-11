@@ -4,4 +4,4 @@ parameterized
 coverage
 future
 pyfftw
-git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git@setuptools_test
