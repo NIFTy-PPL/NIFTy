@@ -10,8 +10,8 @@ before_script:
   - apt-get update
   - chmod +x ci/*.sh
   - ci/install_basics.sh
-  - pip install --upgrade -r ci/requirements.txt
-  - pip3 install --upgrade -r ci/requirements.txt
+  - pip install --process-dependency-links --upgrade -r ci/requirements.txt
+  - pip3 install --process-dependency-links --upgrade -r ci/requirements.txt
 
 test_min:
   stage: test
