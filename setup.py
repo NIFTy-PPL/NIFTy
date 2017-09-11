@@ -29,7 +29,10 @@ setup(name="nifty2go",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
       packages=find_packages(include=["nifty2go", "nifty2go.*"]),
       zip_safe=False,
+      dependency_links=[
+               'git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git@setuptools-test'],
       license="GPLv3",
+      install_requires=['pyHealpix>=0.0.1', 'numpy>=1.13', 'pyfftw>=0.10.4'],
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
