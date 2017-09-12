@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import nifty2go as ift
-from nifty2go import plotting
 import numpy as np
 
 
@@ -60,12 +59,6 @@ if __name__ == "__main__":
     variance = ift.sqrt(sm(proby.diagonal.weight(-1)))  #|\label{code:wf_variance_weighting}|
 
     # Plotting #|\label{code:wf_plotting}|
-    plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
-    plotter.figure.xaxis = ift.plotting.Axis(label='Pixel Index')
-    plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
-    plotter.plot.zmax = variance.max(); plotter.plot.zmin = 0
-    plotter(variance, path = 'uncertainty.html')
-    plotter.plot.zmax = mock_signal.max(); plotter.plot.zmin = mock_signal.min()
-    plotter(mock_signal, path='mock_signal.html')
-    plotter(ift.Field(signal_space, val=data.val), path='data.html')
-    plotter(m, path='map.html')
+    ift.plotting.plot(variance,name="uncertainty.pdf",xlabel='Pixel index', ylabel='Pixel index')
+    ift.plotting.plot(mock_signal,name="mock_signal.pdf",xlabel='Pixel index', ylabel='Pixel index')
+    ift.plotting.plot(ift.Field(signal_space, val=data.val),name="data.pdf",xlabel='Pixel index', ylabel='Pixel index')
