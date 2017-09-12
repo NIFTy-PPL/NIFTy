@@ -5,6 +5,8 @@ from builtins import range
 import numpy as np
 
 from ..endomorphic_operator import EndomorphicOperator
+from ... import nifty_utilities as utilities
+from ... import Field
 
 
 class DirectSmoothingOperator(EndomorphicOperator):
@@ -88,61 +90,6 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
         return ibegin, nval, wgt
 
-    def _apply_kernel_along_array(self, power, startindex, endindex,
-                                  ibegin, nval, wgt):
-
-        p_smooth = np.zeros(endindex-startindex, dtype=power.dtype)
-        for i in range(startindex, endindex):
-            imin = max(startindex, ibegin[i])
-            imax = min(endindex, ibegin[i]+nval[i])
-            p_smooth[imin:imax] += (power[i] *
-                                    wgt[i][imin-ibegin[i]:imax-imin+ibegin[i]])
-
-        return p_smooth
-
-    def _apply_along_axis(self, axis, arr, startindex, endindex, distances):
-
-        nd = arr.ndim
-        ibegin, nval, wgt = self._precompute(distances)
-
-        ind = np.zeros(nd-1, dtype=np.int)
-        i = np.zeros(nd, dtype=object)
-        shape = arr.shape
-        indlist = np.asarray(list(range(nd)))
-        indlist = np.delete(indlist, axis)
-        i[axis] = slice(None, None)
-        outshape = np.asarray(shape).take(indlist)
-
-        i.put(indlist, ind)
-
-        Ntot = np.product(outshape)
-        holdshape = outshape
-        slicedArr = arr[tuple(i.tolist())]
-        res = self._apply_kernel_along_array(
-                    slicedArr, startindex, endindex, ibegin, nval, wgt)
-
-        outshape = np.asarray(arr.shape)
-        outshape[axis] = endindex - startindex
-        outarr = np.zeros(outshape, dtype=arr.dtype)
-        outarr[tuple(i.tolist())] = res
-        k = 1
-        while k < Ntot:
-            # increment the index
-            ind[nd-1] += 1
-            n = -1
-            while (ind[n] >= holdshape[n]) and (n > (1-nd)):
-                ind[n-1] += 1
-                ind[n] = 0
-                n -= 1
-            i.put(indlist, ind)
-            slicedArr = arr[tuple(i.tolist())]
-            res = self._apply_kernel_along_array(
-                    slicedArr, startindex, endindex, ibegin, nval, wgt)
-            outarr[tuple(i.tolist())] = res
-            k += 1
-
-        return outarr
-
     def _smooth(self, x, spaces):
         # infer affected axes
         # we rely on the knowledge that `spaces` is a tuple with length 1.
@@ -150,15 +97,18 @@ class DirectSmoothingOperator(EndomorphicOperator):
         if len(affected_axes) != 1:
             raise ValueError("By this implementation only one-dimensional "
                              "spaces can be smoothed directly.")
-        affected_axis = affected_axes[0]
+        axis = affected_axes[0]
 
-        distance_array = x.domain[spaces[0]].get_distance_array()
+        distances = x.domain[spaces[0]].get_distance_array()
         if self._log_distances:
-            np.log(np.maximum(distance_array, 1e-15), out=distance_array)
+            distances = np.log(np.maximum(distances, 1e-15))
 
-        return self._apply_along_axis(
-                              affected_axis,
-                              x.val,
-                              startindex=0,
-                              endindex=x.shape[affected_axis],
-                              distances=distance_array)
+        ibegin, nval, wgt = self._precompute(distances)
+        outarr = np.empty_like(x.val)
+        for sl in utilities.get_slice_list(x.val.shape, (axis,)):
+            inp = x.val[sl]
+            out = np.zeros(inp.shape[0], dtype=inp.dtype)
+            for i in range(inp.shape[0]):
+                out[ibegin[i]:ibegin[i]+nval[i]] += inp[i] * wgt[i][:]
+            outarr[sl] = out
+        return Field(x.domain, val=outarr)
