@@ -82,9 +82,61 @@ def _limit_xy(**kwargs):
         y2 = kwargs.get("ymax")
     plt.axis((x1, x2, y1, y2))
 
+def _register_cmaps():
+    try:
+        if _register_cmaps._cmaps_registered:
+            return
+    except AttributeError:
+        _register_cmaps._cmaps_registered = True
+
+    from matplotlib.colors import LinearSegmentedColormap
+    import matplotlib.pyplot as plt
+    planckcmap = {'red':  ((0.0, 0.0, 0.0),
+                           (0.4, 0.0, 0.0),
+                           (0.5, 1.0, 1.0),
+                           (0.7, 1.0, 1.0),
+                           (0.8, 0.83, 0.83),
+                           (0.9, 0.67, 0.67),
+                           (1.0, 0.5, 0.5)),
+                  'green':((0.0, 0.0, 0.0),
+                           (0.2, 0.0, 0.0),
+                           (0.3, 0.3, 0.3),
+                           (0.4, 0.7, 0.7),
+                           (0.5, 1.0, 1.0),
+                           (0.6, 0.7, 0.7),
+                           (0.7, 0.3, 0.3),
+                           (0.8, 0.0, 0.0),
+                           (1.0, 0.0, 0.0)),
+                  'blue': ((0.0, 0.5, 0.5),
+                           (0.1, 0.67, 0.67),
+                           (0.2, 0.83, 0.83),
+                           (0.3, 1.0, 1.0),
+                           (0.5, 1.0, 1.0),
+                           (0.6, 0.0, 0.0),
+                           (1.0, 0.0, 0.0)) }
+    he_cmap = { 'red':  ((0.0, 0.0, 0.0),
+                         (0.167, 0.0, 0.0),
+                         (0.333, 0.5, 0.5),
+                         (0.5, 1.0, 1.0),
+                         (1.0, 1.0, 1.0)),
+                'green':((0.0, 0.0, 0.0),
+                         (0.5, 0.0, 0.0),
+                         (0.667, 0.5, 0.5),
+                         (0.833, 1.0, 1.0),
+                         (1.0, 1.0, 1.0)),
+                'blue': ((0.0, 0.0, 0.0),
+                         (0.167, 1.0, 1.0),
+                         (0.333, 0.5, 0.5),
+                         (0.5, 0.0, 0.0),
+                         (1.0, 1.0, 1.0)) }
+
+    plt.register_cmap(cmap=LinearSegmentedColormap("Planck-like", planckcmap))
+    plt.register_cmap(cmap=LinearSegmentedColormap("High Energy", he_cmap))
+
 
 def plot(f, **kwargs):
     import matplotlib.pyplot as plt
+    _register_cmaps()
     if not isinstance(f, Field):
         raise TypeError("incorrect data type")
     if len(f.domain) != 1:
