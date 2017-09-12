@@ -25,7 +25,7 @@ from d2o import distributed_data_object
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
 from nifty import PowerSpace, RGSpace, Space, LMSpace
-from test.common import expand, marco_binbounds
+from test.common import expand
 from itertools import product, chain
 # needed to check wether fftw is available
 from nifty import dependency_injector as gdi
@@ -70,14 +70,14 @@ CONSTRUCTOR_CONFIGS = [
         }],
     [RGSpace((8,), harmonic=True), 'not', True, None, None, {
         'harmonic': True,
-        'shape': (2,),
-        'dim': 2,
+        'shape': (4,),
+        'dim': 4,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'binbounds': (0.70710678118654757,),
+        'binbounds': (0.5, 1.3228756555322954, 3.5),
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
-        'kindex': np.array([0., 2.28571429]),
-        'rho': np.array([1, 7]),
+        'kindex': np.array([0., 1., 2.5, 4.]),
+        'rho': np.array([1, 2, 4, 1]),
         }],
     ]
 
@@ -131,8 +131,8 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
                        distribution_strategy=distribution_strategy,
-                       binbounds=marco_binbounds(harmonic_partner,
-                                                 logarithmic, nbin))
+                       binbounds=PowerSpace.useful_binbounds(
+                                       harmonic_partner, logarithmic, nbin))
 
         assert_equal(p.pindex.flatten().bincount(), p.rho,
                      err_msg='rho is not equal to pindex degeneracy')
@@ -149,13 +149,13 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           binbounds=marco_binbounds(harmonic_partner,
-                                                     logarithmic, nbin))
+                           binbounds=PowerSpace.useful_binbounds(
+                                       harmonic_partner, logarithmic, nbin))
         else:
             p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           binbounds=marco_binbounds(harmonic_partner,
-                                                     logarithmic, nbin))
+                           binbounds=PowerSpace.useful_binbounds(
+                                       harmonic_partner, logarithmic, nbin))
             for key, value in expected.items():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)
