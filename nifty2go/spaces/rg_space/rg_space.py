@@ -171,12 +171,6 @@ class RGSpace(Space):
             # rightmost point correctly.
             return tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
 
-    def get_natural_binbounds(self):
-        if (not self.harmonic):
-            raise NotImplementedError
-        tmp = self.get_unique_distances()
-        return 0.5*(tmp[:-1]+tmp[1:])
-
     def get_fft_smoothing_kernel_function(self, sigma):
         if (not self.harmonic):
             raise NotImplementedError

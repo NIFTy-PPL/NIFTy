@@ -107,18 +107,6 @@ class Space(DomainObject):
         """
         raise NotImplementedError
 
-    def get_natural_binbounds(self):
-        """ The boundaries for natural power spectrum binning.
-        This method is only implemented for harmonic spaces.
-
-        Returns
-        -------
-        np.ndarray
-            A numpy array containing the binbounds
-
-        """
-        raise NotImplementedError
-
     def get_fft_smoothing_kernel_function(self, sigma):
         """ This method returns a smoothing kernel function.
 

@@ -165,7 +165,7 @@ class PowerSpace(Space):
             assert not np.any(temp_rho == 0), "empty bins detected"
             temp_kindex = np.bincount(temp_pindex.ravel(),
                                       weights=distance_array.ravel()) \
-                                      / temp_rho
+                / temp_rho
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
                                           temp_kindex,
@@ -177,7 +177,8 @@ class PowerSpace(Space):
     @staticmethod
     def _compute_pindex(harmonic_partner, distance_array, binbounds):
         if binbounds is None:
-            binbounds = harmonic_partner.get_natural_binbounds()
+            tmp = harmonic_partner.get_unique_distances()
+            binbounds = 0.5*(tmp[:-1]+tmp[1:])
         return np.searchsorted(binbounds, distance_array)
 
     # ---Mandatory properties and methods---
@@ -211,7 +212,7 @@ class PowerSpace(Space):
         return None
 
     def weight(self):
-       # MR FIXME: this will probably change to 1 soon
+        # MR FIXME: this will probably change to 1 soon
         return np.asarray(self.rho, dtype=np.float64)
 
     def get_distance_array(self):

@@ -138,9 +138,6 @@ class LMSpace(Space):
     def get_unique_distances(self):
         return np.arange(self.lmax+1, dtype=np.float64)
 
-    def get_natural_binbounds(self):
-        return np.arange(self.lmax, dtype=np.float64) + 0.5
-
     def get_fft_smoothing_kernel_function(self, sigma):
         # cf. "All-sky convolution for polarimetry experiments"
         # by Challinor et al.
