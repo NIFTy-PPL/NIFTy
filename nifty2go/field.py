@@ -453,67 +453,6 @@ class Field(object):
 
     # ---Properties---
 
-    # MR FIXME: unused for the moment, remove after some time
-    def _donotuse_set_val(self, new_val=None, copy=False):
-        """ Sets the field's data object.
-
-        Parameters
-        ----------
-        new_val : scalar, array-like, Field, None *optional*
-            The values to be stored in the field.
-            {default : None}
-
-        copy : boolean, *optional*
-            If False, Field tries to not copy the input data but use it
-            directly.
-            {default : False}
-        See Also
-        --------
-        val
-
-        """
-
-        if new_val is None:
-            pass
-        elif isinstance(new_val, Field):
-            if self.domain != new_val.domain:
-                raise ValueError("Domain mismatch")
-            if copy:
-                self._val[()] = new_val.val
-            else:
-                self._val = np.array(new_val.val, dtype=self.dtype, copy=False)
-        elif (np.isscalar(new_val)):
-            self._val[()] = new_val
-        elif isinstance(new_val, np.ndarray):
-            if copy:
-                self._val[()] = new_val
-            else:
-                if self.shape != new_val.shape:
-                    raise ValueError("Shape mismatch")
-                self._val = np.array(new_val, dtype=self.dtype, copy=False)
-        else:
-            raise TypeError("unknown source type")
-        return self
-
-    def get_val(self, copy=False):
-        """ Returns the data object associated with this Field.
-
-        Parameters
-        ----------
-        copy : boolean
-            If true, a copy of the Field's underlying data object
-            is returned.
-
-        Returns
-        -------
-        out : numpy.ndarray
-
-        See Also
-        --------
-        val
-        """
-        return self._val.copy() if copy else self._val
-
     @property
     def val(self):
         """ Returns the data object associated with this Field.
@@ -522,16 +461,8 @@ class Field(object):
         Returns
         -------
         out : numpy.ndarray
-
-        See Also
-        --------
-        get_val
         """
         return self._val
-
-    #@val.setter
-    #def val(self, new_val):
-    #    self.set_val(new_val=new_val, copy=False)
 
     @property
     def dtype(self):
@@ -647,7 +578,7 @@ class Field(object):
             The weighted field.
 
         """
-        new_val = self.get_val(copy=not inplace)
+        new_field = Field(val=self, copy=not inplace)
 
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
@@ -662,12 +593,12 @@ class Field(object):
                 new_shape = np.ones(len(self.shape), dtype=np.int)
                 new_shape[self.domain_axes[ind][0]:self.domain_axes[ind][-1]+1]=wgt.shape
                 wgt = wgt.reshape(new_shape)
-                new_val *= wgt**power
+                new_field *= wgt**power
         fct = fct**power
         if fct != 1.:
-            new_val *= fct
+            new_field *= fct
 
-        return Field(self.domain, new_val, self.dtype)
+        return new_field
 
     def vdot(self, x=None, spaces=None, bare=False):
         """ Computes the volume-factor-aware dot product of 'self' with x.
@@ -774,8 +705,7 @@ class Field(object):
             axes_list = ()
 
         # perform the contraction on the data
-        data = self.get_val(copy=False)
-        data = getattr(data, op)(axis=axes_list)
+        data = getattr(self.val, op)(axis=axes_list)
 
         # check if the result is scalar or if a result_field must be constr.
         if np.isscalar(data):
@@ -802,14 +732,8 @@ class Field(object):
     def min(self, spaces=None):
         return self._contraction_helper('min', spaces)
 
-    def nanmin(self, spaces=None):
-        return self._contraction_helper('nanmin', spaces)
-
     def max(self, spaces=None):
         return self._contraction_helper('max', spaces)
-
-    def nanmax(self, spaces=None):
-        return self._contraction_helper('nanmax', spaces)
 
     def mean(self, spaces=None):
         return self._contraction_helper('mean', spaces)
@@ -914,6 +838,6 @@ class Field(object):
         mean = self.mean()
         return "nifty_core.field instance\n- domain      = " + \
                repr(self.domain) + \
-               "\n- val         = " + repr(self.get_val()) + \
+               "\n- val         = " + repr(self.val) + \
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)
