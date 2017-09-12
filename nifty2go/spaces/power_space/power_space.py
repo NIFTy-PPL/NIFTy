@@ -156,8 +156,7 @@ class PowerSpace(Space):
 
         key = (harmonic_partner, binbounds)
         if self._powerIndexCache.get(key) is None:
-            distance_array = \
-                self.harmonic_partner.get_distance_array()
+            distance_array = self.harmonic_partner.get_distance_array()
             temp_pindex = self._compute_pindex(
                                 harmonic_partner=self.harmonic_partner,
                                 distance_array=distance_array,
