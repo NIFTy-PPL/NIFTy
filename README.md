@@ -79,70 +79,18 @@ Installation
 -   [Python](http://www.python.org/) (v2.7.x or 3.5.x)
     -   [NumPy](http://www.numpy.org/)
 
-### Download
+### Sources
 
 The current version of Nifty3 can be obtained by cloning the repository:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
 
-### Installation on Ubuntu
 
-This is for you if you want to install NIFTy on your personal computer
-running with an Ubuntu-like linux system were you have root priviledges.
-Starting with a fresh Ubuntu installation move to a folder like
-`~/Downloads`:
+### Installation via pip
 
--   Install basic packages like python, python-dev, gsl and others:
+It is possible to simply install NIFTy with all its dependencies via the command
 
-        sudo apt-get install curl git autoconf libtool python-dev python-pip python-numpy
-
--   Install pyHealpix:
-
-        git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
-        (cd pyHealpix && autoreconf -i && ./configure --prefix=$HOME/.local --enable-openmp --enable-native-optimizations && make -j4 install)
-
--   Finally, NIFTy:
-
-        git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        (cd NIFTy && python setup.py install --user)
-
-### Installation on Linux systems in general
-
-Since all the "unconventional" packages (i.e. pyHealpix and NIFTy) listed in the
-section above are installed
-within the home directory of the user, the installation instructions for these
-should also work on any Linux machine where you do not have root access.
-In this case you have to ensure with your system administrators that the
-"standard" dependencies (python, numpy, etc.) are installed system-wide.
-
-### Installation on OS X 10.11
-
-We advise to install the following packages in the order as they appear
-below. We strongly recommend to install all needed packages via
-MacPorts. Please be aware that not all packages are available on
-MacPorts, missing ones need to be installed manually. It may also be
-mentioned that one should only use one package manager, as multiple ones
-may cause trouble.
-
--   Install numpy:
-
-        sudo port install py27-numpy
-
--   Install pyHealpix:
-
-        git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
-        cd pyHealpix
-        autoreconf -i && ./configure --prefix=`python-config --prefix` --enable-openmp --enable-native-optimizations && make -j4 && sudo make install
-        cd ..
-
-    (The third command installs the package system-wide. User-specific
-    installation would be preferrable, but we haven't found a simple recipe yet
-    how to determine the installation prefix ...)
-
--   Install NIFTy:
-
-        git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-        (cd NIFTy && python setup.py install --user)
+pip install --user --process-dependency-links git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@nifty2go
 
 ### Running the tests
 
@@ -158,7 +106,7 @@ command in the repository root:
 
 ### First Steps
 
-For a quickstart, you can browse through the [informal
+For a quick start, you can browse through the [informal
 introduction](http://www.mpa-garching.mpg.de/ift/nifty/start.html) or
 dive into NIFTY by running one of the demonstrations, e.g.:
 
