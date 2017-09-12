@@ -130,7 +130,7 @@ class ConjugateGradient(Loggable, object):
         x = x0.copy()
         convergence = 0
         iteration_number = 1
-        self.logger.info("Starting conjugate gradient.")
+        self.logger.debug("Starting conjugate gradient.")
 
         beta = np.inf
         delta = np.inf
@@ -158,7 +158,7 @@ class ConjugateGradient(Loggable, object):
             if self.reset_count is not None:
                 reset += (iteration_number % self.reset_count == 0)
             if reset:
-                self.logger.info("Computing accurate residuum.")
+                self.logger.debug("Computing accurate residuum.")
                 r = b - A(x)
             else:
                 r -= q * alpha
@@ -187,8 +187,8 @@ class ConjugateGradient(Loggable, object):
                 break
             elif abs(delta) < self.convergence_tolerance:
                 convergence += 1
-                self.logger.info("Updated convergence level to: %u" %
-                                 convergence)
+                self.logger.debug("Updated convergence level to: %u" %
+                                  convergence)
                 if convergence == self.convergence_level:
                     self.logger.info(
                         "Reached target convergence level. Iteration : %08u   "
