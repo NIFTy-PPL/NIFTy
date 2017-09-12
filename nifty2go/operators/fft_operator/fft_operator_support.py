@@ -157,7 +157,6 @@ class HPLMTransformation(SlicingTransformation):
             ri = map2alm(inp.imag, lmax, mmax)
             ri = buildIdx(ri, lmax=lmax)
             return rr + 1j*ri
-
         else:
             rr = map2alm(inp, lmax, mmax)
             return buildIdx(rr, lmax=lmax)
@@ -181,7 +180,6 @@ class LMHPTransformation(SlicingTransformation):
             rr = alm2map(rr, lmax, mmax, nside)
             ri = alm2map(ri, lmax, mmax, nside)
             return rr + 1j*ri
-
         else:
             rr = buildLm(inp, lmax=lmax)
             return alm2map(rr, lmax, mmax, nside)

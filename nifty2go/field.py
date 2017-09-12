@@ -141,7 +141,7 @@ class Field(object):
     # ---Factory methods---
 
     @classmethod
-    def from_random(cls, random_type, domain, dtype=None, **kwargs):
+    def from_random(cls, random_type, domain, dtype=np.float64, **kwargs):
         """ Draws a random field with the given parameters.
 
         Parameters
@@ -170,7 +170,7 @@ class Field(object):
 
         generator_function = getattr(Random, random_type)
         return Field(domain=domain,
-                     val=generator_function(dtype=np.dtype(dtype),
+                     val=generator_function(dtype=dtype,
                      shape=utilities.domains2shape(domain), **kwargs))
 
     # ---Powerspectral methods---
@@ -319,7 +319,7 @@ class Field(object):
         return result_obj
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=None, std=None):
+                         mean=0., std=1.):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner

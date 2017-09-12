@@ -18,58 +18,42 @@
 
 from builtins import object
 import numpy as np
-from functools import reduce
 
 
 class Random(object):
     @staticmethod
-    def pm1(dtype=np.dtype('int'), shape=1):
-
-        size = int(reduce(lambda x, y: x*y, shape))
-        if issubclass(dtype.type, np.complexfloating):
+    def pm1(dtype, shape):
+        if issubclass(dtype, (complex, np.complexfloating)):
             x = np.array([1 + 0j, 0 + 1j, -1 + 0j, 0 - 1j], dtype=dtype)
-            x = x[np.random.randint(4, high=None, size=size)]
+            x = x[np.random.randint(4, size=shape)]
         else:
-            x = 2 * np.random.randint(2, high=None, size=size) - 1
+            x = 2 * np.random.randint(2, size=shape) - 1
 
-        return x.astype(dtype).reshape(shape)
+        return x.astype(dtype)
 
     @staticmethod
-    def normal(dtype=np.dtype('float64'), shape=(1,), mean=None, std=None):
-
-        size = int(reduce(lambda x, y: x*y, shape))
-        if issubclass(dtype.type, np.complexfloating):
-            x = np.empty(size, dtype=dtype)
-            x.real = np.random.normal(loc=0, scale=np.sqrt(0.5), size=size)
-            x.imag = np.random.normal(loc=0, scale=np.sqrt(0.5), size=size)
+    def normal(dtype, shape, mean=0., std=1.):
+        if issubclass(dtype, (complex, np.complexfloating)):
+            x = np.empty(shape, dtype=dtype)
+            x.real = np.random.normal(mean, std*np.sqrt(0.5), shape)
+            x.imag = np.random.normal(mean, std*np.sqrt(0.5), shape)
         else:
-            x = np.random.normal(loc=0, scale=1, size=size)
+            x = np.random.normal(mean, std, shape)
             x = x.astype(dtype, copy=False)
-
-        x = x.reshape(shape)
-
-        if std is not None:
-            x *= dtype.type(std)
-
-        if mean is not None:
-            x += dtype.type(mean)
-
         return x
 
     @staticmethod
-    def uniform(dtype=np.dtype('float64'), shape=1, low=0, high=1):
-
-        size = int(reduce(lambda x, y: x*y, shape))
-        if issubclass(dtype.type, np.complexfloating):
+    def uniform(dtype, shape, low=0., high=1.):
+        if issubclass(dtype, (complex, np.complexfloating)):
             x = np.empty(size, dtype=dtype)
-            x.real = (high - low) * np.random.random(size=size) + low
-            x.imag = (high - low) * np.random.random(size=size) + low
+            x.real = (high - low) * np.random.random(shape) + low
+            x.imag = (high - low) * np.random.random(shape) + low
         elif dtype in [np.dtype('int8'), np.dtype('int16'), np.dtype('int32'),
                        np.dtype('int64')]:
             x = np.random.random_integers(min(low, high),
                                           high=max(low, high),
-                                          size=size)
+                                          size=shape)
         else:
-            x = (high - low) * np.random.random(size=size) + low
+            x = (high - low) * np.random.random(shape) + low
 
-        return x.astype(dtype, copy=False).reshape(shape)
+        return x.astype(dtype, copy=False)

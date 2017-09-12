@@ -58,7 +58,7 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     Memorizing the evaluations of some quantities (using the memo decorator)
     minimizes the computational effort for multiple calls.
 
-    See also
+    See Also
     --------
     memo
 
