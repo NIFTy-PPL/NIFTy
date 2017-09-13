@@ -47,7 +47,7 @@ class RGRGTransformation(Transformation):
     def _hartley(a, axes=None):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
-                not all(axis in range(len(val.shape)) for axis in axes):
+                not all(axis in range(len(a.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
         from pyfftw.interfaces.numpy_fft import rfftn
