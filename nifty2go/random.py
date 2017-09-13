@@ -36,7 +36,7 @@ class Random(object):
         if issubclass(dtype, (complex, np.complexfloating)):
             x = np.empty(shape, dtype=dtype)
             x.real = np.random.normal(mean, std*np.sqrt(0.5), shape)
-            x.imag = np.random.normal(mean, std*np.sqrt(0.5), shape)
+            x.imag = np.random.normal(0., std*np.sqrt(0.5), shape)
         else:
             x = np.random.normal(mean, std, shape)
             x = x.astype(dtype, copy=False)
