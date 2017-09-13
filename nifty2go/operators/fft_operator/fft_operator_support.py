@@ -38,21 +38,41 @@ class RGRGTransformation(Transformation):
         import pyfftw
         super(RGRGTransformation, self).__init__(domain, codomain)
         pyfftw.interfaces.cache.enable()
-        self._fwd = self.codomain.harmonic
 
     @property
     def unitary(self):
         return True
 
-    def _transform_helper(self, val, axes):
-        from pyfftw.interfaces.numpy_fft import fftn, ifftn
-
+    @staticmethod
+    def _hartley(a, axes=None):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
                 not all(axis in range(len(val.shape)) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
-        return fftn(val, axes=axes) if self._fwd else ifftn(val, axes=axes)
+        from pyfftw.interfaces.numpy_fft import rfftn
+        if issubclass(a.dtype.type,np.complexfloating):
+            raise TypeError ("Hartley tansform works for real-valued arrays only.")
+        tmp = rfftn(a,axes=axes)
+        res = np.empty_like(a)
+        if axes is None:
+            axes = list(range(a.ndim))
+        lastaxis = axes[-1]
+        nlast = a.shape[lastaxis]
+        ntmplast = tmp.shape[lastaxis]
+        nrem = nlast - ntmplast
+        slice1 = [slice(None)]*a.ndim
+        slice1[lastaxis]=slice(0,ntmplast)
+        res[slice1] = tmp.real+tmp.imag
+        tmp = np.roll(tmp,-1,axes)
+        slice1 = [slice(None)]*a.ndim
+        slice1[lastaxis]=slice(ntmplast,None)
+        slice2 = [slice(None)]*a.ndim
+        for i in axes:
+            slice2[i] = slice(None,None,-1)
+        slice2[lastaxis]=slice(nrem-1,None,-1)
+        res[slice1] = tmp[slice2].real-tmp[slice2].imag
+        return res
 
     def transform(self, val, axes=None):
         """
@@ -75,26 +95,14 @@ class RGRGTransformation(Transformation):
         if self.codomain.harmonic:
             fct = self.domain.weight()
         else:
-            fct = 1./self.codomain.weight()
+            fct = 1./(self.codomain.weight()*self.domain.dim)
 
         # Perform the transformation
         if issubclass(val.dtype.type, np.complexfloating):
-            Tval1 = self._transform_helper(val.real, axes)
-            Tval2 = self._transform_helper(val.imag, axes)
-            if self.codomain.harmonic:
-                Tval1.real += Tval1.imag
-                Tval2.real += Tval2.imag
-            else:
-                Tval1.real -= Tval1.imag
-                Tval2.real -= Tval2.imag
-            Tval1.imag = Tval2.real
-            Tval = Tval1
+            Tval = self._hartley(val.real, axes) \
+                  +1j*self._hartley(val.imag, axes)
         else:
-            Tval = self._transform_helper(val, axes)
-            if self.codomain.harmonic:
-                Tval = Tval.real + Tval.imag
-            else:
-                Tval = Tval.real - Tval.imag
+            Tval = self._hartley(val, axes)
 
         Tval *= fct
         return Tval
