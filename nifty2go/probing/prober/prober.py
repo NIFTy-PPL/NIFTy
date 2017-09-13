@@ -107,7 +107,7 @@ class Prober(object):
         """ a random-probe generator """
         f = Field.from_random(random_type=self.random_type,
                               domain=self.domain,
-                              dtype=self.probe_dtype)
+                              dtype=self.probe_dtype.type)
         uid = self._uid_counter
         self._uid_counter += 1
         return (uid, f)

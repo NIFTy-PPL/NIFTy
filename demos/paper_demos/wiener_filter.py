@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # Probing the uncertainty |\label{code:wf_uncertainty_probing}|
     class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby(signal_space, probe_count=800,ncpu=1)
+    proby = Proby(signal_space, probe_count=1,ncpu=1)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))  #|\label{code:wf_variance_fft_wrap}|
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.03)
@@ -62,3 +62,5 @@ if __name__ == "__main__":
     ift.plotting.plot(variance,name="uncertainty.pdf",xlabel='Pixel index', ylabel='Pixel index')
     ift.plotting.plot(mock_signal,name="mock_signal.pdf",xlabel='Pixel index', ylabel='Pixel index')
     ift.plotting.plot(ift.Field(signal_space, val=data.val),name="data.pdf",xlabel='Pixel index', ylabel='Pixel index')
+    ift.plotting.plot(m,name="map.pdf",xlabel='Pixel index', ylabel='Pixel index')
+

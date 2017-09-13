@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     # Probing the variance
     class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby((signal_space_1, signal_space_2), probe_count=2,ncpu=2)
+    proby = Proby((signal_space_1, signal_space_2), probe_count=2,ncpu=1)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))
 #    sm = SmoothingOperator(signal_space, sigma=0.02)
 #    variance = sm(proby.diagonal.weight(-1))
