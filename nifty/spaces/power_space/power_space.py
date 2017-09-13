@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-#from builtins import str
 import ast
 import numpy as np
 
@@ -324,5 +323,5 @@ class PowerSpace(Space):
     def _from_hdf5(cls, hdf5_group, repository):
         hp = repository.get('harmonic_partner', hdf5_group)
         bb = ast.literal_eval(hdf5_group.attrs['binbounds'])
-        ds = hdf5_group.attrs['distribution_strategy']
+        ds = str(hdf5_group.attrs['distribution_strategy'])
         return PowerSpace(hp, ds, binbounds=bb)
