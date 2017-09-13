@@ -18,7 +18,6 @@
 
 from __future__ import division
 from builtins import zip
-#from builtins import str
 from builtins import range
 
 import ast
@@ -1603,7 +1602,7 @@ class Field(Loggable, Versionable, object):
 
         new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
         new_field.distribution_strategy =\
-            hdf5_group.attrs['distribution_strategy']
+            str(hdf5_group.attrs['distribution_strategy'])
 
         return new_field
 
