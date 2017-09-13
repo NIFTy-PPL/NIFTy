@@ -51,9 +51,9 @@ class RGRGTransformation(Transformation):
             raise ValueError("Provided axes does not match array shape")
 
         from pyfftw.interfaces.numpy_fft import rfftn
-        if issubclass(a.dtype.type,np.complexfloating):
-            raise TypeError ("Hartley tansform works for real-valued arrays only.")
-        tmp = rfftn(a,axes=axes)
+        if issubclass(a.dtype.type, np.complexfloating):
+            raise TypeError("Hartley tansform requires real-valued arrays.")
+        tmp = rfftn(a, axes=axes)
         res = np.empty_like(a)
         if axes is None:
             axes = list(range(a.ndim))
@@ -62,15 +62,14 @@ class RGRGTransformation(Transformation):
         ntmplast = tmp.shape[lastaxis]
         nrem = nlast - ntmplast
         slice1 = [slice(None)]*a.ndim
-        slice1[lastaxis]=slice(0,ntmplast)
+        slice1[lastaxis] = slice(0, ntmplast)
         res[slice1] = tmp.real+tmp.imag
-        tmp = np.roll(tmp,-1,axes)
-        slice1 = [slice(None)]*a.ndim
-        slice1[lastaxis]=slice(ntmplast,None)
+        tmp = np.roll(tmp, -1, axes)
+        slice1[lastaxis] = slice(ntmplast, None)
         slice2 = [slice(None)]*a.ndim
         for i in axes:
-            slice2[i] = slice(None,None,-1)
-        slice2[lastaxis]=slice(nrem-1,None,-1)
+            slice2[i] = slice(None, None, -1)
+        slice2[lastaxis] = slice(nrem-1, None, -1)
         res[slice1] = tmp[slice2].real-tmp[slice2].imag
         return res
 
