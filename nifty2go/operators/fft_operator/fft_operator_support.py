@@ -44,6 +44,27 @@ class RGRGTransformation(Transformation):
         return True
 
     @staticmethod
+    def _fill_upper_half(tmp, res, axes):
+        lastaxis = axes[-1]
+        nlast = res.shape[lastaxis]
+        ntmplast = tmp.shape[lastaxis]
+        nrem = nlast - ntmplast
+        slice1 = [slice(None)]*res.ndim
+        slice2 = list(slice1)
+        for i in axes:
+            slice1[i] = slice(1, None)
+            slice2[i] = slice(None, 0, -1)
+        slice1[lastaxis] = slice(ntmplast, None)
+        slice2[lastaxis] = slice(nrem, 0, -1)
+        res[slice1] = tmp[slice2].real-tmp[slice2].imag
+        for i in range(len(axes)-1):
+            ax = axes[i]
+            dim1 = [slice(None)]*res.ndim
+            dim1[ax]=slice(0,1)
+            axes2 = axes[:i] + axes[i+1:]
+            RGRGTransformation._fill_upper_half(tmp[dim1], res[dim1], axes2)
+
+    @staticmethod
     def _hartley(a, axes=None):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
@@ -64,13 +85,7 @@ class RGRGTransformation(Transformation):
         slice1 = [slice(None)]*a.ndim
         slice1[lastaxis] = slice(0, ntmplast)
         res[slice1] = tmp.real+tmp.imag
-        tmp = np.roll(tmp, -1, axes)
-        slice1[lastaxis] = slice(ntmplast, None)
-        slice2 = [slice(None)]*a.ndim
-        for i in axes:
-            slice2[i] = slice(None, None, -1)
-        slice2[lastaxis] = slice(nrem-1, None, -1)
-        res[slice1] = tmp[slice2].real-tmp[slice2].imag
+        RGRGTransformation._fill_upper_half (tmp, res, axes)
         return res
 
     def transform(self, val, axes=None):
