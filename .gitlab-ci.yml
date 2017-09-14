@@ -1,4 +1,4 @@
-image: ubuntu:artful
+image: debian:stretch-slim
 
 stages:
   - test
