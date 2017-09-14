@@ -113,12 +113,3 @@ if __name__ == "__main__":
     ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real), name='mock_signal.pdf')
     ift.plotting.plot(ift.Field(plot_space, val=data.val.real), name='data.pdf')
     ift.plotting.plot(ift.Field(plot_space, val=m.val.real), name='map.pdf')
-    exit()
-    plotter(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), path='uncertainty.html')
-
-    plotter.plot.zmin = np.real(mock_signal.min());
-    plotter.plot.zmax = np.real(mock_signal.max());
-    plotter(ift.Field(plot_space, val=mock_signal.val.real), path='mock_signal.html')
-    plotter(ift.Field(plot_space, val=data.val.real), path = 'data.html')
-    plotter(ift.Field(plot_space, val=m.val.real), path = 'map.html')
-
