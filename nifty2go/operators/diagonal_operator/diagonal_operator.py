@@ -208,7 +208,7 @@ class DiagonalOperator(EndomorphicOperator):
             return operation(self._diagonal)(x)
 
         if spaces is None:
-            active_axes = list(range(len(x.shape)))
+            active_axes = range(len(x.shape))
         else:
             active_axes = []
             for space_index in spaces:

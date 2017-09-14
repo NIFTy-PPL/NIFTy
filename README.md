@@ -90,7 +90,7 @@ The current version of Nifty3 can be obtained by cloning the repository:
 
 It is possible to simply install NIFTy with all its dependencies via the command
 
-pip install --user --process-dependency-links git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@nifty2go
+pip install --user --process-dependency-links --egg git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@nifty2go
 
 ### Running the tests
 

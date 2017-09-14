@@ -226,7 +226,7 @@ class Field(object):
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
-            spaces = list(range(len(self.domain)))
+            spaces = range(len(self.domain))
 
         if len(spaces) == 0:
             raise ValueError("No space for analysis specified.")
@@ -297,8 +297,8 @@ class Field(object):
     @staticmethod
     def _shape_up_pindex(pindex, target_shape, axes):
         semiscaled_local_shape = [1] * len(target_shape)
-        for i in range(len(axes)):
-            semiscaled_local_shape[axes[i]] = pindex.shape[i]
+        for i, ax in enumerate(axes):
+            semiscaled_local_shape[ax] = pindex.shape[i]
         result_obj = np.empty(target_shape, dtype=pindex.dtype)
         result_obj[()] = pindex.reshape(semiscaled_local_shape)
         return result_obj
@@ -356,7 +356,7 @@ class Field(object):
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
-            spaces = list(range(len(self.domain)))
+            spaces = range(len(self.domain))
 
         for i in spaces:
             if not isinstance(self.domain[i], PowerSpace):
@@ -536,7 +536,7 @@ class Field(object):
 
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
-            spaces = list(range(len(self.domain)))
+            spaces = range(len(self.domain))
 
         fct = 1.
         for ind in spaces:

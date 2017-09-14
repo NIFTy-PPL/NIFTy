@@ -120,8 +120,7 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
 
     if codomain is None:
         codomain = [None]*len(domain)
-    for i in range(len(domain)):
-        space = domain[i]
+    for i, space in enumerate(domain):
         cospace = codomain[i]
         if not isinstance(space, Space):
             continue

@@ -49,18 +49,14 @@ class RGRGTransformation(Transformation):
         nlast = res.shape[lastaxis]
         ntmplast = tmp.shape[lastaxis]
         nrem = nlast - ntmplast
-        slice1 = [slice(None)]*res.ndim
-        slice2 = list(slice1)
-        for i in axes:
+        slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
+        slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
+        for i in axes[:-1]:
             slice1[i] = slice(1, None)
             slice2[i] = slice(None, 0, -1)
-        slice1[lastaxis] = slice(ntmplast, None)
-        slice2[lastaxis] = slice(nrem, 0, -1)
         res[slice1] = tmp[slice2].real-tmp[slice2].imag
-        for i in range(len(axes)-1):
-            ax = axes[i]
-            dim1 = [slice(None)]*res.ndim
-            dim1[ax]=slice(0,1)
+        for i, ax in enumerate(axes[:-1]):
+            dim1 = [slice(None)]*ax + [slice(0,1)]
             axes2 = axes[:i] + axes[i+1:]
             RGRGTransformation._fill_upper_half(tmp[dim1], res[dim1], axes2)
 
@@ -68,7 +64,7 @@ class RGRGTransformation(Transformation):
     def _hartley(a, axes=None):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
-                not all(axis in range(len(a.shape)) for axis in axes):
+                not all(axis<len(a.shape) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
         from pyfftw.interfaces.numpy_fft import rfftn
@@ -77,15 +73,14 @@ class RGRGTransformation(Transformation):
         tmp = rfftn(a, axes=axes)
         res = np.empty_like(a)
         if axes is None:
-            axes = list(range(a.ndim))
+            axes = range(a.ndim)
         lastaxis = axes[-1]
         nlast = a.shape[lastaxis]
         ntmplast = tmp.shape[lastaxis]
         nrem = nlast - ntmplast
-        slice1 = [slice(None)]*a.ndim
-        slice1[lastaxis] = slice(0, ntmplast)
+        slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
         res[slice1] = tmp.real+tmp.imag
-        RGRGTransformation._fill_upper_half (tmp, res, axes)
+        RGRGTransformation._fill_upper_half(tmp, res, axes)
         return res
 
     def transform(self, val, axes=None):
