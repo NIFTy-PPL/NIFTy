@@ -54,7 +54,7 @@ class RGRGTransformation(Transformation):
         for i in axes[:-1]:
             slice1[i] = slice(1, None)
             slice2[i] = slice(None, 0, -1)
-        res[slice1] = tmp[slice2].real-tmp[slice2].imag
+        np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
         for i, ax in enumerate(axes[:-1]):
             dim1 = [slice(None)]*ax + [slice(0,1)]
             axes2 = axes[:i] + axes[i+1:]
@@ -79,7 +79,7 @@ class RGRGTransformation(Transformation):
         ntmplast = tmp.shape[lastaxis]
         nrem = nlast - ntmplast
         slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
-        res[slice1] = tmp.real+tmp.imag
+        np.add(tmp.real, tmp.imag, out=res[slice1])
         RGRGTransformation._fill_upper_half(tmp, res, axes)
         return res
 
