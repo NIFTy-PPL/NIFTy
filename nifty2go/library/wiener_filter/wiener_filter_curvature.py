@@ -49,5 +49,6 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     # ---Added properties and methods---
 
     def _times(self, x, spaces):
-        return (self.R.adjoint_times(self.N.inverse_times(self.R(x))) +
-                self.S.inverse_times(x))
+        res = self.R.adjoint_times(self.N.inverse_times(self.R(x)))
+        res += self.S.inverse_times(x)
+        return res
