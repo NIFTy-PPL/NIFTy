@@ -38,25 +38,19 @@ class PowerSpace(Space):
         The distribution strategy used for the distributed_data_objects
         derived from this PowerSpace, e.g. the pindex.
         (default : 'not')
-    logarithmic : bool *optional*
-        True if logarithmic binning should be used (default : None).
-    nbin : {int, None} *optional*
-        The number of bins that should be used for power spectrum binning
-        (default : None).
-        if nbin == None, then nbin is set to the length of kindex.
-    binbounds :  {list, array-like} *optional*
-        Boundaries between the power spectrum bins.
-        (If binbounds has n entries, there will be n+1 bins, the first bin
-        starting at -inf, the last bin ending at +inf.)
+    binbounds: None, or tuple/array/list of float
+        if None:
+            There will be as many bins as there are distinct k-vector lengths
+            in the harmonic partner space.
+            The "binbounds" property of the PowerSpace will also be None.
+
+        else:
+            the bin bounds requested for this PowerSpace. The array
+            must be sorted and strictly ascending. The first entry is the right
+            boundary of the first bin, and the last entry is the left boundary
+            of the last bin, i.e. thee will be len(binbounds)+1 bins in total,
+            with the first and last bins reaching to -+infinity, respectively.
         (default : None)
-        if binbounds == None:
-            Calculates the bounds from the kindex while applying the
-            logarithmic and nbin keywords.
-    Note: if "bindounds" is not None, both "logarithmic" and "nbin" must be
-        None!
-    Note: if "binbounds", "logarithmic", and "nbin" are all None, then
-        "natural" binning is performed, i.e. there will be one bin for every
-        distinct k-vector length.
 
     Attributes
     ----------
@@ -71,13 +65,14 @@ class PowerSpace(Space):
     dim : np.int
         Total number of dimensionality, i.e. the number of pixels.
     harmonic : bool
-        Specifies whether the space is a signal or harmonic space.
+        Always True for this space.
     total_volume : np.float
         The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
-    binbounds :  tuple or None
-        Boundaries between the power spectrum bins
+    binbounds : tuple or None
+        Boundaries between the power spectrum bins; None is used to indicate
+        natural binning
 
     Notes
     -----
@@ -90,8 +85,74 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
+    @staticmethod
+    def linear_binbounds(nbin, first_bound, last_bound):
+        """
+        nbin: integer
+            the number of bins
+        first_bound, last_bound: float
+            the k values for the right boundary of the first bin and the left
+            boundary of the last bin, respectively. They are given in length
+            units of the harmonic partner space.
+        This will produce a binbounds array with nbin-1 entries with
+        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
+        values equidistantly spaced (in linear scale) between these two.
+        """
+        nbin = int(nbin)
+        assert nbin >= 3, "nbin must be at least 3"
+        return np.linspace(float(first_bound), float(last_bound), nbin-1)
+
+    @staticmethod
+    def logarithmic_binbounds(nbin, first_bound, last_bound):
+        """
+        nbin: integer
+            the number of bins
+        first_bound, last_bound: float
+            the k values for the right boundary of the first bin and the left
+            boundary of the last bin, respectively. They are given in length
+            units of the harmonic partner space.
+        This will produce a binbounds array with nbin-1 entries with
+        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
+        values equidistantly spaced (in natural logarithmic scale)
+        between these two.
+        """
+        nbin = int(nbin)
+        assert nbin >= 3, "nbin must be at least 3"
+        return np.logspace(np.log(float(first_bound)),
+                           np.log(float(last_bound)),
+                           nbin-1, base=np.e)
+
+    @staticmethod
+    def useful_binbounds(space, logarithmic, nbin=None):
+        if not (isinstance(space, Space) and space.harmonic):
+            raise ValueError("first argument must be a harmonic space.")
+        if logarithmic is None and nbin is None:
+            return None
+        nbin = None if nbin is None else int(nbin)
+        logarithmic = bool(logarithmic)
+        dists = space.get_unique_distances()
+        if len(dists) < 3:
+            raise ValueError("Space does not have enough unique k lengths")
+        lbound = 0.5*(dists[0]+dists[1])
+        rbound = 0.5*(dists[-2]+dists[-1])
+        dists[0] = lbound
+        dists[-1] = rbound
+        if logarithmic:
+            dists = np.log(dists)
+        binsz_min = np.max(np.diff(dists))
+        nbin_max = int((dists[-1]-dists[0])/binsz_min)+2
+        if nbin is None:
+            nbin = nbin_max
+        assert nbin >= 3, "nbin must be at least 3"
+        if nbin > nbin_max:
+            raise ValueError("nbin is too large")
+        if logarithmic:
+            return PowerSpace.logarithmic_binbounds(nbin, lbound, rbound)
+        else:
+            return PowerSpace.linear_binbounds(nbin, lbound, rbound)
+
     def __init__(self, harmonic_partner, distribution_strategy=None,
-                 logarithmic=None, nbin=None, binbounds=None):
+                 binbounds=None):
         super(PowerSpace, self).__init__()
         self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
 
@@ -107,78 +168,30 @@ class PowerSpace(Space):
             raise ValueError("harmonic_partner must be a harmonic space.")
         self._harmonic_partner = harmonic_partner
 
-        # sanity check
-        if binbounds is not None and not(nbin is None and logarithmic is None):
-            raise ValueError(
-                "if binbounds is defined, nbin and logarithmic must be None")
-
         if binbounds is not None:
             binbounds = tuple(binbounds)
 
-        key = (harmonic_partner, distribution_strategy, logarithmic, nbin,
-               binbounds)
+        key = (harmonic_partner, distribution_strategy, binbounds)
         if self._powerIndexCache.get(key) is None:
             distance_array = \
                 self.harmonic_partner.get_distance_array(distribution_strategy)
-            temp_binbounds = self._compute_binbounds(
-                                  harmonic_partner=self.harmonic_partner,
-                                  distribution_strategy=distribution_strategy,
-                                  logarithmic=logarithmic,
-                                  nbin=nbin,
-                                  binbounds=binbounds)
             temp_pindex = self._compute_pindex(
                                 harmonic_partner=self.harmonic_partner,
                                 distance_array=distance_array,
-                                binbounds=temp_binbounds,
+                                binbounds=binbounds,
                                 distribution_strategy=distribution_strategy)
             temp_rho = temp_pindex.bincount().get_full_data()
+            assert not np.any(temp_rho == 0), "empty bins detected"
             temp_kindex = \
                 (temp_pindex.bincount(weights=distance_array).get_full_data() /
                  temp_rho)
-            self._powerIndexCache[key] = (temp_binbounds,
+            self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
                                           temp_kindex,
                                           temp_rho)
 
         (self._binbounds, self._pindex, self._kindex, self._rho) = \
             self._powerIndexCache[key]
-
-    @staticmethod
-    def _compute_binbounds(harmonic_partner, distribution_strategy,
-                           logarithmic, nbin, binbounds):
-
-        if logarithmic is None and nbin is None and binbounds is None:
-            result = None
-        else:
-            if binbounds is not None:
-                bb = np.sort(np.array(binbounds))
-            else:
-                if logarithmic is not None:
-                    logarithmic = bool(logarithmic)
-                if nbin is not None:
-                    nbin = int(nbin)
-
-                # equidistant binning (linear or log)
-                # MR FIXME: this needs to improve
-                kindex = harmonic_partner.get_unique_distances()
-                if (logarithmic):
-                    k = np.r_[0, np.log(kindex[1:])]
-                else:
-                    k = kindex
-                dk = np.max(k[2:] - k[1:-1])  # minimum dk to avoid empty bins
-                if(nbin is None):
-                    nbin = int((k[-1] - 0.5 * (k[2] + k[1])) /
-                               dk - 0.5)  # maximal nbin
-                else:
-                    nbin = min(int(nbin), int(
-                        (k[-1] - 0.5 * (k[2] + k[1])) / dk + 2.5))
-                    dk = (k[-1] - 0.5 * (k[2] + k[1])) / (nbin - 2.5)
-                bb = np.r_[0.5 * (3 * k[1] - k[2]),
-                           0.5 * (k[1] + k[2]) + dk * np.arange(nbin-2)]
-                if(logarithmic):
-                    bb = np.exp(bb)
-            result = tuple(bb)
-        return result
 
     @staticmethod
     def _compute_pindex(harmonic_partner, distance_array, binbounds,
