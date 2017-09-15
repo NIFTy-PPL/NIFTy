@@ -86,6 +86,8 @@ class RGSpace(Space):
         self._harmonic = bool(harmonic)
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
+        self._wgt = reduce(lambda x, y: x*y, self._distances)
+        self._dim = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
         return ("RGSpace(shape=%r, distances=%r, harmonic=%r)"
@@ -101,11 +103,11 @@ class RGSpace(Space):
 
     @property
     def dim(self):
-        return int(reduce(lambda x, y: x*y, self.shape))
+        return self._dim
 
     @property
     def total_volume(self):
-        return self.dim * reduce(lambda x, y: x*y, self.distances)
+        return self.dim * self._wgt
 
     def copy(self):
         return self.__class__(shape=self.shape,
@@ -113,10 +115,10 @@ class RGSpace(Space):
                               harmonic=self.harmonic)
 
     def scalar_weight(self):
-        return reduce(lambda x, y: x*y, self.distances)
+        return self._wgt
 
     def weight(self):
-        return reduce(lambda x, y: x*y, self.distances)
+        return self._wgt
 
     def get_distance_array(self):
         """ Calculates an n-dimensional array with its entries being the

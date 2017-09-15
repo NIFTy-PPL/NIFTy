@@ -586,11 +586,8 @@ class Field(object):
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
             from .operators.diagonal_operator import DiagonalOperator
-            diagonal = y.val.conjugate()
-            diagonalOperator = DiagonalOperator(domain=y.domain,
-                                                diagonal=diagonal,
-                                                copy=False)
-            dotted = diagonalOperator(x, spaces=spaces)
+            diag = DiagonalOperator(y.domain, y.conjugate(), copy=False)
+            dotted = diag(x, spaces=spaces)
             return fct*dotted.sum(spaces=spaces)
 
     def norm(self):
@@ -604,13 +601,8 @@ class Field(object):
         """
         return np.sqrt(np.abs(self.vdot(x=self)))
 
-    def conjugate(self, inplace=False):
+    def conjugate(self):
         """ Returns the complex conjugate of the field.
-
-        Parameters
-        ----------
-        inplace : boolean
-            Decides whether the conjugation should be performed inplace.
 
         Returns
         -------
@@ -618,11 +610,7 @@ class Field(object):
             The complex conjugated field.
 
         """
-        if inplace:
-            self.imag *= -1
-            return self
-        else:
-            return Field(self.domain, np.conj(self.val), self.dtype)
+        return Field(self.domain, self.val.conjugate(), self.dtype)
 
     # ---General unary/contraction methods---
 

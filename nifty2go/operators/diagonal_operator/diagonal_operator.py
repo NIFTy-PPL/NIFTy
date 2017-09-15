@@ -188,7 +188,7 @@ class DiagonalOperator(EndomorphicOperator):
         # do inverse weightening if the other way around
         if bare:
             # If `copy` is True, we won't change external data by weightening
-            # Otherwise, inplace weightening would change the external field
+            # Otherwise, inplace weighting would change the external field
             f.weight(inplace=copy)
 
         # Reset the self_adjoint property:

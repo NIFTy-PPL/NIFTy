@@ -122,37 +122,32 @@ class FFTOperator(LinearOperator):
         self._backward_transformation = backward_class(
             self.target[0], self.domain[0])
 
-    def _times(self, x, spaces):
-        spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
+    def _times_helper(self, x, spaces, other, trafo):
         if spaces is None:
             # this case means that x lives on only one space, which is
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
             axes = x.domain_axes[0]
-            result_domain = self.target
+            result_domain = other
         else:
-            axes = x.domain_axes[spaces[0]]
+            spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
             result_domain = list(x.domain)
-            result_domain[spaces[0]] = self.target[0]
+            result_domain[spaces[0]] = other[0]
+            axes = x.domain_axes[spaces[0]]
 
-        new_val = self._forward_transformation.transform(x.val, axes=axes)
-        return Field(result_domain, new_val, copy=False)
+        new_val, fct = trafo.transform(x.val, axes=axes)
+        res = Field(result_domain, new_val, copy=False)
+        if fct != 1.:
+            res *= fct
+        return res
+
+    def _times(self, x, spaces):
+        return self._times_helper(x, spaces, self.target,
+                                  self._forward_transformation)
 
     def _adjoint_times(self, x, spaces):
-        spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
-        if spaces is None:
-            # this case means that x lives on only one space, which is
-            # identical to the space in the domain of `self`. Otherwise the
-            # input check of LinearOperator would have failed.
-            axes = x.domain_axes[0]
-            result_domain = self.domain
-        else:
-            axes = x.domain_axes[spaces[0]]
-            result_domain = list(x.domain)
-            result_domain[spaces[0]] = self.domain[0]
-
-        new_val = self._backward_transformation.transform(x.val, axes=axes)
-        return Field(result_domain, new_val, copy=False)
+        return self._times_helper(x, spaces, self.domain,
+                                  self._backward_transformation)
 
     # ---Mandatory properties and methods---
 

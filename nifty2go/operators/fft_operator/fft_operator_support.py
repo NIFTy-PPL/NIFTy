@@ -113,8 +113,7 @@ class RGRGTransformation(Transformation):
         else:
             Tval = self._hartley(val, axes)
 
-        Tval *= fct
-        return Tval
+        return Tval, fct
 
 
 class SlicingTransformation(Transformation):
@@ -125,7 +124,7 @@ class SlicingTransformation(Transformation):
 
         for slice in utilities.get_slice_list(val.shape, axes):
             return_val[slice] = self._transformation_of_slice(val[slice])
-        return return_val
+        return return_val, 1.
 
     def _transformation_of_slice(self, inp):
         raise NotImplementedError
