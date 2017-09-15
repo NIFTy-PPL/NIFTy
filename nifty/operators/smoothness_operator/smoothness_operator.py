@@ -60,10 +60,6 @@ class SmoothnessOperator(EndomorphicOperator):
     # ---Mandatory properties and methods---
 
     @property
-    def target(self):
-        return self._domain
-
-    @property
     def domain(self):
         return self._domain
 
