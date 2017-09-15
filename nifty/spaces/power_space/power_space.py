@@ -85,72 +85,6 @@ class PowerSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    @staticmethod
-    def linear_binbounds(nbin, first_bound, last_bound):
-        """
-        nbin: integer
-            the number of bins
-        first_bound, last_bound: float
-            the k values for the right boundary of the first bin and the left
-            boundary of the last bin, respectively. They are given in length
-            units of the harmonic partner space.
-        This will produce a binbounds array with nbin-1 entries with
-        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
-        values equidistantly spaced (in linear scale) between these two.
-        """
-        nbin = int(nbin)
-        assert nbin >= 3, "nbin must be at least 3"
-        return np.linspace(float(first_bound), float(last_bound), nbin-1)
-
-    @staticmethod
-    def logarithmic_binbounds(nbin, first_bound, last_bound):
-        """
-        nbin: integer
-            the number of bins
-        first_bound, last_bound: float
-            the k values for the right boundary of the first bin and the left
-            boundary of the last bin, respectively. They are given in length
-            units of the harmonic partner space.
-        This will produce a binbounds array with nbin-1 entries with
-        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
-        values equidistantly spaced (in natural logarithmic scale)
-        between these two.
-        """
-        nbin = int(nbin)
-        assert nbin >= 3, "nbin must be at least 3"
-        return np.logspace(np.log(float(first_bound)),
-                           np.log(float(last_bound)),
-                           nbin-1, base=np.e)
-
-    @staticmethod
-    def useful_binbounds(space, logarithmic, nbin=None):
-        if not (isinstance(space, Space) and space.harmonic):
-            raise ValueError("first argument must be a harmonic space.")
-        if logarithmic is None and nbin is None:
-            return None
-        nbin = None if nbin is None else int(nbin)
-        logarithmic = bool(logarithmic)
-        dists = space.get_unique_distances()
-        if len(dists) < 3:
-            raise ValueError("Space does not have enough unique k lengths")
-        lbound = 0.5*(dists[0]+dists[1])
-        rbound = 0.5*(dists[-2]+dists[-1])
-        dists[0] = lbound
-        dists[-1] = rbound
-        if logarithmic:
-            dists = np.log(dists)
-        binsz_min = np.max(np.diff(dists))
-        nbin_max = int((dists[-1]-dists[0])/binsz_min)+2
-        if nbin is None:
-            nbin = nbin_max
-        assert nbin >= 3, "nbin must be at least 3"
-        if nbin > nbin_max:
-            raise ValueError("nbin is too large")
-        if logarithmic:
-            return PowerSpace.logarithmic_binbounds(nbin, lbound, rbound)
-        else:
-            return PowerSpace.linear_binbounds(nbin, lbound, rbound)
-
     def __init__(self, harmonic_partner, distribution_strategy=None,
                  binbounds=None):
         super(PowerSpace, self).__init__()
@@ -320,6 +254,72 @@ class PowerSpace(Space):
         """Degeneracy factor of the individual k-vectors.
         """
         return self._rho
+
+    @staticmethod
+    def linear_binbounds(nbin, first_bound, last_bound):
+        """
+        nbin: integer
+            the number of bins
+        first_bound, last_bound: float
+            the k values for the right boundary of the first bin and the left
+            boundary of the last bin, respectively. They are given in length
+            units of the harmonic partner space.
+        This will produce a binbounds array with nbin-1 entries with
+        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
+        values equidistantly spaced (in linear scale) between these two.
+        """
+        nbin = int(nbin)
+        assert nbin >= 3, "nbin must be at least 3"
+        return np.linspace(float(first_bound), float(last_bound), nbin-1)
+
+    @staticmethod
+    def logarithmic_binbounds(nbin, first_bound, last_bound):
+        """
+        nbin: integer
+            the number of bins
+        first_bound, last_bound: float
+            the k values for the right boundary of the first bin and the left
+            boundary of the last bin, respectively. They are given in length
+            units of the harmonic partner space.
+        This will produce a binbounds array with nbin-1 entries with
+        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
+        values equidistantly spaced (in natural logarithmic scale)
+        between these two.
+        """
+        nbin = int(nbin)
+        assert nbin >= 3, "nbin must be at least 3"
+        return np.logspace(np.log(float(first_bound)),
+                           np.log(float(last_bound)),
+                           nbin-1, base=np.e)
+
+    @staticmethod
+    def useful_binbounds(space, logarithmic, nbin=None):
+        if not (isinstance(space, Space) and space.harmonic):
+            raise ValueError("first argument must be a harmonic space.")
+        if logarithmic is None and nbin is None:
+            return None
+        nbin = None if nbin is None else int(nbin)
+        logarithmic = bool(logarithmic)
+        dists = space.get_unique_distances()
+        if len(dists) < 3:
+            raise ValueError("Space does not have enough unique k lengths")
+        lbound = 0.5*(dists[0]+dists[1])
+        rbound = 0.5*(dists[-2]+dists[-1])
+        dists[0] = lbound
+        dists[-1] = rbound
+        if logarithmic:
+            dists = np.log(dists)
+        binsz_min = np.max(np.diff(dists))
+        nbin_max = int((dists[-1]-dists[0])/binsz_min)+2
+        if nbin is None:
+            nbin = nbin_max
+        assert nbin >= 3, "nbin must be at least 3"
+        if nbin > nbin_max:
+            raise ValueError("nbin is too large")
+        if logarithmic:
+            return PowerSpace.logarithmic_binbounds(nbin, lbound, rbound)
+        else:
+            return PowerSpace.linear_binbounds(nbin, lbound, rbound)
 
     # ---Serialization---
 
