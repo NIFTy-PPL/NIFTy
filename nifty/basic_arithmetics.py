@@ -103,21 +103,24 @@ def clipped_exp(x):
 def limited_exp(x):
     return _math_helper(x, _limited_exp_helper)
 
+
 def _limited_exp_helper(x):
     thr = 200.
-    mask = x>thr
+    mask = x > thr
     if np.count_nonzero(mask) == 0:
         return np.exp(x)
     result = ((1.-thr) + x)*np.exp(thr)
     result[~mask] = np.exp(x[~mask])
     return result
 
+
 def limited_exp_deriv(x):
     return _math_helper(x, _limited_exp_deriv_helper)
 
+
 def _limited_exp_deriv_helper(x):
     thr = 200.
-    mask = x>thr
+    mask = x > thr
     if np.count_nonzero(mask) == 0:
         return np.exp(x)
     result = np.empty_like(x)

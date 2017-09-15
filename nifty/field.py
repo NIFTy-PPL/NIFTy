@@ -676,7 +676,7 @@ class Field(Loggable, Versionable, object):
             result_list[0].val.get_axes_local_distribution_strategy(
                 result_list[0].domain_axes[power_space_index])
 
-        if pindex.distribution_strategy is not local_distribution_strategy:
+        if pindex.distribution_strategy != local_distribution_strategy:
             raise AttributeError(
                 "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
@@ -1590,7 +1590,7 @@ class Field(Loggable, Versionable, object):
 
         new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
         new_field.distribution_strategy =\
-            hdf5_group.attrs['distribution_strategy']
+            str(hdf5_group.attrs['distribution_strategy'])
 
         return new_field
 

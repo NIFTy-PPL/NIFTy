@@ -24,7 +24,7 @@ from ...sugar import create_composed_fft_operator
 class DiagonalProberMixin(object):
     def __init__(self, *args, **kwargs):
         self.reset()
-        self.__evaluate_probe_in_signal_space = True
+        self.__evaluate_probe_in_signal_space = False
         super(DiagonalProberMixin, self).__init__(*args, **kwargs)
 
     def reset(self):

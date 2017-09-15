@@ -130,7 +130,10 @@ class ConjugateGradient(Loggable, object):
         x = x0.copy()
         convergence = 0
         iteration_number = 1
-        self.logger.info("Starting conjugate gradient.")
+        self.logger.debug("Starting conjugate gradient.")
+
+        beta = np.inf
+        delta = np.inf
 
         while True:
             if self.callback is not None:
@@ -140,7 +143,10 @@ class ConjugateGradient(Loggable, object):
             alpha = previous_gamma/d.vdot(q).real
 
             if not np.isfinite(alpha):
-                self.logger.error("Alpha became infinite! Stopping.")
+                self.logger.error(
+                        "Alpha became infinite! Stopping. Iteration : %08u   "
+                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
+                        (iteration_number, alpha, beta, delta))
                 return x0, 0
 
             x += d * alpha
@@ -152,7 +158,7 @@ class ConjugateGradient(Loggable, object):
             if self.reset_count is not None:
                 reset += (iteration_number % self.reset_count == 0)
             if reset:
-                self.logger.info("Resetting conjugate directions.")
+                self.logger.debug("Computing accurate residuum.")
                 r = b - A(x)
             else:
                 r -= q * alpha
@@ -174,21 +180,30 @@ class ConjugateGradient(Loggable, object):
 
             if gamma == 0:
                 convergence = self.convergence_level+1
-                self.logger.info("Reached infinite convergence.")
+                self.logger.info(
+                        "Reached infinite convergence. Iteration : %08u   "
+                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
+                        (iteration_number, alpha, beta, delta))
                 break
             elif abs(delta) < self.convergence_tolerance:
                 convergence += 1
-                self.logger.info("Updated convergence level to: %u" %
-                                 convergence)
+                self.logger.debug("Updated convergence level to: %u" %
+                                  convergence)
                 if convergence == self.convergence_level:
-                    self.logger.info("Reached target convergence level.")
+                    self.logger.info(
+                        "Reached target convergence level. Iteration : %08u   "
+                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
+                        (iteration_number, alpha, beta, delta))
                     break
             else:
                 convergence = max(0, convergence-1)
 
             if self.iteration_limit is not None:
                 if iteration_number == self.iteration_limit:
-                    self.logger.warn("Reached iteration limit. Stopping.")
+                    self.logger.info(
+                        "Reached iteration limit. Iteration : %08u   "
+                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
+                        (iteration_number, alpha, beta, delta))
                     break
 
             d = s + d * beta

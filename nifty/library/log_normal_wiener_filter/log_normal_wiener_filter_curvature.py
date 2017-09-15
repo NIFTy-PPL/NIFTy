@@ -26,13 +26,14 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     """
 
     def __init__(self, R, N, S, d, position, inverter=None,
-                 preconditioner=None, fft4exp=None, **kwargs):
+                 preconditioner=None, fft4exp=None, offset=0., **kwargs):
         self._cache = {}
         self.R = R
         self.N = N
         self.S = S
         self.d = d
         self.position = position
+        self.offset = offset
         if preconditioner is None:
             preconditioner = self.S.times
         self._domain = self.S.domain
@@ -47,6 +48,24 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
                                                  inverter=inverter,
                                                  preconditioner=preconditioner,
                                                  **kwargs)
+
+    def _add_attributes_to_copy(self, copy, **kwargs):
+        copy._cache = {}
+        copy._domain = self._domain
+        copy.R = self.R.copy()
+        copy.N = self.N.copy()
+        copy.S = self.S.copy()
+        copy.d = self.d.copy()
+        copy.offset = self.offset
+        if 'position' in kwargs:
+            copy.position = kwargs['position']
+        else:
+            copy.position = self.position.copy()
+        copy._fft = self._fft
+
+        copy = super(LogNormalWienerFilterCurvature,
+                     self)._add_attributes_to_copy(copy, **kwargs)
+        return copy
 
     @property
     def domain(self):
@@ -75,7 +94,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     @property
     @memo
     def _expp_sspace(self):
-        return clipped_exp(self._fft(self.position))
+        return clipped_exp(self._fft(self.position) - self.offset)
 
     @property
     @memo

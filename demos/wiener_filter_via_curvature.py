@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # Total side-length of the domain
     L = 2.
     # Grid resolution (pixels per axis)
-    N_pixels = 512
+    N_pixels = 128
 
     signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     harmonic_space = FFTOperator.get_default_codomain(signal_space)

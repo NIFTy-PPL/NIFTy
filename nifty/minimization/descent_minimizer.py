@@ -124,6 +124,7 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
         convergence = 0
         f_k_minus_1 = None
         iteration_number = 1
+        delta = 0
 
         while True:
             if self.callback is not None:
@@ -140,7 +141,9 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
 
             # check if position is at a flat point
             if gradient_norm == 0:
-                self.logger.info("Reached perfectly flat point. Stopping.")
+                self.logger.info("Reached perfectly flat point. Stopping."
+                                 "Iteration: %08u delta=%3.1E energy=%3.1E" %
+                                 (iteration_number, delta, energy.value))
                 convergence = self.convergence_level+2
                 break
 
@@ -177,22 +180,30 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
                                energy.value))
             if delta == 0:
                 convergence = self.convergence_level + 2
-                self.logger.info("Found minimum according to line-search. "
-                                 "Stopping.")
+                self.logger.info(
+                        "Found minimum according to line-search. Stopping. "
+                        "Iteration: %08u delta=%3.1E energy=%3.1E" %
+                        (iteration_number, delta, energy.value))
                 break
             elif delta < self.convergence_tolerance:
                 convergence += 1
-                self.logger.info("Updated convergence level to: %u" %
-                                 convergence)
+                self.logger.debug("Updated convergence level to: %u" %
+                                  convergence)
                 if convergence == self.convergence_level:
-                    self.logger.info("Reached target convergence level.")
+                    self.logger.info(
+                        "Reached target convergence level."
+                        "Iteration: %08u delta=%3.1E energy=%3.1E" %
+                        (iteration_number, delta, energy.value))
                     break
             else:
                 convergence = max(0, convergence-1)
 
             if self.iteration_limit is not None:
                 if iteration_number == self.iteration_limit:
-                    self.logger.warn("Reached iteration limit. Stopping.")
+                    self.logger.warn(
+                        "Reached iteration limit. Stopping."
+                        "Iteration: %08u delta=%3.1E energy=%3.1E" %
+                        (iteration_number, delta, energy.value))
                     break
 
             iteration_number += 1
