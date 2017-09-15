@@ -287,9 +287,8 @@ class LinearOperator(with_metaclass(
         else:
             for i, space_index in enumerate(spaces):
                 if x.domain[space_index] != self_domain[i]:
-                    raise ValueError(
-                        "The operator's and and field's domains don't "
-                        "match.")
+                    raise ValueError("The operator's and and field's domains "
+                                     "don't match.")
 
         return spaces
 

@@ -232,7 +232,7 @@ class Field(object):
             raise ValueError("No space for analysis specified.")
 
         if keep_phase_information:
-            parts = self._hermitian_decomposition(self, False)
+            parts = [self.real.copy(), self.imag.copy()]
         else:
             parts = [self]
 
@@ -392,22 +392,12 @@ class Field(object):
             result_list[1] *= spec.imag
 
         if real_signal:
-            result_list = [self._hermitian_decomposition(i, True)[0]
-                           for i in result_list]
+            result_list = [i.real*np.sqrt(2.) for i in result_list]
 
         if real_power:
             return result_list[0]
         else:
             return result_list[0] + 1j*result_list[1]
-
-    @staticmethod
-    def _hermitian_decomposition(inp, preserve_gaussian_variance=False):
-        if preserve_gaussian_variance:
-            if not issubclass(inp.dtype.type, np.complexfloating):
-                raise TypeError("complex input field is needed here")
-            return (inp.real*np.sqrt(2.), inp.imag*np.sqrt(2.))
-        else:
-            return (inp.real.copy(), inp.imag.copy())
 
     def _spec_to_rescaler(self, spec, power_space_index):
         power_space = self.domain[power_space_index]
@@ -615,7 +605,7 @@ class Field(object):
         return np.sqrt(np.abs(self.vdot(x=self)))
 
     def conjugate(self, inplace=False):
-        """ Retruns the complex conjugate of the field.
+        """ Returns the complex conjugate of the field.
 
         Parameters
         ----------

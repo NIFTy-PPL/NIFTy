@@ -64,10 +64,8 @@ class ComposedOperator(LinearOperator):
     >>> x2 = RGSpace(10)
     >>> k1 = RGRGTransformation.get_codomain(x1)
     >>> k2 = RGRGTransformation.get_codomain(x2)
-    >>> FFT1 = FFTOperator(domain=x1, target=k1,
-                           domain_dtype=np.float64, target_dtype=np.complex128)
-    >>> FFT2 = FFTOperator(domain=x2, target=k2,
-                           domain_dtype=np.float64, target_dtype=np.complex128)
+    >>> FFT1 = FFTOperator(domain=x1, target=k1)
+    >>> FFT2 = FFTOperator(domain=x2, target=k2)
     >>> FFT = ComposedOperator((FFT1, FFT2)
     >>> f = Field.from_random('normal', domain=(x1,x2))
     >>> FFT.times(f)

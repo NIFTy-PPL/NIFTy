@@ -132,7 +132,7 @@ class SlicingTransformation(Transformation):
 
 
 def buildLm(nr, lmax):
-    new_dtype = np.result_type(nr.dtype, np.complex64)
+    new_dtype = np.result_type(nr[0]*1j)
 
     size = (len(nr)-lmax-1)//2+lmax+1
     res = np.empty([size], dtype=new_dtype)
@@ -142,12 +142,7 @@ def buildLm(nr, lmax):
 
 
 def buildIdx(nr, lmax):
-    if nr.dtype == np.dtype('complex64'):
-        new_dtype = np.float32
-    elif nr.dtype == np.dtype('complex128'):
-        new_dtype = np.float64
-    else:
-        raise TypeError("dtype of nr not supported.")
+    new_dtype = np.result_type(nr[0].real)
 
     size = (lmax+1)*(lmax+1)
     final = np.empty(size, dtype=new_dtype)

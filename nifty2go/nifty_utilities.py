@@ -20,6 +20,7 @@ from builtins import next, range
 import numpy as np
 from itertools import product
 from functools import reduce
+from .domain_object import DomainObject
 
 
 def get_slice_list(shape, axes):
@@ -94,7 +95,6 @@ def cast_axis_to_tuple(axis, length=None):
 
 
 def parse_domain(domain):
-    from .domain_object import DomainObject
     if domain is None:
         return ()
     if isinstance(domain, DomainObject):

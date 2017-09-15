@@ -54,27 +54,6 @@ class Test_Interface(unittest.TestCase):
 
 
 class Test_Functionality(unittest.TestCase):
-    @expand(product([True, False], [True, False],
-                    [(1,), (4,), (5,)], [(1,), (6,), (7,)]))
-    def test_hermitian_decomposition(self, preserve, complexdata, s1, s2):
-        np.random.seed(123)
-        r1 = RGSpace(s1, harmonic=True)
-        r2 = RGSpace(s2, harmonic=True)
-        ra = RGSpace(s1+s2, harmonic=True)
-
-        if preserve:
-            complexdata=True
-        v = np.random.random(s1+s2)
-        if complexdata:
-            v = v + 1j*np.random.random(s1+s2)
-        f1 = Field(ra, val=v, copy=True)
-        f2 = Field((r1, r2), val=v, copy=True)
-        h1, a1 = Field._hermitian_decomposition(f1.val, preserve)
-        h2, a2 = Field._hermitian_decomposition(f2.val, preserve)
-
-        assert_almost_equal(h1, h2)
-        assert_almost_equal(a1, a2)
-
     @expand(product([RGSpace((8,), harmonic=True),
                      RGSpace((8, 8), harmonic=True, distances=0.123)],
                     [RGSpace((8,), harmonic=True),
