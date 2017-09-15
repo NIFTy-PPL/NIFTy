@@ -109,6 +109,7 @@ def parse_domain(domain):
                 "instance of DomainObject-class.")
     return domain
 
+
 def domains2shape(domain):
     domain = parse_domain(domain)
     shape_tuple = tuple(sp.shape for sp in domain)
@@ -116,6 +117,7 @@ def domains2shape(domain):
         return ()
     else:
         return reduce(lambda x, y: x + y, shape_tuple)
+
 
 def bincount_axis(obj, minlength=None, weights=None, axis=None):
     if minlength is not None:
@@ -153,23 +155,19 @@ def bincount_axis(obj, minlength=None, weights=None, axis=None):
 
     data = np.ascontiguousarray(data.reshape(flat_shape))
     if weights is not None:
-        weights = np.ascontiguousarray(
-                            weights.reshape(flat_shape))
+        weights = np.ascontiguousarray(weights.reshape(flat_shape))
 
     # compute the local bincount results
     # -> prepare the local result array
     result_dtype = np.int if weights is None else np.float
-    local_counts = np.empty(flat_shape[:-1] + (length, ),
-                            dtype=result_dtype)
+    local_counts = np.empty(flat_shape[:-1] + (length, ), dtype=result_dtype)
     # iterate over all entries in the surviving axes and compute the local
     # bincounts
-    for slice_list in get_slice_list(flat_shape,
-                                     axes=(len(flat_shape)-1, )):
+    for slice_list in get_slice_list(flat_shape, axes=(len(flat_shape)-1,)):
         current_weights = None if weights is None else weights[slice_list]
-        local_counts[slice_list] = np.bincount(
-                                        data[slice_list],
-                                        weights=current_weights,
-                                        minlength=length)
+        local_counts[slice_list] = np.bincount(data[slice_list],
+                                               weights=current_weights,
+                                               minlength=length)
 
     # restore the original ordering
     # place the bincount stuff at the location of the first `axis` entry

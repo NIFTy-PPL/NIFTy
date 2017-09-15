@@ -56,7 +56,7 @@ class RGRGTransformation(Transformation):
             slice2[i] = slice(None, 0, -1)
         np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
         for i, ax in enumerate(axes[:-1]):
-            dim1 = [slice(None)]*ax + [slice(0,1)]
+            dim1 = [slice(None)]*ax + [slice(0, 1)]
             axes2 = axes[:i] + axes[i+1:]
             RGRGTransformation._fill_upper_half(tmp[dim1], res[dim1], axes2)
 
@@ -64,7 +64,7 @@ class RGRGTransformation(Transformation):
     def _hartley(a, axes=None):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
-                not all(axis<len(a.shape) for axis in axes):
+                not all(axis < len(a.shape) for axis in axes):
             raise ValueError("Provided axes does not match array shape")
 
         from pyfftw.interfaces.numpy_fft import rfftn
@@ -75,9 +75,7 @@ class RGRGTransformation(Transformation):
         if axes is None:
             axes = range(a.ndim)
         lastaxis = axes[-1]
-        nlast = a.shape[lastaxis]
         ntmplast = tmp.shape[lastaxis]
-        nrem = nlast - ntmplast
         slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
         np.add(tmp.real, tmp.imag, out=res[slice1])
         RGRGTransformation._fill_upper_half(tmp, res, axes)
@@ -109,7 +107,7 @@ class RGRGTransformation(Transformation):
         # Perform the transformation
         if issubclass(val.dtype.type, np.complexfloating):
             Tval = self._hartley(val.real, axes) \
-                  +1j*self._hartley(val.imag, axes)
+                  + 1j*self._hartley(val.imag, axes)
         else:
             Tval = self._hartley(val, axes)
 
@@ -131,24 +129,18 @@ class SlicingTransformation(Transformation):
 
 
 def buildLm(nr, lmax):
-    new_dtype = np.result_type(nr[0]*1j)
-
-    size = (len(nr)-lmax-1)//2+lmax+1
-    res = np.empty([size], dtype=new_dtype)
+    res = np.empty((len(nr)+lmax+1)//2, dtype=(nr[0]*1j).dtype)
     res[0:lmax+1] = nr[0:lmax+1]
     res[lmax+1:] = np.sqrt(0.5)*(nr[lmax+1::2] + 1j*nr[lmax+2::2])
     return res
 
 
 def buildIdx(nr, lmax):
-    new_dtype = np.result_type(nr[0].real)
-
-    size = (lmax+1)*(lmax+1)
-    final = np.empty(size, dtype=new_dtype)
-    final[0:lmax+1] = nr[0:lmax+1].real
-    final[lmax+1::2] = np.sqrt(2)*nr[lmax+1:].real
-    final[lmax+2::2] = np.sqrt(2)*nr[lmax+1:].imag
-    return final
+    res = np.empty((lmax+1)*(lmax+1), dtype=nr[0].real.dtype)
+    res[0:lmax+1] = nr[0:lmax+1].real
+    res[lmax+1::2] = np.sqrt(2)*nr[lmax+1:].real
+    res[lmax+2::2] = np.sqrt(2)*nr[lmax+1:].imag
+    return res
 
 
 class HPLMTransformation(SlicingTransformation):
