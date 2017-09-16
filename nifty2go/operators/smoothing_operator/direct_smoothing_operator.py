@@ -104,11 +104,11 @@ class DirectSmoothingOperator(EndomorphicOperator):
             distances = np.log(np.maximum(distances, 1e-15))
 
         ibegin, nval, wgt = self._precompute(distances)
-        outarr = np.empty_like(x.val)
+        res = Field(x.domain, dtype=x.dtype)
         for sl in utilities.get_slice_list(x.val.shape, (axis,)):
             inp = x.val[sl]
             out = np.zeros(inp.shape[0], dtype=inp.dtype)
             for i in range(inp.shape[0]):
                 out[ibegin[i]:ibegin[i]+nval[i]] += inp[i] * wgt[i][:]
-            outarr[sl] = out
-        return Field(x.domain, val=outarr)
+            res.val[sl] = out
+        return res

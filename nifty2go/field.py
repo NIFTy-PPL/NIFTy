@@ -119,6 +119,7 @@ class Field(object):
             i += nax
         return tuple(axes_list)
 
+    # MR: this needs some rethinking ... do we need to have at least float64?
     @staticmethod
     def _infer_dtype(dtype, val):
         if val is None or dtype is not None:
@@ -290,7 +291,7 @@ class Field(object):
         result_obj[()] = pindex.reshape(semiscaled_local_shape)
         return result_obj
 
-    def _prep_powersynth(self, spaces):
+    def _compute_spec(self, spaces):
         # check if the `spaces` input is valid
         spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
         if spaces is None:
@@ -306,8 +307,15 @@ class Field(object):
 
         spec = np.sqrt(self.val)
         for i in spaces:
-            spec = self._spec_to_rescaler(spec, i)
-        return (result_domain, spec)
+            power_space = self.domain[i]
+            local_blow_up = [slice(None)]*len(spec.shape)
+            # it is important to count from behind, since spec potentially
+            # grows with every iteration
+            index = self.domain_axes[i][0]-len(self.shape)
+            local_blow_up[index] = power_space.pindex
+            # here, the power_spectrum is distributed into the new shape
+            spec = spec[local_blow_up]
+        return Field(result_domain, val=spec)
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True):
         """ Yields a sampled field with `self`**2 as its power spectrum.
@@ -350,12 +358,12 @@ class Field(object):
 
         """
 
-        result_domain, spec = self._prep_powersynth(spaces)
+        spec = self._compute_spec(spaces)
 
         # create random samples: one or two, depending on whether the
         # power spectrum is real or complex
         result = [self.from_random('normal', mean=0., std=1.,
-                                   domain=result_domain,
+                                   domain=spec.domain,
                                    dtype=np.float if real_signal
                                    else np.complex)
                   for x in range(1 if real_power else 2)]
@@ -363,7 +371,7 @@ class Field(object):
         # MR: dummy call - will be removed soon
         if real_signal:
             self.from_random('normal', mean=0., std=1.,
-                             domain=result_domain, dtype=np.float)
+                             domain=spec.domain, dtype=np.float)
 
         # apply the rescaler to the random fields
         result[0] *= spec.real
@@ -373,24 +381,13 @@ class Field(object):
         return result[0] if real_power else result[0] + 1j*result[1]
 
     def power_synthesize_special(self, spaces=None):
-        result_domain, spec = self._prep_powersynth(spaces)
+        spec = self._compute_spec(spaces)
 
         # MR: dummy call - will be removed soon
         self.from_random('normal', mean=0., std=1.,
-                         domain=result_domain, dtype=np.complex)
+                         domain=spec.domain, dtype=np.complex)
 
         return spec.real
-
-    def _spec_to_rescaler(self, spec, power_space_index):
-        power_space = self.domain[power_space_index]
-
-        local_blow_up = [slice(None)]*len(spec.shape)
-        # it is important to count from behind, since spec potentially grows
-        # with every iteration
-        index = self.domain_axes[power_space_index][0]-len(self.shape)
-        local_blow_up[index] = power_space.pindex
-        # here, the power_spectrum is distributed into the new shape
-        return spec[local_blow_up]
 
     # ---Properties---
 

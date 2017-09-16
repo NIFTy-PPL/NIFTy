@@ -154,14 +154,16 @@ class DiagonalOperator(EndomorphicOperator):
     @property
     def self_adjoint(self):
         if self._self_adjoint is None:
-            self._self_adjoint = (self._diagonal.val.imag == 0).all()
+            if not issubclass(self._diagonal.dtype.type, np.complexfloating):
+                self._self_adjoint = True
+            else:
+                self._self_adjoint = (self._diagonal.val.imag == 0).all()
         return self._self_adjoint
 
     @property
     def unitary(self):
         if self._unitary is None:
-            self._unitary = (self._diagonal.val *
-                             self._diagonal.val.conjugate() == 1).all()
+            self._unitary = (abs(self._diagonal.val) == 1.).all()
         return self._unitary
 
     # ---Added properties and methods---
@@ -214,7 +216,7 @@ class DiagonalOperator(EndomorphicOperator):
             for space_index in spaces:
                 active_axes += x.domain_axes[space_index]
 
-        reshaper = [x.val.shape[i] if i in active_axes else 1
+        reshaper = [x.shape[i] if i in active_axes else 1
                     for i in range(len(x.shape))]
         reshaped_local_diagonal = np.reshape(self._diagonal.val, reshaper)
 
