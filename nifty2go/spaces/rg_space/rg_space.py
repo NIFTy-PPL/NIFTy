@@ -86,7 +86,7 @@ class RGSpace(Space):
         self._harmonic = bool(harmonic)
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
-        #self._wgt = reduce(lambda x, y: x*y, self._distances)
+        self._wgt = float(reduce(lambda x, y: x*y, self._distances))
         self._dim = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
