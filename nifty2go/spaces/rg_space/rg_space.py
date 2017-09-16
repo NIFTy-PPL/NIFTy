@@ -107,8 +107,7 @@ class RGSpace(Space):
 
     @property
     def total_volume(self):
-        return self._dim * reduce(lambda x, y: x*y, self.distances)
-        #return self.dim * self._wgt
+        return self.dim * self._wgt
 
     def copy(self):
         return self.__class__(shape=self.shape,
@@ -116,12 +115,10 @@ class RGSpace(Space):
                               harmonic=self.harmonic)
 
     def scalar_weight(self):
-        return reduce(lambda x, y: x*y, self.distances)
-        #return self._wgt
+        return self._wgt
 
     def weight(self):
-        return reduce(lambda x, y: x*y, self.distances)
-        #return self._wgt
+        return self._wgt
 
     def get_distance_array(self):
         """ Calculates an n-dimensional array with its entries being the
