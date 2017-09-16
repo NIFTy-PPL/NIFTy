@@ -18,13 +18,8 @@
 
 from __future__ import division
 from builtins import range
-
 import numpy as np
-
-from .domain_object import DomainObject
-
 from .spaces.power_space import PowerSpace
-
 from . import nifty_utilities as utilities
 from .random import Random
 from functools import reduce
@@ -161,8 +156,7 @@ class Field(object):
         """
 
         generator_function = getattr(Random, random_type)
-        return Field(domain=domain,
-                     val=generator_function(dtype=dtype,
+        return Field(domain=domain, val=generator_function(dtype=dtype,
                      shape=utilities.domains2shape(domain), **kwargs))
 
     # ---Powerspectral methods---
@@ -232,23 +226,17 @@ class Field(object):
             raise ValueError("No space for analysis specified.")
 
         if keep_phase_information:
-            parts = [self.real.copy(), self.imag.copy()]
+            parts = [self.real*self.real, self.imag*self.imag]
         else:
-            parts = [self]
-
-        parts = [abs(part)**2 for part in parts]
+            parts = [self.real*self.real + self.imag*self.imag]
 
         for space_index in spaces:
-            parts = [self._single_power_analyze(
-                                work_field=part,
-                                space_index=space_index,
-                                binbounds=binbounds)
+            parts = [self._single_power_analyze(work_field=part,
+                                                space_index=space_index,
+                                                binbounds=binbounds)
                      for part in parts]
 
-        if keep_phase_information:
-            return parts[0] + 1j*parts[1]
-        else:
-            return parts[0]
+        return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
 
     @staticmethod
     def _single_power_analyze(work_field, space_index, binbounds):
@@ -278,7 +266,6 @@ class Field(object):
 
     @staticmethod
     def _calculate_power_spectrum(field_val, pdomain, axes=None):
-
         pindex = pdomain.pindex
         if axes is not None:
             pindex = Field._shape_up_pindex(pindex, field_val.shape, axes)
@@ -287,7 +274,7 @@ class Field(object):
                                                  axis=axes)
         rho = pdomain.rho
         if axes is not None:
-            new_rho_shape = [1, ] * len(power_spectrum.shape)
+            new_rho_shape = [1] * len(power_spectrum.shape)
             new_rho_shape[axes[0]] = len(rho)
             rho = rho.reshape(new_rho_shape)
         power_spectrum /= rho
@@ -303,8 +290,26 @@ class Field(object):
         result_obj[()] = pindex.reshape(semiscaled_local_shape)
         return result_obj
 
-    def power_synthesize(self, spaces=None, real_power=True, real_signal=True,
-                         mean=0., std=1.):
+    def _prep_powersynth(self, spaces):
+        # check if the `spaces` input is valid
+        spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
+        if spaces is None:
+            spaces = range(len(self.domain))
+
+        # create the result domain
+        result_domain = list(self.domain)
+        for i in spaces:
+            if not isinstance(self.domain[i], PowerSpace):
+                raise ValueError("A PowerSpace is needed for field "
+                                 "synthetization.")
+            result_domain[i] = self.domain[i].harmonic_partner
+
+        spec = np.sqrt(self.val)
+        for i in spaces:
+            spec = self._spec_to_rescaler(spec, i)
+        return (result_domain, spec)
+
+    def power_synthesize(self, spaces=None, real_power=True, real_signal=True):
         """ Yields a sampled field with `self`**2 as its power spectrum.
 
         This method draws a Gaussian random field in the harmonic partner
@@ -322,14 +327,6 @@ class Field(object):
         real_signal : boolean *optional*
             True will result in a purely real signal-space field
             (default : True).
-        mean : float *optional*
-            The mean of the Gaussian noise field which is used for the Field
-            synthetization (default : None).
-            if mean==None : mean will be set to 0
-        std : float *optional*
-            The standard deviation of the Gaussian noise field which is used
-            for the Field synthetization (default : None).
-            if std==None : std will be set to 1
 
         Returns
         -------
@@ -353,51 +350,36 @@ class Field(object):
 
         """
 
-        # check if the `spaces` input is valid
-        spaces = utilities.cast_axis_to_tuple(spaces, len(self.domain))
-        if spaces is None:
-            spaces = range(len(self.domain))
-
-        for i in spaces:
-            if not isinstance(self.domain[i], PowerSpace):
-                raise ValueError("A PowerSpace is needed for field "
-                                 "synthetization.")
-
-        # create the result domain
-        result_domain = list(self.domain)
-        for i in spaces:
-            result_domain[i] = self.domain[i].harmonic_partner
+        result_domain, spec = self._prep_powersynth(spaces)
 
         # create random samples: one or two, depending on whether the
         # power spectrum is real or complex
-        result_list = [self.__class__.from_random(
-                             'normal',
-                             mean=mean,
-                             std=std,
-                             domain=result_domain,
-                             dtype=np.complex)
-                       for x in range(1 if real_power else 2)]
+        result = [self.from_random('normal', mean=0., std=1.,
+                                   domain=result_domain,
+                                   dtype=np.float if real_signal
+                                   else np.complex)
+                  for x in range(1 if real_power else 2)]
 
-        # from now on extract the values from the random fields for further
-        # processing without killing the fields.
-        # if the signal-space field should be real, hermitianize the field
-        # components
-        spec = np.sqrt(self.val)
-        for power_space_index in spaces:
-            spec = self._spec_to_rescaler(spec, power_space_index)
+        # MR: dummy call - will be removed soon
+        if real_signal:
+            self.from_random('normal', mean=0., std=1.,
+                             domain=result_domain, dtype=np.float)
 
         # apply the rescaler to the random fields
-        result_list[0] *= spec.real
+        result[0] *= spec.real
         if not real_power:
-            result_list[1] *= spec.imag
+            result[1] *= spec.imag
 
-        if real_signal:
-            result_list = [i.real*np.sqrt(2.) for i in result_list]
+        return result[0] if real_power else result[0] + 1j*result[1]
 
-        if real_power:
-            return result_list[0]
-        else:
-            return result_list[0] + 1j*result_list[1]
+    def power_synthesize_special(self, spaces=None):
+        result_domain, spec = self._prep_powersynth(spaces)
+
+        # MR: dummy call - will be removed soon
+        self.from_random('normal', mean=0., std=1.,
+                         domain=result_domain, dtype=np.complex)
+
+        return spec.real
 
     def _spec_to_rescaler(self, spec, power_space_index):
         power_space = self.domain[power_space_index]
@@ -535,7 +517,8 @@ class Field(object):
                 fct *= wgt
             else:
                 new_shape = np.ones(len(self.shape), dtype=np.int)
-                new_shape[self.domain_axes[ind][0]:self.domain_axes[ind][-1]+1]=wgt.shape
+                new_shape[self.domain_axes[ind][0]:
+                          self.domain_axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
                 new_field *= wgt**power
         fct = fct**power

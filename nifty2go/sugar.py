@@ -58,10 +58,9 @@ def create_power_operator(domain, power_spectrum, dtype=None):
         raise TypeError("power_spectrum must be callable")
     power_domain = PowerSpace(domain)
 
-    fp = Field(power_domain,
-               val=power_spectrum(power_domain.kindex), dtype=dtype)
-    # MR FIXME: why generate a non-random random field?
-    f = fp.power_synthesize(mean=1, std=0, real_signal=False)
+    fp = Field(power_domain, val=power_spectrum(power_domain.kindex),
+               dtype=dtype)
+    f = fp.power_synthesize_special()
 
     if not issubclass(fp.dtype.type, np.complexfloating):
         f = f.real

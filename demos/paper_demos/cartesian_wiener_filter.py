@@ -2,7 +2,6 @@
 
 import numpy as np
 import nifty2go as ift
-from nifty2go import plotting
 
 if __name__ == "__main__":
     signal_to_noise = 1.5 # The signal to noise ratio
@@ -56,8 +55,7 @@ if __name__ == "__main__":
     mock_power = ift.Field(domain=(power_space_1, power_space_2),
                            val=np.outer(mock_power_1.val, mock_power_2.val))
 
-    diagonal = mock_power.power_synthesize(spaces=(0, 1), mean=1, std=0,
-                                           real_signal=False)**2
+    diagonal = mock_power.power_synthesize_special(spaces=(0, 1))**2
     diagonal = diagonal.real
 
     S = ift.DiagonalOperator(domain=(harmonic_space_1, harmonic_space_2),
@@ -109,7 +107,7 @@ if __name__ == "__main__":
 
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
     sm = ift.FFTSmoothingOperator(plot_space, sigma=0.03)
-    ift.plotting.plot(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), name='uncertainty.pdf',zmin=0.,zmax=3.,title="Uncertainty map",xlabel="x")
-    ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real), name='mock_signal.pdf')
-    ift.plotting.plot(ift.Field(plot_space, val=data.val.real), name='data.pdf')
-    ift.plotting.plot(ift.Field(plot_space, val=m.val.real), name='map.pdf')
+    ift.plotting.plot(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), name='uncertainty.pdf',zmin=0.,zmax=3.,title="Uncertainty map",colormap="Planck-like")
+    ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real), name='mock_signal.pdf',colormap="Planck-like")
+    ift.plotting.plot(ift.Field(plot_space, val=data.val.real), name='data.pdf',colormap="Planck-like")
+    ift.plotting.plot(ift.Field(plot_space, val=m.val.real), name='map.pdf',colormap="Planck-like")

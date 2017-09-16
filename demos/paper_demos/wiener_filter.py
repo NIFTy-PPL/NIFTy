@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.03)
     variance = ift.sqrt(sm(proby.diagonal.weight(-1)))  #|\label{code:wf_variance_weighting}|
-    exit()
+
     # Plotting #|\label{code:wf_plotting}|
     ift.plotting.plot(variance,name="uncertainty.pdf",xlabel='Pixel index', ylabel='Pixel index')
     ift.plotting.plot(mock_signal,name="mock_signal.pdf",xlabel='Pixel index', ylabel='Pixel index')

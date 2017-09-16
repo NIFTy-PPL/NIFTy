@@ -40,8 +40,10 @@ class Random(object):
         else:
             x = np.random.normal(loc=0., scale=1., size=shape)
             x = x.astype(dtype, copy=False)
-        x *= std
-        x += mean
+        if std != 1.:
+            x *= std
+        if mean != 0.:
+            x += mean
         return x
 
     @staticmethod
