@@ -121,7 +121,7 @@ class PowerSpace(Space):
             return None
         nbin = None if nbin is None else int(nbin)
         logarithmic = bool(logarithmic)
-        dists = space.get_unique_distances()
+        dists = space.get_unique_k_lengths()
         if len(dists) < 3:
             raise ValueError("Space does not have enough unique k lengths")
         lbound = 0.5*(dists[0]+dists[1])
@@ -156,15 +156,15 @@ class PowerSpace(Space):
 
         key = (harmonic_partner, binbounds)
         if self._powerIndexCache.get(key) is None:
-            distance_array = self.harmonic_partner.get_distance_array()
+            k_length_array = self.harmonic_partner.get_k_length_array()
             temp_pindex = self._compute_pindex(
                                 harmonic_partner=self.harmonic_partner,
-                                distance_array=distance_array,
+                                k_length_array=k_length_array,
                                 binbounds=binbounds)
             temp_rho = np.bincount(temp_pindex.ravel())
             assert not np.any(temp_rho == 0), "empty bins detected"
             temp_kindex = np.bincount(temp_pindex.ravel(),
-                                      weights=distance_array.ravel()) \
+                                      weights=k_length_array.ravel()) \
                 / temp_rho
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
@@ -175,11 +175,11 @@ class PowerSpace(Space):
             self._powerIndexCache[key]
 
     @staticmethod
-    def _compute_pindex(harmonic_partner, distance_array, binbounds):
+    def _compute_pindex(harmonic_partner, k_length_array, binbounds):
         if binbounds is None:
-            tmp = harmonic_partner.get_unique_distances()
+            tmp = harmonic_partner.get_unique_k_lengths()
             binbounds = 0.5*(tmp[:-1]+tmp[1:])
-        return np.searchsorted(binbounds, distance_array)
+        return np.searchsorted(binbounds, k_length_array)
 
     # ---Mandatory properties and methods---
 
@@ -215,7 +215,7 @@ class PowerSpace(Space):
         # MR FIXME: this will probably change to 1 soon
         return np.asarray(self.rho, dtype=np.float64)
 
-    def get_distance_array(self):
+    def get_k_length_array(self):
         return self.kindex.copy()
 
     def get_fft_smoothing_kernel_function(self, sigma):

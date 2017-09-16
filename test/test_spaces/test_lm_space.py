@@ -49,7 +49,7 @@ CONSTRUCTOR_CONFIGS = [
     ]
 
 
-def _distance_array_helper(index_arr, lmax):
+def _k_length_array_helper(index_arr, lmax):
     if index_arr <= lmax:
         index_half = index_arr
     else:
@@ -64,8 +64,8 @@ def _distance_array_helper(index_arr, lmax):
     return index_half - m*(2*lmax + 1 - m)//2
 
 
-def get_distance_array_configs():
-    da_0 = [_distance_array_helper(idx, 5) for idx in np.arange(36)]
+def get_k_length_array_configs():
+    da_0 = [_k_length_array_helper(idx, 5) for idx in np.arange(36)]
     return [[5, da_0]]
 
 
@@ -92,7 +92,7 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     def test_weight(self):
         assert_almost_equal(LMSpace(5).weight(), 1.)
 
-    @expand(get_distance_array_configs())
-    def test_distance_array(self, lmax, expected):
+    @expand(get_k_length_array_configs())
+    def test_k_length_array(self, lmax, expected):
         l = LMSpace(lmax)
-        assert_almost_equal(l.get_distance_array(), expected)
+        assert_almost_equal(l.get_k_length_array(), expected)

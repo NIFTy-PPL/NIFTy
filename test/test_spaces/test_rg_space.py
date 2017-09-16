@@ -74,7 +74,7 @@ CONSTRUCTOR_CONFIGS = [
     ]
 
 
-def get_distance_array_configs():
+def get_k_length_array_configs():
     # for RGSpace(shape=(4, 4), distances=(0.25,0.25))
     cords_0 = np.ogrid[0:4, 0:4]
     da_0 = ((cords_0[0] - 4 // 2) * 0.25)**2
@@ -117,10 +117,10 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         for key, value in expected.items():
             assert_equal(getattr(x, key), value)
 
-    @expand(get_distance_array_configs())
-    def test_distance_array(self, shape, distances, expected):
+    @expand(get_k_length_array_configs())
+    def test_k_length_array(self, shape, distances, expected):
         r = RGSpace(shape=shape, distances=distances, harmonic=True)
-        assert_almost_equal(r.get_distance_array(), expected)
+        assert_almost_equal(r.get_k_length_array(), expected)
 
     @expand(get_weight_configs())
     def test_weight(self, shape, distances, harmonic, power):

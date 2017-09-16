@@ -88,7 +88,7 @@ class Space(DomainObject):
         """
         return self.__class__()
 
-    def get_distance_array(self):
+    def get_k_length_array(self):
         """ The length of the k vector for every pixel.
         This method is only implemented for harmonic spaces.
 
@@ -100,7 +100,7 @@ class Space(DomainObject):
         """
         raise NotImplementedError
 
-    def get_unique_distances(self):
+    def get_unique_k_lengths(self):
         """ Returns an array of floats containing the unique k vector lengths
         for this space.
         This method is only implemented for harmonic spaces.

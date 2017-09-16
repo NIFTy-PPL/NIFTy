@@ -38,7 +38,7 @@ class SpaceInterfaceTests(unittest.TestCase):
                            attr_expected_type[1]))
 
     @expand(product(generate_harmonic_spaces(), [
-        ['get_distance_array', np.ndarray],
+        ['get_k_length_array', np.ndarray],
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
     def test_method_ret_type(self, space, method_expected_type):

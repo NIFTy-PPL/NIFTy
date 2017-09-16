@@ -99,7 +99,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
                              "spaces can be smoothed directly.")
         axis = affected_axes[0]
 
-        distances = x.domain[spaces[0]].get_distance_array()
+        distances = x.domain[spaces[0]].get_k_length_array()
         if self._log_distances:
             distances = np.log(np.maximum(distances, 1e-15))
 

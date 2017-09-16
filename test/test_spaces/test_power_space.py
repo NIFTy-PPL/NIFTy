@@ -73,7 +73,7 @@ CONSTRUCTOR_CONFIGS = [
     ]
 
 
-def get_distance_array_configs():
+def get_k_length_array_configs():
     da_0 = np.array([0, 1.0, 1.41421356, 2., 2.23606798, 2.82842712])
     return [
         [RGSpace((4, 4), harmonic=True),  da_0],
@@ -124,10 +124,10 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
                 else:
                     assert_equal(getattr(p, key), value)
 
-    @expand(get_distance_array_configs())
-    def test_distance_array(self, harmonic_partner, expected):
+    @expand(get_k_length_array_configs())
+    def test_k_length_array(self, harmonic_partner, expected):
         p = PowerSpace(harmonic_partner=harmonic_partner)
-        assert_almost_equal(p.get_distance_array(), expected)
+        assert_almost_equal(p.get_k_length_array(), expected)
 
     def test_weight(self):
         p = PowerSpace(harmonic_partner=RGSpace(10,harmonic=True))

@@ -24,7 +24,7 @@ class FFTSmoothingOperator(EndomorphicOperator):
 
         self._transformator = FFTOperator(self._domain)
         codomain = self._domain[0].get_default_codomain()
-        self._kernel = codomain.get_distance_array()
+        self._kernel = codomain.get_k_length_array()
         smoother = codomain.get_fft_smoothing_kernel_function(self._sigma)
         self._kernel = smoother(self._kernel)
 

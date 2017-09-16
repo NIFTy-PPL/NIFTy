@@ -122,7 +122,7 @@ class LMSpace(Space):
     def weight(self):
         return 1.
 
-    def get_distance_array(self):
+    def get_k_length_array(self):
         lmax = self.lmax
         ldist = np.empty((self.dim,), dtype=np.float64)
         ldist[0:lmax+1] = np.arange(lmax+1, dtype=np.float64)
@@ -135,7 +135,7 @@ class LMSpace(Space):
             idx += 2*(lmax+1-l)
         return ldist
 
-    def get_unique_distances(self):
+    def get_unique_k_lengths(self):
         return np.arange(self.lmax+1, dtype=np.float64)
 
     def get_fft_smoothing_kernel_function(self, sigma):

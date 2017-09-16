@@ -120,17 +120,7 @@ class RGSpace(Space):
     def weight(self):
         return self._wgt
 
-    def get_distance_array(self):
-        """ Calculates an n-dimensional array with its entries being the
-        lengths of the vectors from the zero point of the grid.
-
-        Returns
-        -------
-        numpy.ndarray
-            An array containing the distances.
-
-        """
-
+    def get_k_length_array(self):
         if (not self.harmonic):
             raise NotImplementedError
         res = np.arange(self.shape[0], dtype=np.float64)
@@ -145,7 +135,7 @@ class RGSpace(Space):
             res = np.add.outer(res, tmp)
         return np.sqrt(res)
 
-    def get_unique_distances(self):
+    def get_unique_k_lengths(self):
         if (not self.harmonic):
             raise NotImplementedError
         dimensions = len(self.shape)
@@ -165,7 +155,7 @@ class RGSpace(Space):
             tmp[t2] = True
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
-            tmp = self.get_distance_array().unique()  # expensive!
+            tmp = self.get_k_length_array().unique()  # expensive!
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right
             # neighbors.
