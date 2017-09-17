@@ -68,30 +68,12 @@ def get_slice_list(shape, axes):
         yield [slice(None, None)]
 
 
-def cast_axis_to_tuple(axis, length=None):
-    if axis is None:
+def cast_iseq_to_tuple(seq):
+    if seq is None:
         return None
-    try:
-        axis = tuple(int(item) for item in axis)
-    except(TypeError):
-        if np.isscalar(axis):
-            axis = (int(axis),)
-        else:
-            raise TypeError("Could not convert axis-input to tuple of ints")
-
-    if length is not None:
-        # shift negative indices to positive ones
-        axis = tuple(item if (item >= 0) else (item + length) for item in axis)
-
-        # Deactivated this, in order to allow for the ComposedOperator
-        # remove duplicate entries
-        # axis = tuple(set(axis))
-
-        # assert that all entries are elements in [0, length]
-        for elem in axis:
-            assert (0 <= elem < length)
-
-    return axis
+    if np.isscalar(seq):
+        return (int(seq),)
+    return tuple(int(item) for item in seq)
 
 
 def parse_domain(domain):
@@ -135,7 +117,7 @@ def bincount_axis(obj, minlength=None, weights=None, axis=None):
     if axis is not None:
         # do the reordering
         ndim = len(obj.shape)
-        axis = sorted(cast_axis_to_tuple(axis, length=ndim))
+        axis = sorted(cast_iseq_to_tuple(axis))
         reordering = [x for x in range(ndim) if x not in axis]
         reordering += axis
 

@@ -89,13 +89,13 @@ class LaplaceOperator(EndomorphicOperator):
         return self._logarithmic
 
     def _times(self, x, spaces):
-        spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
             axes = x.domain_axes[0]
         else:
+            spaces = utilities.cast_iseq_to_tuple(spaces)
             axes = x.domain_axes[spaces[0]]
         axis = axes[0]
         nval = len(self._dposc)
@@ -115,13 +115,13 @@ class LaplaceOperator(EndomorphicOperator):
         return Field(self.domain, val=ret).weight(power=-0.5, spaces=spaces)
 
     def _adjoint_times(self, x, spaces):
-        spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:
             # this case means that x lives on only one space, which is
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
             axes = x.domain_axes[0]
         else:
+            spaces = utilities.cast_iseq_to_tuple(spaces)
             axes = x.domain_axes[spaces[0]]
         axis = axes[0]
         nval = len(self._dposc)

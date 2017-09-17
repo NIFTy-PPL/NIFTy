@@ -130,7 +130,7 @@ class FFTOperator(LinearOperator):
             axes = x.domain_axes[0]
             result_domain = other
         else:
-            spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
+            spaces = utilities.cast_iseq_to_tuple(spaces)
             result_domain = list(x.domain)
             result_domain[spaces[0]] = other[0]
             axes = x.domain_axes[spaces[0]]

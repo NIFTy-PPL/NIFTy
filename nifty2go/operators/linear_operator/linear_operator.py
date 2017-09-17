@@ -266,8 +266,9 @@ class LinearOperator(with_metaclass(
             else:
                 spaces = self.default_spaces[::-1]
 
-        # sanitize the `spaces` and `types` input
-        spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
+        # sanitize the `spaces` input
+        if spaces is not None:
+            spaces = utilities.cast_iseq_to_tuple(spaces)
 
         # if the operator's domain is set to something, there are two valid
         # cases:
@@ -281,9 +282,8 @@ class LinearOperator(with_metaclass(
 
         if spaces is None:
             if self_domain != x.domain:
-                raise ValueError(
-                    "The operator's and and field's domains don't "
-                    "match.")
+                raise ValueError("The operator's and and field's domains "
+                                 "don't match.")
         else:
             for i, space_index in enumerate(spaces):
                 if x.domain[space_index] != self_domain[i]:
