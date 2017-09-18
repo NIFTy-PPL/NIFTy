@@ -41,7 +41,7 @@ class DomainObject(with_metaclass(
     """
 
     def __init__(self):
-        self._ignore_for_hash = []
+        self._ignore_for_hash = ['_ignore_for_hash']
 
     @abc.abstractmethod
     def __repr__(self):
@@ -51,10 +51,8 @@ class DomainObject(with_metaclass(
         # Extract the identifying parts from the vars(self) dict.
         result_hash = 0
         for key in sorted(vars(self).keys()):
-            item = vars(self)[key]
-            if key in self._ignore_for_hash or key == '_ignore_for_hash':
-                continue
-            result_hash ^= item.__hash__() ^ int(hash(key)//117)
+            if key not in self._ignore_for_hash:
+                result_hash ^= vars(self)[key].__hash__() ^ int(hash(key)//117)
         return result_hash
 
     def __eq__(self, x):
@@ -73,18 +71,13 @@ class DomainObject(with_metaclass(
         """
         if self is x:  # shortcut for simple case
             return True
-
-        if isinstance(x, type(self)):
-            for key in list(vars(self).keys()):
-                item1 = vars(self)[key]
-                if key in self._ignore_for_hash or key == '_ignore_for_hash':
-                    continue
-                item2 = vars(x)[key]
-                if item1 != item2:
-                    return False
-            return True
-        else:
+        if not isinstance(x, type(self)):
             return False
+        for key in list(vars(self).keys()):
+            if key not in self._ignore_for_hash:
+                if vars(self)[key] != vars(x)[key]:
+                    return False
+        return True
 
     def __ne__(self, x):
         return not self.__eq__(x)
