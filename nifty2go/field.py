@@ -106,16 +106,15 @@ class Field(object):
             if np.isscalar(val):
                 return ()  # empty domain tuple
             raise TypeError("could not infer domain from value")
-
         return utilities.parse_domain(domain)
 
     @staticmethod
     def _get_axes_tuple(things_with_shape):
         i = 0
-        axes_list = []
-        for thing in things_with_shape:
+        axes_list = [None]*len(things_with_shape)
+        for idx, thing in enumerate(things_with_shape):
             nax = len(thing.shape)
-            axes_list += [tuple(range(i, i+nax))]
+            axes_list[idx] = tuple(range(i, i+nax))
             i += nax
         return tuple(axes_list)
 
@@ -627,9 +626,11 @@ class Field(object):
         if isinstance(other, Field):
             if other.domain != self.domain:
                 raise ValueError("domains are incompatible.")
-            return Field(self.domain, getattr(self.val, op)(other.val))
+            tval = getattr(self.val, op)(other.val)
+            return self if tval is self.val else Field(self.domain, tval)
 
-        return Field(self.domain, getattr(self.val, op)(other))
+        tval = getattr(self.val, op)(other)
+        return self if tval is self.val else Field(self.domain, tval)
 
     def __add__(self, other):
         return self._binary_helper(other, op='__add__')

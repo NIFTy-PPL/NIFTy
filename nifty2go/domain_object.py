@@ -71,6 +71,8 @@ class DomainObject(with_metaclass(
             True if `self` and x describe the same manifold.
 
         """
+        if self is x:  # shortcut for simple case
+            return True
 
         if isinstance(x, type(self)):
             for key in list(vars(self).keys()):
