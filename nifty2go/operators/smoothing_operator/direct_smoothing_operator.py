@@ -6,7 +6,7 @@ import numpy as np
 
 from ..endomorphic_operator import EndomorphicOperator
 from ... import nifty_utilities as utilities
-from ... import Field
+from ... import Field, DomainTuple
 
 
 class DirectSmoothingOperator(EndomorphicOperator):
@@ -14,7 +14,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
                  default_spaces=None):
         super(DirectSmoothingOperator, self).__init__(default_spaces)
 
-        self._domain = self._parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
         if len(self._domain) != 1:
             raise ValueError("DirectSmoothingOperator only accepts exactly one"
                              " space as input domain.")
@@ -93,7 +93,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
     def _smooth(self, x, spaces):
         # infer affected axes
         # we rely on the knowledge that `spaces` is a tuple with length 1.
-        affected_axes = x.domain_axes[spaces[0]]
+        affected_axes = x.domain.axes[spaces[0]]
         if len(affected_axes) != 1:
             raise ValueError("By this implementation only one-dimensional "
                              "spaces can be smoothed directly.")

@@ -1,6 +1,7 @@
 from builtins import range
 from ... import Field,\
-                FieldArray
+                FieldArray,\
+                DomainTuple
 from ..linear_operator import LinearOperator
 from ..smoothing_operator import FFTSmoothingOperator
 from ..composed_operator import ComposedOperator
@@ -54,7 +55,7 @@ class ResponseOperator(LinearOperator):
                              "exposure do not match")
         nsigma = len(sigma)
 
-        self._domain = self._parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
 
         kernel_smoothing = [FFTSmoothingOperator(self._domain[x], sigma[x])
                             for x in range(nsigma)]
@@ -65,7 +66,7 @@ class ResponseOperator(LinearOperator):
         self._composed_exposure = ComposedOperator(kernel_exposure)
 
         target_list = [FieldArray(x.shape) for x in self.domain]
-        self._target = self._parse_domain(target_list)
+        self._target = DomainTuple.make(target_list)
 
     @property
     def domain(self):

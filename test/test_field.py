@@ -29,7 +29,8 @@ from itertools import product
 from nifty2go import Field,\
                   RGSpace,\
                   LMSpace,\
-                  PowerSpace
+                  PowerSpace,\
+                  DomainTuple
 
 from test.common import expand
 
@@ -40,11 +41,10 @@ SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]
 
 class Test_Interface(unittest.TestCase):
     @expand(product(SPACE_COMBINATIONS,
-                    [['domain', tuple],
-                     ['domain_axes', tuple],
+                    [['domain', DomainTuple],
                      ['val', np.ndarray],
                      ['shape', tuple],
-                     ['dim', np.int],
+                     ['dim', (np.int, np.int64)],
                      ['total_volume', np.float]]))
     def test_return_types(self, domain, attribute_desired_type):
         attribute = attribute_desired_type[0]

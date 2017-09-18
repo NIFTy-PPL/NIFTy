@@ -69,10 +69,6 @@ class LinearOperator(with_metaclass(
     def __init__(self, default_spaces=None):
         self._default_spaces = default_spaces
 
-    @staticmethod
-    def _parse_domain(domain):
-        return utilities.parse_domain(domain)
-
     @abc.abstractproperty
     def domain(self):
         """

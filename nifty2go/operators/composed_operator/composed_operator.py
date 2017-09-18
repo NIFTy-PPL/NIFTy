@@ -18,7 +18,7 @@
 
 from builtins import range
 from ..linear_operator import LinearOperator
-
+from ... import DomainTuple
 
 class ComposedOperator(LinearOperator):
     """ NIFTY class for composed operators.
@@ -97,17 +97,19 @@ class ComposedOperator(LinearOperator):
     @property
     def domain(self):
         if not hasattr(self, '_domain'):
-            self._domain = ()
+            dom = ()
             for op in self._operator_store:
-                self._domain += op.domain
+                dom += op.domain.domains
+            self._domain = DomainTuple.make(dom)
         return self._domain
 
     @property
     def target(self):
         if not hasattr(self, '_target'):
-            self._target = ()
+            tgt = ()
             for op in self._operator_store:
-                self._target += op.target
+                tgt += op.target.domains
+            self._target = DomainTuple.make(tgt)
         return self._target
 
     @property

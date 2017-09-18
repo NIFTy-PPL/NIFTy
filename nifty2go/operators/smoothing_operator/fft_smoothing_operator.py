@@ -5,7 +5,7 @@ import numpy as np
 
 from ..endomorphic_operator import EndomorphicOperator
 from ..fft_operator import FFTOperator
-
+from ... import DomainTuple
 
 class FFTSmoothingOperator(EndomorphicOperator):
 
@@ -13,7 +13,7 @@ class FFTSmoothingOperator(EndomorphicOperator):
                  default_spaces=None):
         super(FFTSmoothingOperator, self).__init__(default_spaces)
 
-        self._domain = self._parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
         if len(self._domain) != 1:
             raise ValueError("SmoothingOperator only accepts exactly one "
                              "space as input domain.")
@@ -57,7 +57,7 @@ class FFTSmoothingOperator(EndomorphicOperator):
         # transform to the (global-)default codomain and perform all remaining
         # steps therein
         transformed_x = self._transformator(x, spaces=spaces)
-        coaxes = transformed_x.domain_axes[spaces[0]]
+        coaxes = transformed_x.domain.axes[spaces[0]]
 
         # now, apply the kernel to transformed_x
         # this is done node-locally utilizing numpy's reshaping in order to

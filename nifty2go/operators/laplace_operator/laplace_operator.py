@@ -20,7 +20,7 @@ import numpy as np
 from ...field import Field
 from ...spaces.power_space import PowerSpace
 from ..endomorphic_operator import EndomorphicOperator
-from ... import sqrt
+from ... import sqrt, DomainTuple
 from ... import nifty_utilities as utilities
 
 
@@ -41,7 +41,7 @@ class LaplaceOperator(EndomorphicOperator):
 
     def __init__(self, domain, default_spaces=None, logarithmic=True):
         super(LaplaceOperator, self).__init__(default_spaces)
-        self._domain = self._parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
         if len(self.domain) != 1:
             raise ValueError("The domain must contain exactly one PowerSpace.")
 
@@ -93,10 +93,10 @@ class LaplaceOperator(EndomorphicOperator):
             # this case means that x lives on only one space, which is
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
-            axes = x.domain_axes[0]
+            axes = x.domain.axes[0]
         else:
             spaces = utilities.cast_iseq_to_tuple(spaces)
-            axes = x.domain_axes[spaces[0]]
+            axes = x.domain.axes[spaces[0]]
         axis = axes[0]
         nval = len(self._dposc)
         prefix = (slice(None),) * axis
@@ -119,10 +119,10 @@ class LaplaceOperator(EndomorphicOperator):
             # this case means that x lives on only one space, which is
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
-            axes = x.domain_axes[0]
+            axes = x.domain.axes[0]
         else:
             spaces = utilities.cast_iseq_to_tuple(spaces)
-            axes = x.domain_axes[spaces[0]]
+            axes = x.domain.axes[spaces[0]]
         axis = axes[0]
         nval = len(self._dposc)
         prefix = (slice(None),) * axis

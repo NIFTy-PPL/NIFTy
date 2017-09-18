@@ -21,6 +21,7 @@ from builtins import range
 import numpy as np
 
 from ...field import Field
+from ...domain_tuple import DomainTuple
 from ..endomorphic_operator import EndomorphicOperator
 
 
@@ -84,7 +85,7 @@ class DiagonalOperator(EndomorphicOperator):
                  default_spaces=None):
         super(DiagonalOperator, self).__init__(default_spaces)
 
-        self._domain = self._parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
 
         self._self_adjoint = None
         self._unitary = None
@@ -214,7 +215,7 @@ class DiagonalOperator(EndomorphicOperator):
         else:
             active_axes = []
             for space_index in spaces:
-                active_axes += x.domain_axes[space_index]
+                active_axes += x.domain.axes[space_index]
 
         reshaper = [x.shape[i] if i in active_axes else 1
                     for i in range(len(x.shape))]

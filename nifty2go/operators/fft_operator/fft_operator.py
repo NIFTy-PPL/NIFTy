@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ... import Field, nifty_utilities as utilities
+from ... import Field, DomainTuple, nifty_utilities as utilities
 from ...spaces import RGSpace, GLSpace, HPSpace, LMSpace
 
 from ..linear_operator import LinearOperator
@@ -96,14 +96,14 @@ class FFTOperator(LinearOperator):
         super(FFTOperator, self).__init__(default_spaces)
 
         # Initialize domain and target
-        self._domain = self._parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
         if len(self.domain) != 1:
             raise ValueError("TransformationOperator accepts only exactly one "
                              "space as input domain.")
 
         if target is None:
             target = (self.domain[0].get_default_codomain(), )
-        self._target = self._parse_domain(target)
+        self._target = DomainTuple.make(target)
         if len(self.target) != 1:
             raise ValueError("TransformationOperator accepts only exactly one "
                              "space as output target.")
@@ -127,13 +127,13 @@ class FFTOperator(LinearOperator):
             # this case means that x lives on only one space, which is
             # identical to the space in the domain of `self`. Otherwise the
             # input check of LinearOperator would have failed.
-            axes = x.domain_axes[0]
+            axes = x.domain.axes[0]
             result_domain = other
         else:
             spaces = utilities.cast_iseq_to_tuple(spaces)
             result_domain = list(x.domain)
             result_domain[spaces[0]] = other[0]
-            axes = x.domain_axes[spaces[0]]
+            axes = x.domain.axes[spaces[0]]
 
         new_val, fct = trafo.transform(x.val, axes=axes)
         res = Field(result_domain, new_val, copy=False)

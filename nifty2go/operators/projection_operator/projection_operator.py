@@ -88,7 +88,7 @@ class ProjectionOperator(EndomorphicOperator):
             active_axes = list(range(len(x.shape)))
         else:
             for space_index in spaces:
-                active_axes += x.domain_axes[space_index]
+                active_axes += x.domain.axes[space_index]
 
         local_projection_vector = self._projection_field.val
 

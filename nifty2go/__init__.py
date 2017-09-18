@@ -22,6 +22,8 @@ from .version import __version__
 
 from .field import Field
 
+from .domain_tuple import DomainTuple
+
 from .random import Random
 
 from .basic_arithmetics import *

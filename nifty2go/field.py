@@ -22,6 +22,7 @@ import numpy as np
 from .spaces.power_space import PowerSpace
 from . import nifty_utilities as utilities
 from .random import Random
+from .domain_tuple import DomainTuple
 from functools import reduce
 
 
@@ -53,10 +54,8 @@ class Field(object):
     ----------
     val : numpy.ndarray
 
-    domain : DomainObject
+    domain : DomainTuple
         See Parameters.
-    domain_axes : tuple of tuples
-        Enumerates the axes of the Field
     dtype : type
         Contains the datatype stored in the Field.
 
@@ -74,27 +73,21 @@ class Field(object):
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
         self.domain = self._parse_domain(domain=domain, val=val)
-        self.domain_axes = self._get_axes_tuple(self.domain)
 
-        shape_tuple = tuple(sp.shape for sp in self.domain)
-        if len(shape_tuple) == 0:
-            global_shape = ()
-        else:
-            global_shape = reduce(lambda x, y: x + y, shape_tuple)
         dtype = self._infer_dtype(dtype=dtype, val=val)
         if isinstance(val, Field):
             if self.domain != val.domain:
                 raise ValueError("Domain mismatch")
             self._val = np.array(val.val, dtype=dtype, copy=copy)
         elif (np.isscalar(val)):
-            self._val = np.full(global_shape, dtype=dtype, fill_value=val)
+            self._val = np.full(self.domain.shape, dtype=dtype, fill_value=val)
         elif isinstance(val, np.ndarray):
-            if global_shape == val.shape:
+            if self.domain.shape == val.shape:
                 self._val = np.array(val, dtype=dtype, copy=copy)
             else:
                 raise ValueError("Shape mismatch")
         elif val is None:
-            self._val = np.empty(global_shape, dtype=dtype)
+            self._val = np.empty(self.domain.shape, dtype=dtype)
         else:
             raise TypeError("unknown source type")
 
@@ -104,19 +97,9 @@ class Field(object):
             if isinstance(val, Field):
                 return val.domain
             if np.isscalar(val):
-                return ()  # empty domain tuple
+                return DomainTuple(())  # empty domain tuple
             raise TypeError("could not infer domain from value")
-        return utilities.parse_domain(domain)
-
-    @staticmethod
-    def _get_axes_tuple(things_with_shape):
-        i = 0
-        axes_list = [None]*len(things_with_shape)
-        for idx, thing in enumerate(things_with_shape):
-            nax = len(thing.shape)
-            axes_list[idx] = tuple(range(i, i+nax))
-            i += nax
-        return tuple(axes_list)
+        return DomainTuple.make(domain)
 
     # MR: this needs some rethinking ... do we need to have at least float64?
     @staticmethod
@@ -155,9 +138,10 @@ class Field(object):
         power_synthesize
         """
 
+        domain = DomainTuple.make(domain)
         generator_function = getattr(Random, random_type)
         return Field(domain=domain, val=generator_function(dtype=dtype,
-                     shape=utilities.domains2shape(domain), **kwargs))
+                     shape=domain.shape, **kwargs))
 
     # ---Powerspectral methods---
 
@@ -240,7 +224,7 @@ class Field(object):
     def _single_power_analyze(field, idx, binbounds):
         power_domain = PowerSpace(field.domain[idx], binbounds)
         pindex = power_domain.pindex
-        axes = field.domain_axes[idx]
+        axes = field.domain.axes[idx]
         new_pindex_shape = [1] * len(field.shape)
         for i, ax in enumerate(axes):
             new_pindex_shape[ax] = pindex.shape[i]
@@ -275,7 +259,7 @@ class Field(object):
             local_blow_up = [slice(None)]*len(spec.shape)
             # it is important to count from behind, since spec potentially
             # grows with every iteration
-            index = self.domain_axes[i][0]-len(self.shape)
+            index = self.domain.axes[i][0]-len(self.shape)
             local_blow_up[index] = power_space.pindex
             # here, the power_spectrum is distributed into the new shape
             spec = spec[local_blow_up]
@@ -380,7 +364,7 @@ class Field(object):
             The output object. The tuple contains the dimensions of the spaces
             in domain.
        """
-        return self._val.shape
+        return self.domain.shape
 
     @property
     def dim(self):
@@ -393,7 +377,7 @@ class Field(object):
         out : int
             The dimension of the Field.
         """
-        return self._val.size
+        return self.domain.dim
 
     @property
     def total_volume(self):
@@ -479,8 +463,8 @@ class Field(object):
                 fct *= wgt
             else:
                 new_shape = np.ones(len(self.shape), dtype=np.int)
-                new_shape[self.domain_axes[ind][0]:
-                          self.domain_axes[ind][-1]+1] = wgt.shape
+                new_shape[self.domain.axes[ind][0]:
+                          self.domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
                 new_field *= wgt**power
         fct = fct**power
@@ -574,7 +558,7 @@ class Field(object):
         else:
             spaces = utilities.cast_iseq_to_tuple(spaces)
 
-        axes_list = tuple(self.domain_axes[sp_index] for sp_index in spaces)
+        axes_list = tuple(self.domain.axes[sp_index] for sp_index in spaces)
 
         if len(axes_list) > 0:
             axes_list = reduce(lambda x, y: x+y, axes_list)

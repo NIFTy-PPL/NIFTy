@@ -21,7 +21,7 @@ from builtins import range
 from builtins import object
 import numpy as np
 
-from ...field import Field
+from ...field import Field, DomainTuple
 from ... import nifty_utilities as utilities
 
 
@@ -39,7 +39,7 @@ class Prober(object):
                  random_type='pm1', probe_dtype=np.float,
                  compute_variance=False, ncpu=1):
 
-        self._domain = utilities.parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
         self._probe_count = self._parse_probe_count(probe_count)
         self._ncpu = self._parse_probe_count(ncpu)
         self._random_type = self._parse_random_type(random_type)

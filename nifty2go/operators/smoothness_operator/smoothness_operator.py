@@ -1,7 +1,7 @@
 from ...spaces.power_space import PowerSpace
 from ..endomorphic_operator import EndomorphicOperator
 from ..laplace_operator import LaplaceOperator
-from ... import Field
+from ... import Field, DomainTuple
 
 
 class SmoothnessOperator(EndomorphicOperator):
@@ -34,7 +34,7 @@ class SmoothnessOperator(EndomorphicOperator):
 
         super(SmoothnessOperator, self).__init__(default_spaces=default_spaces)
 
-        self._domain = self._parse_domain(domain)
+        self._domain = DomainTuple.make(domain)
         if len(self.domain) != 1:
             raise ValueError("The domain must contain exactly one PowerSpace.")
 

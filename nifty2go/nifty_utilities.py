@@ -76,31 +76,6 @@ def cast_iseq_to_tuple(seq):
     return tuple(int(item) for item in seq)
 
 
-def parse_domain(domain):
-    if domain is None:
-        return ()
-    if isinstance(domain, DomainObject):
-        return (domain,)
-
-    if not isinstance(domain, tuple):
-        domain = tuple(domain)
-    for d in domain:
-        if not isinstance(d, DomainObject):
-            raise TypeError(
-                "Given object contains something that is not an "
-                "instance of DomainObject-class.")
-    return domain
-
-
-def domains2shape(domain):
-    domain = parse_domain(domain)
-    shape_tuple = tuple(sp.shape for sp in domain)
-    if len(shape_tuple) == 0:
-        return ()
-    else:
-        return reduce(lambda x, y: x + y, shape_tuple)
-
-
 def bincount_axis(obj, minlength=None, weights=None, axis=None):
     if minlength is not None:
         length = max(np.amax(obj) + 1, minlength)
