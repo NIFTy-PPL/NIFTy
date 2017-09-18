@@ -20,6 +20,8 @@ from functools import reduce
 from .domain_object import DomainObject
 
 class DomainTuple(object):
+    _tupleCache = {}
+
     def __init__(self, domain):
         self._dom = self._parse_domain(domain)
         self._axtuple = self._get_axes_tuple()
@@ -40,7 +42,13 @@ class DomainTuple(object):
     def make(domain):
         if isinstance(domain, DomainTuple):
             return domain
-        return DomainTuple(domain)
+        domain = DomainTuple._parse_domain(domain)
+        obj = DomainTuple._tupleCache.get(domain)
+        if obj is not None:
+            return obj
+        obj = DomainTuple(domain)
+        DomainTuple._tupleCache[domain] = obj
+        return obj
 
     @staticmethod
     def _parse_domain(domain):

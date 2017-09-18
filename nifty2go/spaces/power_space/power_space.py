@@ -144,7 +144,7 @@ class PowerSpace(Space):
 
     def __init__(self, harmonic_partner, binbounds=None):
         super(PowerSpace, self).__init__()
-        self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
+        self._needed_for_hash += ['_harmonic_partner', '_binbounds']
 
         if not (isinstance(harmonic_partner, Space) and
                 harmonic_partner.harmonic):

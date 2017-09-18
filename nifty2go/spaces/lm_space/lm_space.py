@@ -85,6 +85,7 @@ class LMSpace(Space):
 
     def __init__(self, lmax):
         super(LMSpace, self).__init__()
+        self._needed_for_hash += ["_lmax"]
         self._lmax = self._parse_lmax(lmax)
 
     def __repr__(self):

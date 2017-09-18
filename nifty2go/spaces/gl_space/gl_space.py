@@ -82,7 +82,7 @@ class GLSpace(Space):
 
     def __init__(self, nlat, nlon=None):
         super(GLSpace, self).__init__()
-        self._ignore_for_hash += ["_wgt"]
+        self._needed_for_hash += ["_nlat", "_nlon"]
 
         self._nlat = self._parse_nlat(nlat)
         self._nlon = self._parse_nlon(nlon)
