@@ -61,6 +61,17 @@ class RGRGTransformation(Transformation):
             RGRGTransformation._fill_upper_half(tmp[dim1], res[dim1], axes2)
 
     @staticmethod
+    def _fill_array(tmp, res, axes):
+        if axes is None:
+            axes = range(a.ndim)
+        lastaxis = axes[-1]
+        ntmplast = tmp.shape[lastaxis]
+        slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
+        np.add(tmp.real, tmp.imag, out=res[slice1])
+        RGRGTransformation._fill_upper_half(tmp, res, axes)
+        return res
+
+    @staticmethod
     def _hartley(a, axes=None):
         # Check if the axes provided are valid given the shape
         if axes is not None and \
@@ -71,15 +82,7 @@ class RGRGTransformation(Transformation):
         if issubclass(a.dtype.type, np.complexfloating):
             raise TypeError("Hartley tansform requires real-valued arrays.")
         tmp = rfftn(a, axes=axes)
-        res = np.empty_like(a)
-        if axes is None:
-            axes = range(a.ndim)
-        lastaxis = axes[-1]
-        ntmplast = tmp.shape[lastaxis]
-        slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
-        np.add(tmp.real, tmp.imag, out=res[slice1])
-        RGRGTransformation._fill_upper_half(tmp, res, axes)
-        return res
+        return RGRGTransformation._fill_array(tmp, np.empty_like(a), axes)
 
     def transform(self, val, axes=None):
         """

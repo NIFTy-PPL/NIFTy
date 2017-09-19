@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division
+from __future__ import division, print_function
 from builtins import range
 import numpy as np
 from .spaces.power_space import PowerSpace
@@ -195,8 +195,8 @@ class Field(object):
         # power_space instances
         for sp in self.domain:
             if not sp.harmonic and not isinstance(sp, PowerSpace):
-                raise TypeError("Field has a space in `domain` which is "
-                                "neither harmonic nor a PowerSpace.")
+                print("WARNING: Field has a space in `domain` which is "
+                      "neither harmonic nor a PowerSpace.")
 
         # check if the `spaces` input is valid
         if spaces is None:

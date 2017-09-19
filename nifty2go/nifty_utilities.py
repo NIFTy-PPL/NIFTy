@@ -48,7 +48,7 @@ def get_slice_list(shape, axes):
         If axes(axis) does not match shape.
     """
 
-    if not shape:
+    if shape is None:
         raise ValueError("shape cannot be None.")
 
     if axes:
