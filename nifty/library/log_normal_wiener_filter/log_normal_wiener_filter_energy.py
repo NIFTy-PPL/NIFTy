@@ -25,13 +25,13 @@ class LogNormalWienerFilterEnergy(Energy):
     """
 
     def __init__(self, position, d, R, N, S, fft4exp=None, old_curvature=None,
-                 prefactor=None):
+                 offset=None):
         super(LogNormalWienerFilterEnergy, self).__init__(position=position)
         self.d = d
         self.R = R
         self.N = N
         self.S = S
-        self.prefactor = prefactor
+        self.offset = offset
 
         if fft4exp is None:
             self._fft = create_composed_fft_operator(self.S.domain,
@@ -46,7 +46,7 @@ class LogNormalWienerFilterEnergy(Energy):
         return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
                               S=self.S, fft4exp=self._fft,
                               old_curvature=self._curvature,
-                              prefactor=self.prefactor)
+                              o=self.offset)
 
     @property
     @memo
@@ -70,7 +70,7 @@ class LogNormalWienerFilterEnergy(Energy):
                                                       d=self.d,
                                                       position=self.position,
                                                       fft4exp=self._fft,
-                                                      prefactor=self.prefactor)
+                                                      offset=self.offset)
             else:
                 self._curvature = \
                     self._old_curvature.copy(position=self.position)
