@@ -46,7 +46,7 @@ class LogNormalWienerFilterEnergy(Energy):
         return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
                               S=self.S, fft4exp=self._fft,
                               old_curvature=self._curvature,
-                              o=self.offset)
+                              offset=self.offset)
 
     @property
     @memo
