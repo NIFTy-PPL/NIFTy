@@ -16,18 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-"""
-    ..                  __   ____   __
-    ..                /__/ /   _/ /  /_
-    ..      __ ___    __  /  /_  /   _/  __   __
-    ..    /   _   | /  / /   _/ /  /   /  / /  /
-    ..   /  / /  / /  / /  /   /  /_  /  /_/  /
-    ..  /__/ /__/ /__/ /__/    \___/  \___   /  rg
-    ..                               /______/
-
-    NIFTY submodule for regular Cartesian grids.
-
-"""
 from __future__ import division
 from builtins import range
 from functools import reduce

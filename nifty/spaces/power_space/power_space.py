@@ -86,9 +86,10 @@ class PowerSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, harmonic_partner, distribution_strategy=None,
-                 binbounds=None):
+                 volume_type='rho', binbounds=None):
         super(PowerSpace, self).__init__()
-        self._ignore_for_hash += ['_pindex', '_kindex', '_rho']
+        self._ignore_for_hash += ['_pindex', '_kindex', '_rho',
+                                  '_volume_weight']
 
         if distribution_strategy is None:
             distribution_strategy = gc['default_distribution_strategy']
@@ -126,6 +127,8 @@ class PowerSpace(Space):
 
         (self._binbounds, self._pindex, self._kindex, self._rho) = \
             self._powerIndexCache[key]
+
+        self.volume_type = str(volume_type)
 
     @staticmethod
     def _compute_pindex(harmonic_partner, distance_array, binbounds,
@@ -199,11 +202,31 @@ class PowerSpace(Space):
                               binbounds=self._binbounds)
 
     def weight(self, x, power, axes, inplace=False):
+        if self.volume_type == 'unit':
+            if inplace:
+                return x
+            else:
+                return x.copy()
+
+        if self.volume_type == 'rho':
+            weight = self.rho
+
+        elif self.volume_type == 'volume':
+            try:
+                weight = self._volume_weight
+            except AttributeError:
+                k = self.kindex
+                weight = np.empty_like(k)
+                weight[1:-1] = (k[2:] - k[:-2])/2
+                weight[0] = k[1] - k[0]
+                weight[-1] = k[-1] - k[-2]
+                self._volume_weight = weight
+
         reshaper = [1, ] * len(x.shape)
         # we know len(axes) is always 1
         reshaper[axes[0]] = self.shape[0]
 
-        weight = self.rho.reshape(reshaper)
+        weight = weight.reshape(reshaper)
         if power != 1:
             weight = weight ** np.float(power)
 
