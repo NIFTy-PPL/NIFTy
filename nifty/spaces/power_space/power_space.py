@@ -346,7 +346,8 @@ class PowerSpace(Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group['binbounds'] = np.array(self._binbounds)
+        if self._binbounds is not None:
+            hdf5_group['binbounds'] = np.array(self._binbounds)
         hdf5_group.attrs['distribution_strategy'] = \
             self._pindex.distribution_strategy
         hdf5_group.attrs['volume_type'] = self.volume_type
@@ -355,7 +356,10 @@ class PowerSpace(Space):
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
         hp = repository.get('harmonic_partner', hdf5_group)
-        bb = tuple(hdf5_group['binbounds'])
+        try:
+            bb = tuple(hdf5_group['binbounds'])
+        except KeyError:
+            bb = None
         ds = str(hdf5_group.attrs['distribution_strategy'])
         volume_type = str(hdf5_group.attrs['volume_type'])
         return PowerSpace(hp, ds, binbounds=bb, volume_type=volume_type)
