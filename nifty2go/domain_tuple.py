@@ -93,10 +93,14 @@ class DomainTuple(object):
 
     def __eq__(self, x):
         if not isinstance(x, DomainTuple):
-            x = DomainTuple(x)
+            x = DomainTuple.make(x)
+        if self is x:
+            return True
         return self._dom == x._dom
 
     def __ne__(self, x):
         if not isinstance(x, DomainTuple):
-            x = DomainTuple(x)
+            x = DomainTuple.make(x)
+        if self is x:
+            return False
         return self._dom != x._dom

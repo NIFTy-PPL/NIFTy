@@ -19,7 +19,8 @@
 from __future__ import division
 from .minimizer import Minimizer
 import numpy as np
-
+from .. import Field
+from ..low_level_library import general_axpy
 
 class ConjugateGradient(Minimizer):
     """ Implementation of the Conjugate Gradient scheme.
@@ -73,7 +74,7 @@ class ConjugateGradient(Minimizer):
             return energy, status
 
         norm_b = energy.norm_b
-        r = -energy.gradient
+        r = energy.gradient
         if preconditioner is not None:
             d = preconditioner(r)
         else:
@@ -82,6 +83,7 @@ class ConjugateGradient(Minimizer):
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
+        tpos = Field(d.domain,dtype=d.dtype)  # temporary buffer
         while True:
             q = energy.curvature(d)
             ddotq = d.vdot(q).real
@@ -92,14 +94,10 @@ class ConjugateGradient(Minimizer):
             if alpha < 0:
                 return energy, controller.ERROR
 
-            # MR: BLAS candidate
-            q *= alpha
-            r -= q
+            general_axpy(-alpha, q, r, out=r)
 
-            # MR: BLAS candidate
-            tpos = d*alpha
-            tpos += energy.position
-            energy = energy.at_with_grad(tpos, -r)
+            general_axpy(-alpha, d, energy.position, out=tpos)
+            energy = energy.at_with_grad(tpos, r)
 
             if preconditioner is not None:
                 s = preconditioner(r)
@@ -119,8 +117,6 @@ class ConjugateGradient(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
 
-            # MR: BLAS candidate
-            d *= max(0, gamma/previous_gamma)
-            d += s
+            general_axpy(max(0, gamma/previous_gamma), d, s, out=d)
 
             previous_gamma = gamma

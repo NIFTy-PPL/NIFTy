@@ -19,7 +19,7 @@
 from __future__ import division
 import numpy as np
 from ... import nifty_utilities as utilities
-
+from ...low_level_library import hartley
 
 class Transformation(object):
     def __init__(self, domain, codomain):
@@ -42,47 +42,6 @@ class RGRGTransformation(Transformation):
     @property
     def unitary(self):
         return True
-
-    @staticmethod
-    def _fill_upper_half(tmp, res, axes):
-        lastaxis = axes[-1]
-        nlast = res.shape[lastaxis]
-        ntmplast = tmp.shape[lastaxis]
-        nrem = nlast - ntmplast
-        slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
-        slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
-        for i in axes[:-1]:
-            slice1[i] = slice(1, None)
-            slice2[i] = slice(None, 0, -1)
-        np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
-        for i, ax in enumerate(axes[:-1]):
-            dim1 = [slice(None)]*ax + [slice(0, 1)]
-            axes2 = axes[:i] + axes[i+1:]
-            RGRGTransformation._fill_upper_half(tmp[dim1], res[dim1], axes2)
-
-    @staticmethod
-    def _fill_array(tmp, res, axes):
-        if axes is None:
-            axes = range(a.ndim)
-        lastaxis = axes[-1]
-        ntmplast = tmp.shape[lastaxis]
-        slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
-        np.add(tmp.real, tmp.imag, out=res[slice1])
-        RGRGTransformation._fill_upper_half(tmp, res, axes)
-        return res
-
-    @staticmethod
-    def _hartley(a, axes=None):
-        # Check if the axes provided are valid given the shape
-        if axes is not None and \
-                not all(axis < len(a.shape) for axis in axes):
-            raise ValueError("Provided axes does not match array shape")
-
-        from pyfftw.interfaces.numpy_fft import rfftn
-        if issubclass(a.dtype.type, np.complexfloating):
-            raise TypeError("Hartley tansform requires real-valued arrays.")
-        tmp = rfftn(a, axes=axes)
-        return RGRGTransformation._fill_array(tmp, np.empty_like(a), axes)
 
     def transform(self, val, axes=None):
         """
@@ -109,10 +68,10 @@ class RGRGTransformation(Transformation):
 
         # Perform the transformation
         if issubclass(val.dtype.type, np.complexfloating):
-            Tval = self._hartley(val.real, axes) \
-                  + 1j*self._hartley(val.imag, axes)
+            Tval = hartley(val.real, axes) \
+                  + 1j*hartley(val.imag, axes)
         else:
-            Tval = self._hartley(val, axes)
+            Tval = hartley(val, axes)
 
         return Tval, fct
 

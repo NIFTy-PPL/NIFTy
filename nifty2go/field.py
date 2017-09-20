@@ -97,7 +97,7 @@ class Field(object):
             if isinstance(val, Field):
                 return val.domain
             if np.isscalar(val):
-                return DomainTuple(())  # empty domain tuple
+                return DomainTuple.make(())  # empty domain tuple
             raise TypeError("could not infer domain from value")
         return DomainTuple.make(domain)
 
