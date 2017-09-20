@@ -20,7 +20,7 @@ import numpy as np
 from ...field import Field
 from ...spaces.power_space import PowerSpace
 from ..endomorphic_operator import EndomorphicOperator
-from ... import sqrt, DomainTuple
+from ... import DomainTuple
 from ... import nifty_utilities as utilities
 
 

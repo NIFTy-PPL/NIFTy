@@ -164,10 +164,17 @@ class RGSpace(Space):
             # rightmost point correctly.
             return tmp[np.diff(np.r_[tmp, 2*tmp[-1]]) > tol]
 
+    @staticmethod
+    def _kernel(x, sigma):
+        tmp = x*x
+        tmp *= -2.*np.pi*np.pi*sigma*sigma
+        np.exp(tmp, out=tmp)
+        return tmp
+
     def get_fft_smoothing_kernel_function(self, sigma):
         if (not self.harmonic):
             raise NotImplementedError
-        return lambda x: np.exp(-2. * np.pi*np.pi * x*x * sigma*sigma)
+        return lambda x: self._kernel(x, sigma)
 
     def get_default_codomain(self):
         distances = 1. / (np.array(self.shape)*np.array(self.distances))

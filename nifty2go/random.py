@@ -35,15 +35,13 @@ class Random(object):
     def normal(dtype, shape, mean=0., std=1.):
         if issubclass(dtype, (complex, np.complexfloating)):
             x = np.empty(shape, dtype=dtype)
-            x.real = np.random.normal(loc=0., scale=np.sqrt(0.5), size=shape)
-            x.imag = np.random.normal(loc=0., scale=np.sqrt(0.5), size=shape)
+            x.real = np.random.normal(loc=mean.real, scale=std*np.sqrt(0.5),
+                                      size=shape)
+            x.imag = np.random.normal(loc=mean.imag, scale=std*np.sqrt(0.5),
+                                      size=shape)
         else:
-            x = np.random.normal(loc=0., scale=1., size=shape)
+            x = np.random.normal(loc=mean, scale=std, size=shape)
             x = x.astype(dtype, copy=False)
-        if std != 1.:
-            x *= std
-        if mean != 0.:
-            x += mean
         return x
 
     @staticmethod

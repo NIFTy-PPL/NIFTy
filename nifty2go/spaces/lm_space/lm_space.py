@@ -139,11 +139,19 @@ class LMSpace(Space):
     def get_unique_k_lengths(self):
         return np.arange(self.lmax+1, dtype=np.float64)
 
+    @staticmethod
+    def _kernel(x, sigma):
+        res = x+1.
+        res *= x
+        res *= -0.5*sigma*sigma
+        np.exp(res, out=res)
+        return res
+
     def get_fft_smoothing_kernel_function(self, sigma):
         # cf. "All-sky convolution for polarimetry experiments"
         # by Challinor et al.
         # http://arxiv.org/abs/astro-ph/0008228
-        return lambda x: np.exp(-0.5 * x * (x + 1) * sigma*sigma)
+        return lambda x: self._kernel(x, sigma)
 
     @property
     def lmax(self):
