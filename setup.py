@@ -16,10 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
-exec(open('nifty2go/version.py').read())
-
+exec(open('nifty/version.py').read())
 
 setup(name="nifty2go",
       version=__version__,
@@ -27,7 +26,8 @@ setup(name="nifty2go",
       author_email="theos@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      packages=find_packages(include=["nifty2go", "nifty2go.*"]),
+      package_dir = {"nifty2go": "nifty"},
+      packages=["nifty2go"],
       zip_safe=False,
       dependency_links=[
                'git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git@setuptools_test#egg=pyHealpix-0.0.1'],
