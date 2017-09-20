@@ -18,6 +18,7 @@ test_min:
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
+    - nosetests3 -x --with-coverage --cover-package=nifty2go --cover-branches
     - nosetests
     - nosetests3 -x --with-coverage --cover-package=nifty2go --cover-branches
     - >
