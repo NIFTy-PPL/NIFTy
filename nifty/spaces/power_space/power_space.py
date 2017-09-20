@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-import ast
 import numpy as np
 
 from d2o import distributed_data_object,\
@@ -347,17 +346,16 @@ class PowerSpace(Space):
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
-        hdf5_group.attrs['binbounds'] = str(self._binbounds)
+        hdf5_group['binbounds'] = np.array(self._binbounds)
         hdf5_group.attrs['distribution_strategy'] = \
             self._pindex.distribution_strategy
-
-        return {
-            'harmonic_partner': self.harmonic_partner,
-        }
+        hdf5_group.attrs['volume_type'] = self.volume_type
+        return {'harmonic_partner': self.harmonic_partner}
 
     @classmethod
     def _from_hdf5(cls, hdf5_group, repository):
         hp = repository.get('harmonic_partner', hdf5_group)
-        bb = ast.literal_eval(hdf5_group.attrs['binbounds'])
+        bb = tuple(hdf5_group['binbounds'])
         ds = str(hdf5_group.attrs['distribution_strategy'])
-        return PowerSpace(hp, ds, binbounds=bb)
+        volume_type = str(hdf5_group.attrs['volume_type'])
+        return PowerSpace(hp, ds, binbounds=bb, volume_type=volume_type)
