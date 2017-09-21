@@ -136,15 +136,15 @@ class DiagonalOperator(EndomorphicOperator):
 
     def _adjoint_times(self, x, spaces):
         return self._times_helper(x, spaces,
-                                  operation=lambda z: z.adjoint().__mul__)
+                                  operation=lambda z: z.conjugate().__mul__)
 
     def _inverse_times(self, x, spaces):
         return self._times_helper(
                             x, spaces, operation=lambda z: z.__rtruediv__)
 
     def _adjoint_inverse_times(self, x, spaces):
-        return self._times_helper(x, spaces,
-                                  operation=lambda z: z.adjoint().__rtruediv__)
+        return self._times_helper(
+                    x, spaces, operation=lambda z: z.conjugate().__rtruediv__)
 
     def diagonal(self, bare=False, copy=True):
         """ Returns the diagonal of the Operator.

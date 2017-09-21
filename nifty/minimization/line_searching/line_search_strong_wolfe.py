@@ -139,7 +139,7 @@ class LineSearchStrongWolfe(LineSearch):
             phi_alpha1 = le_alpha1.value
 
             if (phi_alpha1 > phi_0 + self.c1*alpha1*phiprime_0) or \
-               ((phi_alpha1 >= phi_alpha0) and (i > 0)):
+               ((phi_alpha1 >= phi_alpha0) and (iteration_number > 1)):
                 le_star = self._zoom(alpha0, alpha1, phi_0, phiprime_0,
                                      phi_alpha0, phiprime_alpha0, phi_alpha1,
                                      le_0)

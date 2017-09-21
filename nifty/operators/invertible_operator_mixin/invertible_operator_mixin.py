@@ -42,23 +42,6 @@ class InvertibleOperatorMixin(object):
         Preconditioner that is used by ConjugateGradient if no minimizer was
         given.
 
-    Attributes
-    ----------
-
-    Raises
-    ------
-
-    Notes
-    -----
-
-    Examples
-    --------
-    The PropagatorOperator inherits from InvertibleOperatorMixin.
-
-    See Also
-    --------
-    PropagatorOperator
-
     """
 
     def __init__(self, inverter=None, preconditioner=None,
