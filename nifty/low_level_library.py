@@ -77,7 +77,8 @@ def hartley(a, axes=None):
 if use_numba:
     from numba import complex128 as ncplx, float64 as nflt, vectorize as nvct
 
-    @nvct([nflt(nflt,nflt,nflt), ncplx(nflt,ncplx,ncplx)])
+    @nvct([nflt(nflt,nflt,nflt), ncplx(nflt,ncplx,ncplx)], nopython=True,
+          target="cpu")
     def _general_axpy(a, x, y):
         return a*x + y
 
