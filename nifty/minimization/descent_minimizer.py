@@ -18,11 +18,9 @@
 
 from __future__ import division
 import abc
-import numpy as np
 
 from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
-from future.utils import with_metaclass
 
 
 class DescentMinimizer(Minimizer):
@@ -111,7 +109,6 @@ class DescentMinimizer(Minimizer):
             status = self._controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
-
 
     @abc.abstractmethod
     def get_descent_direction(self, energy):

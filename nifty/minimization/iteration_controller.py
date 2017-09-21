@@ -20,13 +20,12 @@ from builtins import range
 import abc
 from ..nifty_meta import NiftyMeta
 
-import numpy as np
-
 from keepers import Loggable
 from future.utils import with_metaclass
 
-class IterationController(with_metaclass(NiftyMeta, type('NewBase',
-                                         (Loggable, object), {}))):
+
+class IterationController(
+        with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """The abstract base class for all iteration controllers.
     An iteration controller is an object that monitors the progress of a
     minimization iteration. At the begin of the minimization, its start()
@@ -45,6 +44,18 @@ class IterationController(with_metaclass(NiftyMeta, type('NewBase',
     """
 
     CONVERGED, CONTINUE, ERROR = list(range(3))
+
+    def __init__(self):
+        self._iteration_count = -1
+        self._convergence_count = 0
+
+    @property
+    def iteration_count(self):
+        return self._iteration_count
+
+    @property
+    def convergence_count(self):
+        return self._convergence_count
 
     @abc.abstractmethod
     def start(self, energy):

@@ -19,12 +19,12 @@
 import abc
 from ..nifty_meta import NiftyMeta
 
-import numpy as np
-
 from keepers import Loggable
 from future.utils import with_metaclass
 
-class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
+
+class Minimizer(
+        with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """ A base class used by all minimizers.
     """
 
