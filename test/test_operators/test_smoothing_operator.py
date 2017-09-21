@@ -73,7 +73,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def test_smooth_regular1(self, sz, d, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace(sz, harmonic=True, distances=d)
+        sp = RGSpace(sz, distances=d)
         smo = FFTSmoothingOperator(sp, sigma=sigma)
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
@@ -85,7 +85,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def test_smooth_regular2(self, sz1, sz2, d1, d2, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace([sz1, sz2], distances=[d1, d2], harmonic=True)
+        sp = RGSpace([sz1, sz2], distances=[d1, d2])
         smo = FFTSmoothingOperator(sp, sigma=sigma)
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
