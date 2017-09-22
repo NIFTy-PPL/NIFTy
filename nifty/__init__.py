@@ -47,3 +47,5 @@ from .sugar import *
 from . import plotting
 
 from . import library
+
+from . import dobj

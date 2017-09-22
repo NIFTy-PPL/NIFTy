@@ -48,8 +48,7 @@ if __name__ == "__main__":
     R_harmonic = ift.ComposedOperator([fft, R], default_spaces=[0, 0])
 
     N = ift.DiagonalOperator(data_domain,
-                         diagonal=mock_signal.var()/signal_to_noise,
-                         bare=True)
+                         diagonal=ift.Field(data_domain,mock_signal.var()/signal_to_noise).weight(1))
     noise = ift.Field.from_random(domain=data_domain,
                               random_type='normal',
                               std=mock_signal.std()/np.sqrt(signal_to_noise),

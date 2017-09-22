@@ -81,7 +81,7 @@ class CriticalPowerEnergy(Energy):
     @property
     def value(self):
         energy = self._theta.sum()
-        energy += self.position.vdot(self._rho_prime, bare=True)
+        energy += self.position.weight(-1).vdot(self._rho_prime)
         energy += 0.5 * self.position.vdot(self._Tt)
         return energy.real
 

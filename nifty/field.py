@@ -473,7 +473,7 @@ class Field(object):
 
         return new_field
 
-    def vdot(self, x=None, spaces=None, bare=False):
+    def vdot(self, x=None, spaces=None):
         """ Computes the volume-factor-aware dot product of 'self' with x.
 
         Parameters
@@ -484,9 +484,6 @@ class Field(object):
         spaces : tuple of ints
             If the domain of `self` and `x` are not the same, `spaces` specfies
             the mapping.
-
-        bare : boolean
-            If true, no volume factors will be included in the computation.
 
         Returns
         -------
@@ -499,15 +496,12 @@ class Field(object):
 
         # Compute the dot respecting the fact of discrete/continuous spaces
         fct = 1.
-        if bare:
-            y = self
+        tmp = self.scalar_weight(spaces)
+        if tmp is None:
+            y = self.weight(power=1)
         else:
-            tmp = self.scalar_weight(spaces)
-            if tmp is None:
-                y = self.weight(power=1)
-            else:
-                y = self
-                fct = tmp
+            y = self
+            fct = tmp
 
         if spaces is None:
             return fct*np.vdot(y.val.ravel(), x.val.ravel())

@@ -5,7 +5,7 @@ np.random.seed(42)
 #np.seterr(all="raise",under="ignore")
 
 def plot_parameters(m, t, p, p_d):
-    x = ift.log(t.domain[0].kindex)
+    x = np.log(t.domain[0].kindex)
     m = fft.adjoint_times(m)
     t = t.val.real
     p = p.val.real
@@ -72,10 +72,10 @@ if __name__ == "__main__":
     R = AdjointFFTResponse(fft, Instrument)
 
     noise = 1.
-    N = ift.DiagonalOperator(s_space, diagonal=noise, bare=True)
+    N = ift.DiagonalOperator(s_space, ift.Field(s_space,noise).weight(1))
     n = ift.Field.from_random(domain=s_space,
                           random_type='normal',
-                          std=ift.sqrt(noise),
+                          std=np.sqrt(noise),
                           mean=0)
 
     # Create mock data
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     def ps0(k):
         return (1./(1.+k)**2)
-    t0 = ift.Field(p_space, val=ift.log(1./(1+p_space.kindex)**2))
+    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.kindex)**2))
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ps0)

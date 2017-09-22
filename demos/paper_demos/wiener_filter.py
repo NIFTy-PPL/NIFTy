@@ -21,7 +21,7 @@ if __name__ == "__main__":
     signal_space = ift.RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     harmonic_space = signal_space.get_default_codomain()
     fft = ift.FFTOperator(harmonic_space, target=signal_space)
-    power_space = ift.PowerSpace(harmonic_space)
+    power_space = ift.PowerSpace(harmonic_space,binbounds=ift.PowerSpace.useful_binbounds(harmonic_space,logarithmic=True))
 
     # Creating the mock signal |\label{code:wf_mock_signal}|
     S = ift.create_power_operator(harmonic_space, power_spectrum=power_spectrum)
@@ -37,14 +37,15 @@ if __name__ == "__main__":
     R_harmonic = ift.ComposedOperator([fft, R], default_spaces=[0, 0])
 
     # Setting up the noise covariance and drawing a random noise realization
-    N = ift.DiagonalOperator(data_domain, diagonal=mock_signal.var()/signal_to_noise, bare=True)
+    ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)
+    N = ift.DiagonalOperator(data_domain, ndiag)
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                                   std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
     data = R(mock_signal) + noise  #|\label{code:wf_mock_data}|
 
     # Wiener filter
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    ctrl = ift.DefaultIterationController(verbose=False,tol_abs_gradnorm=0.1)
+    ctrl = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=0.1,iteration_limit=10)
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic,inverter=inverter)
     m_k = wiener_curvature.inverse_times(j)  #|\label{code:wf_wiener_filter}|
