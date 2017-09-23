@@ -156,8 +156,8 @@ class Test_Functionality(unittest.TestCase):
         spec2 = lambda k: 42/(1+k)**3
         fp2 = Field(p2, val=spec2)
 
-        S_1 = create_power_operator(space1, sqrt(spec1))
-        S_2 = create_power_operator(space2, sqrt(spec2))
+        S_1 = create_power_operator(space1, sqrt(fp1))
+        S_2 = create_power_operator(space2, sqrt(fp2))
         S_1.set_diagonal(S_1.diagonal().weight(-1), bare=False)
         S_2.set_diagonal(S_2.diagonal().weight(-1), bare=False)
 
