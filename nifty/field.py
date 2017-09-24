@@ -24,6 +24,7 @@ from . import nifty_utilities as utilities
 from .random import Random
 from .domain_tuple import DomainTuple
 from functools import reduce
+from . import dobj
 
 
 class Field(object):
@@ -78,16 +79,16 @@ class Field(object):
         if isinstance(val, Field):
             if self.domain != val.domain:
                 raise ValueError("Domain mismatch")
-            self._val = np.array(val.val, dtype=dtype, copy=copy)
+            self._val = dobj.from_object(val.val, dtype=dtype, copy=copy)
         elif (np.isscalar(val)):
-            self._val = np.full(self.domain.shape, dtype=dtype, fill_value=val)
-        elif isinstance(val, np.ndarray):
+            self._val = dobj.full(self.domain.shape, dtype=dtype, fill_value=val)
+        elif isinstance(val, dobj.data_object):
             if self.domain.shape == val.shape:
-                self._val = np.array(val, dtype=dtype, copy=copy)
+                self._val = dobj.from_object(val, dtype=dtype, copy=copy)
             else:
                 raise ValueError("Shape mismatch")
         elif val is None:
-            self._val = np.empty(self.domain.shape, dtype=dtype)
+            self._val = dobj.empty(self.domain.shape, dtype=dtype)
         else:
             raise TypeError("unknown source type")
 
@@ -253,7 +254,7 @@ class Field(object):
                                  "synthetization.")
             result_domain[i] = self.domain[i].harmonic_partner
 
-        spec = np.sqrt(self.val)
+        spec = dobj.sqrt(self.val)
         for i in spaces:
             power_space = self.domain[i]
             local_blow_up = [slice(None)]*len(spec.shape)
@@ -449,7 +450,7 @@ class Field(object):
             The weighted field.
 
         """
-        new_field = Field(val=self, copy=not inplace)
+        new_field = self if inplace else self.copy()
 
         if spaces is None:
             spaces = range(len(self.domain))
@@ -462,7 +463,7 @@ class Field(object):
             if np.isscalar(wgt):
                 fct *= wgt
             else:
-                new_shape = np.ones(len(self.shape), dtype=np.int)
+                new_shape = dobj.ones(len(self.shape), dtype=np.int)
                 new_shape[self.domain.axes[ind][0]:
                           self.domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
@@ -504,7 +505,7 @@ class Field(object):
             fct = tmp
 
         if spaces is None:
-            return fct*np.vdot(y.val.ravel(), x.val.ravel())
+            return fct*dobj.vdot(y.val.ravel(), x.val.ravel())
         else:
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
@@ -522,7 +523,7 @@ class Field(object):
             The L2-norm of the field values.
 
         """
-        return np.sqrt(np.abs(self.vdot(x=self)))
+        return dobj.sqrt(dobj.abs(self.vdot(x=self)))
 
     def conjugate(self):
         """ Returns the complex conjugate of the field.
@@ -544,7 +545,7 @@ class Field(object):
         return Field(self.domain, -self.val, self.dtype)
 
     def __abs__(self):
-        return Field(self.domain, np.abs(self.val), self.dtype)
+        return Field(self.domain, dobj.abs(self.val), self.dtype)
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
@@ -596,6 +597,13 @@ class Field(object):
 
     def std(self, spaces=None):
         return self._contraction_helper('std', spaces)
+
+    def copy_content_from(self, other):
+        if not isinstance(other, Field):
+            raise TypeError("argument must be a Field")
+        if other.domain != self.domain:
+            raise ValueError("domains are incompatible.")
+        self.val[()] = other.val
 
     # ---General binary methods---
 

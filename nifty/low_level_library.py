@@ -92,9 +92,6 @@ else:
     def general_axpy(a,x,y,out):
         if x.domain != y.domain or x.domain != out.domain:
             raise ValueError ("Incompatible domains")
-        x = x.val
-        y = y.val
-        out = out.val
 
         if out is x:
             if a != 1.:
@@ -106,7 +103,7 @@ else:
             else:
                 out += x
         else:
-            out[()] = y
+            out.copy_content_from(y)
             if a != 1.:
                 out += a*x
             else:
