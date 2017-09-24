@@ -231,8 +231,8 @@ class Field(object):
             new_pindex_shape[ax] = pindex.shape[i]
         pindex = np.broadcast_to(pindex.reshape(new_pindex_shape), field.shape)
 
-        power_spectrum = utilities.bincount_axis(pindex, weights=field.val,
-                                                 axis=axes)
+        power_spectrum = dobj.bincount_axis(pindex, weights=field.val,
+                                            axis=axes)
         new_rho_shape = [1] * len(power_spectrum.shape)
         new_rho_shape[axes[0]] = len(power_domain.rho)
         power_spectrum /= power_domain.rho.reshape(new_rho_shape)
@@ -510,7 +510,7 @@ class Field(object):
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
             from .operators.diagonal_operator import DiagonalOperator
-            diag = DiagonalOperator(y.domain, y.conjugate(), copy=False)
+            diag = DiagonalOperator(y.conjugate(), copy=False)
             dotted = diag(x, spaces=spaces)
             return fct*dotted.sum(spaces=spaces)
 

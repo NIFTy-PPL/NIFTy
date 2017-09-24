@@ -21,7 +21,7 @@ class Test_Minimizers(unittest.TestCase):
         starting_point = ift.Field.from_random('normal', domain=space)*10
         covariance_diagonal = ift.Field.from_random(
                                   'uniform', domain=space) + 0.5
-        covariance = ift.DiagonalOperator(space, diagonal=covariance_diagonal)
+        covariance = ift.DiagonalOperator(covariance_diagonal)
         required_result = ift.Field(space, val=1.)
 
         IC = ift.DefaultIterationController(tol_abs_gradnorm=1e-5)

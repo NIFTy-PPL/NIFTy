@@ -59,8 +59,8 @@ class ResponseOperator(LinearOperator):
 
         kernel_smoothing = [FFTSmoothingOperator(self._domain[x], sigma[x])
                             for x in range(nsigma)]
-        kernel_exposure = [DiagonalOperator(self._domain[x],
-                           diagonal=exposure[x]) for x in range(nsigma)]
+        kernel_exposure = [DiagonalOperator(Field(self._domain[x],exposure[x]))
+                           for x in range(nsigma)]
 
         self._composed_kernel = ComposedOperator(kernel_smoothing)
         self._composed_exposure = ComposedOperator(kernel_exposure)

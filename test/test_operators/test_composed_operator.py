@@ -20,8 +20,8 @@ class ComposedOperator_Tests(unittest.TestCase):
     def test_property(self, space1, space2):
         rand1 = Field.from_random('normal', domain=space1)
         rand2 = Field.from_random('normal', domain=space2)
-        op1 = DiagonalOperator(space1, diagonal=rand1)
-        op2 = DiagonalOperator(space2, diagonal=rand2)
+        op1 = DiagonalOperator(rand1)
+        op2 = DiagonalOperator(rand2)
         op = ComposedOperator((op1, op2))
         if op.domain != (op1.domain[0], op2.domain[0]):
             raise TypeError
@@ -32,8 +32,8 @@ class ComposedOperator_Tests(unittest.TestCase):
     def test_times_adjoint_times(self, space1, space2):
         diag1 = Field.from_random('normal', domain=space1)
         diag2 = Field.from_random('normal', domain=space2)
-        op1 = DiagonalOperator(space1, diagonal=diag1)
-        op2 = DiagonalOperator(space2, diagonal=diag2)
+        op1 = DiagonalOperator(diag1)
+        op2 = DiagonalOperator(diag2)
 
         op = ComposedOperator((op1, op2))
 
@@ -48,8 +48,8 @@ class ComposedOperator_Tests(unittest.TestCase):
     def test_times_inverse_times(self, space1, space2):
         diag1 = Field.from_random('normal', domain=space1)
         diag2 = Field.from_random('normal', domain=space2)
-        op1 = DiagonalOperator(space1, diagonal=diag1)
-        op2 = DiagonalOperator(space2, diagonal=diag2)
+        op1 = DiagonalOperator(diag1)
+        op2 = DiagonalOperator(diag2)
 
         op = ComposedOperator((op1, op2))
 

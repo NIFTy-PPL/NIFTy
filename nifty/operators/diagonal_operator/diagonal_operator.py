@@ -35,9 +35,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
-        The domain on which the Operator's input Field lives.
-    diagonal : {scalar, list, array, Field}
+    diagonal : Field
         The diagonal entries of the operator.
     copy : boolean
         Internal copy of the diagonal (default: True)
@@ -68,15 +66,14 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(), diagonal=None, copy=True,
-                 default_spaces=None):
+    def __init__(self, diagonal, copy=True, default_spaces=None):
         super(DiagonalOperator, self).__init__(default_spaces)
 
-        self._domain = DomainTuple.make(domain)
-
+        if not isinstance(diagonal, Field):
+            raise TypeError("Field object required")
+        self._diagonal = diagonal if not copy else diagonal.copy()
         self._self_adjoint = None
         self._unitary = None
-        self.set_diagonal(diagonal=diagonal, copy=copy)
 
     def _times(self, x, spaces):
         return self._times_helper(x, spaces, operation=lambda z: z.__mul__)
@@ -119,13 +116,13 @@ class DiagonalOperator(EndomorphicOperator):
             The inverse of the diagonal of the Operator.
 
         """
-        return 1./self.diagonal(copy=False)
+        return 1./self._diagonal
 
     # ---Mandatory properties and methods---
 
     @property
     def domain(self):
-        return self._domain
+        return self._diagonal.domain
 
     @property
     def self_adjoint(self):
@@ -143,30 +140,6 @@ class DiagonalOperator(EndomorphicOperator):
         return self._unitary
 
     # ---Added properties and methods---
-
-    def set_diagonal(self, diagonal, copy=True):
-        """ Sets the diagonal of the Operator.
-
-        Parameters
-        ----------
-        diagonal : {scalar, list, array, Field}
-            The diagonal entries of the operator.
-        copy : boolean
-            Specifies if a copy of the input shall be made (default: True).
-
-        """
-
-        # use the casting functionality from Field to process `diagonal`
-        f = Field(domain=self.domain, val=diagonal, copy=copy)
-
-        # Reset the self_adjoint property:
-        self._self_adjoint = None
-
-        # Reset the unitarity property
-        self._unitary = None
-
-        # store the diagonal-field
-        self._diagonal = f
 
     def _times_helper(self, x, spaces, operation):
         # if the domain matches directly
