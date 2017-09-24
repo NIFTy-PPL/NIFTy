@@ -22,7 +22,7 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, theta, T, inverter, preconditioner=None, **kwargs):
-        self.theta = DiagonalOperator(theta.domain, diagonal=theta)
+        self.theta = DiagonalOperator(theta)
         self.T = T
         if preconditioner is None:
             preconditioner = self.theta.inverse_times

@@ -66,7 +66,7 @@ def create_power_operator(domain, power_spectrum, dtype=None):
         f = f.real
 
     f **= 2
-    return DiagonalOperator(domain, diagonal=Field(domain,f).weight(1))
+    return DiagonalOperator(Field(domain,f).weight(1))
 
 
 def generate_posterior_sample(mean, covariance):

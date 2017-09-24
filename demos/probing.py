@@ -17,7 +17,7 @@ class MultiProber(ift.DiagonalProberMixin, ift.TraceProberMixin, ift.Prober):
 x = ift.RGSpace((8, 8))
 
 f = ift.Field.from_random(domain=x, random_type='normal')
-diagOp = ift.DiagonalOperator(domain=x, diagonal=f)
+diagOp = ift.DiagonalOperator(f)
 
 diagProber = DiagonalProber(domain=x)
 diagProber(diagOp)

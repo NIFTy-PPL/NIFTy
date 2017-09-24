@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     # Choose the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
-    Instrument = ift.DiagonalOperator(s_space, diagonal=1.)
+    Instrument = ift.DiagonalOperator(ift.Field(s_space, 1.))
     # Instrument._diagonal.val[200:400, 200:400] = 0
     # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     R = AdjointFFTResponse(fft, Instrument)
 
     noise = 1.
-    N = ift.DiagonalOperator(s_space, ift.Field(s_space,noise).weight(1))
+    N = ift.DiagonalOperator(ift.Field(s_space,noise).weight(1))
     n = ift.Field.from_random(domain=s_space,
                           random_type='normal',
                           std=np.sqrt(noise),
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     def ps0(k):
         return (1./(1.+k)**2)
-    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.k)_lengths)**2))
+    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.k_lengths)**2))
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ps0)
