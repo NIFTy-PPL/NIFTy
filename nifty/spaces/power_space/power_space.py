@@ -20,6 +20,7 @@ import numpy as np
 
 from ...spaces.space import Space
 from functools import reduce
+from ... import dobj
 
 
 class PowerSpace(Space):
@@ -45,10 +46,10 @@ class PowerSpace(Space):
 
     Attributes
     ----------
-    pindex : numpy.ndarray
+    pindex : data object
         This holds the information which pixel of the harmonic partner gets
         mapped to which power bin
-    kindex : numpy.ndarray
+    k_lengths : numpy.ndarray
         Sorted array of all k-modes.
     rho : numpy.ndarray
         The amount of k-modes that get mapped to one power bin is given by
@@ -161,17 +162,17 @@ class PowerSpace(Space):
                                 harmonic_partner=self.harmonic_partner,
                                 k_length_array=k_length_array,
                                 binbounds=binbounds)
-            temp_rho = np.bincount(temp_pindex.ravel())
+            temp_rho = dobj.bincount(temp_pindex.ravel())
             assert not np.any(temp_rho == 0), "empty bins detected"
-            temp_kindex = np.bincount(temp_pindex.ravel(),
+            temp_k_lengths = np.bincount(temp_pindex.ravel(),
                                       weights=k_length_array.ravel()) \
                 / temp_rho
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
-                                          temp_kindex,
+                                          temp_k_lengths,
                                           temp_rho)
 
-        (self._binbounds, self._pindex, self._kindex, self._rho) = \
+        (self._binbounds, self._pindex, self._k_lengths, self._rho) = \
             self._powerIndexCache[key]
 
     @staticmethod
@@ -193,7 +194,7 @@ class PowerSpace(Space):
 
     @property
     def shape(self):
-        return self.kindex.shape
+        return self.k_lengths.shape
 
     @property
     def dim(self):
@@ -216,7 +217,7 @@ class PowerSpace(Space):
         return np.asarray(self.rho, dtype=np.float64)
 
     def get_k_length_array(self):
-        return self.kindex.copy()
+        return self.k_lengths.copy()
 
     def get_fft_smoothing_kernel_function(self, sigma):
         raise NotImplementedError(
@@ -236,16 +237,16 @@ class PowerSpace(Space):
 
     @property
     def pindex(self):
-        """ A numpy.ndarray having the shape of the harmonic partner
+        """ A data object having the shape of the harmonic partner
         space containing the indices of the power bin a pixel belongs to.
         """
         return self._pindex
 
     @property
-    def kindex(self):
+    def k_lengths(self):
         """ Sorted array of all k-modes.
         """
-        return self._kindex
+        return self._k_lengths
 
     @property
     def rho(self):

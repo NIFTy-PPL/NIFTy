@@ -50,7 +50,7 @@ if __name__ == "__main__":
     S = ift.create_power_operator(h_space, power_spectrum=p_spec)
 
     # Drawing a sample sh from the prior distribution in harmonic space
-    sp = ift.Field(p_space, val=p_spec(p_space.kindex))
+    sp = ift.Field(p_space, val=p_spec(p_space.k_lengths))
     sh = sp.power_synthesize(real_signal=True)
     ss = fft.adjoint_times(sh)
 

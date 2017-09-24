@@ -50,7 +50,7 @@ class LaplaceOperator(EndomorphicOperator):
 
         self._logarithmic = bool(logarithmic)
 
-        pos = self.domain[0].kindex.copy()
+        pos = self.domain[0].k_lengths.copy()
         if self.logarithmic:
             pos[1:] = np.log(pos[1:])
             pos[0] = pos[1]-1.

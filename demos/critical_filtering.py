@@ -5,7 +5,7 @@ np.random.seed(42)
 #np.seterr(all="raise",under="ignore")
 
 def plot_parameters(m, t, p, p_d):
-    x = np.log(t.domain[0].kindex)
+    x = np.log(t.domain[0].k_lengths)
     m = fft.adjoint_times(m)
     t = t.val.real
     p = p.val.real
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     S = ift.create_power_operator(h_space, power_spectrum=p_spec)
 
     # Draw a sample sh from the prior distribution in harmonic space
-    sp = ift.Field(p_space,  val=p_spec(p_space.kindex))
+    sp = ift.Field(p_space,  val=p_spec(p_space.k_lengths))
     sh = sp.power_synthesize(real_signal=True)
 
     # Choose the measurement instrument
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     def ps0(k):
         return (1./(1.+k)**2)
-    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.kindex)**2))
+    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.k)_lengths)**2))
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ps0)

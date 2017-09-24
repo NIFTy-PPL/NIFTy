@@ -38,7 +38,7 @@ if __name__ == "__main__":
     S = ift.create_power_operator(harmonic_space, power_spectrum=power_spectrum)
     np.random.seed(43)
 
-    mock_power = ift.Field(power_space, val=power_spectrum(power_space.kindex))
+    mock_power = ift.Field(power_space, val=power_spectrum(power_space.k_lengths))
     mock_harmonic = mock_power.power_synthesize(real_signal=True)
     mock_harmonic = mock_harmonic.real
     mock_signal = fft(mock_harmonic)

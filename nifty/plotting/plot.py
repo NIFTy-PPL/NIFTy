@@ -197,7 +197,7 @@ def plot(f, **kwargs):
             _makeplot(kwargs.get("name"))
             return
     elif isinstance(dom, PowerSpace):
-        xcoord = dom.kindex
+        xcoord = dom.k_lengths
         ycoord = f.val
         plt.xscale('log')
         plt.yscale('log')

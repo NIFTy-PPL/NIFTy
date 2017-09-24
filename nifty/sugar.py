@@ -58,7 +58,7 @@ def create_power_operator(domain, power_spectrum, dtype=None):
         raise TypeError("power_spectrum must be callable")
     power_domain = PowerSpace(domain)
 
-    fp = Field(power_domain, val=power_spectrum(power_domain.kindex),
+    fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
                dtype=dtype)
     f = fp.power_synthesize_special()
 

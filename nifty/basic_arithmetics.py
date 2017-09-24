@@ -19,6 +19,7 @@
 from __future__ import division
 import numpy as np
 from .field import Field
+from . import dobj
 
 
 __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
@@ -39,68 +40,68 @@ def _math_helper(x, function, out):
 
 
 def cos(x, out=None):
-    return _math_helper(x, np.cos, out)
+    return _math_helper(x, dobj.cos, out)
 
 
 def sin(x, out=None):
-    return _math_helper(x, np.sin, out)
+    return _math_helper(x, dobj.sin, out)
 
 
 def cosh(x, out=None):
-    return _math_helper(x, np.cosh, out)
+    return _math_helper(x, dobj.cosh, out)
 
 
 def sinh(x, out=None):
-    return _math_helper(x, np.sinh, out)
+    return _math_helper(x, dobj.sinh, out)
 
 
 def tan(x, out=None):
-    return _math_helper(x, np.tan, out)
+    return _math_helper(x, dobj.tan, out)
 
 
 def tanh(x, out=None):
-    return _math_helper(x, np.tanh, out)
+    return _math_helper(x, dobj.tanh, out)
 
 
 def arccos(x, out=None):
-    return _math_helper(x, np.arccos, out)
+    return _math_helper(x, dobj.arccos, out)
 
 
 def arcsin(x, out=None):
-    return _math_helper(x, np.arcsin, out)
+    return _math_helper(x, dobj.arcsin, out)
 
 
 def arccosh(x, out=None):
-    return _math_helper(x, np.arccosh, out)
+    return _math_helper(x, dobj.arccosh, out)
 
 
 def arcsinh(x, out=None):
-    return _math_helper(x, np.arcsinh, out)
+    return _math_helper(x, dobj.arcsinh, out)
 
 
 def arctan(x, out=None):
-    return _math_helper(x, np.arctan, out)
+    return _math_helper(x, dobj.arctan, out)
 
 
 def arctanh(x, out=None):
-    return _math_helper(x, np.arctanh, out)
+    return _math_helper(x, dobj.arctanh, out)
 
 
 def sqrt(x, out=None):
-    return _math_helper(x, np.sqrt, out)
+    return _math_helper(x, dobj.sqrt, out)
 
 
 def exp(x, out=None):
-    return _math_helper(x, np.exp, out)
+    return _math_helper(x, dobj.exp, out)
 
 
 def log(x, out=None):
-    return _math_helper(x, np.log, out)
+    return _math_helper(x, dobj.log, out)
 
 
 def conjugate(x, out=None):
-    return _math_helper(x, np.conjugate, out)
+    return _math_helper(x, dobj.conjugate, out)
 
 
 def conj(x, out=None):
-    return _math_helper(x, np.conj, out)
+    return _math_helper(x, dobj.conj, out)
