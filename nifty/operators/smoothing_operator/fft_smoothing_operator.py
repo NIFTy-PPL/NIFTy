@@ -8,40 +8,36 @@ from ..fft_operator import FFTOperator
 from ... import DomainTuple
 
 class FFTSmoothingOperator(EndomorphicOperator):
+    def __init__(self, domain, sigma, space=None):
+        super(FFTSmoothingOperator, self).__init__()
 
-    def __init__(self, domain, sigma,
-                 default_spaces=None):
-        super(FFTSmoothingOperator, self).__init__(default_spaces)
-
-        self._domain = DomainTuple.make(domain)
-        if len(self._domain) != 1:
-            raise ValueError("SmoothingOperator only accepts exactly one "
-                             "space as input domain.")
-
+        dom = DomainTuple.make(domain)
         self._sigma = float(sigma)
-        if self._sigma == 0.:
-            return
+        if space is None:
+            if len(dom.domains) != 1:
+                raise ValueError("need a Field with exactly one domain")
+            space = 0
+        space = int(space)
+        if (space<0) or space>=len(dom.domains):
+            raise ValueError("space index out of range")
+        self._space = space
 
-        self._transformator = FFTOperator(self._domain)
-        codomain = self._domain[0].get_default_codomain()
+        self._transformator = FFTOperator(dom, space=space)
+        codomain = self._transformator.domain[space].get_default_codomain()
         self._kernel = codomain.get_k_length_array()
         smoother = codomain.get_fft_smoothing_kernel_function(self._sigma)
         self._kernel = smoother(self._kernel)
 
-    def _times(self, x, spaces):
+    def _times(self, x):
         if self._sigma == 0:
             return x.copy()
 
-        # the domain of the smoothing operator contains exactly one space.
-        # Hence, if spaces is None, but we passed LinearOperator's
-        # _check_input_compatibility, we know that x is also solely defined
-        # on that space
-        return self._smooth(x, (0,) if spaces is None else spaces)
+        return self._smooth(x)
 
     # ---Mandatory properties and methods---
     @property
     def domain(self):
-        return self._domain
+        return self._transformator.domain
 
     @property
     def self_adjoint(self):
@@ -53,11 +49,11 @@ class FFTSmoothingOperator(EndomorphicOperator):
 
     # ---Added properties and methods---
 
-    def _smooth(self, x, spaces):
+    def _smooth(self, x):
         # transform to the (global-)default codomain and perform all remaining
         # steps therein
-        transformed_x = self._transformator(x, spaces=spaces)
-        coaxes = transformed_x.domain.axes[spaces[0]]
+        transformed_x = self._transformator(x)
+        coaxes = transformed_x.domain.axes[self._space]
 
         # now, apply the kernel to transformed_x
         # this is done node-locally utilizing numpy's reshaping in order to
@@ -68,4 +64,4 @@ class FFTSmoothingOperator(EndomorphicOperator):
 
         transformed_x *= np.reshape(self._kernel, reshaper)
 
-        return self._transformator.adjoint_times(transformed_x, spaces=spaces)
+        return self._transformator.adjoint_times(transformed_x)

@@ -32,7 +32,7 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
                                                  preconditioner=preconditioner,
                                                  **kwargs)
 
-    def _times(self, x, spaces):
+    def _times(self, x):
         return self.T(x) + self.theta(x)
 
     # ---Mandatory properties and methods---

@@ -58,7 +58,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
 
     # ---Added properties and methods---
 
-    def _times(self, x, spaces):
+    def _times(self, x):
         part1 = self.S.inverse_times(x)
         # part2 = self._exppRNRexppd * x
         part3 = self._fft.adjoint_times(self._expp_sspace * self._fft(x))

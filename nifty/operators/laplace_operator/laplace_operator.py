@@ -25,7 +25,7 @@ from ... import nifty_utilities as utilities
 
 
 class LaplaceOperator(EndomorphicOperator):
-    """A irregular LaplaceOperator with free boundary and excluding monopole.
+    """An irregular LaplaceOperator with free boundary and excluding monopole.
 
     This LaplaceOperator implements the second derivative of a Field in
     PowerSpace  on logarithmic or linear scale with vanishing curvature at the
@@ -39,15 +39,24 @@ class LaplaceOperator(EndomorphicOperator):
         default : True
     """
 
-    def __init__(self, domain, default_spaces=None, logarithmic=True):
-        super(LaplaceOperator, self).__init__(default_spaces)
+    def __init__(self, domain, space=None, logarithmic=True):
+        super(LaplaceOperator, self).__init__()
         self._domain = DomainTuple.make(domain)
-        if len(self.domain) != 1 or not isinstance(self.domain[0], PowerSpace):
-            raise ValueError("The domain must contain exactly one PowerSpace.")
+        if space is None:
+            if len(self._domain.domains) != 1:
+                raise ValueError("need a Field with exactly one domain")
+            space = 0
+        space = int(space)
+        if (space<0) or space>=len(self._domain.domains):
+            raise ValueError("space index out of range")
+        self._space = space
+
+        if not isinstance(self._domain[self._space], PowerSpace):
+            raise ValueError("Operator must act on a PowerSpace.")
 
         self._logarithmic = bool(logarithmic)
 
-        pos = self.domain[0].k_lengths.copy()
+        pos = self.domain[self._space].k_lengths.copy()
         if self.logarithmic:
             pos[1:] = np.log(pos[1:])
             pos[0] = pos[1]-1.
@@ -85,15 +94,8 @@ class LaplaceOperator(EndomorphicOperator):
     def logarithmic(self):
         return self._logarithmic
 
-    def _times(self, x, spaces):
-        if spaces is None:
-            # this case means that x lives on only one space, which is
-            # identical to the space in the domain of `self`. Otherwise the
-            # input check of LinearOperator would have failed.
-            axes = x.domain.axes[0]
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
-            axes = x.domain.axes[spaces[0]]
+    def _times(self, x):
+        axes = x.domain.axes[self._space]
         axis = axes[0]
         nval = len(self._dposc)
         prefix = (slice(None),) * axis
@@ -109,17 +111,10 @@ class LaplaceOperator(EndomorphicOperator):
         ret /= np.sqrt(dposc)
         ret[prefix + (slice(None, 2),)] = 0.
         ret[prefix + (-1,)] = 0.
-        return Field(self.domain, val=ret).weight(power=-0.5, spaces=spaces)
+        return Field(self.domain, val=ret).weight(-0.5, spaces=(self._space,))
 
-    def _adjoint_times(self, x, spaces):
-        if spaces is None:
-            # this case means that x lives on only one space, which is
-            # identical to the space in the domain of `self`. Otherwise the
-            # input check of LinearOperator would have failed.
-            axes = x.domain.axes[0]
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
-            axes = x.domain.axes[spaces[0]]
+    def _adjoint_times(self, x):
+        axes = x.domain.axes[self._space]
         axis = axes[0]
         nval = len(self._dposc)
         prefix = (slice(None),) * axis
@@ -127,7 +122,7 @@ class LaplaceOperator(EndomorphicOperator):
         sl_r = prefix + (slice(1, None),)  # "right" slice
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
-        y = x.copy().weight(power=0.5).val
+        y = x.copy().weight(power=0.5, spaces=(self._space,)).val
         y /= np.sqrt(dposc)
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
@@ -136,4 +131,4 @@ class LaplaceOperator(EndomorphicOperator):
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
-        return Field(self.domain, val=ret).weight(-1, spaces=spaces)
+        return Field(self.domain, val=ret).weight(-1, spaces=(self._space,))

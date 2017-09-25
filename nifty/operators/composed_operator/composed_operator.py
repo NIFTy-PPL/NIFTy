@@ -29,9 +29,6 @@ class ComposedOperator(LinearOperator):
     ----------
     operators : tuple of NIFTy Operators
         The tuple of LinearOperators.
-    default_spaces : tuple of ints *optional*
-        Defines on which space(s) of a given field the Operator acts by
-        default (default: None)
 
 
     Attributes
@@ -48,7 +45,7 @@ class ComposedOperator(LinearOperator):
     TypeError
         Raised if
             * an element of the operator list is not an instance of the
-              LinearOperator-baseclass.
+              LinearOperator base class.
 
     Notes
     -----
@@ -64,8 +61,8 @@ class ComposedOperator(LinearOperator):
     >>> x2 = RGSpace(10)
     >>> k1 = RGRGTransformation.get_codomain(x1)
     >>> k2 = RGRGTransformation.get_codomain(x2)
-    >>> FFT1 = FFTOperator(domain=x1, target=k1)
-    >>> FFT2 = FFTOperator(domain=x2, target=k2)
+    >>> FFT1 = FFTOperator(domain=(x1,x2), target=(k1,x2), space=0)
+    >>> FFT2 = FFTOperator(domain=(k1,x2), target=(k1,k2), space=1)
     >>> FFT = ComposedOperator((FFT1, FFT2)
     >>> f = Field.from_random('normal', domain=(x1,x2))
     >>> FFT.times(f)
@@ -73,80 +70,50 @@ class ComposedOperator(LinearOperator):
     """
 
     # ---Overwritten properties and methods---
-    def __init__(self, operators, default_spaces=None):
-        super(ComposedOperator, self).__init__(default_spaces)
+    def __init__(self, operators):
+        super(ComposedOperator, self).__init__()
 
+        for i in range(1, len(operators)):
+            if operators[i].domain != operators[i-1].target:
+                raise ValueError("incompatible domains")
         self._operator_store = ()
         for op in operators:
             if not isinstance(op, LinearOperator):
                 raise TypeError("The elements of the operator list must be"
-                                "instances of the LinearOperator-baseclass")
+                                "instances of the LinearOperator base class")
             self._operator_store += (op,)
-
-    def _check_input_compatibility(self, x, spaces, inverse=False):
-        """
-        The input check must be disabled for the ComposedOperator, since it
-        is not easily forecasteable what the output of an operator-call
-        will look like.
-        """
-        if spaces is None:
-            spaces = self.default_spaces
-        return spaces
 
     # ---Mandatory properties and methods---
     @property
     def domain(self):
-        if not hasattr(self, '_domain'):
-            dom = ()
-            for op in self._operator_store:
-                dom += op.domain.domains
-            self._domain = DomainTuple.make(dom)
-        return self._domain
+        return self._operator_store[0].domain
 
     @property
     def target(self):
-        if not hasattr(self, '_target'):
-            tgt = ()
-            for op in self._operator_store:
-                tgt += op.target.domains
-            self._target = DomainTuple.make(tgt)
-        return self._target
+        return self._operator_store[-1].target
 
     @property
     def unitary(self):
         return False
 
-    def _times(self, x, spaces):
-        return self._times_helper(x, spaces, func='times')
+    def _times(self, x):
+        return self._times_helper(x, func='times')
 
-    def _adjoint_times(self, x, spaces):
-        return self._inverse_times_helper(x, spaces, func='adjoint_times')
+    def _adjoint_times(self, x):
+        return self._inverse_times_helper(x, func='adjoint_times')
 
-    def _inverse_times(self, x, spaces):
-        return self._inverse_times_helper(x, spaces, func='inverse_times')
+    def _inverse_times(self, x):
+        return self._inverse_times_helper(x, func='inverse_times')
 
-    def _adjoint_inverse_times(self, x, spaces):
-        return self._times_helper(x, spaces, func='adjoint_inverse_times')
+    def _adjoint_inverse_times(self, x):
+        return self._times_helper(x, func='adjoint_inverse_times')
 
-    def _times_helper(self, x, spaces, func):
-        space_index = 0
-        if spaces is None:
-            spaces = range(len(self.domain))
+    def _times_helper(self, x, func):
         for op in self._operator_store:
-            active_spaces = spaces[space_index:space_index+len(op.domain)]
-            space_index += len(op.domain)
-
-            x = getattr(op, func)(x, spaces=active_spaces)
+            x = getattr(op, func)(x)
         return x
 
-    def _inverse_times_helper(self, x, spaces, func):
-        space_index = 0
-        if spaces is None:
-            spaces = range(len(self.target))
-        rev_spaces = spaces[::-1]
+    def _inverse_times_helper(self, x, func):
         for op in reversed(self._operator_store):
-            active_spaces = rev_spaces[space_index:space_index+len(op.target)]
-            space_index += len(op.target)
-
-            x = getattr(op, func)(x, spaces=active_spaces[::-1])
+            x = getattr(op, func)(x)
         return x

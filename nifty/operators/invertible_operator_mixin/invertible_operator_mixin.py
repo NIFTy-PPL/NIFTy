@@ -46,7 +46,7 @@ class InvertibleOperatorMixin(object):
         self.__backward_x0 = backward_x0
         super(InvertibleOperatorMixin, self).__init__(*args, **kwargs)
 
-    def _times(self, x, spaces):
+    def _times(self, x):
         if self.__forward_x0 is not None:
             x0 = self.__forward_x0
         else:
@@ -58,7 +58,7 @@ class InvertibleOperatorMixin(object):
                                            preconditioner=self._preconditioner)
         return result.position
 
-    def _adjoint_times(self, x, spaces):
+    def _adjoint_times(self, x):
         if self.__backward_x0 is not None:
             x0 = self.__backward_x0
         else:
@@ -70,7 +70,7 @@ class InvertibleOperatorMixin(object):
                                            preconditioner=self._preconditioner)
         return result.position
 
-    def _inverse_times(self, x, spaces):
+    def _inverse_times(self, x):
         if self.__backward_x0 is not None:
             x0 = self.__backward_x0
         else:
@@ -82,7 +82,7 @@ class InvertibleOperatorMixin(object):
                                            preconditioner=self._preconditioner)
         return result.position
 
-    def _adjoint_inverse_times(self, x, spaces):
+    def _adjoint_inverse_times(self, x):
         if self.__forward_x0 is not None:
             x0 = self.__forward_x0
         else:

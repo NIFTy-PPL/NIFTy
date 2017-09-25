@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,))
     data_domain = R.target[0]
-    R_harmonic = ift.ComposedOperator([fft, R], default_spaces=[0, 0])
+    R_harmonic = ift.ComposedOperator([fft, R])
 
     N = ift.DiagonalOperator(ift.Field(data_domain,mock_signal.var()/signal_to_noise).weight(1))
     noise = ift.Field.from_random(domain=data_domain,

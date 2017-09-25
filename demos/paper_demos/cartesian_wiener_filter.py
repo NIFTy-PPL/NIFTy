@@ -22,7 +22,17 @@ if __name__ == "__main__":
 
     signal_space_1 = ift.RGSpace([N_pixels_1], distances=L_1/N_pixels_1)
     harmonic_space_1 = signal_space_1.get_default_codomain()
-    fft_1 = ift.FFTOperator(harmonic_space_1, target=signal_space_1)
+    # Setting up the geometry |\label{code:wf_geometry}|
+    L_2 = 2. # Total side-length of the domain
+    N_pixels_2 = 512 # Grid resolution (pixels per axis)
+    signal_space_2 = ift.RGSpace([N_pixels_2], distances=L_2/N_pixels_2)
+    harmonic_space_2 = signal_space_2.get_default_codomain()
+
+    signal_domain = ift.DomainTuple.make((signal_space_1, signal_space_2))
+    mid_domain = ift.DomainTuple.make((signal_space_1, harmonic_space_2))
+    harmonic_domain = ift.DomainTuple.make((harmonic_space_1, harmonic_space_2))
+
+    fft_1 = ift.FFTOperator(harmonic_domain, space=0)
     power_space_1 = ift.PowerSpace(harmonic_space_1)
 
     mock_power_1 = ift.Field(power_space_1, val=power_spectrum_1(power_space_1.k_lengths))
@@ -39,13 +49,7 @@ if __name__ == "__main__":
         a = 4 * correlation_length_2 * field_variance_2**2
         return a / (1 + k * correlation_length_2) ** 2.5
 
-    # Setting up the geometry |\label{code:wf_geometry}|
-    L_2 = 2. # Total side-length of the domain
-    N_pixels_2 = 512 # Grid resolution (pixels per axis)
-
-    signal_space_2 = ift.RGSpace([N_pixels_2], distances=L_2/N_pixels_2)
-    harmonic_space_2 = signal_space_2.get_default_codomain()
-    fft_2 = ift.FFTOperator(harmonic_space_2, target=signal_space_2)
+    fft_2 = ift.FFTOperator(mid_domain, space=1)
     power_space_2 = ift.PowerSpace(harmonic_space_2)
 
     mock_power_2 = ift.Field(power_space_2, val=power_spectrum_2(power_space_2.k_lengths))
@@ -73,11 +77,11 @@ if __name__ == "__main__":
     mask_2 = ift.Field(signal_space_2, val=1.)
     mask_2.val[N2_10*7:N2_10*9] = 0.
 
-    R = ift.ResponseOperator((signal_space_1, signal_space_2),
+    R = ift.ResponseOperator(signal_domain,spaces=(0,1),
                              sigma=(response_sigma_1, response_sigma_2),
                              exposure=(mask_1, mask_2)) #|\label{code:wf_response}|
     data_domain = R.target
-    R_harmonic = ift.ComposedOperator([fft, R], default_spaces=(0, 1, 0, 1))
+    R_harmonic = ift.ComposedOperator([fft, R])
 
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)

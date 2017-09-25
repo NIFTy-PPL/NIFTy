@@ -5,17 +5,17 @@ np.random.seed(42)
 
 
 class AdjointFFTResponse(ift.LinearOperator):
-    def __init__(self, FFT, R, default_spaces=None):
-        super(AdjointFFTResponse, self).__init__(default_spaces)
+    def __init__(self, FFT, R):
+        super(AdjointFFTResponse, self).__init__()
         self._domain = FFT.target
         self._target = R.target
         self.R = R
         self.FFT = FFT
 
-    def _times(self, x, spaces=None):
+    def _times(self, x):
         return self.R(self.FFT.adjoint_times(x))
 
-    def _adjoint_times(self, x, spaces=None):
+    def _adjoint_times(self, x):
         return self.FFT(self.R.adjoint_times(x))
 
     @property

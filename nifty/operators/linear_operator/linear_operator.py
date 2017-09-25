@@ -30,16 +30,8 @@ class LinearOperator(with_metaclass(
     """NIFTY base class for linear operators.
 
     The base NIFTY operator class is an abstract class from which
-    other specific operator subclasses, including those preimplemented
-    in NIFTY (e.g. the EndomorphicOperator, ProjectionOperator,
-    DiagonalOperator, SmoothingOperator, ResponseOperator,
-    PropagatorOperator, ComposedOperator) are derived.
+    other specific operator subclasses are derived.
 
-    Parameters
-    ----------
-    default_spaces : tuple of ints *optional*
-        Defines on which space(s) of a given field the Operator acts by
-        default (default: None)
 
     Attributes
     ----------
@@ -57,17 +49,10 @@ class LinearOperator(with_metaclass(
             * domain is not defined
             * target is not defined
             * unitary is not set to (True/False)
-
-    Notes
-    -----
-    All Operators wihtin NIFTy are linear and must therefore be a subclasses of
-    the LinearOperator. A LinearOperator must have the attributes domain,
-    target and unitary to be properly defined.
-
     """
 
-    def __init__(self, default_spaces=None):
-        self._default_spaces = default_spaces
+    def __init__(self):
+        pass
 
     @abc.abstractproperty
     def domain(self):
@@ -78,7 +63,6 @@ class LinearOperator(with_metaclass(
             base class must have this attribute.
 
         """
-
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -88,9 +72,7 @@ class LinearOperator(with_metaclass(
             The domain on which the Operator's output Field lives.
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
-
         """
-
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -100,19 +82,13 @@ class LinearOperator(with_metaclass(
             States whether the Operator is unitary or not.
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
-
         """
-
         raise NotImplementedError
 
-    @property
-    def default_spaces(self):
-        return self._default_spaces
+    def __call__(self, x):
+        return self.times(x)
 
-    def __call__(self, x, spaces=None):
-        return self.times(x, spaces)
-
-    def times(self, x, spaces=None):
+    def times(self, x):
         """ Applies the Operator to a given Field.
 
         Operator and Field have to live over the same domain.
@@ -121,21 +97,16 @@ class LinearOperator(with_metaclass(
         ----------
         x : Field
             The input Field.
-        spaces : tuple of ints
-            Defines on which space(s) of the given Field the Operator acts.
 
         Returns
         -------
         out : Field
             The processed Field living on the target-domain.
-
         """
+        self._check_input_compatibility(x)
+        return self._times(x)
 
-        spaces = self._check_input_compatibility(x, spaces)
-        y = self._times(x, spaces)
-        return y
-
-    def inverse_times(self, x, spaces=None):
+    def inverse_times(self, x):
         """ Applies the inverse-Operator to a given Field.
 
         Operator and Field have to live over the same domain.
@@ -144,28 +115,23 @@ class LinearOperator(with_metaclass(
         ----------
         x : Field
             The input Field.
-        spaces : tuple of ints
-            Defines on which space(s) of the given Field the Operator acts.
 
         Returns
         -------
         out : Field
             The processed Field living on the target-domain.
-
         """
-
-        spaces = self._check_input_compatibility(x, spaces, inverse=True)
-
+        self._check_input_compatibility(x, inverse=True)
         try:
-            y = self._inverse_times(x, spaces)
+            y = self._inverse_times(x)
         except(NotImplementedError):
             if (self.unitary):
-                y = self._adjoint_times(x, spaces)
+                y = self._adjoint_times(x)
             else:
                 raise
         return y
 
-    def adjoint_times(self, x, spaces=None):
+    def adjoint_times(self, x):
         """ Applies the adjoint-Operator to a given Field.
 
         Operator and Field have to live over the same domain.
@@ -174,31 +140,27 @@ class LinearOperator(with_metaclass(
         ----------
         x : Field
             applies the Operator to the given Field
-        spaces : tuple of ints
-            defines on which space of the given Field the Operator acts
 
         Returns
         -------
         out : Field
             The processed Field living on the target-domain.
-
         """
 
         if self.unitary:
-            return self.inverse_times(x, spaces)
+            return self.inverse_times(x)
 
-        spaces = self._check_input_compatibility(x, spaces, inverse=True)
-
+        self._check_input_compatibility(x, inverse=True)
         try:
-            y = self._adjoint_times(x, spaces)
+            y = self._adjoint_times(x)
         except(NotImplementedError):
             if (self.unitary):
-                y = self._inverse_times(x, spaces)
+                y = self._inverse_times(x)
             else:
                 raise
         return y
 
-    def adjoint_inverse_times(self, x, spaces=None):
+    def adjoint_inverse_times(self, x):
         """ Applies the adjoint-inverse Operator to a given Field.
 
         Operator and Field have to live over the same domain.
@@ -207,8 +169,6 @@ class LinearOperator(with_metaclass(
         ----------
         x : Field
             applies the Operator to the given Field
-        spaces : tuple of ints
-            defines on which space of the given Field the Operator acts
 
         Returns
         -------
@@ -219,74 +179,43 @@ class LinearOperator(with_metaclass(
         -----
         If the operator has an `inverse` then the inverse adjoint is identical
         to the adjoint inverse. We provide both names for convenience.
-
         """
-
-        spaces = self._check_input_compatibility(x, spaces)
-
+        self._check_input_compatibility(x)
         try:
-            y = self._adjoint_inverse_times(x, spaces)
+            y = self._adjoint_inverse_times(x)
         except(NotImplementedError):
             if self.unitary:
-                y = self._times(x, spaces)
+                y = self._times(x)
             else:
                 raise
         return y
 
-    def inverse_adjoint_times(self, x, spaces=None):
-        return self.adjoint_inverse_times(x, spaces)
+    def inverse_adjoint_times(self, x):
+        return self.adjoint_inverse_times(x)
 
-    def _times(self, x, spaces):
+    def _times(self, x):
         raise NotImplementedError(
             "no generic instance method 'times'.")
 
-    def _adjoint_times(self, x, spaces):
+    def _adjoint_times(self, x):
         raise NotImplementedError(
             "no generic instance method 'adjoint_times'.")
 
-    def _inverse_times(self, x, spaces):
+    def _inverse_times(self, x):
         raise NotImplementedError(
             "no generic instance method 'inverse_times'.")
 
-    def _adjoint_inverse_times(self, x, spaces):
+    def _adjoint_inverse_times(self, x):
         raise NotImplementedError(
             "no generic instance method 'adjoint_inverse_times'.")
 
-    def _check_input_compatibility(self, x, spaces, inverse=False):
+    def _check_input_compatibility(self, x, inverse=False):
         if not isinstance(x, Field):
             raise ValueError("supplied object is not a `Field`.")
 
-        if spaces is None and self.default_spaces is not None:
-            if not inverse:
-                spaces = self.default_spaces
-            else:
-                spaces = self.default_spaces[::-1]
-
-        # sanitize the `spaces` input
-        if spaces is not None:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
-
-        # if the operator's domain is set to something, there are two valid
-        # cases:
-        # 1. Case:
-        #   The user specifies with `spaces` that the operators domain should
-        #   be applied to certain spaces in the domain-tuple of x.
-        # 2. Case:
-        #   The domains of self and x match completely.
-
-        self_domain = self.target if inverse else self.domain
-
-        if spaces is None:
-            if self_domain != x.domain:
-                raise ValueError("The operator's and and field's domains "
-                                 "don't match.")
-        else:
-            for i, space_index in enumerate(spaces):
-                if x.domain[space_index] != self_domain[i]:
-                    raise ValueError("The operator's and and field's domains "
-                                     "don't match.")
-
-        return spaces
+        if x.domain != (self.target if inverse else self.domain):
+            raise ValueError("The operator's and and field's domains "
+                             "don't match.")
 
     def __repr__(self):
         return str(self.__class__)

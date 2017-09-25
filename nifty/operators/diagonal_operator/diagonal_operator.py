@@ -23,7 +23,7 @@ import numpy as np
 from ...field import Field
 from ...domain_tuple import DomainTuple
 from ..endomorphic_operator import EndomorphicOperator
-
+from ...nifty_utilities import cast_iseq_to_tuple
 
 class DiagonalOperator(EndomorphicOperator):
     """ NIFTY class for diagonal operators.
@@ -39,9 +39,6 @@ class DiagonalOperator(EndomorphicOperator):
         The diagonal entries of the operator.
     copy : boolean
         Internal copy of the diagonal (default: True)
-    default_spaces : tuple of ints *optional*
-        Defines on which space(s) of a given field the Operator acts by
-        default (default: None)
 
     Attributes
     ----------
@@ -55,9 +52,6 @@ class DiagonalOperator(EndomorphicOperator):
     self_adjoint : boolean
         Indicates whether the operator is self_adjoint or not.
 
-    Raises
-    ------
-
     See Also
     --------
     EndomorphicOperator
@@ -66,30 +60,48 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, diagonal, copy=True, default_spaces=None):
-        super(DiagonalOperator, self).__init__(default_spaces)
+    def __init__(self, diagonal, domain=None, spaces=None, copy=True):
+        super(DiagonalOperator, self).__init__()
 
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
+        if domain is None:
+            self._domain = diagonal.domain
+        else:
+            self._domain = DomainTuple.make(domain)
+        if spaces is None:
+            self._spaces = None
+            if diagonal.domain != self._domain:
+                raise ValueError("domain mismatch")
+        else:
+            self._spaces = cast_iseq_to_tuple(spaces)
+            nspc = len(self._spaces)
+            if nspc != len(diagonal.domain.domains):
+                raise ValueError("spaces and domain must have the same length")
+            if nspc > len(self._domain.domains):
+                raise ValueError("too many spaces")
+            if nspc > len(set(self._spaces)):
+                raise ValueError("non-unique space indices")
+            # if nspc==len(self.diagonal.domain.domains, we could do some optimization
+            for i, j  in enumerate(self._spaces):
+                if diagonal.domain[i] != self._domain[j]:
+                    raise ValueError("domain mismatch")
+
         self._diagonal = diagonal if not copy else diagonal.copy()
         self._self_adjoint = None
         self._unitary = None
 
-    def _times(self, x, spaces):
-        return self._times_helper(x, spaces, operation=lambda z: z.__mul__)
+    def _times(self, x):
+        return self._times_helper(x, lambda z: z.__mul__)
 
-    def _adjoint_times(self, x, spaces):
-        return self._times_helper(x, spaces,
-                                  operation=lambda z: z.conjugate().__mul__)
+    def _adjoint_times(self, x):
+        return self._times_helper(x, lambda z: z.conjugate().__mul__)
 
-    def _inverse_times(self, x, spaces):
-        return self._times_helper(x, spaces,
-                                  operation=lambda z: z.__rtruediv__)
+    def _inverse_times(self, x):
+        return self._times_helper(x, lambda z: z.__rtruediv__)
 
-    def _adjoint_inverse_times(self, x, spaces):
-        return self._times_helper(x, spaces,
-                                  operation=lambda z:
-                                      z.conjugate().__rtruediv__)
+    def _adjoint_inverse_times(self, x):
+        return self._times_helper(x, lambda z: z.conjugate().__rtruediv__)
 
     def diagonal(self, copy=True):
         """ Returns the diagonal of the Operator.
@@ -111,7 +123,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def domain(self):
-        return self._diagonal.domain
+        return self._domain
 
     @property
     def self_adjoint(self):
@@ -130,19 +142,13 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Added properties and methods---
 
-    def _times_helper(self, x, spaces, operation):
-        # if the domain matches directly
-        # -> multiply the fields directly
-        if x.domain == self.domain:
-            # here the actual multiplication takes place
+    def _times_helper(self, x, operation):
+        if self._spaces is None:
             return operation(self._diagonal)(x)
 
-        if spaces is None:
-            active_axes = range(len(x.shape))
-        else:
-            active_axes = []
-            for space_index in spaces:
-                active_axes += x.domain.axes[space_index]
+        active_axes = []
+        for space_index in self._spaces:
+            active_axes += x.domain.axes[space_index]
 
         reshaper = [x.shape[i] if i in active_axes else 1
                     for i in range(len(x.shape))]

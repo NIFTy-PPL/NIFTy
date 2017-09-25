@@ -104,3 +104,9 @@ class DomainTuple(object):
         if self is x:
             return False
         return self._dom != x._dom
+
+    def __str__(self):
+        res = "DomainTuple, len: " + str(len(self.domains))
+        for i in self.domains:
+            res += "\n" + str(i)
+        return res

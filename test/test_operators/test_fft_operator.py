@@ -82,10 +82,7 @@ class FFTOperatorTests(unittest.TestCase):
                           base):
         tol = _get_rtol(dtype)
         a = [a1, a2, a3] = [RGSpace((32,)), RGSpace((4, 4)), RGSpace((5, 6))]
-        fft = FFTOperator(domain=a[index],
-                          default_spaces=(index,))
-        fft._forward_transformation.harmonic_base = base
-        fft._backward_transformation.harmonic_base = base
+        fft = FFTOperator(domain=a, space=index)
 
         inp = Field.from_random(domain=(a1, a2, a3), random_type='normal',
                                 std=7, mean=3, dtype=dtype)

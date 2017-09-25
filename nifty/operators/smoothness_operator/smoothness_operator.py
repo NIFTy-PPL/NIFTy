@@ -29,35 +29,20 @@ class SmoothnessOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain, strength=1., logarithmic=True,
-                 default_spaces=None):
-
-        super(SmoothnessOperator, self).__init__(default_spaces=default_spaces)
-
-        self._domain = DomainTuple.make(domain)
-        if len(self.domain) != 1:
-            raise ValueError("The domain must contain exactly one PowerSpace.")
-
-        if not isinstance(self.domain[0], PowerSpace):
-            raise TypeError("The domain must contain exactly one PowerSpace.")
+    def __init__(self, domain, strength=1., logarithmic=True, space=None):
+        super(SmoothnessOperator, self).__init__()
+        self._laplace = LaplaceOperator(domain,
+                                        logarithmic=logarithmic, space=space)
 
         if strength <= 0:
             raise ValueError("ERROR: invalid sigma.")
-
         self._strength = strength
-
-        self._laplace = LaplaceOperator(domain=self.domain,
-                                        logarithmic=logarithmic)
 
     # ---Mandatory properties and methods---
 
     @property
-    def target(self):
-        return self._domain
-
-    @property
     def domain(self):
-        return self._domain
+        return self._laplace._domain
 
     @property
     def unitary(self):
@@ -71,10 +56,9 @@ class SmoothnessOperator(EndomorphicOperator):
     def self_adjoint(self):
         return False
 
-    def _times(self, x, spaces):
+    def _times(self, x):
         if self._strength != 0:
-            result = self._laplace.adjoint_times(self._laplace(x, spaces),
-                                                 spaces)
+            result = self._laplace.adjoint_times(self._laplace(x))
             result *= self._strength**2
         else:
             result = Field(x.domain, 0., x.dtype)

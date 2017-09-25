@@ -28,12 +28,6 @@ class EndomorphicOperator(LinearOperator):
     LinearOperator. By definition, domain and target are the same in
     EndomorphicOperator.
 
-    Parameters
-    ----------
-    default_spaces : tuple of ints *optional*
-        Defines on which space(s) of a given field the Operator acts by
-        default (default: None)
-
     Attributes
     ----------
     domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
@@ -56,37 +50,29 @@ class EndomorphicOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def inverse_times(self, x, spaces=None):
+    def inverse_times(self, x):
         if self.self_adjoint and self.unitary:
-            return self.times(x, spaces)
+            return self.times(x)
         else:
-            return super(EndomorphicOperator, self).inverse_times(
-                                                              x=x,
-                                                              spaces=spaces)
+            return super(EndomorphicOperator, self).inverse_times(x)
 
-    def adjoint_times(self, x, spaces=None):
+    def adjoint_times(self, x):
         if self.self_adjoint:
-            return self.times(x, spaces)
+            return self.times(x)
         else:
-            return super(EndomorphicOperator, self).adjoint_times(
-                                                                x=x,
-                                                                spaces=spaces)
+            return super(EndomorphicOperator, self).adjoint_times(x)
 
-    def adjoint_inverse_times(self, x, spaces=None):
+    def adjoint_inverse_times(self, x):
         if self.self_adjoint:
-            return self.inverse_times(x, spaces)
+            return self.inverse_times(x)
         else:
-            return super(EndomorphicOperator, self).adjoint_inverse_times(
-                                                                x=x,
-                                                                spaces=spaces)
+            return super(EndomorphicOperator, self).adjoint_inverse_times(x)
 
-    def inverse_adjoint_times(self, x, spaces=None):
+    def inverse_adjoint_times(self, x):
         if self.self_adjoint:
-            return self.inverse_times(x, spaces)
+            return self.inverse_times(x)
         else:
-            return super(EndomorphicOperator, self).inverse_adjoint_times(
-                                                                x=x,
-                                                                spaces=spaces)
+            return super(EndomorphicOperator, self).inverse_adjoint_times(x)
 
     # ---Mandatory properties and methods---
 

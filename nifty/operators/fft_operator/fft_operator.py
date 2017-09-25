@@ -46,6 +46,8 @@ class FFTOperator(LinearOperator):
     domain: Space or single-element tuple of Spaces
         The domain of the data that is input by "times" and output by
         "adjoint_times".
+    space: the index of the space on which the operator should act
+        If None, it is set to 0 if domain contains exactly one space
     target: Space or single-element tuple of Spaces (optional)
         The domain of the data that is output by "times" and input by
         "adjoint_times".
@@ -58,10 +60,10 @@ class FFTOperator(LinearOperator):
 
     Attributes
     ----------
-    domain: Tuple of Spaces (with one entry)
+    domain: Tuple of Spaces
         The domain of the data that is input by "times" and output by
         "adjoint_times".
-    target: Tuple of Spaces (with one entry)
+    target: Tuple of Spaces
         The domain of the data that is output by "times" and input by
         "adjoint_times".
     unitary: bool
@@ -72,7 +74,6 @@ class FFTOperator(LinearOperator):
     ------
     ValueError:
         if "domain" or "target" are not of the proper type.
-
     """
 
     # ---Class attributes---
@@ -92,62 +93,53 @@ class FFTOperator(LinearOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain, target=None, default_spaces=None):
-        super(FFTOperator, self).__init__(default_spaces)
+    def __init__(self, domain, target=None, space=None):
+        super(FFTOperator, self).__init__()
 
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
-        if len(self.domain) != 1:
-            raise ValueError("TransformationOperator accepts only exactly one "
-                             "space as input domain.")
+        if space is None:
+            if len(self._domain.domains) != 1:
+                raise ValueError("need a Field with exactly one domain")
+            space = 0
+        space = int(space)
+        if (space<0) or space>=len(self._domain.domains):
+            raise ValueError("space index out of range")
+        self._space = space
 
+        adom = self.domain[self._space]
         if target is None:
-            target = (self.domain[0].get_default_codomain(), )
+            target = [ dom for dom in self.domain ]
+            target[self._space] = adom.get_default_codomain()
+
         self._target = DomainTuple.make(target)
-        if len(self.target) != 1:
-            raise ValueError("TransformationOperator accepts only exactly one "
-                             "space as output target.")
-        self.domain[0].check_codomain(self.target[0])
-        self.target[0].check_codomain(self.domain[0])
+        atgt = self._target[self._space]
+        adom.check_codomain(atgt)
+        atgt.check_codomain(adom)
 
         # Create transformation instances
         forward_class = self.transformation_dictionary[
-                (self.domain[0].__class__, self.target[0].__class__)]
+                (adom.__class__, atgt.__class__)]
         backward_class = self.transformation_dictionary[
-                (self.target[0].__class__, self.domain[0].__class__)]
+                (atgt.__class__, adom.__class__)]
 
-        self._forward_transformation = forward_class(
-            self.domain[0], self.target[0])
+        self._forward_transformation = forward_class(adom, atgt)
+        self._backward_transformation = backward_class(atgt, adom)
 
-        self._backward_transformation = backward_class(
-            self.target[0], self.domain[0])
-
-    def _times_helper(self, x, spaces, other, trafo):
-        if spaces is None:
-            # this case means that x lives on only one space, which is
-            # identical to the space in the domain of `self`. Otherwise the
-            # input check of LinearOperator would have failed.
-            axes = x.domain.axes[0]
-            result_domain = other
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
-            result_domain = list(x.domain)
-            result_domain[spaces[0]] = other[0]
-            axes = x.domain.axes[spaces[0]]
+    def _times_helper(self, x, other, trafo):
+        axes = x.domain.axes[self._space]
 
         new_val, fct = trafo.transform(x.val, axes=axes)
-        res = Field(result_domain, new_val, copy=False)
+        res = Field(other, new_val, copy=False)
         if fct != 1.:
             res *= fct
         return res
 
-    def _times(self, x, spaces):
-        return self._times_helper(x, spaces, self.target,
-                                  self._forward_transformation)
+    def _times(self, x):
+        return self._times_helper(x, self.target, self._forward_transformation)
 
-    def _adjoint_times(self, x, spaces):
-        return self._times_helper(x, spaces, self.domain,
-                                  self._backward_transformation)
+    def _adjoint_times(self, x):
+        return self._times_helper(x, self.domain, self._backward_transformation)
 
     # ---Mandatory properties and methods---
 

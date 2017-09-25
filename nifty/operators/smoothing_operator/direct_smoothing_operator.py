@@ -11,27 +11,28 @@ from ... import Field, DomainTuple
 
 class DirectSmoothingOperator(EndomorphicOperator):
     def __init__(self, domain, sigma, log_distances=False,
-                 default_spaces=None):
-        super(DirectSmoothingOperator, self).__init__(default_spaces)
+                 space=None):
+        super(DirectSmoothingOperator, self).__init__()
 
         self._domain = DomainTuple.make(domain)
-        if len(self._domain) != 1:
-            raise ValueError("DirectSmoothingOperator only accepts exactly one"
-                             " space as input domain.")
+        if space is None:
+            if len(self._domain.domains) != 1:
+                raise ValueError("need a Field with exactly one domain")
+            space = 0
+        space = int(space)
+        if (space<0) or space>=len(self._domain.domains):
+            raise ValueError("space index out of range")
+        self._space = space
 
         self._sigma = float(sigma)
         self._log_distances = log_distances
         self._effective_smoothing_width = 3.01
 
-    def _times(self, x, spaces):
+    def _times(self, x):
         if self._sigma == 0:
             return x.copy()
 
-        # the domain of the smoothing operator contains exactly one space.
-        # Hence, if spaces is None, but we passed LinearOperator's
-        # _check_input_compatibility, we know that x is also solely defined
-        # on that space
-        return self._smooth(x, (0,) if spaces is None else spaces)
+        return self._smooth(x)
 
     # ---Mandatory properties and methods---
     @property
@@ -90,16 +91,12 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
         return ibegin, nval, wgt
 
-    def _smooth(self, x, spaces):
+    def _smooth(self, x):
         # infer affected axes
-        # we rely on the knowledge that `spaces` is a tuple with length 1.
-        affected_axes = x.domain.axes[spaces[0]]
-        if len(affected_axes) != 1:
-            raise ValueError("By this implementation only one-dimensional "
-                             "spaces can be smoothed directly.")
+        affected_axes = x.domain.axes[self._space]
         axis = affected_axes[0]
 
-        distances = x.domain[spaces[0]].get_k_length_array()
+        distances = x.domain[self._space].get_k_length_array()
         if self._log_distances:
             distances = np.log(np.maximum(distances, 1e-15))
 

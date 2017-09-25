@@ -115,10 +115,10 @@ def generate_posterior_sample(mean, covariance):
 
 def create_composed_fft_operator(domain, codomain=None, all_to='other'):
     fft_op_list = []
-    space_index_list = []
 
     if codomain is None:
         codomain = [None]*len(domain)
+    interdomain = list(domain.domains)
     for i, space in enumerate(domain):
         cospace = codomain[i]
         if not isinstance(space, Space):
@@ -126,7 +126,11 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
         if (all_to == 'other' or
                 (all_to == 'position' and space.harmonic) or
                 (all_to == 'harmonic' and not space.harmonic)):
-            fft_op_list += [FFTOperator(domain=space, target=cospace)]
-            space_index_list += [i]
-    result = ComposedOperator(fft_op_list, default_spaces=space_index_list)
-    return result
+            if codomain[i] is None:
+                interdomain[i] = domain[i].get_default_codomain()
+            else:
+                interdomain[i] = codomain[i]
+            fft_op_list += [FFTOperator(domain=domain, target=interdomain,
+                                        space=i)]
+        domain = interdomain
+    return ComposedOperator(fft_op_list)

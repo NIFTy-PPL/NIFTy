@@ -35,7 +35,7 @@ if __name__ == "__main__":
     #mask.val[N10*5:N10*9, N10*5:N10*9] = 0.
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,), exposure=(mask,)) #|\label{code:wf_response}|
     data_domain = R.target[0]
-    R_harmonic = ift.ComposedOperator([fft, R], default_spaces=[0, 0])
+    R_harmonic = ift.ComposedOperator([fft, R])
 
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)

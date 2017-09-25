@@ -510,8 +510,9 @@ class Field(object):
             # create a diagonal operator which is capable of taking care of the
             # axes-matching
             from .operators.diagonal_operator import DiagonalOperator
-            diag = DiagonalOperator(y.conjugate(), copy=False)
-            dotted = diag(x, spaces=spaces)
+            diag = DiagonalOperator(y.conjugate(), self.domain,
+                                    spaces=spaces, copy=False)
+            dotted = diag(x)
             return fct*dotted.sum(spaces=spaces)
 
     def norm(self):
