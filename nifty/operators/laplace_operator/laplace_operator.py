@@ -42,11 +42,8 @@ class LaplaceOperator(EndomorphicOperator):
     def __init__(self, domain, default_spaces=None, logarithmic=True):
         super(LaplaceOperator, self).__init__(default_spaces)
         self._domain = DomainTuple.make(domain)
-        if len(self.domain) != 1:
+        if len(self.domain) != 1 or not isinstance(self.domain[0], PowerSpace):
             raise ValueError("The domain must contain exactly one PowerSpace.")
-
-        if not isinstance(self.domain[0], PowerSpace):
-            raise TypeError("The domain must contain exactly one PowerSpace.")
 
         self._logarithmic = bool(logarithmic)
 
