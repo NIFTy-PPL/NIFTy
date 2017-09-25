@@ -84,10 +84,3 @@ class DiagonalOperator_Tests(unittest.TestCase):
         D = DiagonalOperator(diag, copy=copy)
         diag_op = D.diagonal()
         assert_allclose(diag.val, diag_op.val)
-
-    @expand(product(spaces, [True, False]))
-    def test_inverse(self, space, copy):
-        diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
-        diag_op = D.inverse_diagonal()
-        assert_allclose(1./diag.val, diag_op.val)

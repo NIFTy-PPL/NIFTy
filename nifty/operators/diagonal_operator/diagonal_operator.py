@@ -107,17 +107,6 @@ class DiagonalOperator(EndomorphicOperator):
         """
         return self._diagonal.copy() if copy else self._diagonal
 
-    def inverse_diagonal(self):
-        """ Returns the inverse-diagonal of the operator.
-
-        Returns
-        -------
-        out : Field
-            The inverse of the diagonal of the Operator.
-
-        """
-        return 1./self._diagonal
-
     # ---Mandatory properties and methods---
 
     @property
