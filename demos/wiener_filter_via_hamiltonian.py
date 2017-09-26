@@ -74,7 +74,8 @@ if __name__ == "__main__":
     # Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
     signal_to_noise = 1.
-    N = DiagonalOperator(s_space, diagonal=ss.var()/signal_to_noise, bare=True)
+    ndiag = Field(s_space, val=ss.var()/signal_to_noise).weight()
+    N = DiagonalOperator(s_space, diagonal=ndiag)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
                           std=ss.std()/np.sqrt(signal_to_noise),

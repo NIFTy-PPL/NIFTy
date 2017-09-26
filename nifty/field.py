@@ -1072,7 +1072,7 @@ class Field(Loggable, Versionable, object):
         new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
-    def vdot(self, x=None, spaces=None, bare=False):
+    def vdot(self, x=None, spaces=None):
         """ Computes the volume-factor-aware dot product of 'self' with x.
 
         Parameters
@@ -1084,9 +1084,6 @@ class Field(Loggable, Versionable, object):
             If the domain of `self` and `x` are not the same, `spaces` specfies
             the mapping.
 
-        bare : boolean
-            If true, no volume factors will be included in the computation.
-
         Returns
         -------
         out : float, complex
@@ -1097,10 +1094,7 @@ class Field(Loggable, Versionable, object):
                              "the NIFTy field class")
 
         # Compute the dot respecting the fact of discrete/continuous spaces
-        if bare:
-            y = self
-        else:
-            y = self.weight(power=1)
+        y = self.weight(power=1)
 
         if spaces is None:
             x_val = x.get_val(copy=False)
