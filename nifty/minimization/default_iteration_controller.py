@@ -52,15 +52,10 @@ class DefaultIterationController(IterationController):
                 self._convergence_count += 1
 
         self.logger.debug(
-                "")
-
-            if self._name is not None:
-                msg += self._name+":"
-            msg += " Iteration #" + str(self._iteration_count)
-            msg += " gradnorm=" + str(energy.gradient_norm)
-            msg += " convergence level=" + str(self._convergence_count)
-            print (msg)
-            self.logger.info(msg)
+                "Iteration %08u gradient-norm %3.1E convergence-level %i" %
+                (self._iteration_count,
+                 energy.gradient_norm,
+                 self._convergence_count))
 
         # Are we done?
         if self._iteration_limit is not None:
