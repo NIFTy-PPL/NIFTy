@@ -37,9 +37,9 @@ class TraceProberMixin(object):
     def finish_probe(self, probe, pre_result):
         if self.__evaluate_probe_in_signal_space:
             fft = create_composed_fft_operator(self._domain, all_to='position')
-            result = fft(probe[1]).vdot(fft(pre_result), bare=True)
+            result = fft(probe[1]).weight(-1).vdot(fft(pre_result))
         else:
-            result = probe[1].vdot(pre_result, bare=True)
+            result = probe[1].weight(-1).vdot(pre_result)
 
         self.__sum_of_probings += result
         if self.compute_variance:

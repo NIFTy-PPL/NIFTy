@@ -41,7 +41,8 @@ if __name__ == "__main__":
     R_harmonic = ift.ComposedOperator([fft, R], default_spaces=[0, 0])
 
     # Setting up the noise covariance and drawing a random noise realization
-    N = ift.DiagonalOperator(data_domain, diagonal=mock_signal.var()/signal_to_noise, bare=True)
+    ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)
+    N = ift.DiagonalOperator(data_domain, ndiag)
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                                   std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
     data = R(mock_signal) + noise  #|\label{code:wf_mock_data}|
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     proby = Proby(signal_space, probe_count=800)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))  #|\label{code:wf_variance_fft_wrap}|
 
-    sm = ift.SmoothingOperator.make(signal_space, sigma=0.03)
+    sm = ift.FFTSmoothingOperator(signal_space, sigma=0.03)
     variance = ift.sqrt(sm(proby.diagonal.weight(-1)))  #|\label{code:wf_variance_weighting}|
 
     repo = Repository('repo_800.h5')
