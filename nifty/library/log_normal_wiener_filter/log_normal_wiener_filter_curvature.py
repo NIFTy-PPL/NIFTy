@@ -28,7 +28,6 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
 
     def __init__(self, R, N, S, d, position, inverter=None, fft4exp=None,
                  offset=None, **kwargs):
-        self._cache = {}
         self.R = R
         self.N = N
         self.S = S

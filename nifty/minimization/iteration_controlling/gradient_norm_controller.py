@@ -22,8 +22,8 @@ from .iteration_controller import IterationController
 
 class GradientNormController(IterationController):
     def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
-                 convergence_level=1, iteration_limit=None):
-        super(GradientNormController, self).__init__()
+                 convergence_level=1, iteration_limit=None, callback=None):
+        super(GradientNormController, self).__init__(callback=callback)
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
         self._tol_rel_gradnorm_now = None
@@ -38,7 +38,9 @@ class GradientNormController(IterationController):
                                        * energy.gradient_norm
 
     def check(self, energy):
-        self._iteration_count += 1
+        super_check = super(GradientNormController, self).check(energy)
+        if super_check != self.CONTINUE:
+            return super_check
 
         # check if position is at a flat point
         if energy.gradient_norm == 0:

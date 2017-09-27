@@ -68,16 +68,14 @@ class Energy(with_metaclass(NiftyMeta,
 
     def __init__(self, position, gradient=None, curvature=None):
         super(Energy, self).__init__()
-        self._cache = {}
         self._position = position.copy()
 
+        self._cache = {}
         if gradient is not None:
-            key = id(self.gradient)
-            self._cache[key] = gradient
+            self._cache['gradient'] = gradient
 
         if curvature is not None:
-            key = id(self.curvature)
-            self._cache[key] = curvature
+            self._cache['curvature'] = curvature
 
     def at(self, position, gradient=None, curvature=None):
         """ Initializes and returns a new Energy object at the new position.

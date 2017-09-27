@@ -18,7 +18,7 @@
 
 from builtins import range
 import abc
-from ..nifty_meta import NiftyMeta
+from ...nifty_meta import NiftyMeta
 
 from keepers import Loggable
 from future.utils import with_metaclass
@@ -45,9 +45,10 @@ class IterationController(
 
     CONVERGED, CONTINUE, STOPPED, ERROR = list(range(4))
 
-    def __init__(self):
+    def __init__(self, callback=None):
         self._iteration_count = 0
         self._convergence_count = 0
+        self.callback = callback
 
     @property
     def iteration_count(self):
@@ -69,7 +70,6 @@ class IterationController(
 
         raise NotImplementedError
 
-    @abc.abstractmethod
     def check(self, energy):
         """
         Parameters
@@ -82,4 +82,12 @@ class IterationController(
         status : integer status, can be CONVERGED, CONTINUE or ERROR
         """
 
-        raise NotImplementedError
+        self._iteration_count += 1
+        if self.callback is not None:
+            try:
+                self.callback(energy, self._iteration_count)
+            except StopIteration:
+                self.logger.info("Minimization was stopped by callback "
+                                 "function.")
+                return self.STOPPED
+        return self.CONTINUE

@@ -110,4 +110,5 @@ class ConjugateGradient(Minimizer):
                 return energy, controller.ERROR
 
             r -= q * alpha
-            energy = energy.at_with_grad(energy.position+d*alpha, -r)
+            energy = energy.at(position=energy.position + d*alpha,
+                               gradient=-r)
