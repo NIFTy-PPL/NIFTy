@@ -42,9 +42,6 @@ class DiagonalOperator(EndomorphicOperator):
         The domain on which the Operator's input Field lives.
     diagonal : {scalar, list, array, Field, d2o-object}
         The diagonal entries of the operator.
-    bare : boolean
-        Indicates whether the input for the diagonal is bare or not
-        (default: False).
     copy : boolean
         Internal copy of the diagonal (default: True)
     distribution_strategy : string
@@ -73,16 +70,6 @@ class DiagonalOperator(EndomorphicOperator):
     Raises
     ------
 
-    Notes
-    -----
-    The ambiguity of bare or non-bare diagonal entries is based on the choice
-    of a matrix representation of the operator in question. The naive choice
-    of absorbing the volume weights into the matrix leads to a matrix-vector
-    calculus with the non-bare entries which seems intuitive, though.
-    The choice of keeping matrix entries and volume weights separate
-    deals with the bare entries that allow for correct interpretation
-    of the matrix entries; e.g., as variance in case of an covariance operator.
-
     Examples
     --------
     >>> x_space = RGSpace(5)
@@ -101,7 +88,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, domain=(), diagonal=None, bare=False, copy=True,
+    def __init__(self, domain=(), diagonal=None, copy=True,
                  distribution_strategy=None, default_spaces=None):
         super(DiagonalOperator, self).__init__(default_spaces)
 
@@ -119,7 +106,7 @@ class DiagonalOperator(EndomorphicOperator):
 
         self._self_adjoint = None
         self._unitary = None
-        self.set_diagonal(diagonal=diagonal, bare=bare, copy=copy)
+        self.set_diagonal(diagonal=diagonal, copy=copy)
 
     def _times(self, x, spaces):
         return self._times_helper(x, spaces, operation=lambda z: z.__mul__)
@@ -136,13 +123,11 @@ class DiagonalOperator(EndomorphicOperator):
         return self._times_helper(
                     x, spaces, operation=lambda z: z.conjugate().__rtruediv__)
 
-    def diagonal(self, bare=False, copy=True):
+    def diagonal(self, copy=True):
         """ Returns the diagonal of the Operator.
 
         Parameters
         ----------
-        bare : boolean
-            Whether the returned Field values should be bare or not.
         copy : boolean
             Whether the returned Field should be copied or not.
 
@@ -152,21 +137,14 @@ class DiagonalOperator(EndomorphicOperator):
             The diagonal of the Operator.
 
         """
-        if bare:
-            diagonal = self._diagonal.weight(power=-1)
-        elif copy:
+        if copy:
             diagonal = self._diagonal.copy()
         else:
             diagonal = self._diagonal
         return diagonal
 
-    def inverse_diagonal(self, bare=False):
+    def inverse_diagonal(self):
         """ Returns the inverse-diagonal of the operator.
-
-        Parameters
-        ----------
-        bare : boolean
-            Whether the returned Field values should be bare or not.
 
         Returns
         -------
@@ -174,7 +152,7 @@ class DiagonalOperator(EndomorphicOperator):
             The inverse of the diagonal of the Operator.
 
         """
-        return 1./self.diagonal(bare=bare, copy=False)
+        return 1./self.diagonal(copy=False)
 
     # ---Mandatory properties and methods---
 
@@ -226,16 +204,13 @@ class DiagonalOperator(EndomorphicOperator):
                     "Invalid distribution_strategy!")
         return distribution_strategy
 
-    def set_diagonal(self, diagonal, bare=False, copy=True):
+    def set_diagonal(self, diagonal, copy=True):
         """ Sets the diagonal of the Operator.
 
         Parameters
         ----------
         diagonal : {scalar, list, array, Field, d2o-object}
             The diagonal entries of the operator.
-        bare : boolean
-            Indicates whether the input for the diagonal is bare or not
-            (default: False).
         copy : boolean
             Specifies if a copy of the input shall be made (default: True).
 
@@ -246,13 +221,6 @@ class DiagonalOperator(EndomorphicOperator):
                   val=diagonal,
                   distribution_strategy=self.distribution_strategy,
                   copy=copy)
-
-        # weight if the given values were `bare` is True
-        # do inverse weightening if the other way around
-        if bare:
-            # If `copy` is True, we won't change external data by weightening
-            # Otherwise, inplace weightening would change the external field
-            f.weight(inplace=copy)
 
         # Reset the self_adjoint property:
         self._self_adjoint = None

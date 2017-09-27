@@ -40,7 +40,7 @@ class SmoothnessOperator(EndomorphicOperator):
         if not isinstance(self.domain[0], PowerSpace):
             raise TypeError("The domain must contain exactly one PowerSpace.")
 
-        if strength <= 0:
+        if strength < 0:
             raise ValueError("ERROR: invalid sigma.")
 
         self._strength = strength
