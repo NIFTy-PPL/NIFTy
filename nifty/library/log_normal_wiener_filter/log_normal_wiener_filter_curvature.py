@@ -3,6 +3,7 @@ from ...operators import EndomorphicOperator,\
 from ...energies.memoization import memo
 from ...basic_arithmetics import clipped_exp
 from ...sugar import create_composed_fft_operator
+from ...minimization import ConjugateGradient
 
 
 class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
@@ -25,17 +26,17 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
 
     """
 
-    def __init__(self, R, N, S, d, position, inverter=None,
-                 preconditioner=None, fft4exp=None, offset=None, **kwargs):
+    def __init__(self, R, N, S, d, position, inverter=None, fft4exp=None,
+                 offset=None, **kwargs):
         self._cache = {}
         self.R = R
         self.N = N
         self.S = S
         self.d = d
+        if inverter is None:
+            inverter = ConjugateGradient(preconditioner=self.S.times)
         self.position = position
         self.offset = offset
-        if preconditioner is None:
-            preconditioner = self.S.times
         self._domain = self.S.domain
 
         if fft4exp is None:
@@ -45,27 +46,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
             self._fft = fft4exp
 
         super(LogNormalWienerFilterCurvature, self).__init__(
-                                                 inverter=inverter,
-                                                 preconditioner=preconditioner,
-                                                 **kwargs)
-
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._cache = {}
-        copy._domain = self._domain
-        copy.R = self.R.copy()
-        copy.N = self.N.copy()
-        copy.S = self.S.copy()
-        copy.d = self.d.copy()
-        copy.offset = self.offset
-        if 'position' in kwargs:
-            copy.position = kwargs['position']
-        else:
-            copy.position = self.position.copy()
-        copy._fft = self._fft
-
-        copy = super(LogNormalWienerFilterCurvature,
-                     self)._add_attributes_to_copy(copy, **kwargs)
-        return copy
+                                                inverter=inverter, **kwargs)
 
     @property
     def domain(self):

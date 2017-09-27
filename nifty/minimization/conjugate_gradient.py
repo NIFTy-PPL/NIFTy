@@ -17,9 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+
 import numpy as np
 
 from .minimizer import Minimizer
+from .iteration_controlling import GradientNormController
 
 
 class ConjugateGradient(Minimizer):
@@ -43,7 +45,9 @@ class ConjugateGradient(Minimizer):
 
     """
 
-    def __init__(self, controller, preconditioner=None):
+    def __init__(self,
+                 controller=GradientNormController(iteration_limit=100),
+                 preconditioner=None):
         self._preconditioner = preconditioner
         self._controller = controller
 
@@ -66,50 +70,44 @@ class ConjugateGradient(Minimizer):
         """
 
         controller = self._controller
-        status = controller.start(energy)
-        if status != controller.CONTINUE:
-            return energy, status
+        status = controller.reset(energy)
 
         r = -energy.gradient
-        if self._preconditioner is not None:
-            d = self._preconditioner(r)
-        else:
-            d = r.copy()
-        previous_gamma = (r.vdot(d)).real
-        if previous_gamma == 0:
-            return energy, controller.CONVERGED
+        previous_gamma = np.inf
+        d = r.copy_empty()
+        d.val[:] = 0.
 
         while True:
-            q = energy.curvature(d)
-            ddotq = d.vdot(q).real
-            if ddotq==0.:
-                self.logger.error("Alpha became infinite! Stopping.")
-                return energy, controller.ERROR
-            alpha = previous_gamma/ddotq
-
-            if alpha < 0:
-                self.logger.warn("Positive definiteness of A violated!")
-                return energy, controller.ERROR
-
-            r -= q * alpha
-            energy = energy.at_with_grad(energy.position+d*alpha,-r)
-
-            status = self._controller.check(energy)
-            if status != controller.CONTINUE:
-                return energy, status
-
             if self._preconditioner is not None:
                 s = self._preconditioner(r)
             else:
                 s = r
-
             gamma = r.vdot(s).real
             if gamma < 0:
                 self.logger.warn(
                     "Positive definiteness of preconditioner violated!")
             if gamma == 0:
+                self.logger.info("Gamma == 0. Stopping.")
                 return energy, controller.CONVERGED
 
             d = s + d * max(0, gamma/previous_gamma)
-
             previous_gamma = gamma
+
+            status = self._controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
+
+            q = energy.curvature(d)
+            ddotq = d.vdot(q).real
+            if ddotq == 0.:
+                self.logger.error("Alpha became infinite! Stopping.")
+                return energy, controller.ERROR
+            alpha = previous_gamma/ddotq
+
+            if alpha < 0:
+                self.logger.error(
+                        "Positive definiteness of A violated! Stopping.")
+                return energy, controller.ERROR
+
+            r -= q * alpha
+            energy = energy.at_with_grad(energy.position+d*alpha, -r)

@@ -8,21 +8,20 @@ class QuadraticEnergy(Energy):
     position-independent.
     """
 
-    def __init__(self, position, A, b, grad=None):
-        super(QuadraticEnergy, self).__init__(position=position)
+    def __init__(self, position, A, b, gradient=None, curvature=None):
+        super(QuadraticEnergy, self).__init__(position=position,
+                                              gradient=gradient,
+                                              curvature=curvature)
         self._A = A
         self._b = b
-        if grad is not None:
-            self._Ax = grad + self._b
+        if gradient is not None:
+            self._Ax = gradient + self._b
         else:
             self._Ax = self._A(self.position)
 
-    def at(self, position):
-        return self.__class__(position=position, A=self._A, b=self._b)
-
-    def at_with_grad(self, position, grad):
+    def at(self, position, gradient=None, curvature=None):
         return self.__class__(position=position, A=self._A, b=self._b,
-                              grad=grad)
+                              gradient=gradient, curvature=curvature)
 
     @property
     @memo

@@ -66,12 +66,20 @@ class Energy(with_metaclass(NiftyMeta,
 
     """
 
-    def __init__(self, position):
+    def __init__(self, position, gradient=None, curvature=None):
         super(Energy, self).__init__()
         self._cache = {}
         self._position = position.copy()
 
-    def at(self, position):
+        if gradient is not None:
+            key = id(self.gradient)
+            self._cache[key] = gradient
+
+        if curvature is not None:
+            key = id(self.curvature)
+            self._cache[key] = curvature
+
+    def at(self, position, gradient=None, curvature=None):
         """ Initializes and returns a new Energy object at the new position.
 
         Parameters
@@ -85,10 +93,12 @@ class Energy(with_metaclass(NiftyMeta,
             Energy object at new position.
 
         """
-
-        return self.__class__(position)
+        return self.__class__(position,
+                              gradient=gradient,
+                              curvature=curvature)
 
     @property
+    @memo
     def position(self):
         """
         The Field location in parameter space where value, gradient and
@@ -99,6 +109,7 @@ class Energy(with_metaclass(NiftyMeta,
         return self._position
 
     @property
+    @memo
     def value(self):
         """
         The value of the energy functional at given `position`.
@@ -108,6 +119,7 @@ class Energy(with_metaclass(NiftyMeta,
         raise NotImplementedError
 
     @property
+    @memo
     def gradient(self):
         """
         The gradient at given `position`.
@@ -137,6 +149,7 @@ class Energy(with_metaclass(NiftyMeta,
         return abs(self.gradient).max()
 
     @property
+    @memo
     def curvature(self):
         """
         A positive semi-definite operator or function describing the curvature

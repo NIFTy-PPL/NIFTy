@@ -43,10 +43,10 @@ class IterationController(
     the information passed to the controller during the iteration process.
     """
 
-    CONVERGED, CONTINUE, ERROR = list(range(3))
+    CONVERGED, CONTINUE, STOPPED, ERROR = list(range(4))
 
     def __init__(self):
-        self._iteration_count = -1
+        self._iteration_count = 0
         self._convergence_count = 0
 
     @property
@@ -58,16 +58,13 @@ class IterationController(
         return self._convergence_count
 
     @abc.abstractmethod
-    def start(self, energy):
+    def reset(self, energy):
         """
         Parameters
         ----------
         energy : Energy object
            Energy object at the start of the iteration
 
-        Returns
-        -------
-        status : integer status, can be CONVERGED, CONTINUE or ERROR
         """
 
         raise NotImplementedError
@@ -78,7 +75,7 @@ class IterationController(
         Parameters
         ----------
         energy : Energy object
-           Energy object at the start of the iteration
+           Energy object at the current position
 
         Returns
         -------

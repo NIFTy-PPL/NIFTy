@@ -21,6 +21,7 @@ import abc
 
 from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
+from .iteration_controlling import GradientNormController
 
 
 class DescentMinimizer(Minimizer):
@@ -41,7 +42,9 @@ class DescentMinimizer(Minimizer):
 
     """
 
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
+    def __init__(self,
+                 controller=GradientNormController(iteration_limit=100),
+                 line_searcher=LineSearchStrongWolfe()):
         super(DescentMinimizer, self).__init__()
         self._controller = controller
         self.line_searcher = line_searcher
@@ -73,23 +76,19 @@ class DescentMinimizer(Minimizer):
 
         f_k_minus_1 = None
         controller = self._controller
-        status = controller.start(energy)
-        if status != controller.CONTINUE:
-            return energy, status
+        self._controller.reset(energy)
 
         while True:
-            # check if position is at a flat point
-            if energy.gradient_norm == 0:
-                self.logger.info("Reached perfectly flat point. Stopping.")
-                return energy, controller.CONVERGED
+            status = controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
 
             # current position is encoded in energy object
             descent_direction = self.get_descent_direction(energy)
             # compute the step length, which minimizes energy.value along the
             # search direction
             try:
-                new_energy = \
-                    self.line_searcher.perform_line_search(
+                new_energy = self.line_searcher.perform_line_search(
                                                    energy=energy,
                                                    pk=descent_direction,
                                                    f_k_minus_1=f_k_minus_1)
@@ -99,16 +98,7 @@ class DescentMinimizer(Minimizer):
                 return energy, controller.ERROR
 
             f_k_minus_1 = energy.value
-            # check if new energy value is bigger than old energy value
-            if (new_energy.value - energy.value) > 0:
-                self.logger.info("Line search algorithm returned a new energy "
-                                 "that was larger than the old one. Stopping.")
-                return energy, controller.ERROR
-
             energy = new_energy
-            status = self._controller.check(energy)
-            if status != controller.CONTINUE:
-                return energy, status
 
     @abc.abstractmethod
     def get_descent_direction(self, energy):

@@ -20,29 +20,31 @@ from __future__ import print_function
 from .iteration_controller import IterationController
 
 
-class DefaultIterationController(IterationController):
+class GradientNormController(IterationController):
     def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
-                 convergence_level=1, iteration_limit=None, name="",
-                 verbose=None):
-        super(DefaultIterationController, self).__init__()
+                 convergence_level=1, iteration_limit=None):
+        super(GradientNormController, self).__init__()
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
         self._tol_rel_gradnorm_now = None
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
-        self._name = name
-        self._verbose = verbose
 
-    def start(self, energy):
-        self._iteration_count = -1
+    def reset(self, energy):
+        self._iteration_count = 0
         self._convergence_count = 0
         if self._tol_rel_gradnorm is not None:
             self._tol_rel_gradnorm_now = self._tol_rel_gradnorm \
                                        * energy.gradient_norm
-        return self.check(energy)
 
     def check(self, energy):
         self._iteration_count += 1
+
+        # check if position is at a flat point
+        if energy.gradient_norm == 0:
+            self._print_debug_info(energy)
+            self.logger.info("Reached perfectly flat point. Stopping.")
+            return self.CONVERGED
 
         if self._tol_abs_gradnorm is not None:
             if energy.gradient_norm <= self._tol_abs_gradnorm:
@@ -51,17 +53,23 @@ class DefaultIterationController(IterationController):
             if energy.gradient_norm <= self._tol_rel_gradnorm_now:
                 self._convergence_count += 1
 
+        if self._iteration_limit is not None:
+            if self._iteration_count >= self._iteration_limit:
+                self._print_debug_info(energy)
+                self.logger.info("Reached iteration limit. Stopping.")
+                return self.STOPPED
+
+        if self._convergence_count >= self._convergence_level:
+            self._print_debug_info(energy)
+            self.logger.info("Reached convergence limit. Stopping.")
+            return self.CONVERGED
+
+        self._print_debug_info(energy)
+        return self.CONTINUE
+
+    def _print_debug_info(self, energy):
         self.logger.debug(
                 "Iteration %08u gradient-norm %3.1E convergence-level %i" %
                 (self._iteration_count,
                  energy.gradient_norm,
                  self._convergence_count))
-
-        # Are we done?
-        if self._iteration_limit is not None:
-            if self._iteration_count >= self._iteration_limit:
-                return self.CONVERGED
-        if self._convergence_count >= self._convergence_level:
-            return self.CONVERGED
-
-        return self.CONTINUE
