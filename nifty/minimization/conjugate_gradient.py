@@ -70,7 +70,7 @@ class ConjugateGradient(Minimizer):
         """
 
         controller = self._controller
-        status = controller.reset(energy)
+        controller.reset(energy)
 
         r = -energy.gradient
         previous_gamma = np.inf
@@ -93,7 +93,7 @@ class ConjugateGradient(Minimizer):
             d = s + d * max(0, gamma/previous_gamma)
             previous_gamma = gamma
 
-            status = self._controller.check(energy)
+            status = controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
 

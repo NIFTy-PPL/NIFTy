@@ -18,11 +18,13 @@
 
 from __future__ import division
 
+import numpy as np
+
 from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
 
 
-class NonlinearCG(Minimizer):
+class NonlinearConjugateGradient(Minimizer):
     """ Implementation of the nonlinear Conjugate Gradient scheme according to
         Polak-Ribiere.
 
@@ -61,23 +63,28 @@ class NonlinearCG(Minimizer):
         """
 
         controller = self._controller
-        status = controller.start(energy)
-        if status != controller.CONTINUE:
-            return energy, status
-        f_k_minus_1 = None
+        controller.reset(energy)
 
-        p = -energy.gradient
+        f_k_minus_1 = None
+        grad_old = np.inf
+        # this is a dummy initialization which doesn't hurt since
+        # energy.gradient must be computed anyway and beta will safely evaluate
+        # to 0 in the firstiteration
+        p = abs(energy.gradient)
 
         while True:
+            status = controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
+
+            grad_new = energy.gradient
+            gnnew = energy.gradient_norm
+
+            beta = gnnew*gnnew/(grad_new-grad_old).vdot(p).real
+            p = beta*p - grad_new
+
             grad_old = energy.gradient
             f_k = energy.value
             energy = self._line_searcher.perform_line_search(energy, p,
                                                              f_k_minus_1)
             f_k_minus_1 = f_k
-            status = self._controller.check(energy)
-            if status != controller.CONTINUE:
-                return energy, status
-            grad_new = energy.gradient
-            gnnew = energy.gradient_norm
-            beta = gnnew*gnnew/(grad_new-grad_old).vdot(p).real
-            p = beta*p - grad_new

@@ -76,7 +76,7 @@ class DescentMinimizer(Minimizer):
 
         f_k_minus_1 = None
         controller = self._controller
-        self._controller.reset(energy)
+        controller.reset(energy)
 
         while True:
             status = controller.check(energy)

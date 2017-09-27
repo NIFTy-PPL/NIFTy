@@ -109,7 +109,8 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 >= 0:
-            self.logger.error("Input direction must be a descent direction")
+            self.logger.error("Input direction must be a descent direction. "
+                              "Gradient: %f" % phiprime_0)
             raise RuntimeError
 
         # set alphas
