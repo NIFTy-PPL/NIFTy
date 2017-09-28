@@ -853,9 +853,9 @@ class Field(Loggable, Versionable, object):
     def imag(self):
         """ The imaginary part of the field (data is not copied).
         """
-        real_part = self.val.imag
-        result = self.copy_empty(dtype=real_part.dtype)
-        result.set_val(new_val=real_part, copy=False)
+        imag_part = self.val.imag
+        result = self.copy_empty(dtype=imag_part.dtype)
+        result.set_val(new_val=imag_part, copy=False)
         return result
 
     # ---Special unary/binary operations---
