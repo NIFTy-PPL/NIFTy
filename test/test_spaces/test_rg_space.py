@@ -77,11 +77,11 @@ CONSTRUCTOR_CONFIGS = [
 
 
 def get_distance_array_configs():
-    # for RGSpace(shape=(4, 4), distances=None)
+    # for RGSpace(shape=(4, 4), distances=None, harmonic=True)
     cords_0 = np.ogrid[0:4, 0:4]
-    da_0 = ((cords_0[0] - 4 // 2) * 0.25)**2
+    da_0 = ((cords_0[0] - 4 // 2))**2
     da_0 = np.fft.ifftshift(da_0)
-    temp = ((cords_0[1] - 4 // 2) * 0.25)**2
+    temp = ((cords_0[1] - 4 // 2))**2
     temp = np.fft.ifftshift(temp)
     da_0 = da_0 + temp
     da_0 = np.sqrt(da_0)
