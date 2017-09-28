@@ -27,7 +27,6 @@ from ....config import nifty_configuration as gc
 from .... import nifty_utilities as utilities
 
 from keepers import Loggable
-from functools import reduce
 
 fftw = gdi.get('fftw')
 
@@ -298,9 +297,6 @@ class FFTWTransformInfo(object):
         if not hasattr(fftw, 'FFTW_MPI'):
             raise ImportError(
                 "The MPI FFTW module is needed but not available.")
-
-        shape = (local_shape if axes is None else
-                 [y for x, y in enumerate(local_shape) if x in axes])
 
 
 class FFTWLocalTransformInfo(FFTWTransformInfo):
