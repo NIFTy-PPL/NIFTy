@@ -43,10 +43,6 @@ class RGSpace(Space):
         ----------
         shape : {int, numpy.ndarray}
             Number of grid points or numbers of gridpoints along each axis.
-        zerocenter : {bool, numpy.ndarray} *optional*
-            Whether x==0 (or k==0, respectively) is located in the center of
-            the grid (or the center of each axis speparately) or not.
-            (default: False).
         distances : {float, numpy.ndarray}, *optional*
             Distance between two grid points along each axis
             (default: None).
@@ -63,9 +59,6 @@ class RGSpace(Space):
         ----------
         harmonic : bool
             Whether or not the grid represents a position or harmonic space.
-        zerocenter : tuple of bool
-            Whether x==0 (or k==0, respectively) is located in the center of
-            the grid (or the center of each axis speparately) or not.
         distances : tuple of floats
             Distance between two grid points along the correponding axis.
         dim : np.int
@@ -81,15 +74,13 @@ class RGSpace(Space):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, shape, zerocenter=False, distances=None,
-                 harmonic=False):
+    def __init__(self, shape, distances=None, harmonic=False):
         self._harmonic = bool(harmonic)
 
         super(RGSpace, self).__init__()
 
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
-        self._zerocenter = self._parse_zerocenter(zerocenter)
 
 # This code is unused but may be useful to keep around if it is ever needed
 # again in the future ...
@@ -130,12 +121,8 @@ class RGSpace(Space):
                 i = axes[k]
                 slice_picker = slice_primitive[:]
                 slice_inverter = slice_primitive[:]
-                if (not self.zerocenter[k]) or self.shape[k] % 2 == 0:
-                    slice_picker[i] = slice(1, None, None)
-                    slice_inverter[i] = slice(None, 0, -1)
-                else:
-                    slice_picker[i] = slice(None)
-                    slice_inverter[i] = slice(None, None, -1)
+                slice_picker[i] = slice(1, None, None)
+                slice_inverter[i] = slice(None, 0, -1)
                 slice_picker = tuple(slice_picker)
                 slice_inverter = tuple(slice_inverter)
 
@@ -149,8 +136,8 @@ class RGSpace(Space):
     # ---Mandatory properties and methods---
 
     def __repr__(self):
-        return ("RGSpace(shape=%r, zerocenter=%r, distances=%r, harmonic=%r)"
-                % (self.shape, self.zerocenter, self.distances, self.harmonic))
+        return ("RGSpace(shape=%r, distances=%r, harmonic=%r)"
+                % (self.shape, self.distances, self.harmonic))
 
     @property
     def harmonic(self):
@@ -170,7 +157,6 @@ class RGSpace(Space):
 
     def copy(self):
         return self.__class__(shape=self.shape,
-                              zerocenter=self.zerocenter,
                               distances=self.distances,
                               harmonic=self.harmonic)
 
@@ -234,16 +220,13 @@ class RGSpace(Space):
 
         dists = (cords[0] - shape[0]//2)*dk[0]
         dists *= dists
-        # apply zerocenterQ shift
-        if not self.zerocenter[0]:
-            dists = np.fft.ifftshift(dists)
+        dists = np.fft.ifftshift(dists)
         # only save the individual slice
         dists = dists[slice_of_first_dimension]
         for ii in range(1, len(shape)):
             temp = (cords[ii] - shape[ii] // 2) * dk[ii]
             temp *= temp
-            if not self.zerocenter[ii]:
-                temp = np.fft.ifftshift(temp)
+            temp = np.fft.ifftshift(temp)
             dists = dists + temp
         dists = np.sqrt(dists)
         return dists
@@ -298,21 +281,6 @@ class RGSpace(Space):
 
         return self._distances
 
-    @property
-    def zerocenter(self):
-        """Returns True if grid points lie symmetrically around zero.
-
-        Returns
-        -------
-        bool
-            True if the grid points are centered around the 0 grid point. This
-            option is most common for harmonic spaces (where both conventions
-            are used) but may be used for position spaces, too.
-
-        """
-
-        return self._zerocenter
-
     def _parse_shape(self, shape):
         if np.isscalar(shape):
             shape = (shape,)
@@ -331,18 +299,10 @@ class RGSpace(Space):
             temp[:] = distances
         return tuple(temp)
 
-    def _parse_zerocenter(self, zerocenter):
-        temp = np.empty(len(self.shape), dtype=bool)
-        temp[:] = zerocenter
-        if np.any(np.logical_and(temp, np.array(self.shape) % 2)):
-            raise ValueError("All zerocentered axis must have even length!")
-        return tuple(temp)
-
     # ---Serialization---
 
     def _to_hdf5(self, hdf5_group):
         hdf5_group['shape'] = self.shape
-        hdf5_group['zerocenter'] = self.zerocenter
         hdf5_group['distances'] = self.distances
         hdf5_group['harmonic'] = self.harmonic
 
@@ -352,7 +312,6 @@ class RGSpace(Space):
     def _from_hdf5(cls, hdf5_group, repository):
         result = cls(
             shape=hdf5_group['shape'][:],
-            zerocenter=hdf5_group['zerocenter'][:],
             distances=hdf5_group['distances'][:],
             harmonic=hdf5_group['harmonic'][()],
             )

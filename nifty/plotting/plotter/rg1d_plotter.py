@@ -42,6 +42,4 @@ class RG1DPlotter(PlotterBase):
                                  num=num,
                                  endpoint=False)
 
-        if rgspace.zerocenter[0]:
-            xy_data[0] -= np.floor(length/2)
         return xy_data
