@@ -159,7 +159,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
 
     @expand(get_distance_array_configs())
     def test_distance_array(self, shape, distances, expected):
-        r = RGSpace(shape=shape, distances=distances)
+        r = RGSpace(shape=shape, distances=distances, harmonic=True)
         assert_almost_equal(r.get_distance_array('not'), expected)
 
     @expand(get_weight_configs())

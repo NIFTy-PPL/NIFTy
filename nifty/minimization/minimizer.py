@@ -17,32 +17,40 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
+from ..nifty_meta import NiftyMeta
 
 from keepers import Loggable
-
 from future.utils import with_metaclass
 
 
-class LineSearch(
-        with_metaclass(abc.ABCMeta, type('NewBase', (Loggable, object), {}))):
-    """Class for determining the optimal step size along some descent direction.
-
-    Initialize the line search procedure which can be used by a specific line
-    search method. It finds the step size in a specific direction in the
-    minimization process.
-
-    Attributes
-    ----------
-    line_energy : LineEnergy Object
-        LineEnergy object from which we can extract energy at a specific point.
-    preferred_initial_step_size : float
-        Initial guess for the step length.
-
+class Minimizer(
+        with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
+    """ A base class used by all minimizers.
     """
+    def __init__(self, controller):
+        self._controller = controller
+        # overwrite the logger from controller to show contex correctly
+        self._controller.logger = self.logger
 
-    def __init__(self):
-        self.preferred_initial_step_size = None
+    @property
+    def controller(self):
+        return self._controller
 
     @abc.abstractmethod
-    def perform_line_search(self, energy, pk, f_k_minus_1=None):
+    def __call__(self, energy):
+        """ Performs the minimization of the provided Energy functional.
+
+        Parameters
+        ----------
+        energy : Energy object
+           Energy object which provides value, gradient and curvature at a
+           specific position in parameter space.
+
+        Returns
+        -------
+        energy : Energy object
+            Latest `energy` of the minimization.
+        status : integer
+        """
+
         raise NotImplementedError

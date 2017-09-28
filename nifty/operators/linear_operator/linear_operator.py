@@ -66,30 +66,10 @@ class LinearOperator(with_metaclass(
     the LinearOperator. A LinearOperator must have the attributes domain,
     target and unitary to be properly defined.
 
-    See Also
-    --------
-    EndomorphicOperator, ProjectionOperator,
-    DiagonalOperator, SmoothingOperator, ResponseOperator,
-    PropagatorOperator, ComposedOperator
-
     """
 
     def __init__(self, default_spaces=None):
         self._default_spaces = default_spaces
-
-    def copy(self, **kwargs):
-        class EmptyCopy(self.__class__):
-            def __init__(self):
-                pass
-
-        result = EmptyCopy()
-        result.__class__ = self.__class__
-        result = self._add_attributes_to_copy(result, **kwargs)
-        return result
-
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._default_spaces = self.default_spaces
-        return copy
 
     @staticmethod
     def _parse_domain(domain):

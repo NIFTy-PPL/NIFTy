@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # Total side-length of the domain
     L = 2.
     # Grid resolution (pixels per axis)
-    N_pixels = 512
+    N_pixels = 128
 
     signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     harmonic_space = FFTOperator.get_default_codomain(signal_space)
@@ -54,9 +54,8 @@ if __name__ == "__main__":
     data_domain = R.target[0]
     R_harmonic = ComposedOperator([fft, R], default_spaces=[0, 0])
 
-    N = DiagonalOperator(data_domain,
-                         diagonal=mock_signal.var()/signal_to_noise,
-                         bare=True)
+    ndiag = Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)
+    N = DiagonalOperator(data_domain, ndiag)
     noise = Field.from_random(domain=data_domain,
                               random_type='normal',
                               std=mock_signal.std()/np.sqrt(signal_to_noise),

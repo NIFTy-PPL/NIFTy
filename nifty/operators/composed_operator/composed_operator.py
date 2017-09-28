@@ -72,12 +72,6 @@ class ComposedOperator(LinearOperator):
     >>> f = Field.from_random('normal', domain=(x1,x2))
     >>> FFT.times(f)
 
-    See Also
-    --------
-    EndomorphicOperator, ProjectionOperator,
-    DiagonalOperator, SmoothingOperator, ResponseOperator,
-    PropagatorOperator, ComposedOperator
-
     """
 
     # ---Overwritten properties and methods---
@@ -90,14 +84,6 @@ class ComposedOperator(LinearOperator):
                 raise TypeError("The elements of the operator list must be"
                                 "instances of the LinearOperator-baseclass")
             self._operator_store += (op,)
-
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._operator_store = ()
-        for op in self._operator_store:
-            copy._operator_store += (op.copy(),)
-        copy = super(ComposedOperator, self)._add_attributes_to_copy(
-                                                                copy, **kwargs)
-        return copy
 
     def _check_input_compatibility(self, x, spaces, inverse=False):
         """

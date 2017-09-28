@@ -28,7 +28,8 @@ class LaplaceOperatorTests(unittest.TestCase):
     @expand(product([None, False, True], [False, True], [10, 100, 1000]))
     def test_Laplace(self, log1, log2, sz):
         s = ift.RGSpace(sz, harmonic=True)
-        p = ift.PowerSpace(s, logarithmic=log1)
+        p = ift.PowerSpace(s, binbounds=ift.PowerSpace.useful_binbounds(s,
+                                                             logarithmic=log1))
         L = ift.LaplaceOperator(p, logarithmic=log2)
         arr = np.random.random(p.shape[0])
         fp = ift.Field(p, val=arr)

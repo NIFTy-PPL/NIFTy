@@ -3,30 +3,57 @@
 from builtins import range
 import numpy as np
 
-from nifty.operators.fft_operator import FFTOperator
+from ..endomorphic_operator import EndomorphicOperator
+from ..fft_operator import FFTOperator
 
-from .smoothing_operator import SmoothingOperator
 
+class FFTSmoothingOperator(EndomorphicOperator):
 
-class FFTSmoothingOperator(SmoothingOperator):
-
-    def __init__(self, domain, sigma, log_distances=False,
+    def __init__(self, domain, sigma,
                  default_spaces=None):
-        super(FFTSmoothingOperator, self).__init__(
-                                                domain=domain,
-                                                sigma=sigma,
-                                                log_distances=log_distances,
-                                                default_spaces=default_spaces)
+        super(FFTSmoothingOperator, self).__init__(default_spaces)
+
+        self._domain = self._parse_domain(domain)
+        if len(self._domain) != 1:
+            raise ValueError("SmoothingOperator only accepts exactly one "
+                             "space as input domain.")
+
+        self._sigma = sigma
         self._transformator_cache = {}
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._transformator_cache = self._transformator_cache
+    def _times(self, x, spaces):
+        if self.sigma == 0:
+            return x.copy()
 
-        copy = super(FFTSmoothingOperator, self)._add_attributes_to_copy(
-                                                                copy, **kwargs)
-        return copy
+        # the domain of the smoothing operator contains exactly one space.
+        # Hence, if spaces is None, but we passed LinearOperator's
+        # _check_input_compatibility, we know that x is also solely defined
+        # on that space
+        if spaces is None:
+            spaces = (0,)
 
-    def _smooth(self, x, spaces, inverse):
+        return self._smooth(x, spaces)
+
+    # ---Mandatory properties and methods---
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def self_adjoint(self):
+        return True
+
+    @property
+    def unitary(self):
+        return False
+
+    # ---Added properties and methods---
+
+    @property
+    def sigma(self):
+        return self._sigma
+
+    def _smooth(self, x, spaces):
         # transform to the (global-)default codomain and perform all remaining
         # steps therein
         transformator = self._get_transformator(x.dtype)
@@ -41,16 +68,12 @@ class FFTSmoothingOperator(SmoothingOperator):
         kernel = codomain.get_distance_array(
             distribution_strategy=axes_local_distribution_strategy)
 
-        #MR FIXME: this causes calls of log(0.) which should probably be avoided
-        if self.log_distances:
-            kernel.apply_scalar_function(np.log, inplace=True)
-
         kernel.apply_scalar_function(
             codomain.get_fft_smoothing_kernel_function(self.sigma),
             inplace=True)
 
         # now, apply the kernel to transformed_x
-        # this is done node-locally utilizing numpys reshaping in order to
+        # this is done node-locally utilizing numpy's reshaping in order to
         # apply the kernel to the correct axes
         local_transformed_x = transformed_x.val.get_local_data(copy=False)
         local_kernel = kernel.get_local_data(copy=False)
@@ -59,12 +82,7 @@ class FFTSmoothingOperator(SmoothingOperator):
                     for i in range(len(transformed_x.shape))]
         local_kernel = np.reshape(local_kernel, reshaper)
 
-        # apply the kernel
-        if inverse:
-            #MR FIXME: danger of having division by zero or overflows
-            local_transformed_x /= local_kernel
-        else:
-            local_transformed_x *= local_kernel
+        local_transformed_x *= local_kernel
 
         transformed_x.val.set_local_data(local_transformed_x, copy=False)
 

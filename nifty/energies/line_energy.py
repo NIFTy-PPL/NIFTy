@@ -18,8 +18,13 @@
 
 from __future__ import print_function
 
+from keepers import Loggable
+from ..nifty_meta import NiftyMeta
+from future.utils import with_metaclass
 
-class LineEnergy(object):
+
+class LineEnergy((with_metaclass(NiftyMeta,
+                                 type('NewBase', (Loggable, object), {})))):
     """ Evaluates an underlying Energy along a certain line direction.
 
     Given an Energy class and a line direction, its position is parametrized by
@@ -74,7 +79,7 @@ class LineEnergy(object):
         self._line_position = float(line_position)
         self._line_direction = line_direction
 
-        if self._line_position==float(offset):
+        if self._line_position == float(offset):
             self.energy = energy
         else:
             pos = energy.position \
@@ -116,6 +121,6 @@ class LineEnergy(object):
     def directional_derivative(self):
         res = self.energy.gradient.vdot(self.line_direction)
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
-            print ("directional derivative has non-negligible "
-                  "imaginary part:", res)
+            self.logger.warn("directional derivative has non-negligible "
+                             "imaginary part:", res)
         return res.real

@@ -51,21 +51,18 @@ class Space(DomainObject):
     Notes
     -----
     `Space` is an abstract base class. In order to allow for instantiation
-    the methods `get_distance_array`, `total_volume` and `copy` must be
-    implemented as well as the abstract methods inherited from
-    `DomainObject`.
+    the methods `total_volume` and `copy` must be implemented as well as the
+    abstract methods inherited from `DomainObject`.
 
     """
 
     def __init__(self):
-
         super(Space, self).__init__()
 
     @abc.abstractproperty
     def harmonic(self):
         """ Returns True if this space is a harmonic space.
         """
-
         raise NotImplementedError
 
     @abc.abstractproperty
@@ -76,9 +73,7 @@ class Space(DomainObject):
         -------
         float
             A real number representing the sum of all pixel volumes.
-
         """
-
         raise NotImplementedError(
             "There is no generic volume for the Space base class.")
 
@@ -90,16 +85,12 @@ class Space(DomainObject):
         -------
         Space
             A copy of this instance.
-
         """
-
         return self.__class__()
 
     def get_distance_array(self, distribution_strategy):
-        """ The distances of the pixel to zero.
-
-        This returns an array that gives for each pixel its distance to the
-        center of the manifolds grid.
+        """ The length of the k vector for every pixel.
+        This method is only implemented for harmonic spaces.
 
         Parameters
         ----------
@@ -110,18 +101,21 @@ class Space(DomainObject):
         Returns
         -------
         distributed_data_object
-            A d2o containing the distances
+            A d2o containing the k vector lengths
 
         """
-
-        raise NotImplementedError(
-            "There is no generic distance structure for Space base class.")
+        raise NotImplementedError
 
     def get_unique_distances(self):
+        """ Returns an array of floats containing the unique k vector lengths
+        for this space.
+        This method is only implemented for harmonic spaces.
+        """
         raise NotImplementedError
 
     def get_natural_binbounds(self):
         """ The boundaries for natural power spectrum binning.
+        This method is only implemented for harmonic spaces.
 
         Returns
         -------
@@ -164,6 +158,7 @@ class Space(DomainObject):
     def hermitianize_inverter(self, x, axes):
         """ Inverts/flips x in the context of Hermitian decomposition.
 
+        This method is only implemented for harmonic spaces.
         This method is mainly used for power-synthesizing and -analyzing
         Fields.
 

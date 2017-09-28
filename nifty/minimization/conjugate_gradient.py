@@ -17,12 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+
 import numpy as np
 
-from keepers import Loggable
+from .minimizer import Minimizer
+from .iteration_controlling import GradientNormController
 
 
-class ConjugateGradient(Loggable, object):
+class ConjugateGradient(Minimizer):
     """ Implementation of the Conjugate Gradient scheme.
 
     It is an iterative method for solving a linear system of equations:
@@ -30,43 +32,11 @@ class ConjugateGradient(Loggable, object):
 
     Parameters
     ----------
-    convergence_tolerance : float *optional*
-        Tolerance specifying the case of convergence. (default: 1E-4)
-    convergence_level : integer *optional*
-        Number of times the tolerance must be undershot before convergence
-        is reached. (default: 3)
-    iteration_limit : integer *optional*
-        Maximum number of iterations performed (default: None).
-    reset_count : integer *optional*
-        Number of iterations after which to restart; i.e., forget previous
-        conjugated directions (default: None).
+    controller : IterationController
+        Object that decides when to terminate the minimization.
     preconditioner : Operator *optional*
         This operator can be provided which transforms the variables of the
         system to improve the conditioning (default: None).
-    callback : callable *optional*
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed. (default: None)
-
-    Attributes
-    ----------
-    convergence_tolerance : float
-        Tolerance specifying the case of convergence.
-    convergence_level : integer
-        Number of times the tolerance must be undershot before convergence
-        is reached. (default: 3)
-    iteration_limit : integer
-        Maximum number of iterations performed.
-    reset_count : integer
-        Number of iterations after which to restart; i.e., forget previous
-        conjugated directions.
-    preconditioner : function
-        This operator can be provided which transforms the variables of the
-        system to improve the conditioning (default: None).
-    callback : callable
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed. (default: None)
 
     References
     ----------
@@ -75,140 +45,70 @@ class ConjugateGradient(Loggable, object):
 
     """
 
-    def __init__(self, convergence_tolerance=1E-4, convergence_level=3,
-                 iteration_limit=None, reset_count=None,
-                 preconditioner=None, callback=None):
+    def __init__(self,
+                 controller=GradientNormController(iteration_limit=100),
+                 preconditioner=None):
+        super(ConjugateGradient, self).__init__(controller=controller)
+        self._preconditioner = preconditioner
 
-        self.convergence_tolerance = np.float(convergence_tolerance)
-        self.convergence_level = np.float(convergence_level)
-
-        if iteration_limit is not None:
-            iteration_limit = int(iteration_limit)
-        self.iteration_limit = iteration_limit
-
-        if reset_count is not None:
-            reset_count = int(reset_count)
-        self.reset_count = reset_count
-
-        if preconditioner is None:
-            preconditioner = lambda z: z
-
-        self.preconditioner = preconditioner
-        self.callback = callback
-
-    def __call__(self, A, b, x0):
+    def __call__(self, energy):
         """ Runs the conjugate gradient minimization.
-        For `Ax = b` the variable `x` is infered.
 
         Parameters
         ----------
-        A : Operator
-            Operator `A` applicable to a Field.
-        b : Field
-            Result of the operation `A(x)`.
-        x0 : Field
-            Starting guess for the minimization.
+        energy : Energy object at the starting point of the iteration.
+            Its curvature operator must be independent of position, otherwise
+            linear conjugate gradient minimization will fail.
 
         Returns
         -------
-        x : Field
-            Latest `x` of the minimization.
-        convergence : integer
-            Latest convergence level indicating whether the minimization
-            has converged or not.
+        energy : QuadraticEnergy
+            state at last point of the iteration
+        status : integer
+            Can be controller.CONVERGED or controller.ERROR
 
         """
 
-        r = b - A(x0)
-        d = self.preconditioner(r)
-        previous_gamma = (r.vdot(d)).real
-        if previous_gamma == 0:
-            self.logger.info("The starting guess is already perfect solution "
-                             "for the inverse problem.")
-            return x0, self.convergence_level+1
-        norm_b = np.sqrt((b.vdot(b)).real)
-        x = x0.copy()
-        convergence = 0
-        iteration_number = 1
-        self.logger.info("Starting conjugate gradient.")
+        controller = self._controller
+        controller.reset(energy)
 
-        beta = np.inf
-        delta = np.inf
+        r = -energy.gradient
+        previous_gamma = np.inf
+        d = r.copy_empty()
+        d.val[:] = 0.
 
         while True:
-            if self.callback is not None:
-                self.callback(x, iteration_number)
-
-            q = A(d)
-            alpha = previous_gamma/d.vdot(q).real
-
-            if not np.isfinite(alpha):
-                self.logger.error(
-                        "Alpha became infinite! Stopping. Iteration : %08u   "
-                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
-                        (iteration_number, alpha, beta, delta))
-                return x0, 0
-
-            x += d * alpha
-
-            reset = False
-            if alpha < 0:
-                self.logger.warn("Positive definiteness of A violated!")
-                reset = True
-            if self.reset_count is not None:
-                reset += (iteration_number % self.reset_count == 0)
-            if reset:
-                self.logger.info("Resetting conjugate directions.")
-                r = b - A(x)
+            if self._preconditioner is not None:
+                s = self._preconditioner(r)
             else:
-                r -= q * alpha
-
-            s = self.preconditioner(r)
+                s = r
             gamma = r.vdot(s).real
-
             if gamma < 0:
-                self.logger.warn("Positive definitness of preconditioner "
-                                 "violated!")
-
-            beta = max(0, gamma/previous_gamma)
-
-            delta = np.sqrt(gamma)/norm_b
-
-            self.logger.debug("Iteration : %08u   alpha = %3.1E   "
-                              "beta = %3.1E   delta = %3.1E" %
-                              (iteration_number, alpha, beta, delta))
-
+                self.logger.warn(
+                    "Positive definiteness of preconditioner violated!")
             if gamma == 0:
-                convergence = self.convergence_level+1
-                self.logger.info(
-                        "Reached infinite convergence. Iteration : %08u   "
-                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
-                        (iteration_number, alpha, beta, delta))
-                break
-            elif abs(delta) < self.convergence_tolerance:
-                convergence += 1
-                self.logger.info("Updated convergence level to: %u" %
-                                 convergence)
-                if convergence == self.convergence_level:
-                    self.logger.info(
-                        "Reached target convergence level. Iteration : %08u   "
-                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
-                        (iteration_number, alpha, beta, delta))
-                    break
-            else:
-                convergence = max(0, convergence-1)
+                self.logger.info("Gamma == 0. Stopping.")
+                return energy, controller.CONVERGED
 
-            if self.iteration_limit is not None:
-                if iteration_number == self.iteration_limit:
-                    self.logger.info(
-                        "Reached iteration limit. Iteration : %08u   "
-                        "alpha = %3.1E   beta = %3.1E   delta = %3.1E" %
-                        (iteration_number, alpha, beta, delta))
-                    break
-
-            d = s + d * beta
-
-            iteration_number += 1
+            d = s + d * max(0, gamma/previous_gamma)
             previous_gamma = gamma
 
-        return x, convergence
+            status = controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
+
+            q = energy.curvature(d)
+            ddotq = d.vdot(q).real
+            if ddotq == 0.:
+                self.logger.error("Alpha became infinite! Stopping.")
+                return energy, controller.ERROR
+            alpha = previous_gamma/ddotq
+
+            if alpha < 0:
+                self.logger.error(
+                        "Positive definiteness of A violated! Stopping.")
+                return energy, controller.ERROR
+
+            r -= q * alpha
+            energy = energy.at(position=energy.position + d*alpha,
+                               gradient=-r)

@@ -18,17 +18,13 @@
 
 from __future__ import division
 import abc
-from ..nifty_meta import NiftyMeta
 
-import numpy as np
-
-from keepers import Loggable
-
+from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
-from future.utils import with_metaclass
+from .iteration_controlling import GradientNormController
 
 
-class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
+class DescentMinimizer(Minimizer):
     """ A base class used by gradient methods to find a local minimum.
 
     Descent minimization methods are used to find a local minimum of a scalar
@@ -38,60 +34,19 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
 
     Parameters
     ----------
+    controller : IterationController
+        Object that decides when to terminate the minimization.
     line_searcher : callable *optional*
         Function which infers the step size in the descent direction
         (default : LineSearchStrongWolfe()).
-    callback : callable *optional*
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed. (default: None)
-    convergence_tolerance : float *optional*
-        Tolerance specifying the case of convergence. (default: 1E-4)
-    convergence_level : integer *optional*
-        Number of times the tolerance must be undershot before convergence
-        is reached. (default: 3)
-    iteration_limit : integer *optional*
-        Maximum number of iterations performed (default: None).
-
-    Attributes
-    ----------
-    convergence_tolerance : float
-        Tolerance specifying the case of convergence.
-    convergence_level : integer
-        Number of times the tolerance must be undershot before convergence
-        is reached. (default: 3)
-    iteration_limit : integer
-        Maximum number of iterations performed.
-    line_searcher : LineSearch
-        Function which infers the optimal step size for functional minization
-        given a descent direction.
-    callback : function
-        Function f(energy, iteration_number) supplied by the user to perform
-        in-situ analysis at every iteration step. When being called the
-        current energy and iteration_number are passed.
-
-    Notes
-    ------
-    The callback function can be used to externally stop the minimization by
-    raising a `StopIteration` exception.
-    Check `get_descent_direction` of a derived class for information on the
-    concrete minization scheme.
 
     """
 
-    def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
-                 convergence_tolerance=1E-4, convergence_level=3,
-                 iteration_limit=None):
-
-        self.convergence_tolerance = np.float(convergence_tolerance)
-        self.convergence_level = np.int(convergence_level)
-
-        if iteration_limit is not None:
-            iteration_limit = int(iteration_limit)
-        self.iteration_limit = iteration_limit
-
+    def __init__(self,
+                 controller=GradientNormController(iteration_limit=100),
+                 line_searcher=LineSearchStrongWolfe()):
+        super(DescentMinimizer, self).__init__(controller=controller)
         self.line_searcher = line_searcher
-        self.callback = callback
 
     def __call__(self, energy):
         """ Performs the minimization of the provided Energy functional.
@@ -106,98 +61,43 @@ class DescentMinimizer(with_metaclass(NiftyMeta, type('NewBase', (Loggable, obje
         -------
         energy : Energy object
             Latest `energy` of the minimization.
-        convergence : integer
-            Latest convergence level indicating whether the minimization
-            has converged or not.
+        status : integer
+            Can be controller.CONVERGED or controller.ERROR
 
         Note
         ----
         The minimization is stopped if
-            * the callback function raises a `StopIteration` exception,
+            * the controller returns controller.CONVERGED or controller.ERROR,
             * a perfectly flat point is reached,
             * according to the line-search the minimum is found,
-            * the target convergence level is reached,
-            * the iteration limit is reached.
 
         """
 
-        convergence = 0
         f_k_minus_1 = None
-        iteration_number = 1
+        controller = self._controller
+        controller.reset(energy)
 
         while True:
-            if self.callback is not None:
-                try:
-                    self.callback(energy, iteration_number)
-                except StopIteration:
-                    self.logger.info("Minimization was stopped by callback "
-                                     "function.")
-                    break
-
-            # compute the the gradient for the current location
-            gradient = energy.gradient
-            gradient_norm = gradient.norm()
-
-            # check if position is at a flat point
-            if gradient_norm == 0:
-                self.logger.info("Reached perfectly flat point. Stopping.")
-                convergence = self.convergence_level+2
-                break
+            status = controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
 
             # current position is encoded in energy object
             descent_direction = self.get_descent_direction(energy)
             # compute the step length, which minimizes energy.value along the
             # search direction
             try:
-                new_energy = \
-                    self.line_searcher.perform_line_search(
+                new_energy = self.line_searcher.perform_line_search(
                                                    energy=energy,
                                                    pk=descent_direction,
                                                    f_k_minus_1=f_k_minus_1)
             except RuntimeError:
                 self.logger.warn(
                         "Stopping because of RuntimeError in line-search")
-                break
+                return energy, controller.ERROR
 
             f_k_minus_1 = energy.value
-            f_k = new_energy.value
-            delta = (abs(f_k-f_k_minus_1) /
-                     max(abs(f_k), abs(f_k_minus_1), 1.))
-            # check if new energy value is bigger than old energy value
-            if (new_energy.value - energy.value) > 0:
-                self.logger.info("Line search algorithm returned a new energy "
-                                 "that was larger than the old one. Stopping.")
-                break
-
             energy = new_energy
-            # check convergence
-            self.logger.debug("Iteration:%08u "
-                              "delta=%3.1E energy=%3.1E" %
-                              (iteration_number, delta,
-                               energy.value))
-            if delta == 0:
-                convergence = self.convergence_level + 2
-                self.logger.info("Found minimum according to line-search. "
-                                 "Stopping.")
-                break
-            elif delta < self.convergence_tolerance:
-                convergence += 1
-                self.logger.info("Updated convergence level to: %u" %
-                                 convergence)
-                if convergence == self.convergence_level:
-                    self.logger.info("Reached target convergence level.")
-                    break
-            else:
-                convergence = max(0, convergence-1)
-
-            if self.iteration_limit is not None:
-                if iteration_number == self.iteration_limit:
-                    self.logger.warn("Reached iteration limit. Stopping.")
-                    break
-
-            iteration_number += 1
-
-        return energy, convergence
 
     @abc.abstractmethod
     def get_descent_direction(self, energy):

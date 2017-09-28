@@ -17,12 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..nifty_meta import NiftyMeta
+from .memoization import memo
 
 from keepers import Loggable
 from future.utils import with_metaclass
 
 
-class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
+class Energy(with_metaclass(NiftyMeta,
+                            type('NewBase', (Loggable, object), {}))):
     """ Provides the functional used by minimization schemes.
 
    The Energy object is an implementation of a scalar function including its
@@ -41,7 +43,7 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {})))
     value : np.float
         The value of the energy functional at given `position`.
     gradient : Field
-        The gradient at given `position` in parameter direction.
+        The gradient at given `position`.
     curvature : LinearOperator, callable
         A positive semi-definite operator or function describing the curvature
         of the potential at the given `position`.
@@ -64,12 +66,18 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {})))
 
     """
 
-    def __init__(self, position):
+    def __init__(self, position, gradient=None, curvature=None):
         super(Energy, self).__init__()
-        self._cache = {}
         self._position = position.copy()
 
-    def at(self, position):
+        self._cache = {}
+        if gradient is not None:
+            self._cache['gradient'] = gradient
+
+        if curvature is not None:
+            self._cache['curvature'] = curvature
+
+    def at(self, position, gradient=None, curvature=None):
         """ Initializes and returns a new Energy object at the new position.
 
         Parameters
@@ -83,10 +91,12 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {})))
             Energy object at new position.
 
         """
-
-        return self.__class__(position)
+        return self.__class__(position,
+                              gradient=gradient,
+                              curvature=curvature)
 
     @property
+    @memo
     def position(self):
         """
         The Field location in parameter space where value, gradient and
@@ -97,6 +107,7 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {})))
         return self._position
 
     @property
+    @memo
     def value(self):
         """
         The value of the energy functional at given `position`.
@@ -106,15 +117,37 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {})))
         raise NotImplementedError
 
     @property
+    @memo
     def gradient(self):
         """
-        The gradient at given `position` in parameter direction.
+        The gradient at given `position`.
 
         """
 
         raise NotImplementedError
 
     @property
+    @memo
+    def gradient_norm(self):
+        """
+        The length of the gradient at given `position`.
+
+        """
+
+        return self.gradient.norm()
+
+    @property
+    @memo
+    def gradient_infnorm(self):
+        """
+        The infinity norm of the gradient at given `position`.
+
+        """
+
+        return abs(self.gradient).max()
+
+    @property
+    @memo
     def curvature(self):
         """
         A positive semi-definite operator or function describing the curvature

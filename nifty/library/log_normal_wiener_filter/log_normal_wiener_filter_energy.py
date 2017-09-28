@@ -1,5 +1,6 @@
 from ...energies.energy import Energy
 from ...energies.memoization import memo
+from ...minimization import ConjugateGradient
 from . import LogNormalWienerFilterCurvature
 from ...sugar import create_composed_fft_operator
 
@@ -24,26 +25,35 @@ class LogNormalWienerFilterEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, d, R, N, S, fft4exp=None, old_curvature=None):
-        super(LogNormalWienerFilterEnergy, self).__init__(position=position)
+    def __init__(self, position, d, R, N, S, offset=None, fft4exp=None,
+                 inverter=None, gradient=None, curvature=None):
+        super(LogNormalWienerFilterEnergy, self).__init__(position=position,
+                                                          gradient=gradient,
+                                                          curvature=curvature)
         self.d = d
         self.R = R
         self.N = N
         self.S = S
-
+        self.offset = offset
         if fft4exp is None:
             self._fft = create_composed_fft_operator(self.S.domain,
                                                      all_to='position')
         else:
             self._fft = fft4exp
 
-        self._old_curvature = old_curvature
-        self._curvature = None
+        if inverter is None:
+            inverter = ConjugateGradient(preconditioner=self.S.times)
+        self._inverter = inverter
 
-    def at(self, position):
-        return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
-                              S=self.S, fft4exp=self._fft,
-                              old_curvature=self._curvature)
+    @property
+    def inverter(self):
+        return self._inverter
+
+    def at(self, position, gradient=None, curvature=None):
+        return self.__class__(position=position,
+                              d=self.d, R=self.R, N=self.N, S=self.S,
+                              offset=self.offset, fft4exp=self._fft,
+                              gradient=gradient, curvature=curvature)
 
     @property
     @memo
@@ -57,20 +67,16 @@ class LogNormalWienerFilterEnergy(Energy):
         return self._Sp + self._exppRNRexppd
 
     @property
+    @memo
     def curvature(self):
-        if self._curvature is None:
-            if self._old_curvature is None:
-                self._curvature = LogNormalWienerFilterCurvature(
-                                                      R=self.R,
-                                                      N=self.N,
-                                                      S=self.S,
-                                                      d=self.d,
-                                                      position=self.position,
-                                                      fft4exp=self._fft)
-            else:
-                self._curvature = \
-                    self._old_curvature.copy(position=self.position)
-        return self._curvature
+        return LogNormalWienerFilterCurvature(R=self.R,
+                                              N=self.N,
+                                              S=self.S,
+                                              d=self.d,
+                                              position=self.position,
+                                              fft4exp=self._fft,
+                                              offset=self.offset,
+                                              inverter=self.inverter)
 
     @property
     def _expp(self):

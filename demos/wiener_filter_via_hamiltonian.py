@@ -1,3 +1,6 @@
+
+import d2o
+
 from nifty import *
 
 import plotly.offline as pl
@@ -8,7 +11,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.rank
 
-np.random.seed(42)
+d2o.random.seed(42)
 
 
 class AdjointFFTResponse(LinearOperator):
@@ -40,7 +43,8 @@ class AdjointFFTResponse(LinearOperator):
 
 if __name__ == "__main__":
 
-    distribution_strategy = 'not'
+    nifty_configuration['default_distribution_strategy'] = 'fftw'
+    nifty_configuration['harmonic_rg_base'] = 'real'
 
     # Set up position space
     s_space = RGSpace([128, 128])
@@ -51,18 +55,16 @@ if __name__ == "__main__":
     h_space = fft.target[0]
 
     # Setting up power space
-    p_space = PowerSpace(h_space, distribution_strategy=distribution_strategy)
+    p_space = PowerSpace(h_space)
 
     # Choosing the prior correlation structure and defining
     # correlation operator
     p_spec = (lambda k: (42 / (k + 1) ** 3))
 
-    S = create_power_operator(h_space, power_spectrum=p_spec,
-                              distribution_strategy=distribution_strategy)
+    S = create_power_operator(h_space, power_spectrum=p_spec)
 
     # Drawing a sample sh from the prior distribution in harmonic space
-    sp = Field(p_space, val=p_spec,
-               distribution_strategy=distribution_strategy)
+    sp = Field(p_space, val=p_spec)
     sh = sp.power_synthesize(real_signal=True)
     ss = fft.adjoint_times(sh)
 
@@ -74,7 +76,8 @@ if __name__ == "__main__":
     # Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
     signal_to_noise = 1.
-    N = DiagonalOperator(s_space, diagonal=ss.var()/signal_to_noise, bare=True)
+    ndiag = Field(s_space, val=ss.var()/signal_to_noise).weight()
+    N = DiagonalOperator(s_space, diagonal=ndiag)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
                           std=ss.std()/np.sqrt(signal_to_noise),
@@ -94,9 +97,17 @@ if __name__ == "__main__":
 #                                iteration_limit=50,
 #                                callback=convergence_measure)
 
-    minimizer = RelaxedNewton(convergence_tolerance=0,
-                              iteration_limit=1,
-                              callback=convergence_measure)
+
+
+    controller = GradientNormController(iteration_limit=50,
+                                        callback=convergence_measure)
+    minimizer = VL_BFGS(controller=controller)
+
+    controller = GradientNormController(iteration_limit=1,
+                                        callback=convergence_measure)
+    minimizer = RelaxedNewton(controller=controller)
+
+
     #
     # minimizer = VL_BFGS(convergence_tolerance=0,
     #                    iteration_limit=50,
@@ -104,9 +115,6 @@ if __name__ == "__main__":
     #                    max_history_length=3)
     #
 
-    inverter = ConjugateGradient(convergence_level=3,
-                                 convergence_tolerance=1e-5,
-                                 preconditioner=None)
     # Setting starting position
     m0 = Field(h_space, val=.0)
 
@@ -115,15 +123,22 @@ if __name__ == "__main__":
     D0 = energy.curvature
 
     # Solving the problem analytically
-    m0 = D0.inverse_times(j)
+#    m0 = D0.inverse_times(j)
 
-    sample_variance = Field(sh.domain, val=0.)
-    sample_mean = Field(sh.domain, val=0.)
+    m = minimizer(energy)[0].position
 
-    # sampling the uncertainty map
-    n_samples = 10
-    for i in range(n_samples):
-        sample = fft(sugar.generate_posterior_sample(0., D0))
-        sample_variance += sample**2
-        sample_mean += sample
-    variance = (sample_variance - sample_mean**2)/n_samples
+    plotter = plotting.RG2DPlotter()
+    plotter(ss, path='signal.html')
+    plotter(fft.inverse_times(m), path='m.html')
+
+
+#    sample_variance = Field(sh.domain, val=0.)
+#    sample_mean = Field(sh.domain, val=0.)
+
+#    # sampling the uncertainty map
+#    n_samples = 10
+#    for i in range(n_samples):
+#        sample = fft(sugar.generate_posterior_sample(0., D0))
+#        sample_variance += sample**2
+#        sample_mean += sample
+#    variance = (sample_variance - sample_mean**2)/n_samples

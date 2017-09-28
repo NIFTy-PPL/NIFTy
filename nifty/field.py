@@ -18,7 +18,6 @@
 
 from __future__ import division
 from builtins import zip
-#from builtins import str
 from builtins import range
 
 import ast
@@ -282,8 +281,8 @@ class Field(Loggable, Versionable, object):
 
     # ---Powerspectral methods---
 
-    def power_analyze(self, spaces=None, logarithmic=None, nbin=None,
-                      binbounds=None, keep_phase_information=False):
+    def power_analyze(self, spaces=None, binbounds=None,
+                      keep_phase_information=False):
         """ Computes the square root power spectrum for a subspace of `self`.
 
         Creates a PowerSpace for the space addressed by `spaces` with the given
@@ -297,16 +296,8 @@ class Field(Loggable, Versionable, object):
         spaces : int *optional*
             The subspace for which the powerspectrum shall be computed
             (default : None).
-        logarithmic : boolean *optional*
-            True if the output PowerSpace should use logarithmic binning.
-            {default : None}
-        nbin : int *optional*
-            The number of bins the resulting PowerSpace shall have
-            (default : None).
-            if nbin==None : maximum number of bins is used
         binbounds : array-like *optional*
             Inner bounds of the bins (default : None).
-            Overrides nbin and logarithmic.
             if binbounds==None : bins are inferred.
         keep_phase_information : boolean, *optional*
             If False, return a real-valued result containing the power spectrum
@@ -374,8 +365,6 @@ class Field(Loggable, Versionable, object):
             parts = [self._single_power_analyze(
                                 work_field=part,
                                 space_index=space_index,
-                                logarithmic=logarithmic,
-                                nbin=nbin,
                                 binbounds=binbounds)
                      for part in parts]
 
@@ -387,8 +376,7 @@ class Field(Loggable, Versionable, object):
         return result_field
 
     @classmethod
-    def _single_power_analyze(cls, work_field, space_index, logarithmic, nbin,
-                              binbounds):
+    def _single_power_analyze(cls, work_field, space_index, binbounds):
 
         if not work_field.domain[space_index].harmonic:
             raise ValueError(
@@ -407,7 +395,6 @@ class Field(Loggable, Versionable, object):
         harmonic_domain = work_field.domain[space_index]
         power_domain = PowerSpace(harmonic_partner=harmonic_domain,
                                   distribution_strategy=distribution_strategy,
-                                  logarithmic=logarithmic, nbin=nbin,
                                   binbounds=binbounds)
         power_spectrum = cls._calculate_power_spectrum(
                                 field_val=work_field.val,
@@ -689,7 +676,7 @@ class Field(Loggable, Versionable, object):
             result_list[0].val.get_axes_local_distribution_strategy(
                 result_list[0].domain_axes[power_space_index])
 
-        if pindex.distribution_strategy is not local_distribution_strategy:
+        if pindex.distribution_strategy != local_distribution_strategy:
             raise AttributeError(
                 "The distribution_strategy of pindex does not fit the "
                 "slice_local distribution strategy of the synthesized field.")
@@ -827,7 +814,7 @@ class Field(Loggable, Versionable, object):
         try:
             return int(reduce(lambda x, y: x * y, dim_tuple))
         except TypeError:
-            return 0
+            return 1
 
     @property
     def dof(self):
@@ -866,9 +853,9 @@ class Field(Loggable, Versionable, object):
     def imag(self):
         """ The imaginary part of the field (data is not copied).
         """
-        real_part = self.val.imag
-        result = self.copy_empty(dtype=real_part.dtype)
-        result.set_val(new_val=real_part, copy=False)
+        imag_part = self.val.imag
+        result = self.copy_empty(dtype=imag_part.dtype)
+        result.set_val(new_val=imag_part, copy=False)
         return result
 
     # ---Special unary/binary operations---
@@ -1085,7 +1072,7 @@ class Field(Loggable, Versionable, object):
         new_field.set_val(new_val=new_val, copy=False)
         return new_field
 
-    def vdot(self, x=None, spaces=None, bare=False):
+    def vdot(self, x=None, spaces=None):
         """ Computes the volume-factor-aware dot product of 'self' with x.
 
         Parameters
@@ -1097,9 +1084,6 @@ class Field(Loggable, Versionable, object):
             If the domain of `self` and `x` are not the same, `spaces` specfies
             the mapping.
 
-        bare : boolean
-            If true, no volume factors will be included in the computation.
-
         Returns
         -------
         out : float, complex
@@ -1110,10 +1094,7 @@ class Field(Loggable, Versionable, object):
                              "the NIFTy field class")
 
         # Compute the dot respecting the fact of discrete/continuous spaces
-        if bare:
-            y = self
-        else:
-            y = self.weight(power=1)
+        y = self.weight(power=1)
 
         if spaces is None:
             x_val = x.get_val(copy=False)
@@ -1603,7 +1584,7 @@ class Field(Loggable, Versionable, object):
 
         new_field.dtype = np.dtype(hdf5_group.attrs['dtype'])
         new_field.distribution_strategy =\
-            hdf5_group.attrs['distribution_strategy']
+            str(hdf5_group.attrs['distribution_strategy'])
 
         return new_field
 

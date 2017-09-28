@@ -40,8 +40,8 @@ HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
                    LMSpace(9)]
 
 
-#Try all sensible kinds of combinations of spaces, distributuion strategy and
-#binning parameters
+# Try all sensible kinds of combinations of spaces, distribution strategy and
+# binning parameters
 CONSISTENCY_CONFIGS_IMPLICIT = product(HARMONIC_SPACES,
                                        ["not", "equal", "fftw"],
                                        [None], [None, 3, 4], [True, False])
@@ -69,14 +69,14 @@ CONSTRUCTOR_CONFIGS = [
         }],
     [RGSpace((8,), harmonic=True), 'not', True, None, None, {
         'harmonic': True,
-        'shape': (2,),
-        'dim': 2,
+        'shape': (4,),
+        'dim': 4,
         'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
-        'binbounds': (0.70710678118654757,),
+        'binbounds': (0.5, 1.3228756555322954, 3.5),
         'pindex': distributed_data_object([0, 1, 1, 1, 1, 1, 1, 1]),
-        'kindex': np.array([0., 2.28571429]),
-        'rho': np.array([1, 7]),
+        'kindex': np.array([0., 1., 2.5, 4.]),
+        'rho': np.array([1, 2, 4, 1]),
         }],
     ]
 
@@ -122,18 +122,20 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
 
 class PowerSpaceConsistencyCheck(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
-    def test_rhopindexConsistency(self, harmonic_partner, distribution_strategy,
+    def test_rhopindexConsistency(self, harmonic_partner,
+                                  distribution_strategy,
                                   binbounds, nbin, logarithmic):
         if distribution_strategy == "fftw":
             if not hasattr(gdi.get('fftw'), 'FFTW_MPI'):
                 raise SkipTest
         p = PowerSpace(harmonic_partner=harmonic_partner,
-                           distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                       distribution_strategy=distribution_strategy,
+                       binbounds=PowerSpace.useful_binbounds(
+                                       harmonic_partner, logarithmic, nbin))
 
         assert_equal(p.pindex.flatten().bincount(), p.rho,
-            err_msg='rho is not equal to pindex degeneracy')
+                     err_msg='rho is not equal to pindex degeneracy')
+
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
@@ -146,13 +148,13 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
             with assert_raises(expected['error']):
                 PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                           binbounds=PowerSpace.useful_binbounds(
+                                       harmonic_partner, logarithmic, nbin))
         else:
             p = PowerSpace(harmonic_partner=harmonic_partner,
                            distribution_strategy=distribution_strategy,
-                           logarithmic=logarithmic, nbin=nbin,
-                           binbounds=binbounds)
+                           binbounds=PowerSpace.useful_binbounds(
+                                       harmonic_partner, logarithmic, nbin))
             for key, value in expected.items():
                 if isinstance(value, np.ndarray):
                     assert_almost_equal(getattr(p, key), value)

@@ -18,13 +18,13 @@
 
 import unittest
 import numpy as np
-from numpy.testing import assert_equal, assert_approx_equal,\
-    assert_allclose
+from numpy.testing import assert_allclose
 
 from nifty import Field,\
     RGSpace,\
     PowerSpace,\
-    SmoothingOperator
+    FFTSmoothingOperator,\
+    DirectSmoothingOperator
 
 from itertools import product
 from test.common import expand
@@ -36,59 +36,45 @@ def _get_rtol(tp):
     else:
         return 1e-5
 
+
 class SmoothingOperator_Tests(unittest.TestCase):
     spaces = [RGSpace(128)]
 
-    @expand(product(spaces, [0., .5, 5.], [True, False]))
-    def test_property(self, space, sigma, log_distances):
-        op = SmoothingOperator.make(space, sigma=sigma,
-                              log_distances=log_distances)
+    @expand(product(spaces, [0., .5, 5.]))
+    def test_property(self, space, sigma):
+        op = FFTSmoothingOperator(space, sigma=sigma)
         if op.domain[0] != space:
             raise TypeError
-        if op.unitary != False:
+        if op.unitary:
             raise ValueError
-        if op.self_adjoint != True:
+        if not op.self_adjoint:
             raise ValueError
         if op.sigma != sigma:
             raise ValueError
-        if op.log_distances != log_distances:
-            raise ValueError
 
-    @expand(product(spaces, [0., .5, 5.], [True, False]))
-    def test_adjoint_times(self, space, sigma, log_distances):
-        op = SmoothingOperator.make(space, sigma=sigma,
-                              log_distances=log_distances)
+    @expand(product(spaces, [0., .5, 5.]))
+    def test_adjoint_times(self, space, sigma):
+        op = FFTSmoothingOperator(space, sigma=sigma)
         rand1 = Field.from_random('normal', domain=space)
         rand2 = Field.from_random('normal', domain=space)
         tt1 = rand1.vdot(op.times(rand2))
         tt2 = rand2.vdot(op.adjoint_times(rand1))
-        assert_approx_equal(tt1, tt2)
+        assert_allclose(tt1, tt2)
 
-    @expand(product(spaces, [0., .5, 5.], [False]))
-    def test_times(self, space, sigma, log_distances):
-        op = SmoothingOperator.make(space, sigma=sigma,
-                              log_distances=log_distances)
+    @expand(product(spaces, [0., .5, 5.]))
+    def test_times(self, space, sigma):
+        op = FFTSmoothingOperator(space, sigma=sigma)
         rand1 = Field(space, val=0.)
         rand1.val[0] = 1.
         tt1 = op.times(rand1)
-        assert_approx_equal(1, tt1.sum())
-
-    @expand(product(spaces, [0., .5, 5.], [True, False]))
-    def test_inverse_adjoint_times(self, space, sigma, log_distances):
-        op = SmoothingOperator.make(space, sigma=sigma,
-                              log_distances=log_distances)
-        rand1 = Field.from_random('normal', domain=space)
-        rand2 = Field.from_random('normal', domain=space)
-        tt1 = rand1.vdot(op.inverse_times(rand2))
-        tt2 = rand2.vdot(op.inverse_adjoint_times(rand1))
-        assert_approx_equal(tt1, tt2)
+        assert_allclose(1, tt1.sum())
 
     @expand(product([128, 256], [1, 0.4], [0., 1.,  3.7],
                     [np.float64, np.complex128]))
     def test_smooth_regular1(self, sz, d, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace(sz, harmonic=True, distances=d)
-        smo = SmoothingOperator.make(sp, sigma=sigma)
+        sp = RGSpace(sz, distances=d)
+        smo = FFTSmoothingOperator(sp, sigma=sigma)
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
@@ -99,8 +85,8 @@ class SmoothingOperator_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def test_smooth_regular2(self, sz1, sz2, d1, d2, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace([sz1, sz2], distances=[d1, d2], harmonic=True)
-        smo = SmoothingOperator.make(sp, sigma=sigma)
+        sp = RGSpace([sz1, sz2], distances=[d1, d2])
+        smo = FFTSmoothingOperator(sp, sigma=sigma)
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
@@ -112,8 +98,9 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_irregular1(self, sz, log, sigma, tp):
         tol = _get_rtol(tp)
         sp = RGSpace(sz, harmonic=True)
-        ps = PowerSpace(sp, nbin=sz, logarithmic=log)
-        smo = SmoothingOperator.make(ps, sigma=sigma)
+        ps = PowerSpace(sp, binbounds=PowerSpace.useful_binbounds(
+                                                sp, logarithmic=log))
+        smo = DirectSmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
@@ -125,8 +112,9 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_irregular2(self, sz1, sz2, log, sigma, tp):
         tol = _get_rtol(tp)
         sp = RGSpace([sz1, sz2], harmonic=True)
-        ps = PowerSpace(sp, logarithmic=log)
-        smo = SmoothingOperator.make(ps, sigma=sigma)
+        ps = PowerSpace(sp, binbounds=PowerSpace.useful_binbounds(
+                                                        sp, logarithmic=log))
+        smo = DirectSmoothingOperator(ps, sigma=sigma)
         inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)

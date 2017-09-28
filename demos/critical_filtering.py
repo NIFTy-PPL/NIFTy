@@ -68,7 +68,7 @@ if __name__ == "__main__":
     h_space = fft.target[0]
 
     # Set up power space
-    p_space = PowerSpace(h_space, logarithmic=True,
+    p_space = PowerSpace(h_space, binbounds=PowerSpace.useful_binbounds(h_space,logarithmic=True),
                          distribution_strategy=distribution_strategy)
 
     # Choose the prior correlation structure and defining correlation operator
@@ -91,7 +91,8 @@ if __name__ == "__main__":
     R = AdjointFFTResponse(fft, Instrument)
 
     noise = 1.
-    N = DiagonalOperator(s_space, diagonal=noise, bare=True)
+    ndiag = Field(s_space, noise).weight(1)
+    N = DiagonalOperator(s_space, ndiag)
     n = Field.from_random(domain=s_space,
                           random_type='normal',
                           std=sqrt(noise),
