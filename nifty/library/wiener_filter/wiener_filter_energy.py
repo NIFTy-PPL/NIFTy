@@ -49,7 +49,9 @@ class WienerFilterEnergy(Energy):
     @property
     @memo
     def value(self):
-        return 0.5*self.position.vdot(self._Dx) - self._j.vdot(self.position)
+        energy = 0.5*self.position.vdot(self._Dx)
+        energy -= self._j.vdot(self.position)
+        return energy.real
 
     @property
     @memo
