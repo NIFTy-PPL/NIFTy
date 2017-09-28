@@ -18,19 +18,14 @@
 
 from .descent_minimizer import DescentMinimizer
 from .line_searching import LineSearchStrongWolfe
+from .iteration_controlling import GradientNormController
 
 
 class RelaxedNewton(DescentMinimizer):
-
-    def __init__(self, line_searcher=LineSearchStrongWolfe(), callback=None,
-                 convergence_tolerance=1E-4, convergence_level=3,
-                 iteration_limit=None):
-        super(RelaxedNewton, self).__init__(
-                                line_searcher=line_searcher,
-                                callback=callback,
-                                convergence_tolerance=convergence_tolerance,
-                                convergence_level=convergence_level,
-                                iteration_limit=iteration_limit)
+    def __init__(self, controller=GradientNormController(iteration_limit=100),
+                 line_searcher=LineSearchStrongWolfe()):
+        super(RelaxedNewton, self).__init__(controller=controller,
+                                            line_searcher=line_searcher)
 
         self.line_searcher.preferred_initial_step_size = 1.
 

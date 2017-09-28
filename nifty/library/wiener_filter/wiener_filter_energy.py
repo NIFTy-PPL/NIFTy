@@ -1,5 +1,7 @@
 from ...energies.energy import Energy
 from ...energies.memoization import memo
+from ...minimization import ConjugateGradient
+
 from . import WienerFilterCurvature
 
 
@@ -23,17 +25,26 @@ class WienerFilterEnergy(Energy):
         The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, d, R, N, S, old_curvature=None):
-        super(WienerFilterEnergy, self).__init__(position=position)
+    def __init__(self, position, d, R, N, S, inverter=None,
+                 gradient=None, curvature=None):
+        super(WienerFilterEnergy, self).__init__(position=position,
+                                                 gradient=gradient,
+                                                 curvature=curvature)
         self.d = d
         self.R = R
         self.N = N
         self.S = S
-        self._curvature = old_curvature
+        if inverter is None:
+            inverter = ConjugateGradient(preconditioner=self.S.times)
+        self._inverter = inverter
 
-    def at(self, position):
+    @property
+    def inverter(self):
+        return self._inverter
+
+    def at(self, position, gradient=None, curvature=None):
         return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
-                              S=self.S, old_curvature=self.curvature)
+                              S=self.S, inverter=self.inverter)
 
     @property
     @memo
@@ -46,12 +57,10 @@ class WienerFilterEnergy(Energy):
         return self._Dx - self._j
 
     @property
+    @memo
     def curvature(self):
-        if self._curvature is None:
-            self._curvature = WienerFilterCurvature(R=self.R,
-                                                    N=self.N,
-                                                    S=self.S)
-        return self._curvature
+        return WienerFilterCurvature(R=self.R, N=self.N, S=self.S,
+                                     inverter=self.inverter)
 
     @property
     @memo

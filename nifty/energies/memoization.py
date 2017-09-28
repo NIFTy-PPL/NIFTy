@@ -18,9 +18,11 @@
 
 
 def memo(f):
-    name = id(f)
+    name = f.__name__
 
     def wrapped_f(self):
+        if not hasattr(self, "_cache"):
+            self._cache = {}
         try:
             return self._cache[name]
         except KeyError:

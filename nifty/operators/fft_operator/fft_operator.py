@@ -148,17 +148,6 @@ class FFTOperator(LinearOperator):
         self.target_dtype = \
             None if target_dtype is None else np.dtype(target_dtype)
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._domain = self._domain
-        copy._target = self._target
-        copy._forward_transformation = self._forward_transformation
-        copy._backward_transformation = self._backward_transformation
-        copy.domain_dtype = self.domain_dtype
-        copy.target_dtype = self.target_dtype
-        copy = super(FFTOperator, self)._add_attributes_to_copy(copy,
-                                                                **kwargs)
-        return copy
-
     def _times(self, x, spaces):
         spaces = utilities.cast_axis_to_tuple(spaces, len(x.domain))
         if spaces is None:

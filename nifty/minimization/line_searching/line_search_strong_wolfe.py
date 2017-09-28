@@ -66,7 +66,7 @@ class LineSearchStrongWolfe(LineSearch):
     """
 
     def __init__(self, c1=1e-4, c2=0.9,
-                 max_step_size=1000000000, max_iterations=100,
+                 max_step_size=1e10, max_iterations=100,
                  max_zoom_iterations=30):
 
         super(LineSearchStrongWolfe, self).__init__()
@@ -109,7 +109,8 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 >= 0:
-            self.logger.error("Input direction must be a descent direction")
+            self.logger.error("Input direction must be a descent direction. "
+                              "Gradient: %f" % phiprime_0)
             raise RuntimeError
 
         # set alphas
@@ -131,7 +132,7 @@ class LineSearchStrongWolfe(LineSearch):
         while iteration_number < self.max_iterations:
             iteration_number += 1
             if alpha1 == 0:
-                self.logger.warn("Increment size became 0.")
+                self.logger.info("Step size became 0. Stopping.")
                 result_energy = le_0.energy
                 break
 
@@ -161,18 +162,25 @@ class LineSearchStrongWolfe(LineSearch):
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, self.max_step_size)
             if alpha1 == self.max_step_size:
-                self.logger.info("Reached max step size, bailing out")
+                self.logger.info("Reached max step size. Stopping.")
                 return le_alpha1.energy
 
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
         else:
             # max_iterations was reached
-            self.logger.error("The line search algorithm did not converge.")
+            self.logger.info(
+                    "The line search algorithm reached max_iterations.")
             return le_alpha1.energy
         if iteration_number > 1:
-            self.logger.debug("Finished line-search after %08u steps" %
+            self.logger.debug("Finished line-search after %08u steps." %
                               iteration_number)
+
+        if result_energy.value > phi_0:
+            self.logger.error("Line search algorithm found a new energy "
+                              "that was larger than the old one!")
+            raise RuntimeError
+
         return result_energy
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
@@ -193,14 +201,15 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 : float
             Value of the energy at the starting point of the line search
             algorithm.
-        phiprime_0 : Field
-            Gradient at the starting point of the line search algorithm.
+        phiprime_0 : float
+            directional derivative at the starting point of the line search
+            algorithm.
         phi_lo : float
             Value of the energy if we perform a step of length alpha_lo in
             descent direction.
-        phiprime_lo : Field
-            Gradient at the nwe position if we perform a step of length
-            alpha_lo in descent direction.
+        phiprime_lo : float
+            directional derivative at the new position if we perform a step of
+            length alpha_lo in descent direction.
         phi_hi : float
             Value of the energy if we perform a step of length alpha_hi in
             descent direction.
@@ -268,8 +277,8 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            self.logger.error("The line search algorithm (zoom) did not "
-                              "converge.")
+            self.logger.error("The line search algorithm (zoom) reached "
+                              "max_zoom_iterations.")
             return le_alphaj
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):

@@ -1,5 +1,6 @@
 from ...operators import EndomorphicOperator,\
                          InvertibleOperatorMixin
+from ...minimization import ConjugateGradient
 
 
 class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
@@ -22,27 +23,16 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
     """
 
-    def __init__(self, R, N, S, inverter=None, preconditioner=None, **kwargs):
+    def __init__(self, R, N, S, inverter=None, **kwargs):
 
         self.R = R
         self.N = N
         self.S = S
-        if preconditioner is None:
-            preconditioner = self.S.times
+        if inverter is None:
+            inverter = ConjugateGradient(preconditioner=self.S.times)
         self._domain = self.S.domain
-        super(WienerFilterCurvature, self).__init__(
-                                                 inverter=inverter,
-                                                 preconditioner=preconditioner,
-                                                 **kwargs)
-
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._domain = self._domain
-        copy.R = self.R.copy()
-        copy.N = self.N.copy()
-        copy.S = self.S.copy()
-        copy = super(WienerFilterCurvature, self)._add_attributes_to_copy(
-                                                                copy, **kwargs)
-        return copy
+        super(WienerFilterCurvature, self).__init__(inverter=inverter,
+                                                    **kwargs)
 
     @property
     def domain(self):

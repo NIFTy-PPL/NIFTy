@@ -108,16 +108,6 @@ class DiagonalOperator(EndomorphicOperator):
         self._unitary = None
         self.set_diagonal(diagonal=diagonal, copy=copy)
 
-    def _add_attributes_to_copy(self, copy, **kwargs):
-        copy._domain = self._domain
-        copy._distribution_strategy = self._distribution_strategy
-        copy.set_diagonal(diagonal=self.diagonal())
-        copy._self_adjoint = self._self_adjoint
-        copy._unitary = self._unitary
-        copy = super(DiagonalOperator, self)._add_attributes_to_copy(copy,
-                                                                     **kwargs)
-        return copy
-
     def _times(self, x, spaces):
         return self._times_helper(x, spaces, operation=lambda z: z.__mul__)
 

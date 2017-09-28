@@ -17,7 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .line_searching import *
+from .iteration_controlling import *
+from .minimizer import Minimizer
 from .conjugate_gradient import ConjugateGradient
+from .nonlinear_conjugate_gradient import NonlinearConjugateGradient
 from .descent_minimizer import DescentMinimizer
 from .steepest_descent import SteepestDescent
 from .vl_bfgs import VL_BFGS
