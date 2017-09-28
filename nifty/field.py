@@ -814,7 +814,7 @@ class Field(Loggable, Versionable, object):
         try:
             return int(reduce(lambda x, y: x * y, dim_tuple))
         except TypeError:
-            return 0
+            return 1
 
     @property
     def dof(self):
