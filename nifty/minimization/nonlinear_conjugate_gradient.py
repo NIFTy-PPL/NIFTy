@@ -22,6 +22,7 @@ import numpy as np
 
 from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
+from .iteration_controlling import GradientNormController
 
 
 class NonlinearConjugateGradient(Minimizer):
@@ -40,8 +41,9 @@ class NonlinearConjugateGradient(Minimizer):
 
     """
 
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
-        self._controller = controller
+    def __init__(self, controller=GradientNormController(iteration_limit=100),
+                 line_searcher=LineSearchStrongWolfe()):
+        super(NonlinearConjugateGradient, self).__init__(controller=controller)
         self._line_searcher = line_searcher
 
     def __call__(self, energy):

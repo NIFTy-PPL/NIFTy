@@ -45,10 +45,12 @@ class IterationController(
 
     CONVERGED, CONTINUE, STOPPED, ERROR = list(range(4))
 
-    def __init__(self, callback=None):
+    def __init__(self, callback=None, logger=None):
         self._iteration_count = 0
         self._convergence_count = 0
         self.callback = callback
+        if logger is not None:
+            self.logger = logger
 
     @property
     def iteration_count(self):

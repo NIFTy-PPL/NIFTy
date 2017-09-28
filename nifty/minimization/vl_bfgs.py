@@ -23,11 +23,12 @@ import numpy as np
 
 from .descent_minimizer import DescentMinimizer
 from .line_searching import LineSearchStrongWolfe
+from .iteration_controlling import GradientNormController
 
 
 class VL_BFGS(DescentMinimizer):
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
-                 max_history_length=5):
+    def __init__(self, controller=GradientNormController(iteration_limit=100),
+                 line_searcher=LineSearchStrongWolfe(), max_history_length=5):
 
         super(VL_BFGS, self).__init__(controller=controller,
                                       line_searcher=line_searcher)

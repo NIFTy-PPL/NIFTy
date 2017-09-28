@@ -48,8 +48,8 @@ class ConjugateGradient(Minimizer):
     def __init__(self,
                  controller=GradientNormController(iteration_limit=100),
                  preconditioner=None):
+        super(ConjugateGradient, self).__init__(controller=controller)
         self._preconditioner = preconditioner
-        self._controller = controller
 
     def __call__(self, energy):
         """ Runs the conjugate gradient minimization.

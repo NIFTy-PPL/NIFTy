@@ -27,6 +27,14 @@ class Minimizer(
         with_metaclass(NiftyMeta, type('NewBase', (Loggable, object), {}))):
     """ A base class used by all minimizers.
     """
+    def __init__(self, controller):
+        self._controller = controller
+        # overwrite the logger from controller to show contex correctly
+        self._controller.logger = self.logger
+
+    @property
+    def controller(self):
+        return self._controller
 
     @abc.abstractmethod
     def __call__(self, energy):

@@ -45,8 +45,7 @@ class DescentMinimizer(Minimizer):
     def __init__(self,
                  controller=GradientNormController(iteration_limit=100),
                  line_searcher=LineSearchStrongWolfe()):
-        super(DescentMinimizer, self).__init__()
-        self._controller = controller
+        super(DescentMinimizer, self).__init__(controller=controller)
         self.line_searcher = line_searcher
 
     def __call__(self, energy):

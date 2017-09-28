@@ -22,8 +22,10 @@ from .iteration_controller import IterationController
 
 class GradientNormController(IterationController):
     def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
-                 convergence_level=1, iteration_limit=None, callback=None):
-        super(GradientNormController, self).__init__(callback=callback)
+                 convergence_level=1, iteration_limit=None, callback=None,
+                 logger=None):
+        super(GradientNormController, self).__init__(callback=callback,
+                                                     logger=logger)
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
         self._tol_rel_gradnorm_now = None
@@ -56,7 +58,7 @@ class GradientNormController(IterationController):
                 self._convergence_count += 1
 
         if self._iteration_limit is not None:
-            if self._iteration_count >= self._iteration_limit:
+            if self._iteration_count > self._iteration_limit:
                 self._print_debug_info(energy)
                 self.logger.info("Reached iteration limit. Stopping.")
                 return self.STOPPED
