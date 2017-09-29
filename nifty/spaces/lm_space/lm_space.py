@@ -114,9 +114,6 @@ class LMSpace(Space):
         # the individual pixels have a fixed volume of 1.
         return np.float64(self.dim)
 
-    def copy(self):
-        return self.__class__(lmax=self.lmax)
-
     def scalar_weight(self):
         return 1.
 

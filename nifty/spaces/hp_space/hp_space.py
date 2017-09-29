@@ -104,9 +104,6 @@ class HPSpace(Space):
     def total_volume(self):
         return 4 * np.pi
 
-    def copy(self):
-        return self.__class__(nside=self.nside)
-
     def scalar_weight(self):
         return np.pi / (3*self._nside*self._nside)
 

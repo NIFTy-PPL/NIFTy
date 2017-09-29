@@ -109,9 +109,6 @@ class GLSpace(Space):
     def total_volume(self):
         return 4 * np.pi
 
-    def copy(self):
-        return self.__class__(nlat=self.nlat, nlon=self.nlon)
-
     def scalar_weight(self):
         return None
 

@@ -110,11 +110,6 @@ class RGSpace(Space):
     def total_volume(self):
         return self.dim * self._wgt
 
-    def copy(self):
-        return self.__class__(shape=self.shape,
-                              distances=self.distances,
-                              harmonic=self.harmonic)
-
     def scalar_weight(self):
         return self._wgt
 

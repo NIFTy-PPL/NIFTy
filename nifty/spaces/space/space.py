@@ -77,17 +77,6 @@ class Space(DomainObject):
         raise NotImplementedError(
             "There is no generic volume for the Space base class.")
 
-    @abc.abstractmethod
-    def copy(self):
-        """ Returns a copy of this Space instance.
-
-        Returns
-        -------
-        Space
-            A copy of this instance.
-        """
-        return self.__class__()
-
     def get_k_length_array(self):
         """ The length of the k vector for every pixel.
         This method is only implemented for harmonic spaces.

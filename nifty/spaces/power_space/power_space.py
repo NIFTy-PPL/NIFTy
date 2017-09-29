@@ -204,10 +204,6 @@ class PowerSpace(Space):
         # every power-pixel has a volume of 1
         return float(reduce(lambda x, y: x*y, self.pindex.shape))
 
-    def copy(self):
-        return self.__class__(harmonic_partner=self.harmonic_partner,
-                              binbounds=self._binbounds)
-
     def scalar_weight(self):
         return None
 
