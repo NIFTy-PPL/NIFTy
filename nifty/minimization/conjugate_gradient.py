@@ -73,7 +73,6 @@ class ConjugateGradient(Minimizer):
         if status != controller.CONTINUE:
             return energy, status
 
-        norm_b = energy.norm_b
         r = energy.gradient
         if preconditioner is not None:
             d = preconditioner(r)
@@ -111,9 +110,7 @@ class ConjugateGradient(Minimizer):
             if gamma == 0:
                 return energy, controller.CONVERGED
 
-            status = self._controller.check(energy,
-                                            custom_measure=np.sqrt(gamma) /
-                                            norm_b)
+            status = self._controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
 
