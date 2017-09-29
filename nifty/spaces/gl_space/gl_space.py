@@ -94,6 +94,7 @@ class GLSpace(Space):
                 "The module pyHealpix is needed but not available.")
 
         super(GLSpace, self).__init__()
+        self._needed_for_hash += ["_nlat", "_nlon"]
 
         self._nlat = self._parse_nlat(nlat)
         self._nlon = self._parse_nlon(nlon)
