@@ -66,7 +66,6 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
 
     def __init__(self, position):
         super(Energy, self).__init__()
-        self._cache = {}
         self._position = position.copy()
 
     def at(self, position):
