@@ -7,7 +7,7 @@ from nifty import plotting
 from keepers import Repository
 
 if __name__ == "__main__":
-    ift.nifty_configuration['default_distribution_strategy'] = 'fftw'
+    ift.nifty_configuration['default_distribution_strategy'] = 'not'
 
     signal_to_noise = 1.5 # The signal to noise ratio
 
@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     # Probing the variance
     class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby((signal_space_1, signal_space_2), probe_count=100)
+    proby = Proby((signal_space_1, signal_space_2), probe_count=1)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))
 #    sm = SmoothingOperator(signal_space, sigma=0.02)
 #    variance = sm(proby.diagonal.weight(-1))

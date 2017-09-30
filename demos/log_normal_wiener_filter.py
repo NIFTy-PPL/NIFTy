@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from nifty import *
+import nifty as ift
+import numpy as np
 
 
 if __name__ == "__main__":
-    nifty_configuration['default_distribution_strategy'] = 'fftw'
+    ift.nifty_configuration['default_distribution_strategy'] = 'not'
 
     # Setting up parameters    |\label{code:wf_parameters}|
     correlation_length = 1.     # Typical distance over which the field is correlated
@@ -20,54 +21,53 @@ if __name__ == "__main__":
     L = 2. # Total side-length of the domain
     N_pixels = 128 # Grid resolution (pixels per axis)
     #signal_space = RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
-    signal_space = HPSpace(16)
-    harmonic_space = FFTOperator.get_default_codomain(signal_space)
-    fft = FFTOperator(harmonic_space, target=signal_space, target_dtype=np.float)
-    power_space = PowerSpace(harmonic_space)
+    signal_space = ift.HPSpace(16)
+    harmonic_space = ift.FFTOperator.get_default_codomain(signal_space)
+    fft = ift.FFTOperator(harmonic_space, target=signal_space, target_dtype=np.float)
+    power_space = ift.PowerSpace(harmonic_space)
 
     # Creating the mock signal |\label{code:wf_mock_signal}|
-    S = create_power_operator(harmonic_space, power_spectrum=power_spectrum)
-    mock_power = Field(power_space, val=power_spectrum)
+    S = ift.create_power_operator(harmonic_space, power_spectrum=power_spectrum)
+    mock_power = ift.Field(power_space, val=power_spectrum)
     mock_signal = fft(mock_power.power_synthesize(real_signal=True))
 
     # Setting up an exemplary response
-    mask = Field(signal_space, val=1.)
+    mask = ift.Field(signal_space, val=1.)
     N10 = int(N_pixels/10)
     #mask.val[N10*5:N10*9, N10*5:N10*9] = 0.
-    R = ResponseOperator(signal_space, sigma=(response_sigma,), exposure=(mask,)) #|\label{code:wf_response}|
+    R = ift.ResponseOperator(signal_space, sigma=(response_sigma,), exposure=(mask,)) #|\label{code:wf_response}|
     data_domain = R.target[0]
-    R_harmonic = ComposedOperator([fft, R], default_spaces=[0, 0])
+    R_harmonic = ift.ComposedOperator([fft, R], default_spaces=[0, 0])
 
     # Setting up the noise covariance and drawing a random noise realization
-    ndiag = Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)
-    N = DiagonalOperator(data_domain, ndiag)
-    noise = Field.from_random(domain=data_domain, random_type='normal',
+    ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)
+    N = ift.DiagonalOperator(data_domain, ndiag)
+    noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                               std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
-    data = R(exp(mock_signal)) + noise #|\label{code:wf_mock_data}|
+    data = R(ift.exp(mock_signal)) + noise #|\label{code:wf_mock_data}|
 
     # Wiener filter
-    m0 = Field(harmonic_space, val=0.j)
-    energy = library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S)
+    m0 = ift.Field(harmonic_space, val=0.j)
+    energy = ift.library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S)
 
 
-    minimizer1 = VL_BFGS(convergence_tolerance=1e-5,
-                         iteration_limit=3000,
-                         #callback=convergence_measure,
-                         max_history_length=20)
-
-    minimizer2 = RelaxedNewton(convergence_tolerance=1e-5,
-                               iteration_limit=10,
-                               #callback=convergence_measure
-                               )
-    minimizer3 = SteepestDescent(convergence_tolerance=1e-5, iteration_limit=1000)
+    IC1 = ift.GradientNormController(iteration_limit=30,
+                                     tol_abs_gradnorm=0.1)
+    minimizer1 = ift.VL_BFGS(IC1, max_history_length=20)
+    IC2 = ift.GradientNormController(iteration_limit=5,
+                                     tol_abs_gradnorm=0.1)
+    minimizer2 = ift.RelaxedNewton(IC2)
+    IC3 = ift.GradientNormController(iteration_limit=100,
+                                     tol_abs_gradnorm=0.1)
+    minimizer3 = ift.SteepestDescent(IC3)
 
 
 #    me1 = minimizer1(energy)
-#    me2 = minimizer2(energy)
+    me2 = minimizer2(energy)
 #    me3 = minimizer3(energy)
 
 #    m1 = fft(me1[0].position)
-#    m2 = fft(me2[0].position)
+    m2 = fft(me2[0].position)
 #    m3 = fft(me3[0].position)
 #
 
@@ -82,19 +82,19 @@ if __name__ == "__main__":
 
     #Plotting #|\label{code:wf_plotting}|
     #plotter = plotting.RG2DPlotter(color_map=plotting.colormaps.PlankCmap())
-    plotter = plotting.HealpixPlotter(color_map=plotting.colormaps.PlankCmap())
+    plotter = ift.plotting.HealpixPlotter(color_map=ift.plotting.colormaps.PlankCmap())
 
-    plotter.figure.xaxis = plotting.Axis(label='Pixel Index')
-    plotter.figure.yaxis = plotting.Axis(label='Pixel Index')
+    plotter.figure.xaxis = ift.plotting.Axis(label='Pixel Index')
+    plotter.figure.yaxis = ift.plotting.Axis(label='Pixel Index')
 
-    plotter.plot.zmax = 5; plotter.plot.zmin = -5
+    #plotter.plot.zmax = 5; plotter.plot.zmin = -5
 ##    plotter(variance, path = 'variance.html')
-#    #plotter.plot.zmin = exp(mock_signal.min());
-#    plotter(mock_signal.real, path='mock_signal.html')
-#    plotter(Field(signal_space, val=np.log(data.val.get_full_data().real).reshape(signal_space.shape)),
-#            path = 'log_of_data.html')
+    #plotter.plot.zmin = np.exp(mock_signal.min());
+    plotter(mock_signal.real, path='mock_signal.html')
+    plotter(ift.Field(signal_space, val=np.log(data.val.get_full_data().real).reshape(signal_space.shape)),
+            path = 'log_of_data.html')
 #
 #    plotter(m1.real, path='m_LBFGS.html')
-#    plotter(m2.real, path='m_Newton.html')
+    plotter(m2.real, path='m_Newton.html')
 #    plotter(m3.real, path='m_SteepestDescent.html')
 #

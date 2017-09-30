@@ -43,7 +43,7 @@ class AdjointFFTResponse(LinearOperator):
 
 if __name__ == "__main__":
 
-    nifty_configuration['default_distribution_strategy'] = 'fftw'
+    nifty_configuration['default_distribution_strategy'] = 'not'
     nifty_configuration['harmonic_rg_base'] = 'real'
 
     # Set up position space

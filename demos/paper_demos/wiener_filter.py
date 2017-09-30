@@ -7,7 +7,7 @@ from keepers import Repository
 
 
 if __name__ == "__main__":
-    ift.nifty_configuration['default_distribution_strategy'] = 'fftw'
+    ift.nifty_configuration['default_distribution_strategy'] = 'not'
 
     # Setting up parameters    |\label{code:wf_parameters}|
     correlation_length_scale = 1.  # Typical distance over which the field is correlated
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # Probing the uncertainty |\label{code:wf_uncertainty_probing}|
     class Proby(ift.DiagonalProberMixin, ift.Prober): pass
-    proby = Proby(signal_space, probe_count=800)
+    proby = Proby(signal_space, probe_count=1)
     proby(lambda z: fft(wiener_curvature.inverse_times(fft.inverse_times(z))))  #|\label{code:wf_variance_fft_wrap}|
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.03)
