@@ -20,11 +20,11 @@ from __future__ import print_function
 from .iteration_controller import IterationController
 
 
-class DefaultIterationController(IterationController):
+class GradientNormController(IterationController):
     def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
                  convergence_level=1, iteration_limit=None,
                  name=None, verbose=None):
-        super(DefaultIterationController, self).__init__()
+        super(GradientNormController, self).__init__()
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
         self._convergence_level = convergence_level
