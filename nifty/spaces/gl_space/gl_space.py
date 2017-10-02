@@ -86,7 +86,7 @@ class GLSpace(Space):
 
         self._nlat = self._parse_nlat(nlat)
         self._nlon = self._parse_nlon(nlon)
-        self._wgt = None
+        self._dvol = None
 
     # ---Mandatory properties and methods---
 
@@ -109,16 +109,16 @@ class GLSpace(Space):
     def total_volume(self):
         return 4 * np.pi
 
-    def scalar_weight(self):
+    def scalar_dvol(self):
         return None
 
     # MR FIXME: this is potentially wasteful, since the return array is
     #           blown up by a factor of self.nlon
-    def weight(self):
+    def dvol(self):
         from pyHealpix import GL_weights
-        if self._wgt is None:
-            self._wgt = GL_weights(self.nlat, self.nlon)
-        return np.repeat(self._wgt, self.nlon)
+        if self._dvol is None:
+            self._dvol = GL_weights(self.nlat, self.nlon)
+        return np.repeat(self._dvol, self.nlon)
 
     # ---Added properties and methods---
 

@@ -114,10 +114,7 @@ class LMSpace(Space):
         # the individual pixels have a fixed volume of 1.
         return np.float64(self.dim)
 
-    def scalar_weight(self):
-        return 1.
-
-    def weight(self):
+    def scalar_dvol(self):
         return 1.
 
     def get_k_length_array(self):

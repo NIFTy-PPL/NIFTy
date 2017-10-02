@@ -62,9 +62,9 @@ class RGRGTransformation(Transformation):
         # BUT: the pixel volumes of the domain and codomain are different.
         # Hence, in order to produce the same scalar product, power==1.
         if self.codomain.harmonic:
-            fct = self.domain.weight()
+            fct = self.domain.scalar_dvol()
         else:
-            fct = 1./(self.codomain.weight()*self.domain.dim)
+            fct = 1./(self.codomain.scalar_dvol()*self.domain.dim)
 
         # Perform the transformation
         if issubclass(val.dtype.type, np.complexfloating):

@@ -204,10 +204,10 @@ class PowerSpace(Space):
         # every power-pixel has a volume of 1
         return float(reduce(lambda x, y: x*y, self.pindex.shape))
 
-    def scalar_weight(self):
+    def scalar_dvol(self):
         return None
 
-    def weight(self):
+    def dvol(self):
         # MR FIXME: this will probably change to 1 soon
         return np.asarray(self.rho, dtype=np.float64)
 

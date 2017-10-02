@@ -72,5 +72,5 @@ class HPSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(h, key), value)
 
-    def test_weight(self):
-        assert_almost_equal(HPSpace(2).weight(), np.pi/12)
+    def test_dvol(self):
+        assert_almost_equal(HPSpace(2).dvol(), np.pi/12)

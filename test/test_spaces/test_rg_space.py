@@ -88,7 +88,7 @@ def get_k_length_array_configs():
         ]
 
 
-def get_weight_configs():
+def get_dvol_configs():
     np.random.seed(42)
     return [
         [(11, 11), None, False, 1],
@@ -122,7 +122,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         r = RGSpace(shape=shape, distances=distances, harmonic=True)
         assert_almost_equal(r.get_k_length_array(), expected)
 
-    @expand(get_weight_configs())
-    def test_weight(self, shape, distances, harmonic, power):
+    @expand(get_dvol_configs())
+    def test_dvol(self, shape, distances, harmonic, power):
         r = RGSpace(shape=shape, distances=distances, harmonic=harmonic)
-        assert_almost_equal(r.weight(), np.prod(r.distances)**power)
+        assert_almost_equal(r.dvol(), np.prod(r.distances)**power)

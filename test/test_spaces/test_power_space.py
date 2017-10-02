@@ -129,6 +129,6 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         p = PowerSpace(harmonic_partner=harmonic_partner)
         assert_almost_equal(p.get_k_length_array(), expected)
 
-    def test_weight(self):
+    def test_dvol(self):
         p = PowerSpace(harmonic_partner=RGSpace(10,harmonic=True))
-        assert_almost_equal(p.weight(),p.rho)
+        assert_almost_equal(p.dvol(),p.rho)

@@ -416,13 +416,13 @@ class Field(object):
 
     def scalar_weight(self, spaces=None):
         if np.isscalar(spaces):
-            return self.domain[spaces].scalar_weight()
+            return self.domain[spaces].scalar_dvol()
 
         if spaces is None:
             spaces = range(len(self.domain))
         res = 1.
         for i in spaces:
-            tmp = self.domain[i].scalar_weight()
+            tmp = self.domain[i].scalar_dvol()
             if tmp is None:
                 return None
             res *= tmp
@@ -458,7 +458,7 @@ class Field(object):
 
         fct = 1.
         for ind in spaces:
-            wgt = self.domain[ind].weight()
+            wgt = self.domain[ind].dvol()
             if np.isscalar(wgt):
                 fct *= wgt
             else:

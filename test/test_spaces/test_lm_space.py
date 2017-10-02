@@ -89,8 +89,8 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(l, key), value)
 
-    def test_weight(self):
-        assert_almost_equal(LMSpace(5).weight(), 1.)
+    def test_dvol(self):
+        assert_almost_equal(LMSpace(5).dvol(), 1.)
 
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, lmax, expected):
