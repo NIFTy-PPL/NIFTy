@@ -19,7 +19,6 @@
 from __future__ import division
 import abc
 from .nifty_meta import NiftyMeta
-
 from future.utils import with_metaclass
 
 
@@ -137,7 +136,7 @@ class DomainObject(with_metaclass(
 
         """
         raise NotImplementedError(
-            "There is no generic scalar_weight method for DomainObject.")
+            "There is no generic scalar_dvol method for DomainObject.")
 
     def dvol(self):
         """ Returns the volume factors of this domain, either as a floating

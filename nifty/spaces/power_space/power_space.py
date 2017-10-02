@@ -198,11 +198,7 @@ class PowerSpace(Space):
         return self.shape[0]
 
     def scalar_dvol(self):
-        return None
-
-    def dvol(self):
-        # MR FIXME: this will probably change to 1 soon
-        return np.asarray(self.rho, dtype=np.float64)
+        return 1.
 
     def get_k_length_array(self):
         return self.kindex.copy()
