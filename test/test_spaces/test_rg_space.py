@@ -36,7 +36,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (0.125,),
                 'harmonic': False,
                 'dim': 8,
-                'total_volume': 1.0
             }],
         [(8,), None, True,
             {
@@ -44,7 +43,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (1.0,),
                 'harmonic': True,
                 'dim': 8,
-                'total_volume': 8.0
             }],
         [(8,), (12,), True,
             {
@@ -52,7 +50,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (12.0,),
                 'harmonic': True,
                 'dim': 8,
-                'total_volume': 96.0
             }],
         [(11, 11), None, False,
             {
@@ -60,7 +57,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (1/11, 1/11),
                 'harmonic': False,
                 'dim': 121,
-                'total_volume': 1.0
             }],
         [(12, 12), (1.3, 1.3), True,
             {
@@ -68,7 +64,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (1.3, 1.3),
                 'harmonic': True,
                 'dim': 144,
-                'total_volume': 243.36
             }]
 
     ]

@@ -71,8 +71,6 @@ class RGSpace(Space):
             Total number of dimensionality, i.e. the number of pixels.
         harmonic : bool
             Specifies whether the space is a signal or harmonic space.
-        total_volume : np.float
-            The total volume of the space.
         shape : tuple of np.ints
             The shape of the space's data array.
 
@@ -105,10 +103,6 @@ class RGSpace(Space):
     @property
     def dim(self):
         return self._dim
-
-    @property
-    def total_volume(self):
-        return self.dim * self._dvol
 
     def scalar_dvol(self):
         return self._dvol

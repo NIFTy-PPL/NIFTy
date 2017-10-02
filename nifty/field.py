@@ -380,15 +380,6 @@ class Field(object):
         return self.domain.dim
 
     @property
-    def total_volume(self):
-        """ Returns the total volume of all spaces in the domain.
-        """
-        if len(self.domain) == 0:
-            return 0.
-        volume_tuple = tuple(sp.total_volume for sp in self.domain)
-        return reduce(lambda x, y: x * y, volume_tuple)
-
-    @property
     def real(self):
         """ The real part of the field (data is not copied).
         """

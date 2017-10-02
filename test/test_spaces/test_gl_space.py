@@ -33,7 +33,6 @@ CONSTRUCTOR_CONFIGS = [
             'harmonic': False,
             'shape': (6,),
             'dim': 6,
-            'total_volume': 4 * np.pi
             }],
         [0, None, {
             'error': ValueError

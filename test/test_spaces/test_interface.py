@@ -31,8 +31,7 @@ class SpaceInterfaceTests(unittest.TestCase):
     @expand(product(generate_spaces(), [
                     ['harmonic', bool],
                     ['shape', tuple],
-                    ['dim', int],
-                    ['total_volume', np.float]]))
+                    ['dim', int]]))
     def test_property_ret_type(self, space, attr_expected_type):
         assert_(isinstance(getattr(space, attr_expected_type[0]),
                            attr_expected_type[1]))

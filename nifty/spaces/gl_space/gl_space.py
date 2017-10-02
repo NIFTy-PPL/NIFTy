@@ -52,8 +52,6 @@ class GLSpace(Space):
             pixelization.
         nlon : int
             Number of longitudinal bins that are used for this pixelization.
-        total_volume : np.float
-            The total volume of the space.
         shape : tuple of np.ints
             The shape of the space's data array.
 
@@ -104,10 +102,6 @@ class GLSpace(Space):
     @property
     def dim(self):
         return np.int((self.nlat * self.nlon))
-
-    @property
-    def total_volume(self):
-        return 4 * np.pi
 
     def scalar_dvol(self):
         return None

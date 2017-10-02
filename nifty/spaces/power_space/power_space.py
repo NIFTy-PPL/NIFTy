@@ -57,8 +57,6 @@ class PowerSpace(Space):
         Total number of dimensionality, i.e. the number of pixels.
     harmonic : bool
         Always True for this space.
-    total_volume : np.float
-        The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
     binbounds : tuple or None
@@ -198,11 +196,6 @@ class PowerSpace(Space):
     @property
     def dim(self):
         return self.shape[0]
-
-    @property
-    def total_volume(self):
-        # every power-pixel has a volume of 1
-        return float(reduce(lambda x, y: x*y, self.pindex.shape))
 
     def scalar_dvol(self):
         return None

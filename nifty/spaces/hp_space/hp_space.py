@@ -49,8 +49,6 @@ class HPSpace(Space):
         nside : int
             The corresponding HEALPix pixelization. The total number of pixels
             is 12*nside**2.
-        total_volume : np.float
-            The total volume of the space.
         shape : tuple of np.ints
             The shape of the space's data array.
 
@@ -99,10 +97,6 @@ class HPSpace(Space):
     @property
     def dim(self):
         return np.int(12 * self.nside * self.nside)
-
-    @property
-    def total_volume(self):
-        return 4 * np.pi
 
     def scalar_dvol(self):
         return np.pi / (3*self._nside*self._nside)

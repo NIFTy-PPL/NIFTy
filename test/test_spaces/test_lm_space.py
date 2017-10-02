@@ -33,7 +33,6 @@ CONSTRUCTOR_CONFIGS = [
             'shape': (36,),
             'harmonic': True,
             'dim': 36,
-            'total_volume': 36.0,
             }],
         [7, {
             'lmax': 7,
@@ -41,7 +40,6 @@ CONSTRUCTOR_CONFIGS = [
             'shape': (64,),
             'harmonic': True,
             'dim': 64,
-            'total_volume': 64.0,
             }],
         [-1, {
             'error': ValueError
