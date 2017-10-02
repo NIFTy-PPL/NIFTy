@@ -36,7 +36,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (0.125,),
                 'harmonic': False,
                 'dim': 8,
-                'total_volume': 1.0
             }],
         [(8,), None, True,
             {
@@ -44,7 +43,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (1.0,),
                 'harmonic': True,
                 'dim': 8,
-                'total_volume': 8.0
             }],
         [(8,), (12,), True,
             {
@@ -52,7 +50,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (12.0,),
                 'harmonic': True,
                 'dim': 8,
-                'total_volume': 96.0
             }],
         [(11, 11), None, False,
             {
@@ -60,7 +57,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (1/11, 1/11),
                 'harmonic': False,
                 'dim': 121,
-                'total_volume': 1.0
             }],
         [(12, 12), (1.3, 1.3), True,
             {
@@ -68,7 +64,6 @@ CONSTRUCTOR_CONFIGS = [
                 'distances': (1.3, 1.3),
                 'harmonic': True,
                 'dim': 144,
-                'total_volume': 243.36
             }]
 
     ]
@@ -88,7 +83,7 @@ def get_k_length_array_configs():
         ]
 
 
-def get_weight_configs():
+def get_dvol_configs():
     np.random.seed(42)
     return [
         [(11, 11), None, False, 1],
@@ -122,7 +117,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
         r = RGSpace(shape=shape, distances=distances, harmonic=True)
         assert_almost_equal(r.get_k_length_array(), expected)
 
-    @expand(get_weight_configs())
-    def test_weight(self, shape, distances, harmonic, power):
+    @expand(get_dvol_configs())
+    def test_dvol(self, shape, distances, harmonic, power):
         r = RGSpace(shape=shape, distances=distances, harmonic=harmonic)
-        assert_almost_equal(r.weight(), np.prod(r.distances)**power)
+        assert_almost_equal(r.dvol(), np.prod(r.distances)**power)

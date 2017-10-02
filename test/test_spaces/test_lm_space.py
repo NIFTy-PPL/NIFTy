@@ -33,7 +33,6 @@ CONSTRUCTOR_CONFIGS = [
             'shape': (36,),
             'harmonic': True,
             'dim': 36,
-            'total_volume': 36.0,
             }],
         [7, {
             'lmax': 7,
@@ -41,7 +40,6 @@ CONSTRUCTOR_CONFIGS = [
             'shape': (64,),
             'harmonic': True,
             'dim': 64,
-            'total_volume': 64.0,
             }],
         [-1, {
             'error': ValueError
@@ -89,8 +87,8 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(l, key), value)
 
-    def test_weight(self):
-        assert_almost_equal(LMSpace(5).weight(), 1.)
+    def test_dvol(self):
+        assert_almost_equal(LMSpace(5).dvol(), 1.)
 
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, lmax, expected):

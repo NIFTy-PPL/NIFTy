@@ -71,8 +71,6 @@ class RGSpace(Space):
             Total number of dimensionality, i.e. the number of pixels.
         harmonic : bool
             Specifies whether the space is a signal or harmonic space.
-        total_volume : np.float
-            The total volume of the space.
         shape : tuple of np.ints
             The shape of the space's data array.
 
@@ -87,7 +85,7 @@ class RGSpace(Space):
         self._harmonic = bool(harmonic)
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
-        self._wgt = float(reduce(lambda x, y: x*y, self._distances))
+        self._dvol = float(reduce(lambda x, y: x*y, self._distances))
         self._dim = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
@@ -106,20 +104,8 @@ class RGSpace(Space):
     def dim(self):
         return self._dim
 
-    @property
-    def total_volume(self):
-        return self.dim * self._wgt
-
-    def copy(self):
-        return self.__class__(shape=self.shape,
-                              distances=self.distances,
-                              harmonic=self.harmonic)
-
-    def scalar_weight(self):
-        return self._wgt
-
-    def weight(self):
-        return self._wgt
+    def scalar_dvol(self):
+        return self._dvol
 
     def get_k_length_array(self):
         if (not self.harmonic):

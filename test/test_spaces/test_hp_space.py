@@ -32,21 +32,18 @@ CONSTRUCTOR_CONFIGS = [
             'harmonic': False,
             'shape': (48,),
             'dim': 48,
-            'total_volume': 4 * np.pi,
             }],
         [5, {
             'nside': 5,
             'harmonic': False,
             'shape': (300,),
             'dim': 300,
-            'total_volume': 4 * np.pi,
             }],
         [1, {
             'nside': 1,
             'harmonic': False,
             'shape': (12,),
             'dim': 12,
-            'total_volume': 4 * np.pi,
             }],
         [0, {
             'error': ValueError
@@ -72,5 +69,5 @@ class HPSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(h, key), value)
 
-    def test_weight(self):
-        assert_almost_equal(HPSpace(2).weight(), np.pi/12)
+    def test_dvol(self):
+        assert_almost_equal(HPSpace(2).dvol(), np.pi/12)

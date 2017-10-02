@@ -38,8 +38,6 @@ class Space(DomainObject):
         Total number of dimensionality, i.e. the number of pixels.
     harmonic : bool
         Specifies whether the space is a signal or harmonic space.
-    total_volume : np.float
-        The total volume of the space.
     shape : tuple of np.ints
         The shape of the space's data array.
 
@@ -51,8 +49,8 @@ class Space(DomainObject):
     Notes
     -----
     `Space` is an abstract base class. In order to allow for instantiation
-    the methods `total_volume` and `copy` must be implemented as well as the
-    abstract methods inherited from `DomainObject`.
+    the method `copy` must be implemented as well as the abstract methods
+    inherited from `DomainObject`.
 
     """
 
@@ -64,29 +62,6 @@ class Space(DomainObject):
         """ Returns True if this space is a harmonic space.
         """
         raise NotImplementedError
-
-    @abc.abstractproperty
-    def total_volume(self):
-        """ Returns the total volume of the space.
-
-        Returns
-        -------
-        float
-            A real number representing the sum of all pixel volumes.
-        """
-        raise NotImplementedError(
-            "There is no generic volume for the Space base class.")
-
-    @abc.abstractmethod
-    def copy(self):
-        """ Returns a copy of this Space instance.
-
-        Returns
-        -------
-        Space
-            A copy of this instance.
-        """
-        return self.__class__()
 
     def get_k_length_array(self):
         """ The length of the k vector for every pixel.

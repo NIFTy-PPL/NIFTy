@@ -33,7 +33,6 @@ CONSTRUCTOR_CONFIGS = [
             'harmonic': False,
             'shape': (6,),
             'dim': 6,
-            'total_volume': 4 * np.pi
             }],
         [0, None, {
             'error': ValueError
@@ -41,14 +40,14 @@ CONSTRUCTOR_CONFIGS = [
     ]
 
 
-def get_weight_configs():
+def get_dvol_configs():
     np.random.seed(42)
     wgt = [2.0943951,  2.0943951]
     # for GLSpace(nlat=2, nlon=3)
-    weight_0 = np.array(list(itertools.chain.from_iterable(
+    dvol_0 = np.array(list(itertools.chain.from_iterable(
         itertools.repeat(x, 3) for x in wgt)))
     return [
-        [1, weight_0],
+        [1, dvol_0],
         ]
 
 
@@ -73,6 +72,6 @@ class GLSpaceFunctionalityTests(unittest.TestCase):
             for key, value in expected.items():
                 assert_equal(getattr(g, key), value)
 
-    @expand(get_weight_configs())
-    def test_weight(self, power, expected):
-        assert_almost_equal(GLSpace(2).weight(), expected)
+    @expand(get_dvol_configs())
+    def test_dvol(self, power, expected):
+        assert_almost_equal(GLSpace(2).dvol(), expected)

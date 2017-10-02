@@ -31,8 +31,7 @@ class SpaceInterfaceTests(unittest.TestCase):
     @expand(product(generate_spaces(), [
                     ['harmonic', bool],
                     ['shape', tuple],
-                    ['dim', int],
-                    ['total_volume', np.float]]))
+                    ['dim', int]]))
     def test_property_ret_type(self, space, attr_expected_type):
         assert_(isinstance(getattr(space, attr_expected_type[0]),
                            attr_expected_type[1]))
@@ -45,13 +44,6 @@ class SpaceInterfaceTests(unittest.TestCase):
         assert_(type(getattr(space, method_expected_type[0])(
                           *method_expected_type[1:-1])) is
                 method_expected_type[-1])
-
-    @expand([[space] for space in generate_spaces()])
-    def test_copy(self, space):
-        # make sure it's a deep copy
-        assert_(space is not space.copy())
-        # make sure contents are the same
-        assert_equal(space, space.copy())
 
     @expand([[space] for space in generate_spaces()])
     def test_repr(self, space):

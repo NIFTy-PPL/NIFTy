@@ -53,8 +53,6 @@ class LMSpace(Space):
             Total number of dimensionality, i.e. the number of pixels.
         harmonic : bool
             Specifies whether the space is a signal or harmonic space.
-        total_volume : np.float
-            The total volume of the space.
         shape : tuple of np.ints
             The shape of the space's data array.
 
@@ -109,18 +107,7 @@ class LMSpace(Space):
         # We fix l == m
         return np.int((l+1)*(l+1))
 
-    @property
-    def total_volume(self):
-        # the individual pixels have a fixed volume of 1.
-        return np.float64(self.dim)
-
-    def copy(self):
-        return self.__class__(lmax=self.lmax)
-
-    def scalar_weight(self):
-        return 1.
-
-    def weight(self):
+    def scalar_dvol(self):
         return 1.
 
     def get_k_length_array(self):

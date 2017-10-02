@@ -46,8 +46,8 @@ if __name__ == "__main__":
 
     # Wiener filter
     m0 = ift.Field(harmonic_space, val=0.)
-    ctrl = ift.DefaultIterationController(verbose=False,tol_abs_gradnorm=1)
-    ctrl2 = ift.DefaultIterationController(verbose=True,tol_abs_gradnorm=0.1, name="outer")
+    ctrl = ift.GradientNormController(verbose=False,tol_abs_gradnorm=1)
+    ctrl2 = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1, name="outer")
     inverter = ift.ConjugateGradient(controller=ctrl)
     energy = ift.library.LogNormalWienerFilterEnergy(m0, data, R_harmonic, N, S, inverter=inverter)
     minimizer1 = ift.VL_BFGS(controller=ctrl2,max_history_length=20)

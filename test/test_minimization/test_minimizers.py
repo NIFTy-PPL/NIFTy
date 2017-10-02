@@ -24,7 +24,7 @@ class Test_Minimizers(unittest.TestCase):
         covariance = ift.DiagonalOperator(covariance_diagonal)
         required_result = ift.Field(space, val=1.)
 
-        IC = ift.DefaultIterationController(tol_abs_gradnorm=1e-5)
+        IC = ift.GradientNormController(tol_abs_gradnorm=1e-5)
         minimizer = minimizer_class(controller=IC)
         energy = ift.QuadraticEnergy(A=covariance, b=required_result,
                                      position=starting_point)

@@ -88,11 +88,11 @@ if __name__ == "__main__":
     d_data = d.val.real
     ift.plotting.plot(d.real, name="data.pdf")
 
-    IC1 = ift.DefaultIterationController(verbose=True,iteration_limit=100,tol_abs_gradnorm=0.1)
+    IC1 = ift.GradientNormController(verbose=True,iteration_limit=100,tol_abs_gradnorm=0.1)
     minimizer1 = ift.RelaxedNewton(IC1)
-    IC2 = ift.DefaultIterationController(verbose=True,iteration_limit=100,tol_abs_gradnorm=0.1)
+    IC2 = ift.GradientNormController(verbose=True,iteration_limit=100,tol_abs_gradnorm=0.1)
     minimizer2 = ift.VL_BFGS(IC2, max_history_length=20)
-    IC3 = ift.DefaultIterationController(verbose=True,iteration_limit=100,tol_abs_gradnorm=0.1)
+    IC3 = ift.GradientNormController(verbose=True,iteration_limit=100,tol_abs_gradnorm=0.1)
     minimizer3 = ift.SteepestDescent(IC3)
 
     # Set starting position
@@ -107,14 +107,14 @@ if __name__ == "__main__":
         S0 = ift.create_power_operator(h_space, power_spectrum=ps0)
 
         # Initialize non-linear Wiener Filter energy
-        ICI = ift.DefaultIterationController(verbose=False,iteration_limit=500,tol_abs_gradnorm=0.1)
+        ICI = ift.GradientNormController(verbose=False,iteration_limit=500,tol_abs_gradnorm=0.1)
         map_inverter = ift.ConjugateGradient(controller=ICI)
         map_energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0, inverter=map_inverter)
         # Solve the Wiener Filter analytically
         D0 = map_energy.curvature
         m0 = D0.inverse_times(j)
         # Initialize power energy with updated parameters
-        ICI2 = ift.DefaultIterationController(name="powI",verbose=True,iteration_limit=200,tol_abs_gradnorm=1e-5)
+        ICI2 = ift.GradientNormController(name="powI",verbose=True,iteration_limit=200,tol_abs_gradnorm=1e-5)
         power_inverter = ift.ConjugateGradient(controller=ICI2)
         power_energy = ift.library.CriticalPowerEnergy(position=t0, m=m0, D=D0,
                                            smoothness_prior=10., samples=3, inverter=power_inverter)

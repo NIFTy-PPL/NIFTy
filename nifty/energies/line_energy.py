@@ -95,10 +95,8 @@ class LineEnergy(object):
 
         """
 
-        return self.__class__(line_position,
-                              self.energy,
-                              self.line_direction,
-                              offset=self.line_position)
+        return LineEnergy(line_position, self.energy, self.line_direction,
+                          offset=self.line_position)
 
     @property
     def value(self):

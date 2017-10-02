@@ -19,7 +19,6 @@
 from __future__ import division
 import abc
 from .nifty_meta import NiftyMeta
-
 from future.utils import with_metaclass
 
 
@@ -120,7 +119,7 @@ class DomainObject(with_metaclass(
             "There is no generic dim for DomainObject.")
 
     @abc.abstractmethod
-    def scalar_weight(self):
+    def scalar_dvol(self):
         """ Returns the volume factors of this domain as a floating
         point scalar, if the volume factors are all identical, otherwise
         returns None.
@@ -137,10 +136,9 @@ class DomainObject(with_metaclass(
 
         """
         raise NotImplementedError(
-            "There is no generic scalar_weight method for DomainObject.")
+            "There is no generic scalar_dvol method for DomainObject.")
 
-    @abc.abstractmethod
-    def weight(self):
+    def dvol(self):
         """ Returns the volume factors of this domain, either as a floating
         point scalar (if the volume factors are all identical) or as a
         floating point array with a shape of `self.shape`.
@@ -157,5 +155,4 @@ class DomainObject(with_metaclass(
             If called for this abstract class.
 
         """
-        raise NotImplementedError(
-            "There is no generic weight method for DomainObject.")
+        return self.scalar_dvol()

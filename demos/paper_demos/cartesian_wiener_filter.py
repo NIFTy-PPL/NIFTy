@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     # Wiener filter
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    ctrl = ift.DefaultIterationController(verbose=True, tol_custom=1e-3, convergence_level=3)
+    ctrl = ift.GradientNormController(verbose=True, iteration_limit=100)
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic, inverter=inverter)
 

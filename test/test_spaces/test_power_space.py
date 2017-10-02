@@ -52,7 +52,6 @@ CONSTRUCTOR_CONFIGS = [
         'harmonic': True,
         'shape': (5,),
         'dim': 5,
-        'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
         'binbounds': None,
         'pindex': np.array([0, 1, 2, 3, 4, 3, 2, 1]),
@@ -63,7 +62,6 @@ CONSTRUCTOR_CONFIGS = [
         'harmonic': True,
         'shape': (4,),
         'dim': 4,
-        'total_volume': 8.0,
         'harmonic_partner': RGSpace((8,), harmonic=True),
         'binbounds': (0.5, 1.3228756555322954, 3.5),
         'pindex': np.array([0, 1, 2, 2, 3, 2, 2, 1]),
@@ -129,6 +127,6 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         p = PowerSpace(harmonic_partner=harmonic_partner)
         assert_almost_equal(p.get_k_length_array(), expected)
 
-    def test_weight(self):
+    def test_dvol(self):
         p = PowerSpace(harmonic_partner=RGSpace(10,harmonic=True))
-        assert_almost_equal(p.weight(),p.rho)
+        assert_almost_equal(p.dvol(),1.)
