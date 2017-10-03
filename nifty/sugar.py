@@ -26,10 +26,26 @@ from . import Space,\
                   FFTOperator,\
                   sqrt
 
-__all__ = ['create_power_operator',
+__all__ = ['create_power_field',
+           'create_power_operator',
            'generate_posterior_sample',
            'create_composed_fft_operator']
 
+
+def create_power_field(domain, power_spectrum, dtype=None):
+    if not callable(power_spectrum):
+        raise TypeError("power_spectrum must be callable")
+    power_domain = PowerSpace(domain)
+
+    fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
+               dtype=dtype)
+    f = fp.power_synthesize_special()
+
+    if not issubclass(fp.dtype.type, np.complexfloating):
+        f = f.real
+
+    f **= 2
+    return f
 
 def create_power_operator(domain, power_spectrum, dtype=None):
     """ Creates a diagonal operator with the given power spectrum.
@@ -53,21 +69,7 @@ def create_power_operator(domain, power_spectrum, dtype=None):
     DiagonalOperator : An operator that implements the given power spectrum.
 
     """
-
-    if not callable(power_spectrum):
-        raise TypeError("power_spectrum must be callable")
-    power_domain = PowerSpace(domain)
-
-    fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
-               dtype=dtype)
-    f = fp.power_synthesize_special()
-
-    if not issubclass(fp.dtype.type, np.complexfloating):
-        f = f.real
-
-    f **= 2
-    return DiagonalOperator(Field(domain,f).weight(1))
-
+    return DiagonalOperator(create_power_field(domain, power_spectrum, dtype))
 
 def generate_posterior_sample(mean, covariance):
     """ Generates a posterior sample from a Gaussian distribution with given
@@ -96,10 +98,10 @@ def generate_posterior_sample(mean, covariance):
     R = covariance.R
     N = covariance.N
 
-    power = sqrt(S.diagonal().power_analyze())
+    power = sqrt(S.diagonal().weight(1).power_analyze())
     mock_signal = power.power_synthesize(real_signal=True)
 
-    noise = N.diagonal().weight(-1)
+    noise = N.diagonal()
 
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,
                                    dtype=noise.dtype.type)

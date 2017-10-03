@@ -32,7 +32,7 @@ from nifty2go import Field,\
                   DomainTuple,\
                   DiagonalOperator
 
-from nifty2go.sugar import create_power_operator
+from nifty2go.sugar import create_power_field
 
 from test.common import expand
 
@@ -80,8 +80,8 @@ class Test_Functionality(unittest.TestCase):
             sk = fp.power_synthesize(spaces=(0, 1), real_signal=True)
 
             sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)
-            ps1 += sp.sum(spaces=1)/fp2.sum()
-            ps2 += sp.sum(spaces=0)/fp1.sum()
+            ps1 += sp.integrate(spaces=1)/fp2.sum()
+            ps2 += sp.integrate(spaces=0)/fp1.sum()
 
         assert_allclose(ps1.val/samples, fp1.val, rtol=0.2)
         assert_allclose(ps2.val/samples, fp2.val, rtol=0.2)
@@ -104,12 +104,10 @@ class Test_Functionality(unittest.TestCase):
         spec2 = lambda k: 42/(1+k)**3
         fp2 = Field(p2, val=spec2(p2.k_lengths))
 
-        S_1 = create_power_operator(space1, lambda x: np.sqrt(spec1(x)))
-        S_2 = create_power_operator(space2, lambda x: np.sqrt(spec2(x)))
-        S_1 = DiagonalOperator(S_1.diagonal().weight(-1),domain=fulldomain,
-                               spaces=0)
-        S_2 = DiagonalOperator(S_2.diagonal().weight(-1),domain=fulldomain,
-                               spaces=1)
+        S_1 = create_power_field(space1, lambda x: np.sqrt(spec1(x)))
+        S_1 = DiagonalOperator(S_1.weight(-1), domain=fulldomain, spaces=0)
+        S_2 = create_power_field(space2, lambda x: np.sqrt(spec2(x)))
+        S_2 = DiagonalOperator(S_2.weight(-1), domain=fulldomain, spaces=1)
 
         samples = 500
         ps1 = 0.
@@ -119,8 +117,8 @@ class Test_Functionality(unittest.TestCase):
             rand_k = Field.from_random('normal', domain=fulldomain)
             sk = S_1.times(S_2.times(rand_k))
             sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)
-            ps1 += sp.sum(spaces=1)/fp2.sum()
-            ps2 += sp.sum(spaces=0)/fp1.sum()
+            ps1 += sp.integrate(spaces=1)/fp2.sum()
+            ps2 += sp.integrate(spaces=0)/fp1.sum()
 
         assert_allclose(ps1.val/samples, fp1.val, rtol=0.2)
         assert_allclose(ps2.val/samples, fp2.val, rtol=0.2)

@@ -62,7 +62,7 @@ class ResponseOperator(LinearOperator):
                                                  space=spaces[x])
                             for x in range(nsigma)]
         kernel_exposure = [DiagonalOperator(Field(self._domain[spaces[x]],
-                                                  exposure[x]),
+                                                  exposure[x]).weight(-1),
                                             domain=self._domain,
                                             spaces=(spaces[x],))
                            for x in range(nsigma)]

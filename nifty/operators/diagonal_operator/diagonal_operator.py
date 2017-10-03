@@ -37,8 +37,12 @@ class DiagonalOperator(EndomorphicOperator):
     ----------
     diagonal : Field
         The diagonal entries of the operator.
-    copy : boolean
-        Internal copy of the diagonal (default: True)
+    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        The domain on which the Operator's input Field lives.
+        If None, use the domain of "diagonal".
+    spaces : tuple of int
+        The elements of "domain" on which the operator acts.
+        If None, it acts on all elements.
 
     Attributes
     ----------
@@ -60,7 +64,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, diagonal, domain=None, spaces=None, copy=True):
+    def __init__(self, diagonal, domain=None, spaces=None):
         super(DiagonalOperator, self).__init__()
 
         if not isinstance(diagonal, Field):
@@ -87,7 +91,7 @@ class DiagonalOperator(EndomorphicOperator):
                 if diagonal.domain[i] != self._domain[j]:
                     raise ValueError("domain mismatch")
 
-        self._diagonal = diagonal if not copy else diagonal.copy()
+        self._diagonal = diagonal.weight(1)
         self._self_adjoint = None
         self._unitary = None
 
@@ -103,13 +107,8 @@ class DiagonalOperator(EndomorphicOperator):
     def _adjoint_inverse_times(self, x):
         return self._times_helper(x, lambda z: z.conjugate().__rtruediv__)
 
-    def diagonal(self, copy=True):
+    def diagonal(self):
         """ Returns the diagonal of the Operator.
-
-        Parameters
-        ----------
-        copy : boolean
-            Whether the returned Field should be copied or not.
 
         Returns
         -------
@@ -117,7 +116,7 @@ class DiagonalOperator(EndomorphicOperator):
             The diagonal of the Operator.
 
         """
-        return self._diagonal.copy() if copy else self._diagonal
+        return self._diagonal.weight(-1)
 
     # ---Mandatory properties and methods---
 

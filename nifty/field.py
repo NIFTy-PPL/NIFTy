@@ -420,7 +420,7 @@ class Field(object):
             res *= tmp
         return res
 
-    def weight(self, power=1, inplace=False, spaces=None):
+    def weight(self, power=1, spaces=None, out=None):
         """ Weights the pixels of `self` with their invidual pixel-volume.
 
         Parameters
@@ -428,12 +428,13 @@ class Field(object):
         power : number
             The pixels get weighted with the volume-factor**power.
 
-        inplace : boolean
-            If True, `self` will be weighted and returned. Otherwise, a copy
-            is made.
-
         spaces : tuple of ints
             Determines on which subspace the operation takes place.
+
+        out : Field or None
+            if not None, the result is returned in a new Field
+            otherwise the contents of "out" are overwritten with the result.
+            "out" may be identical to "self"!
 
         Returns
         -------
@@ -441,7 +442,11 @@ class Field(object):
             The weighted field.
 
         """
-        new_field = self if inplace else self.copy()
+        if out is None:
+            out = self.copy()
+        else:
+            if out is not self:
+                out.copy_content_from(self)
 
         if spaces is None:
             spaces = range(len(self.domain))
@@ -458,12 +463,12 @@ class Field(object):
                 new_shape[self.domain.axes[ind][0]:
                           self.domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
-                new_field *= wgt**power
+                out *= wgt**power
         fct = fct**power
         if fct != 1.:
-            new_field *= fct
+            out *= fct
 
-        return new_field
+        return out
 
     def vdot(self, x=None, spaces=None):
         """ Computes the volume-factor-aware dot product of 'self' with x.
@@ -474,8 +479,8 @@ class Field(object):
             The domain of x must contain `self.domain`
 
         spaces : tuple of ints
-            If the domain of `self` and `x` are not the same, `spaces` specfies
-            the mapping.
+            If the domain of `self` and `x` are not the same, `spaces` defines
+            which domains of `x` are mapped to those of `self`.
 
         Returns
         -------
@@ -487,9 +492,9 @@ class Field(object):
                              "the NIFTy field class")
 
         # Compute the dot respecting the fact of discrete/continuous spaces
-        fct = 1.
         tmp = self.scalar_weight(spaces)
         if tmp is None:
+            fct = 1.
             y = self.weight(power=1)
         else:
             y = self
@@ -498,13 +503,14 @@ class Field(object):
         if spaces is None:
             return fct*dobj.vdot(y.val.ravel(), x.val.ravel())
         else:
-            # create a diagonal operator which is capable of taking care of the
-            # axes-matching
-            from .operators.diagonal_operator import DiagonalOperator
-            diag = DiagonalOperator(y.conjugate(), self.domain,
-                                    spaces=spaces, copy=False)
-            dotted = diag(x)
-            return fct*dotted.sum(spaces=spaces)
+            spaces = utilities.cast_iseq_to_tuple(spaces)
+            active_axes = []
+            for i in spaces:
+                active_axes += self.domain.axes[i]
+            res = 0.
+            for sl in utilities.get_slice_list(self.shape, active_axes):
+                res += dobj.vdot(y.val, x.val[sl])
+            return res*fct
 
     def norm(self):
         """ Computes the L2-norm of the field values.
@@ -515,7 +521,7 @@ class Field(object):
             The L2-norm of the field values.
 
         """
-        return dobj.sqrt(dobj.abs(self.vdot(x=self)))
+        return np.sqrt(np.abs(self.vdot(x=self)))
 
     def conjugate(self):
         """ Returns the complex conjugate of the field.
@@ -565,6 +571,10 @@ class Field(object):
 
     def sum(self, spaces=None):
         return self._contraction_helper('sum', spaces)
+
+    def integrate(self, spaces=None):
+        tmp = self.weight(1, spaces=spaces)
+        return tmp.sum(spaces)
 
     def prod(self, spaces=None):
         return self._contraction_helper('prod', spaces)

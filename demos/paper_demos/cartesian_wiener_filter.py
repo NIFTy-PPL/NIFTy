@@ -62,7 +62,7 @@ if __name__ == "__main__":
     diagonal = mock_power.power_synthesize_special(spaces=(0, 1))**2
     diagonal = diagonal.real
 
-    S = ift.DiagonalOperator(diagonal)
+    S = ift.DiagonalOperator(diagonal.weight(-1))
 
 
     np.random.seed(10)
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     R_harmonic = ift.ComposedOperator([fft, R])
 
     # Setting up the noise covariance and drawing a random noise realization
-    ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise).weight(1)
+    ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise)
     N = ift.DiagonalOperator(ndiag)
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                                   std=mock_signal.std()/np.sqrt(signal_to_noise),
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     # Wiener filter
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    ctrl = ift.GradientNormController(verbose=True, iteration_limit=100)
+    ctrl = ift.GradientNormController(verbose=True, tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic, inverter=inverter)
 

@@ -72,7 +72,7 @@ if __name__ == "__main__":
     R = AdjointFFTResponse(fft, Instrument)
 
     noise = 1.
-    N = ift.DiagonalOperator(ift.Field(s_space,noise).weight(1))
+    N = ift.DiagonalOperator(ift.Field(s_space,noise))
     n = ift.Field.from_random(domain=s_space,
                           random_type='normal',
                           std=np.sqrt(noise),

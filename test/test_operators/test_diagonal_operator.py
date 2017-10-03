@@ -17,8 +17,8 @@ from test.common import expand
 class DiagonalOperator_Tests(unittest.TestCase):
     spaces = generate_spaces()
 
-    @expand(product(spaces, [True, False]))
-    def test_property(self, space, copy):
+    @expand(product(spaces))
+    def test_property(self, space):
         diag = Field.from_random('normal', domain=space)
         D = DiagonalOperator(diag)
         if D.domain[0] != space:
@@ -28,59 +28,59 @@ class DiagonalOperator_Tests(unittest.TestCase):
         if D.self_adjoint != True:
             raise TypeError
 
-    @expand(product(spaces, [True, False]))
-    def test_times_adjoint(self, space, copy):
+    @expand(product(spaces))
+    def test_times_adjoint(self, space):
         rand1 = Field.from_random('normal', domain=space)
         rand2 = Field.from_random('normal', domain=space)
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
+        D = DiagonalOperator(diag)
         tt1 = rand1.vdot(D.times(rand2))
         tt2 = rand2.vdot(D.times(rand1))
         assert_approx_equal(tt1, tt2)
 
-    @expand(product(spaces, [True, False]))
-    def test_times_inverse(self, space, copy):
+    @expand(product(spaces))
+    def test_times_inverse(self, space):
         rand1 = Field.from_random('normal', domain=space)
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
+        D = DiagonalOperator(diag)
         tt1 = D.times(D.inverse_times(rand1))
         assert_allclose(rand1.val, tt1.val)
 
-    @expand(product(spaces, [True, False]))
-    def test_times(self, space, copy):
+    @expand(product(spaces))
+    def test_times(self, space):
         rand1 = Field.from_random('normal', domain=space)
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
+        D = DiagonalOperator(diag)
         tt = D.times(rand1)
         assert_equal(tt.domain[0], space)
 
-    @expand(product(spaces, [True, False]))
-    def test_adjoint_times(self, space, copy):
+    @expand(product(spaces))
+    def test_adjoint_times(self, space):
         rand1 = Field.from_random('normal', domain=space)
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
+        D = DiagonalOperator(diag)
         tt = D.adjoint_times(rand1)
         assert_equal(tt.domain[0], space)
 
-    @expand(product(spaces, [True, False]))
-    def test_inverse_times(self, space, copy):
+    @expand(product(spaces))
+    def test_inverse_times(self, space):
         rand1 = Field.from_random('normal', domain=space)
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
+        D = DiagonalOperator(diag)
         tt = D.inverse_times(rand1)
         assert_equal(tt.domain[0], space)
 
-    @expand(product(spaces, [True, False]))
-    def test_adjoint_inverse_times(self, space, copy):
+    @expand(product(spaces))
+    def test_adjoint_inverse_times(self, space):
         rand1 = Field.from_random('normal', domain=space)
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
+        D = DiagonalOperator(diag)
         tt = D.adjoint_inverse_times(rand1)
         assert_equal(tt.domain[0], space)
 
-    @expand(product(spaces, [True, False]))
-    def test_diagonal(self, space, copy):
+    @expand(product(spaces))
+    def test_diagonal(self, space):
         diag = Field.from_random('normal', domain=space)
-        D = DiagonalOperator(diag, copy=copy)
+        D = DiagonalOperator(diag)
         diag_op = D.diagonal()
         assert_allclose(diag.val, diag_op.val)
