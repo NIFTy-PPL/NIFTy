@@ -30,8 +30,6 @@ from .fft_operator import *
 
 from .invertible_operator_mixin import InvertibleOperatorMixin
 
-from .projection_operator import ProjectionOperator
-
 from .composed_operator import ComposedOperator
 
 from .response_operator import ResponseOperator
