@@ -100,7 +100,7 @@ class ResponseOperator(LinearOperator):
         copy._target = self._target
         copy._composed_kernel = self._composed_kernel.copy()
         copy._composed_exposure = self._composed_exposure.copy()
-        copy = super(DiagonalOperator, self)._add_attributes_to_copy(copy,
+        copy = super(ResponseOperator, self)._add_attributes_to_copy(copy,
                                                                      **kwargs)
         return copy
 
