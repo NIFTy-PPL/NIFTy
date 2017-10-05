@@ -33,12 +33,19 @@ __all__ = ['create_power_field',
 
 
 def create_power_field(domain, power_spectrum, dtype=None):
-    if not callable(power_spectrum):
-        raise TypeError("power_spectrum must be callable")
-    power_domain = PowerSpace(domain)
-
-    fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
-               dtype=dtype)
+    if not callable(power_spectrum):  # we have a Field living on a PowerSpace
+        if not isinstance(power_spectrum, Field):
+            raise TypeError("Field object expected")
+        if len(power_spectrum.domain) != 1:
+            raise ValueError("exactly one domain required")
+        if not isinstance(power_spectrum.domain[0], PowerSpace):
+            raise TypeError("PowerSpace required")
+        power_domain = power_spectrum.domain[0]
+        fp = Field(power_domain, val=power_spectrum.val, dtype=dtype)
+    else:
+        power_domain = PowerSpace(domain)
+        fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
+                   dtype=dtype)
     f = fp.power_synthesize_special()
 
     if not issubclass(fp.dtype.type, np.complexfloating):
