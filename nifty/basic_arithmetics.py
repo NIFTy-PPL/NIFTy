@@ -27,81 +27,92 @@ __all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
            'conjugate', 'clipped_exp', 'limited_exp', 'limited_exp_deriv']
 
 
-def _math_helper(x, function):
-    if isinstance(x, Field):
-        result_val = x.val.apply_scalar_function(function)
-        result = x.copy_empty(dtype=result_val.dtype)
-        result.val = result_val
-    elif isinstance(x, distributed_data_object):
-        result = x.apply_scalar_function(function, inplace=False)
+def _math_helper(x, function, out):
+    if not isinstance(x, Field):
+        raise TypeError("This function only accepts Field objects.")
+    if out is not None:
+        if not isinstance(out, Field) or x.domain!=out.domain:
+            raise ValueError("Bad 'out' argument")
+        function(x.val, out=out.val)
+        return out
     else:
-        result = function(np.asarray(x))
-
-    return result
+        return Field(domain=x.domain, val=function(x.val))
 
 
-def cos(x):
-    return _math_helper(x, np.cos)
+def cos(x, out=None):
+    return _math_helper(x, np.cos, out)
 
 
-def sin(x):
-    return _math_helper(x, np.sin)
+def sin(x, out=None):
+    return _math_helper(x, np.sin, out)
 
 
-def cosh(x):
-    return _math_helper(x, np.cosh)
+def cosh(x, out=None):
+    return _math_helper(x, np.cosh, out)
 
 
-def sinh(x):
-    return _math_helper(x, np.sinh)
+def sinh(x, out=None):
+    return _math_helper(x, np.sinh, out)
 
 
-def tan(x):
-    return _math_helper(x, np.tan)
+def tan(x, out=None):
+    return _math_helper(x, np.tan, out)
 
 
-def tanh(x):
-    return _math_helper(x, np.tanh)
+def tanh(x, out=None):
+    return _math_helper(x, np.tanh, out)
 
 
-def arccos(x):
-    return _math_helper(x, np.arccos)
+def arccos(x, out=None):
+    return _math_helper(x, np.arccos, out)
 
 
-def arcsin(x):
-    return _math_helper(x, np.arcsin)
+def arcsin(x, out=None):
+    return _math_helper(x, np.arcsin, out)
 
 
-def arccosh(x):
-    return _math_helper(x, np.arccosh)
+def arccosh(x, out=None):
+    return _math_helper(x, np.arccosh, out)
 
 
-def arcsinh(x):
-    return _math_helper(x, np.arcsinh)
+def arcsinh(x, out=None):
+    return _math_helper(x, np.arcsinh, out)
 
 
-def arctan(x):
-    return _math_helper(x, np.arctan)
+def arctan(x, out=None):
+    return _math_helper(x, np.arctan, out)
 
 
-def arctanh(x):
-    return _math_helper(x, np.arctanh)
+def arctanh(x, out=None):
+    return _math_helper(x, np.arctanh, out)
 
 
-def sqrt(x):
-    return _math_helper(x, np.sqrt)
+def sqrt(x, out=None):
+    return _math_helper(x, np.sqrt, out)
 
 
-def exp(x):
-    return _math_helper(x, np.exp)
+def exp(x, out=None):
+    return _math_helper(x, np.exp, out)
 
 
-def clipped_exp(x):
-    return _math_helper(x, lambda z: np.exp(np.minimum(200, z)))
+def log(x, out=None):
+    return _math_helper(x, np.log, out)
 
 
-def limited_exp(x):
-    return _math_helper(x, _limited_exp_helper)
+def conjugate(x, out=None):
+    return _math_helper(x, np.conjugate, out)
+
+
+def conj(x, out=None):
+    return _math_helper(x, np.conj, out)
+
+
+def clipped_exp(x, out=None):
+    return _math_helper(x, lambda z: np.exp(np.minimum(200, z)), out)
+
+
+def limited_exp(x, out=None):
+    return _math_helper(x, _limited_exp_helper, out)
 
 
 def _limited_exp_helper(x):
@@ -114,8 +125,8 @@ def _limited_exp_helper(x):
     return result
 
 
-def limited_exp_deriv(x):
-    return _math_helper(x, _limited_exp_deriv_helper)
+def limited_exp_deriv(x, out=None):
+    return _math_helper(x, _limited_exp_deriv_helper, out)
 
 
 def _limited_exp_deriv_helper(x):
@@ -127,19 +138,3 @@ def _limited_exp_deriv_helper(x):
     result[mask] = np.exp(thr)
     result[~mask] = np.exp(x[~mask])
     return result
-
-
-def log(x, base=None):
-    result = _math_helper(x, np.log)
-    if base is not None:
-        result = result/log(base)
-
-    return result
-
-
-def conjugate(x):
-    return _math_helper(x, np.conjugate)
-
-
-def conj(x):
-    return _math_helper(x, np.conjugate)
