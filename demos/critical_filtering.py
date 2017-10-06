@@ -95,7 +95,7 @@ if __name__ == "__main__":
     N = ift.DiagonalOperator(s_space, ndiag)
     n = ift.Field.from_random(domain=s_space,
                               random_type='normal',
-                              std=ift.sqrt(noise),
+                              std=np.sqrt(noise),
                               mean=0)
 
     # Create mock data
@@ -128,7 +128,7 @@ if __name__ == "__main__":
     flat_power = ift.Field(p_space, val=1e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
-    t0 = ift.Field(p_space, val=ift.log(1./(1+p_space.kindex)**2))
+    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.kindex)**2))
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ift.exp(t0),

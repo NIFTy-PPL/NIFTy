@@ -20,7 +20,6 @@ import numpy as np
 from ...field import Field
 from ...spaces.power_space import PowerSpace
 from ..endomorphic_operator import EndomorphicOperator
-from ... import sqrt
 from ... import nifty_utilities as utilities
 
 
@@ -109,7 +108,7 @@ class LaplaceOperator(EndomorphicOperator):
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
-        ret /= sqrt(dposc)
+        ret /= np.sqrt(dposc)
         ret[prefix + (slice(None, 2),)] = 0.
         ret[prefix + (-1,)] = 0.
         return Field(self.domain, val=ret).weight(power=-0.5, spaces=spaces)
@@ -131,7 +130,7 @@ class LaplaceOperator(EndomorphicOperator):
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
         y = x.copy().weight(power=0.5).val
-        y /= sqrt(dposc)
+        y /= np.sqrt(dposc)
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
         deriv = (y[sl_r]-y[sl_l])/dpos  # defined between points

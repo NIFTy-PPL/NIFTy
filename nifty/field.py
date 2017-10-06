@@ -1081,8 +1081,8 @@ class Field(Loggable, Versionable, object):
             The domain of x must contain `self.domain`
 
         spaces : tuple of ints
-            If the domain of `self` and `x` are not the same, `spaces` specfies
-            the mapping.
+            If the domain of `self` and `x` are not the same, `spaces`
+            specifies the mapping.
 
         Returns
         -------

@@ -39,7 +39,7 @@ class IterationController(
 
     The concrete convergence criteria can be chosen by inheriting from this
     class; the implementer has full flexibility to use whichever criteria are
-    appropriate for a particular problem - as ong as they can be computed from
+    appropriate for a particular problem - as long as they can be computed from
     the information passed to the controller during the iteration process.
     """
 
