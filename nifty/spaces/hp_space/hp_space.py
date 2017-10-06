@@ -80,7 +80,7 @@ class HPSpace(Space):
 
     def __init__(self, nside):
         super(HPSpace, self).__init__()
-
+        self._needed_for_hash += ["_nside"]
         self._nside = self._parse_nside(nside)
 
     # ---Mandatory properties and methods---
@@ -94,7 +94,7 @@ class HPSpace(Space):
 
     @property
     def shape(self):
-        return (np.int(12 * self.nside * self.nside),)
+        return (self.dim,)
 
     @property
     def dim(self):

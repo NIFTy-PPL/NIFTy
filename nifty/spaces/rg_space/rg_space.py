@@ -75,10 +75,10 @@ class RGSpace(Space):
     # ---Overwritten properties and methods---
 
     def __init__(self, shape, distances=None, harmonic=False):
-        self._harmonic = bool(harmonic)
-
         super(RGSpace, self).__init__()
+        self._needed_for_hash += ["_distances", "_shape", "_harmonic"]
 
+        self._harmonic = bool(harmonic)
         self._shape = self._parse_shape(shape)
         self._distances = self._parse_distances(distances)
 

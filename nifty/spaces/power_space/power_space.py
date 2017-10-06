@@ -87,8 +87,8 @@ class PowerSpace(Space):
     def __init__(self, harmonic_partner, distribution_strategy=None,
                  volume_type='rho', binbounds=None):
         super(PowerSpace, self).__init__()
-        self._ignore_for_hash += ['_pindex', '_kindex', '_rho',
-                                  '_volume_weight']
+        self._needed_for_hash += ['_harmonic_partner', '_binbounds',
+                                  'volume_type']
 
         if distribution_strategy is None:
             distribution_strategy = gc['default_distribution_strategy']
