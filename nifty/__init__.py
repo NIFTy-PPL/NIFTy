@@ -46,6 +46,8 @@ from .field_types import *
 
 from .energies import *
 
+from .memoization import memo
+
 from .minimization import *
 
 from .spaces import *

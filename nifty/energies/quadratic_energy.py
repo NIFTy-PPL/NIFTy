@@ -1,5 +1,5 @@
 from .energy import Energy
-from .memoization import memo
+from ..memoization import memo
 
 
 class QuadraticEnergy(Energy):

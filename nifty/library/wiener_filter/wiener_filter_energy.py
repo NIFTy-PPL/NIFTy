@@ -1,5 +1,5 @@
 from ...energies.energy import Energy
-from ...energies.memoization import memo
+from ...memoization import memo
 from ...minimization import ConjugateGradient
 
 from . import WienerFilterCurvature

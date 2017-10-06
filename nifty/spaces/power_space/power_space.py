@@ -21,6 +21,7 @@ import numpy as np
 from d2o import distributed_data_object,\
     STRATEGIES as DISTRIBUTION_STRATEGIES
 
+from ...memoization import memo
 from ...spaces.space import Space
 from functools import reduce
 from ...config import nifty_configuration as gc
@@ -187,9 +188,9 @@ class PowerSpace(Space):
         return self.shape[0]
 
     @property
+    @memo
     def total_volume(self):
-        # every power-pixel has a volume of 1
-        return float(reduce(lambda x, y: x*y, self.pindex.shape))
+        return np.sum(self._volume_weight)
 
     def copy(self):
         distribution_strategy = self.pindex.distribution_strategy
@@ -198,15 +199,7 @@ class PowerSpace(Space):
                               binbounds=self._binbounds)
 
     def weight(self, x, power, axes, inplace=False):
-        try:
-            weight = self._volume_weight
-        except AttributeError:
-            from ...field import Field
-            weight_field = Field(domain=self.harmonic_partner, val=1).weight()
-            self._volume_weight = \
-                self.pindex.bincount(weights=weight_field.val).get_full_data()
-            weight = self._volume_weight
-
+        weight = self._volume_weight
         reshaper = [1, ] * len(x.shape)
         # we know len(axes) is always 1
         reshaper[axes[0]] = self.shape[0]
@@ -222,6 +215,13 @@ class PowerSpace(Space):
             result_x = x*weight
 
         return result_x
+
+    @property
+    @memo
+    def _volume_weight(self):
+        from ...field import Field
+        weight_field = Field(domain=self.harmonic_partner, val=1).weight()
+        return self.pindex.bincount(weights=weight_field.val).get_full_data()
 
     def get_distance_array(self, distribution_strategy):
         return distributed_data_object(

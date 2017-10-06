@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..nifty_meta import NiftyMeta
-from .memoization import memo
+from ..memoization import memo
 
 from keepers import Loggable
 from future.utils import with_metaclass

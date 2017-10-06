@@ -2,7 +2,7 @@ from ...energies.energy import Energy
 from ...operators.smoothness_operator import SmoothnessOperator
 from ...operators.diagonal_operator import DiagonalOperator
 from . import CriticalPowerCurvature
-from ...energies.memoization import memo
+from ...memoization import memo
 from ...minimization import ConjugateGradient
 
 from ...sugar import generate_posterior_sample
