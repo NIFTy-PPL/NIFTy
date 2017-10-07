@@ -4,9 +4,9 @@ from __future__ import division
 from builtins import range
 import numpy as np
 
-from ..endomorphic_operator import EndomorphicOperator
-from ... import nifty_utilities as utilities
-from ... import Field, DomainTuple
+from .endomorphic_operator import EndomorphicOperator
+from .. import nifty_utilities as utilities
+from .. import Field, DomainTuple
 
 
 class DirectSmoothingOperator(EndomorphicOperator):

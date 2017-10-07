@@ -16,10 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ... import Field, DomainTuple, nifty_utilities as utilities
-from ...spaces import RGSpace, GLSpace, HPSpace, LMSpace
+from .. import Field, DomainTuple, nifty_utilities as utilities
+from ..spaces import RGSpace, GLSpace, HPSpace, LMSpace
 
-from ..linear_operator import LinearOperator
+from .linear_operator import LinearOperator
 from .fft_operator_support import RGRGTransformation,\
                                   LMGLTransformation,\
                                   LMHPTransformation,\

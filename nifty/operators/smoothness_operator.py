@@ -1,7 +1,7 @@
-from ...spaces.power_space import PowerSpace
-from ..endomorphic_operator import EndomorphicOperator
-from ..laplace_operator import LaplaceOperator
-from ... import Field, DomainTuple
+from ..spaces.power_space import PowerSpace
+from .endomorphic_operator import EndomorphicOperator
+from .laplace_operator import LaplaceOperator
+from .. import Field, DomainTuple
 
 
 class SmoothnessOperator(EndomorphicOperator):

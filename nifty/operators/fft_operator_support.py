@@ -18,8 +18,8 @@
 
 from __future__ import division
 import numpy as np
-from ... import nifty_utilities as utilities
-from ...low_level_library import hartley
+from .. import nifty_utilities as utilities
+from ..low_level_library import hartley
 
 class Transformation(object):
     def __init__(self, domain, codomain):

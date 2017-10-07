@@ -17,8 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from builtins import range
-from ..linear_operator import LinearOperator
-from ... import DomainTuple
+from .linear_operator import LinearOperator
+from .. import DomainTuple
 
 class ComposedOperator(LinearOperator):
     """ NIFTY class for composed operators.

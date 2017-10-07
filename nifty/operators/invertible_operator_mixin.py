@@ -17,8 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from builtins import object
-from ...energies import QuadraticEnergy
-from ...field import Field
+from ..energies import QuadraticEnergy
+from ..field import Field
 
 
 class InvertibleOperatorMixin(object):

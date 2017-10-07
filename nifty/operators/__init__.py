@@ -24,9 +24,10 @@ from .diagonal_operator import DiagonalOperator
 
 from .endomorphic_operator import EndomorphicOperator
 
-from .smoothing_operator import *
+from .fft_smoothing_operator import FFTSmoothingOperator
+from .direct_smoothing_operator import DirectSmoothingOperator
 
-from .fft_operator import *
+from .fft_operator import FFTOperator
 
 from .invertible_operator_mixin import InvertibleOperatorMixin
 

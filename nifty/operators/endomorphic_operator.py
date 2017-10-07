@@ -17,8 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-
-from ..linear_operator import LinearOperator
+from .linear_operator import LinearOperator
 
 
 class EndomorphicOperator(LinearOperator):

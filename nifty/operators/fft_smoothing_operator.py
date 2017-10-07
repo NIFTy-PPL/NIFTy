@@ -3,9 +3,9 @@
 from builtins import range
 import numpy as np
 
-from ..endomorphic_operator import EndomorphicOperator
-from ..fft_operator import FFTOperator
-from ... import DomainTuple
+from .endomorphic_operator import EndomorphicOperator
+from .fft_operator import FFTOperator
+from .. import DomainTuple
 
 class FFTSmoothingOperator(EndomorphicOperator):
     def __init__(self, domain, sigma, space=None):
