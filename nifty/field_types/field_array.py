@@ -23,6 +23,7 @@ from functools import reduce
 class FieldArray(FieldType):
     def __init__(self, shape):
         super(FieldArray, self).__init__()
+        self._needed_for_hash += ["_shape"]
         try:
             self._shape = tuple([int(i) for i in shape])
         except TypeError:
