@@ -32,7 +32,7 @@ from __future__ import division
 from builtins import range
 from functools import reduce
 import numpy as np
-from ..space import Space
+from .space import Space
 
 
 class RGSpace(Space):

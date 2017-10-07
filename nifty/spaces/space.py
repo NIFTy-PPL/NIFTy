@@ -18,7 +18,7 @@
 
 import abc
 
-from ...domain_object import DomainObject
+from ..domain_object import DomainObject
 
 
 class Space(DomainObject):

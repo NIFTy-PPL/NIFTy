@@ -17,10 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-
 import numpy as np
-
-from ..space import Space
+from .space import Space
 
 
 class LMSpace(Space):

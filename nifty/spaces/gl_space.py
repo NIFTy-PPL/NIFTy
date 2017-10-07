@@ -18,7 +18,7 @@
 
 from __future__ import division
 import numpy as np
-from ..space import Space
+from .space import Space
 
 
 class GLSpace(Space):

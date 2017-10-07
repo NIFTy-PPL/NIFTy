@@ -17,10 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-
-from ...spaces.space import Space
+from .space import Space
 from functools import reduce
-from ... import dobj
+from .. import dobj
 
 
 class PowerSpace(Space):
@@ -51,9 +50,6 @@ class PowerSpace(Space):
         mapped to which power bin
     k_lengths : numpy.ndarray
         Sorted array of all k-modes.
-    rho : numpy.ndarray
-        The amount of k-modes that get mapped to one power bin is given by
-        rho.
     dim : np.int
         Total number of dimensionality, i.e. the number of pixels.
     harmonic : bool
@@ -148,7 +144,11 @@ class PowerSpace(Space):
         if not (isinstance(harmonic_partner, Space) and
                 harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
+        if harmonic_partner.scalar_dvol() is None:
+            raise ValueError("harmonic partner must have "
+                             "scalar volume factors")
         self._harmonic_partner = harmonic_partner
+        pdvol = harmonic_partner.scalar_dvol()
 
         if binbounds is not None:
             binbounds = tuple(binbounds)
@@ -165,12 +165,13 @@ class PowerSpace(Space):
             temp_k_lengths = np.bincount(temp_pindex.ravel(),
                                       weights=k_length_array.ravel()) \
                 / temp_rho
+            temp_dvol = temp_rho*pdvol
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
                                           temp_k_lengths,
-                                          temp_rho)
+                                          temp_dvol)
 
-        (self._binbounds, self._pindex, self._k_lengths, self._rho) = \
+        (self._binbounds, self._pindex, self._k_lengths, self._dvol) = \
             self._powerIndexCache[key]
 
     @staticmethod
@@ -199,7 +200,10 @@ class PowerSpace(Space):
         return self.shape[0]
 
     def scalar_dvol(self):
-        return 1.
+        return None
+
+    def dvol(self):
+        return self._dvol
 
     def get_k_length_array(self):
         return self.k_lengths.copy()
@@ -232,9 +236,3 @@ class PowerSpace(Space):
         """ Sorted array of all k-modes.
         """
         return self._k_lengths
-
-    @property
-    def rho(self):
-        """Degeneracy factor of the individual k-vectors.
-        """
-        return self._rho
