@@ -49,3 +49,5 @@ from . import plotting
 from . import library
 
 from .data_objects import numpy_do as dobj
+
+from .memoization import memo
