@@ -80,8 +80,8 @@ class Test_Functionality(unittest.TestCase):
             sk = fp.power_synthesize(spaces=(0, 1), real_signal=True)
 
             sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)
-            ps1 += sp.integrate(spaces=1)/fp2.sum()
-            ps2 += sp.integrate(spaces=0)/fp1.sum()
+            ps1 += sp.sum(spaces=1)/fp2.sum()
+            ps2 += sp.sum(spaces=0)/fp1.sum()
 
         assert_allclose(ps1.val/samples, fp1.val, rtol=0.2)
         assert_allclose(ps2.val/samples, fp2.val, rtol=0.2)
@@ -117,8 +117,8 @@ class Test_Functionality(unittest.TestCase):
             rand_k = Field.from_random('normal', domain=fulldomain)
             sk = S_1.times(S_2.times(rand_k))
             sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)
-            ps1 += sp.integrate(spaces=1)/fp2.sum()
-            ps2 += sp.integrate(spaces=0)/fp1.sum()
+            ps1 += sp.sum(spaces=1)/fp2.sum()
+            ps2 += sp.sum(spaces=0)/fp1.sum()
 
         assert_allclose(ps1.val/samples, fp1.val, rtol=0.2)
         assert_allclose(ps2.val/samples, fp2.val, rtol=0.2)

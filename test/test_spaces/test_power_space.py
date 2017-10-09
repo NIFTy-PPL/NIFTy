@@ -56,7 +56,6 @@ CONSTRUCTOR_CONFIGS = [
         'binbounds': None,
         'pindex': np.array([0, 1, 2, 3, 4, 3, 2, 1]),
         'k_lengths': np.array([0., 1., 2., 3., 4.]),
-        'rho': np.array([1, 2, 2, 2, 1]),
         }],
     [RGSpace((8,), harmonic=True), True, None, None, {
         'harmonic': True,
@@ -66,7 +65,6 @@ CONSTRUCTOR_CONFIGS = [
         'binbounds': (0.5, 1.3228756555322954, 3.5),
         'pindex': np.array([0, 1, 2, 2, 3, 2, 2, 1]),
         'k_lengths': np.array([0., 1., 2.5, 4.]),
-        'rho': np.array([1, 2, 4, 1]),
         }],
     ]
 
@@ -84,7 +82,6 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
         ['binbounds', type(None)],
         ['pindex', np.ndarray],
         ['k_lengths', np.ndarray],
-        ['rho', np.ndarray],
         ])
     def test_property_ret_type(self, attribute, expected_type):
         r = RGSpace((4, 4), harmonic=True)
@@ -99,7 +96,7 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
         bb = PowerSpace.useful_binbounds(harmonic_partner, logarithmic, nbin)
         p = PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
-        assert_equal(np.bincount(p.pindex.ravel()), p.rho,
+        assert_equal(np.bincount(p.pindex.ravel()), p.dvol(),
                      err_msg='rho is not equal to pindex degeneracy')
 
 
@@ -128,5 +125,11 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         assert_almost_equal(p.get_k_length_array(), expected)
 
     def test_dvol(self):
-        p = PowerSpace(harmonic_partner=RGSpace(10,harmonic=True))
-        assert_almost_equal(p.dvol(),1.)
+        hp = RGSpace(10,harmonic=True)
+        p = PowerSpace(harmonic_partner=hp)
+        v1 = hp.dvol()
+        v1 = hp.dim*v1 if np.isscalar(v1) else np.sum(v1)
+        v2 = p.dvol()
+        v2 = p.dim*v2 if np.isscalar(v2) else np.sum(v2)
+        print v1, v2
+        assert_almost_equal(v1, v2)

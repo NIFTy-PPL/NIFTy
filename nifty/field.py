@@ -234,8 +234,9 @@ class Field(object):
         power_spectrum = dobj.bincount_axis(pindex, weights=field.val,
                                             axis=axes)
         new_rho_shape = [1] * len(power_spectrum.shape)
-        new_rho_shape[axes[0]] = len(power_domain.rho)
-        power_spectrum /= power_domain.rho.reshape(new_rho_shape)
+        new_rho_shape[axes[0]] = power_domain.dim
+        power_spectrum /= power_domain.dvol().reshape(new_rho_shape)
+        power_spectrum *= field.domain[idx].scalar_dvol()
         result_domain = list(field.domain)
         result_domain[idx] = power_domain
         return Field(result_domain, power_spectrum)

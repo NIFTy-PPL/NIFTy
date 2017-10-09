@@ -60,7 +60,6 @@ class LinearOperator(with_metaclass(
             The domain on which the Operator's input Field lives.
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
-
         """
         raise NotImplementedError
 
