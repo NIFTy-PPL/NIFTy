@@ -73,10 +73,11 @@ class CriticalPowerEnergy(Energy):
         self._w = w if w is not None else None
         if inverter is None:
             preconditioner = DiagonalOperator(self._theta.domain,
-                                              diagonal=self._theta.weight(-1),
+                                              diagonal=self._theta,
                                               copy=False)
             inverter = ConjugateGradient(preconditioner=preconditioner)
         self._inverter = inverter
+        self.one = Field(self.position.domain,val=1.)
 
     @property
     def inverter(self):
@@ -94,16 +95,16 @@ class CriticalPowerEnergy(Energy):
     @property
     @memo
     def value(self):
-        energy = self._theta.sum()
-        energy += self.position.weight(-1).vdot(self._rho_prime)
+        energy = self.one.vdot(self._theta)
+        energy += self.position.vdot(self.one/2.)
         energy += 0.5 * self.position.vdot(self._Tt)
         return energy.real
 
     @property
     @memo
     def gradient(self):
-        gradient = -self._theta.weight(-1)
-        gradient += (self._rho_prime).weight(-1)
+        gradient = -self._theta
+        gradient += (self.one/2.)
         gradient += self._Tt
         gradient.val = gradient.val.real
         return gradient
@@ -111,7 +112,7 @@ class CriticalPowerEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return CriticalPowerCurvature(theta=self._theta.weight(-1), T=self.T,
+        return CriticalPowerCurvature(theta=self._theta, T=self.T,
                                       inverter=self.inverter)
 
     # ---Added properties and methods---
@@ -142,7 +143,7 @@ class CriticalPowerEnergy(Energy):
                 w = self.m.power_analyze(
                      binbounds=self.position.domain[0].binbounds)
                 w *= self.rho
-            self._w = w
+            self._w = w.weight(-1)
         return self._w
 
     @property
