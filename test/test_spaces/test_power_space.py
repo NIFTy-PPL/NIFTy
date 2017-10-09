@@ -131,5 +131,4 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         v1 = hp.dim*v1 if np.isscalar(v1) else np.sum(v1)
         v2 = p.dvol()
         v2 = p.dim*v2 if np.isscalar(v2) else np.sum(v2)
-        print v1, v2
         assert_almost_equal(v1, v2)
