@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-
 from ..domain_object import DomainObject
 
 
