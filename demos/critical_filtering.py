@@ -10,7 +10,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.rank
 
-np.random.seed(43)
+np.random.seed(44)
 
 
 def plot_parameters(m, t, p, p_sig,p_d):
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     distribution_strategy = 'not'
 
     # Set up position space
-    dist = 1/128. *0.1
+    dist = 1/128. *10
     s_space = ift.RGSpace([128, 128], distances=[dist,dist])
     # s_space = ift.HPSpace(32)
 
@@ -74,8 +74,8 @@ if __name__ == "__main__":
                              distribution_strategy=distribution_strategy)
 
     # Choose the prior correlation structure and defining correlation operator
-    # p_spec = (lambda k: (.5 / (k + 1) ** 3))
-    p_spec = (lambda k: 1)
+    p_spec = (lambda k: (.5 / (k + 1) ** 3))
+    # p_spec = (lambda k: 1)
     S = ift.create_power_operator(h_space, power_spectrum=p_spec,
                                   distribution_strategy=distribution_strategy)
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # Add a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = 1.
+    noise = .1
     ndiag = ift.Field(s_space, noise).weight(1)
     N = ift.DiagonalOperator(s_space, ndiag)
     n = ift.Field.from_random(domain=s_space,
@@ -130,7 +130,8 @@ if __name__ == "__main__":
     flat_power = ift.Field(p_space, val=1e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
-    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.kindex)**2))
+    # t0 = ift.Field(p_space, val=np.log(1./(1+p_space.kindex)**2))
+    t0 = ift.Field(p_space, val=-5)
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ift.exp(t0),
@@ -139,13 +140,13 @@ if __name__ == "__main__":
         # Initialize non-linear Wiener Filter energy
         map_energy = WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S0)
         # Solve the Wiener Filter analytically
-        # D0 = map_energy.curvature
-        # m0 = D0.inverse_times(j)
+        D0 = map_energy.curvature
+        m0 = D0.inverse_times(j)
         # Initialize power energy with updated parameters
-        power_energy = CriticalPowerEnergy(position=t0, m=sh, D=None,
-                                           smoothness_prior=1e-15, samples=3)
+        power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0,
+                                           smoothness_prior=1e-15, samples=5)
 
-        (power_energy, convergence) = minimizer2(power_energy)
+        (power_energy, convergence) = minimizer1(power_energy)
 
         # Set new power spectrum
         t0.val = power_energy.position.val.real

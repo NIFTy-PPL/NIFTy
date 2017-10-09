@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-
+from .operators.power_projection_operator import PowerProjection
 from . import Space,\
                   PowerSpace,\
                   Field,\
@@ -71,14 +71,14 @@ def create_power_operator(domain, power_spectrum, dtype=None,
 
     fp = Field(power_domain, val=power_spectrum, dtype=dtype,
                distribution_strategy='not')
-    f = fp.power_synthesize(mean=1, std=0, real_signal=False,
-                            distribution_strategy=distribution_strategy)
+    P = PowerProjection(domain, power_domain)
+    f = P.adjoint_times(fp)
 
     if not issubclass(fp.dtype.type, np.complexfloating):
         f = f.real
 
-    f **= 2
-    diag = Field(domain,f).weight()
+    # f **= 2
+    diag = Field(domain,f)#.weight()
     return DiagonalOperator(domain, diag)
 
 
@@ -109,9 +109,10 @@ def generate_posterior_sample(mean, covariance):
     R = covariance.R
     N = covariance.N
 
-    power = sqrt(S.diagonal().power_analyze())
-    mock_signal = power.power_synthesize(real_signal=True)
-
+    power = sqrt(S.diagonal())
+    mock_signal = Field.from_random(random_type="normal", domain=S.domain,
+                                   dtype=power.dtype)
+    mock_signal = power * mock_signal
     noise = N.diagonal().weight(-1)
 
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,

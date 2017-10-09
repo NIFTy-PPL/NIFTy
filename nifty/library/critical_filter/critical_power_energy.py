@@ -1,6 +1,8 @@
 from ...energies.energy import Energy
 from ...operators.smoothness_operator import SmoothnessOperator
 from ...operators.diagonal_operator import DiagonalOperator
+from ...operators.linear_operator import LinearOperator
+from ...operators.power_projection_operator import PowerProjection
 from . import CriticalPowerCurvature
 from ...memoization import memo
 from ...minimization import ConjugateGradient
@@ -70,6 +72,7 @@ class CriticalPowerEnergy(Energy):
                                     strength=smoothness_prior,
                                     logarithmic=logarithmic)
         self.rho = self.position.domain[0].rho
+        self.P = PowerProjection(domain=self.m.domain,target=self.position.domain)
         self._w = w if w is not None else None
         if inverter is None:
             preconditioner = DiagonalOperator(self._theta.domain,
@@ -135,15 +138,12 @@ class CriticalPowerEnergy(Energy):
                     self.logger.info("Drawing sample %i" % i)
                     posterior_sample = generate_posterior_sample(
                                                             self.m, self.D)
-                    projected_sample = posterior_sample.power_analyze(
-                     binbounds=self.position.domain[0].binbounds)
-                    w += (projected_sample) * self.rho
+                    w += self.P(abs(posterior_sample) ** 2)
+
                 w /= float(self.samples)
             else:
-                w = self.m.power_analyze(
-                     binbounds=self.position.domain[0].binbounds)
-                w *= self.rho
-            self._w = w.weight(-1)
+                w = self.P(abs(self.m)**2)
+            self._w = w
         return self._w
 
     @property
