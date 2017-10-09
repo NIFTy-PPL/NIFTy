@@ -28,6 +28,11 @@ class DomainTuple(object):
         shape_tuple = tuple(sp.shape for sp in self._dom)
         self._shape = reduce(lambda x, y: x + y, shape_tuple, ())
         self._dim = reduce(lambda x, y: x * y, self._shape, 1)
+        self._accdims = (1,)
+        prod = 1
+        for dom in self._dom:
+            prod *= dom.dim
+            self._accdims += (prod,)
 
     def _get_axes_tuple(self):
         i = 0
@@ -110,3 +115,14 @@ class DomainTuple(object):
         for i in self.domains:
             res += "\n" + str(i)
         return res
+
+    def collapsed_shape_for_domain(self, ispace):
+        """Returns a three-component shape, with the total number of pixels
+        in the domains before the requested space in res[0], the total number
+        of pixels in the requested space in res[1], and the remaining pixels in
+        res[2].
+        """
+        dims = (dom.dim for dom in self._dom)
+        return (self._accdims[ispace],
+                self._accdims[ispace+1]/self._accdims[ispace],
+                self._accdims[-1]/self._accdims[ispace+1])

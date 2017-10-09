@@ -26,7 +26,6 @@ from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
 
-
 class Field(object):
     """ The discrete representation of a continuous field over multiple spaces.
 
@@ -219,27 +218,19 @@ class Field(object):
                                                 idx=space_index,
                                                 binbounds=binbounds)
                      for part in parts]
-        parts = [ part.weight(-1,spaces) for part in parts ]
 
         return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
 
     @staticmethod
     def _single_power_analyze(field, idx, binbounds):
+        from .operators.power_projection_operator import PowerProjectionOperator
         power_domain = PowerSpace(field.domain[idx], binbounds)
-        pindex = power_domain.pindex
-        axes = field.domain.axes[idx]
-        new_pindex_shape = [1] * len(field.shape)
-        for i, ax in enumerate(axes):
-            new_pindex_shape[ax] = pindex.shape[i]
-        pindex = np.broadcast_to(pindex.reshape(new_pindex_shape), field.shape)
-
-        power_spectrum = dobj.bincount_axis(pindex, weights=field.val,
-                                            axis=axes)
-        result_domain = list(field.domain)
-        result_domain[idx] = power_domain
-        return Field(result_domain, power_spectrum)
+        ppo = PowerProjectionOperator(field.domain,idx,power_domain)
+        return ppo(field)
 
     def _compute_spec(self, spaces):
+        from .operators.power_projection_operator import PowerProjectionOperator
+        from .basic_arithmetics import sqrt
         if spaces is None:
             spaces = range(len(self.domain))
         else:
@@ -247,23 +238,14 @@ class Field(object):
 
         # create the result domain
         result_domain = list(self.domain)
-        for i in spaces:
-            if not isinstance(self.domain[i], PowerSpace):
-                raise ValueError("A PowerSpace is needed for field "
-                                 "synthetization.")
-            result_domain[i] = self.domain[i].harmonic_partner
 
-        spec = dobj.sqrt(self.val)
+        spec = sqrt(self)
         for i in spaces:
-            power_space = self.domain[i]
-            local_blow_up = [slice(None)]*len(spec.shape)
-            # it is important to count from behind, since spec potentially
-            # grows with every iteration
-            index = self.domain.axes[i][0]-len(self.shape)
-            local_blow_up[index] = power_space.pindex
-            # here, the power_spectrum is distributed into the new shape
-            spec = spec[local_blow_up]
-        return Field(result_domain, val=spec)
+            result_domain[i] = self.domain[i].harmonic_partner
+            ppo = PowerProjectionOperator(result_domain,i,self.domain[i])
+            spec = ppo.adjoint_times(spec)
+
+        return spec
 
     def power_synthesize(self, spaces=None, real_power=True, real_signal=True):
         """ Yields a sampled field with `self`**2 as its power spectrum.

@@ -38,3 +38,5 @@ from .response_operator import ResponseOperator
 from .laplace_operator import LaplaceOperator
 
 from .smoothness_operator import SmoothnessOperator
+
+from .power_projection_operator import PowerProjectionOperator
