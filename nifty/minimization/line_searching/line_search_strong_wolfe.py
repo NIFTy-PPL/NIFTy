@@ -164,7 +164,7 @@ class LineSearchStrongWolfe(LineSearch):
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
         else:
-            # max_iterations was reached
+            print("max iterations reached")
             return le_alpha1.energy
         return result_energy
 
@@ -261,8 +261,7 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            # self.logger.error("The line search algorithm (zoom) did not "
-            #                  "converge.")
+            print("The line search algorithm (zoom) did not converge.")
             return le_alphaj
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):
