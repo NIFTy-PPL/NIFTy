@@ -18,50 +18,49 @@
 
 from __future__ import division
 from builtins import object
-from ...sugar import create_composed_fft_operator
+from ..sugar import create_composed_fft_operator
 
 
-class TraceProberMixin(object):
+class DiagonalProberMixin(object):
     def __init__(self, *args, **kwargs):
         self.reset()
         self.__evaluate_probe_in_signal_space = False
-        super(TraceProberMixin, self).__init__(*args, **kwargs)
+        super(DiagonalProberMixin, self).__init__(*args, **kwargs)
 
     def reset(self):
         self.__sum_of_probings = 0
         self.__sum_of_squares = 0
-        self.__trace = None
-        self.__trace_variance = None
-        super(TraceProberMixin, self).reset()
+        self.__diagonal = None
+        self.__diagonal_variance = None
+        super(DiagonalProberMixin, self).reset()
 
     def finish_probe(self, probe, pre_result):
         if self.__evaluate_probe_in_signal_space:
             fft = create_composed_fft_operator(self._domain, all_to='position')
-            result = fft(probe[1]).weight(-1).vdot(fft(pre_result))
+            result = fft(probe[1]).conjugate()*fft(pre_result)
         else:
-            result = probe[1].weight(-1).vdot(pre_result)
-
+            result = probe[1].conjugate()*pre_result
         self.__sum_of_probings += result
         if self.compute_variance:
             self.__sum_of_squares += result.conjugate() * result
-        super(TraceProberMixin, self).finish_probe(probe, pre_result)
+        super(DiagonalProberMixin, self).finish_probe(probe, pre_result)
 
     @property
-    def trace(self):
-        if self.__trace is None:
-            self.__trace = self.__sum_of_probings/self.probe_count
-        return self.__trace
+    def diagonal(self):
+        if self.__diagonal is None:
+            self.__diagonal = self.__sum_of_probings/self.probe_count
+        return self.__diagonal
 
     @property
-    def trace_variance(self):
+    def diagonal_variance(self):
         if not self.compute_variance:
             raise AttributeError("self.compute_variance is set to False")
-        if self.__trace_variance is None:
+        if self.__diagonal_variance is None:
             # variance = 1/(n-1) (sum(x^2) - 1/n*sum(x)^2)
             n = self.probe_count
             sum_pr = self.__sum_of_probings
-            mean = self.trace
+            mean = self.diagonal
             sum_sq = self.__sum_of_squares
 
-            self.__trace_variance = (sum_sq - sum_pr*mean) / (n-1)
-        return self.__trace_variance
+            self.__diagonal_variance = ((sum_sq - sum_pr*mean) / (n-1))
+        return self.__diagonal_variance

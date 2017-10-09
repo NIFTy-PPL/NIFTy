@@ -17,4 +17,5 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .prober import Prober
-from .mixin_classes import *
+from .diagonal_prober_mixin import DiagonalProberMixin
+from .trace_prober_mixin import TraceProberMixin
