@@ -346,4 +346,4 @@ class PowerSpace(Space):
         except KeyError:
             bb = None
         ds = str(hdf5_group.attrs['distribution_strategy'])
-        return PowerSpace(hp, ds, binbounds=bb, volume_type=volume_type)
+        return PowerSpace(hp, ds, binbounds=bb)
