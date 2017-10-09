@@ -124,5 +124,5 @@ class DomainTuple(object):
         """
         dims = (dom.dim for dom in self._dom)
         return (self._accdims[ispace],
-                self._accdims[ispace+1]/self._accdims[ispace],
-                self._accdims[-1]/self._accdims[ispace+1])
+                self._accdims[ispace+1]//self._accdims[ispace],
+                self._accdims[-1]//self._accdims[ispace+1])
