@@ -213,11 +213,13 @@ class Field(object):
         else:
             parts = [self.real*self.real + self.imag*self.imag]
 
+        parts = [ part.weight(1,spaces) for part in parts ]
         for space_index in spaces:
             parts = [self._single_power_analyze(field=part,
                                                 idx=space_index,
                                                 binbounds=binbounds)
                      for part in parts]
+        parts = [ part.weight(-1,spaces) for part in parts ]
 
         return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
 
@@ -233,10 +235,6 @@ class Field(object):
 
         power_spectrum = dobj.bincount_axis(pindex, weights=field.val,
                                             axis=axes)
-        new_rho_shape = [1] * len(power_spectrum.shape)
-        new_rho_shape[axes[0]] = power_domain.dim
-        power_spectrum /= power_domain.dvol().reshape(new_rho_shape)
-        power_spectrum *= field.domain[idx].scalar_dvol()
         result_domain = list(field.domain)
         result_domain[idx] = power_domain
         return Field(result_domain, power_spectrum)
