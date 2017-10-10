@@ -59,7 +59,7 @@ if __name__ == "__main__":
     distribution_strategy = 'not'
 
     # Set up position space
-    dist = 1/128. *10
+    dist = 1/128. *0.1
     s_space = ift.RGSpace([128, 128], distances=[dist,dist])
     # s_space = ift.HPSpace(32)
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # Add a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = .1
+    noise = 100.
     ndiag = ift.Field(s_space, noise).weight(1)
     N = ift.DiagonalOperator(s_space, ndiag)
     n = ift.Field.from_random(domain=s_space,
