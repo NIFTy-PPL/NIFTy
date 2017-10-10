@@ -96,7 +96,7 @@ class DirectSmoothingOperator(EndomorphicOperator):
         affected_axes = x.domain.axes[self._space]
         axis = affected_axes[0]
 
-        distances = x.domain[self._space].get_k_length_array()
+        distances = x.domain[self._space].k_lengths
         if self._log_distances:
             distances = np.log(np.maximum(distances, 1e-15))
 
