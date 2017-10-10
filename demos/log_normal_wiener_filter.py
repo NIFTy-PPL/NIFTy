@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import nifty2go as ift
 import numpy as np
 
