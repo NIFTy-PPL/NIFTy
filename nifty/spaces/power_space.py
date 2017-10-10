@@ -53,7 +53,7 @@ class PowerSpace(Space):
     dim : np.int
         Total number of dimensionality, i.e. the number of pixels.
     harmonic : bool
-        Always True for this space.
+        Always False for this space.
     shape : tuple of np.ints
         The shape of the space's data array.
     binbounds : tuple or None
@@ -189,7 +189,7 @@ class PowerSpace(Space):
 
     @property
     def harmonic(self):
-        return True
+        return False
 
     @property
     def shape(self):
@@ -204,13 +204,6 @@ class PowerSpace(Space):
 
     def dvol(self):
         return self._dvol
-
-    def get_k_length_array(self):
-        return self.k_lengths.copy()
-
-    def get_fft_smoothing_kernel_function(self, sigma):
-        raise NotImplementedError(
-            "There is no fft smoothing function for PowerSpace.")
 
     # ---Added properties and methods---
 

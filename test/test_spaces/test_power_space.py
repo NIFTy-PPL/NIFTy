@@ -49,7 +49,7 @@ CONSTRUCTOR_CONFIGS = [
     [1, False, None, None, {'error': (ValueError, NotImplementedError)}],
     [RGSpace((8,)), False, None, None, {'error': ValueError}],
     [RGSpace((8,), harmonic=True), None, None, None, {
-        'harmonic': True,
+        'harmonic': False,
         'shape': (5,),
         'dim': 5,
         'harmonic_partner': RGSpace((8,), harmonic=True),
@@ -58,7 +58,7 @@ CONSTRUCTOR_CONFIGS = [
         'k_lengths': np.array([0., 1., 2., 3., 4.]),
         }],
     [RGSpace((8,), harmonic=True), True, None, None, {
-        'harmonic': True,
+        'harmonic': False,
         'shape': (4,),
         'dim': 4,
         'harmonic_partner': RGSpace((8,), harmonic=True),
@@ -69,7 +69,7 @@ CONSTRUCTOR_CONFIGS = [
     ]
 
 
-def get_k_length_array_configs():
+def k_lengths_configs():
     da_0 = np.array([0, 1.0, 1.41421356, 2., 2.23606798, 2.82842712])
     return [
         [RGSpace((4, 4), harmonic=True),  da_0],
@@ -119,10 +119,10 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
                 else:
                     assert_equal(getattr(p, key), value)
 
-    @expand(get_k_length_array_configs())
-    def test_k_length_array(self, harmonic_partner, expected):
+    @expand(k_lengths_configs())
+    def test_k_lengths(self, harmonic_partner, expected):
         p = PowerSpace(harmonic_partner=harmonic_partner)
-        assert_almost_equal(p.get_k_length_array(), expected)
+        assert_almost_equal(p.k_lengths, expected)
 
     def test_dvol(self):
         hp = RGSpace(10,harmonic=True)
