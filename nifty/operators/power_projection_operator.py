@@ -23,7 +23,7 @@ from .. import dobj
 import numpy as np
 
 class PowerProjectionOperator(LinearOperator):
-    def __init__(self, domain, space, power_space=None):
+    def __init__(self, domain, space=None, power_space=None):
         super(PowerProjectionOperator, self).__init__()
 
         # Initialize domain and target
@@ -36,8 +36,6 @@ class PowerProjectionOperator(LinearOperator):
         hspace = self._domain[space]
         if not hspace.harmonic:
             raise ValueError("Operator acts on harmonic spaces only")
-        if isinstance(hspace, PowerSpace):
-            raise TypeError("Operator cannot act on PowerSpaces")
         if power_space is None:
             power_space = PowerSpace(hspace)
         else:
@@ -64,9 +62,7 @@ class PowerProjectionOperator(LinearOperator):
         pindex = self._target[self._space].pindex
         pindex = pindex.reshape((1, pindex.size, 1))
         arr = x.val.reshape(x.domain.collapsed_shape_for_domain(self._space))
-        out = dobj.zeros(self._domain.collapsed_shape_for_domain(self._space),
-              dtype=x.dtype)
-        out[()] = arr[(slice(None), pindex.ravel(), slice(None))]
+        out = arr[(slice(None), pindex.ravel(), slice(None))]
         return Field(self._domain, out.reshape(self._domain.shape))
 
     @property

@@ -58,13 +58,13 @@ that apply to fields.
 <!-- -->
 
     Field.conjugate     Field.dim          Field.norm
-    Field.vdot          Field.set_val      Field.weight
+    Field.vdot          Field.weight
 
 -   [Operators](http://www.mpa-garching.mpg.de/ift/nifty/operator.html)
     -   `DiagonalOperator` - purely diagonal matrices in a specified
         basis
-    -   `ProjectionOperator` - projections onto subsets of a specified
-        basis
+    -   `FFTOperator` - conversion between spaces and their harmonic
+                        counterparts
     -   (and more)
 -   (and more)
 
@@ -110,12 +110,12 @@ For a quick start, you can browse through the [informal
 introduction](http://www.mpa-garching.mpg.de/ift/nifty/start.html) or
 dive into NIFTY by running one of the demonstrations, e.g.:
 
-    python demos/wiener_filter.py
+    python demos/wiener_filter_via_curvature.py
 
 Acknowledgement
 ---------------
 
-Please, acknowledge the use of NIFTY in your publication(s) by using a
+Please acknowledge the use of NIFTY in your publication(s) by using a
 phrase such as the following:
 
 > *"Some of the results in this publication have been derived using the
