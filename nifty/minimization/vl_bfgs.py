@@ -147,21 +147,16 @@ class InformationStore(object):
         -------
         result : List
             List of new basis vectors.
-
         """
         result = []
         m = self.history_length
         mmax = self.max_history_length
 
-        k = self.k
-        s = self.s
+        for i in range(m):
+            result.append(self.s[(self.k-m+i) % mmax])
 
         for i in range(m):
-            result.append(s[(k-m+i) % mmax])
-
-        y = self.y
-        for i in range(m):
-            result.append(y[(k-m+i) % mmax])
+            result.append(self.y[(self.k-m+i) % mmax])
 
         result.append(self.last_gradient)
 
@@ -211,7 +206,6 @@ class InformationStore(object):
             result[2*m, m+i] = result[m+i, 2*m] = ygrad_i
 
         result[2*m, 2*m] = self.last_gradient.norm()
-
         return result
 
     @property
