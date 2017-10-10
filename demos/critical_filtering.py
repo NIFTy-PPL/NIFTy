@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # Add a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = 100.
+    noise = 10.
     ndiag = ift.Field(s_space, noise).weight(1)
     N = ift.DiagonalOperator(s_space, ndiag)
     n = ift.Field.from_random(domain=s_space,
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         m0 = D0.inverse_times(j)
         # Initialize power energy with updated parameters
         power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0,
-                                           smoothness_prior=1e-15, samples=5)
+                                           smoothness_prior=1., samples=5)
 
         (power_energy, convergence) = minimizer1(power_energy)
 
