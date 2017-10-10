@@ -81,6 +81,7 @@ class CriticalPowerEnergy(Energy):
             inverter = ConjugateGradient(preconditioner=preconditioner)
         self._inverter = inverter
         self.one = Field(self.position.domain,val=1.)
+        self.constants = self.one/2. + self.alpha - 1
 
     @property
     def inverter(self):
@@ -99,7 +100,7 @@ class CriticalPowerEnergy(Energy):
     @memo
     def value(self):
         energy = self.one.vdot(self._theta)
-        energy += self.position.vdot(self.one/2.)
+        energy += self.position.vdot(self.constants)
         energy += 0.5 * self.position.vdot(self._Tt)
         return energy.real
 
@@ -107,7 +108,7 @@ class CriticalPowerEnergy(Energy):
     @memo
     def gradient(self):
         gradient = -self._theta
-        gradient += (self.one/2.)
+        gradient += (self.constants)
         gradient += self._Tt
         gradient.val = gradient.val.real
         return gradient
@@ -151,10 +152,6 @@ class CriticalPowerEnergy(Energy):
     def _theta(self):
         return exp(-self.position) * (self.q + self.w / 2.)
 
-    @property
-    @memo
-    def _rho_prime(self):
-        return self.alpha - 1. + self.rho / 2.
 
     @property
     @memo
