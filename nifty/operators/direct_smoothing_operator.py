@@ -3,6 +3,7 @@ from builtins import range
 import numpy as np
 
 from .endomorphic_operator import EndomorphicOperator
+from ..spaces import PowerSpace
 from .. import nifty_utilities as utilities
 from .. import Field, DomainTuple
 
@@ -20,6 +21,8 @@ class DirectSmoothingOperator(EndomorphicOperator):
         space = int(space)
         if (space<0) or space>=len(self._domain.domains):
             raise ValueError("space index out of range")
+        if not isinstance(self._domain[space],PowerSpace):
+            raise TypeError("PowerSpace needed")
         self._space = space
 
         self._sigma = float(sigma)
