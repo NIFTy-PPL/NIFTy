@@ -16,7 +16,7 @@ class WienerFilterEnergy(Energy):
     d : Field,
         the data.
     R : Operator,
-        The response operator, describtion of the measurement process.
+        The response operator, description of the measurement process.
     N : EndomorphicOperator,
         The noise covariance in data space.
     S : EndomorphicOperator,
@@ -34,7 +34,7 @@ class WienerFilterEnergy(Energy):
 
     def at(self, position):
         return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
-                              S=self.S, _j=self._jpre)
+                              S=self.S, inverter=self._inverter, _j=self._jpre)
 
     @property
     @memo
