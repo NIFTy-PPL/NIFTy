@@ -55,9 +55,10 @@ if __name__ == "__main__":
     ss = fft.adjoint_times(sh)
 
     # Choosing the measurement instrument
-    # Instrument = SmoothingOperator(s_space, sigma=0.05)
-    Instrument = ift.DiagonalOperator(ift.Field.ones(s_space))
-#    Instrument._diagonal.val[200:400, 200:400] = 0
+    #Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
+    diag = ift.Field.ones(s_space)
+    #diag.val[20:80, 20:80] = 0
+    Instrument = ift.DiagonalOperator(diag.weight(-1))
 
     # Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
@@ -77,6 +78,8 @@ if __name__ == "__main__":
 
     ctrl = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
+    controller = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1)
+    minimizer = ift.RelaxedNewton(controller=controller)
     # Setting starting position
     m0 = ift.Field.zeros(h_space)
 
@@ -85,16 +88,18 @@ if __name__ == "__main__":
                                 inverter=inverter)
     D0 = energy.curvature
 
-    # Solving the problem analytically
-    m0 = D0.inverse_times(j)
-
-    sample_variance = ift.Field.zeros(sh.domain)
-    sample_mean = ift.Field.zeros(sh.domain)
+    m = minimizer(energy)[0].position
+    ift.plotting.plot(ss, name="signal.pdf", colormap="Planck-like")
+    ift.plotting.plot(fft.inverse_times(m), name="m.pdf", colormap="Planck-like")
 
     # sampling the uncertainty map
-    n_samples = 50
-    for i in range(n_samples):
-        sample = fft(ift.sugar.generate_posterior_sample(0., D0))
-        sample_variance += sample**2
-        sample_mean += sample
-    variance = (sample_variance - sample_mean**2)/n_samples
+    #sample_variance = ift.Field.zeros(sh.domain)
+    #sample_mean = ift.Field.zeros(sh.domain)
+
+    #n_samples = 50
+    #for i in range(n_samples):
+    #    sample = ift.sugar.generate_posterior_sample(0., D0)
+    #    sample_variance += sample**2
+    #    sample_mean += sample
+    #variance = sample_variance/n_samples - (sample_mean/n_samples)**2
+    #ift.plotting.plot(fft.inverse_times(variance), name="variance.pdf", colormap="Planck-like")
