@@ -62,7 +62,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
     @expand(product(spaces, [0., .5, 5.]))
     def test_times(self, space, sigma):
         op = FFTSmoothingOperator(space, sigma=sigma)
-        rand1 = Field(space, val=0.)
+        rand1 = Field.zeros(space)
         rand1.val[0] = 1.
         tt1 = op.times(rand1)
         assert_allclose(1, tt1.sum())

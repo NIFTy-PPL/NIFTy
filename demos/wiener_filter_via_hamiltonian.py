@@ -56,13 +56,13 @@ if __name__ == "__main__":
 
     # Choosing the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.05)
-    Instrument = ift.DiagonalOperator(ift.Field(s_space, 1.))
+    Instrument = ift.DiagonalOperator(ift.Field.ones(s_space))
 #    Instrument._diagonal.val[200:400, 200:400] = 0
 
     # Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
     signal_to_noise = 1.
-    ndiag = ift.Field(s_space, ss.var()/signal_to_noise)
+    ndiag = ift.Field.full(s_space, ss.var()/signal_to_noise)
     N = ift.DiagonalOperator(ndiag)
     n = ift.Field.from_random(domain=s_space,
                           random_type='normal',
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     ctrl = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
     # Setting starting position
-    m0 = ift.Field(h_space, val=.0)
+    m0 = ift.Field.zeros(h_space)
 
     # Initializing the Wiener Filter energy
     energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S,
@@ -88,8 +88,8 @@ if __name__ == "__main__":
     # Solving the problem analytically
     m0 = D0.inverse_times(j)
 
-    sample_variance = ift.Field(sh.domain, val=0.)
-    sample_mean = ift.Field(sh.domain, val=0.)
+    sample_variance = ift.Field.zeros(sh.domain)
+    sample_mean = ift.Field.zeros(sh.domain)
 
     # sampling the uncertainty map
     n_samples = 50

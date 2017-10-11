@@ -23,7 +23,7 @@ from .. import dobj
 import numpy as np
 
 class PowerProjectionOperator(LinearOperator):
-    def __init__(self, domain, space=None, power_space=None):
+    def __init__(self, domain, power_space=None, space=None):
         super(PowerProjectionOperator, self).__init__()
 
         # Initialize domain and target

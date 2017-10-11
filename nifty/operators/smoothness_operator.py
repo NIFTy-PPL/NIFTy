@@ -61,7 +61,7 @@ class SmoothnessOperator(EndomorphicOperator):
             result = self._laplace.adjoint_times(self._laplace(x))
             result *= self._strength**2
         else:
-            result = Field(x.domain, 0., x.dtype)
+            result = Field.zeros_like(x)
         return result
 
     # ---Added properties and methods---

@@ -72,7 +72,7 @@ if __name__ == "__main__":
     R = AdjointFFTResponse(fft, Instrument)
 
     noise = 1.
-    N = ift.DiagonalOperator(ift.Field(s_space,noise))
+    N = ift.DiagonalOperator(ift.Field.full(s_space,noise))
     n = ift.Field.from_random(domain=s_space,
                           random_type='normal',
                           std=np.sqrt(noise),
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     minimizer3 = ift.SteepestDescent(IC3)
 
     # Set starting position
-    flat_power = ift.Field(p_space, val=1e-8)
+    flat_power = ift.Field.full(p_space, 1e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
     def ps0(k):

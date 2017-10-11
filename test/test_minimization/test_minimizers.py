@@ -22,7 +22,7 @@ class Test_Minimizers(unittest.TestCase):
         covariance_diagonal = ift.Field.from_random(
                                   'uniform', domain=space) + 0.5
         covariance = ift.DiagonalOperator(covariance_diagonal.weight(-1))
-        required_result = ift.Field(space, val=1.)
+        required_result = ift.Field.ones(space, dtype=np.float64)
 
         IC = ift.GradientNormController(tol_abs_gradnorm=1e-5)
         minimizer = minimizer_class(controller=IC)

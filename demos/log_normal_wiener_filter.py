@@ -28,7 +28,7 @@ if __name__ == "__main__":
     mock_signal = fft(mock_power.power_synthesize(real_signal=True))
 
     # Setting up an exemplary response
-    mask = ift.Field(signal_space, val=1.)
+    mask = ift.Field.ones(signal_space)
     N10 = int(N_pixels/10)
     #mask.val[N10*5:N10*9, N10*5:N10*9] = 0.
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,), exposure=(mask,)) #|\label{code:wf_response}|
@@ -36,14 +36,14 @@ if __name__ == "__main__":
     R_harmonic = ift.ComposedOperator([fft, R])
 
     # Setting up the noise covariance and drawing a random noise realization
-    ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise)
+    ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
     N = ift.DiagonalOperator(ndiag)
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                               std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
     data = R(ift.exp(mock_signal)) + noise #|\label{code:wf_mock_data}|
 
     # Wiener filter
-    m0 = ift.Field(harmonic_space, val=0.)
+    m0 = ift.Field.zeros(harmonic_space)
     ctrl = ift.GradientNormController(verbose=False,tol_abs_gradnorm=1)
     ctrl2 = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1, name="outer")
     inverter = ift.ConjugateGradient(controller=ctrl)

@@ -68,11 +68,11 @@ if __name__ == "__main__":
 
     # Setting up a exemplary response
     N1_10 = int(N_pixels_1/10)
-    mask_1 = ift.Field(signal_space_1, val=1.)
+    mask_1 = ift.Field.ones(signal_space_1)
     mask_1.val[N1_10*7:N1_10*9] = 0.
 
     N2_10 = int(N_pixels_2/10)
-    mask_2 = ift.Field(signal_space_2, val=1.)
+    mask_2 = ift.Field.ones(signal_space_2)
     mask_2.val[N2_10*7:N2_10*9] = 0.
 
     R = ift.ResponseOperator(signal_domain,spaces=(0,1),
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     R_harmonic = ift.ComposedOperator([fft, R])
 
     # Setting up the noise covariance and drawing a random noise realization
-    ndiag = ift.Field(data_domain, mock_signal.var()/signal_to_noise)
+    ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
     N = ift.DiagonalOperator(ndiag)
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                                   std=mock_signal.std()/np.sqrt(signal_to_noise),

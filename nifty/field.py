@@ -92,6 +92,54 @@ class Field(object):
             raise TypeError("unknown source type")
 
     @staticmethod
+    def full(domain, val, dtype=None):
+        if not np.isscalar(val):
+            raise TypeError("val must be a scalar")
+        return Field(DomainTuple.make(domain), val, dtype)
+
+    @staticmethod
+    def ones(domain, dtype=None):
+        return Field(DomainTuple.make(domain), 1., dtype)
+
+    @staticmethod
+    def zeros(domain, dtype=None):
+        return Field(DomainTuple.make(domain), 0., dtype)
+
+    @staticmethod
+    def empty(domain, dtype=None):
+        return Field(DomainTuple.make(domain), None, dtype)
+
+    @staticmethod
+    def full_like(field, val, dtype=None):
+        if not isinstance(field, Field):
+            raise TypeError("field must be of Field type")
+        return Field.full(field.domain, val, dtype)
+
+    @staticmethod
+    def zeros_like(field, dtype=None):
+        if not isinstance(field, Field):
+            raise TypeError("field must be of Field type")
+        if dtype is None:
+            dtype = field.dtype
+        return Field.zeros(field.domain, dtype)
+
+    @staticmethod
+    def ones_like(field, dtype=None):
+        if not isinstance(field, Field):
+            raise TypeError("field must be of Field type")
+        if dtype is None:
+            dtype = field.dtype
+        return Field.ones(field.domain, dtype)
+
+    @staticmethod
+    def empty_like(field, dtype=None):
+        if not isinstance(field, Field):
+            raise TypeError("field must be of Field type")
+        if dtype is None:
+            dtype = field.dtype
+        return Field.empty(field.domain, dtype)
+
+    @staticmethod
     def _parse_domain(domain, val=None):
         if domain is None:
             if isinstance(val, Field):
@@ -225,7 +273,7 @@ class Field(object):
     def _single_power_analyze(field, idx, binbounds):
         from .operators.power_projection_operator import PowerProjectionOperator
         power_domain = PowerSpace(field.domain[idx], binbounds)
-        ppo = PowerProjectionOperator(field.domain,idx,power_domain)
+        ppo = PowerProjectionOperator(field.domain, power_domain, idx)
         return ppo(field)
 
     def _compute_spec(self, spaces):
@@ -242,7 +290,7 @@ class Field(object):
         spec = sqrt(self)
         for i in spaces:
             result_domain[i] = self.domain[i].harmonic_partner
-            ppo = PowerProjectionOperator(result_domain,i,self.domain[i])
+            ppo = PowerProjectionOperator(result_domain, self.domain[i], i)
             spec = ppo.adjoint_times(spec)
 
         return spec
