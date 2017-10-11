@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # Choosing the measurement instrument
     #Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
     diag = ift.Field.ones(s_space)
-    #diag.val[20:80, 20:80] = 0
+    diag.val[20:80, 20:80] = 0
     Instrument = ift.DiagonalOperator(diag.weight(-1))
 
     # Adding a harmonic transformation to the instrument
@@ -80,26 +80,27 @@ if __name__ == "__main__":
     inverter = ift.ConjugateGradient(controller=ctrl)
     controller = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1)
     minimizer = ift.RelaxedNewton(controller=controller)
-    # Setting starting position
     m0 = ift.Field.zeros(h_space)
-
     # Initializing the Wiener Filter energy
     energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S,
                                 inverter=inverter)
-    D0 = energy.curvature
 
-    m = minimizer(energy)[0].position
+    energy, convergence = minimizer(energy)
+    m = energy.position
+    D = energy.curvature
     ift.plotting.plot(ss, name="signal.pdf", colormap="Planck-like")
     ift.plotting.plot(fft.inverse_times(m), name="m.pdf", colormap="Planck-like")
 
     # sampling the uncertainty map
-    #sample_variance = ift.Field.zeros(sh.domain)
-    #sample_mean = ift.Field.zeros(sh.domain)
+    sample_variance = ift.Field.zeros(s_space)
+    sample_mean = ift.Field.zeros(s_space)
 
-    #n_samples = 50
-    #for i in range(n_samples):
-    #    sample = ift.sugar.generate_posterior_sample(0., D0)
-    #    sample_variance += sample**2
-    #    sample_mean += sample
-    #variance = sample_variance/n_samples - (sample_mean/n_samples)**2
-    #ift.plotting.plot(fft.inverse_times(variance), name="variance.pdf", colormap="Planck-like")
+    n_samples = 50
+    for i in range(n_samples):
+        sample = fft.adjoint_times(ift.sugar.generate_posterior_sample(m, D))
+        sample_variance += sample**2
+        sample_mean += sample
+    sample_mean /= n_samples
+    sample_variance /= n_samples
+    variance = sample_variance - sample_mean**2
+    ift.plotting.plot(variance, name="variance.pdf", colormap="Planck-like")
