@@ -1,0 +1,72 @@
+Significant differences between NIFTy nightly and nifty2go
+==========================================================
+
+1) Field domains in nifty2go are stored in DomainTuple objects, which makes
+   comparisons between domains and computation of axis indices etc. much simpler
+   and more efficient.
+   No impact on the user ... these objects are generated whenever needed and
+   have all necessary functions to make them look like tuples of spaces.
+
+2) In nifty2go an operator's domain and target refer to the _full_ domains of
+   the input and output fields read/written by times(), adjoint_times() etc.
+   In NIFTy nightly, domain and target only refer to the (sub-)domain on
+   which the operator actually acts. This leads to complications like the need
+   for the "default_spaces" argument in the operator constructor and the
+   "spaces" keywords in all operator calls.
+   Advantages of the nifty2go approach:
+    - less error-prone and easier to understand; less code overall
+    - operators have more knowledge and may tune themselves better
+    - difficulties with the design of ComposedOperator (issue 152) resolve
+      themselves automatically
+   Disadvantages:
+    - operators cannot be used as flexibly as before; in a few circumstances
+      it will be necessary to create more operator objects than with the current
+      approach.
+      However, I have not found any such situation in the current code base, so
+      it appears to be rare.
+
+3) nifty2go is based on numpy arrays, not D2O objects.
+   For the moment, there is absolutely no MPI support.
+   My goal is to reintroduce this via the "data object" interface shown in the
+   "data_objects/" subdirectory. In principle, all operations on arrays within
+   NIFTy have to be carried out via calls to the data object module (or method
+   calls of classes defined there). By simply changing the data object module,
+   one could have a numpy backend or a D2O backend or something completely
+   different.
+   I'm optimistic that this can work, but don't have a demonstration yet.
+
+4) Spaces no longer have a weight() method; it has been replaced by
+   scalar_dvol() and dvol() methods, which return the scalar volume element,
+   if available, or a numpy array with all volume elements for the respective
+   space.
+   By using scalar_dvol() whenever possible, one can save quite some
+   time when computing Field.weight().
+
+5) renamings:
+   get_distance_array -> get_k_length_array
+   get_unique_distances -> get_unique_k_lengths
+   (to be specific which "distances" are meant and to make more clear why this
+   only exists for harmonic spaces)
+   kindex -> k_lengths
+   (because this is not an index)
+
+6) In nifty2go, PowerSpace is not a harmonic space.
+
+7) In nifty2go, parallel probing should work (needs systematic testing)
+
+8) In nifty2go, the DiagonalOperator is always constructed from a bare Field,
+   and its diagonal() method always returns the same bare Field.
+   This requires a few explicit weight() calls in other places of the code,
+   but it should reduce the overall amount of confusion (I hope).
+   In NIFTY nightly, the Fields going into and comping out of the
+   DiagonalOperator are treated as non-bare.
+   I can live with either convention, but seem to recall a remark by Torsten(?)
+   that the bare version is more intuitive.
+
+9) Many default arguments have been removed in nifty2go, wherever there is no
+   sensible default (in my opinion). My personal impression is that this has
+   actually made the demos more readable, but I'm sure not everyone will agree
+   :)
+
+10) Plotting has been replaced by something very minimalistic but usable.
+   Currently supported output formats are PDF and PNG.
