@@ -274,7 +274,7 @@ class Field(object):
         from .operators.power_projection_operator import PowerProjectionOperator
         power_domain = PowerSpace(field.domain[idx], binbounds)
         ppo = PowerProjectionOperator(field.domain, power_domain, idx)
-        return ppo(field)
+        return ppo(field.weight(-1))
 
     def _compute_spec(self, spaces):
         from .operators.power_projection_operator import PowerProjectionOperator
