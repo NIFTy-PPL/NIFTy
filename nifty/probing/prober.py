@@ -31,7 +31,6 @@ class Prober(object):
 
     https://www.python.org/download/releases/2.2.3/descrintro/#cooperation
     https://rhettinger.wordpress.com/2011/05/26/super-considered-super/
-
     """
 
     def __init__(self, domain=None, probe_count=8,

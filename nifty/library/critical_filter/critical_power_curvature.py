@@ -26,7 +26,6 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
         self.T = T
         if preconditioner is None:
             preconditioner = self.theta.inverse_times
-        self._domain = self.theta.domain
         super(CriticalPowerCurvature, self).__init__(
                                                  inverter=inverter,
                                                  preconditioner=preconditioner,
@@ -39,7 +38,7 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
     @property
     def domain(self):
-        return self._domain
+        return self.theta.domain
 
     @property
     def self_adjoint(self):

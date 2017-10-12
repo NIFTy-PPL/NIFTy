@@ -13,15 +13,15 @@ class LogNormalWienerFilterEnergy(Energy):
     Parameters
     ----------
     position: Field,
-        The current position.
-    d : Field,
-        the data.
-    R : Operator,
-        The response operator, describtion of the measurement process.
-    N : EndomorphicOperator,
-        The noise covariance in data space.
-    S : EndomorphicOperator,
-        The prior signal covariance in harmonic space.
+       The current position.
+    d: Field,
+       the data.
+    R: Operator,
+       The response operator, describtion of the measurement process.
+    N: EndomorphicOperator,
+       The noise covariance in data space.
+    S: EndomorphicOperator,
+       The prior signal covariance in harmonic space.
     """
 
     def __init__(self, position, d, R, N, S, inverter, fft4exp=None):
@@ -47,12 +47,12 @@ class LogNormalWienerFilterEnergy(Energy):
     @memo
     def value(self):
         return 0.5*(self.position.vdot(self._Sp) +
-                    self._Rexppd.vdot(self._NRexppd))
+                    self.curvature._Rexppd.vdot(self.curvature._NRexppd))
 
     @property
     @memo
     def gradient(self):
-        return self._Sp + self._exppRNRexppd
+        return self._Sp + self.curvature._exppRNRexppd
 
     @property
     @memo
@@ -61,22 +61,6 @@ class LogNormalWienerFilterEnergy(Energy):
                                               d=self.d, position=self.position,
                                               fft4exp=self._fft,
                                               inverter=self._inverter)
-
-    @property
-    def _expp(self):
-        return self.curvature._expp
-
-    @property
-    def _Rexppd(self):
-        return self.curvature._Rexppd
-
-    @property
-    def _NRexppd(self):
-        return self.curvature._NRexppd
-
-    @property
-    def _exppRNRexppd(self):
-        return self.curvature._exppRNRexppd
 
     @property
     @memo

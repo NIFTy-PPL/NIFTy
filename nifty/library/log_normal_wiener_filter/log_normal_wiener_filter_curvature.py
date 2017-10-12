@@ -17,12 +17,11 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     Parameters
     ----------
     R: LinearOperator,
-        The response operator of the Wiener filter measurement.
-    N : EndomorphicOperator
-        The noise covariance.
+       The response operator of the Wiener filter measurement.
+    N: EndomorphicOperator
+       The noise covariance.
     S: DiagonalOperator,
-        The prior signal covariance
-
+       The prior signal covariance
     """
 
     def __init__(self, R, N, S, d, position, inverter, fft4exp=None, **kwargs):
@@ -31,7 +30,6 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
         self.S = S
         self.d = d
         self.position = position
-        self._domain = self.S.domain
 
         if fft4exp is None:
             self._fft = create_composed_fft_operator(self.domain,
@@ -45,7 +43,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
 
     @property
     def domain(self):
-        return self._domain
+        return self.S.domain
 
     @property
     def self_adjoint(self):
@@ -54,8 +52,6 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
     @property
     def unitary(self):
         return False
-
-    # ---Added properties and methods---
 
     def _times(self, x):
         part1 = self.S.inverse_times(x)
@@ -74,13 +70,9 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
 
     @property
     @memo
-    def _expp(self):
-        return self._fft.adjoint_times(self._expp_sspace)
-
-    @property
-    @memo
     def _Rexppd(self):
-        return self.R(self._expp) - self.d
+        expp = self._fft.adjoint_times(self._expp_sspace)
+        return self.R(expp) - self.d
 
     @property
     @memo

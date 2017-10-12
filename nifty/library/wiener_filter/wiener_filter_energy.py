@@ -13,14 +13,14 @@ class WienerFilterEnergy(Energy):
     ----------
     position: Field,
         The current position.
-    d : Field,
-        the data.
-    R : Operator,
-        The response operator, description of the measurement process.
-    N : EndomorphicOperator,
-        The noise covariance in data space.
-    S : EndomorphicOperator,
-        The prior signal covariance in harmonic space.
+    d: Field,
+       the data
+    R: LinearOperator,
+       The response operator, description of the measurement process.
+    N: EndomorphicOperator,
+       The noise covariance in data space.
+    S: EndomorphicOperator,
+       The prior signal covariance in harmonic space.
     """
 
     def __init__(self, position, d, R, N, S, inverter, _j=None):
