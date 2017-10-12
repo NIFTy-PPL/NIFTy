@@ -28,15 +28,6 @@ class DomainObject(with_metaclass(
 
     This holds all the information and functionality a field needs to know
     about its domain and how the data of the field are stored.
-
-    Attributes
-    ----------
-    dim : int
-        Number of pixel-dimensions of the underlying data object.
-    shape : tuple
-        Shape of the array that stores the degrees of freedom for any field
-        on this domain.
-
     """
 
     def __init__(self):
@@ -54,7 +45,7 @@ class DomainObject(with_metaclass(
         return result_hash
 
     def __eq__(self, x):
-        """ Checks if two domain_objects are equal.
+        """Checks if two domain_objects are equal.
 
         Parameters
         ----------
@@ -63,9 +54,7 @@ class DomainObject(with_metaclass(
 
         Returns
         -------
-        bool
-            True if `self` and x describe the same manifold.
-
+        bool: True iff `self` and x describe the same manifold.
         """
         if self is x:  # shortcut for simple case
             return True
@@ -81,22 +70,13 @@ class DomainObject(with_metaclass(
 
     @abc.abstractproperty
     def shape(self):
-        """ The domain-object's shape contribution to the underlying array.
+        """The domain-object's shape contribution to the underlying array.
 
         Returns
         -------
-        tuple of ints
-            The shape of the underlying array-like object.
-
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
+        tuple of ints: shape of the underlying array-like object
         """
-
-        raise NotImplementedError(
-            "There is no generic shape for DomainObject.")
+        raise NotImplementedError
 
     @abc.abstractproperty
     def dim(self):
@@ -104,55 +84,29 @@ class DomainObject(with_metaclass(
 
         Returns
         -------
-        int
-            An Integer representing the number of pixels the discretized
-            manifold has.
-
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
+        int: number of pixels
         """
-
-        raise NotImplementedError(
-            "There is no generic dim for DomainObject.")
+        raise NotImplementedError
 
     @abc.abstractmethod
     def scalar_dvol(self):
-        """ Returns the volume factors of this domain as a floating
+        """Returns the volume factors of this domain as a floating
         point scalar, if the volume factors are all identical, otherwise
         returns None.
 
         Returns
         -------
-        float or None
-            Volume factor
-
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
+        float or None: Volume factor
         """
-        raise NotImplementedError(
-            "There is no generic scalar_dvol method for DomainObject.")
+        raise NotImplementedError
 
     def dvol(self):
-        """ Returns the volume factors of this domain, either as a floating
+        """Returns the volume factors of this domain, either as a floating
         point scalar (if the volume factors are all identical) or as a
         floating point array with a shape of `self.shape`.
 
-
         Returns
         -------
-        float or numpy.ndarray(dtype=float)
-            Volume factors
-
-        Raises
-        ------
-        NotImplementedError
-            If called for this abstract class.
-
+        float or numpy.ndarray(dtype=float): Volume factors
         """
         return self.scalar_dvol()

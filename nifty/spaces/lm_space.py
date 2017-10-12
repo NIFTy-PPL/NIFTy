@@ -22,61 +22,38 @@ from .space import Space
 
 
 class LMSpace(Space):
-    """
-        ..       __
-        ..     /  /
-        ..    /  /    __ ____ ___
-        ..   /  /   /   _    _   |
-        ..  /  /_  /  / /  / /  /
-        ..  \___/ /__/ /__/ /__/  space class
+    """NIFTY subclass for spherical harmonics components, for representations
+    of fields on the two-sphere.
 
-        NIFTY subclass for spherical harmonics components, for representations
-        of fields on the two-sphere.
+    Parameters
+    ----------
+    lmax : int
+        The maximum :math:`l` value of any spherical harmonics
+        :math:`Y_{lm}` that is represented in this Space.
 
-        Parameters
-        ----------
-        lmax : int
-            The maximal :math:`l` value of any spherical harmonics
-            :math:`Y_{lm}` that is represented in this Space.
+    See Also
+    --------
+    HPSpace : A class for the HEALPix discretization of the sphere [#]_.
+    GLSpace : A class for the Gauss-Legendre discretization of the
+        sphere [#]_.
 
-        Attributes
-        ----------
-        lmax : int
-            The maximal :math:`l` value of any spherical harmonics
-            :math:`Y_{lm}` that is represented in this Space.
-        mmax : int
-            The maximal :math:`m` value of any spherical harmonic
-            :math:`Y_{lm}` that is represented in this Space.
-        dim : np.int
-            Total number of dimensionality, i.e. the number of pixels.
-        harmonic : bool
-            Specifies whether the space is a signal or harmonic space.
-        shape : tuple of np.ints
-            The shape of the space's data array.
+    Raises
+    ------
+    ValueError
+        If given lmax is negative.
 
-        See Also
-        --------
-        hp_space : A class for the HEALPix discretization of the sphere [#]_.
-        gl_space : A class for the Gauss-Legendre discretization of the
-            sphere [#]_.
+    Notes
+    -----
+        This implementation implicitly sets the mmax parameter to lmax.
 
-        Raises
-        ------
-        ValueError
-            If given lmax is negative.
-
-        Notes
-        -----
-            This implementation implicitly sets the mmax parameter to lmax.
-
-        References
-        ----------
-        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-               High-Resolution Discretization and Fast Analysis of Data
-               Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-               harmonic transforms revisited";
-               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+    References
+    ----------
+    .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+           High-Resolution Discretization and Fast Analysis of Data
+           Distributed on the Sphere", *ApJ* 622..759G.
+    .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+           harmonic transforms revisited";
+           `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
     """
 
     def __init__(self, lmax):
@@ -140,25 +117,17 @@ class LMSpace(Space):
 
     @property
     def lmax(self):
-        """ Returns the maximal :math:`l` value of any spherical harmonics
+        """ Returns the maximum :math:`l` value of any spherical harmonic
         :math:`Y_{lm}` that is represented in this Space.
         """
         return self._lmax
 
     @property
     def mmax(self):
-        """ Returns the maximal :math:`m` value of any spherical harmonic
-        :math:`Y_{lm}` that is represented in this Space. As :math:`m` goes
-        from :math:`-l` to :math:`l` for every :math:`l` this just returns the
-        same as lmax.
-
-        See Also
-        --------
-        lmax : Returns the maximal :math:`l`-value of the spherical harmonics
-            being used.
-
+        """ Returns the maximum :math:`m` value of any spherical harmonic
+        :math:`Y_{lm}` that is represented in this Space.
+        Currently this is identical to lmax.
         """
-
         return self._lmax
 
     def _parse_lmax(self, lmax):

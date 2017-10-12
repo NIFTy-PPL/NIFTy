@@ -18,12 +18,11 @@
 
 import numpy as np
 from .space import Space
-from functools import reduce
 from .. import dobj
 
 
 class PowerSpace(Space):
-    """ NIFTY class for spaces of power spectra.
+    """NIFTY class for spaces of power spectra.
 
     Parameters
     ----------
@@ -43,28 +42,10 @@ class PowerSpace(Space):
             with the first and last bins reaching to -+infinity, respectively.
         (default : None)
 
-    Attributes
-    ----------
-    pindex : data object
-        This holds the information which pixel of the harmonic partner gets
-        mapped to which power bin
-    k_lengths : numpy.ndarray
-        Sorted array of all k-modes.
-    dim : np.int
-        Total number of dimensionality, i.e. the number of pixels.
-    harmonic : bool
-        Always False for this space.
-    shape : tuple of np.ints
-        The shape of the space's data array.
-    binbounds : tuple or None
-        Boundaries between the power spectrum bins; None is used to indicate
-        natural binning
-
     Notes
     -----
     A power space is the result of a projection of a harmonic space where
     k-modes of equal length get mapped to one power index.
-
     """
 
     _powerIndexCache = {}
@@ -163,7 +144,7 @@ class PowerSpace(Space):
             temp_rho = dobj.bincount(temp_pindex.ravel())
             assert not np.any(temp_rho == 0), "empty bins detected"
             temp_k_lengths = np.bincount(temp_pindex.ravel(),
-                                      weights=k_length_array.ravel()) \
+                                         weights=k_length_array.ravel()) \
                 / temp_rho
             temp_dvol = temp_rho*pdvol
             self._powerIndexCache[key] = (binbounds,
@@ -209,23 +190,24 @@ class PowerSpace(Space):
 
     @property
     def harmonic_partner(self):
-        """ Returns the Space of which this is the power space.
-        """
+        """Returns the Space of which this is the power space."""
         return self._harmonic_partner
 
     @property
     def binbounds(self):
+        """Returns the boundaries between the power spectrum bins as a tuple.
+        None is used to indicate natural binning.
+        """
         return self._binbounds
 
     @property
     def pindex(self):
-        """ A data object having the shape of the harmonic partner
+        """Returns a data object having the shape of the harmonic partner
         space containing the indices of the power bin a pixel belongs to.
         """
         return self._pindex
 
     @property
     def k_lengths(self):
-        """ Sorted array of all k-modes.
-        """
+        """Returns a sorted array of all k-modes."""
         return self._k_lengths

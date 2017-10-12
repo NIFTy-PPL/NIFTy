@@ -22,58 +22,35 @@ from .space import Space
 
 
 class GLSpace(Space):
-    """
-        ..                 __
-        ..               /  /
-        ..     ____ __  /  /
-        ..   /   _   / /  /
-        ..  /  /_/  / /  /_
-        ..  \___   /  \___/  space class
-        .. /______/
+    """NIFTY subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
 
-        NIFTY subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
+    Parameters
+    ----------
+    nlat : int
+        Number of latitudinal bins (or rings) that are used for this
+        pixelization.
+    nlon : int, *optional*
+        Number of longitudinal bins that are used for this pixelization.
+        Default value is 2*nlat + 1.
 
-        Parameters
-        ----------
-        nlat : int
-            Number of latitudinal bins (or rings) that are used for this
-            pixelization.
-        nlon : int, *optional*
-            Number of longitudinal bins that are used for this pixelization.
+    Raises
+    ------
+    ValueError
+        If input `nlat` or `nlon` is invalid.
 
-        Attributes
-        ----------
-        dim : np.int
-            Total number of dimensionality, i.e. the number of pixels.
-        harmonic : bool
-            Specifies whether the space is a signal or harmonic space.
-        nlat : int
-            Number of latitudinal bins (or rings) that are used for this
-            pixelization.
-        nlon : int
-            Number of longitudinal bins that are used for this pixelization.
-        shape : tuple of np.ints
-            The shape of the space's data array.
+    See Also
+    --------
+    hp_space : A class for the HEALPix discretization of the sphere [#]_.
+    lm_space : A class for spherical harmonic components.
 
-        Raises
-        ------
-        ValueError
-            If input `nlat` or `nlon` is invalid.
-
-        See Also
-        --------
-        hp_space : A class for the HEALPix discretization of the sphere [#]_.
-        lm_space : A class for spherical harmonic components.
-
-        References
-        ----------
-        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-               harmonic transforms revisited";
-               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-               High-Resolution Discretization and Fast Analysis of Data
-               Distributed on the Sphere", *ApJ* 622..759G.
-
+    References
+    ----------
+    .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+           harmonic transforms revisited";
+           `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+    .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+           High-Resolution Discretization and Fast Analysis of Data
+           Distributed on the Sphere", *ApJ* 622..759G.
     """
 
     # ---Overwritten properties and methods---
@@ -82,8 +59,15 @@ class GLSpace(Space):
         super(GLSpace, self).__init__()
         self._needed_for_hash += ["_nlat", "_nlon"]
 
-        self._nlat = self._parse_nlat(nlat)
-        self._nlon = self._parse_nlon(nlon)
+        self._nlat = int(nlat)
+        if self._nlat < 1:
+            raise ValueError("nlat must be a positive number.")
+        if nlon is None:
+            self._nlon = 2*self._nlat - 1
+        else:
+            self._nlon = int(nlon)
+            if self._nlon < 1:
+                raise ValueError("nlon must be a positive number.")
         self._dvol = None
 
     # ---Mandatory properties and methods---
@@ -114,8 +98,6 @@ class GLSpace(Space):
             self._dvol = GL_weights(self.nlat, self.nlon)
         return np.repeat(self._dvol, self.nlon)
 
-    # ---Added properties and methods---
-
     @property
     def nlat(self):
         """ Number of latitudinal bins (or rings) that are used for this
@@ -125,24 +107,8 @@ class GLSpace(Space):
 
     @property
     def nlon(self):
-        """ Number of longitudinal bins that are used for this pixelization.
-        """
+        """Number of longitudinal bins that are used for this pixelization."""
         return self._nlon
-
-    def _parse_nlat(self, nlat):
-        nlat = int(nlat)
-        if nlat < 1:
-            raise ValueError("nlat must be a positive number.")
-        return nlat
-
-    def _parse_nlon(self, nlon):
-        if nlon is None:
-            nlon = 2 * self.nlat - 1
-        else:
-            nlon = int(nlon)
-            if nlon < 1:
-                raise ValueError("nlon must be a positive number.")
-        return nlon
 
     def get_default_codomain(self):
         from .. import LMSpace

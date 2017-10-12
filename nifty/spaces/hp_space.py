@@ -22,65 +22,41 @@ from .space import Space
 
 
 class HPSpace(Space):
+    """NIFTY subclass for HEALPix discretizations of the two-sphere [#]_.
+
+    Parameters
+    ----------
+    nside : int
+        The corresponding HEALPix Nside parameter. Must be a positive integer
+        and typically is a power of 2.
+
+    Raises
+    ------
+    ValueError
+        If given `nside` < 1.
+
+    See Also
+    --------
+    GLSpace : A class for the Gauss-Legendre discretization of the
+        sphere [#]_.
+    LMSpace : A class for spherical harmonic components.
+
+    References
+    ----------
+    .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
+           High-Resolution Discretization and Fast Analysis of Data
+           Distributed on the Sphere", *ApJ* 622..759G.
+    .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
+           harmonic transforms revisited";
+           `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
     """
-        ..        __
-        ..      /  /
-        ..     /  /___    ______
-        ..    /   _   | /   _   |
-        ..   /  / /  / /  /_/  /
-        ..  /__/ /__/ /   ____/  space class
-        ..           /__/
-
-        NIFTY subclass for HEALPix discretizations of the two-sphere [#]_.
-
-        Parameters
-        ----------
-        nside : int
-            The corresponding HEALPix pixelization. The total number of pixels
-            is 12*nside**2.
-
-        Attributes
-        ----------
-        dim : np.int
-            Total number of dimensionality, i.e. the number of pixels.
-        harmonic : bool
-            Specifies whether the space is a signal or harmonic space.
-        nside : int
-            The corresponding HEALPix pixelization. The total number of pixels
-            is 12*nside**2.
-        shape : tuple of np.ints
-            The shape of the space's data array.
-
-        Raises
-        ------
-        ValueError
-            If given `nside` < 1.
-
-        See Also
-        --------
-        gl_space : A class for the Gauss-Legendre discretization of the
-            sphere [#]_.
-        lm_space : A class for spherical harmonic components.
-
-        References
-        ----------
-        .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-               High-Resolution Discretization and Fast Analysis of Data
-               Distributed on the Sphere", *ApJ* 622..759G.
-        .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-               harmonic transforms revisited";
-               `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-
-    """
-
-    # ---Overwritten properties and methods---
 
     def __init__(self, nside):
         super(HPSpace, self).__init__()
         self._needed_for_hash += ["_nside"]
-        self._nside = self._parse_nside(nside)
-
-    # ---Mandatory properties and methods---
+        self._nside = int(nside)
+        if self._nside < 1:
+            raise ValueError("nside must be >=1.")
 
     def __repr__(self):
         return ("HPSpace(nside=%r)" % self.nside)
@@ -100,20 +76,10 @@ class HPSpace(Space):
     def scalar_dvol(self):
         return np.pi / (3*self._nside*self._nside)
 
-    # ---Added properties and methods---
-
     @property
     def nside(self):
-        """ Returns the nside of the corresponding HEALPix pixelization.
-        The total number of pixels is 12*nside**2
-        """
+        """Returns the nside of the corresponding HEALPix pixelization."""
         return self._nside
-
-    def _parse_nside(self, nside):
-        nside = int(nside)
-        if nside < 1:
-            raise ValueError("nside must be >=1.")
-        return nside
 
     def get_default_codomain(self):
         from .. import LMSpace

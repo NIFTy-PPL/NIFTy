@@ -6,6 +6,8 @@ from .field import Field
 
 from .domain_tuple import DomainTuple
 
+from .domain_object import DomainObject
+
 from .random import Random
 
 from .basic_arithmetics import *

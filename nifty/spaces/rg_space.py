@@ -16,18 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-"""
-    ..                  __   ____   __
-    ..                /__/ /   _/ /  /_
-    ..      __ ___    __  /  /_  /   _/  __   __
-    ..    /   _   | /  / /   _/ /  /   /  / /  /
-    ..   /  / /  / /  / /  /   /  /_  /  /_/  /
-    ..  /__/ /__/ /__/ /__/    \___/  \___   /  rg
-    ..                               /______/
-
-    NIFTY submodule for regular Cartesian grids.
-
-"""
 from __future__ import division
 from builtins import range
 from functools import reduce
@@ -36,47 +24,24 @@ from .space import Space
 
 
 class RGSpace(Space):
+    """NIFTY subclass for spaces of regular Cartesian grids.
+
+    Parameters
+    ----------
+    shape : {int, numpy.ndarray}
+        Number of grid points or numbers of gridpoints along each axis.
+    distances : {float, numpy.ndarray}, *optional*
+        Distance between two grid points along each axis
+        (default: None).
+        If distances==None:
+            if harmonic==True, all distances will be set to 1
+            if harmonic==False, the distance along each axis will be
+              set to the inverse of the number of points along that
+              axis.
+    harmonic : bool, *optional*
+    Whether the space represents a grid in position or harmonic space.
+        (default: False).
     """
-        ..      _____   _______
-        ..    /   __/ /   _   /
-        ..   /  /    /  /_/  /
-        ..  /__/     \____  /  space class
-        ..          /______/
-
-        NIFTY subclass for spaces of regular Cartesian grids.
-
-        Parameters
-        ----------
-        shape : {int, numpy.ndarray}
-            Number of grid points or numbers of gridpoints along each axis.
-        distances : {float, numpy.ndarray}, *optional*
-            Distance between two grid points along each axis
-            (default: None).
-            If distances==None:
-                if harmonic==True, all distances will be set to 1
-                if harmonic==False, the distance along each axis will be
-                  set to the inverse of the number of points along that
-                  axis.
-        harmonic : bool, *optional*
-        Whether the space represents a grid in position or harmonic space.
-            (default: False).
-
-        Attributes
-        ----------
-        harmonic : bool
-            Whether or not the grid represents a position or harmonic space.
-        distances : tuple of floats
-            Distance between two grid points along the correponding axis.
-        dim : np.int
-            Total number of dimensionality, i.e. the number of pixels.
-        harmonic : bool
-            Specifies whether the space is a signal or harmonic space.
-        shape : tuple of np.ints
-            The shape of the space's data array.
-
-    """
-
-    # ---Overwritten properties and methods---
 
     def __init__(self, shape, distances=None, harmonic=False):
         super(RGSpace, self).__init__()
@@ -182,11 +147,9 @@ class RGSpace(Space):
         if not np.all(
             np.absolute(np.array(self.shape) *
                         np.array(self.distances) *
-                        np.array(codomain.distances) - 1) < 1e-7):
+                        np.array(codomain.distances)-1) < 1e-7):
             raise AttributeError("The grid-distances of domain and codomain "
                                  "do not match.")
-
-    # ---Added properties and methods---
 
     @property
     def distances(self):
@@ -194,22 +157,19 @@ class RGSpace(Space):
         of positive floating point numbers with the n-th entry giving the
         distances of grid points along the n-th dimension.
         """
-
         return self._distances
 
     def _parse_shape(self, shape):
         if np.isscalar(shape):
-            shape = (shape,)
-        temp = np.empty(len(shape), dtype=np.int)
-        temp[:] = shape
-        return tuple(temp)
+            return (shape,)
+        return tuple(np.array(shape, dtype=np.int))
 
     def _parse_distances(self, distances):
         if distances is None:
             if self.harmonic:
                 temp = np.ones_like(self.shape, dtype=np.float64)
             else:
-                temp = 1 / np.array(self.shape, dtype=np.float64)
+                temp = 1./np.array(self.shape, dtype=np.float64)
         else:
             temp = np.empty(len(self.shape), dtype=np.float64)
             temp[:] = distances
