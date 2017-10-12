@@ -70,3 +70,7 @@ Significant differences between NIFTy nightly and nifty2go
 
 10) Plotting has been replaced by something very minimalistic but usable.
    Currently supported output formats are PDF and PNG.
+
+11) Co-domains are now obtained directly from the corresponding Space
+   objects via the method "get_default_codomain()". This is implemented for
+   RGSpace, LMSpace, HPSpace and GLSpace.
