@@ -16,6 +16,11 @@ _harmonic_spaces = [ ift.RGSpace(7, distances=0.2, harmonic=True),
                      ift.RGSpace((12,46), distances=(0.2, 0.3), harmonic=True),
                      ift.LMSpace(17) ]
 
+_position_spaces = [ ift.RGSpace(19, distances=0.7),
+                     ift.RGSpace((1,2,3,6), distances=(0.2,0.25,0.34,0.8)),
+                     ift.HPSpace(17),
+                     ift.GLSpace(8,13) ]
+
 class Adjointness_Tests(unittest.TestCase):
     @expand(product(_harmonic_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
@@ -26,4 +31,9 @@ class Adjointness_Tests(unittest.TestCase):
         _check_adjointness(op, dtype)
         ps = ift.PowerSpace(sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
         op = ift.PowerProjectionOperator(sp, ps)
+        _check_adjointness(op, dtype)
+
+    @expand(product(_harmonic_spaces+_position_spaces, [np.float64, np.complex128]))
+    def testFFT(self, sp, dtype):
+        op = ift.FFTOperator(sp)
         _check_adjointness(op, dtype)
