@@ -91,8 +91,6 @@ class FFTOperator(LinearOperator):
                                  (LMSpace, GLSpace): LMGLTransformation
                                  }
 
-    # ---Overwritten properties and methods---
-
     def __init__(self, domain, target=None, space=None):
         super(FFTOperator, self).__init__()
 
@@ -140,8 +138,6 @@ class FFTOperator(LinearOperator):
 
     def _adjoint_times(self, x):
         return self._times_helper(x, self.domain, self._backward_transformation)
-
-    # ---Mandatory properties and methods---
 
     @property
     def domain(self):

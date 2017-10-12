@@ -32,7 +32,6 @@ class FFTSmoothingOperator(EndomorphicOperator):
 
         return self._smooth(x)
 
-    # ---Mandatory properties and methods---
     @property
     def domain(self):
         return self._transformator.domain
@@ -44,8 +43,6 @@ class FFTSmoothingOperator(EndomorphicOperator):
     @property
     def unitary(self):
         return False
-
-    # ---Added properties and methods---
 
     def _smooth(self, x):
         # transform to the (global-)default codomain and perform all remaining

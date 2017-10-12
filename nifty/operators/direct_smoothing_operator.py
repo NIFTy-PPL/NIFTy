@@ -71,7 +71,6 @@ class DirectSmoothingOperator(EndomorphicOperator):
             wgt[i] is an array with nval[i] entries containing the
             normalized smoothing weights.
         """
-
         dxmax = self._effective_smoothing_width*self._sigma
 
         x = np.asarray(x)

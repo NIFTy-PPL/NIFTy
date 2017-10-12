@@ -27,8 +27,6 @@ class SmoothnessOperator(EndomorphicOperator):
         default : True
     """
 
-    # ---Overwritten properties and methods---
-
     def __init__(self, domain, strength=1., logarithmic=True, space=None):
         super(SmoothnessOperator, self).__init__()
         self._laplace = LaplaceOperator(domain,
@@ -37,8 +35,6 @@ class SmoothnessOperator(EndomorphicOperator):
         if strength <= 0:
             raise ValueError("ERROR: invalid sigma.")
         self._strength = strength
-
-    # ---Mandatory properties and methods---
 
     @property
     def domain(self):
@@ -63,8 +59,6 @@ class SmoothnessOperator(EndomorphicOperator):
         else:
             result = Field.zeros_like(x)
         return result
-
-    # ---Added properties and methods---
 
     @property
     def logarithmic(self):

@@ -31,7 +31,6 @@ class DiagonalOperator(EndomorphicOperator):
     EndomorphicOperator. It multiplies an input field pixel-wise with its
     diagonal.
 
-
     Parameters
     ----------
     diagonal : Field
@@ -55,13 +54,14 @@ class DiagonalOperator(EndomorphicOperator):
     self_adjoint : boolean
         Indicates whether the operator is self_adjoint or not.
 
+    NOTE: the fields given to __init__ and returned from .diagonal() are
+    considered to be bare, i.e. during operator application, the colume factors
+    are applied explicitly.
+
     See Also
     --------
     EndomorphicOperator
-
     """
-
-    # ---Overwritten properties and methods---
 
     def __init__(self, diagonal, domain=None, spaces=None):
         super(DiagonalOperator, self).__init__()
@@ -113,11 +113,8 @@ class DiagonalOperator(EndomorphicOperator):
         -------
         out : Field
             The diagonal of the Operator.
-
         """
         return self._diagonal.weight(-1)
-
-    # ---Mandatory properties and methods---
 
     @property
     def domain(self):
@@ -137,8 +134,6 @@ class DiagonalOperator(EndomorphicOperator):
         if self._unitary is None:
             self._unitary = (abs(self._diagonal.val) == 1.).all()
         return self._unitary
-
-    # ---Added properties and methods---
 
     def _times_helper(self, x, operation):
         if self._spaces is None:

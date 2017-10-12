@@ -24,18 +24,17 @@ from ..field import Field
 class InvertibleOperatorMixin(object):
     """ Mixin class to invert implicit defined operators.
 
-    To invert the application of a given implicitly defined operator on a
-    field, this class gives the necessary functionality. Inheriting
-    functionality from this class provides the derived class with the inverse
-    to the given implicitly definied application of the operator on a field.
-    (e.g. .inverse_times vs. .times and
-    .adjoint_times vs. .adjoint_inverse_times)
+    This class provides the functionality necessary to invert the application
+    of a given implicitly defined operator on a field. Inheriting
+    functionality from this class provides the derived class with the
+    operations inverse to the defined operator applications
+    (e.g. .inverse_times if .times is defined and
+    .adjoint_times if .adjoint_inverse_times is defined)
 
     Parameters
     ----------
     inverter : Inverter
         An instance of an Inverter class.
-
     """
 
     def __init__(self, inverter, preconditioner=None,

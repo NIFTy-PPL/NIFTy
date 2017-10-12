@@ -38,16 +38,7 @@ class EndomorphicOperator(LinearOperator):
         Indicates whether the Operator is unitary or not.
     self_adjoint : boolean
         Indicates whether the operator is self_adjoint or not.
-
-    Raises
-    ------
-    NotImplementedError
-        Raised if
-            * self_adjoint is not defined
-
     """
-
-    # ---Overwritten properties and methods---
 
     def inverse_times(self, x):
         if self.self_adjoint and self.unitary:
@@ -73,17 +64,11 @@ class EndomorphicOperator(LinearOperator):
         else:
             return super(EndomorphicOperator, self).inverse_adjoint_times(x)
 
-    # ---Mandatory properties and methods---
-
     @property
     def target(self):
         return self.domain
 
-    # ---Added properties and methods---
-
     @abc.abstractproperty
     def self_adjoint(self):
-        """ States whether the Operator is self_adjoint or not.
-        """
-
+        """ States whether the Operator is self_adjoint or not."""
         raise NotImplementedError

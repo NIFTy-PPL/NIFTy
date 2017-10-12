@@ -28,7 +28,7 @@ class LaplaceOperator(EndomorphicOperator):
     """An irregular LaplaceOperator with free boundary and excluding monopole.
 
     This LaplaceOperator implements the second derivative of a Field in
-    PowerSpace  on logarithmic or linear scale with vanishing curvature at the
+    PowerSpace on logarithmic or linear scale with vanishing curvature at the
     boundary, starting at the second entry of the Field. The second derivative
     of the Field on the irregular grid is calculated using finite differences.
 
@@ -37,6 +37,8 @@ class LaplaceOperator(EndomorphicOperator):
     logarithmic : boolean,
         Whether smoothness is calculated on a logarithmic scale or linear scale
         default : True
+    space : int
+        The index of the domain on which the operator acts
     """
 
     def __init__(self, domain, space=None, logarithmic=True):
@@ -69,10 +71,6 @@ class LaplaceOperator(EndomorphicOperator):
         self._dposc[-1] = 0.
         self._dposc[1:] += self._dpos
         self._dposc *= 0.5
-
-    @property
-    def target(self):
-        return self._domain
 
     @property
     def domain(self):

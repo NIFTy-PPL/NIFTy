@@ -20,6 +20,7 @@ from builtins import range
 from .linear_operator import LinearOperator
 from .. import DomainTuple
 
+
 class ComposedOperator(LinearOperator):
     """ NIFTY class for composed operators.
 
@@ -46,27 +47,6 @@ class ComposedOperator(LinearOperator):
         Raised if
             * an element of the operator list is not an instance of the
               LinearOperator base class.
-
-    Notes
-    -----
-    Very useful in case one has to transform a Field living over a product
-    space (see example below).
-
-    Examples
-    --------
-    Minimal example of transforming a Field living on two domains into its
-    harmonic space.
-
-    >>> x1 = RGSpace(5)
-    >>> x2 = RGSpace(10)
-    >>> k1 = RGRGTransformation.get_codomain(x1)
-    >>> k2 = RGRGTransformation.get_codomain(x2)
-    >>> FFT1 = FFTOperator(domain=(x1,x2), target=(k1,x2), space=0)
-    >>> FFT2 = FFTOperator(domain=(k1,x2), target=(k1,k2), space=1)
-    >>> FFT = ComposedOperator((FFT1, FFT2)
-    >>> f = Field.from_random('normal', domain=(x1,x2))
-    >>> FFT.times(f)
-
     """
 
     # ---Overwritten properties and methods---

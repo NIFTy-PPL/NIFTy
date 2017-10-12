@@ -40,14 +40,6 @@ class LinearOperator(with_metaclass(
         The domain in which the Operators result lives.
     unitary : boolean
         Indicates whether the Operator is unitary or not.
-
-    Raises
-    ------
-    NotImplementedError
-        Raised if
-            * domain is not defined
-            * target is not defined
-            * unitary is not set to (True/False)
     """
 
     def __init__(self):
@@ -56,7 +48,7 @@ class LinearOperator(with_metaclass(
     @abc.abstractproperty
     def domain(self):
         """
-        domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        domain : DomainTuple
             The domain on which the Operator's input Field lives.
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
@@ -66,7 +58,7 @@ class LinearOperator(with_metaclass(
     @abc.abstractproperty
     def target(self):
         """
-        target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+        target : DomainTuple
             The domain on which the Operator's output Field lives.
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
@@ -89,35 +81,31 @@ class LinearOperator(with_metaclass(
     def times(self, x):
         """ Applies the Operator to a given Field.
 
-        Operator and Field have to live over the same domain.
-
         Parameters
         ----------
         x : Field
-            The input Field.
+            The input Field, living on the Operator's domain.
 
         Returns
         -------
         out : Field
-            The processed Field living on the target-domain.
+            The processed Field living on the Operator's target domain.
         """
         self._check_input_compatibility(x)
         return self._times(x)
 
     def inverse_times(self, x):
-        """ Applies the inverse-Operator to a given Field.
-
-        Operator and Field have to live over the same domain.
+        """Applies the inverse Operator to a given Field.
 
         Parameters
         ----------
         x : Field
-            The input Field.
+            The input Field, living on the Operator's target domain
 
         Returns
         -------
         out : Field
-            The processed Field living on the target-domain.
+            The processed Field living on the Operator's domain.
         """
         self._check_input_compatibility(x, inverse=True)
         try:
@@ -130,21 +118,18 @@ class LinearOperator(with_metaclass(
         return y
 
     def adjoint_times(self, x):
-        """ Applies the adjoint-Operator to a given Field.
-
-        Operator and Field have to live over the same domain.
+        """Applies the adjoint-Operator to a given Field.
 
         Parameters
         ----------
         x : Field
-            applies the Operator to the given Field
+            The input Field, living on the Operator's target domain
 
         Returns
         -------
         out : Field
-            The processed Field living on the target-domain.
+            The processed Field living on the Operator's domain.
         """
-
         if self.unitary:
             return self.inverse_times(x)
 
@@ -161,17 +146,15 @@ class LinearOperator(with_metaclass(
     def adjoint_inverse_times(self, x):
         """ Applies the adjoint-inverse Operator to a given Field.
 
-        Operator and Field have to live over the same domain.
-
         Parameters
         ----------
         x : Field
-            applies the Operator to the given Field
+            The input Field, living on the Operator's domain.
 
         Returns
         -------
         out : Field
-            The processed Field living on the target-domain.
+            The processed Field living on the Operator's target domain.
 
         Notes
         -----
