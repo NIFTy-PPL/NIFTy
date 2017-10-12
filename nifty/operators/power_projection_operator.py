@@ -16,11 +16,12 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .. import Field, DomainTuple, nifty_utilities as utilities
+from .. import Field, DomainTuple
 from ..spaces import PowerSpace
 from .linear_operator import LinearOperator
 from .. import dobj
 import numpy as np
+
 
 class PowerProjectionOperator(LinearOperator):
     def __init__(self, domain, power_space=None, space=None):
@@ -31,7 +32,7 @@ class PowerProjectionOperator(LinearOperator):
         if space is None and len(self._domain) == 1:
             space = 0
         space = int(space)
-        if space<0 or space>=len(self.domain):
+        if space < 0 or space >= len(self.domain):
             raise ValueError("space index out of range")
         hspace = self._domain[space]
         if not hspace.harmonic:
@@ -52,11 +53,13 @@ class PowerProjectionOperator(LinearOperator):
     def _times(self, x):
         pindex = self._target[self._space].pindex
         pindex = pindex.reshape((1, pindex.size, 1))
-        arr = x.val.reshape(x.domain.collapsed_shape_for_domain(self._space))
+        arr = x.weight(1).val.reshape(
+                              x.domain.collapsed_shape_for_domain(self._space))
         out = dobj.zeros(self._target.collapsed_shape_for_domain(self._space),
-              dtype=x.dtype)
+                         dtype=x.dtype)
         np.add.at(out, (slice(None), pindex.ravel(), slice(None)), arr)
-        return Field(self._target, out.reshape(self._target.shape)).weight(-1,spaces=self._space)
+        return Field(self._target, out.reshape(self._target.shape))\
+            .weight(-1, spaces=self._space)
 
     def _adjoint_times(self, x):
         pindex = self._target[self._space].pindex
