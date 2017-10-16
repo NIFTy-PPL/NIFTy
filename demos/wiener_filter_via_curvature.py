@@ -1,35 +1,38 @@
 import numpy as np
 import nifty2go as ift
-
+import numericalunits as nu
 
 if __name__ == "__main__":
+    dimensionality = 2
     np.random.seed(43)
 
     # Setting up variable parameters
 
     # Typical distance over which the field is correlated
-    correlation_length = 0.05
-    # Variance of field in position space sqrt(<|s_x|^2>)
-    field_variance = 2.
-    # smoothing length of response (in same unit as L)
-    response_sigma = 0.01
+    correlation_length = 0.05*nu.m
+    # sigma of field in position space sqrt(<|s_x|^2>)
+    field_sigma = 2.* nu.K
+    # smoothing length of response
+    response_sigma = 0.01*nu.m
     # The signal to noise ratio
     signal_to_noise = 0.7
 
     # note that field_variance**2 = a*k_0/4. for this analytic form of power
     # spectrum
     def power_spectrum(k):
-        a = 4 * correlation_length * field_variance**2
-        return a / (1 + k * correlation_length) ** 4
+        cldim = correlation_length**(2*dimensionality)
+        a = 4/(2*np.pi) * cldim * field_sigma**2
+        return a / (1 + (k*correlation_length)**(2*dimensionality)) ** 2 # to be integrated over spherical shells later on
 
     # Setting up the geometry
 
     # Total side-length of the domain
-    L = 2.
+    L = 2.*nu.m
     # Grid resolution (pixels per axis)
     N_pixels = 512
+    shape = [N_pixels]*dimensionality
 
-    signal_space = ift.RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
+    signal_space = ift.RGSpace(shape, distances=L/N_pixels)
     harmonic_space = signal_space.get_default_codomain()
     fft = ift.FFTOperator(harmonic_space, target=signal_space)
     power_space = ift.PowerSpace(harmonic_space)
@@ -43,7 +46,8 @@ if __name__ == "__main__":
     mock_harmonic = mock_harmonic.real
     mock_signal = fft(mock_harmonic)
 
-    R = ift.ResponseOperator(signal_space, sigma=(response_sigma,))
+    exposure = 1.
+    R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),exposure=(exposure,))
     data_domain = R.target[0]
     R_harmonic = ift.ComposedOperator([fft, R])
 
@@ -57,14 +61,16 @@ if __name__ == "__main__":
     # Wiener filter
 
     j = R_harmonic.adjoint_times(N.inverse_times(data))
-    ctrl = ift.GradientNormController(verbose=True,tol_abs_gradnorm=1e-2)
+    ctrl = ift.GradientNormController(verbose=True,tol_abs_gradnorm=1e-4/nu.K)
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic, inverter=inverter)
 
     m = wiener_curvature.inverse_times(j)
     m_s = fft(m)
 
-    ift.plotting.plot(mock_signal.real,name="mock_signal.pdf")
-    ift.plotting.plot(ift.Field(signal_space,
-                val=data.val.real.reshape(signal_space.shape)), name="data.pdf")
-    ift.plotting.plot(m_s.real, name="map.pdf")
+    sspace2=ift.RGSpace(shape, distances=L/N_pixels/nu.m)
+
+    ift.plotting.plot(ift.Field(sspace2,mock_signal.real.val)/nu.K,name="mock_signal.pdf")
+    ift.plotting.plot(ift.Field(sspace2,
+                val=data.val.real.reshape(signal_space.shape))/nu.K, name="data.pdf")
+    ift.plotting.plot(ift.Field(sspace2,m_s.real.val)/nu.K, name="map.pdf")
