@@ -55,7 +55,7 @@ if __name__ == "__main__":
     ss = fft.adjoint_times(sh)
 
     # Choosing the measurement instrument
-    #Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
+    # Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
     diag = ift.Field.ones(s_space)
     diag.val[20:80, 20:80] = 0
     Instrument = ift.DiagonalOperator(diag.weight(-1))
@@ -66,9 +66,9 @@ if __name__ == "__main__":
     ndiag = ift.Field.full(s_space, ss.var()/signal_to_noise)
     N = ift.DiagonalOperator(ndiag)
     n = ift.Field.from_random(domain=s_space,
-                          random_type='normal',
-                          std=ss.std()/np.sqrt(signal_to_noise),
-                          mean=0)
+                              random_type='normal',
+                              std=ss.std()/np.sqrt(signal_to_noise),
+                              mean=0)
 
     # Creating the mock data
     d = R(sh) + n
@@ -76,20 +76,21 @@ if __name__ == "__main__":
 
     # Choosing the minimization strategy
 
-    ctrl = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1)
+    ctrl = ift.GradientNormController(verbose=True, tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
-    controller = ift.GradientNormController(verbose=True,tol_abs_gradnorm=0.1)
+    controller = ift.GradientNormController(verbose=True, tol_abs_gradnorm=0.1)
     minimizer = ift.RelaxedNewton(controller=controller)
     m0 = ift.Field.zeros(h_space)
     # Initializing the Wiener Filter energy
     energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S,
-                                inverter=inverter)
+                                            inverter=inverter)
 
     energy, convergence = minimizer(energy)
     m = energy.position
     D = energy.curvature
     ift.plotting.plot(ss, name="signal.pdf", colormap="Planck-like")
-    ift.plotting.plot(fft.inverse_times(m), name="m.pdf", colormap="Planck-like")
+    ift.plotting.plot(fft.inverse_times(m), name="m.pdf",
+                      colormap="Planck-like")
 
     # sampling the uncertainty map
     sample_variance = ift.Field.zeros(s_space)
