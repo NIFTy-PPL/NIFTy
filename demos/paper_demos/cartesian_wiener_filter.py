@@ -57,14 +57,14 @@ if __name__ == "__main__":
     mock_power = ift.Field(domain=(power_space_1, power_space_2),
                            val=np.outer(mock_power_1.val, mock_power_2.val))
 
-    diagonal = mock_power.power_synthesize_special(spaces=(0, 1))**2
+    diagonal = ift.power_synthesize_special(mock_power, spaces=(0, 1))**2
     diagonal = diagonal.real
 
     S = ift.DiagonalOperator(diagonal.weight(-1))
 
 
     np.random.seed(10)
-    mock_signal = fft(mock_power.power_synthesize(real_signal=True))
+    mock_signal = fft(ift.power_synthesize(mock_power, real_signal=True))
 
     # Setting up a exemplary response
     N1_10 = int(N_pixels_1/10)
@@ -93,7 +93,8 @@ if __name__ == "__main__":
     j = R_harmonic.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(verbose=True, tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
-    wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic, inverter=inverter)
+    wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N, R=R_harmonic)
+    wiener_curvature = ift.InversionEnabler(wiener_curvature, inverter)
 
     m_k = wiener_curvature.inverse_times(j) #|\label{code:wf_wiener_filter}|
     m = fft(m_k)
