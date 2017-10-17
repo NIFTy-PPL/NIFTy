@@ -21,10 +21,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_equal,\
                           assert_allclose
-from nose.plugins.skip import SkipTest
-
 from itertools import product
-
 from nifty2go import Field,\
                   RGSpace,\
                   LMSpace,\
@@ -32,7 +29,7 @@ from nifty2go import Field,\
                   DomainTuple,\
                   DiagonalOperator
 
-from nifty2go.sugar import create_power_field
+from nifty2go.sugar import create_power_field, power_analyze, power_synthesize
 
 from test.common import expand
 
@@ -77,15 +74,14 @@ class Test_Functionality(unittest.TestCase):
         ps1 = 0.
         ps2 = 0.
         for ii in range(samples):
-            sk = fp.power_synthesize(spaces=(0, 1), real_signal=True)
+            sk = power_synthesize(fp, spaces=(0, 1), real_signal=True)
 
-            sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)
+            sp = power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
         assert_allclose(ps1.val/samples, fp1.val, rtol=0.2)
         assert_allclose(ps2.val/samples, fp2.val, rtol=0.2)
-
 
     @expand(product([RGSpace((8,), harmonic=True),
                      RGSpace((8, 8), harmonic=True, distances=0.123)],
@@ -116,7 +112,7 @@ class Test_Functionality(unittest.TestCase):
         for ii in range(samples):
             rand_k = Field.from_random('normal', domain=fulldomain)
             sk = S_1.times(S_2.times(rand_k))
-            sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)
+            sp = power_analyze(sk, spaces=(0, 1), keep_phase_information=False)
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
@@ -124,10 +120,8 @@ class Test_Functionality(unittest.TestCase):
         assert_allclose(ps2.val/samples, fp2.val, rtol=0.2)
 
     def test_vdot(self):
-        s=RGSpace((10,))
-        f1=Field.from_random("normal",domain=s,dtype=np.complex128)
-        f2=Field.from_random("normal",domain=s,dtype=np.complex128)
-        assert_allclose(f1.vdot(f2),f1.vdot(f2,spaces=0))
-        assert_allclose(f1.vdot(f2),np.conj(f2.vdot(f1)))
-
-
+        s = RGSpace((10,))
+        f1 = Field.from_random("normal", domain=s, dtype=np.complex128)
+        f2 = Field.from_random("normal", domain=s, dtype=np.complex128)
+        assert_allclose(f1.vdot(f2), f1.vdot(f2, spaces=0))
+        assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))

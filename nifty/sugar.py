@@ -25,11 +25,188 @@ from . import Space,\
                   DiagonalOperator,\
                   FFTOperator,\
                   sqrt
+from . import nifty_utilities as utilities
 
-__all__ = ['create_power_field',
+__all__ = ['power_analyze',
+           'power_synthesize',
+           'power_synthesize_special',
+           'create_power_field',
            'create_power_operator',
            'generate_posterior_sample',
            'create_composed_fft_operator']
+
+
+def _single_power_analyze(field, idx, binbounds):
+    from .operators.power_projection_operator import PowerProjectionOperator
+    power_domain = PowerSpace(field.domain[idx], binbounds)
+    ppo = PowerProjectionOperator(field.domain, power_domain, idx)
+    return ppo(field.weight(-1))
+
+
+def power_analyze(field, spaces=None, binbounds=None,
+                  keep_phase_information=False):
+    """ Computes the square root power spectrum for a subspace of `field`.
+
+    Creates a PowerSpace for the space addressed by `spaces` with the given
+    binning and computes the power spectrum as a Field over this
+    PowerSpace. This can only be done if the subspace to  be analyzed is a
+    harmonic space. The resulting field has the same units as the initial
+    field, corresponding to the square root of the power spectrum.
+
+    Parameters
+    ----------
+    field : Field
+        The field to be analyzed
+    spaces : int *optional*
+        The subspace for which the powerspectrum shall be computed.
+        (default : None).
+    binbounds : array-like *optional*
+        Inner bounds of the bins (default : None).
+        if binbounds==None : bins are inferred.
+    keep_phase_information : boolean, *optional*
+        If False, return a real-valued result containing the power spectrum
+        of the input Field.
+        If True, return a complex-valued result whose real component
+        contains the power spectrum computed from the real part of the
+        input Field, and whose imaginary component contains the power
+        spectrum computed from the imaginary part of the input Field.
+        The absolute value of this result should be identical to the output
+        of power_analyze with keep_phase_information=False.
+        (default : False).
+
+    Raise
+    -----
+    TypeError
+        Raised if any of the input field's domains is not harmonic
+
+    Returns
+    -------
+    out : Field
+        The output object. Its domain is a PowerSpace and it contains
+        the power spectrum of 'field'.
+    """
+
+    # check if all spaces in `field.domain` are either harmonic or
+    # power_space instances
+    for sp in field.domain:
+        if not sp.harmonic and not isinstance(sp, PowerSpace):
+            print("WARNING: Field has a space in `domain` which is "
+                  "neither harmonic nor a PowerSpace.")
+
+    # check if the `spaces` input is valid
+    if spaces is None:
+        spaces = range(len(field.domain))
+    else:
+        spaces = utilities.cast_iseq_to_tuple(spaces)
+
+    if len(spaces) == 0:
+        raise ValueError("No space for analysis specified.")
+
+    if keep_phase_information:
+        parts = [field.real*field.real, field.imag*field.imag]
+    else:
+        parts = [field.real*field.real + field.imag*field.imag]
+
+    parts = [part.weight(1, spaces) for part in parts]
+    for space_index in spaces:
+        parts = [_single_power_analyze(field=part,
+                                       idx=space_index,
+                                       binbounds=binbounds)
+                 for part in parts]
+
+    return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
+
+
+def _compute_spec(field, spaces):
+    from .operators.power_projection_operator import PowerProjectionOperator
+    from .basic_arithmetics import sqrt
+    if spaces is None:
+        spaces = range(len(field.domain))
+    else:
+        spaces = utilities.cast_iseq_to_tuple(spaces)
+
+    # create the result domain
+    result_domain = list(field.domain)
+
+    spec = sqrt(field)
+    for i in spaces:
+        result_domain[i] = field.domain[i].harmonic_partner
+        ppo = PowerProjectionOperator(result_domain, field.domain[i], i)
+        spec = ppo.adjoint_times(spec)
+
+    return spec
+
+
+def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
+    """ Yields a sampled field with `field`**2 as its power spectrum.
+
+    This method draws a Gaussian random field in the harmonic partner
+    domain of this field's domains, using this field as power spectrum.
+
+    Parameters
+    ----------
+    field : Field
+        The input field containing the square root of the power spectrum
+    spaces : {tuple, int, None} *optional*
+        Specifies the subspace containing all the PowerSpaces which
+        should be converted (default : None).
+        if spaces==None : Tries to convert the whole domain.
+    real_power : boolean *optional*
+        Determines whether the power spectrum is treated as intrinsically
+        real or complex (default : True).
+    real_signal : boolean *optional*
+        True will result in a purely real signal-space field
+        (default : True).
+
+    Returns
+    -------
+    out : Field
+        The output object. A random field created with the power spectrum
+        stored in the `spaces` in `field`.
+
+    Notes
+    -----
+    For this the spaces specified by `spaces` must be a PowerSpace.
+    This expects this field to be the square root of a power spectrum, i.e.
+    to have the unit of the field to be sampled.
+
+    Raises
+    ------
+    ValueError : If domain specified by `spaces` is not a PowerSpace.
+
+    """
+
+    spec = _compute_spec(field, spaces)
+
+    # create random samples: one or two, depending on whether the
+    # power spectrum is real or complex
+    result = [field.from_random('normal', mean=0., std=1.,
+                                domain=spec.domain,
+                                dtype=np.float if real_signal
+                                else np.complex)
+              for x in range(1 if real_power else 2)]
+
+    # MR: dummy call - will be removed soon
+    if real_signal:
+        field.from_random('normal', mean=0., std=1.,
+                          domain=spec.domain, dtype=np.float)
+
+    # apply the rescaler to the random fields
+    result[0] *= spec.real
+    if not real_power:
+        result[1] *= spec.imag
+
+    return result[0] if real_power else result[0] + 1j*result[1]
+
+
+def power_synthesize_special(field, spaces=None):
+    spec = _compute_spec(field, spaces)
+
+    # MR: dummy call - will be removed soon
+    field.from_random('normal', mean=0., std=1.,
+                      domain=spec.domain, dtype=np.complex)
+
+    return spec.real
 
 
 def create_power_field(domain, power_spectrum, dtype=None):
@@ -46,13 +223,14 @@ def create_power_field(domain, power_spectrum, dtype=None):
         power_domain = PowerSpace(domain)
         fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
                    dtype=dtype)
-    f = fp.power_synthesize_special()
+    f = power_synthesize_special(fp)
 
     if not issubclass(fp.dtype.type, np.complexfloating):
         f = f.real
 
     f **= 2
     return f
+
 
 def create_power_operator(domain, power_spectrum, dtype=None):
     """ Creates a diagonal operator with the given power spectrum.
@@ -78,6 +256,7 @@ def create_power_operator(domain, power_spectrum, dtype=None):
     """
     return DiagonalOperator(create_power_field(domain, power_spectrum, dtype))
 
+
 def generate_posterior_sample(mean, covariance):
     """ Generates a posterior sample from a Gaussian distribution with given
     mean and covariance
@@ -101,12 +280,12 @@ def generate_posterior_sample(mean, covariance):
 
     """
 
-    S = covariance.S
-    R = covariance.R
-    N = covariance.N
+    S = covariance.op.S
+    R = covariance.op.R
+    N = covariance.op.N
 
-    power = sqrt(S.diagonal().weight(1).power_analyze())
-    mock_signal = power.power_synthesize(real_signal=True)
+    power = sqrt(power_analyze(S.diagonal().weight(1)))
+    mock_signal = power_synthesize(power, real_signal=True)
 
     noise = N.diagonal()
 
@@ -129,7 +308,6 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
         codomain = [None]*len(domain)
     interdomain = list(domain.domains)
     for i, space in enumerate(domain):
-        cospace = codomain[i]
         if not isinstance(space, Space):
             continue
         if (all_to == 'other' or

@@ -1,14 +1,13 @@
 from ...operators.endomorphic_operator import EndomorphicOperator
-from ...operators.invertible_operator_mixin import InvertibleOperatorMixin
 from ...operators.diagonal_operator import DiagonalOperator
 
 
-class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+class CriticalPowerCurvature(EndomorphicOperator):
     """The curvature of the CriticalPowerEnergy.
 
     This operator implements the second derivative of the
     CriticalPowerEnergy used in some minimization algorithms or
-    for error estimates of the powerspectrum.
+    for error estimates of the power spectrum.
 
 
     Parameters
@@ -21,15 +20,14 @@ class CriticalPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
 
     # ---Overwritten properties and methods---
 
-    def __init__(self, theta, T, inverter, preconditioner=None, **kwargs):
+    def __init__(self, theta, T):
         self.theta = DiagonalOperator(theta)
         self.T = T
-        if preconditioner is None:
-            preconditioner = self.theta.inverse_times
-        super(CriticalPowerCurvature, self).__init__(
-                                                 inverter=inverter,
-                                                 preconditioner=preconditioner,
-                                                 **kwargs)
+        super(CriticalPowerCurvature, self).__init__()
+
+    @property
+    def preconditioner(self):
+        return self.theta.inverse_times
 
     def _times(self, x):
         return self.T(x) + self.theta(x)

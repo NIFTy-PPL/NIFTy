@@ -1,5 +1,6 @@
 from ...energies.energy import Energy
 from ...memoization import memo
+from ...operators.inversion_enabler import InversionEnabler
 from . import WienerFilterCurvature
 
 
@@ -49,8 +50,9 @@ class WienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return WienerFilterCurvature(R=self.R, N=self.N, S=self.S,
-                                     inverter=self._inverter)
+        return InversionEnabler(WienerFilterCurvature(R=self.R, N=self.N,
+                                                      S=self.S),
+                                inverter=self._inverter)
 
     @property
     @memo

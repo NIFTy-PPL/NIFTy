@@ -2,7 +2,7 @@ from ...energies.energy import Energy
 from ...memoization import memo
 from . import LogNormalWienerFilterCurvature
 from ...sugar import create_composed_fft_operator
-
+from ...operators.inversion_enabler import InversionEnabler
 
 class LogNormalWienerFilterEnergy(Energy):
     """The Energy for the log-normal Wiener filter.
@@ -47,20 +47,21 @@ class LogNormalWienerFilterEnergy(Energy):
     @memo
     def value(self):
         return 0.5*(self.position.vdot(self._Sp) +
-                    self.curvature._Rexppd.vdot(self.curvature._NRexppd))
+                    self.curvature.op._Rexppd.vdot(self.curvature.op._NRexppd))
 
     @property
     @memo
     def gradient(self):
-        return self._Sp + self.curvature._exppRNRexppd
+        return self._Sp + self.curvature.op._exppRNRexppd
 
     @property
     @memo
     def curvature(self):
-        return LogNormalWienerFilterCurvature(R=self.R, N=self.N, S=self.S,
-                                              d=self.d, position=self.position,
-                                              fft4exp=self._fft,
-                                              inverter=self._inverter)
+        return InversionEnabler(
+            LogNormalWienerFilterCurvature(R=self.R, N=self.N, S=self.S,
+                                           d=self.d, position=self.position,
+                                           fft4exp=self._fft),
+            inverter=self._inverter)
 
     @property
     @memo

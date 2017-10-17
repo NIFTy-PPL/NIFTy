@@ -1,12 +1,10 @@
-from ...operators import EndomorphicOperator,\
-                            InvertibleOperatorMixin
+from ...operators import EndomorphicOperator
 from ...memoization import memo
 from ...basic_arithmetics import exp
 from ...sugar import create_composed_fft_operator
 
 
-class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
-                                     EndomorphicOperator):
+class LogNormalWienerFilterCurvature(EndomorphicOperator):
     """The curvature of the LogNormalWienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -24,7 +22,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
        The prior signal covariance
     """
 
-    def __init__(self, R, N, S, d, position, inverter, fft4exp=None, **kwargs):
+    def __init__(self, R, N, S, d, position, fft4exp=None):
         self.R = R
         self.N = N
         self.S = S
@@ -37,9 +35,7 @@ class LogNormalWienerFilterCurvature(InvertibleOperatorMixin,
         else:
             self._fft = fft4exp
 
-        super(LogNormalWienerFilterCurvature, self).__init__(
-                                                 inverter=inverter,
-                                                 **kwargs)
+        super(LogNormalWienerFilterCurvature, self).__init__()
 
     @property
     def domain(self):

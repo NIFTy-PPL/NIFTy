@@ -11,7 +11,7 @@ from .direct_smoothing_operator import DirectSmoothingOperator
 
 from .fft_operator import FFTOperator
 
-from .invertible_operator_mixin import InvertibleOperatorMixin
+from .inversion_enabler import InversionEnabler
 
 from .composed_operator import ComposedOperator
 

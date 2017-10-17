@@ -1,9 +1,10 @@
 from ...energies.energy import Energy
 from ...operators.smoothness_operator import SmoothnessOperator
+from ...operators.inversion_enabler import InversionEnabler
 from . import CriticalPowerCurvature
 from ...memoization import memo
 
-from ...sugar import generate_posterior_sample
+from ...sugar import generate_posterior_sample, power_analyze
 from ... import Field, exp
 
 
@@ -95,8 +96,9 @@ class CriticalPowerEnergy(Energy):
 
     @property
     def curvature(self):
-        curvature = CriticalPowerCurvature(theta=self._theta.weight(-1),
-                                           T=self.T, inverter=self._inverter)
+        curvature = InversionEnabler(CriticalPowerCurvature(
+                    theta=self._theta.weight(-1),
+                    T=self.T), inverter=self._inverter)
         return curvature
 
     # ---Added properties and methods---
@@ -119,8 +121,9 @@ class CriticalPowerEnergy(Energy):
                     # self.logger.info("Drawing sample %i" % i)
                     posterior_sample = generate_posterior_sample(
                                                             self.m, self.D)
-                    projected_sample = posterior_sample.power_analyze(
-                     binbounds=self.position.domain[0].binbounds)
+                    projected_sample = power_analyze(
+                        posterior_sample,
+                        binbounds=self.position.domain[0].binbounds)
                     w += (projected_sample) * self.rho
                 w /= float(self.samples)
             else:

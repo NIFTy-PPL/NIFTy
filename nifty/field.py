@@ -19,12 +19,12 @@
 from __future__ import division, print_function
 from builtins import range
 import numpy as np
-from .spaces.power_space import PowerSpace
 from . import nifty_utilities as utilities
 from .random import Random
 from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
+
 
 class Field(object):
     """ The discrete representation of a continuous field over multiple spaces.
@@ -80,7 +80,8 @@ class Field(object):
                 raise ValueError("Domain mismatch")
             self._val = dobj.from_object(val.val, dtype=dtype, copy=copy)
         elif (np.isscalar(val)):
-            self._val = dobj.full(self.domain.shape, dtype=dtype, fill_value=val)
+            self._val = dobj.full(self.domain.shape, dtype=dtype,
+                                  fill_value=val)
         elif isinstance(val, dobj.data_object):
             if self.domain.shape == val.shape:
                 self._val = dobj.from_object(val, dtype=dtype, copy=copy)
@@ -180,192 +181,12 @@ class Field(object):
         -------
         out : Field
             The output object.
-
-        See Also
-        --------
-        power_synthesize
         """
 
         domain = DomainTuple.make(domain)
         generator_function = getattr(Random, random_type)
         return Field(domain=domain, val=generator_function(dtype=dtype,
                      shape=domain.shape, **kwargs))
-
-    # ---Powerspectral methods---
-
-    def power_analyze(self, spaces=None, binbounds=None,
-                      keep_phase_information=False):
-        """ Computes the square root power spectrum for a subspace of `self`.
-
-        Creates a PowerSpace for the space addressed by `spaces` with the given
-        binning and computes the power spectrum as a Field over this
-        PowerSpace. This can only be done if the subspace to  be analyzed is a
-        harmonic space. The resulting field has the same units as the initial
-        field, corresponding to the square root of the power spectrum.
-
-        Parameters
-        ----------
-        spaces : int *optional*
-            The subspace for which the powerspectrum shall be computed.
-            (default : None).
-        binbounds : array-like *optional*
-            Inner bounds of the bins (default : None).
-            if binbounds==None : bins are inferred.
-        keep_phase_information : boolean, *optional*
-            If False, return a real-valued result containing the power spectrum
-            of the input Field.
-            If True, return a complex-valued result whose real component
-            contains the power spectrum computed from the real part of the
-            input Field, and whose imaginary component contains the power
-            spectrum computed from the imaginary part of the input Field.
-            The absolute value of this result should be identical to the output
-            of power_analyze with keep_phase_information=False.
-            (default : False).
-
-        Raise
-        -----
-        TypeError
-            Raised if any of the input field's domains is not harmonic
-
-        Returns
-        -------
-        out : Field
-            The output object. Its domain is a PowerSpace and it contains
-            the power spectrum of 'self's field.
-
-        See Also
-        --------
-        power_synthesize, PowerSpace
-
-        """
-
-        # check if all spaces in `self.domain` are either harmonic or
-        # power_space instances
-        for sp in self.domain:
-            if not sp.harmonic and not isinstance(sp, PowerSpace):
-                print("WARNING: Field has a space in `domain` which is "
-                      "neither harmonic nor a PowerSpace.")
-
-        # check if the `spaces` input is valid
-        if spaces is None:
-            spaces = range(len(self.domain))
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
-
-        if len(spaces) == 0:
-            raise ValueError("No space for analysis specified.")
-
-        if keep_phase_information:
-            parts = [self.real*self.real, self.imag*self.imag]
-        else:
-            parts = [self.real*self.real + self.imag*self.imag]
-
-        parts = [ part.weight(1,spaces) for part in parts ]
-        for space_index in spaces:
-            parts = [self._single_power_analyze(field=part,
-                                                idx=space_index,
-                                                binbounds=binbounds)
-                     for part in parts]
-
-        return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
-
-    @staticmethod
-    def _single_power_analyze(field, idx, binbounds):
-        from .operators.power_projection_operator import PowerProjectionOperator
-        power_domain = PowerSpace(field.domain[idx], binbounds)
-        ppo = PowerProjectionOperator(field.domain, power_domain, idx)
-        return ppo(field.weight(-1))
-
-    def _compute_spec(self, spaces):
-        from .operators.power_projection_operator import PowerProjectionOperator
-        from .basic_arithmetics import sqrt
-        if spaces is None:
-            spaces = range(len(self.domain))
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
-
-        # create the result domain
-        result_domain = list(self.domain)
-
-        spec = sqrt(self)
-        for i in spaces:
-            result_domain[i] = self.domain[i].harmonic_partner
-            ppo = PowerProjectionOperator(result_domain, self.domain[i], i)
-            spec = ppo.adjoint_times(spec)
-
-        return spec
-
-    def power_synthesize(self, spaces=None, real_power=True, real_signal=True):
-        """ Yields a sampled field with `self`**2 as its power spectrum.
-
-        This method draws a Gaussian random field in the harmonic partner
-        domain of this field's domains, using this field as power spectrum.
-
-        Parameters
-        ----------
-        spaces : {tuple, int, None} *optional*
-            Specifies the subspace containing all the PowerSpaces which
-            should be converted (default : None).
-            if spaces==None : Tries to convert the whole domain.
-        real_power : boolean *optional*
-            Determines whether the power spectrum is treated as intrinsically
-            real or complex (default : True).
-        real_signal : boolean *optional*
-            True will result in a purely real signal-space field
-            (default : True).
-
-        Returns
-        -------
-        out : Field
-            The output object. A random field created with the power spectrum
-            stored in the `spaces` in `self`.
-
-        Notes
-        -----
-        For this the spaces specified by `spaces` must be a PowerSpace.
-        This expects this field to be the square root of a power spectrum, i.e.
-        to have the unit of the field to be sampled.
-
-        See Also
-        --------
-        power_analyze
-
-        Raises
-        ------
-        ValueError : If domain specified by `spaces` is not a PowerSpace.
-
-        """
-
-        spec = self._compute_spec(spaces)
-
-        # create random samples: one or two, depending on whether the
-        # power spectrum is real or complex
-        result = [self.from_random('normal', mean=0., std=1.,
-                                   domain=spec.domain,
-                                   dtype=np.float if real_signal
-                                   else np.complex)
-                  for x in range(1 if real_power else 2)]
-
-        # MR: dummy call - will be removed soon
-        if real_signal:
-            self.from_random('normal', mean=0., std=1.,
-                             domain=spec.domain, dtype=np.float)
-
-        # apply the rescaler to the random fields
-        result[0] *= spec.real
-        if not real_power:
-            result[1] *= spec.imag
-
-        return result[0] if real_power else result[0] + 1j*result[1]
-
-    def power_synthesize_special(self, spaces=None):
-        spec = self._compute_spec(spaces)
-
-        # MR: dummy call - will be removed soon
-        self.from_random('normal', mean=0., std=1.,
-                         domain=spec.domain, dtype=np.complex)
-
-        return spec.real
 
     # ---Properties---
 

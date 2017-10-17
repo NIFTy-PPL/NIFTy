@@ -20,7 +20,6 @@ from builtins import str
 import abc
 from ..nifty_meta import NiftyMeta
 from ..field import Field
-from .. import nifty_utilities as utilities
 from future.utils import with_metaclass
 
 
@@ -110,8 +109,8 @@ class LinearOperator(with_metaclass(
         self._check_input_compatibility(x, inverse=True)
         try:
             y = self._inverse_times(x)
-        except(NotImplementedError):
-            if (self.unitary):
+        except NotImplementedError:
+            if self.unitary:
                 y = self._adjoint_times(x)
             else:
                 raise
@@ -136,8 +135,8 @@ class LinearOperator(with_metaclass(
         self._check_input_compatibility(x, inverse=True)
         try:
             y = self._adjoint_times(x)
-        except(NotImplementedError):
-            if (self.unitary):
+        except NotImplementedError:
+            if self.unitary:
                 y = self._inverse_times(x)
             else:
                 raise
@@ -164,7 +163,7 @@ class LinearOperator(with_metaclass(
         self._check_input_compatibility(x)
         try:
             y = self._adjoint_inverse_times(x)
-        except(NotImplementedError):
+        except NotImplementedError:
             if self.unitary:
                 y = self._times(x)
             else:

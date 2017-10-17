@@ -1,8 +1,7 @@
-from ...operators import EndomorphicOperator,\
-                         InvertibleOperatorMixin
+from ...operators import EndomorphicOperator
 
 
-class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+class WienerFilterCurvature(EndomorphicOperator):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -20,16 +19,15 @@ class WienerFilterCurvature(InvertibleOperatorMixin, EndomorphicOperator):
        The prior signal covariance
     """
 
-    def __init__(self, R, N, S, inverter, preconditioner=None, **kwargs):
+    def __init__(self, R, N, S):
         self.R = R
         self.N = N
         self.S = S
-        if preconditioner is None:
-            preconditioner = self.S.times
-        super(WienerFilterCurvature, self).__init__(
-                                                 inverter=inverter,
-                                                 preconditioner=preconditioner,
-                                                 **kwargs)
+        super(WienerFilterCurvature, self).__init__()
+
+    @property
+    def preconditioner(self):
+        return self.S.times
 
     @property
     def domain(self):
