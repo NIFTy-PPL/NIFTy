@@ -37,20 +37,13 @@ class InvertibleOperatorMixin(object):
         An instance of an Inverter class.
     """
 
-    def __init__(self, inverter, preconditioner=None,
-                 forward_x0=None, backward_x0=None, *args, **kwargs):
+    def __init__(self, inverter, preconditioner=None, *args, **kwargs):
         self.__inverter = inverter
         self._preconditioner = preconditioner
-        self.__forward_x0 = forward_x0
-        self.__backward_x0 = backward_x0
         super(InvertibleOperatorMixin, self).__init__(*args, **kwargs)
 
     def _times(self, x):
-        if self.__forward_x0 is not None:
-            x0 = self.__forward_x0
-        else:
-            x0 = Field.zeros(self.target, dtype=x.dtype)
-
+        x0 = Field.zeros(self.target, dtype=x.dtype)
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                            A=self.inverse_times,
                                            b=x, position=x0),
@@ -58,11 +51,7 @@ class InvertibleOperatorMixin(object):
         return result.position
 
     def _adjoint_times(self, x):
-        if self.__backward_x0 is not None:
-            x0 = self.__backward_x0
-        else:
-            x0 = Field.zeros(self.domain, dtype=x.dtype)
-
+        x0 = Field.zeros(self.domain, dtype=x.dtype)
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                            A=self.adjoint_inverse_times,
                                            b=x, position=x0),
@@ -70,11 +59,7 @@ class InvertibleOperatorMixin(object):
         return result.position
 
     def _inverse_times(self, x):
-        if self.__backward_x0 is not None:
-            x0 = self.__backward_x0
-        else:
-            x0 = Field.zeros(self.domain, dtype=x.dtype)
-
+        x0 = Field.zeros(self.domain, dtype=x.dtype)
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                            A=self.times,
                                            b=x, position=x0),
@@ -82,11 +67,7 @@ class InvertibleOperatorMixin(object):
         return result.position
 
     def _adjoint_inverse_times(self, x):
-        if self.__forward_x0 is not None:
-            x0 = self.__forward_x0
-        else:
-            x0 = Field.zeros(self.target, dtype=x.dtype)
-
+        x0 = Field.zeros(self.target, dtype=x.dtype)
         (result, convergence) = self.__inverter(QuadraticEnergy(
                                            A=self.adjoint_times,
                                            b=x, position=x0),
