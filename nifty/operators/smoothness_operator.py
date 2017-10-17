@@ -45,10 +45,6 @@ class SmoothnessOperator(EndomorphicOperator):
         return False
 
     @property
-    def symmetric(self):
-        return False
-
-    @property
     def self_adjoint(self):
         return False
 
