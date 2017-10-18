@@ -37,7 +37,7 @@ if __name__ == "__main__":
 
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
-    N = ift.DiagonalOperator(ndiag)
+    N = ift.DiagonalOperator(ndiag.weight(1))
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                               std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
     data = R(ift.exp(mock_signal)) + noise #|\label{code:wf_mock_data}|

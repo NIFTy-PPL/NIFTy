@@ -101,9 +101,9 @@ class Test_Functionality(unittest.TestCase):
         fp2 = Field(p2, val=spec2(p2.k_lengths))
 
         S_1 = create_power_field(space1, lambda x: np.sqrt(spec1(x)))
-        S_1 = DiagonalOperator(S_1.weight(-1), domain=fulldomain, spaces=0)
+        S_1 = DiagonalOperator(S_1, domain=fulldomain, spaces=0)
         S_2 = create_power_field(space2, lambda x: np.sqrt(spec2(x)))
-        S_2 = DiagonalOperator(S_2.weight(-1), domain=fulldomain, spaces=1)
+        S_2 = DiagonalOperator(S_2, domain=fulldomain, spaces=1)
 
         samples = 500
         ps1 = 0.

@@ -58,13 +58,13 @@ if __name__ == "__main__":
     # Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
     diag = ift.Field.ones(s_space)
     diag.val[20:80, 20:80] = 0
-    Instrument = ift.DiagonalOperator(diag.weight(-1))
+    Instrument = ift.DiagonalOperator(diag)
 
     # Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
     signal_to_noise = 1.
     ndiag = ift.Field.full(s_space, ss.var()/signal_to_noise)
-    N = ift.DiagonalOperator(ndiag)
+    N = ift.DiagonalOperator(ndiag.weight(1))
     n = ift.Field.from_random(domain=s_space,
                               random_type='normal',
                               std=ss.std()/np.sqrt(signal_to_noise),

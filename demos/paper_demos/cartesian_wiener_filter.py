@@ -60,7 +60,7 @@ if __name__ == "__main__":
     diagonal = ift.power_synthesize_special(mock_power, spaces=(0, 1))**2
     diagonal = diagonal.real
 
-    S = ift.DiagonalOperator(diagonal.weight(-1))
+    S = ift.DiagonalOperator(diagonal)
 
 
     np.random.seed(10)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
-    N = ift.DiagonalOperator(ndiag)
+    N = ift.DiagonalOperator(ndiag.weight(1))
     noise = ift.Field.from_random(domain=data_domain, random_type='normal',
                                   std=mock_signal.std()/np.sqrt(signal_to_noise),
                                   mean=0)

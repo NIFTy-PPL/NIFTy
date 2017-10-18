@@ -21,7 +21,7 @@ class CriticalPowerCurvature(EndomorphicOperator):
     # ---Overwritten properties and methods---
 
     def __init__(self, theta, T):
-        self.theta = DiagonalOperator(theta)
+        self.theta = DiagonalOperator(theta.weight(1))
         self.T = T
         super(CriticalPowerCurvature, self).__init__()
 

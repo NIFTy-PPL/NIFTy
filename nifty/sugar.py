@@ -254,7 +254,8 @@ def create_power_operator(domain, power_spectrum, dtype=None):
     DiagonalOperator : An operator that implements the given power spectrum.
 
     """
-    return DiagonalOperator(create_power_field(domain, power_spectrum, dtype))
+    return DiagonalOperator(
+        create_power_field(domain, power_spectrum, dtype).weight(1))
 
 
 def generate_posterior_sample(mean, covariance):
@@ -284,10 +285,10 @@ def generate_posterior_sample(mean, covariance):
     R = covariance.op.R
     N = covariance.op.N
 
-    power = sqrt(power_analyze(S.diagonal().weight(1)))
+    power = sqrt(power_analyze(S.diagonal()))
     mock_signal = power_synthesize(power, real_signal=True)
 
-    noise = N.diagonal()
+    noise = N.diagonal().weight(-1)
 
     mock_noise = Field.from_random(random_type="normal", domain=N.domain,
                                    dtype=noise.dtype.type)

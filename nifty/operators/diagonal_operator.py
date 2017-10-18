@@ -34,7 +34,8 @@ class DiagonalOperator(EndomorphicOperator):
     Parameters
     ----------
     diagonal : Field
-        The diagonal entries of the operator.
+        The diagonal entries of the operator
+        (already containing volume factors).
     domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
         The domain on which the Operator's input Field lives.
         If None, use the domain of "diagonal".
@@ -52,11 +53,11 @@ class DiagonalOperator(EndomorphicOperator):
     unitary : boolean
         Indicates whether the Operator is unitary or not.
     self_adjoint : boolean
-        Indicates whether the operator is self_adjoint or not.
+        Indicates whether the operator is self-adjoint or not.
 
     NOTE: the fields given to __init__ and returned from .diagonal() are
-    considered to be bare, i.e. during operator application, the colume factors
-    are applied explicitly.
+    considered to be non-bare, i.e. during operator application, no additional
+    volume factors are applied!
 
     See Also
     --------
@@ -90,7 +91,7 @@ class DiagonalOperator(EndomorphicOperator):
                 if diagonal.domain[i] != self._domain[j]:
                     raise ValueError("domain mismatch")
 
-        self._diagonal = diagonal.weight(1)
+        self._diagonal = diagonal.copy()
         self._self_adjoint = None
         self._unitary = None
 
@@ -114,7 +115,7 @@ class DiagonalOperator(EndomorphicOperator):
         out : Field
             The diagonal of the Operator.
         """
-        return self._diagonal.weight(-1)
+        return self._diagonal.copy()
 
     @property
     def domain(self):
