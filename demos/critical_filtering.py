@@ -10,20 +10,21 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.rank
 
-np.random.seed(42)
+np.random.seed(44)
 
 
-def plot_parameters(m, t, p, p_d):
+def plot_parameters(m, t, p, p_sig,p_d):
 
     x = np.log(t.domain[0].kindex)
     m = fft.adjoint_times(m)
     m = m.val.get_full_data().real
     t = t.val.get_full_data().real
     p = p.val.get_full_data().real
+    pd_sig = p_sig.val.get_full_data()
     p_d = p_d.val.get_full_data().real
     pl.plot([go.Heatmap(z=m)], filename='map.html', auto_open=False)
     pl.plot([go.Scatter(x=x, y=t), go.Scatter(x=x, y=p),
-             go.Scatter(x=x, y=p_d)], filename="t.html", auto_open=False)
+             go.Scatter(x=x, y=p_d),go.Scatter(x=x, y=pd_sig)], filename="t.html", auto_open=False)
 
 
 class AdjointFFTResponse(ift.LinearOperator):
@@ -58,7 +59,8 @@ if __name__ == "__main__":
     distribution_strategy = 'not'
 
     # Set up position space
-    s_space = ift.RGSpace([128, 128])
+    dist = 1/128. *0.1
+    s_space = ift.RGSpace([128, 128], distances=[dist,dist])
     # s_space = ift.HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
@@ -73,6 +75,7 @@ if __name__ == "__main__":
 
     # Choose the prior correlation structure and defining correlation operator
     p_spec = (lambda k: (.5 / (k + 1) ** 3))
+    # p_spec = (lambda k: 1)
     S = ift.create_power_operator(h_space, power_spectrum=p_spec,
                                   distribution_strategy=distribution_strategy)
 
@@ -90,7 +93,7 @@ if __name__ == "__main__":
     # Add a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
 
-    noise = 1.
+    noise = 10.
     ndiag = ift.Field(s_space, noise).weight(1)
     N = ift.DiagonalOperator(s_space, ndiag)
     n = ift.Field.from_random(domain=s_space,
@@ -123,12 +126,12 @@ if __name__ == "__main__":
     IC3 = ift.GradientNormController(iteration_limit=100,
                                      tol_abs_gradnorm=0.1)
     minimizer3 = ift.SteepestDescent(IC3)
-
     # Set starting position
     flat_power = ift.Field(p_space, val=1e-8)
     m0 = flat_power.power_synthesize(real_signal=True)
 
-    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.kindex)**2))
+    # t0 = ift.Field(p_space, val=np.log(1./(1+p_space.kindex)**2))
+    t0 = ift.Field(p_space, val=-5)
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ift.exp(t0),
@@ -141,14 +144,15 @@ if __name__ == "__main__":
         m0 = D0.inverse_times(j)
         # Initialize power energy with updated parameters
         power_energy = CriticalPowerEnergy(position=t0, m=m0, D=D0,
-                                           smoothness_prior=10., samples=3)
+                                           smoothness_prior=1., samples=5)
 
-        (power_energy, convergence) = minimizer2(power_energy)
+        (power_energy, convergence) = minimizer1(power_energy)
 
         # Set new power spectrum
         t0.val = power_energy.position.val.real
 
         # Plot current estimate
         print(i)
-        if i % 5 == 0:
-            plot_parameters(m0, t0, ift.log(sp), data_power)
+        if i % 1 == 0:
+            plot_parameters(sh, t0, ift.log(sp), ift.log(sh.power_analyze(binbounds=p_space.binbounds)),data_power)
+            print ift.log(sh.power_analyze(binbounds=p_space.binbounds)).val - t0.val

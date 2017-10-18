@@ -11,7 +11,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.rank
 
-d2o.random.seed(42)
+# d2o.random.seed(42)
 
 
 class AdjointFFTResponse(LinearOperator):
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # Choosing the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.05)
     Instrument = DiagonalOperator(s_space, diagonal=1.)
-#    Instrument._diagonal.val[200:400, 200:400] = 0
+    Instrument._diagonal.val[64:80, 32:80] = 0.
 
     # Adding a harmonic transformation to the instrument
     R = AdjointFFTResponse(fft, Instrument)
@@ -123,8 +123,10 @@ if __name__ == "__main__":
     D0 = energy.curvature
 
     # Solving the problem analytically
-#    m0 = D0.inverse_times(j)
-
+    m0 = D0.inverse_times(j)
+    energy, convergence = minimizer(energy)
+    m = energy.position
+    D = energy.curvature
     m = minimizer(energy)[0].position
 
     plotter = plotting.RG2DPlotter()
@@ -132,13 +134,15 @@ if __name__ == "__main__":
     plotter(fft.inverse_times(m), path='m.html')
 
 
-#    sample_variance = Field(sh.domain, val=0.)
-#    sample_mean = Field(sh.domain, val=0.)
+    sample_variance = Field(s_space, val=0.)
+    sample_mean = Field(s_space, val=0.)
 
-#    # sampling the uncertainty map
-#    n_samples = 10
-#    for i in range(n_samples):
-#        sample = fft(sugar.generate_posterior_sample(0., D0))
-#        sample_variance += sample**2
-#        sample_mean += sample
-#    variance = (sample_variance - sample_mean**2)/n_samples
+    # sampling the uncertainty map
+    n_samples = 50
+    for i in range(n_samples):
+        sample = fft.adjoint_times(sugar.generate_posterior_sample(m, D))
+        sample_variance += sample**2
+        sample_mean += sample
+    sample_mean /= n_samples
+    sample_variance /= n_samples
+    variance = (sample_variance - sample_mean**2)
