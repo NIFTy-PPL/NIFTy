@@ -78,7 +78,7 @@ def create_power_operator(domain, power_spectrum, dtype=None,
         f = f.real
 
     # f **= 2
-    diag = Field(domain,f).weight()
+    diag = Field(domain, f).weight()
     return DiagonalOperator(domain, diag)
 
 
@@ -111,7 +111,7 @@ def generate_posterior_sample(mean, covariance):
 
     power = sqrt(S.diagonal().weight(-1))
     mock_signal = Field.from_random(random_type="normal", domain=S.domain,
-                                   dtype=power.dtype)
+                                    dtype=power.dtype)
     mock_signal = power * mock_signal
     noise = N.diagonal().weight(-1)
 

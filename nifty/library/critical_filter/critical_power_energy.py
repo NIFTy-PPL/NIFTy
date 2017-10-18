@@ -1,7 +1,6 @@
 from ...energies.energy import Energy
 from ...operators.smoothness_operator import SmoothnessOperator
 from ...operators.diagonal_operator import DiagonalOperator
-from ...operators.linear_operator import LinearOperator
 from ...operators.power_projection_operator import PowerProjection
 from . import CriticalPowerCurvature
 from ...memoization import memo
@@ -72,7 +71,8 @@ class CriticalPowerEnergy(Energy):
                                     strength=smoothness_prior,
                                     logarithmic=logarithmic)
         self.rho = self.position.domain[0].rho
-        self.P = PowerProjection(domain=self.m.domain,target=self.position.domain)
+        self.P = PowerProjection(domain=self.m.domain,
+                                 target=self.position.domain)
         self._w = w if w is not None else None
         if inverter is None:
             preconditioner = DiagonalOperator(self._theta.domain,
@@ -80,7 +80,7 @@ class CriticalPowerEnergy(Energy):
                                               copy=False)
             inverter = ConjugateGradient(preconditioner=preconditioner)
         self._inverter = inverter
-        self.one = Field(self.position.domain,val=1.)
+        self.one = Field(self.position.domain, val=1.)
         self.constants = self.one/2. + self.alpha - 1
 
     @property
@@ -151,7 +151,6 @@ class CriticalPowerEnergy(Energy):
     @memo
     def _theta(self):
         return exp(-self.position) * (self.q + self.w / 2.)
-
 
     @property
     @memo
