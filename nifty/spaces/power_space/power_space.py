@@ -336,7 +336,6 @@ class PowerSpace(Space):
             hdf5_group['binbounds'] = np.array(self._binbounds)
         hdf5_group.attrs['distribution_strategy'] = \
             self._pindex.distribution_strategy
-        hdf5_group.attrs['volume_type'] = self.volume_type
         return {'harmonic_partner': self.harmonic_partner}
 
     @classmethod
@@ -347,5 +346,4 @@ class PowerSpace(Space):
         except KeyError:
             bb = None
         ds = str(hdf5_group.attrs['distribution_strategy'])
-        volume_type = str(hdf5_group.attrs['volume_type'])
-        return PowerSpace(hp, ds, binbounds=bb, volume_type=volume_type)
+        return PowerSpace(hp, ds, binbounds=bb)
