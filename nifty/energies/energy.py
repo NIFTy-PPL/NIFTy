@@ -96,7 +96,6 @@ class Energy(with_metaclass(NiftyMeta,
                               curvature=curvature)
 
     @property
-    @memo
     def position(self):
         """
         The Field location in parameter space where value, gradient and
