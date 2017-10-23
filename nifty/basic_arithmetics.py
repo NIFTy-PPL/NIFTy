@@ -22,9 +22,7 @@ from .field import Field
 from . import dobj
 
 
-__all__ = ['cos', 'sin', 'cosh', 'sinh', 'tan', 'tanh', 'arccos', 'arcsin',
-           'arccosh', 'arcsinh', 'arctan', 'arctanh', 'sqrt', 'exp', 'log',
-           'conj', 'conjugate']
+__all__ = ['sqrt', 'exp', 'log', 'conjugate']
 
 
 def _math_helper(x, function, out):
@@ -37,54 +35,6 @@ def _math_helper(x, function, out):
         return out
     else:
         return Field(domain=x.domain, val=function(x.val))
-
-
-def cos(x, out=None):
-    return _math_helper(x, dobj.cos, out)
-
-
-def sin(x, out=None):
-    return _math_helper(x, dobj.sin, out)
-
-
-def cosh(x, out=None):
-    return _math_helper(x, dobj.cosh, out)
-
-
-def sinh(x, out=None):
-    return _math_helper(x, dobj.sinh, out)
-
-
-def tan(x, out=None):
-    return _math_helper(x, dobj.tan, out)
-
-
-def tanh(x, out=None):
-    return _math_helper(x, dobj.tanh, out)
-
-
-def arccos(x, out=None):
-    return _math_helper(x, dobj.arccos, out)
-
-
-def arcsin(x, out=None):
-    return _math_helper(x, dobj.arcsin, out)
-
-
-def arccosh(x, out=None):
-    return _math_helper(x, dobj.arccosh, out)
-
-
-def arcsinh(x, out=None):
-    return _math_helper(x, dobj.arcsinh, out)
-
-
-def arctan(x, out=None):
-    return _math_helper(x, dobj.arctan, out)
-
-
-def arctanh(x, out=None):
-    return _math_helper(x, dobj.arctanh, out)
 
 
 def sqrt(x, out=None):
@@ -101,7 +51,3 @@ def log(x, out=None):
 
 def conjugate(x, out=None):
     return _math_helper(x, dobj.conjugate, out)
-
-
-def conj(x, out=None):
-    return _math_helper(x, dobj.conj, out)

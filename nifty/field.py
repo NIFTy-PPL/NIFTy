@@ -521,30 +521,6 @@ class Field(object):
     def __ipow__(self, other):
         return self._binary_helper(other, op='__ipow__')
 
-    def __lt__(self, other):
-        return self._binary_helper(other, op='__lt__')
-
-    def __le__(self, other):
-        return self._binary_helper(other, op='__le__')
-
-    def __ne__(self, other):
-        if other is None:
-            return True
-        else:
-            return self._binary_helper(other, op='__ne__')
-
-    def __eq__(self, other):
-        if other is None:
-            return False
-        else:
-            return self._binary_helper(other, op='__eq__')
-
-    def __ge__(self, other):
-        return self._binary_helper(other, op='__ge__')
-
-    def __gt__(self, other):
-        return self._binary_helper(other, op='__gt__')
-
     def __repr__(self):
         return "<nifty2go.Field>"
 
