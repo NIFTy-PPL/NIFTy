@@ -96,7 +96,7 @@ if __name__ == "__main__":
     IC2 = ift.GradientNormController(verbose=True, iteration_limit=100,
                                      tol_abs_gradnorm=0.1)
     minimizer2 = ift.VL_BFGS(IC2, max_history_length=20)
-    IC3 = ift.GradientNormController(verbose=True, iteration_limit=100,
+    IC3 = ift.GradientNormController(verbose=True, iteration_limit=1000,
                                      tol_abs_gradnorm=0.1)
     minimizer3 = ift.SteepestDescent(IC3)
 
