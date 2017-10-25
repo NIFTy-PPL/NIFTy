@@ -47,7 +47,7 @@ class Random(object):
     @staticmethod
     def uniform(dtype, shape, low=0., high=1.):
         if issubclass(dtype, (complex, np.complexfloating)):
-            x = np.empty(size, dtype=dtype)
+            x = np.empty(shape, dtype=dtype)
             x.real = (high - low) * np.random.random(shape) + low
             x.imag = (high - low) * np.random.random(shape) + low
         elif dtype in [np.dtype('int8'), np.dtype('int16'), np.dtype('int32'),
