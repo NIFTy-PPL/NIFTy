@@ -8,8 +8,6 @@ from .domain_tuple import DomainTuple
 
 from .domain_object import DomainObject
 
-from .random import Random
-
 from .basic_arithmetics import *
 
 from .nifty_utilities import *
@@ -32,6 +30,6 @@ from . import plotting
 
 from . import library
 
-from .data_objects import numpy_do as dobj
+from . import dobj
 
 from .memoization import memo

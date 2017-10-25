@@ -20,7 +20,6 @@ from __future__ import division, print_function
 from builtins import range
 import numpy as np
 from . import nifty_utilities as utilities
-from .random import Random
 from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
@@ -184,9 +183,9 @@ class Field(object):
         """
 
         domain = DomainTuple.make(domain)
-        generator_function = getattr(Random, random_type)
-        return Field(domain=domain, val=generator_function(dtype=dtype,
-                     shape=domain.shape, **kwargs))
+        return Field(domain=domain,
+                     val=dobj.from_random(random_type, dtype=dtype,
+                                          shape=domain.shape, **kwargs))
 
     # ---Properties---
 

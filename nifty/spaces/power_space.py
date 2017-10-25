@@ -141,7 +141,7 @@ class PowerSpace(Space):
                                 harmonic_partner=self.harmonic_partner,
                                 k_length_array=k_length_array,
                                 binbounds=binbounds)
-            temp_rho = dobj.bincount(temp_pindex.ravel())
+            temp_rho = np.bincount(temp_pindex.ravel())
             assert not np.any(temp_rho == 0), "empty bins detected"
             temp_k_lengths = np.bincount(temp_pindex.ravel(),
                                          weights=k_length_array.ravel()) \

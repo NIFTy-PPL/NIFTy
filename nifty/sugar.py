@@ -17,14 +17,15 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-
 from . import Space,\
-                  PowerSpace,\
-                  Field,\
-                  ComposedOperator,\
-                  DiagonalOperator,\
-                  FFTOperator,\
-                  sqrt
+              PowerSpace,\
+              Field,\
+              ComposedOperator,\
+              DiagonalOperator,\
+              PowerProjectionOperator,\
+              FFTOperator,\
+              sqrt,\
+              DomainTuple
 from . import nifty_utilities as utilities
 
 __all__ = ['power_analyze',
@@ -223,16 +224,16 @@ def create_power_field(domain, power_spectrum, dtype=None):
         power_domain = PowerSpace(domain)
         fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
                    dtype=dtype)
-    f = power_synthesize_special(fp)
+    P = PowerProjectionOperator(domain, power_domain)
+    f = P.adjoint_times(fp)
 
     if not issubclass(fp.dtype.type, np.complexfloating):
         f = f.real
 
-    f **= 2
     return f
 
 
-def create_power_operator(domain, power_spectrum, dtype=None):
+def create_power_operator(domain, power_spectrum, space=None, dtype=None):
     """ Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that lives over the specified domain.
@@ -241,9 +242,10 @@ def create_power_operator(domain, power_spectrum, dtype=None):
     ----------
     domain : DomainObject
         Domain over which the power operator shall live.
-    power_spectrum : callable
-        A method that implements the square root of a power spectrum as a
-        function of k.
+    power_spectrum : callable of Field
+        An object that implements the power spectrum as a function of k.
+    space : int
+            the domain index on which the power operator will work
     dtype : type *optional*
         dtype that the field holding the power spectrum shall use
         (default : None).
@@ -254,8 +256,18 @@ def create_power_operator(domain, power_spectrum, dtype=None):
     DiagonalOperator : An operator that implements the given power spectrum.
 
     """
+    domain = DomainTuple.make(domain)
+    if space is None:
+        if len(domain)!=1:
+            raise ValueError("space keyword must be set")
+        else:
+            space = 0
+    space = int(space)
     return DiagonalOperator(
-        create_power_field(domain, power_spectrum, dtype).weight(1))
+        create_power_field(domain[space],
+                           power_spectrum, dtype).weight(1),
+        domain=domain,
+        spaces=space)
 
 
 def generate_posterior_sample(mean, covariance):
