@@ -57,7 +57,9 @@ class PowerProjectionOperator(LinearOperator):
                               x.domain.collapsed_shape_for_domain(self._space))
         out = dobj.zeros(self._target.collapsed_shape_for_domain(self._space),
                          dtype=x.dtype)
-        np.add.at(out, (slice(None), pindex.ravel(), slice(None)), arr)
+        out = dobj.to_ndarray(out)
+        np.add.at(out, (slice(None), dobj.to_ndarray(pindex.ravel()), slice(None)), dobj.to_ndarray(arr))
+        out = dobj.from_ndarray(out)
         return Field(self._target, out.reshape(self._target.shape))\
             .weight(-1, spaces=self._space)
 
@@ -65,7 +67,7 @@ class PowerProjectionOperator(LinearOperator):
         pindex = self._target[self._space].pindex
         pindex = pindex.reshape((1, pindex.size, 1))
         arr = x.val.reshape(x.domain.collapsed_shape_for_domain(self._space))
-        out = arr[(slice(None), pindex.ravel(), slice(None))]
+        out = arr[(slice(None), pindex.ravel()._data, slice(None))]
         return Field(self._domain, out.reshape(self._domain.shape))
 
     @property

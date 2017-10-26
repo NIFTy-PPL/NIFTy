@@ -20,6 +20,7 @@ from __future__ import division
 import numpy as np
 from .. import nifty_utilities as utilities
 from ..low_level_library import hartley
+from ..dobj import to_ndarray as to_np, from_ndarray as from_np
 
 class Transformation(object):
     def __init__(self, domain, codomain):
@@ -68,10 +69,10 @@ class RGRGTransformation(Transformation):
 
         # Perform the transformation
         if issubclass(val.dtype.type, np.complexfloating):
-            Tval = hartley(val.real, axes) \
-                  + 1j*hartley(val.imag, axes)
+            Tval = from_np(hartley(to_np(val.real), axes) \
+                           + 1j*hartley(to_np(val.imag), axes))
         else:
-            Tval = hartley(val, axes)
+            Tval = from_np(hartley(to_np(val), axes))
 
         return Tval, fct
 

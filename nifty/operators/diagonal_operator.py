@@ -23,6 +23,7 @@ from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
 from ..nifty_utilities import cast_iseq_to_tuple
+from .. import dobj
 
 class DiagonalOperator(EndomorphicOperator):
     """ NIFTY class for diagonal operators.
@@ -146,7 +147,7 @@ class DiagonalOperator(EndomorphicOperator):
 
         reshaper = [shp if i in active_axes else 1
                     for i, shp in enumerate(x.shape)]
-        reshaped_local_diagonal = np.reshape(self._diagonal.val, reshaper)
+        reshaped_local_diagonal = self._diagonal.val.reshape(reshaper)
 
         # here the actual multiplication takes place
         return Field(x.domain, val=operation(reshaped_local_diagonal)(x.val))

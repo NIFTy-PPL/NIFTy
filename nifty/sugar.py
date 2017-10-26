@@ -27,6 +27,7 @@ from . import Space,\
               sqrt,\
               DomainTuple
 from . import nifty_utilities as utilities
+from . import dobj
 
 __all__ = ['power_analyze',
            'power_synthesize',
@@ -222,7 +223,8 @@ def create_power_field(domain, power_spectrum, dtype=None):
         fp = Field(power_domain, val=power_spectrum.val, dtype=dtype)
     else:
         power_domain = PowerSpace(domain)
-        fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
+        fp = Field(power_domain,
+                   val=dobj.from_ndarray(power_spectrum(dobj.to_ndarray(power_domain.k_lengths))),
                    dtype=dtype)
     P = PowerProjectionOperator(domain, power_domain)
     f = P.adjoint_times(fp)
@@ -258,7 +260,7 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
     """
     domain = DomainTuple.make(domain)
     if space is None:
-        if len(domain)!=1:
+        if len(domain) != 1:
             raise ValueError("space keyword must be set")
         else:
             space = 0
