@@ -144,8 +144,8 @@ class DiagonalOperator(EndomorphicOperator):
         for space_index in self._spaces:
             active_axes += x.domain.axes[space_index]
 
-        reshaper = [x.shape[i] if i in active_axes else 1
-                    for i in range(len(x.shape))]
+        reshaper = [shp if i in active_axes else 1
+                    for i, shp in enumerate(x.shape)]
         reshaped_local_diagonal = np.reshape(self._diagonal.val, reshaper)
 
         # here the actual multiplication takes place

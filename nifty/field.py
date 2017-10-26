@@ -412,8 +412,8 @@ class Field(object):
         if np.isscalar(data):
             return data
         else:
-            return_domain = tuple(self.domain[i]
-                                  for i in range(len(self.domain))
+            return_domain = tuple(dom
+                                  for i, dom in enumerate(self.domain)
                                   if i not in spaces)
 
             return Field(domain=return_domain, val=data, copy=False)
@@ -454,7 +454,7 @@ class Field(object):
             raise TypeError("argument must be a Field")
         if other.domain != self.domain:
             raise ValueError("domains are incompatible.")
-        self.val[()] = other.val
+        self.val[()] = other.val[()]
 
     # ---General binary methods---
 
