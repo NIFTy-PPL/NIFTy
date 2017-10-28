@@ -5,26 +5,33 @@ from .random import Random
 class data_object(object):
     def __init__(self, npdata):
         self._data = np.asarray(npdata)
+
     def __getitem__(self, key):
         res = self._data[key]
         return res if np.isscalar(res) else data_object(res)
+
     def __setitem__(self, key, value):
         if isinstance(value, data_object):
             self._data[key] = value._data
         else:
             self._data[key] = value
+
     @property
     def dtype(self):
         return self._data.dtype
+
     @property
     def shape(self):
         return self._data.shape
+
     @property
     def size(self):
         return self._data.size
+
     @property
     def real(self):
         return data_object(self._data.real)
+
     @property
     def imag(self):
         return data_object(self._data.imag)
@@ -46,51 +53,68 @@ class data_object(object):
         return self._contraction_helper("sum", axis)
 
     def _binary_helper(self, other, op):
-        a=self._data
+        a = self._data
         if isinstance(other, data_object):
-            b=other._data
-            #if a.shape != b.shape:
-            #    print("shapes are incompatible.")
+            b = other._data
+            # if a.shape != b.shape:
+            #     print("shapes are incompatible.")
         else:
-            b=other
+            b = other
 
         tval = getattr(a, op)(b)
         return self if tval is a else data_object(tval)
 
     def __add__(self, other):
         return self._binary_helper(other, op='__add__')
+
     def __radd__(self, other):
         return self._binary_helper(other, op='__radd__')
+
     def __iadd__(self, other):
         return self._binary_helper(other, op='__iadd__')
+
     def __sub__(self, other):
         return self._binary_helper(other, op='__sub__')
+
     def __rsub__(self, other):
         return self._binary_helper(other, op='__rsub__')
+
     def __isub__(self, other):
         return self._binary_helper(other, op='__isub__')
+
     def __mul__(self, other):
         return self._binary_helper(other, op='__mul__')
+
     def __rmul__(self, other):
         return self._binary_helper(other, op='__rmul__')
+
     def __imul__(self, other):
         return self._binary_helper(other, op='__imul__')
+
     def __div__(self, other):
         return self._binary_helper(other, op='__div__')
+
     def __rdiv__(self, other):
         return self._binary_helper(other, op='__rdiv__')
+
     def __truediv__(self, other):
         return self._binary_helper(other, op='__truediv__')
+
     def __rtruediv__(self, other):
         return self._binary_helper(other, op='__rtruediv__')
+
     def __pow__(self, other):
         return self._binary_helper(other, op='__pow__')
+
     def __rpow__(self, other):
         return self._binary_helper(other, op='__rpow__')
+
     def __ipow__(self, other):
         return self._binary_helper(other, op='__ipow__')
+
     def __eq__(self, other):
         return self._binary_helper(other, op='__eq__')
+
     def __ne__(self, other):
         return self._binary_helper(other, op='__ne__')
 
@@ -108,8 +132,10 @@ class data_object(object):
 
     def all(self):
         return self._data.all()
+
     def any(self):
         return self._data.any()
+
 
 def full(shape, fill_value, dtype=None):
     return data_object(np.full(shape, fill_value, dtype))
@@ -131,7 +157,7 @@ def empty_like(a, dtype=None):
     return data_object(np.empty_like(a._data, dtype))
 
 
-def vdot(a,b):
+def vdot(a, b):
     return np.vdot(a._data, b._data)
 
 
@@ -178,8 +204,10 @@ def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
     return data_object(generator_function(dtype=dtype, shape=shape, **kwargs))
 
+
 def to_ndarray(arr):
     return arr._data
+
 
 def from_ndarray(arr):
     return data_object(arr)

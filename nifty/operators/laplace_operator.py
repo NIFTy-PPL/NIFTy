@@ -21,7 +21,6 @@ from ..field import Field
 from ..spaces.power_space import PowerSpace
 from .endomorphic_operator import EndomorphicOperator
 from .. import DomainTuple
-from .. import nifty_utilities as utilities
 from ..dobj import to_ndarray as to_np, from_ndarray as from_np
 
 
@@ -50,7 +49,7 @@ class LaplaceOperator(EndomorphicOperator):
                 raise ValueError("need a Field with exactly one domain")
             space = 0
         space = int(space)
-        if (space<0) or space>=len(self._domain.domains):
+        if space < 0 or space >= len(self._domain.domains):
             raise ValueError("space index out of range")
         self._space = space
 
@@ -107,7 +106,8 @@ class LaplaceOperator(EndomorphicOperator):
         ret /= np.sqrt(dposc)
         ret[prefix + (slice(None, 2),)] = 0.
         ret[prefix + (-1,)] = 0.
-        return Field(self.domain, val=from_np(ret)).weight(-0.5, spaces=self._space)
+        return Field(self.domain, val=from_np(ret)).weight(-0.5,
+                                                           spaces=self._space)
 
     def _adjoint_times(self, x):
         axes = x.domain.axes[self._space]
@@ -127,4 +127,5 @@ class LaplaceOperator(EndomorphicOperator):
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
-        return Field(self.domain, val=from_np(ret)).weight(-1, spaces=self._space)
+        return Field(self.domain, val=from_np(ret)).weight(-1,
+                                                           spaces=self._space)

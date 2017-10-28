@@ -14,8 +14,10 @@ def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
     return generator_function(dtype=dtype, shape=shape, **kwargs)
 
+
 def to_ndarray(arr):
     return arr
+
 
 def from_ndarray(arr):
     return np.asarray(arr)

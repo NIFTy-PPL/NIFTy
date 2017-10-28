@@ -17,13 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-from builtins import range
 import numpy as np
 from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
 from ..nifty_utilities import cast_iseq_to_tuple
-from .. import dobj
+
 
 class DiagonalOperator(EndomorphicOperator):
     """ NIFTY class for diagonal operators.
@@ -87,8 +86,9 @@ class DiagonalOperator(EndomorphicOperator):
                 raise ValueError("too many spaces")
             if nspc > len(set(self._spaces)):
                 raise ValueError("non-unique space indices")
-            # if nspc==len(self.diagonal.domain.domains, we could do some optimization
-            for i, j  in enumerate(self._spaces):
+            # if nspc==len(self.diagonal.domain.domains,
+            # we could do some optimization
+            for i, j in enumerate(self._spaces):
                 if diagonal.domain[i] != self._domain[j]:
                     raise ValueError("domain mismatch")
 
