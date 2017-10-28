@@ -189,7 +189,7 @@ def sqrt(a, out=None):
     return out
 
 
-def bincount(x, weights=None, minlength=0):
+def bincount(x, weights=None, minlength=None):
     if weights is not None:
         weights = weights._data
     res = np.bincount(x._data, weights, minlength)
