@@ -18,13 +18,11 @@
 
 import unittest
 import numpy as np
-from numpy.testing import assert_, assert_equal
-
+from numpy.testing import assert_
 from itertools import product
 from types import LambdaType
 from test.common import expand, generate_spaces, generate_harmonic_spaces
-
-from nifty2go.spaces import *
+from nifty2go import *  # ugly, but needed for the eval() below
 
 
 class SpaceInterfaceTests(unittest.TestCase):

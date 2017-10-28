@@ -22,7 +22,6 @@ import nifty2go as ift
 from numpy.testing import assert_allclose
 from itertools import product
 from test.common import expand
-from nifty2go.dobj import to_ndarray as to_np, from_ndarray as from_np
 
 
 class LaplaceOperatorTests(unittest.TestCase):

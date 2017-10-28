@@ -19,10 +19,9 @@
 from __future__ import division
 import unittest
 import numpy as np
-
 from numpy.testing import assert_, assert_equal, assert_raises,\
-        assert_almost_equal, assert_array_almost_equal
-from nifty2go import LMSpace
+        assert_allclose
+import nifty2go as ift
 from test.common import expand
 
 # [lmax, expected]
@@ -72,7 +71,7 @@ class LMSpaceInterfaceTests(unittest.TestCase):
             ['mmax', int],
             ['dim', int]])
     def test_property_ret_type(self, attribute, expected_type):
-        l = LMSpace(7)
+        l = ift.LMSpace(7)
         assert_(isinstance(getattr(l, attribute), expected_type))
 
 
@@ -81,16 +80,16 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     def test_constructor(self, lmax, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
-                LMSpace(lmax)
+                ift.LMSpace(lmax)
         else:
-            l = LMSpace(lmax)
+            l = ift.LMSpace(lmax)
             for key, value in expected.items():
                 assert_equal(getattr(l, key), value)
 
     def test_dvol(self):
-        assert_almost_equal(LMSpace(5).dvol(), 1.)
+        assert_allclose(ift.LMSpace(5).dvol(), 1.)
 
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, lmax, expected):
-        l = LMSpace(lmax)
-        assert_almost_equal(l.get_k_length_array(), expected)
+        l = ift.LMSpace(lmax)
+        assert_allclose(l.get_k_length_array(), expected)

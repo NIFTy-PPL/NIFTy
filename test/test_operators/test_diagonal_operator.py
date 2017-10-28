@@ -1,14 +1,12 @@
 from __future__ import division
 import unittest
-import numpy as np
-from numpy.testing import assert_equal,\
-    assert_allclose,\
-    assert_approx_equal
+from numpy.testing import assert_equal, assert_allclose
 from nifty2go import Field, DiagonalOperator
 from test.common import generate_spaces
 from itertools import product
 from test.common import expand
-from nifty2go.dobj import to_ndarray as to_np, from_ndarray as from_np
+from nifty2go.dobj import to_ndarray as to_np
+
 
 class DiagonalOperator_Tests(unittest.TestCase):
     spaces = generate_spaces()
@@ -19,9 +17,9 @@ class DiagonalOperator_Tests(unittest.TestCase):
         D = DiagonalOperator(diag)
         if D.domain[0] != space:
             raise TypeError
-        if D.unitary != False:
+        if D.unitary:
             raise TypeError
-        if D.self_adjoint != True:
+        if not D.self_adjoint:
             raise TypeError
 
     @expand(product(spaces))
@@ -32,7 +30,7 @@ class DiagonalOperator_Tests(unittest.TestCase):
         D = DiagonalOperator(diag)
         tt1 = rand1.vdot(D.times(rand2))
         tt2 = rand2.vdot(D.times(rand1))
-        assert_approx_equal(tt1, tt2)
+        assert_allclose(tt1, tt2)
 
     @expand(product(spaces))
     def test_times_inverse(self, space):

@@ -19,17 +19,11 @@
 from __future__ import division
 import unittest
 import numpy as np
-from numpy.testing import assert_equal,\
-    assert_allclose
-from nifty2go import Field,\
-    RGSpace,\
-    LMSpace,\
-    HPSpace,\
-    GLSpace,\
-    FFTOperator
+from numpy.testing import assert_allclose
+from nifty2go import Field, RGSpace, LMSpace, HPSpace, GLSpace, FFTOperator
 from itertools import product
 from test.common import expand
-from nifty2go.dobj import to_ndarray as to_np, from_ndarray as from_np
+from nifty2go.dobj import to_ndarray as to_np
 
 
 def _get_rtol(tp):

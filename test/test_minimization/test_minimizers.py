@@ -4,7 +4,7 @@ from numpy.testing import assert_allclose
 import nifty2go as ift
 from itertools import product
 from test.common import expand
-from nifty2go.dobj import to_ndarray as gfd
+from nifty2go.dobj import to_ndarray as to_np
 
 spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
 minimizers = [ift.SteepestDescent, ift.RelaxedNewton, ift.VL_BFGS,
@@ -29,6 +29,6 @@ class Test_Minimizers(unittest.TestCase):
 
         (energy, convergence) = minimizer(energy)
         assert convergence == IC.CONVERGED
-        assert_allclose(gfd(energy.position.val),
-                        1./gfd(covariance_diagonal.val),
+        assert_allclose(to_np(energy.position.val),
+                        1./to_np(covariance_diagonal.val),
                         rtol=1e-3, atol=1e-3)
