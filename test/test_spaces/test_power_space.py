@@ -23,9 +23,10 @@ import numpy as np
 
 from numpy.testing import assert_, assert_equal, assert_almost_equal,\
         assert_raises
-from nifty2go import PowerSpace, RGSpace, Space, LMSpace
+from nifty2go import PowerSpace, RGSpace, Space, LMSpace, dobj
 from test.common import expand
 from itertools import product, chain
+from nifty2go.dobj import to_ndarray as to_np, from_ndarray as from_np
 
 HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
                    RGSpace((7, 8), harmonic=True),
@@ -54,7 +55,7 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 5,
         'harmonic_partner': RGSpace((8,), harmonic=True),
         'binbounds': None,
-        'pindex': np.array([0, 1, 2, 3, 4, 3, 2, 1]),
+        'pindex': from_np(np.array([0, 1, 2, 3, 4, 3, 2, 1])),
         'k_lengths': np.array([0., 1., 2., 3., 4.]),
         }],
     [RGSpace((8,), harmonic=True), True, None, None, {
@@ -63,7 +64,7 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 4,
         'harmonic_partner': RGSpace((8,), harmonic=True),
         'binbounds': (0.5, 1.3228756555322954, 3.5),
-        'pindex': np.array([0, 1, 2, 2, 3, 2, 2, 1]),
+        'pindex': from_np(np.array([0, 1, 2, 2, 3, 2, 2, 1])),
         'k_lengths': np.array([0., 1., 2.5, 4.]),
         }],
     ]
@@ -80,7 +81,7 @@ class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
         ['harmonic_partner', Space],
         ['binbounds', type(None)],
-        ['pindex', np.ndarray],
+        ['pindex', dobj.data_object],
         ['k_lengths', np.ndarray],
         ])
     def test_property_ret_type(self, attribute, expected_type):
@@ -96,7 +97,7 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
         bb = PowerSpace.useful_binbounds(harmonic_partner, logarithmic, nbin)
         p = PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
-        assert_equal(np.bincount(p.pindex.ravel()), p.dvol(),
+        assert_equal(np.bincount(to_np(p.pindex.ravel())), p.dvol(),
                      err_msg='rho is not equal to pindex degeneracy')
 
 

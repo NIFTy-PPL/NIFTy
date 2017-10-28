@@ -22,6 +22,7 @@ import nifty2go as ift
 from numpy.testing import assert_allclose
 from itertools import product
 from test.common import expand
+from nifty2go.dobj import to_ndarray as to_np, from_ndarray as from_np
 
 
 class LaplaceOperatorTests(unittest.TestCase):
@@ -31,6 +32,5 @@ class LaplaceOperatorTests(unittest.TestCase):
         bb = ift.PowerSpace.useful_binbounds(s, logarithmic=log1)
         p = ift.PowerSpace(s, binbounds=bb)
         L = ift.LaplaceOperator(p, logarithmic=log2)
-        arr = np.random.random(p.shape[0])
-        fp = ift.Field(p, val=arr)
+        fp = ift.Field.from_random("normal", domain=p, dtype=np.float64)
         assert_allclose(L(fp).vdot(L(fp)), L.adjoint_times(L(fp)).vdot(fp))

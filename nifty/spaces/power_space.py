@@ -141,11 +141,10 @@ class PowerSpace(Space):
                                 harmonic_partner=self.harmonic_partner,
                                 k_length_array=k_length_array,
                                 binbounds=binbounds)
-            temp_rho = dobj.bincount(temp_pindex.ravel())
+            temp_rho = dobj.to_ndarray(dobj.bincount(temp_pindex.ravel()))
             assert not (temp_rho == 0).any(), "empty bins detected"
-            temp_k_lengths = dobj.bincount(temp_pindex.ravel(),
-                                           weights=dobj.from_ndarray(k_length_array.ravel())) \
-                / temp_rho
+            temp_k_lengths = dobj.to_ndarray(dobj.bincount(temp_pindex.ravel(),
+                weights=dobj.from_ndarray(k_length_array.ravel())) / temp_rho)
             temp_dvol = temp_rho*pdvol
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,

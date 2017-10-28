@@ -224,7 +224,7 @@ def create_power_field(domain, power_spectrum, dtype=None):
     else:
         power_domain = PowerSpace(domain)
         fp = Field(power_domain,
-                   val=dobj.from_ndarray(power_spectrum(dobj.to_ndarray(power_domain.k_lengths))),
+                   val=dobj.from_ndarray(power_spectrum(power_domain.k_lengths)),
                    dtype=dtype)
     P = PowerProjectionOperator(domain, power_domain)
     f = P.adjoint_times(fp)

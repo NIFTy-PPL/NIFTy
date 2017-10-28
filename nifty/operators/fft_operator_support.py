@@ -79,13 +79,14 @@ class RGRGTransformation(Transformation):
 
 class SlicingTransformation(Transformation):
     def transform(self, val, axes=None):
+        val = to_np(val)
         return_shape = np.array(val.shape)
         return_shape[list(axes)] = self.codomain.shape
         return_val = np.empty(tuple(return_shape), dtype=val.dtype)
 
         for slice in utilities.get_slice_list(val.shape, axes):
             return_val[slice] = self._transformation_of_slice(val[slice])
-        return return_val, 1.
+        return from_np(return_val), 1.
 
     def _transformation_of_slice(self, inp):
         raise NotImplementedError

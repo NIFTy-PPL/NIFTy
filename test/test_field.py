@@ -59,10 +59,10 @@ class Test_Functionality(unittest.TestCase):
         np.random.seed(11)
 
         p1 = ift.PowerSpace(space1)
-        fp1 = ift.Field(p1, val=from_np(_spec1(to_np(p1.k_lengths))))
+        fp1 = ift.Field(p1, val=from_np(_spec1(p1.k_lengths)))
 
         p2 = ift.PowerSpace(space2)
-        fp2 = ift.Field(p2, val=from_np(_spec2(to_np(p2.k_lengths))))
+        fp2 = ift.Field(p2, val=from_np(_spec2(p2.k_lengths)))
 
         outer = from_np(np.outer(to_np(fp1.val), to_np(fp2.val)))
         fp = ift.Field((p1, p2), val=outer)
@@ -91,10 +91,10 @@ class Test_Functionality(unittest.TestCase):
         fulldomain = ift.DomainTuple.make((space1, space2))
 
         p1 = ift.PowerSpace(space1)
-        fp1 = ift.Field(p1, val=from_np(_spec1(to_np(p1.k_lengths))))
+        fp1 = ift.Field(p1, val=from_np(_spec1(p1.k_lengths)))
 
         p2 = ift.PowerSpace(space2)
-        fp2 = ift.Field(p2, val=from_np(_spec2(to_np(p2.k_lengths))))
+        fp2 = ift.Field(p2, val=from_np(_spec2(p2.k_lengths)))
 
         S_1 = ift.create_power_field(space1, lambda x: np.sqrt(_spec1(x)))
         S_1 = ift.DiagonalOperator(S_1, domain=fulldomain, spaces=0)

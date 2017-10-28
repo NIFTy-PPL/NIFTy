@@ -22,6 +22,7 @@ from ..spaces.power_space import PowerSpace
 from .endomorphic_operator import EndomorphicOperator
 from .. import DomainTuple
 from .. import nifty_utilities as utilities
+from ..dobj import to_ndarray as to_np, from_ndarray as from_np
 
 
 class LaplaceOperator(EndomorphicOperator):
@@ -89,6 +90,7 @@ class LaplaceOperator(EndomorphicOperator):
         return self._logarithmic
 
     def _times(self, x):
+        val = to_np(x.val)
         axes = x.domain.axes[self._space]
         axis = axes[0]
         nval = len(self._dposc)
@@ -97,15 +99,15 @@ class LaplaceOperator(EndomorphicOperator):
         sl_r = prefix + (slice(1, None),)  # "right" slice
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
-        deriv = (x.val[sl_r]-x.val[sl_l])/dpos  # defined between points
-        ret = np.empty_like(x.val)
+        deriv = (val[sl_r]-val[sl_l])/dpos  # defined between points
+        ret = np.empty_like(val)
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
         ret /= np.sqrt(dposc)
         ret[prefix + (slice(None, 2),)] = 0.
         ret[prefix + (-1,)] = 0.
-        return Field(self.domain, val=ret).weight(-0.5, spaces=self._space)
+        return Field(self.domain, val=from_np(ret)).weight(-0.5, spaces=self._space)
 
     def _adjoint_times(self, x):
         axes = x.domain.axes[self._space]
@@ -116,13 +118,13 @@ class LaplaceOperator(EndomorphicOperator):
         sl_r = prefix + (slice(1, None),)  # "right" slice
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
-        y = x.weight(0.5, spaces=self._space).val
+        y = to_np(x.weight(0.5, spaces=self._space).val)
         y /= np.sqrt(dposc)
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
         deriv = (y[sl_r]-y[sl_l])/dpos  # defined between points
-        ret = np.empty_like(x.val)
+        ret = np.empty_like(y)
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
-        return Field(self.domain, val=ret).weight(-1, spaces=self._space)
+        return Field(self.domain, val=from_np(ret)).weight(-1, spaces=self._space)

@@ -9,7 +9,10 @@ class data_object(object):
         res = self._data[key]
         return res if np.isscalar(res) else data_object(res)
     def __setitem__(self, key, value):
-        self._data[key] = value
+        if isinstance(value, data_object):
+            self._data[key] = value._data
+        else:
+            self._data[key] = value
     @property
     def dtype(self):
         return self._data.dtype

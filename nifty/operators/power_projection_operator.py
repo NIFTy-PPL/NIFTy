@@ -67,7 +67,7 @@ class PowerProjectionOperator(LinearOperator):
         pindex = self._target[self._space].pindex
         pindex = pindex.reshape((1, pindex.size, 1))
         arr = x.val.reshape(x.domain.collapsed_shape_for_domain(self._space))
-        out = arr[(slice(None), pindex.ravel()._data, slice(None))]
+        out = arr[(slice(None), dobj.to_ndarray(pindex.ravel()), slice(None))]
         return Field(self._domain, out.reshape(self._domain.shape))
 
     @property

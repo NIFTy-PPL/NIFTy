@@ -1,17 +1,15 @@
 import unittest
-
 from numpy.testing import assert_equal,\
     assert_allclose,\
     assert_approx_equal
-
 from nifty2go import Field,\
     DiagonalOperator,\
     ComposedOperator
-
 from test.common import generate_spaces
-
 from itertools import product
 from test.common import expand
+from nifty2go.dobj import to_ndarray as to_np, from_ndarray as from_np
+
 
 class ComposedOperator_Tests(unittest.TestCase):
     spaces = generate_spaces()
@@ -46,5 +44,5 @@ class ComposedOperator_Tests(unittest.TestCase):
         rand1 = Field.from_random('normal', domain=(space1, space2))
         tt1 = op.inverse_times(op.times(rand1))
 
-        assert_allclose(tt1.val, rand1.val)
+        assert_allclose(to_np(tt1.val), to_np(rand1.val))
 
