@@ -308,7 +308,7 @@ class Field(object):
             if np.isscalar(wgt):
                 fct *= wgt
             else:
-                new_shape = dobj.ones(len(self.shape), dtype=np.int)
+                new_shape = np.ones(len(self.shape), dtype=np.int)
                 new_shape[self.domain.axes[ind][0]:
                           self.domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
