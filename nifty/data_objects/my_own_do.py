@@ -56,8 +56,8 @@ class data_object(object):
         a = self._data
         if isinstance(other, data_object):
             b = other._data
-            # if a.shape != b.shape:
-            #     print("shapes are incompatible.")
+            if a.shape != b.shape:
+                raise ValueError("shapes are incompatible.")
         else:
             b = other
 
