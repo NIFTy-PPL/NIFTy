@@ -25,6 +25,7 @@ from ..nifty_utilities import cast_iseq_to_tuple
 from ..dobj import to_ndarray as to_np
 
 
+
 class DiagonalOperator(EndomorphicOperator):
     """ NIFTY class for diagonal operators.
 
@@ -87,7 +88,7 @@ class DiagonalOperator(EndomorphicOperator):
                 raise ValueError("too many spaces")
             if nspc > len(set(self._spaces)):
                 raise ValueError("non-unique space indices")
-            # if nspc==len(self.diagonal.domain.domains,
+            # if nspc==len(self.diagonal.domain),
             # we could do some optimization
             for i, j in enumerate(self._spaces):
                 if diagonal.domain[i] != self._domain[j]:

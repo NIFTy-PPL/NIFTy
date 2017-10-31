@@ -19,6 +19,9 @@
 from __future__ import division
 import numpy as np
 from .space import Space
+from .. import Field
+from ..basic_arithmetics import exp
+from ..dobj import from_ndarray as from_np
 
 
 class LMSpace(Space):
@@ -96,7 +99,7 @@ class LMSpace(Space):
         for l in range(1, lmax+1):
             ldist[idx:idx+2*(lmax+1-l)] = tmp[2*l:]
             idx += 2*(lmax+1-l)
-        return ldist
+        return Field((self,), from_np(ldist))
 
     def get_unique_k_lengths(self):
         return np.arange(self.lmax+1, dtype=np.float64)
@@ -106,7 +109,7 @@ class LMSpace(Space):
         res = x+1.
         res *= x
         res *= -0.5*sigma*sigma
-        np.exp(res, out=res)
+        exp(res, out=res)
         return res
 
     def get_fft_smoothing_kernel_function(self, sigma):

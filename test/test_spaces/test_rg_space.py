@@ -22,6 +22,7 @@ import numpy as np
 from numpy.testing import assert_, assert_equal, assert_allclose
 import nifty2go as ift
 from test.common import expand
+from nifty2go.dobj import to_ndarray as to_np
 
 # [shape, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -110,7 +111,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, shape, distances, expected):
         r = ift.RGSpace(shape=shape, distances=distances, harmonic=True)
-        assert_allclose(r.get_k_length_array(), expected)
+        assert_allclose(to_np(r.get_k_length_array().val), expected)
 
     @expand(get_dvol_configs())
     def test_dvol(self, shape, distances, harmonic, power):
