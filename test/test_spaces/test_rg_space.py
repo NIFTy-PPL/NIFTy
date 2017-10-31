@@ -21,12 +21,9 @@ from __future__ import division
 import unittest
 import numpy as np
 
-from numpy.testing import assert_, assert_equal, assert_almost_equal, \
-                          assert_array_equal
+from numpy.testing import assert_, assert_equal, assert_almost_equal
 from nifty2go import RGSpace
 from test.common import expand
-from itertools import product
-from nose.plugins.skip import SkipTest
 
 # [shape, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -115,7 +112,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, shape, distances, expected):
         r = RGSpace(shape=shape, distances=distances, harmonic=True)
-        assert_almost_equal(r.get_k_length_array(), expected)
+        assert_almost_equal(r.get_k_length_array().val, expected)
 
     @expand(get_dvol_configs())
     def test_dvol(self, shape, distances, harmonic, power):

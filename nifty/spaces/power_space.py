@@ -18,7 +18,6 @@
 
 import numpy as np
 from .space import Space
-from .. import dobj
 
 
 class PowerSpace(Space):
@@ -144,7 +143,7 @@ class PowerSpace(Space):
             temp_rho = np.bincount(temp_pindex.ravel())
             assert not np.any(temp_rho == 0), "empty bins detected"
             temp_k_lengths = np.bincount(temp_pindex.ravel(),
-                                         weights=k_length_array.ravel()) \
+                                         weights=k_length_array.val.ravel()) \
                 / temp_rho
             temp_dvol = temp_rho*pdvol
             self._powerIndexCache[key] = (binbounds,
@@ -160,7 +159,7 @@ class PowerSpace(Space):
         if binbounds is None:
             tmp = harmonic_partner.get_unique_k_lengths()
             binbounds = 0.5*(tmp[:-1]+tmp[1:])
-        return np.searchsorted(binbounds, k_length_array)
+        return np.searchsorted(binbounds, k_length_array.val)
 
     # ---Mandatory properties and methods---
 

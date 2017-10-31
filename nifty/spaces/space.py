@@ -42,7 +42,7 @@ class Space(DomainObject):
 
         Returns
         -------
-        numpy.ndarray
+        Field
             An array containing the  k vector lengths
         """
         raise NotImplementedError

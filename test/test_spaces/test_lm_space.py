@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 
 from numpy.testing import assert_, assert_equal, assert_raises,\
-        assert_almost_equal, assert_array_almost_equal
+        assert_almost_equal
 from nifty2go import LMSpace
 from test.common import expand
 
@@ -93,4 +93,4 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, lmax, expected):
         l = LMSpace(lmax)
-        assert_almost_equal(l.get_k_length_array(), expected)
+        assert_almost_equal(l.get_k_length_array().val, expected)

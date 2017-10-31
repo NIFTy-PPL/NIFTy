@@ -17,13 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import numpy as np
-from numpy.testing import assert_, assert_equal
-
+from numpy.testing import assert_
 from itertools import product
 from types import LambdaType
 from test.common import expand, generate_spaces, generate_harmonic_spaces
-
+import nifty2go as ift
 from nifty2go.spaces import *
 
 
@@ -37,7 +35,7 @@ class SpaceInterfaceTests(unittest.TestCase):
                            attr_expected_type[1]))
 
     @expand(product(generate_harmonic_spaces(), [
-        ['get_k_length_array', np.ndarray],
+        ['get_k_length_array', ift.Field],
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
     def test_method_ret_type(self, space, method_expected_type):

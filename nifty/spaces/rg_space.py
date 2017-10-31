@@ -21,6 +21,8 @@ from builtins import range
 from functools import reduce
 import numpy as np
 from .space import Space
+from .. import Field
+from ..basic_arithmetics import exp
 
 
 class RGSpace(Space):
@@ -78,14 +80,14 @@ class RGSpace(Space):
         res = np.arange(self.shape[0], dtype=np.float64)
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
         if len(self.shape) == 1:
-            return res
+            return Field((self,), res)
         res *= res
         for i in range(1, len(self.shape)):
             tmp = np.arange(self.shape[i], dtype=np.float64)
             tmp = np.minimum(tmp, self.shape[i]-tmp)*self.distances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
-        return np.sqrt(res)
+        return Field((self,), np.sqrt(res))
 
     def get_unique_k_lengths(self):
         if (not self.harmonic):
@@ -107,7 +109,7 @@ class RGSpace(Space):
             tmp[t2] = True
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
-            tmp = np.unique(self.get_k_length_array())  # expensive!
+            tmp = np.unique(self.get_k_length_array().val)  # expensive!
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right
             # neighbors.
@@ -119,7 +121,7 @@ class RGSpace(Space):
     def _kernel(x, sigma):
         tmp = x*x
         tmp *= -2.*np.pi*np.pi*sigma*sigma
-        np.exp(tmp, out=tmp)
+        exp(tmp, out=tmp)
         return tmp
 
     def get_fft_smoothing_kernel_function(self, sigma):
