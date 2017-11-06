@@ -49,6 +49,9 @@ class data_object(object):
         else:
             return data_object(data)
 
+    def fill(self, fill_value):
+        self._data.fill(fill_value)
+
     def sum(self, axis=None):
         return self._contraction_helper("sum", axis)
 
