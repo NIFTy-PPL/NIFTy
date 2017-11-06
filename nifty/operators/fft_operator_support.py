@@ -20,74 +20,72 @@ from __future__ import division
 import numpy as np
 from .. import nifty_utilities as utilities
 from ..low_level_library import hartley
+from ..field import Field
+from ..spaces.gl_space import GLSpace
+
 
 class Transformation(object):
-    def __init__(self, domain, codomain):
-        self.domain = domain
-        self.codomain = codomain
-
-    def unitary(self):
-        raise NotImplementedError
-
-    def transform(self, val, axes=None):
-        raise NotImplementedError
+    def __init__(self, pdom, hdom, space):
+        self.pdom = pdom
+        self.hdom = hdom
+        self.space = space
 
 
 class RGRGTransformation(Transformation):
-    def __init__(self, domain, codomain=None):
+    def __init__(self, pdom, hdom, space):
         import pyfftw
-        super(RGRGTransformation, self).__init__(domain, codomain)
+        super(RGRGTransformation, self).__init__(pdom, hdom, space)
         pyfftw.interfaces.cache.enable()
-
-    @property
-    def unitary(self):
-        return True
-
-    def transform(self, val, axes=None):
-        """
-        RG -> RG transform method.
-
-        Parameters
-        ----------
-        val : np.ndarray or distributed_data_object
-            The value array which is to be transformed
-
-        axes : None or tuple
-            The axes along which the transformation should take place
-
-        """
         # correct for forward/inverse fft.
         # naively one would set power to 0.5 here in order to
         # apply effectively a factor of 1/sqrt(N) to the field.
         # BUT: the pixel volumes of the domain and codomain are different.
         # Hence, in order to produce the same scalar product, power==1.
-        if self.codomain.harmonic:
-            fct = self.domain.scalar_dvol()
-        else:
-            fct = 1./(self.codomain.scalar_dvol()*self.domain.dim)
+        self.fct_p2h = pdom[space].scalar_dvol()
+        self.fct_h2p = 1./(pdom[space].scalar_dvol()*hdom[space].dim)
 
-        # Perform the transformation
-        if issubclass(val.dtype.type, np.complexfloating):
-            Tval = hartley(val.real, axes) \
-                  + 1j*hartley(val.imag, axes)
-        else:
-            Tval = hartley(val, axes)
+    @property
+    def unitary(self):
+        return True
 
-        return Tval, fct
+    def transform(self, x):
+        """
+        RG -> RG transform method.
+
+        Parameters
+        ----------
+        x : Field
+            The field to be transformed
+        """
+        axes = x.domain.axes[self.space]
+        p2h = x.domain == self.pdom
+        if p2h:
+            Tval = Field(self.hdom, hartley(x.val, axes))
+        else:
+            Tval = Field(self.pdom, hartley(x.val, axes))
+        fct = self.fct_p2h if p2h else self.fct_h2p
+        if fct != 1:
+            Tval *= fct
+
+        return Tval
 
 
 class SlicingTransformation(Transformation):
-    def transform(self, val, axes=None):
-        return_shape = np.array(val.shape)
-        return_shape[list(axes)] = self.codomain.shape
-        return_val = np.empty(tuple(return_shape), dtype=val.dtype)
+    def transform(self, x):
+        p2h = x.domain == self.pdom
+        if p2h:
+            res = Field(self.hdom, dtype=x.dtype)
 
-        for slice in utilities.get_slice_list(val.shape, axes):
-            return_val[slice] = self._transformation_of_slice(val[slice])
-        return return_val, 1.
+            for slice in utilities.get_slice_list(x.shape,
+                                                  x.domain.axes[self.space]):
+                res.val[slice] = self._slice_p2h(x.val[slice])
+        else:
+            res = Field(self.pdom, dtype=x.dtype)
 
-    def _transformation_of_slice(self, inp):
-        raise NotImplementedError
+            for slice in utilities.get_slice_list(x.shape,
+                                                  x.domain.axes[self.space]):
+                res.val[slice] = self._slice_h2p(x.val[slice])
+        return res
 
 
 def buildLm(nr, lmax):
@@ -105,94 +103,29 @@ def buildIdx(nr, lmax):
     return res
 
 
-class HPLMTransformation(SlicingTransformation):
-    @property
-    def unitary(self):
-        return False
-
-    def _transformation_of_slice(self, inp):
-        from pyHealpix import map2alm
-
-        lmax = self.codomain.lmax
-        mmax = lmax
-
-        if issubclass(inp.dtype.type, np.complexfloating):
-            rr = map2alm(inp.real, lmax, mmax)
-            rr = buildIdx(rr, lmax=lmax)
-            ri = map2alm(inp.imag, lmax, mmax)
-            ri = buildIdx(ri, lmax=lmax)
-            return rr + 1j*ri
-        else:
-            rr = map2alm(inp, lmax, mmax)
-            return buildIdx(rr, lmax=lmax)
-
-
-class LMHPTransformation(SlicingTransformation):
-    @property
-    def unitary(self):
-        return False
-
-    def _transformation_of_slice(self, inp):
-        from pyHealpix import alm2map
-
-        nside = self.codomain.nside
-        lmax = self.domain.lmax
-        mmax = lmax
-
-        if issubclass(inp.dtype.type, np.complexfloating):
-            rr = buildLm(inp.real, lmax=lmax)
-            ri = buildLm(inp.imag, lmax=lmax)
-            rr = alm2map(rr, lmax, mmax, nside)
-            ri = alm2map(ri, lmax, mmax, nside)
-            return rr + 1j*ri
-        else:
-            rr = buildLm(inp, lmax=lmax)
-            return alm2map(rr, lmax, mmax, nside)
-
-
-class GLLMTransformation(SlicingTransformation):
-    @property
-    def unitary(self):
-        return False
-
-    def _transformation_of_slice(self, inp):
+class SphericalTransformation(SlicingTransformation):
+    def __init__(self, pdom, hdom, space):
+        super(SphericalTransformation, self).__init__(pdom, hdom, space)
         from pyHealpix import sharpjob_d
 
-        lmax = self.codomain.lmax
-        mmax = self.codomain.mmax
-
-        sjob = sharpjob_d()
-        sjob.set_Gauss_geometry(self.domain.nlat, self.domain.nlon)
-        sjob.set_triangular_alm_info(lmax, mmax)
-        if issubclass(inp.dtype.type, np.complexfloating):
-            rr = sjob.map2alm(inp.real)
-            rr = buildIdx(rr, lmax=lmax)
-            ri = sjob.map2alm(inp.imag)
-            ri = buildIdx(ri, lmax=lmax)
-            return rr + 1j*ri
+        self.lmax = self.hdom[self.space].lmax
+        self.sjob = sharpjob_d()
+        self.sjob.set_triangular_alm_info(self.hdom[self.space].lmax,
+                                          self.hdom[self.space].mmax)
+        if isinstance(self.pdom[self.space], GLSpace):
+            self.sjob.set_Gauss_geometry(self.pdom[self.space].nlat,
+                                         self.pdom[self.space].nlon)
         else:
-            rr = sjob.map2alm(inp)
-            return buildIdx(rr, lmax=lmax)
+            self.sjob.set_Healpix_geometry(self.pdom[self.space].nside)
 
-
-class LMGLTransformation(SlicingTransformation):
     @property
     def unitary(self):
         return False
 
-    def _transformation_of_slice(self, inp):
-        from pyHealpix import sharpjob_d
+    def _slice_p2h(self, inp):
+        rr = self.sjob.map2alm(inp)
+        return buildIdx(rr, lmax=self.lmax)
 
-        lmax = self.domain.lmax
-        mmax = self.domain.mmax
-
-        sjob = sharpjob_d()
-        sjob.set_Gauss_geometry(self.codomain.nlat, self.codomain.nlon)
-        sjob.set_triangular_alm_info(lmax, mmax)
-        if issubclass(inp.dtype.type, np.complexfloating):
-            rr = buildLm(inp.real, lmax=lmax)
-            ri = buildLm(inp.imag, lmax=lmax)
-            return sjob.alm2map(rr) + 1j*sjob.alm2map(ri)
-        else:
-            result = buildLm(inp, lmax=lmax)
-            return sjob.alm2map(result)
+    def _slice_h2p(self, inp):
+        result = buildLm(inp, lmax=self.lmax)
+        return self.sjob.alm2map(result)

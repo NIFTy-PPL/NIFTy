@@ -16,15 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .. import Field, DomainTuple, nifty_utilities as utilities
-from ..spaces import RGSpace, GLSpace, HPSpace, LMSpace
-
+import numpy as np
+from .. import DomainTuple
+from ..spaces import RGSpace
 from .linear_operator import LinearOperator
-from .fft_operator_support import RGRGTransformation,\
-                                  LMGLTransformation,\
-                                  LMHPTransformation,\
-                                  GLLMTransformation,\
-                                  HPLMTransformation
+from .fft_operator_support import RGRGTransformation, SphericalTransformation
 
 
 class FFTOperator(LinearOperator):
@@ -76,21 +72,6 @@ class FFTOperator(LinearOperator):
         if "domain" or "target" are not of the proper type.
     """
 
-    # ---Class attributes---
-
-    default_codomain_dictionary = {RGSpace: RGSpace,
-                                   HPSpace: LMSpace,
-                                   GLSpace: LMSpace,
-                                   LMSpace: GLSpace,
-                                   }
-
-    transformation_dictionary = {(RGSpace, RGSpace): RGRGTransformation,
-                                 (HPSpace, LMSpace): HPLMTransformation,
-                                 (GLSpace, LMSpace): GLLMTransformation,
-                                 (LMSpace, HPSpace): LMHPTransformation,
-                                 (LMSpace, GLSpace): LMGLTransformation
-                                 }
-
     def __init__(self, domain, target=None, space=None):
         super(FFTOperator, self).__init__()
 
@@ -101,43 +82,42 @@ class FFTOperator(LinearOperator):
                 raise ValueError("need a Field with exactly one domain")
             space = 0
         space = int(space)
-        if (space<0) or space>=len(self._domain.domains):
+        if space < 0 or space >= len(self._domain.domains):
             raise ValueError("space index out of range")
         self._space = space
 
         adom = self.domain[self._space]
         if target is None:
-            target = [ dom for dom in self.domain ]
+            target = [dom for dom in self.domain]
             target[self._space] = adom.get_default_codomain()
 
         self._target = DomainTuple.make(target)
-        atgt = self._target[self._space]
+        atgt = self._target[space]
         adom.check_codomain(atgt)
         atgt.check_codomain(adom)
 
-        # Create transformation instances
-        forward_class = self.transformation_dictionary[
-                (adom.__class__, atgt.__class__)]
-        backward_class = self.transformation_dictionary[
-                (atgt.__class__, adom.__class__)]
+        if self._target[space].harmonic:
+            pdom, hdom = (self._domain, self._target)
+        else:
+            pdom, hdom = (self._target, self._domain)
+        if isinstance(pdom[space], RGSpace):
+            self._trafo = RGRGTransformation(pdom, hdom, space)
+        else:
+            self._trafo = SphericalTransformation(pdom, hdom, space)
 
-        self._forward_transformation = forward_class(adom, atgt)
-        self._backward_transformation = backward_class(atgt, adom)
-
-    def _times_helper(self, x, other, trafo):
-        axes = x.domain.axes[self._space]
-
-        new_val, fct = trafo.transform(x.val, axes=axes)
-        res = Field(other, new_val, copy=False)
-        if fct != 1.:
-            res *= fct
+    def _times_helper(self, x):
+        if issubclass(x.dtype.type, np.complexfloating):
+            res = (self._trafo.transform(x.real) +
+                   1j * self._trafo.transform(x.imag))
+        else:
+            res = self._trafo.transform(x)
         return res
 
     def _times(self, x):
-        return self._times_helper(x, self.target, self._forward_transformation)
+        return self._times_helper(x)
 
     def _adjoint_times(self, x):
-        return self._times_helper(x, self.domain, self._backward_transformation)
+        return self._times_helper(x)
 
     @property
     def domain(self):
@@ -149,5 +129,4 @@ class FFTOperator(LinearOperator):
 
     @property
     def unitary(self):
-        return (self._forward_transformation.unitary and
-                self._backward_transformation.unitary)
+        return self._trafo.unitary
