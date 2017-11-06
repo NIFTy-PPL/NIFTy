@@ -158,8 +158,6 @@ class Field(object):
             return val.dtype
         return np.result_type(val, np.float64)
 
-    # ---Factory methods---
-
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
         """ Draws a random field with the given parameters.
@@ -186,6 +184,9 @@ class Field(object):
         return Field(domain=domain,
                      val=dobj.from_random(random_type, dtype=dtype,
                                           shape=domain.shape, **kwargs))
+
+    def fill(self, fill_value):
+        self._val.fill(fill_value)
 
     # ---Properties---
 
