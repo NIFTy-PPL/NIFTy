@@ -35,15 +35,12 @@ def _get_rtol(tp):
 
 class FFTOperatorTests(unittest.TestCase):
     @expand(product([16, ], [0.1, 1, 3.7],
-                    [np.float64, np.float32, np.complex64, np.complex128],
-                    ['real', 'complex']))
-    def test_fft1D(self, dim1, d, itp, base):
+                    [np.float64, np.float32, np.complex64, np.complex128]))
+    def test_fft1D(self, dim1, d, itp):
         tol = _get_rtol(itp)
         a = RGSpace(dim1, distances=d)
         b = RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
         fft = FFTOperator(domain=a, target=b)
-        fft._forward_transformation.harmonic_base = base
-        fft._backward_transformation.harmonic_base = base
 
         np.random.seed(16)
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
@@ -53,17 +50,13 @@ class FFTOperatorTests(unittest.TestCase):
 
     @expand(product([12, 15], [9, 12], [0.1, 1, 3.7],
                     [0.4, 1, 2.7],
-                    [np.float64, np.float32, np.complex64, np.complex128],
-                    ['real', 'complex']))
-    def test_fft2D(self, dim1, dim2, d1, d2,
-                   itp, base):
+                    [np.float64, np.float32, np.complex64, np.complex128]))
+    def test_fft2D(self, dim1, dim2, d1, d2, itp):
         tol = _get_rtol(itp)
         a = RGSpace([dim1, dim2], distances=[d1, d2])
         b = RGSpace([dim1, dim2],
                     distances=[1./(dim1*d1), 1./(dim2*d2)], harmonic=True)
         fft = FFTOperator(domain=a, target=b)
-        fft._forward_transformation.harmonic_base = base
-        fft._backward_transformation.harmonic_base = base
 
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=itp)
@@ -71,10 +64,8 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(to_np(inp.val), to_np(out.val), rtol=tol, atol=tol)
 
     @expand(product([0, 1, 2],
-                    [np.float64, np.float32, np.complex64, np.complex128],
-                    ['real', 'complex']))
-    def test_composed_fft(self, index, dtype,
-                          base):
+                    [np.float64, np.float32, np.complex64, np.complex128]))
+    def test_composed_fft(self, index, dtype):
         tol = _get_rtol(dtype)
         a = [a1, a2, a3] = [RGSpace((32,)), RGSpace((4, 4)), RGSpace((5, 6))]
         fft = FFTOperator(domain=a, space=index)
