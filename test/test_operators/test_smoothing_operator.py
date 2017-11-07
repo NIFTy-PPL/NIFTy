@@ -23,9 +23,7 @@ from numpy.testing import assert_allclose
 from nifty2go import Field,\
     RGSpace,\
     PowerSpace,\
-    FFTSmoothingOperator,\
-    DirectSmoothingOperator
-
+    FFTSmoothingOperator
 from itertools import product
 from test.common import expand
 
@@ -85,32 +83,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
         sp = RGSpace([sz1, sz2], distances=[d1, d2])
         smo = FFTSmoothingOperator(sp, sigma=sigma)
         inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
-                                dtype=tp)
-        out = smo(inp)
-        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
-
-    @expand(product([100, 200], [False, True], [0., 1.,  3.7],
-                    [np.float64, np.complex128]))
-    def test_smooth_irregular1(self, sz, log, sigma, tp):
-        tol = _get_rtol(tp)
-        sp = RGSpace(sz, harmonic=True)
-        bb = PowerSpace.useful_binbounds(sp, logarithmic=log)
-        ps = PowerSpace(sp, binbounds=bb)
-        smo = DirectSmoothingOperator(ps, sigma=sigma)
-        inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
-                                dtype=tp)
-        out = smo(inp)
-        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
-
-    @expand(product([10, 15], [7, 10], [False, True], [0., 1.,  3.7],
-                    [np.float64, np.complex128]))
-    def test_smooth_irregular2(self, sz1, sz2, log, sigma, tp):
-        tol = _get_rtol(tp)
-        sp = RGSpace([sz1, sz2], harmonic=True)
-        bb = PowerSpace.useful_binbounds(sp, logarithmic=log)
-        ps = PowerSpace(sp, binbounds=bb)
-        smo = DirectSmoothingOperator(ps, sigma=sigma)
-        inp = Field.from_random(domain=ps, random_type='normal', std=1, mean=4,
                                 dtype=tp)
         out = smo(inp)
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
