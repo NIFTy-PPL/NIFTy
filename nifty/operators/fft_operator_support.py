@@ -70,48 +70,15 @@ class RGRGTransformation(Transformation):
         return Tval
 
 
-class SlicingTransformation(Transformation):
-    def transform(self, x):
-        p2h = x.domain == self.pdom
-        if p2h:
-            res = Field(self.hdom, dtype=x.dtype)
-
-            for slice in utilities.get_slice_list(x.shape,
-                                                  x.domain.axes[self.space]):
-                res.val[slice] = self._slice_p2h(x.val[slice])
-        else:
-            res = Field(self.pdom, dtype=x.dtype)
-
-            for slice in utilities.get_slice_list(x.shape,
-                                                  x.domain.axes[self.space]):
-                res.val[slice] = self._slice_h2p(x.val[slice])
-        return res
-
-
-def buildLm(nr, lmax):
-    res = np.empty((len(nr)+lmax+1)//2, dtype=(nr[0]*1j).dtype)
-    res[0:lmax+1] = nr[0:lmax+1]
-    res[lmax+1:] = np.sqrt(0.5)*(nr[lmax+1::2] + 1j*nr[lmax+2::2])
-    return res
-
-
-def buildIdx(nr, lmax):
-    res = np.empty((lmax+1)*(lmax+1), dtype=nr[0].real.dtype)
-    res[0:lmax+1] = nr[0:lmax+1].real
-    res[lmax+1::2] = np.sqrt(2)*nr[lmax+1:].real
-    res[lmax+2::2] = np.sqrt(2)*nr[lmax+1:].imag
-    return res
-
-
-class SphericalTransformation(SlicingTransformation):
+class SphericalTransformation(Transformation):
     def __init__(self, pdom, hdom, space):
         super(SphericalTransformation, self).__init__(pdom, hdom, space)
         from pyHealpix import sharpjob_d
 
         self.lmax = self.hdom[self.space].lmax
+        self.mmax = self.hdom[self.space].mmax
         self.sjob = sharpjob_d()
-        self.sjob.set_triangular_alm_info(self.hdom[self.space].lmax,
-                                          self.hdom[self.space].mmax)
+        self.sjob.set_triangular_alm_info(self.lmax, self.mmax)
         if isinstance(self.pdom[self.space], GLSpace):
             self.sjob.set_Gauss_geometry(self.pdom[self.space].nlat,
                                          self.pdom[self.space].nlon)
@@ -124,8 +91,32 @@ class SphericalTransformation(SlicingTransformation):
 
     def _slice_p2h(self, inp):
         rr = self.sjob.map2alm(inp)
-        return buildIdx(rr, lmax=self.lmax)
+        assert len(rr) == ((self.mmax+1)*(self.mmax+2))//2 + \
+                          (self.mmax+1)*(self.lmax-self.mmax)
+        res = np.empty(2*len(rr)-self.lmax-1, dtype=rr[0].real.dtype)
+        res[0:self.lmax+1] = rr[0:self.lmax+1].real
+        res[self.lmax+1::2] = np.sqrt(2)*rr[self.lmax+1:].real
+        res[self.lmax+2::2] = np.sqrt(2)*rr[self.lmax+1:].imag
+        return res
 
     def _slice_h2p(self, inp):
-        result = buildLm(inp, lmax=self.lmax)
-        return self.sjob.alm2map(result)
+        res = np.empty((len(inp)+self.lmax+1)//2, dtype=(inp[0]*1j).dtype)
+        assert len(res) == ((self.mmax+1)*(self.mmax+2))//2 + \
+                           (self.mmax+1)*(self.lmax-self.mmax)
+        res[0:self.lmax+1] = inp[0:self.lmax+1]
+        res[self.lmax+1:] = np.sqrt(0.5)*(inp[self.lmax+1::2] +
+                                          1j*inp[self.lmax+2::2])
+        return self.sjob.alm2map(res)
+
+    def transform(self, x):
+        p2h = x.domain == self.pdom
+        axes = x.domain.axes[self.space]
+        if p2h:
+            res = Field(self.hdom if p2h else self.pdom, dtype=x.dtype)
+            for slice in utilities.get_slice_list(x.shape, axes):
+                res.val[slice] = self._slice_p2h(x.val[slice])
+        else:
+            res = Field(self.pdom, dtype=x.dtype)
+            for slice in utilities.get_slice_list(x.shape, axes):
+                res.val[slice] = self._slice_h2p(x.val[slice])
+        return res

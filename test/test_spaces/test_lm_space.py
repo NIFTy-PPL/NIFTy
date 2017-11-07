@@ -27,21 +27,21 @@ from test.common import expand
 
 # [lmax, expected]
 CONSTRUCTOR_CONFIGS = [
-        [5, {
+        [5, None, {
             'lmax': 5,
             'mmax': 5,
             'shape': (36,),
             'harmonic': True,
             'dim': 36,
             }],
-        [7, {
+        [7, 4, {
             'lmax': 7,
-            'mmax': 7,
-            'shape': (64,),
+            'mmax': 4,
+            'shape': (52,),
             'harmonic': True,
-            'dim': 64,
+            'dim': 52,
             }],
-        [-1, {
+        [-1, 28, {
             'error': ValueError
             }]
     ]
@@ -72,18 +72,18 @@ class LMSpaceInterfaceTests(unittest.TestCase):
             ['mmax', int],
             ['dim', int]])
     def test_property_ret_type(self, attribute, expected_type):
-        l = LMSpace(7)
+        l = LMSpace(7, 5)
         assert_(isinstance(getattr(l, attribute), expected_type))
 
 
 class LMSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
-    def test_constructor(self, lmax, expected):
+    def test_constructor(self, lmax, mmax, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
-                LMSpace(lmax)
+                LMSpace(lmax, mmax)
         else:
-            l = LMSpace(lmax)
+            l = LMSpace(lmax, mmax)
             for key, value in expected.items():
                 assert_equal(getattr(l, key), value)
 
