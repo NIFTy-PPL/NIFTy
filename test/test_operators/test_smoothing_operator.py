@@ -82,29 +82,3 @@ class SmoothingOperator_Tests(unittest.TestCase):
                                     mean=4, dtype=tp)
         out = smo(inp)
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
-
-    @expand(product([100, 200], [False, True], [0., 1.,  3.7],
-                    [np.float64, np.complex128]))
-    def test_smooth_irregular1(self, sz, log, sigma, tp):
-        tol = _get_rtol(tp)
-        sp = ift.RGSpace(sz, harmonic=True)
-        bb = ift.PowerSpace.useful_binbounds(sp, logarithmic=log)
-        ps = ift.PowerSpace(sp, binbounds=bb)
-        smo = ift.DirectSmoothingOperator(ps, sigma=sigma)
-        inp = ift.Field.from_random(domain=ps, random_type='normal', std=1,
-                                    mean=4, dtype=tp)
-        out = smo(inp)
-        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
-
-    @expand(product([10, 15], [7, 10], [False, True], [0., 1.,  3.7],
-                    [np.float64, np.complex128]))
-    def test_smooth_irregular2(self, sz1, sz2, log, sigma, tp):
-        tol = _get_rtol(tp)
-        sp = ift.RGSpace([sz1, sz2], harmonic=True)
-        bb = ift.PowerSpace.useful_binbounds(sp, logarithmic=log)
-        ps = ift.PowerSpace(sp, binbounds=bb)
-        smo = ift.DirectSmoothingOperator(ps, sigma=sigma)
-        inp = ift.Field.from_random(domain=ps, random_type='normal', std=1,
-                                    mean=4, dtype=tp)
-        out = smo(inp)
-        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)

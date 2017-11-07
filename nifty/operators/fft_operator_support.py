@@ -60,13 +60,21 @@ class RGRGTransformation(Transformation):
         """
         axes = x.domain.axes[self.space]
         p2h = x.domain == self.pdom
+        tdom = self.hdom if p2h else self.pdom
         if dobj.dist_axis(x.val) in axes:
-            raise NotImplementedError
-        ldat = dobj.local_data(x.val)
-        if p2h:
-            Tval = Field(self.hdom, dobj.create_from_template(x.val,hartley(ldat, axes),dtype=x.val.dtype))
+            tmpax = (dobj.dist_axis(x.val),)
+            tmp = dobj.redistribute(x.val, nodist=tmpax)
+            ldat = dobj.local_data(tmp)
+            tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),dist_axis=dobj.dist_axis(tmp))
+            tmp = dobj.redistribute(tmp, dist=tmpax[0])
+            tmpax = tuple (i for i in axes if i not in tmpax)
+            ldat = dobj.local_data(tmp)
+            tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),dist_axis=dobj.dist_axis(tmp))
+            Tval = Field(tdom, tmp)
         else:
-            Tval = Field(self.pdom, dobj.create_from_template(x.val,hartley(ldat, axes),dtype=x.val.dtype))
+            ldat = dobj.local_data(x.val)
+            tmp = dobj.from_local_data(x.val.shape,hartley(ldat,axes),dist_axis=dobj.dist_axis(x.val))
+            Tval = Field(tdom,tmp)
         fct = self.fct_p2h if p2h else self.fct_h2p
         if fct != 1:
             Tval *= fct
