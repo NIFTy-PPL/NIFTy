@@ -52,16 +52,30 @@ class PowerProjectionOperator(LinearOperator):
 
     def _times(self, x):
         pindex = self._target[self._space].pindex
-        pindex = pindex.reshape((1, pindex.size, 1))
-        arr = x.weight(1).val.reshape(
-                              x.domain.collapsed_shape_for_domain(self._space))
-        out = dobj.zeros(self._target.collapsed_shape_for_domain(self._space),
-                         dtype=x.dtype)
-        out = dobj.to_ndarray(out)
-        np.add.at(out, (slice(None), dobj.to_ndarray(pindex.ravel()), slice(None)), dobj.to_ndarray(arr))
-        out = dobj.from_ndarray(out)
-        return Field(self._target, out.reshape(self._target.shape))\
-            .weight(-1, spaces=self._space)
+        res = Field.zeros(self._target, dtype=x.dtype)
+        if dobj.dist_axis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
+            pindex = dobj.local_data(pindex)
+            pindex.reshape((1, pindex.size, 1))
+            arr = dobj.local_data(x.weight(1).val)
+            firstaxis = x.domain.axes[self._space][0]
+            lastaxis = x.domain.axes[self._space][-1]
+            presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
+            postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
+            arr = arr.reshape((presize,pindex.size,postsize))
+            oarr = dobj.local_data(res.val).reshape((presize,-1,postsize))
+            np.add.at(oarr, (slice(None), pindex.ravel(), slice(None)), arr)
+        else:
+            pindex = dobj.to_ndarray(pindex)
+            pindex.reshape((1, pindex.size, 1))
+            arr = dobj.local_data(x.weight(1).val)
+            firstaxis = x.domain.axes[self._space][0]
+            lastaxis = x.domain.axes[self._space][-1]
+            presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
+            postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
+            arr = arr.reshape((presize,pindex.size,postsize))
+            oarr = dobj.local_data(res.val).reshape((presize,-1,postsize))
+            np.add.at(oarr, (slice(None), pindex.ravel(), slice(None)), arr)
+        return res.weight(-1, spaces=self._space)
 
     def _adjoint_times(self, x):
         pindex = self._target[self._space].pindex

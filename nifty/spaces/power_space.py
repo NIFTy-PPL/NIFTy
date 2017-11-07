@@ -143,14 +143,16 @@ class PowerSpace(Space):
             else:
                 tbb = binbounds
             locdat = np.searchsorted(tbb, dobj.local_data(k_length_array.val))
-            temp_pindex = dobj.create_from_template(k_length_array.val, local_data=locdat,
-                dtype=locdat.dtype)
+            temp_pindex = dobj.create_from_template(
+                k_length_array.val, local_data=locdat, dtype=locdat.dtype)
             nbin = len(tbb)
-            temp_rho = np.bincount(dobj.local_data(temp_pindex).ravel(), minlength=nbin)
+            temp_rho = np.bincount(dobj.local_data(temp_pindex).ravel(),
+                                   minlength=nbin)
             temp_rho = dobj.np_allreduce_sum(temp_rho)
             assert not (temp_rho == 0).any(), "empty bins detected"
             temp_k_lengths = np.bincount(dobj.local_data(temp_pindex).ravel(),
-                weights=dobj.local_data(k_length_array.val).ravel(), minlength=nbin)
+                weights=dobj.local_data(k_length_array.val).ravel(),
+                minlength=nbin)
             temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho
             temp_dvol = temp_rho*pdvol
             self._powerIndexCache[key] = (binbounds,

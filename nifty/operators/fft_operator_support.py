@@ -114,16 +114,23 @@ class SphericalTransformation(Transformation):
 
     def transform(self, x):
         axes = x.domain.axes[self.space]
-        if dobj.dist_axis(x.val) in axes:
-            raise NotImplementedError
+        axis = axes[0]
+        tval = x.val
+        if dobj.dist_axis(tval) == axis:
+            tval = dobj.redistribute(tval, nodist=(axis,))
+        distaxis = dobj.dist_axis(tval)
+
         p2h = x.domain == self.pdom
-        idat = dobj.local_data(x.val)
+        idat = dobj.local_data(tval)
         if p2h:
-            res = Field(self.hdom, dtype=x.dtype)
-            odat = dobj.local_data(res.val)
+            odat = np.empty(dobj.local_shape(self.hdom.shape, dist_axis=distaxis), dtype=x.dtype)
 
             for slice in utilities.get_slice_list(idat.shape, axes):
                 odat[slice] = self._slice_p2h(idat[slice])
+            odat = dobj.from_local_data(self.hdom.shape, odat, distaxis)
+            if distaxis!= dobj.dist_axis(x):
+                odat = dobj.redistribute(odat, dist=distaxis)
+            return Field(self.hdom, odat)
         else:
             res = Field(self.pdom, dtype=x.dtype)
             odat = dobj.local_data(res.val)

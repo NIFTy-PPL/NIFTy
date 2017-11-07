@@ -236,3 +236,35 @@ def np_allreduce_sum(arr):
 
 def dist_axis(arr):
     return -1
+
+
+def from_local_data (shape, arr, dist_axis):
+    if dist_axis!=-1:
+        raise NotImplementedError
+    if shape!=arr.shape:
+        raise ValueError
+    return data_object(arr)
+
+
+def from_global_data (arr, dist_axis):
+    if dist_axis!=-1:
+        raise NotImplementedError
+    if shape!=arr.shape:
+        raise ValueError
+    return data_object(arr)
+
+
+def redistribute (arr, dist=None, nodist=None):
+    if dist is not None and dist!=-1:
+        raise NotImplementedError
+    return arr
+
+
+def default_dist_axis():
+    return -1
+
+
+def local_shape(glob_shape, dist_axis):
+    if dist_axis!=-1:
+        raise NotImplementedError
+    return glob_shape
