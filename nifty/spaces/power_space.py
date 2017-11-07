@@ -137,14 +137,21 @@ class PowerSpace(Space):
         key = (harmonic_partner, binbounds)
         if self._powerIndexCache.get(key) is None:
             k_length_array = self.harmonic_partner.get_k_length_array()
-            temp_pindex = self._compute_pindex(
-                                harmonic_partner=self.harmonic_partner,
-                                k_length_array=k_length_array,
-                                binbounds=binbounds)
-            temp_rho = dobj.to_ndarray(dobj.bincount(temp_pindex.ravel()))
+            if binbounds is None:
+                tmp = harmonic_partner.get_unique_k_lengths()
+                tbb = 0.5*(tmp[:-1]+tmp[1:])
+            else:
+                tbb = binbounds
+            locdat = np.searchsorted(tbb, dobj.local_data(k_length_array.val))
+            temp_pindex = dobj.create_from_template(k_length_array.val, local_data=locdat,
+                dtype=locdat.dtype)
+            nbin = len(tbb)
+            temp_rho = np.bincount(dobj.local_data(temp_pindex).ravel(), minlength=nbin)
+            temp_rho = dobj.np_allreduce_sum(temp_rho)
             assert not (temp_rho == 0).any(), "empty bins detected"
-            temp_k_lengths = dobj.to_ndarray(dobj.bincount(temp_pindex.ravel(),
-                weights=k_length_array.val.ravel())) / temp_rho
+            temp_k_lengths = np.bincount(dobj.local_data(temp_pindex).ravel(),
+                weights=dobj.local_data(k_length_array.val).ravel(), minlength=nbin)
+            temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho
             temp_dvol = temp_rho*pdvol
             self._powerIndexCache[key] = (binbounds,
                                           temp_pindex,
@@ -153,13 +160,6 @@ class PowerSpace(Space):
 
         (self._binbounds, self._pindex, self._k_lengths, self._dvol) = \
             self._powerIndexCache[key]
-
-    @staticmethod
-    def _compute_pindex(harmonic_partner, k_length_array, binbounds):
-        if binbounds is None:
-            tmp = harmonic_partner.get_unique_k_lengths()
-            binbounds = 0.5*(tmp[:-1]+tmp[1:])
-        return dobj.from_ndarray(np.searchsorted(binbounds, dobj.to_ndarray(k_length_array.val)))
 
     # ---Mandatory properties and methods---
 

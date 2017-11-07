@@ -21,3 +21,25 @@ def to_ndarray(arr):
 
 def from_ndarray(arr):
     return np.asarray(arr)
+
+
+def local_data(arr):
+    return arr
+
+
+def ibegin(arr):
+    return (0,)*arr.ndim
+
+
+def create_from_template(tmpl, local_data, dtype):
+    res = np.ndarray(tmpl.shape, dtype=dtype)
+    res[()] = local_data
+    return res
+
+
+def np_allreduce_sum(arr):
+    return arr
+
+
+def dist_axis(arr):
+    return -1

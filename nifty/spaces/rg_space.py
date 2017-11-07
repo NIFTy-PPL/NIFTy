@@ -23,7 +23,7 @@ import numpy as np
 from .space import Space
 from .. import Field
 from ..basic_arithmetics import exp
-from ..dobj import to_ndarray as to_np, from_ndarray as from_np
+from .. import dobj
 
 
 class RGSpace(Space):
@@ -78,17 +78,22 @@ class RGSpace(Space):
     def get_k_length_array(self):
         if (not self.harmonic):
             raise NotImplementedError
-        res = np.arange(self.shape[0], dtype=np.float64)
+        out = Field((self,),dtype=np.float64)
+        oloc = dobj.local_data(out.val)
+        ibegin = dobj.ibegin(out.val)
+        res = np.arange(oloc.shape[0], dtype=np.float64) + ibegin[0]
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
         if len(self.shape) == 1:
-            return Field((self,), from_np(res))
+            oloc[()] = res
+            return out
         res *= res
         for i in range(1, len(self.shape)):
-            tmp = np.arange(self.shape[i], dtype=np.float64)
+            tmp = np.arange(oloc.shape[i], dtype=np.float64) + ibegin[i]
             tmp = np.minimum(tmp, self.shape[i]-tmp)*self.distances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
-        return Field((self,), from_np(np.sqrt(res)))
+        oloc[()] = np.sqrt(res)
+        return out
 
     def get_unique_k_lengths(self):
         if (not self.harmonic):
@@ -110,7 +115,7 @@ class RGSpace(Space):
             tmp[t2] = True
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
-            tmp = np.unique(to_np(self.get_k_length_array().val))  # expensive!
+            tmp = np.unique(dobj.to_ndarray(self.get_k_length_array().val))  # expensive!
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right
             # neighbors.

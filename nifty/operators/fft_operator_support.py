@@ -20,7 +20,7 @@ from __future__ import division
 import numpy as np
 from .. import nifty_utilities as utilities
 from ..low_level_library import hartley
-from ..dobj import to_ndarray as to_np, from_ndarray as from_np
+from .. import dobj
 from ..field import Field
 from ..spaces.gl_space import GLSpace
 
@@ -60,10 +60,13 @@ class RGRGTransformation(Transformation):
         """
         axes = x.domain.axes[self.space]
         p2h = x.domain == self.pdom
+        if dobj.dist_axis(x.val) in axes:
+            raise NotImplementedError
+        ldat = dobj.local_data(x.val)
         if p2h:
-            Tval = Field(self.hdom, from_np(hartley(to_np(x.val), axes)))
+            Tval = Field(self.hdom, dobj.create_from_template(x.val,hartley(ldat, axes),dtype=x.val.dtype))
         else:
-            Tval = Field(self.pdom, from_np(hartley(to_np(x.val), axes)))
+            Tval = Field(self.pdom, dobj.create_from_template(x.val,hartley(ldat, axes),dtype=x.val.dtype))
         fct = self.fct_p2h if p2h else self.fct_h2p
         if fct != 1:
             Tval *= fct
@@ -73,19 +76,23 @@ class RGRGTransformation(Transformation):
 
 class SlicingTransformation(Transformation):
     def transform(self, x):
+        axes = x.domain.axes[self.space]
+        if dobj.dist_axis(x.val) in axes:
+            raise NotImplementedError
         p2h = x.domain == self.pdom
+        idat = dobj.local_data(x.val)
         if p2h:
             res = Field(self.hdom, dtype=x.dtype)
+            odat = dobj.local_data(res.val)
 
-            for slice in utilities.get_slice_list(x.shape,
-                                                  x.domain.axes[self.space]):
-                res.val[slice] = from_np(self._slice_p2h(to_np(x.val[slice])))
+            for slice in utilities.get_slice_list(idat.shape, axes):
+                odat[slice] = self._slice_p2h(idat[slice])
         else:
             res = Field(self.pdom, dtype=x.dtype)
+            odat = dobj.local_data(res.val)
 
-            for slice in utilities.get_slice_list(x.shape,
-                                                  x.domain.axes[self.space]):
-                res.val[slice] = from_np(self._slice_h2p(to_np(x.val[slice])))
+            for slice in utilities.get_slice_list(idat.shape, axes):
+                odat[slice] = self._slice_h2p(idat[slice])
         return res
 
 
