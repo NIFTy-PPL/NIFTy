@@ -33,21 +33,19 @@ class LMSpace(Space):
     lmax : int
         The maximum :math:`l` value of any spherical harmonics
         :math:`Y_{lm}` that is represented in this Space.
+        Must be >=0.
+
+    mmax : int *optional*
+        The maximum :math:`m` value of any spherical harmonics
+        :math:`Y_{lm}` that is represented in this Space.
+        If not supplied, it is set to lmax.
+        Must be >=0 and <=lmax.
 
     See Also
     --------
     HPSpace : A class for the HEALPix discretization of the sphere [#]_.
     GLSpace : A class for the Gauss-Legendre discretization of the
         sphere [#]_.
-
-    Raises
-    ------
-    ValueError
-        If given lmax is negative.
-
-    Notes
-    -----
-        This implementation implicitly sets the mmax parameter to lmax.
 
     References
     ----------
@@ -59,13 +57,20 @@ class LMSpace(Space):
            `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
     """
 
-    def __init__(self, lmax):
+    def __init__(self, lmax, mmax=None):
         super(LMSpace, self).__init__()
-        self._needed_for_hash += ["_lmax"]
-        self._lmax = self._parse_lmax(lmax)
+        self._needed_for_hash += ["_lmax", "_mmax"]
+        self._lmax = np.int(lmax)
+        if self._lmax < 0:
+            raise ValueError("lmax must be >=0.")
+        if mmax is None:
+            mmax = self._lmax
+        self._mmax = np.int(mmax)
+        if self._mmax < 0 or self._mmax > self._lmax:
+            raise ValueError("mmax must be >=0 and <=lmax.")
 
     def __repr__(self):
-        return ("LMSpace(lmax=%r)" % self.lmax)
+        return ("LMSpace(lmax=%r, mmax=%r)" % (self.lmax, self.mmax))
 
     @property
     def harmonic(self):
@@ -77,28 +82,27 @@ class LMSpace(Space):
 
     @property
     def dim(self):
-        l = self.lmax
+        l = self._lmax
+        m = self._mmax
         # the LMSpace consists of the full triangle (including -m's!),
         # minus two little triangles if mmax < lmax
-        # dim = (((2*(l+1)-1)+1)**2/4 - 2 * (l-m)(l-m+1)/2
-        # dim = np.int((l+1)**2 - (l-m)*(l-m+1.))
-        # We fix l == m
-        return np.int((l+1)*(l+1))
+        return (l+1)**2 - (l-m)*(l-m+1)
 
     def scalar_dvol(self):
         return 1.
 
     def get_k_length_array(self):
-        lmax = self.lmax
+        lmax = self._lmax
+        mmax = self._mmax
         ldist = np.empty((self.dim,), dtype=np.float64)
         ldist[0:lmax+1] = np.arange(lmax+1, dtype=np.float64)
         tmp = np.empty((2*lmax+2), dtype=np.float64)
         tmp[0::2] = np.arange(lmax+1)
         tmp[1::2] = np.arange(lmax+1)
         idx = lmax+1
-        for l in range(1, lmax+1):
-            ldist[idx:idx+2*(lmax+1-l)] = tmp[2*l:]
-            idx += 2*(lmax+1-l)
+        for m in range(1, mmax+1):
+            ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
+            idx += 2*(lmax+1-m)
         return Field((self,), from_np(ldist))
 
     def get_unique_k_lengths(self):
@@ -106,6 +110,9 @@ class LMSpace(Space):
 
     @staticmethod
     def _kernel(x, sigma):
+        # cf. "All-sky convolution for polarimetry experiments"
+        # by Challinor et al.
+        # http://arxiv.org/abs/astro-ph/0008228
         res = x+1.
         res *= x
         res *= -0.5*sigma*sigma
@@ -113,9 +120,6 @@ class LMSpace(Space):
         return res
 
     def get_fft_smoothing_kernel_function(self, sigma):
-        # cf. "All-sky convolution for polarimetry experiments"
-        # by Challinor et al.
-        # http://arxiv.org/abs/astro-ph/0008228
         return lambda x: self._kernel(x, sigma)
 
     @property
@@ -129,15 +133,8 @@ class LMSpace(Space):
     def mmax(self):
         """ Returns the maximum :math:`m` value of any spherical harmonic
         :math:`Y_{lm}` that is represented in this Space.
-        Currently this is identical to lmax.
         """
-        return self._lmax
-
-    def _parse_lmax(self, lmax):
-        lmax = np.int(lmax)
-        if lmax < 0:
-            raise ValueError("lmax must be >=0.")
-        return lmax
+        return self._mmax
 
     def get_default_codomain(self):
         from .. import GLSpace
@@ -146,4 +143,4 @@ class LMSpace(Space):
     def check_codomain(self, codomain):
         from .. import GLSpace, HPSpace
         if not isinstance(codomain, (GLSpace, HPSpace)):
-            raise TypeError("codomain must be a GLSpace.")
+            raise TypeError("codomain must be a GLSpace or HPSpace.")
