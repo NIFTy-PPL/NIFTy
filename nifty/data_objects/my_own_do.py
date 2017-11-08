@@ -6,6 +6,7 @@ class data_object(object):
     def __init__(self, npdata):
         self._data = np.asarray(npdata)
 
+    # FIXME: subscripting support will most likely go away
     def __getitem__(self, key):
         res = self._data[key]
         return res if np.isscalar(res) else data_object(res)
@@ -37,6 +38,9 @@ class data_object(object):
         return data_object(self._data.imag)
 
     def _contraction_helper(self, op, axis):
+        if axis is not None:
+            if len(axis)==len(self._data.shape):
+                axis = None
         if axis is None:
             return getattr(self._data, op)()
 
@@ -164,32 +168,28 @@ def vdot(a, b):
     return np.vdot(a._data, b._data)
 
 
+def _math_helper(x, function, out):
+    if out is not None:
+        function(x._data, out=out._data)
+        return out
+    else:
+        return data_object(function(x._data))
+
+
 def abs(a, out=None):
-    if out is None:
-        out = empty_like(a)
-    np.abs(a._data, out=out._data)
-    return out
+    return _math_helper(a, np.abs, out)
 
 
 def exp(a, out=None):
-    if out is None:
-        out = empty_like(a)
-    np.exp(a._data, out=out._data)
-    return out
+    return _math_helper(a, np.exp, out)
 
 
 def log(a, out=None):
-    if out is None:
-        out = empty_like(a)
-    np.log(a._data, out=out._data)
-    return out
+    return _math_helper(a, np.log, out)
 
 
 def sqrt(a, out=None):
-    if out is None:
-        out = empty_like(a)
-    np.sqrt(a._data, out=out._data)
-    return out
+    return _math_helper(a, np.sqrt, out)
 
 
 def bincount(x, weights=None, minlength=None):
@@ -224,12 +224,6 @@ def ibegin(arr):
     return (0,)*arr._data.ndim
 
 
-def create_from_template(tmpl, local_data, dtype):
-    res = np.ndarray(tmpl.shape, dtype=dtype)
-    res[()] = local_data
-    return data_object(res)
-
-
 def np_allreduce_sum(arr):
     return arr
 
@@ -249,8 +243,6 @@ def from_local_data (shape, arr, dist_axis):
 def from_global_data (arr, dist_axis):
     if dist_axis!=-1:
         raise NotImplementedError
-    if shape!=arr.shape:
-        raise ValueError
     return data_object(arr)
 
 

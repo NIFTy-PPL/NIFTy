@@ -455,7 +455,7 @@ class Field(object):
             raise TypeError("argument must be a Field")
         if other.domain != self.domain:
             raise ValueError("domains are incompatible.")
-        self.val[()] = other.val[()]
+        dobj.local_data(self.val)[()] = dobj.local_data(other.val)[()]
 
     # ---General binary methods---
 

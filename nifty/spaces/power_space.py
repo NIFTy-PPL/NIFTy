@@ -143,8 +143,8 @@ class PowerSpace(Space):
             else:
                 tbb = binbounds
             locdat = np.searchsorted(tbb, dobj.local_data(k_length_array.val))
-            temp_pindex = dobj.create_from_template(
-                k_length_array.val, local_data=locdat, dtype=locdat.dtype)
+            temp_pindex = dobj.from_local_data(
+                k_length_array.val.shape, locdat, dobj.dist_axis(k_length_array.val))
             nbin = len(tbb)
             temp_rho = np.bincount(dobj.local_data(temp_pindex).ravel(),
                                    minlength=nbin)

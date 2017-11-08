@@ -115,6 +115,7 @@ class RGSpace(Space):
             tmp[t2] = True
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
+            # FIXME: this needs to improve for MPI. Maybe unique()/gather()?
             tmp = np.unique(dobj.to_ndarray(self.get_k_length_array().val))  # expensive!
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right

@@ -55,34 +55,36 @@ class PowerProjectionOperator(LinearOperator):
         res = Field.zeros(self._target, dtype=x.dtype)
         if dobj.dist_axis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
             pindex = dobj.local_data(pindex)
-            pindex.reshape((1, pindex.size, 1))
-            arr = dobj.local_data(x.weight(1).val)
-            firstaxis = x.domain.axes[self._space][0]
-            lastaxis = x.domain.axes[self._space][-1]
-            presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
-            postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
-            arr = arr.reshape((presize,pindex.size,postsize))
-            oarr = dobj.local_data(res.val).reshape((presize,-1,postsize))
-            np.add.at(oarr, (slice(None), pindex.ravel(), slice(None)), arr)
         else:
             pindex = dobj.to_ndarray(pindex)
-            pindex.reshape((1, pindex.size, 1))
-            arr = dobj.local_data(x.weight(1).val)
-            firstaxis = x.domain.axes[self._space][0]
-            lastaxis = x.domain.axes[self._space][-1]
-            presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
-            postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
-            arr = arr.reshape((presize,pindex.size,postsize))
-            oarr = dobj.local_data(res.val).reshape((presize,-1,postsize))
-            np.add.at(oarr, (slice(None), pindex.ravel(), slice(None)), arr)
+        pindex.reshape((1, pindex.size, 1))
+        arr = dobj.local_data(x.weight(1).val)
+        firstaxis = x.domain.axes[self._space][0]
+        lastaxis = x.domain.axes[self._space][-1]
+        presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
+        postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
+        arr = arr.reshape((presize,pindex.size,postsize))
+        oarr = dobj.local_data(res.val).reshape((presize,-1,postsize))
+        np.add.at(oarr, (slice(None), pindex.ravel(), slice(None)), arr)
         return res.weight(-1, spaces=self._space)
 
     def _adjoint_times(self, x):
         pindex = self._target[self._space].pindex
+        res = Field.empty(self._domain, dtype=x.dtype)
+        if dobj.dist_axis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
+            pindex = dobj.local_data(pindex)
+        else:
+            pindex = dobj.to_ndarray(pindex)
         pindex = pindex.reshape((1, pindex.size, 1))
-        arr = x.val.reshape(x.domain.collapsed_shape_for_domain(self._space))
-        out = arr[(slice(None), dobj.to_ndarray(pindex.ravel()), slice(None))]
-        return Field(self._domain, out.reshape(self._domain.shape))
+        arr = dobj.local_data(x.val)
+        firstaxis = x.domain.axes[self._space][0]
+        lastaxis = x.domain.axes[self._space][-1]
+        presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
+        postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
+        arr = arr.reshape((presize,-1,postsize))
+        oarr = dobj.local_data(res.val).reshape((presize,-1,postsize))
+        oarr[()] = arr[(slice(None), pindex.ravel(), slice(None))]
+        return res
 
     @property
     def domain(self):

@@ -31,12 +31,6 @@ def ibegin(arr):
     return (0,)*arr.ndim
 
 
-def create_from_template(tmpl, local_data, dtype):
-    res = np.ndarray(tmpl.shape, dtype=dtype)
-    res[()] = local_data
-    return res
-
-
 def np_allreduce_sum(arr):
     return arr
 
@@ -56,8 +50,6 @@ def from_local_data (shape, arr, dist_axis):
 def from_global_data (arr, dist_axis):
     if dist_axis!=-1:
         raise NotImplementedError
-    if shape!=arr.shape:
-        raise ValueError
     return arr
 
 
