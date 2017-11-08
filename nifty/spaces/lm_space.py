@@ -21,7 +21,7 @@ import numpy as np
 from .space import Space
 from .. import Field
 from ..basic_arithmetics import exp
-from ..dobj import from_ndarray as from_np
+from .. import dobj
 
 
 class LMSpace(Space):
@@ -103,7 +103,7 @@ class LMSpace(Space):
         for m in range(1, mmax+1):
             ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
             idx += 2*(lmax+1-m)
-        return Field((self,), from_np(ldist))
+        return Field((self,), dobj.from_global_data(ldist))
 
     def get_unique_k_lengths(self):
         return np.arange(self.lmax+1, dtype=np.float64)

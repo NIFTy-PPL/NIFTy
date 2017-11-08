@@ -61,19 +61,20 @@ class RGRGTransformation(Transformation):
         axes = x.domain.axes[self.space]
         p2h = x.domain == self.pdom
         tdom = self.hdom if p2h else self.pdom
-        if dobj.dist_axis(x.val) in axes:
-            tmpax = (dobj.dist_axis(x.val),)
+        if dobj.distaxis(x.val) in axes:
+            tmpax = (dobj.distaxis(x.val),)
             tmp = dobj.redistribute(x.val, nodist=tmpax)
             ldat = dobj.local_data(tmp)
-            tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),dist_axis=dobj.dist_axis(tmp))
+            tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),distaxis=dobj.distaxis(tmp))
             tmp = dobj.redistribute(tmp, dist=tmpax[0])
             tmpax = tuple (i for i in axes if i not in tmpax)
-            ldat = dobj.local_data(tmp)
-            tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),dist_axis=dobj.dist_axis(tmp))
+            if len(tmpax) > 0:
+                ldat = dobj.local_data(tmp)
+                tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),distaxis=dobj.distaxis(tmp))
             Tval = Field(tdom, tmp)
         else:
             ldat = dobj.local_data(x.val)
-            tmp = dobj.from_local_data(x.val.shape,hartley(ldat,axes),dist_axis=dobj.dist_axis(x.val))
+            tmp = dobj.from_local_data(x.val.shape,hartley(ldat,axes),distaxis=dobj.distaxis(x.val))
             Tval = Field(tdom,tmp)
         fct = self.fct_p2h if p2h else self.fct_h2p
         if fct != 1:
@@ -124,19 +125,19 @@ class SphericalTransformation(Transformation):
         axes = x.domain.axes[self.space]
         axis = axes[0]
         tval = x.val
-        if dobj.dist_axis(tval) == axis:
+        if dobj.distaxis(tval) == axis:
             tval = dobj.redistribute(tval, nodist=(axis,))
-        distaxis = dobj.dist_axis(tval)
+        distaxis = dobj.distaxis(tval)
 
         p2h = x.domain == self.pdom
         idat = dobj.local_data(tval)
         if p2h:
-            odat = np.empty(dobj.local_shape(self.hdom.shape, dist_axis=distaxis), dtype=x.dtype)
+            odat = np.empty(dobj.local_shape(self.hdom.shape, distaxis=distaxis), dtype=x.dtype)
 
             for slice in utilities.get_slice_list(idat.shape, axes):
                 odat[slice] = self._slice_p2h(idat[slice])
             odat = dobj.from_local_data(self.hdom.shape, odat, distaxis)
-            if distaxis!= dobj.dist_axis(x):
+            if distaxis!= dobj.distaxis(x.val):
                 odat = dobj.redistribute(odat, dist=distaxis)
             return Field(self.hdom, odat)
         else:

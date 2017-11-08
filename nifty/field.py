@@ -351,7 +351,7 @@ class Field(object):
             fct = tmp
 
         if spaces is None:
-            return fct*dobj.vdot(y.val.ravel(), x.val.ravel())
+            return fct*dobj.vdot(y.val, x.val)
         else:
             spaces = utilities.cast_iseq_to_tuple(spaces)
             active_axes = []

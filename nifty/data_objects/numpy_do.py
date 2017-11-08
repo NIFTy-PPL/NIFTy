@@ -35,20 +35,20 @@ def np_allreduce_sum(arr):
     return arr
 
 
-def dist_axis(arr):
+def distaxis(arr):
     return -1
 
 
-def from_local_data (shape, arr, dist_axis):
-    if dist_axis!=-1:
+def from_local_data (shape, arr, distaxis):
+    if distaxis!=-1:
         raise NotImplementedError
     if shape!=arr.shape:
         raise ValueError
     return arr
 
 
-def from_global_data (arr, dist_axis):
-    if dist_axis!=-1:
+def from_global_data (arr, distaxis):
+    if distaxis!=-1:
         raise NotImplementedError
     return arr
 
@@ -59,11 +59,11 @@ def redistribute (arr, dist=None, nodist=None):
     return arr
 
 
-def default_dist_axis():
+def default_distaxis():
     return -1
 
 
-def local_shape(glob_shape, dist_axis):
-    if dist_axis!=-1:
+def local_shape(glob_shape, distaxis):
+    if distaxis!=-1:
         raise NotImplementedError
     return glob_shape

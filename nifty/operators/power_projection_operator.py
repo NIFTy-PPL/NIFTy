@@ -53,7 +53,7 @@ class PowerProjectionOperator(LinearOperator):
     def _times(self, x):
         pindex = self._target[self._space].pindex
         res = Field.zeros(self._target, dtype=x.dtype)
-        if dobj.dist_axis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
+        if dobj.distaxis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
             pindex = dobj.local_data(pindex)
         else:
             pindex = dobj.to_ndarray(pindex)
@@ -71,7 +71,7 @@ class PowerProjectionOperator(LinearOperator):
     def _adjoint_times(self, x):
         pindex = self._target[self._space].pindex
         res = Field.empty(self._domain, dtype=x.dtype)
-        if dobj.dist_axis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
+        if dobj.distaxis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
             pindex = dobj.local_data(pindex)
         else:
             pindex = dobj.to_ndarray(pindex)
