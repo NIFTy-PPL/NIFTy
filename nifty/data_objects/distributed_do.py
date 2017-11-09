@@ -18,6 +18,8 @@ def shareRange(nwork, nshares, myshare):
     return lo,hi
 
 def get_locshape(shape, distaxis):
+    if len(shape)==0:
+        distaxis = -1
     if distaxis==-1:
         return shape
     if distaxis<0 or distaxis>=len(shape):
@@ -32,6 +34,8 @@ class data_object(object):
     def __init__(self, shape, data, distaxis):
         """Must not be called directly by users"""
         self._shape = tuple(shape)
+        if len(self._shape)==0:
+            distaxis = -1
         self._distaxis = distaxis
         lshape = get_locshape(self._shape, self._distaxis)
         self._data = data
@@ -238,7 +242,7 @@ def vdot(a, b):
     tmp = np.vdot(a._data.ravel(), b._data.ravel())
     res = np.empty(1,dtype=type(tmp))
     comm.Allreduce(tmp,res,MPI.SUM)
-    return res
+    return res[0]
 
 
 def _math_helper(x, function, out):
