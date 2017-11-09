@@ -23,7 +23,7 @@ from numpy.testing import assert_allclose
 from nifty2go import Field, RGSpace, LMSpace, HPSpace, GLSpace, FFTOperator
 from itertools import product
 from test.common import expand
-from nifty2go.dobj import to_ndarray as to_np
+from nifty2go import dobj
 
 
 def _get_rtol(tp):
@@ -46,7 +46,7 @@ class FFTOperatorTests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=itp)
         out = fft.adjoint_times(fft.times(inp))
-        assert_allclose(to_np(inp.val), to_np(out.val), rtol=tol, atol=tol)
+        assert_allclose(dobj.to_global_data(inp.val), dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
     @expand(product([12, 15], [9, 12], [0.1, 1, 3.7],
                     [0.4, 1, 2.7],
@@ -61,7 +61,7 @@ class FFTOperatorTests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=itp)
         out = fft.adjoint_times(fft.times(inp))
-        assert_allclose(to_np(inp.val), to_np(out.val), rtol=tol, atol=tol)
+        assert_allclose(dobj.to_global_data(inp.val), dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
     @expand(product([0, 1, 2],
                     [np.float64, np.float32, np.complex64, np.complex128]))
@@ -73,7 +73,7 @@ class FFTOperatorTests(unittest.TestCase):
         inp = Field.from_random(domain=(a1, a2, a3), random_type='normal',
                                 std=7, mean=3, dtype=dtype)
         out = fft.adjoint_times(fft.times(inp))
-        assert_allclose(to_np(inp.val), to_np(out.val), rtol=tol, atol=tol)
+        assert_allclose(dobj.to_global_data(inp.val), dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
     @expand(product([0, 3, 6, 11, 30],
                     [np.float64, np.float32, np.complex64, np.complex128]))
@@ -85,7 +85,7 @@ class FFTOperatorTests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=7, mean=3,
                                 dtype=tp)
         out = fft.adjoint_times(fft.times(inp))
-        assert_allclose(to_np(inp.val), to_np(out.val), rtol=tol, atol=tol)
+        assert_allclose(dobj.to_global_data(inp.val), dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
@@ -96,7 +96,7 @@ class FFTOperatorTests(unittest.TestCase):
         inp = Field.from_random(domain=a, random_type='normal', std=1, mean=0,
                                 dtype=tp)
         out = fft.adjoint_times(fft.times(inp))
-        assert_allclose(to_np(inp.val), to_np(out.val), rtol=1e-3, atol=1e-1)
+        assert_allclose(dobj.to_global_data(inp.val), dobj.to_global_data(out.val), rtol=1e-3, atol=1e-1)
 
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))

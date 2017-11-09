@@ -138,12 +138,13 @@ class SphericalTransformation(Transformation):
                 odat[slice] = self._slice_p2h(idat[slice])
             odat = dobj.from_local_data(self.hdom.shape, odat, distaxis)
             if distaxis!= dobj.distaxis(x.val):
-                odat = dobj.redistribute(odat, dist=distaxis)
+                odat = dobj.redistribute(odat, dist=dobj.distaxis(x.val))
             return Field(self.hdom, odat)
         else:
-            res = Field(self.pdom, dtype=x.dtype)
-            odat = dobj.local_data(res.val)
-
+            odat = np.empty(dobj.local_shape(self.pdom.shape, distaxis=distaxis), dtype=x.dtype)
             for slice in utilities.get_slice_list(idat.shape, axes):
                 odat[slice] = self._slice_h2p(idat[slice])
-        return res
+            odat = dobj.from_local_data(self.pdom.shape, odat, distaxis)
+            if distaxis!= dobj.distaxis(x.val):
+                odat = dobj.redistribute(odat, dist=dobj.distaxis(x.val))
+            return Field(self.pdom, odat)

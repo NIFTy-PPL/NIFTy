@@ -56,7 +56,7 @@ class PowerProjectionOperator(LinearOperator):
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
             pindex = dobj.local_data(pindex)
         else:
-            pindex = dobj.to_ndarray(pindex)
+            pindex = dobj.to_global_data(pindex)
         pindex.reshape((1, pindex.size, 1))
         arr = dobj.local_data(x.weight(1).val)
         firstaxis = x.domain.axes[self._space][0]
@@ -74,7 +74,7 @@ class PowerProjectionOperator(LinearOperator):
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
             pindex = dobj.local_data(pindex)
         else:
-            pindex = dobj.to_ndarray(pindex)
+            pindex = dobj.to_global_data(pindex)
         pindex = pindex.reshape((1, pindex.size, 1))
         arr = dobj.local_data(x.val)
         firstaxis = x.domain.axes[self._space][0]

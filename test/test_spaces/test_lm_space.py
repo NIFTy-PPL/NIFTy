@@ -23,7 +23,7 @@ from numpy.testing import assert_, assert_equal, assert_raises,\
         assert_allclose
 import nifty2go as ift
 from test.common import expand
-from nifty2go.dobj import to_ndarray as to_np
+from nifty2go import dobj
 
 # [lmax, expected]
 CONSTRUCTOR_CONFIGS = [
@@ -93,4 +93,4 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, lmax, expected):
         l = ift.LMSpace(lmax)
-        assert_allclose(to_np(l.get_k_length_array().val), expected)
+        assert_allclose(dobj.to_global_data(l.get_k_length_array().val), expected)

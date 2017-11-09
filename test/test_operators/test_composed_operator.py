@@ -4,7 +4,7 @@ from nifty2go import Field, DiagonalOperator, ComposedOperator
 from test.common import generate_spaces
 from itertools import product
 from test.common import expand
-from nifty2go.dobj import to_ndarray as to_np
+from nifty2go.dobj import to_global_data as to_np
 
 
 class ComposedOperator_Tests(unittest.TestCase):

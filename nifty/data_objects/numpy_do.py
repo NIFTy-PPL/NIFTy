@@ -15,14 +15,6 @@ def from_random(random_type, shape, dtype=np.float64, **kwargs):
     return generator_function(dtype=dtype, shape=shape, **kwargs)
 
 
-def to_ndarray(arr):
-    return arr
-
-
-def from_ndarray(arr):
-    return np.asarray(arr)
-
-
 def local_data(arr):
     return arr
 
@@ -40,16 +32,12 @@ def distaxis(arr):
 
 
 def from_local_data (shape, arr, distaxis):
-    if distaxis!=-1:
-        raise NotImplementedError
     if shape!=arr.shape:
         raise ValueError
     return arr
 
 
 def from_global_data (arr, distaxis=-1):
-    if distaxis!=-1:
-        raise NotImplementedError
     return arr
 
 
@@ -58,8 +46,6 @@ def to_global_data (arr):
 
 
 def redistribute (arr, dist=None, nodist=None):
-    if dist is not None and dist!=-1:
-        raise NotImplementedError
     return arr
 
 
@@ -68,6 +54,4 @@ def default_distaxis():
 
 
 def local_shape(glob_shape, distaxis):
-    if distaxis!=-1:
-        raise NotImplementedError
     return glob_shape

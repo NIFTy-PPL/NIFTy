@@ -22,7 +22,7 @@ from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
 from ..nifty_utilities import cast_iseq_to_tuple
-from ..dobj import to_ndarray as to_np
+from .. import dobj
 
 
 class DiagonalOperator(EndomorphicOperator):
@@ -152,5 +152,7 @@ class DiagonalOperator(EndomorphicOperator):
         if self._spaces is None:
             return diag*x
 
-        reshaped_local_diagonal = np.reshape(to_np(diag.val), self._reshaper)
+        reshaped_local_diagonal = np.reshape(dobj.to_global_data(diag.val), self._reshaper)
+        if 0 in self._spaces:
+            reshaped_local_diagonal = dobj.local_data(dobj.from_global_data(reshaped_local_diagonal,distaxis=0))
         return Field(x.domain, val=x.val*reshaped_local_diagonal)

@@ -22,8 +22,6 @@ def get_locshape(shape, distaxis):
         distaxis = -1
     if distaxis==-1:
         return shape
-    if distaxis<0 or distaxis>=len(shape):
-        print distaxis,shape
     shape2=list(shape)
     shape2[distaxis]=shareSize(shape[distaxis],ntask,rank)
     return tuple(shape2)
@@ -113,9 +111,7 @@ class data_object(object):
             for ax in axis:
                 if ax<self._distaxis:
                     shift+=1
-            print (axis,self._distaxis,shift)
             shp[self._distaxis-shift] = self.shape[self._distaxis]
-            print (self.shape, shp)
             return from_local_data(shp, res, self._distaxis-shift)
 
         # check if the result is scalar or if a result_field must be constr.
@@ -134,7 +130,6 @@ class data_object(object):
             if a._shape != b._shape:
                 raise ValueError("shapes are incompatible.")
             if a._distaxis != b._distaxis:
-                print (a._distaxis, b._distaxis)
                 raise ValueError("distributions are incompatible.")
             a = a._data
             b = b._data
@@ -286,14 +281,6 @@ def from_random(random_type, shape, dtype=np.float64, distaxis=0, **kwargs):
     return data_object(shape, generator_function(dtype=dtype, shape=lshape, **kwargs), distaxis=distaxis)
 
 
-def to_ndarray(arr):
-    return arr._data
-
-
-def from_ndarray(arr,distaxis=0):
-    return data_object(arr.shape,arr,distaxis)
-
-
 def local_data(arr):
     return arr._data
 
@@ -350,6 +337,7 @@ def redistribute (arr, dist=None, nodist=None):
             if i not in nodist:
                 dist=i
                 break
+
     if arr._distaxis==-1:  # just pick the proper subset
         return from_global_data(arr._data, dist)
     if dist==-1: # gather data
@@ -363,12 +351,17 @@ def redistribute (arr, dist=None, nodist=None):
         disp[1:]=np.cumsum(sz[:-1])
         tmp=tmp.flatten()
         out = np.empty(arr.size,dtype=arr.dtype)
-        print tmp.shape, out.shape, sz, disp
         comm.Allgatherv(tmp,[out,sz,disp,MPI.BYTE])
-        out = out.reshape(arr._shape)
+        shp = np.array(arr._shape)
+        shp[1:arr._distaxis+1] = shp[0:arr._distaxis]
+        shp[0] = arr.shape[arr._distaxis]
+        out = out.reshape(shp)
         out = np.moveaxis(out, 0, arr._distaxis)
         return from_global_data (out, distaxis=-1)
     # real redistribution via Alltoallv
+    # temporary slow, but simple solution
+    return redistribute(redistribute(arr,dist=-1),dist=dist)
+
     tmp = np.moveaxis(arr._data, (dist, arr._distaxis), (0, 1))
     tshape = tmp.shape
     slabsize=np.prod(tmp.shape[2:])*tmp.itemsize
@@ -383,7 +376,6 @@ def redistribute (arr, dist=None, nodist=None):
     rdisp[0]=0
     sdisp[1:]=np.cumsum(ssz[:-1])
     rdisp[1:]=np.cumsum(rsz[:-1])
-    print ssz, rsz
     tmp=tmp.flatten()
     out = np.empty(np.prod(get_locshape(arr.shape,dist)),dtype=arr.dtype)
     s_msg = [tmp, (ssz, sdisp), MPI.BYTE]

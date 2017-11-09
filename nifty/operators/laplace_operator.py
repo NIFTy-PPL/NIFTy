@@ -21,7 +21,7 @@ from ..field import Field
 from ..spaces.power_space import PowerSpace
 from .endomorphic_operator import EndomorphicOperator
 from .. import DomainTuple
-from ..dobj import to_ndarray as to_np, from_ndarray as from_np
+from .. import dobj
 
 
 class LaplaceOperator(EndomorphicOperator):
@@ -89,9 +89,13 @@ class LaplaceOperator(EndomorphicOperator):
         return self._logarithmic
 
     def _times(self, x):
-        val = to_np(x.val)
+        val = dobj.to_global_data(x.val)
         axes = x.domain.axes[self._space]
         axis = axes[0]
+        locval = x.val
+        if axis == dobj.distaxis(locval):
+            locval = dobj.redistribute(locval, nodist=(axis,))
+        val = dobj.local_data(locval)
         nval = len(self._dposc)
         prefix = (slice(None),) * axis
         sl_l = prefix + (slice(None, -1),)  # "left" slice
@@ -106,8 +110,10 @@ class LaplaceOperator(EndomorphicOperator):
         ret /= np.sqrt(dposc)
         ret[prefix + (slice(None, 2),)] = 0.
         ret[prefix + (-1,)] = 0.
-        return Field(self.domain, val=from_np(ret)).weight(-0.5,
-                                                           spaces=self._space)
+        ret = dobj.from_local_data(locval.shape, ret, dobj.distaxis(locval))
+        if dobj.distaxis(locval)!=dobj.distaxis(x.val):
+            ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
+        return Field(self.domain, val=ret).weight(-0.5, spaces=self._space)
 
     def _adjoint_times(self, x):
         axes = x.domain.axes[self._space]
@@ -118,7 +124,10 @@ class LaplaceOperator(EndomorphicOperator):
         sl_r = prefix + (slice(1, None),)  # "right" slice
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
-        y = to_np(x.weight(0.5, spaces=self._space).val)
+        yf = x.weight(0.5, spaces=self._space).val
+        if axis == dobj.distaxis(yf):
+            yf = dobj.redistribute(yf, nodist=(axis,))
+        y=dobj.local_data(yf)
         y /= np.sqrt(dposc)
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
@@ -127,5 +136,7 @@ class LaplaceOperator(EndomorphicOperator):
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
-        return Field(self.domain, val=from_np(ret)).weight(-1,
-                                                           spaces=self._space)
+        ret = dobj.from_local_data(x.shape, ret, dobj.distaxis(yf))
+        if dobj.distaxis(yf)!= dobj.distaxis(x.val):
+            ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
+        return Field(self.domain, val=ret).weight(-1, spaces=self._space)

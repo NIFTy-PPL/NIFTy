@@ -145,7 +145,7 @@ class PowerSpace(Space):
             locdat = np.searchsorted(tbb, dobj.local_data(k_length_array.val))
             temp_pindex = dobj.from_local_data(
                 k_length_array.val.shape, locdat, dobj.distaxis(k_length_array.val))
-            nbin = len(tbb)
+            nbin = len(tbb)+1
             temp_rho = np.bincount(dobj.local_data(temp_pindex).ravel(),
                                    minlength=nbin)
             temp_rho = dobj.np_allreduce_sum(temp_rho)
