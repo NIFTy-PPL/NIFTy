@@ -31,7 +31,7 @@ def local_shape(shape, distaxis):
 class data_object(object):
     def __init__(self, shape, data, distaxis):
         """Must not be called directly by users"""
-        self._shape = shape
+        self._shape = tuple(shape)
         self._distaxis = distaxis
         lshape = get_locshape(self._shape, self._distaxis)
         self._data = data
@@ -89,17 +89,30 @@ class data_object(object):
         if axis is None:
             res = np.array(getattr(self._data, op)())
             if (self._distaxis==-1):
-                return res
+                return res[0]
             res2 = np.empty(1,dtype=res.dtype)
             comm.Allreduce(res,res2,mpiop)
             return res2[0]
 
         if self._distaxis in axis:
-            pass# reduce globally, redistribute the result along axis 0(?)
+            res = getattr(self._data, op)(axis=axis)
+            res2 = np.empty_like(res)
+            comm.Allreduce(res,res2,mpiop)
+            return from_global_data(res2, distaxis=0)
         else:
             # perform the contraction on the local data
-            data = getattr(self._data, op)(axis=axis)
-            #shp =
+            res = getattr(self._data, op)(axis=axis)
+            if self._distaxis == -1:
+                return from_global_data(res,distaxis=0)
+            shp = list(res.shape)
+            shift=0
+            for ax in axis:
+                if ax<self._distaxis:
+                    shift+=1
+            print (axis,self._distaxis,shift)
+            shp[self._distaxis-shift] = self.shape[self._distaxis]
+            print (self.shape, shp)
+            return from_local_data(shp, res, self._distaxis-shift)
 
         # check if the result is scalar or if a result_field must be constr.
         if np.isscalar(data):

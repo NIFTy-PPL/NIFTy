@@ -240,10 +240,14 @@ def from_local_data (shape, arr, distaxis):
     return data_object(arr)
 
 
-def from_global_data (arr, distaxis):
+def from_global_data (arr, distaxis=-1):
     if distaxis!=-1:
         raise NotImplementedError
     return data_object(arr)
+
+
+def to_global_data (arr):
+    return arr._data
 
 
 def redistribute (arr, dist=None, nodist=None):

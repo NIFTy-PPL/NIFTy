@@ -47,9 +47,13 @@ def from_local_data (shape, arr, distaxis):
     return arr
 
 
-def from_global_data (arr, distaxis):
+def from_global_data (arr, distaxis=-1):
     if distaxis!=-1:
         raise NotImplementedError
+    return arr
+
+
+def to_global_data (arr):
     return arr
 
 
