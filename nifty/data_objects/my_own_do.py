@@ -104,6 +104,9 @@ class data_object(object):
     def __rdiv__(self, other):
         return self._binary_helper(other, op='__rdiv__')
 
+    def __idiv__(self, other):
+        return self._binary_helper(other, op='__idiv__')
+
     def __truediv__(self, other):
         return self._binary_helper(other, op='__truediv__')
 
@@ -130,12 +133,6 @@ class data_object(object):
 
     def __abs__(self):
         return data_object(np.abs(self._data))
-
-    def ravel(self):
-        return data_object(self._data.ravel())
-
-    def reshape(self, shape):
-        return data_object(self._data.reshape(shape))
 
     def all(self):
         return self._data.all()
