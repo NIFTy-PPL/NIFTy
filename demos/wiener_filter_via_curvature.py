@@ -3,6 +3,7 @@ import nifty2go as ift
 import numericalunits as nu
 
 if __name__ == "__main__":
+    nu.reset_units("SI")
     dimensionality = 2
     np.random.seed(43)
 
@@ -81,6 +82,6 @@ if __name__ == "__main__":
     ift.plotting.plot(ift.Field(sspace2, mock_signal.real.val)/nu.K,
                       name="mock_signal.pdf")
     ift.plotting.plot(ift.Field(
-        sspace2, val=data.val.real.reshape(signal_space.shape))/nu.K,
+        sspace2, val=ift.dobj.from_global_data(ift.dobj.to_global_data(data.val.real).reshape(signal_space.shape)))/nu.K,
         name="data.pdf")
     ift.plotting.plot(ift.Field(sspace2, m_s.real.val)/nu.K, name="map.pdf")

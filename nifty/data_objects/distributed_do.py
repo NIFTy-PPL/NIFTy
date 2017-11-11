@@ -369,7 +369,7 @@ def redistribute (arr, dist=None, nodist=None):
         return from_global_data (out, distaxis=-1)
     # real redistribution via Alltoallv
     # temporary slow, but simple solution
-    return redistribute(redistribute(arr,dist=-1),dist=dist)
+    #return redistribute(redistribute(arr,dist=-1),dist=dist)
 
     tmp = np.moveaxis(arr._data, (dist, arr._distaxis), (0, 1))
     tshape = tmp.shape
@@ -390,10 +390,17 @@ def redistribute (arr, dist=None, nodist=None):
     s_msg = [tmp, (ssz, sdisp), MPI.BYTE]
     r_msg = [out, (rsz, rdisp), MPI.BYTE]
     comm.Alltoallv(s_msg, r_msg)
+    out2 = np.empty([shareSize(arr.shape[dist],ntask,rank), arr.shape[arr._distaxis]] +list(tshape[2:]), dtype=arr.dtype)
+    ofs=0
+    for i in range(ntask):
+        lsize = rsz[i]//tmp.itemsize
+        lo,hi = shareRange(arr.shape[arr._distaxis],ntask,i)
+        out2[slice(None),slice(lo,hi)] = out[ofs:ofs+lsize].reshape([shareSize(arr.shape[dist],ntask,rank),shareSize(arr.shape[arr._distaxis],ntask,i)]+list(tshape[2:]))
+        ofs += lsize
     new_shape = [shareSize(arr.shape[dist],ntask,rank), arr.shape[arr._distaxis]] +list(tshape[2:])
-    out=out.reshape(new_shape)
-    out = np.moveaxis(out, (0, 1), (dist, arr._distaxis))
-    return from_local_data (arr.shape, out, dist)
+    out2=out2.reshape(new_shape)
+    out2 = np.moveaxis(out2, (0, 1), (dist, arr._distaxis))
+    return from_local_data (arr.shape, out2, dist)
 
 
 def default_distaxis():
