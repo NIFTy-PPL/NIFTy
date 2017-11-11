@@ -1,4 +1,5 @@
 parameterized
 coverage
 pyfftw
+mpi4py
 git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git@setuptools_test
