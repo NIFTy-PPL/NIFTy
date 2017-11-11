@@ -17,7 +17,7 @@ def shareRange(nwork, nshares, myshare):
     hi = lo+nbase+ (1 if myshare<additional else 0)
     return lo,hi
 
-def get_locshape(shape, distaxis):
+def local_shape(shape, distaxis):
     if len(shape)==0:
         distaxis = -1
     if distaxis==-1:
@@ -25,8 +25,6 @@ def get_locshape(shape, distaxis):
     shape2=list(shape)
     shape2[distaxis]=shareSize(shape[distaxis],ntask,rank)
     return tuple(shape2)
-def local_shape(shape, distaxis):
-    return get_locshape(shape,distaxis)
 
 class data_object(object):
     def __init__(self, shape, data, distaxis):
@@ -35,7 +33,7 @@ class data_object(object):
         if len(self._shape)==0:
             distaxis = -1
         self._distaxis = distaxis
-        lshape = get_locshape(self._shape, self._distaxis)
+        lshape = local_shape(self._shape, self._distaxis)
         self._data = data
 
     def sanity_checks(self):
@@ -123,6 +121,14 @@ class data_object(object):
     def sum(self, axis=None):
         return self._contraction_helper("sum", MPI.SUM, axis)
 
+    # FIXME: to be improved!
+    def mean(self):
+        return self.sum()/self.size
+    def std(self):
+        return np.sqrt(self.var())
+    def var(self):
+        return (abs(self-self.mean())**2).mean()
+
     def _binary_helper(self, other, op):
         a = self
         if isinstance(other, data_object):
@@ -173,6 +179,9 @@ class data_object(object):
     def __rdiv__(self, other):
         return self._binary_helper(other, op='__rdiv__')
 
+    def __idiv__(self, other):
+        return self._binary_helper(other, op='__idiv__')
+
     def __truediv__(self, other):
         return self._binary_helper(other, op='__truediv__')
 
@@ -214,19 +223,19 @@ class data_object(object):
 
 
 def full(shape, fill_value, dtype=None, distaxis=0):
-    return data_object(shape, np.full(get_locshape(shape, distaxis), fill_value, dtype), distaxis)
+    return data_object(shape, np.full(local_shape(shape, distaxis), fill_value, dtype), distaxis)
 
 
 def empty(shape, dtype=None, distaxis=0):
-    return data_object(shape, np.empty(get_locshape(shape, distaxis), dtype), distaxis)
+    return data_object(shape, np.empty(local_shape(shape, distaxis), dtype), distaxis)
 
 
 def zeros(shape, dtype=None, distaxis=0):
-    return data_object(shape, np.zeros(get_locshape(shape, distaxis), dtype), distaxis)
+    return data_object(shape, np.zeros(local_shape(shape, distaxis), dtype), distaxis)
 
 
 def ones(shape, dtype=None, distaxis=0):
-    return data_object(shape, np.ones(get_locshape(shape, distaxis), dtype), distaxis)
+    return data_object(shape, np.ones(local_shape(shape, distaxis), dtype), distaxis)
 
 
 def empty_like(a, dtype=None):
@@ -277,9 +286,9 @@ def from_object(object, dtype=None, copy=True):
 
 def from_random(random_type, shape, dtype=np.float64, distaxis=0, **kwargs):
     generator_function = getattr(Random, random_type)
-    lshape = get_locshape(shape, distaxis)
-    return data_object(shape, generator_function(dtype=dtype, shape=lshape, **kwargs), distaxis=distaxis)
-
+    #lshape = local_shape(shape, distaxis)
+    #return data_object(shape, generator_function(dtype=dtype, shape=lshape, **kwargs), distaxis=distaxis)
+    return from_global_data(generator_function(dtype=dtype, shape=shape, **kwargs), distaxis=distaxis)
 
 def local_data(arr):
     return arr._data
@@ -368,8 +377,8 @@ def redistribute (arr, dist=None, nodist=None):
     ssz=np.empty(ntask,dtype=np.int)
     rsz=np.empty(ntask,dtype=np.int)
     for i in range(ntask):
-        ssz[i]=slabsize*tmp.shape[1]*shareSize(arr.shape[dist],ntask,i)
-        rsz[i]=slabsize*shareSize(arr.shape[dist],ntask,rank)*shareSize(arr.shape[arr._distaxis],ntask,i)
+        ssz[i]=shareSize(arr.shape[dist],ntask,i)*tmp.shape[1]*slabsize
+        rsz[i]=shareSize(arr.shape[dist],ntask,rank)*shareSize(arr.shape[arr._distaxis],ntask,i)*slabsize
     sdisp=np.empty(ntask,dtype=np.int)
     rdisp=np.empty(ntask,dtype=np.int)
     sdisp[0]=0
@@ -377,7 +386,7 @@ def redistribute (arr, dist=None, nodist=None):
     sdisp[1:]=np.cumsum(ssz[:-1])
     rdisp[1:]=np.cumsum(rsz[:-1])
     tmp=tmp.flatten()
-    out = np.empty(np.prod(get_locshape(arr.shape,dist)),dtype=arr.dtype)
+    out = np.empty(np.prod(local_shape(arr.shape,dist)),dtype=arr.dtype)
     s_msg = [tmp, (ssz, sdisp), MPI.BYTE]
     r_msg = [out, (rsz, rdisp), MPI.BYTE]
     comm.Alltoallv(s_msg, r_msg)

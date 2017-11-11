@@ -77,7 +77,7 @@ class PowerProjectionOperator(LinearOperator):
             oarr = oarr.reshape(self._target.shape)
             res = Field(self._target, dobj.from_global_data(oarr))
         else:
-            oarr = oarr.reshape(dobj.get_locshape(self._target.shape, dobj.distaxis(x.val)))
+            oarr = oarr.reshape(dobj.local_shape(self._target.shape, dobj.distaxis(x.val)))
             res = Field(self._target, dobj.from_local_data(self._target.shape,oarr,dobj.default_distaxis()))
         return res.weight(-1, spaces=self._space)
 

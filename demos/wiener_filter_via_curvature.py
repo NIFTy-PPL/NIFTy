@@ -44,7 +44,7 @@ if __name__ == "__main__":
     np.random.seed(43)
 
     mock_power = ift.Field(power_space,
-                           val=power_spectrum(power_space.k_lengths))
+                           val=ift.dobj.from_global_data(power_spectrum(power_space.k_lengths)))
     mock_harmonic = ift.power_synthesize(mock_power, real_signal=True)
     mock_harmonic = mock_harmonic.real
     mock_signal = fft(mock_harmonic)

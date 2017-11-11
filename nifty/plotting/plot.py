@@ -1,6 +1,6 @@
 from __future__ import division
 import numpy as np
-from ..import Field, RGSpace, HPSpace, GLSpace, PowerSpace
+from ..import Field, RGSpace, HPSpace, GLSpace, PowerSpace, dobj
 import os
 
 # relevant properties:
@@ -45,6 +45,8 @@ def _find_closest(A, target):
 
 def _makeplot(name):
     import matplotlib.pyplot as plt
+    if dobj.rank!=0:
+        return
     if name is None:
         plt.show()
         return
@@ -185,7 +187,7 @@ def plot(f, **kwargs):
             dy = dom.distances[1]
             xc = np.arange(nx, dtype=np.float64)*dx
             yc = np.arange(ny, dtype=np.float64)*dy
-            im = ax.imshow(f.val, extent=[xc[0], xc[-1], yc[0], yc[-1]],
+            im = ax.imshow(dobj.to_global_data(f.val), extent=[xc[0], xc[-1], yc[0], yc[-1]],
                            vmin=kwargs.get("zmin"),
                            vmax=kwargs.get("zmax"), cmap=cmap, origin="lower")
             # from mpl_toolkits.axes_grid1 import make_axes_locatable
