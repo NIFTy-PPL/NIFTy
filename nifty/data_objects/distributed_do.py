@@ -2,6 +2,13 @@ import numpy as np
 from .random import Random
 from mpi4py import MPI
 
+__all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
+           "empty", "zeros", "ones", "empty_like", "vdot", "abs", "exp",
+           "log", "sqrt", "bincount", "from_object", "from_random",
+           "local_data", "ibegin", "np_allreduce_sum", "distaxis",
+           "from_local_data", "from_global_data", "to_global_data",
+           "redistribute", "default_distaxis"]
+
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
 rank = _comm.Get_rank()
