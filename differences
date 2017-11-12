@@ -25,15 +25,18 @@ Significant differences between NIFTy nightly and nifty2go
       However, I have not found any such situation in the current code base, so
       it appears to be rare.
 
-3) nifty2go is based on numpy arrays, not D2O objects.
-   For the moment, there is absolutely no MPI support.
-   My goal is to reintroduce this via the "data object" interface shown in the
-   "data_objects/" subdirectory. In principle, all operations on arrays within
-   NIFTy have to be carried out via calls to the data object module (or method
-   calls of classes defined there). By simply changing the data object module,
-   one could have a numpy backend or a D2O backend or something completely
-   different.
-   I'm optimistic that this can work, but don't have a demonstration yet.
+3) nifty2go uses one of two different "data_object" modules for array
+   storage instead of D2O.
+   A "data_object" module consists of a class called "data_object" which
+   provides a subset of the numpy.ndarray interface, plus a few additional
+   functions for manipulating these data objects.
+   If no MPI support is found on the system, or if a computation is run on a
+   single task, nifty2go automatically loads a minimalistic "data_object"
+   module where the data_object class is simply identical to numpy.ndarray.
+   The support functions are mostly trivial as well.
+   If MPI is required, another module is loaded, which supports parallel
+   array operations; this module is in a working state, but not polished and
+   tuned yet.
 
 4) Spaces no longer have a weight() method; it has been replaced by
    scalar_dvol() and dvol() methods, which return the scalar volume element,
@@ -54,15 +57,6 @@ Significant differences between NIFTy nightly and nifty2go
 
 7) In nifty2go, parallel probing should work (needs systematic testing)
 
-8) In nifty2go, the DiagonalOperator is always constructed from a bare Field,
-   and its diagonal() method always returns the same bare Field.
-   This requires a few explicit weight() calls in other places of the code,
-   but it should reduce the overall amount of confusion (I hope).
-   In NIFTY nightly, the Fields going into and comping out of the
-   DiagonalOperator are treated as non-bare.
-   I can live with either convention, but seem to recall a remark by Torsten(?)
-   that the bare version is more intuitive.
-
 9) Many default arguments have been removed in nifty2go, wherever there is no
    sensible default (in my opinion). My personal impression is that this has
    actually made the demos more readable, but I'm sure not everyone will agree
@@ -74,3 +68,7 @@ Significant differences between NIFTy nightly and nifty2go
 11) Co-domains are now obtained directly from the corresponding Space
    objects via the method "get_default_codomain()". This is implemented for
    RGSpace, LMSpace, HPSpace and GLSpace.
+
+12) Instead of inheriting from "InvertibleOperatorMixin", support for numerical
+   inversion is now added via the "InversionEnabler" class, which takes the
+   original operator as a constructor argument.
