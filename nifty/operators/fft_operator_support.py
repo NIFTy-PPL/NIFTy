@@ -58,6 +58,7 @@ class RGRGTransformation(Transformation):
         x : Field
             The field to be transformed
         """
+        from pyfftw.interfaces.numpy_fft import fftn
         axes = x.domain.axes[self.space]
         p2h = x.domain == self.pdom
         tdom = self.hdom if p2h else self.pdom
@@ -65,16 +66,25 @@ class RGRGTransformation(Transformation):
             tmpax = (dobj.distaxis(x.val),)
             tmp = dobj.redistribute(x.val, nodist=tmpax)
             ldat = dobj.local_data(tmp)
-            tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),distaxis=dobj.distaxis(tmp))
-            tmp = dobj.redistribute(tmp, dist=tmpax[0])
-            tmpax = tuple (i for i in axes if i not in tmpax)
-            if len(tmpax) > 0:
+            ldat = fftn(ldat, axes=tmpax)
+            if len(axes) ==1:  # we are done
+                ldat = ldat.real+ldat.imag
+                tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
+                tmp = dobj.redistribute(tmp, dist=tmpax[0])
+            else:
+                tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
+                tmp = dobj.redistribute(tmp, dist=tmpax[0])
+                tmpax = tuple (i for i in axes if i not in tmpax)
                 ldat = dobj.local_data(tmp)
-                tmp = dobj.from_local_data(tmp.shape,hartley(ldat,tmpax),distaxis=dobj.distaxis(tmp))
+                ldat = fftn(ldat, axes=tmpax)
+                ldat = ldat.real+ldat.imag
+                tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
             Tval = Field(tdom, tmp)
         else:
             ldat = dobj.local_data(x.val)
-            tmp = dobj.from_local_data(x.val.shape,hartley(ldat,axes),distaxis=dobj.distaxis(x.val))
+            ldat = fftn(ldat,axes=axes)
+            ldat = ldat.real+ldat.imag
+            tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=dobj.distaxis(x.val))
             Tval = Field(tdom,tmp)
         fct = self.fct_p2h if p2h else self.fct_h2p
         if fct != 1:

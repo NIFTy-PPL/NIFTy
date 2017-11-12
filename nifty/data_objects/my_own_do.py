@@ -6,17 +6,6 @@ class data_object(object):
     def __init__(self, npdata):
         self._data = np.asarray(npdata)
 
-    # FIXME: subscripting support will most likely go away
-    def __getitem__(self, key):
-        res = self._data[key]
-        return res if np.isscalar(res) else data_object(res)
-
-    def __setitem__(self, key, value):
-        if isinstance(value, data_object):
-            self._data[key] = value._data
-        else:
-            self._data[key] = value
-
     @property
     def dtype(self):
         return self._data.dtype
@@ -39,7 +28,7 @@ class data_object(object):
 
     def _contraction_helper(self, op, axis):
         if axis is not None:
-            if len(axis)==len(self._data.shape):
+            if len(axis) == len(self._data.shape):
                 axis = None
         if axis is None:
             return getattr(self._data, op)()
@@ -221,21 +210,21 @@ def distaxis(arr):
     return -1
 
 
-def from_local_data (shape, arr, distaxis):
-    if shape!=arr.shape:
+def from_local_data(shape, arr, distaxis):
+    if shape != arr.shape:
         raise ValueError
     return data_object(arr)
 
 
-def from_global_data (arr, distaxis=-1):
+def from_global_data(arr, distaxis=-1):
     return data_object(arr)
 
 
-def to_global_data (arr):
+def to_global_data(arr):
     return arr._data
 
 
-def redistribute (arr, dist=None, nodist=None):
+def redistribute(arr, dist=None, nodist=None):
     return arr
 
 
