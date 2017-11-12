@@ -154,5 +154,5 @@ class DiagonalOperator(EndomorphicOperator):
 
         reshaped_local_diagonal = np.reshape(dobj.to_global_data(diag.val), self._reshaper)
         if 0 in self._spaces:
-            reshaped_local_diagonal = dobj.local_data(dobj.from_global_data(reshaped_local_diagonal,distaxis=0))
+            reshaped_local_diagonal = dobj.local_data(dobj.from_global_data(reshaped_local_diagonal))
         return Field(x.domain, val=x.val*reshaped_local_diagonal)

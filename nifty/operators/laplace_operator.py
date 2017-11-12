@@ -89,7 +89,6 @@ class LaplaceOperator(EndomorphicOperator):
         return self._logarithmic
 
     def _times(self, x):
-        val = dobj.to_global_data(x.val)
         axes = x.domain.axes[self._space]
         axis = axes[0]
         locval = x.val

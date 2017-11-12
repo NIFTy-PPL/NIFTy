@@ -315,7 +315,7 @@ class Field(object):
                 wgt = wgt.reshape(new_shape)
                 # FIXME only temporary
                 if ind==0:
-                    wgt = dobj.local_data(dobj.from_global_data(wgt, distaxis=0))
+                    wgt = dobj.local_data(dobj.from_global_data(wgt))
                 out *= wgt**power
         fct = fct**power
         if fct != 1.:
