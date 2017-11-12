@@ -72,3 +72,13 @@ Significant differences between NIFTy nightly and nifty2go
 12) Instead of inheriting from "InvertibleOperatorMixin", support for numerical
    inversion is now added via the "InversionEnabler" class, which takes the
    original operator as a constructor argument.
+
+13) External dependencies are only loaded when they are really needed: e.g.
+   pyHealpix is only imported within the spherical harmonic transform functions,
+   and pyfftw is only loaded within the RG transforms.
+   So there are no mandatory dependencies besides numpy (well, pyfftw is
+   more or less always needed).
+
+14) A new approach is used for FFTs along axes that are distributed among
+   MPI tasks. As a consequence, nifty2go works well with the standard version
+   of pyfftw and does not need the MPI-enabled fork.
