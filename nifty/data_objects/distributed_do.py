@@ -94,6 +94,12 @@ class data_object(object):
     def imag(self):
         return data_object(self._shape, self._data.imag, self._distaxis)
 
+    def conj(self):
+        return data_object(self._shape, self._data.conj(), self._distaxis)
+
+    def conjugate(self):
+        return data_object(self._shape, self._data.conjugate(), self._distaxis)
+
     def _contraction_helper(self, op, mpiop, axis):
         if axis is not None:
             if len(axis) == len(self._data.shape):
