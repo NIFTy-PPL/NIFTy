@@ -18,6 +18,7 @@
 
 from __future__ import print_function
 from .iteration_controller import IterationController
+from ... import dobj
 
 
 class GradientNormController(IterationController):
@@ -64,7 +65,8 @@ class GradientNormController(IterationController):
             msg += " energy=" + str(energy.value)
             msg += " gradnorm=" + str(energy.gradient_norm)
             msg += " clvl=" + str(self._ccount)
-            print(msg)
+            if dobj.master:
+                print(msg)
             # self.logger.info(msg)
 
         # Are we done?
