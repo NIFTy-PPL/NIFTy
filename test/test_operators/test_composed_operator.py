@@ -1,10 +1,9 @@
 import unittest
 from numpy.testing import assert_allclose
-from nifty2go import Field, DiagonalOperator, ComposedOperator
+import nifty2go as ift
 from test.common import generate_spaces
 from itertools import product
 from test.common import expand
-from nifty2go.dobj import to_global_data as to_np
 
 
 class ComposedOperator_Tests(unittest.TestCase):
@@ -13,15 +12,15 @@ class ComposedOperator_Tests(unittest.TestCase):
     @expand(product(spaces, spaces))
     def test_times_adjoint_times(self, space1, space2):
         cspace = (space1, space2)
-        diag1 = Field.from_random('normal', domain=space1)
-        diag2 = Field.from_random('normal', domain=space2)
-        op1 = DiagonalOperator(diag1, cspace, spaces=(0,))
-        op2 = DiagonalOperator(diag2, cspace, spaces=(1,))
+        diag1 = ift.Field.from_random('normal', domain=space1)
+        diag2 = ift.Field.from_random('normal', domain=space2)
+        op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
+        op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-        op = ComposedOperator((op1, op2))
+        op = ift.ComposedOperator((op1, op2))
 
-        rand1 = Field.from_random('normal', domain=(space1, space2))
-        rand2 = Field.from_random('normal', domain=(space1, space2))
+        rand1 = ift.Field.from_random('normal', domain=(space1, space2))
+        rand2 = ift.Field.from_random('normal', domain=(space1, space2))
 
         tt1 = rand2.vdot(op.times(rand1))
         tt2 = rand1.vdot(op.adjoint_times(rand2))
@@ -30,14 +29,15 @@ class ComposedOperator_Tests(unittest.TestCase):
     @expand(product(spaces, spaces))
     def test_times_inverse_times(self, space1, space2):
         cspace = (space1, space2)
-        diag1 = Field.from_random('normal', domain=space1)
-        diag2 = Field.from_random('normal', domain=space2)
-        op1 = DiagonalOperator(diag1, cspace, spaces=(0,))
-        op2 = DiagonalOperator(diag2, cspace, spaces=(1,))
+        diag1 = ift.Field.from_random('normal', domain=space1)
+        diag2 = ift.Field.from_random('normal', domain=space2)
+        op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
+        op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-        op = ComposedOperator((op1, op2))
+        op = ift.ComposedOperator((op1, op2))
 
-        rand1 = Field.from_random('normal', domain=(space1, space2))
+        rand1 = ift.Field.from_random('normal', domain=(space1, space2))
         tt1 = op.inverse_times(op.times(rand1))
 
-        assert_allclose(to_np(tt1.val), to_np(rand1.val))
+        assert_allclose(ift.dobj.to_global_data(tt1.val),
+                        ift.dobj.to_global_data(rand1.val))

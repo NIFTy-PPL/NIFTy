@@ -24,7 +24,6 @@ from numpy.testing import assert_, assert_equal, assert_allclose,\
 import nifty2go as ift
 from test.common import expand
 from itertools import product, chain
-from nifty2go import dobj
 
 HARMONIC_SPACES = [ift.RGSpace((8,), harmonic=True),
                    ift.RGSpace((7, 8), harmonic=True),
@@ -53,7 +52,8 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 5,
         'harmonic_partner': ift.RGSpace((8,), harmonic=True),
         'binbounds': None,
-        'pindex': dobj.from_global_data(np.array([0, 1, 2, 3, 4, 3, 2, 1])),
+        'pindex': ift.dobj.from_global_data(
+            np.array([0, 1, 2, 3, 4, 3, 2, 1])),
         'k_lengths': np.array([0., 1., 2., 3., 4.]),
         }],
     [ift.RGSpace((8,), harmonic=True), True, None, None, {
@@ -62,7 +62,8 @@ CONSTRUCTOR_CONFIGS = [
         'dim': 4,
         'harmonic_partner': ift.RGSpace((8,), harmonic=True),
         'binbounds': (0.5, 1.3228756555322954, 3.5),
-        'pindex': dobj.from_global_data(np.array([0, 1, 2, 2, 3, 2, 2, 1])),
+        'pindex': ift.dobj.from_global_data(
+            np.array([0, 1, 2, 2, 3, 2, 2, 1])),
         'k_lengths': np.array([0., 1., 2.5, 4.]),
         }],
     ]
@@ -96,8 +97,8 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
                                              nbin)
         p = ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
-        assert_equal(np.bincount(dobj.to_global_data(p.pindex).ravel()), p.dvol(),
-                     err_msg='rho is not equal to pindex degeneracy')
+        assert_equal(np.bincount(ift.dobj.to_global_data(p.pindex).ravel()),
+                     p.dvol(), err_msg='rho is not equal to pindex degeneracy')
 
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
