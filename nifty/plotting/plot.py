@@ -45,7 +45,7 @@ def _find_closest(A, target):
 
 def _makeplot(name):
     import matplotlib.pyplot as plt
-    if dobj.rank!=0:
+    if dobj.rank != 0:
         return
     if name is None:
         plt.show()
@@ -175,7 +175,7 @@ def plot(f, **kwargs):
             npoints = dom.shape[0]
             dist = dom.distances[0]
             xcoord = np.arange(npoints, dtype=np.float64)*dist
-            ycoord = f.val
+            ycoord = dobj.to_global_data(f.val)
             plt.plot(xcoord, ycoord)
             _limit_xy(**kwargs)
             _makeplot(kwargs.get("name"))
@@ -187,7 +187,8 @@ def plot(f, **kwargs):
             dy = dom.distances[1]
             xc = np.arange(nx, dtype=np.float64)*dx
             yc = np.arange(ny, dtype=np.float64)*dy
-            im = ax.imshow(dobj.to_global_data(f.val), extent=[xc[0], xc[-1], yc[0], yc[-1]],
+            im = ax.imshow(dobj.to_global_data(f.val),
+                           extent=[xc[0], xc[-1], yc[0], yc[-1]],
                            vmin=kwargs.get("zmin"),
                            vmax=kwargs.get("zmax"), cmap=cmap, origin="lower")
             # from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -200,7 +201,7 @@ def plot(f, **kwargs):
             return
     elif isinstance(dom, PowerSpace):
         xcoord = dom.k_lengths
-        ycoord = f.val
+        ycoord = dobj.to_global_data(f.val)
         plt.xscale('log')
         plt.yscale('log')
         plt.title('power')
@@ -217,7 +218,7 @@ def plot(f, **kwargs):
         ptg[:, 0] = theta
         ptg[:, 1] = phi
         base = pyHealpix.Healpix_Base(int(np.sqrt(f.val.size//12)), "RING")
-        res[mask] = f.val[base.ang2pix(ptg)]
+        res[mask] = dobj.to_global_data(f.val)[base.ang2pix(ptg)]
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
@@ -233,7 +234,7 @@ def plot(f, **kwargs):
         ilat = _find_closest(dec, theta)
         ilon = _find_closest(ra, phi)
         ilon = np.where(ilon == dom.nlon, 0, ilon)
-        res[mask] = f.val[ilat*dom.nlon + ilon]
+        res[mask] = dobj.to_global_data(f.val)[ilat*dom.nlon + ilon]
 
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
