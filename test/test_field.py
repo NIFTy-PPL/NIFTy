@@ -21,7 +21,6 @@ import numpy as np
 from numpy.testing import assert_equal, assert_allclose
 from itertools import product
 import nifty2go as ift
-from nifty2go import dobj
 from test.common import expand
 
 
@@ -59,12 +58,14 @@ class Test_Functionality(unittest.TestCase):
         np.random.seed(11)
 
         p1 = ift.PowerSpace(space1)
-        fp1 = ift.Field(p1, val=dobj.from_global_data(_spec1(p1.k_lengths)))
+        p1val = _spec1(p1.k_lengths)
+        fp1 = ift.Field(p1, val=ift.dobj.from_global_data(p1val))
 
         p2 = ift.PowerSpace(space2)
-        fp2 = ift.Field(p2, val=dobj.from_global_data(_spec2(p2.k_lengths)))
+        p2val = _spec2(p2.k_lengths)
+        fp2 = ift.Field(p2, val=ift.dobj.from_global_data(p2val))
 
-        outer = dobj.from_global_data(np.outer(dobj.to_global_data(fp1.val), dobj.to_global_data(fp2.val)))
+        outer = ift.dobj.from_global_data(np.outer(p1val, p2val))
         fp = ift.Field((p1, p2), val=outer)
 
         samples = 500
@@ -78,8 +79,10 @@ class Test_Functionality(unittest.TestCase):
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
-        assert_allclose(dobj.to_global_data(ps1.val/samples), dobj.to_global_data(fp1.val), rtol=0.2)
-        assert_allclose(dobj.to_global_data(ps2.val/samples), dobj.to_global_data(fp2.val), rtol=0.2)
+        assert_allclose(ift.dobj.to_global_data(ps1.val/samples),
+                        ift.dobj.to_global_data(fp1.val), rtol=0.2)
+        assert_allclose(ift.dobj.to_global_data(ps2.val/samples),
+                        ift.dobj.to_global_data(fp2.val), rtol=0.2)
 
     @expand(product([ift.RGSpace((8,), harmonic=True),
                      ift.RGSpace((8, 8), harmonic=True, distances=0.123)],
@@ -91,10 +94,12 @@ class Test_Functionality(unittest.TestCase):
         fulldomain = ift.DomainTuple.make((space1, space2))
 
         p1 = ift.PowerSpace(space1)
-        fp1 = ift.Field(p1, val=dobj.from_global_data(_spec1(p1.k_lengths)))
+        p1val = _spec1(p1.k_lengths)
+        fp1 = ift.Field(p1, val=ift.dobj.from_global_data(p1val))
 
         p2 = ift.PowerSpace(space2)
-        fp2 = ift.Field(p2, val=dobj.from_global_data(_spec2(p2.k_lengths)))
+        p2val = _spec2(p2.k_lengths)
+        fp2 = ift.Field(p2, val=ift.dobj.from_global_data(p2val))
 
         S_1 = ift.create_power_field(space1, lambda x: np.sqrt(_spec1(x)))
         S_1 = ift.DiagonalOperator(S_1, domain=fulldomain, spaces=0)
@@ -113,12 +118,14 @@ class Test_Functionality(unittest.TestCase):
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
-        assert_allclose(dobj.to_global_data(ps1.val/samples), dobj.to_global_data(fp1.val), rtol=0.2)
-        assert_allclose(dobj.to_global_data(ps2.val/samples), dobj.to_global_data(fp2.val), rtol=0.2)
+        assert_allclose(ift.dobj.to_global_data(ps1.val/samples),
+                        ift.dobj.to_global_data(fp1.val), rtol=0.2)
+        assert_allclose(ift.dobj.to_global_data(ps2.val/samples),
+                        ift.dobj.to_global_data(fp2.val), rtol=0.2)
 
     def test_vdot(self):
         s = ift.RGSpace((10,))
         f1 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
         f2 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
-        #assert_allclose(f1.vdot(f2), f1.vdot(f2, spaces=0))
+        # assert_allclose(f1.vdot(f2), f1.vdot(f2, spaces=0))
         assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
