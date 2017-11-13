@@ -17,23 +17,21 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-
 import unittest
 import numpy as np
-
-from numpy.testing import assert_, assert_equal, assert_almost_equal,\
+from numpy.testing import assert_, assert_equal, assert_allclose,\
         assert_raises
-from nifty2go import PowerSpace, RGSpace, Space, LMSpace
+import nifty2go as ift
 from test.common import expand
 from itertools import product, chain
 
-HARMONIC_SPACES = [RGSpace((8,), harmonic=True),
-                   RGSpace((7, 8), harmonic=True),
-                   RGSpace((6, 6), harmonic=True),
-                   RGSpace((5, 5), harmonic=True),
-                   RGSpace((4, 5, 7), harmonic=True),
-                   LMSpace(6),
-                   LMSpace(9)]
+HARMONIC_SPACES = [ift.RGSpace((8,), harmonic=True),
+                   ift.RGSpace((7, 8), harmonic=True),
+                   ift.RGSpace((6, 6), harmonic=True),
+                   ift.RGSpace((5, 5), harmonic=True),
+                   ift.RGSpace((4, 5, 7), harmonic=True),
+                   ift.LMSpace(6),
+                   ift.LMSpace(9)]
 
 
 # Try all sensible kinds of combinations of spaces and binning parameters
@@ -47,23 +45,25 @@ CONSISTENCY_CONFIGS = chain(CONSISTENCY_CONFIGS_IMPLICIT,
 # [harmonic_partner, logarithmic, nbin, binbounds, expected]
 CONSTRUCTOR_CONFIGS = [
     [1, False, None, None, {'error': (ValueError, NotImplementedError)}],
-    [RGSpace((8,)), False, None, None, {'error': ValueError}],
-    [RGSpace((8,), harmonic=True), None, None, None, {
+    [ift.RGSpace((8,)), False, None, None, {'error': ValueError}],
+    [ift.RGSpace((8,), harmonic=True), None, None, None, {
         'harmonic': False,
         'shape': (5,),
         'dim': 5,
-        'harmonic_partner': RGSpace((8,), harmonic=True),
+        'harmonic_partner': ift.RGSpace((8,), harmonic=True),
         'binbounds': None,
-        'pindex': np.array([0, 1, 2, 3, 4, 3, 2, 1]),
+        'pindex': ift.dobj.from_global_data(
+            np.array([0, 1, 2, 3, 4, 3, 2, 1])),
         'k_lengths': np.array([0., 1., 2., 3., 4.]),
         }],
-    [RGSpace((8,), harmonic=True), True, None, None, {
+    [ift.RGSpace((8,), harmonic=True), True, None, None, {
         'harmonic': False,
         'shape': (4,),
         'dim': 4,
-        'harmonic_partner': RGSpace((8,), harmonic=True),
+        'harmonic_partner': ift.RGSpace((8,), harmonic=True),
         'binbounds': (0.5, 1.3228756555322954, 3.5),
-        'pindex': np.array([0, 1, 2, 2, 3, 2, 2, 1]),
+        'pindex': ift.dobj.from_global_data(
+            np.array([0, 1, 2, 2, 3, 2, 2, 1])),
         'k_lengths': np.array([0., 1., 2.5, 4.]),
         }],
     ]
@@ -72,20 +72,20 @@ CONSTRUCTOR_CONFIGS = [
 def k_lengths_configs():
     da_0 = np.array([0, 1.0, 1.41421356, 2., 2.23606798, 2.82842712])
     return [
-        [RGSpace((4, 4), harmonic=True),  da_0],
+        [ift.RGSpace((4, 4), harmonic=True),  da_0],
         ]
 
 
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
-        ['harmonic_partner', Space],
+        ['harmonic_partner', ift.Space],
         ['binbounds', type(None)],
-        ['pindex', np.ndarray],
+        ['pindex', ift.dobj.data_object],
         ['k_lengths', np.ndarray],
         ])
     def test_property_ret_type(self, attribute, expected_type):
-        r = RGSpace((4, 4), harmonic=True)
-        p = PowerSpace(r)
+        r = ift.RGSpace((4, 4), harmonic=True)
+        p = ift.PowerSpace(r)
         assert_(isinstance(getattr(p, attribute), expected_type))
 
 
@@ -93,11 +93,12 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
     @expand(CONSISTENCY_CONFIGS)
     def test_rhopindexConsistency(self, harmonic_partner,
                                   binbounds, nbin, logarithmic):
-        bb = PowerSpace.useful_binbounds(harmonic_partner, logarithmic, nbin)
-        p = PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
+        bb = ift.PowerSpace.useful_binbounds(harmonic_partner, logarithmic,
+                                             nbin)
+        p = ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
-        assert_equal(np.bincount(p.pindex.ravel()), p.dvol(),
-                     err_msg='rho is not equal to pindex degeneracy')
+        assert_equal(np.bincount(ift.dobj.to_global_data(p.pindex).ravel()),
+                     p.dvol(), err_msg='rho is not equal to pindex degeneracy')
 
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
@@ -106,29 +107,29 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
                          logarithmic, nbin, binbounds, expected):
         if 'error' in expected:
             with assert_raises(expected['error']):
-                bb = PowerSpace.useful_binbounds(harmonic_partner,
-                                                 logarithmic, nbin)
-                PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
+                bb = ift.PowerSpace.useful_binbounds(harmonic_partner,
+                                                     logarithmic, nbin)
+                ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
         else:
-            bb = PowerSpace.useful_binbounds(harmonic_partner,
-                                             logarithmic, nbin)
-            p = PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
+            bb = ift.PowerSpace.useful_binbounds(harmonic_partner,
+                                                 logarithmic, nbin)
+            p = ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
             for key, value in expected.items():
                 if isinstance(value, np.ndarray):
-                    assert_almost_equal(getattr(p, key), value)
+                    assert_allclose(getattr(p, key), value)
                 else:
                     assert_equal(getattr(p, key), value)
 
     @expand(k_lengths_configs())
     def test_k_lengths(self, harmonic_partner, expected):
-        p = PowerSpace(harmonic_partner=harmonic_partner)
-        assert_almost_equal(p.k_lengths, expected)
+        p = ift.PowerSpace(harmonic_partner=harmonic_partner)
+        assert_allclose(p.k_lengths, expected)
 
     def test_dvol(self):
-        hp = RGSpace(10,harmonic=True)
-        p = PowerSpace(harmonic_partner=hp)
+        hp = ift.RGSpace(10, harmonic=True)
+        p = ift.PowerSpace(harmonic_partner=hp)
         v1 = hp.dvol()
         v1 = hp.dim*v1 if np.isscalar(v1) else np.sum(v1)
         v2 = p.dvol()
         v2 = p.dim*v2 if np.isscalar(v2) else np.sum(v2)
-        assert_almost_equal(v1, v2)
+        assert_allclose(v1, v2)

@@ -31,6 +31,5 @@ class LaplaceOperatorTests(unittest.TestCase):
         bb = ift.PowerSpace.useful_binbounds(s, logarithmic=log1)
         p = ift.PowerSpace(s, binbounds=bb)
         L = ift.LaplaceOperator(p, logarithmic=log2)
-        arr = np.random.random(p.shape[0])
-        fp = ift.Field(p, val=arr)
+        fp = ift.Field.from_random("normal", domain=p, dtype=np.float64)
         assert_allclose(L(fp).vdot(L(fp)), L.adjoint_times(L(fp)).vdot(fp))

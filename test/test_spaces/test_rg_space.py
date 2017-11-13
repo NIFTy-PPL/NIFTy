@@ -17,12 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-
 import unittest
 import numpy as np
-
-from numpy.testing import assert_, assert_equal, assert_almost_equal
-from nifty2go import RGSpace
+from numpy.testing import assert_, assert_equal, assert_allclose
+import nifty2go as ift
 from test.common import expand
 
 # [shape, distances, harmonic, expected]
@@ -97,7 +95,7 @@ def get_dvol_configs():
 class RGSpaceInterfaceTests(unittest.TestCase):
     @expand([['distances', tuple]])
     def test_property_ret_type(self, attribute, expected_type):
-        x = RGSpace(1)
+        x = ift.RGSpace(1)
         assert_(isinstance(getattr(x, attribute), expected_type))
 
 
@@ -105,16 +103,17 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(CONSTRUCTOR_CONFIGS)
     def test_constructor(self, shape, distances,
                          harmonic, expected):
-        x = RGSpace(shape, distances, harmonic)
+        x = ift.RGSpace(shape, distances, harmonic)
         for key, value in expected.items():
             assert_equal(getattr(x, key), value)
 
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, shape, distances, expected):
-        r = RGSpace(shape=shape, distances=distances, harmonic=True)
-        assert_almost_equal(r.get_k_length_array().val, expected)
+        r = ift.RGSpace(shape=shape, distances=distances, harmonic=True)
+        assert_allclose(ift.dobj.to_global_data(r.get_k_length_array().val),
+                        expected)
 
     @expand(get_dvol_configs())
     def test_dvol(self, shape, distances, harmonic, power):
-        r = RGSpace(shape=shape, distances=distances, harmonic=harmonic)
-        assert_almost_equal(r.dvol(), np.prod(r.distances)**power)
+        r = ift.RGSpace(shape=shape, distances=distances, harmonic=harmonic)
+        assert_allclose(r.dvol(), np.prod(r.distances)**power)

@@ -19,11 +19,7 @@
 import unittest
 import numpy as np
 from numpy.testing import assert_allclose
-
-from nifty2go import Field,\
-    RGSpace,\
-    PowerSpace,\
-    FFTSmoothingOperator
+import nifty2go as ift
 from itertools import product
 from test.common import expand
 
@@ -36,11 +32,11 @@ def _get_rtol(tp):
 
 
 class SmoothingOperator_Tests(unittest.TestCase):
-    spaces = [RGSpace(128)]
+    spaces = [ift.RGSpace(128)]
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_property(self, space, sigma):
-        op = FFTSmoothingOperator(space, sigma=sigma)
+        op = ift.FFTSmoothingOperator(space, sigma=sigma)
         if op.domain[0] != space:
             raise TypeError
         if op.unitary:
@@ -50,18 +46,19 @@ class SmoothingOperator_Tests(unittest.TestCase):
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_adjoint_times(self, space, sigma):
-        op = FFTSmoothingOperator(space, sigma=sigma)
-        rand1 = Field.from_random('normal', domain=space)
-        rand2 = Field.from_random('normal', domain=space)
+        op = ift.FFTSmoothingOperator(space, sigma=sigma)
+        rand1 = ift.Field.from_random('normal', domain=space)
+        rand2 = ift.Field.from_random('normal', domain=space)
         tt1 = rand1.vdot(op.times(rand2))
         tt2 = rand2.vdot(op.adjoint_times(rand1))
         assert_allclose(tt1, tt2)
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_times(self, space, sigma):
-        op = FFTSmoothingOperator(space, sigma=sigma)
-        rand1 = Field.zeros(space)
-        rand1.val[0] = 1.
+        op = ift.FFTSmoothingOperator(space, sigma=sigma)
+        fld = np.zeros(space.shape, dtype=np.float64)
+        fld[0] = 1.
+        rand1 = ift.Field(space, ift.dobj.from_global_data(fld))
         tt1 = op.times(rand1)
         assert_allclose(1, tt1.sum())
 
@@ -69,10 +66,10 @@ class SmoothingOperator_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def test_smooth_regular1(self, sz, d, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace(sz, distances=d)
-        smo = FFTSmoothingOperator(sp, sigma=sigma)
-        inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
-                                dtype=tp)
+        sp = ift.RGSpace(sz, distances=d)
+        smo = ift.FFTSmoothingOperator(sp, sigma=sigma)
+        inp = ift.Field.from_random(domain=sp, random_type='normal', std=1,
+                                    mean=4, dtype=tp)
         out = smo(inp)
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
 
@@ -80,9 +77,9 @@ class SmoothingOperator_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def test_smooth_regular2(self, sz1, sz2, d1, d2, sigma, tp):
         tol = _get_rtol(tp)
-        sp = RGSpace([sz1, sz2], distances=[d1, d2])
-        smo = FFTSmoothingOperator(sp, sigma=sigma)
-        inp = Field.from_random(domain=sp, random_type='normal', std=1, mean=4,
-                                dtype=tp)
+        sp = ift.RGSpace([sz1, sz2], distances=[d1, d2])
+        smo = ift.FFTSmoothingOperator(sp, sigma=sigma)
+        inp = ift.Field.from_random(domain=sp, random_type='normal', std=1,
+                                    mean=4, dtype=tp)
         out = smo(inp)
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
