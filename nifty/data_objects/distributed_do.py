@@ -233,10 +233,10 @@ class data_object(object):
         return data_object(self._shape, np.abs(self._data), self._distaxis)
 
     def all(self):
-        return self._data.all()
+        return self.sum() == self.size
 
     def any(self):
-        return self._data.any()
+        return self.sum() != 0
 
 
 def full(shape, fill_value, dtype=None, distaxis=0):

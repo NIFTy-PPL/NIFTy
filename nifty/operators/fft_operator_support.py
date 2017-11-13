@@ -82,8 +82,12 @@ class RGRGTransformation(Transformation):
             Tval = Field(tdom, tmp)
         else:
             ldat = dobj.local_data(x.val)
-            ldat = fftn(ldat,axes=axes)
-            ldat = ldat.real+ldat.imag
+            # these two alternatives are equivalent, with the second being faster
+            if False:
+                ldat = fftn(ldat,axes=axes)
+                ldat = ldat.real+ldat.imag
+            else:
+                ldat = hartley(ldat,axes=axes)
             tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=dobj.distaxis(x.val))
             Tval = Field(tdom,tmp)
         fct = self.fct_p2h if p2h else self.fct_h2p
