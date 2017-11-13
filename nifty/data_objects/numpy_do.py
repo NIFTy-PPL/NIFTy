@@ -3,12 +3,12 @@
 import numpy as np
 from numpy import ndarray as data_object
 from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, abs, \
-                  bincount, exp, log
+                  exp, log
 from .random import Random
 
 __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "empty", "zeros", "ones", "empty_like", "vdot", "abs", "exp",
-           "log", "sqrt", "bincount", "from_object", "from_random",
+           "log", "sqrt", "from_object", "from_random",
            "local_data", "ibegin", "np_allreduce_sum", "distaxis",
            "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis"]

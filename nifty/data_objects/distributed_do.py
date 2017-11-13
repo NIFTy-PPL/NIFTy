@@ -4,7 +4,7 @@ from mpi4py import MPI
 
 __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "empty", "zeros", "ones", "empty_like", "vdot", "abs", "exp",
-           "log", "sqrt", "bincount", "from_object", "from_random",
+           "log", "sqrt", "from_object", "from_random",
            "local_data", "ibegin", "np_allreduce_sum", "distaxis",
            "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis"]
@@ -288,13 +288,6 @@ def log(a, out=None):
 
 def sqrt(a, out=None):
     return _math_helper(a, np.sqrt, out)
-
-
-def bincount(x, weights=None, minlength=None):
-    if weights is not None:
-        weights = weights._data
-    res = np.bincount(x._data, weights, minlength)
-    return data_object(res)
 
 
 def from_object(object, dtype=None, copy=True):

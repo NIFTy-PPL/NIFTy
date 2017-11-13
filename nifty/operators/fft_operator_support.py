@@ -66,12 +66,12 @@ class RGRGTransformation(Transformation):
             tmpax = (dobj.distaxis(x.val),)
             tmp = dobj.redistribute(x.val, nodist=tmpax)
             ldat = dobj.local_data(tmp)
-            ldat = fftn(ldat, axes=tmpax)
-            if len(axes) ==1:  # we are done
-                ldat = ldat.real+ldat.imag
+            if len(axes) ==1:  # only one transform needed
+                ldat = hartley(ldat, axes=tmpax)
                 tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
                 tmp = dobj.redistribute(tmp, dist=tmpax[0])
-            else:
+            else:  # two separate transforms
+                ldat = fftn(ldat, axes=tmpax)
                 tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
                 tmp = dobj.redistribute(tmp, dist=tmpax[0])
                 tmpax = tuple (i for i in axes if i not in tmpax)

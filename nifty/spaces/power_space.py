@@ -150,13 +150,12 @@ class PowerSpace(Space):
                                    minlength=nbin)
             temp_rho = dobj.np_allreduce_sum(temp_rho)
             assert not (temp_rho == 0).any(), "empty bins detected"
+            # The explicit conversion to float64 is necessary because bincount
+            # sometimes returns its result as an integer array, even when
+            # floating-point weights are present ...
             temp_k_lengths = np.bincount(dobj.local_data(temp_pindex).ravel(),
                 weights=dobj.local_data(k_length_array.val).ravel(),
-                minlength=nbin)
-            # This conversion is necessary because bincount sometimes returns
-            # its result as an integer array, even when floating-point weights
-            # are present ...
-            temp_k_lengths = temp_k_lengths.astype(np.float64)
+                minlength=nbin).astype(np.float64)
             temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho
             temp_dvol = temp_rho*pdvol
             self._powerIndexCache[key] = (binbounds,
