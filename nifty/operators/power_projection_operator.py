@@ -95,8 +95,8 @@ class PowerProjectionOperator(LinearOperator):
         lastaxis = x.domain.axes[self._space][-1]
         presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
         postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
-        arr = arr.reshape((presize,-1,postsize))
-        oarr = dobj.local_data(res.val).reshape((presize,-1,postsize))
+        arr = arr.reshape((presize,self._target[self._space].shape[0],postsize))
+        oarr = dobj.local_data(res.val).reshape((presize,pindex.size,postsize))
         oarr[()] = arr[(slice(None), pindex.ravel(), slice(None))]
         return res
 
