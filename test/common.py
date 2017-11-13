@@ -18,7 +18,7 @@
 
 from builtins import str
 from parameterized import parameterized
-from nifty2go import RGSpace, LMSpace, HPSpace, GLSpace, PowerSpace
+import nifty2go as ift
 import numpy as np
 
 np.seterr(all='raise', under='ignore')
@@ -37,11 +37,12 @@ def expand(*args, **kwargs):
 
 
 def generate_spaces():
-    spaces = [RGSpace(4), PowerSpace(RGSpace((4, 4), harmonic=True)),
-              LMSpace(5), HPSpace(4), GLSpace(4)]
+    spaces = [ift.RGSpace(4),
+              ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
+              ift.LMSpace(5), ift.HPSpace(4), ift.GLSpace(4)]
     return spaces
 
 
 def generate_harmonic_spaces():
-    spaces = [RGSpace(4, harmonic=True), LMSpace(5)]
+    spaces = [ift.RGSpace(4, harmonic=True), ift.LMSpace(5)]
     return spaces
