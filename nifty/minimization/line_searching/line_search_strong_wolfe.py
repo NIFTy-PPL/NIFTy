@@ -19,7 +19,6 @@
 from __future__ import division
 from builtins import range
 import numpy as np
-
 from .line_search import LineSearch
 from ...energies import LineEnergy
 from ... import dobj
@@ -62,7 +61,6 @@ class LineSearchStrongWolfe(LineSearch):
         Maximum number of iterations performed by the line search algorithm.
     max_zoom_iterations : integer
         Maximum number of iterations performed by the zoom algorithm.
-
     """
 
     def __init__(self, c1=1e-4, c2=0.9,
@@ -99,9 +97,7 @@ class LineSearchStrongWolfe(LineSearch):
         -------
         energy_star : Energy object
             The new Energy object on the new position.
-
         """
-
         le_0 = LineEnergy(0., energy, pk, 0.)
 
         # initialize the zero phis
@@ -203,7 +199,6 @@ class LineSearchStrongWolfe(LineSearch):
         -------
         energy_star : Energy object
             The new Energy object on the new position.
-
         """
         cubic_delta = 0.2  # cubic interpolant checks
         quad_delta = 0.1  # quadratic interpolant checks
@@ -285,7 +280,6 @@ class LineSearchStrongWolfe(LineSearch):
         xmin : float
             Position of the approximated minimum.
         """
-
         with np.errstate(divide='raise', over='raise', invalid='raise'):
             try:
                 C = fpa

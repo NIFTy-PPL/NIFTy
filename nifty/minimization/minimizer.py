@@ -22,8 +22,7 @@ from future.utils import with_metaclass
 
 
 class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
-    """ A base class used by all minimizers.
-    """
+    """ A base class used by all minimizers."""
 
     @abc.abstractmethod
     def __call__(self, energy, preconditioner=None):
@@ -44,5 +43,4 @@ class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
             Latest `energy` of the minimization.
         status : integer
         """
-
         raise NotImplementedError

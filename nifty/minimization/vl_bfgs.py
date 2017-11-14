@@ -20,7 +20,6 @@ from __future__ import division
 from builtins import range
 from builtins import object
 import numpy as np
-
 from .descent_minimizer import DescentMinimizer
 from .line_searching import LineSearchStrongWolfe
 
@@ -28,10 +27,8 @@ from .line_searching import LineSearchStrongWolfe
 class VL_BFGS(DescentMinimizer):
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
                  max_history_length=5):
-
         super(VL_BFGS, self).__init__(controller=controller,
                                       line_searcher=line_searcher)
-
         self.max_history_length = max_history_length
 
     def __call__(self, energy):
@@ -117,7 +114,6 @@ class InformationStore(object):
         2D circular buffer of scalar products between elements of s and y.
     yy : numpy.ndarray
         2D circular buffer of scalar products between different elements of y.
-
     """
     def __init__(self, max_history_length, x0, gradient):
         self.max_history_length = max_history_length
@@ -134,9 +130,7 @@ class InformationStore(object):
 
     @property
     def history_length(self):
-        """Returns the number of currently stored updates.
-
-        """
+        """Returns the number of currently stored updates."""
         return min(self.k, self.max_history_length)
 
     @property
@@ -173,7 +167,6 @@ class InformationStore(object):
         -------
         result : numpy.ndarray
             Scalar matrix.
-
         """
         m = self.history_length
         mmax = self.max_history_length
@@ -216,7 +209,6 @@ class InformationStore(object):
         -------
         delta : List
             List of the new scalar coefficients (deltas).
-
         """
         m = self.history_length
         b_dot_b = self.b_dot_b
@@ -246,7 +238,6 @@ class InformationStore(object):
 
         Calculates the new position and gradient differences and enters them
         into the respective list.
-
         """
         mmax = self.max_history_length
         self.s[self.k % mmax] = x - self.last_x

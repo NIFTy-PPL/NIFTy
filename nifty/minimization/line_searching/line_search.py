@@ -36,7 +36,6 @@ class LineSearch(with_metaclass(abc.ABCMeta,
         LineEnergy object from which we can extract energy at a specific point.
     preferred_initial_step_size : float
         Initial guess for the step length.
-
     """
 
     def __init__(self):

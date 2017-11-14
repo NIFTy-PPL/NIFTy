@@ -55,7 +55,6 @@ class IterationController(with_metaclass(NiftyMeta, type('NewBase',
         -------
         status : integer status, can be CONVERGED, CONTINUE or ERROR
         """
-
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -70,5 +69,4 @@ class IterationController(with_metaclass(NiftyMeta, type('NewBase',
         -------
         status : integer status, can be CONVERGED, CONTINUE or ERROR
         """
-
         raise NotImplementedError

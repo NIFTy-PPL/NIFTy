@@ -24,7 +24,7 @@ class RelaxedNewton(DescentMinimizer):
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
         super(RelaxedNewton, self).__init__(controller=controller,
                                             line_searcher=line_searcher)
-
+        # FIXME: this does not look idiomatic
         self.line_searcher.preferred_initial_step_size = 1.
 
     def get_descent_direction(self, energy):
@@ -46,6 +46,5 @@ class RelaxedNewton(DescentMinimizer):
         descent_direction : Field
            Returns the descent direction with proposed step length. In a
            quadratic potential this corresponds to the optimal step.
-
         """
         return -energy.curvature.inverse_times(energy.gradient)

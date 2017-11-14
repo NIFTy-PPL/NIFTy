@@ -40,7 +40,6 @@ class ConjugateGradient(Minimizer):
     ----------
     Jorge Nocedal & Stephen Wright, "Numerical Optimization", Second Edition,
     2006, Springer-Verlag New York
-
     """
 
     def __init__(self, controller, preconditioner=None):
@@ -62,9 +61,7 @@ class ConjugateGradient(Minimizer):
             state at last point of the iteration
         status : integer
             Can be controller.CONVERGED or controller.ERROR
-
         """
-
         if preconditioner is None:
             preconditioner = self._preconditioner
 

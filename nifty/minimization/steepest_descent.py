@@ -26,7 +26,7 @@ class SteepestDescent(DescentMinimizer):
         """ Implementation of the steepest descent minimization scheme.
 
         Also known as 'gradient descent'. This algorithm simply follows the
-        functionals gradient for minization.
+        functional's gradient for minization.
 
         Parameters
         ----------
@@ -37,8 +37,6 @@ class SteepestDescent(DescentMinimizer):
         Returns
         -------
         descent_direction : Field
-            Returns the descent direction.
-
+            the descent direction.
         """
-
         return -energy.gradient

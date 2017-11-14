@@ -18,7 +18,6 @@
 
 from __future__ import division
 import abc
-
 from .minimizer import Minimizer
 from .line_searching import LineSearchStrongWolfe
 
@@ -38,7 +37,6 @@ class DescentMinimizer(Minimizer):
     line_searcher : callable *optional*
         Function which infers the step size in the descent direction
         (default : LineSearchStrongWolfe()).
-
     """
 
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
@@ -68,9 +66,7 @@ class DescentMinimizer(Minimizer):
             * the controller returns controller.CONVERGED or controller.ERROR,
             * a perfectly flat point is reached,
             * according to the line-search the minimum is found,
-
         """
-
         f_k_minus_1 = None
         controller = self._controller
         status = controller.start(energy)
@@ -82,22 +78,17 @@ class DescentMinimizer(Minimizer):
             if energy.gradient_norm == 0:
                 return energy, controller.CONVERGED
 
-            # current position is encoded in energy object
-            descent_direction = self.get_descent_direction(energy)
-            # compute the step length, which minimizes energy.value along the
-            # search direction
+            # compute a step length that reduces energy.value sufficiently
             try:
-                new_energy = \
-                    self.line_searcher.perform_line_search(
-                                                   energy=energy,
-                                                   pk=descent_direction,
-                                                   f_k_minus_1=f_k_minus_1)
+                new_energy = self.line_searcher.perform_line_search(
+                    energy=energy, pk=self.get_descent_direction(energy),
+                    f_k_minus_1=f_k_minus_1)
             except RuntimeError:
                 return energy, controller.ERROR
 
             f_k_minus_1 = energy.value
-            # check if new energy value is bigger than old energy value
-            if (new_energy.value - energy.value) > 0:
+
+            if new_energy.value > energy.value:
                 return energy, controller.ERROR
 
             energy = new_energy
