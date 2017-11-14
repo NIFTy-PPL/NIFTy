@@ -17,24 +17,25 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from . import Space,\
-              PowerSpace,\
-              Field,\
-              ComposedOperator,\
-              DiagonalOperator,\
-              PowerProjectionOperator,\
-              FFTOperator,\
-              sqrt,\
-              DomainTuple
+from . import Space, PowerSpace, Field, ComposedOperator, DiagonalOperator,\
+              PowerProjectionOperator, FFTOperator, sqrt, DomainTuple, dobj
 from . import nifty_utilities as utilities
 
-__all__ = ['power_analyze',
+__all__ = ['PS_field',
+           'power_analyze',
            'power_synthesize',
            'power_synthesize_special',
            'create_power_field',
            'create_power_operator',
            'generate_posterior_sample',
            'create_composed_fft_operator']
+
+
+def PS_field(pspace, func, dtype=None):
+    if not isinstance(pspace, PowerSpace):
+        raise TypeError
+    data = dobj.from_global_data(func(pspace.k_lengths))
+    return Field(pspace, val=data, dtype=dtype)
 
 
 def _single_power_analyze(field, idx, binbounds):
@@ -91,8 +92,8 @@ def power_analyze(field, spaces=None, binbounds=None,
     # power_space instances
     for sp in field.domain:
         if not sp.harmonic and not isinstance(sp, PowerSpace):
-            print("WARNING: Field has a space in `domain` which is "
-                  "neither harmonic nor a PowerSpace.")
+            dobj.mprint("WARNING: Field has a space in `domain` which is "
+                        "neither harmonic nor a PowerSpace.")
 
     # check if the `spaces` input is valid
     if spaces is None:
@@ -222,8 +223,7 @@ def create_power_field(domain, power_spectrum, dtype=None):
         fp = Field(power_domain, val=power_spectrum.val, dtype=dtype)
     else:
         power_domain = PowerSpace(domain)
-        fp = Field(power_domain, val=power_spectrum(power_domain.k_lengths),
-                   dtype=dtype)
+        fp = PS_field(power_domain, power_spectrum, dtype)
     P = PowerProjectionOperator(domain, power_domain)
     f = P.adjoint_times(fp)
 
@@ -258,7 +258,7 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
     """
     domain = DomainTuple.make(domain)
     if space is None:
-        if len(domain)!=1:
+        if len(domain) != 1:
             raise ValueError("space keyword must be set")
         else:
             space = 0
