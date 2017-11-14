@@ -18,7 +18,7 @@
 
 from __future__ import division
 import numpy as np
-from .. import nifty_utilities as utilities
+from .. import utilities
 from ..low_level_library import hartley
 from .. import dobj
 from ..field import Field

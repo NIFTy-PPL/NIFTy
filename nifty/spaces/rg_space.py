@@ -51,7 +51,9 @@ class RGSpace(Space):
         self._needed_for_hash += ["_distances", "_shape", "_harmonic"]
 
         self._harmonic = bool(harmonic)
-        self._shape = self._parse_shape(shape)
+        if np.isscalar(shape):
+            shape = (shape,)
+        self._shape = tuple(int(i) for i in shape)
         self._distances = self._parse_distances(distances)
         self._dvol = float(reduce(lambda x, y: x*y, self._distances))
         self._dim = int(reduce(lambda x, y: x*y, self._shape))
@@ -163,16 +165,11 @@ class RGSpace(Space):
 
     @property
     def distances(self):
-        """Distance between two grid points along each axis. It is a tuple
+        """Distance between grid points along each axis. It is a tuple
         of positive floating point numbers with the n-th entry giving the
-        distances of grid points along the n-th dimension.
+        distance between neighboring grid points along the n-th dimension.
         """
         return self._distances
-
-    def _parse_shape(self, shape):
-        if np.isscalar(shape):
-            return (shape,)
-        return tuple(np.array(shape, dtype=np.int))
 
     def _parse_distances(self, distances):
         if distances is None:

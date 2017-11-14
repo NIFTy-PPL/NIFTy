@@ -18,8 +18,8 @@
 
 import numpy as np
 from . import Space, PowerSpace, Field, ComposedOperator, DiagonalOperator,\
-              PowerProjectionOperator, FFTOperator, sqrt, DomainTuple, dobj
-from . import nifty_utilities as utilities
+              PowerProjectionOperator, FFTOperator, sqrt, DomainTuple, dobj,\
+              utilities
 
 __all__ = ['PS_field',
            'power_analyze',

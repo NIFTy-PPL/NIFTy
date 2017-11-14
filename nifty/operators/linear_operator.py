@@ -18,7 +18,7 @@
 
 from builtins import str
 import abc
-from ..nifty_meta import NiftyMeta
+from ..utilities import NiftyMeta
 from ..field import Field
 from future.utils import with_metaclass
 

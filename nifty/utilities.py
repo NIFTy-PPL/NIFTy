@@ -19,6 +19,7 @@
 from builtins import next, range
 import numpy as np
 from itertools import product
+import abc
 
 
 def get_slice_list(shape, axes):
@@ -42,10 +43,8 @@ def get_slice_list(shape, axes):
     ------
     ValueError
         If shape is empty.
-    ValueError
         If axes(axis) does not match shape.
     """
-
     if shape is None:
         raise ValueError("shape cannot be None.")
 
@@ -72,3 +71,54 @@ def cast_iseq_to_tuple(seq):
     if np.isscalar(seq):
         return (int(seq),)
     return tuple(int(item) for item in seq)
+
+
+def memo(f):
+    name = f.__name__
+
+    def wrapped_f(self):
+        if not hasattr(self, "_cache"):
+            self._cache = {}
+        try:
+            return self._cache[name]
+        except KeyError:
+            self._cache[name] = f(self)
+            return self._cache[name]
+    return wrapped_f
+
+
+class _DocStringInheritor(type):
+    """
+    A variation on
+    http://groups.google.com/group/comp.lang.python/msg/26f7b4fcb4d66c95
+    by Paul McGuire
+    """
+    def __new__(meta, name, bases, clsdict):
+        if not('__doc__' in clsdict and clsdict['__doc__']):
+            for mro_cls in (mro_cls for base in bases
+                            for mro_cls in base.mro()):
+                doc = mro_cls.__doc__
+                if doc:
+                    clsdict['__doc__'] = doc
+                    break
+        for attr, attribute in list(clsdict.items()):
+            if not attribute.__doc__:
+                for mro_cls in (mro_cls for base in bases
+                                for mro_cls in base.mro()
+                                if hasattr(mro_cls, attr)):
+                    doc = getattr(getattr(mro_cls, attr), '__doc__')
+                    if doc:
+                        if isinstance(attribute, property):
+                            clsdict[attr] = property(attribute.fget,
+                                                     attribute.fset,
+                                                     attribute.fdel,
+                                                     doc)
+                        else:
+                            attribute.__doc__ = doc
+                        break
+        return super(_DocStringInheritor, meta).__new__(meta, name,
+                                                        bases, clsdict)
+
+
+class NiftyMeta(_DocStringInheritor, abc.ABCMeta):
+    pass

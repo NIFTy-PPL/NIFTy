@@ -21,7 +21,7 @@ import numpy as np
 from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
-from ..nifty_utilities import cast_iseq_to_tuple
+from ..utilities import cast_iseq_to_tuple
 from .. import dobj
 
 

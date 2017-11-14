@@ -18,7 +18,7 @@
 
 from __future__ import division
 import abc
-from .nifty_meta import NiftyMeta
+from .utilities import NiftyMeta
 from future.utils import with_metaclass
 
 
@@ -38,7 +38,6 @@ class DomainObject(with_metaclass(
         raise NotImplementedError
 
     def __hash__(self):
-        # Extract the identifying parts from the vars(self) dict.
         result_hash = 0
         for key in self._needed_for_hash:
             result_hash ^= hash(vars(self)[key])

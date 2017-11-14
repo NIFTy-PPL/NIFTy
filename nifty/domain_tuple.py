@@ -105,24 +105,10 @@ class DomainTuple(object):
         return self._dom == x._dom
 
     def __ne__(self, x):
-        if not isinstance(x, DomainTuple):
-            x = DomainTuple.make(x)
-        if self is x:
-            return False
-        return self._dom != x._dom
+        return not self.__eq__(x)
 
     def __str__(self):
         res = "DomainTuple, len: " + str(len(self.domains))
         for i in self.domains:
             res += "\n" + str(i)
         return res
-
-    def collapsed_shape_for_domain(self, ispace):
-        """Returns a three-component shape, with the total number of pixels
-        in the domains before the requested space in res[0], the total number
-        of pixels in the requested space in res[1], and the remaining pixels in
-        res[2].
-        """
-        return (self._accdims[ispace],
-                self._accdims[ispace+1]//self._accdims[ispace],
-                self._accdims[-1]//self._accdims[ispace+1])

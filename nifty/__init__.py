@@ -10,7 +10,7 @@ from .domain_object import DomainObject
 
 from .basic_arithmetics import *
 
-from .nifty_utilities import *
+from .utilities import *
 
 from .field_types import *
 
@@ -31,5 +31,3 @@ from . import plotting
 from . import library
 
 from . import dobj
-
-from .memoization import memo

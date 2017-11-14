@@ -1,5 +1,5 @@
 from ...operators import EndomorphicOperator
-from ...memoization import memo
+from ...utilities import memo
 from ...basic_arithmetics import exp
 from ...sugar import create_composed_fft_operator
 

@@ -1,5 +1,5 @@
 from ...energies.energy import Energy
-from ...memoization import memo
+from ...utilities import memo
 from . import LogNormalWienerFilterCurvature
 from ...sugar import create_composed_fft_operator
 from ...operators.inversion_enabler import InversionEnabler

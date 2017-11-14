@@ -21,7 +21,7 @@ from builtins import range
 from builtins import object
 import numpy as np
 from ..field import Field, DomainTuple
-from .. import nifty_utilities as utilities
+from .. import utilities
 
 
 class Prober(object):

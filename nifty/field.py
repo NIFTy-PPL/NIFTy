@@ -19,7 +19,7 @@
 from __future__ import division
 from builtins import range
 import numpy as np
-from . import nifty_utilities as utilities
+from . import utilities
 from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
@@ -65,7 +65,6 @@ class Field(object):
             *the given domain contains something that is not a DomainObject
              instance
             *val is an array that has a different dimension than the domain
-
     """
 
     # ---Initialization methods---
@@ -179,7 +178,6 @@ class Field(object):
         out : Field
             The output object.
         """
-
         domain = DomainTuple.make(domain)
         return Field(domain=domain,
                      val=dobj.from_random(random_type, dtype=dtype,
@@ -194,10 +192,6 @@ class Field(object):
     def val(self):
         """ Returns the data object associated with this Field.
         No copy is made.
-
-        Returns
-        -------
-        out : numpy.ndarray
         """
         return self._val
 
@@ -211,10 +205,8 @@ class Field(object):
 
         Returns
         -------
-        out : tuple
-            The output object. The tuple contains the dimensions of the spaces
-            in domain.
-       """
+        Integer tuple containing the dimensions of the spaces in domain.
+        """
         return self.domain.shape
 
     @property
@@ -232,14 +224,12 @@ class Field(object):
 
     @property
     def real(self):
-        """ The real part of the field (data is not copied).
-        """
+        """ The real part of the field (data is not copied)."""
         return Field(self.domain, self.val.real)
 
     @property
     def imag(self):
-        """ The imaginary part of the field (data is not copied).
-        """
+        """ The imaginary part of the field (data is not copied)."""
         return Field(self.domain, self.val.imag)
 
     # ---Special unary/binary operations---
@@ -290,7 +280,6 @@ class Field(object):
         -------
         out : Field
             The weighted field.
-
         """
         if out is None:
             out = self.copy()
@@ -313,7 +302,8 @@ class Field(object):
                 new_shape[self.domain.axes[ind][0]:
                           self.domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
-                if dobj.distaxis(self._val) >= 0 and ind == 0:  # we need to distribute the weights along axis 0
+                if dobj.distaxis(self._val) >= 0 and ind == 0:
+                    # we need to distribute the weights along axis 0
                     wgt = dobj.local_data(dobj.from_global_data(wgt))
                 out *= wgt**power
         fct = fct**power
@@ -336,8 +326,7 @@ class Field(object):
 
         Returns
         -------
-        out : float, complex
-
+        out : float, complex, either scalar or Field
         """
         if not isinstance(x, Field):
             raise ValueError("The dot-partner must be an instance of " +
@@ -354,15 +343,19 @@ class Field(object):
 
         if spaces is None:
             return fct*dobj.vdot(y.val, x.val)
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
-            active_axes = []
-            for i in spaces:
-                active_axes += self.domain.axes[i]
-            res = 0.
-            for sl in utilities.get_slice_list(self.shape, active_axes):
-                res += dobj.vdot(y.val, x.val[sl])
-            return res*fct
+
+        spaces = utilities.cast_iseq_to_tuple(spaces)
+        if spaces == tuple(range(len(self.domain))):  # full contraction
+            return fct*dobj.vdot(y.val, x.val)
+
+        raise NotImplementedError("special case for vdot not yet implemented")
+        active_axes = []
+        for i in spaces:
+            active_axes += self.domain.axes[i]
+        res = 0.
+        for sl in utilities.get_slice_list(self.shape, active_axes):
+            res += dobj.vdot(y.val, x.val[sl])
+        return res*fct
 
     def norm(self):
         """ Computes the L2-norm of the field values.
@@ -371,7 +364,6 @@ class Field(object):
         -------
         norm : float
             The L2-norm of the field values.
-
         """
         return np.sqrt(np.abs(self.vdot(x=self)))
 
@@ -380,9 +372,7 @@ class Field(object):
 
         Returns
         -------
-        cc : field
-            The complex conjugated field.
-
+        The complex conjugated field.
         """
         return Field(self.domain, self.val.conjugate(), self.dtype)
 
