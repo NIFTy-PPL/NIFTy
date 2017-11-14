@@ -66,30 +66,30 @@ class RGRGTransformation(Transformation):
             tmpax = (dobj.distaxis(x.val),)
             tmp = dobj.redistribute(x.val, nodist=tmpax)
             ldat = dobj.local_data(tmp)
-            if len(axes) ==1:  # only one transform needed
+            if len(axes) == 1:  # only one transform needed
                 ldat = hartley(ldat, axes=tmpax)
-                tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
+                tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=dobj.distaxis(tmp))
                 tmp = dobj.redistribute(tmp, dist=tmpax[0])
             else:  # two separate transforms
                 ldat = fftn(ldat, axes=tmpax)
-                tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
+                tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=dobj.distaxis(tmp))
                 tmp = dobj.redistribute(tmp, dist=tmpax[0])
-                tmpax = tuple (i for i in axes if i not in tmpax)
+                tmpax = tuple(i for i in axes if i not in tmpax)
                 ldat = dobj.local_data(tmp)
                 ldat = fftn(ldat, axes=tmpax)
                 ldat = ldat.real+ldat.imag
-                tmp = dobj.from_local_data(tmp.shape,ldat,distaxis=dobj.distaxis(tmp))
+                tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=dobj.distaxis(tmp))
             Tval = Field(tdom, tmp)
         else:
             ldat = dobj.local_data(x.val)
             # these two alternatives are equivalent, with the second being faster
             if False:
-                ldat = fftn(ldat,axes=axes)
+                ldat = fftn(ldat, axes=axes)
                 ldat = ldat.real+ldat.imag
             else:
-                ldat = hartley(ldat,axes=axes)
+                ldat = hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=dobj.distaxis(x.val))
-            Tval = Field(tdom,tmp)
+            Tval = Field(tdom, tmp)
         fct = self.fct_p2h if p2h else self.fct_h2p
         if fct != 1:
             Tval *= fct
@@ -151,7 +151,7 @@ class SphericalTransformation(Transformation):
             for slice in utilities.get_slice_list(idat.shape, axes):
                 odat[slice] = self._slice_p2h(idat[slice])
             odat = dobj.from_local_data(self.hdom.shape, odat, distaxis)
-            if distaxis!= dobj.distaxis(x.val):
+            if distaxis != dobj.distaxis(x.val):
                 odat = dobj.redistribute(odat, dist=dobj.distaxis(x.val))
             return Field(self.hdom, odat)
         else:
@@ -159,6 +159,6 @@ class SphericalTransformation(Transformation):
             for slice in utilities.get_slice_list(idat.shape, axes):
                 odat[slice] = self._slice_h2p(idat[slice])
             odat = dobj.from_local_data(self.pdom.shape, odat, distaxis)
-            if distaxis!= dobj.distaxis(x.val):
+            if distaxis != dobj.distaxis(x.val):
                 odat = dobj.redistribute(odat, dist=dobj.distaxis(x.val))
             return Field(self.pdom, odat)

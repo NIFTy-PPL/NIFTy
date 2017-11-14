@@ -1,21 +1,19 @@
 # Data object module for NIFTy that uses simple numpy ndarrays.
 
+from __future__ import print_function
 import numpy as np
 from numpy import ndarray as data_object
 from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, abs, \
                   exp, log
 from .random import Random
 
-__all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
-           "empty", "zeros", "ones", "empty_like", "vdot", "abs", "exp",
-           "log", "sqrt", "from_object", "from_random",
-           "local_data", "ibegin", "np_allreduce_sum", "distaxis",
-           "from_local_data", "from_global_data", "to_global_data",
-           "redistribute", "default_distaxis"]
-
 ntask = 1
 rank = 0
 master = True
+
+
+def mprint(*args):
+    print(*args)
 
 
 def from_object(object, dtype=None, copy=True):

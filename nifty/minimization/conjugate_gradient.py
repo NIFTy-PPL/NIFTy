@@ -18,9 +18,9 @@
 
 from __future__ import division
 from .minimizer import Minimizer
-import numpy as np
 from .. import Field
 from ..low_level_library import general_axpy
+
 
 class ConjugateGradient(Minimizer):
     """ Implementation of the Conjugate Gradient scheme.
@@ -82,7 +82,7 @@ class ConjugateGradient(Minimizer):
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
-        tpos = Field(d.domain,dtype=d.dtype)  # temporary buffer
+        tpos = Field(d.domain, dtype=d.dtype)  # temporary buffer
         while True:
             q = energy.curvature(d)
             ddotq = d.vdot(q).real

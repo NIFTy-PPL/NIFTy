@@ -1,4 +1,3 @@
-from __future__ import print_function
 import nifty2go as ift
 import numpy as np
 
@@ -20,9 +19,9 @@ diagOp = ift.DiagonalOperator(f)
 
 diagProber = DiagonalProber(domain=x)
 diagProber(diagOp)
-print((f - diagProber.diagonal).norm())
+ift.dobj.mprint((f - diagProber.diagonal).norm())
 
 multiProber = MultiProber(domain=x)
 multiProber(diagOp)
-print((f - multiProber.diagonal).norm())
-print(f.sum() - multiProber.trace)
+ift.dobj.mprint((f - multiProber.diagonal).norm())
+ift.dobj.mprint(f.sum() - multiProber.trace)

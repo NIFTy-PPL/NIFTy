@@ -106,7 +106,9 @@ if __name__ == "__main__":
 
     def ps0(k):
         return (1./(1.+k)**2)
-    t0 = ift.Field(p_space, val=np.log(1./(1+p_space.k_lengths)**2))
+
+    t0 = ift.Field(p_space,
+            val=ift.dobj.from_global_data(np.log(1./(1+p_space.k_lengths)**2)))
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ps0)
@@ -138,6 +140,6 @@ if __name__ == "__main__":
         t0 = power_energy.position.real
 
         # Plot current estimate
-        print(i)
+        ift.dobj.mprint(i)
         if i % 5 == 0:
             plot_parameters(m0, t0, ift.log(sp), data_power)

@@ -78,7 +78,7 @@ class RGSpace(Space):
     def get_k_length_array(self):
         if (not self.harmonic):
             raise NotImplementedError
-        out = Field((self,),dtype=np.float64)
+        out = Field((self,), dtype=np.float64)
         oloc = dobj.local_data(out.val)
         ibegin = dobj.ibegin(out.val)
         res = np.arange(oloc.shape[0], dtype=np.float64) + ibegin[0]
@@ -116,7 +116,8 @@ class RGSpace(Space):
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
             # FIXME: this needs to improve for MPI. Maybe unique()/gather()?
-            tmp = np.unique(dobj.to_global_data(self.get_k_length_array().val))  # expensive!
+            tmp = dobj.to_global_data(self.get_k_length_array().val)
+            tmp = np.unique(tmp)
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right
             # neighbors.

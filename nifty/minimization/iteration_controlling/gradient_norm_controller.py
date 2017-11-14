@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import print_function
 from .iteration_controller import IterationController
 from ... import dobj
 
@@ -65,8 +64,7 @@ class GradientNormController(IterationController):
             msg += " energy=" + str(energy.value)
             msg += " gradnorm=" + str(energy.gradient_norm)
             msg += " clvl=" + str(self._ccount)
-            if dobj.master:
-                print(msg)
+            dobj.mprint(msg)
             # self.logger.info(msg)
 
         # Are we done?

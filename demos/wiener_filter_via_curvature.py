@@ -3,7 +3,8 @@ import nifty2go as ift
 import numericalunits as nu
 
 if __name__ == "__main__":
-    nu.reset_units("SI")
+    # In MPI mode, the random seed for numericalunits must be set by hand
+    nu.reset_units(43)
     dimensionality = 2
     np.random.seed(43)
 
@@ -44,8 +45,7 @@ if __name__ == "__main__":
                                   power_spectrum=power_spectrum)
     np.random.seed(43)
 
-    mock_power = ift.Field(power_space,
-                           val=ift.dobj.from_global_data(power_spectrum(power_space.k_lengths)))
+    mock_power = ift.PS_field(power_space, power_spectrum)
     mock_harmonic = ift.power_synthesize(mock_power, real_signal=True)
     mock_harmonic = mock_harmonic.real
     mock_signal = fft(mock_harmonic)
@@ -81,7 +81,7 @@ if __name__ == "__main__":
 
     ift.plotting.plot(ift.Field(sspace2, mock_signal.real.val)/nu.K,
                       name="mock_signal.pdf")
-    ift.plotting.plot(ift.Field(
-        sspace2, val=ift.dobj.from_global_data(ift.dobj.to_global_data(data.val.real).reshape(signal_space.shape)))/nu.K,
-        name="data.pdf")
+    data = ift.dobj.to_global_data(data.val.real).reshape(sspace2.shape)/nu.K
+    data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))/nu.K
+    ift.plotting.plot(ift.Field(sspace2, val=data), name="data.pdf")
     ift.plotting.plot(ift.Field(sspace2, m_s.real.val)/nu.K, name="map.pdf")

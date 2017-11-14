@@ -1,7 +1,5 @@
 from builtins import range
-from .. import Field,\
-               FieldArray,\
-               DomainTuple
+from .. import Field, FieldArray, DomainTuple
 from .linear_operator import LinearOperator
 from .fft_smoothing_operator import FFTSmoothingOperator
 from .composed_operator import ComposedOperator

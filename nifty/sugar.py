@@ -17,17 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from . import Space,\
-              PowerSpace,\
-              Field,\
-              ComposedOperator,\
-              DiagonalOperator,\
-              PowerProjectionOperator,\
-              FFTOperator,\
-              sqrt,\
-              DomainTuple
+from . import Space, PowerSpace, Field, ComposedOperator, DiagonalOperator,\
+              PowerProjectionOperator, FFTOperator, sqrt, DomainTuple, dobj
 from . import nifty_utilities as utilities
-from . import dobj
 
 __all__ = ['PS_field',
            'power_analyze',
@@ -44,6 +36,7 @@ def PS_field(pspace, func, dtype=None):
         raise TypeError
     data = dobj.from_global_data(func(pspace.k_lengths))
     return Field(pspace, val=data, dtype=dtype)
+
 
 def _single_power_analyze(field, idx, binbounds):
     from .operators.power_projection_operator import PowerProjectionOperator
@@ -99,8 +92,8 @@ def power_analyze(field, spaces=None, binbounds=None,
     # power_space instances
     for sp in field.domain:
         if not sp.harmonic and not isinstance(sp, PowerSpace):
-            print("WARNING: Field has a space in `domain` which is "
-                  "neither harmonic nor a PowerSpace.")
+            dobj.mprint("WARNING: Field has a space in `domain` which is "
+                        "neither harmonic nor a PowerSpace.")
 
     # check if the `spaces` input is valid
     if spaces is None:

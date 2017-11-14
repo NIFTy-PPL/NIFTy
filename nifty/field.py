@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division, print_function
+from __future__ import division
 from builtins import range
 import numpy as np
 from . import nifty_utilities as utilities
@@ -314,7 +314,7 @@ class Field(object):
                           self.domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
                 # FIXME only temporary
-                if ind==0:
+                if ind == 0:
                     wgt = dobj.local_data(dobj.from_global_data(wgt))
                 out *= wgt**power
         fct = fct**power

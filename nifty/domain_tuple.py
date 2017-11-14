@@ -19,6 +19,7 @@
 from functools import reduce
 from .domain_object import DomainObject
 
+
 class DomainTuple(object):
     _tupleCache = {}
 
@@ -122,7 +123,6 @@ class DomainTuple(object):
         of pixels in the requested space in res[1], and the remaining pixels in
         res[2].
         """
-        dims = (dom.dim for dom in self._dom)
         return (self._accdims[ispace],
                 self._accdims[ispace+1]//self._accdims[ispace],
                 self._accdims[-1]//self._accdims[ispace+1])

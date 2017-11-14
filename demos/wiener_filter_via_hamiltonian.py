@@ -50,7 +50,7 @@ if __name__ == "__main__":
     S = ift.create_power_operator(h_space, power_spectrum=p_spec)
 
     # Drawing a sample sh from the prior distribution in harmonic space
-    sp = ift.Field(p_space, ift.dobj.from_global_data(p_spec(p_space.k_lengths)))
+    sp = ift.PS_field(p_space, p_spec)
     sh = ift.power_synthesize(sp, real_signal=True)
     ss = fft.adjoint_times(sh)
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
     diag = np.ones(s_space.shape)
     diag[20:80, 20:80] = 0
-    diag = ift.Field(s_space,ift.dobj.from_global_data(diag))
+    diag = ift.Field(s_space, ift.dobj.from_global_data(diag))
     Instrument = ift.DiagonalOperator(diag)
 
     # Adding a harmonic transformation to the instrument

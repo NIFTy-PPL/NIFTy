@@ -69,8 +69,8 @@ class PowerProjectionOperator(LinearOperator):
         lastaxis = x.domain.axes[self._space][-1]
         presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
         postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
-        arr = arr.reshape((presize,pindex.size,postsize))
-        oarr = np.zeros((presize,self._target[self._space].shape[0],postsize), dtype=x.dtype)
+        arr = arr.reshape((presize, pindex.size, postsize))
+        oarr = np.zeros((presize, self._target[self._space].shape[0], postsize), dtype=x.dtype)
         np.add.at(oarr, (slice(None), pindex.ravel(), slice(None)), arr)
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
             oarr = dobj.np_allreduce_sum(oarr)
@@ -78,7 +78,7 @@ class PowerProjectionOperator(LinearOperator):
             res = Field(self._target, dobj.from_global_data(oarr))
         else:
             oarr = oarr.reshape(dobj.local_shape(self._target.shape, dobj.distaxis(x.val)))
-            res = Field(self._target, dobj.from_local_data(self._target.shape,oarr,dobj.default_distaxis()))
+            res = Field(self._target, dobj.from_local_data(self._target.shape, oarr, dobj.default_distaxis()))
         return res.weight(-1, spaces=self._space)
 
     def _adjoint_times(self, x):
@@ -95,8 +95,8 @@ class PowerProjectionOperator(LinearOperator):
         lastaxis = x.domain.axes[self._space][-1]
         presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
         postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
-        arr = arr.reshape((presize,self._target[self._space].shape[0],postsize))
-        oarr = dobj.local_data(res.val).reshape((presize,pindex.size,postsize))
+        arr = arr.reshape((presize, self._target[self._space].shape[0], postsize))
+        oarr = dobj.local_data(res.val).reshape((presize, pindex.size, postsize))
         oarr[()] = arr[(slice(None), pindex.ravel(), slice(None))]
         return res
 

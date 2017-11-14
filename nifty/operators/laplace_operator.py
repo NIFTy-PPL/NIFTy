@@ -110,7 +110,7 @@ class LaplaceOperator(EndomorphicOperator):
         ret[prefix + (slice(None, 2),)] = 0.
         ret[prefix + (-1,)] = 0.
         ret = dobj.from_local_data(locval.shape, ret, dobj.distaxis(locval))
-        if dobj.distaxis(locval)!=dobj.distaxis(x.val):
+        if dobj.distaxis(locval) != dobj.distaxis(x.val):
             ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
         return Field(self.domain, val=ret).weight(-0.5, spaces=self._space)
 
@@ -126,7 +126,7 @@ class LaplaceOperator(EndomorphicOperator):
         yf = x.weight(0.5, spaces=self._space).val
         if axis == dobj.distaxis(yf):
             yf = dobj.redistribute(yf, nodist=(axis,))
-        y=dobj.local_data(yf)
+        y = dobj.local_data(yf)
         y /= np.sqrt(dposc)
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
@@ -136,6 +136,6 @@ class LaplaceOperator(EndomorphicOperator):
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
         ret = dobj.from_local_data(x.shape, ret, dobj.distaxis(yf))
-        if dobj.distaxis(yf)!= dobj.distaxis(x.val):
+        if dobj.distaxis(yf) != dobj.distaxis(x.val):
             ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
         return Field(self.domain, val=ret).weight(-1, spaces=self._space)
