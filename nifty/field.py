@@ -313,8 +313,7 @@ class Field(object):
                 new_shape[self.domain.axes[ind][0]:
                           self.domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
-                # FIXME only temporary
-                if ind == 0:
+                if ind == 0:  # we need to distribute the weights along axis 0
                     wgt = dobj.local_data(dobj.from_global_data(wgt))
                 out *= wgt**power
         fct = fct**power

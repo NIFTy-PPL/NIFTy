@@ -50,54 +50,45 @@ class PowerProjectionOperator(LinearOperator):
         tgt[self._space] = power_space
         self._target = DomainTuple.make(tgt)
 
-# shopping list:
-# 1) make sure that pindex is distributed in the same way as in the Field living on self.domain.
-# 2) if the operated-on space is not distributed (i.e. if it is not space 0), _no_ further communication is necessary
-
-    def _times(self, x):
-        # harmonic field goes in
-        # pindex must be distributed in the same way as harmonic field
-        # power field must be available in full
         pindex = self._target[self._space].pindex
-        if dobj.distaxis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
+        if dobj.default_distaxis() in self.domain.axes[self._space]:
             pindex = dobj.local_data(pindex)
         else:  # pindex must be available fully on every task
             pindex = dobj.to_global_data(pindex)
-        pindex.reshape((1, pindex.size, 1))
+        self._pindex = pindex.ravel()
+        firstaxis = self._domain.axes[self._space][0]
+        lastaxis = self._domain.axes[self._space][-1]
+        arrshape = dobj.local_shape(self._domain.shape, 0)
+        presize = np.prod(arrshape[0:firstaxis], dtype=np.int)
+        postsize = np.prod(arrshape[lastaxis+1:], dtype=np.int)
+        self._hshape = (presize, self._target[self._space].shape[0], postsize)
+        self._pshape = (presize, self._pindex.size, postsize)
+
+    def _times(self, x):
         arr = dobj.local_data(x.weight(1).val)
-        firstaxis = x.domain.axes[self._space][0]
-        lastaxis = x.domain.axes[self._space][-1]
-        presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
-        postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
-        arr = arr.reshape((presize, pindex.size, postsize))
-        oarr = np.zeros((presize, self._target[self._space].shape[0], postsize), dtype=x.dtype)
-        np.add.at(oarr, (slice(None), pindex.ravel(), slice(None)), arr)
+        arr = arr.reshape(self._pshape)
+        oarr = np.zeros(self._hshape, dtype=x.dtype)
+        np.add.at(oarr, (slice(None), self._pindex, slice(None)), arr)
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
-            oarr = dobj.np_allreduce_sum(oarr)
-            oarr = oarr.reshape(self._target.shape)
+            oarr = dobj.np_allreduce_sum(oarr).reshape(self._target.shape)
             res = Field(self._target, dobj.from_global_data(oarr))
         else:
-            oarr = oarr.reshape(dobj.local_shape(self._target.shape, dobj.distaxis(x.val)))
-            res = Field(self._target, dobj.from_local_data(self._target.shape, oarr, dobj.default_distaxis()))
+            oarr = oarr.reshape(dobj.local_shape(self._target.shape,
+                                                 dobj.distaxis(x.val)))
+            res = Field(self._target,
+                        dobj.from_local_data(self._target.shape, oarr,
+                                             dobj.default_distaxis()))
         return res.weight(-1, spaces=self._space)
 
     def _adjoint_times(self, x):
-        pindex = self._target[self._space].pindex
         res = Field.empty(self._domain, dtype=x.dtype)
-        if dobj.distaxis(x.val) in x.domain.axes[self._space]:  # the distributed axis is part of the projected space
-            pindex = dobj.local_data(pindex)
+        if dobj.distaxis(x.val) in x.domain.axes[self._space]:
             arr = dobj.to_global_data(x.val)
         else:
-            pindex = dobj.to_global_data(pindex)
             arr = dobj.local_data(x.val)
-        pindex = pindex.reshape((1, pindex.size, 1))
-        firstaxis = x.domain.axes[self._space][0]
-        lastaxis = x.domain.axes[self._space][-1]
-        presize = np.prod(arr.shape[0:firstaxis], dtype=np.int)
-        postsize = np.prod(arr.shape[lastaxis+1:], dtype=np.int)
-        arr = arr.reshape((presize, self._target[self._space].shape[0], postsize))
-        oarr = dobj.local_data(res.val).reshape((presize, pindex.size, postsize))
-        oarr[()] = arr[(slice(None), pindex.ravel(), slice(None))]
+        arr = arr.reshape(self._hshape)
+        oarr = dobj.local_data(res.val).reshape(self._pshape)
+        oarr[()] = arr[(slice(None), self._pindex, slice(None))]
         return res
 
     @property

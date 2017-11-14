@@ -95,38 +95,42 @@ class DiagonalOperator(EndomorphicOperator):
             if self._spaces == tuple(range(len(self._domain.domains))):
                 self._spaces = None  # shortcut
 
+        self._diagonal = diagonal.copy()
+
         if self._spaces is not None:
             active_axes = []
             for space_index in self._spaces:
                 active_axes += self._domain.axes[space_index]
 
+            if self._spaces[0] == 0:
+                self._ldiag = dobj.local_data(self._diagonal.val)
+            else:
+                self._ldiag = dobj.to_global_data(self._diagonal.val)
+            locshape = dobj.local_shape(self._domain.shape, 0)
             self._reshaper = [shp if i in active_axes else 1
-                              for i, shp in enumerate(self._domain.shape)]
+                              for i, shp in enumerate(locshape)]
+            self._ldiag = self._ldiag.reshape(self._reshaper)
 
-        self._diagonal = diagonal.copy()
+        else:
+            self._ldiag = dobj.local_data(self._diagonal.val)
+
         self._self_adjoint = None
         self._unitary = None
 
     def _times(self, x):
-        return self._times_helper(x, self._diagonal)
+        return Field(x.domain, val=x.val*self._ldiag)
 
     def _adjoint_times(self, x):
-        return self._times_helper(x, self._diagonal.conj())
+        return Field(x.domain, val=x.val*self._ldiag.conj())
 
     def _inverse_times(self, x):
-        return self._times_helper(x, 1./self._diagonal)
+        return Field(x.domain, val=x.val/self._ldiag)
 
     def _adjoint_inverse_times(self, x):
-        return self._times_helper(x, 1./self._diagonal.conj())
+        return Field(x.domain, val=x.val/self._ldiag.conj())
 
     def diagonal(self):
-        """ Returns the diagonal of the Operator.
-
-        Returns
-        -------
-        out : Field
-            The diagonal of the Operator.
-        """
+        """ Returns the diagonal of the Operator."""
         return self._diagonal.copy()
 
     @property
@@ -147,12 +151,3 @@ class DiagonalOperator(EndomorphicOperator):
         if self._unitary is None:
             self._unitary = (abs(self._diagonal.val) == 1.).all()
         return self._unitary
-
-    def _times_helper(self, x, diag):
-        if self._spaces is None:
-            return diag*x
-
-        reshaped_local_diagonal = np.reshape(dobj.to_global_data(diag.val), self._reshaper)
-        if 0 in self._spaces:
-            reshaped_local_diagonal = dobj.local_data(dobj.from_global_data(reshaped_local_diagonal))
-        return Field(x.domain, val=x.val*reshaped_local_diagonal)
