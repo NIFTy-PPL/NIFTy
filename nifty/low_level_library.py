@@ -48,7 +48,7 @@ if not special_hartley:
 
     def _fill_array(tmp, res, axes):
         if axes is None:
-            axes = range(a.ndim)
+            axes = range(tmp.ndim)
         lastaxis = axes[-1]
         ntmplast = tmp.shape[lastaxis]
         slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
@@ -60,7 +60,7 @@ def hartley(a, axes=None):
     # Check if the axes provided are valid given the shape
     if axes is not None and \
             not all(axis < len(a.shape) for axis in axes):
-        raise ValueError("Provided axes does not match array shape")
+        raise ValueError("Provided axes do not match array shape")
     if issubclass(a.dtype.type, np.complexfloating):
         raise TypeError("Hartley tansform requires real-valued arrays.")
 
