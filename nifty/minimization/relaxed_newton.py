@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .descent_minimizer import DescentMinimizer
-from .line_searching import LineSearchStrongWolfe
+from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class RelaxedNewton(DescentMinimizer):

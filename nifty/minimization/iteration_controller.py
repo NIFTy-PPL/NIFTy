@@ -18,7 +18,7 @@
 
 from builtins import range
 import abc
-from ...utilities import NiftyMeta
+from ..utilities import NiftyMeta
 from future.utils import with_metaclass
 
 

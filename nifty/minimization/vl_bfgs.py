@@ -21,7 +21,7 @@ from builtins import range
 from builtins import object
 import numpy as np
 from .descent_minimizer import DescentMinimizer
-from .line_searching import LineSearchStrongWolfe
+from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class VL_BFGS(DescentMinimizer):

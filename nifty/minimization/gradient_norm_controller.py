@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .iteration_controller import IterationController
-from ... import dobj
+from .. import dobj
 
 
 class GradientNormController(IterationController):

@@ -19,7 +19,7 @@
 from __future__ import division
 import abc
 from .minimizer import Minimizer
-from .line_searching import LineSearchStrongWolfe
+from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class DescentMinimizer(Minimizer):

@@ -18,7 +18,7 @@
 
 from __future__ import division
 from .minimizer import Minimizer
-from .line_searching import LineSearchStrongWolfe
+from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class NonlinearCG(Minimizer):

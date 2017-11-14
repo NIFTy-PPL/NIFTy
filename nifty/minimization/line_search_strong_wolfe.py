@@ -20,8 +20,8 @@ from __future__ import division
 from builtins import range
 import numpy as np
 from .line_search import LineSearch
-from ...energies import LineEnergy
-from ... import dobj
+from ..energies import LineEnergy
+from .. import dobj
 
 
 class LineSearchStrongWolfe(LineSearch):
