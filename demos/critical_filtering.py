@@ -59,7 +59,7 @@ if __name__ == "__main__":
     S = ift.create_power_operator(h_space, power_spectrum=p_spec)
 
     # Draw a sample sh from the prior distribution in harmonic space
-    sp = ift.Field(p_space,  val=p_spec(p_space.k_lengths))
+    sp = ift.PS_field(p_space, p_spec)
     sh = ift.power_synthesize(sp, real_signal=True)
 
     # Choose the measurement instrument

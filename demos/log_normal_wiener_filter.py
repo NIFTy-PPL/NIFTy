@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     # Creating the mock signal |\label{code:wf_mock_signal}|
     S = ift.create_power_operator(harmonic_space, power_spectrum=power_spectrum)
-    mock_power = ift.Field(power_space, val=power_spectrum(power_space.k_lengths))
+    mock_power = ift.PS_field(power_space, power_spectrum)
     mock_signal = fft(ift.power_synthesize(mock_power, real_signal=True))
 
     # Setting up an exemplary response

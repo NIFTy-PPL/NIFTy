@@ -23,7 +23,7 @@ def _shareRange(nwork, nshares, myshare):
     nbase = nwork//nshares
     additional = nwork % nshares
     lo = myshare*nbase + min(myshare, additional)
-    hi = lo + nbase + int(myshare<additional)
+    hi = lo + nbase + int(myshare < additional)
     return lo, hi
 
 
@@ -408,15 +408,15 @@ def redistribute(arr, dist=None, nodist=None):
         ofs = 0
         for i in range(ntask):
             lo, hi = _shareRange(arr.shape[dist], ntask, i)
-            sslice[dist] = slice(lo,hi)
+            sslice[dist] = slice(lo, hi)
             ssz[i] = ssz0*(hi-lo)
             sbuf[ofs:ofs+ssz[i]] = arr._data[sslice].flat
             ofs += ssz[i]
             rsz[i] = rsz0*_shareSize(arr.shape[arr._distaxis], ntask, i)
     ssz *= arr._data.itemsize
     rsz *= arr._data.itemsize
-    sdisp = np.append (0, np.cumsum(ssz[:-1]))
-    rdisp = np.append (0, np.cumsum(rsz[:-1]))
+    sdisp = np.append(0, np.cumsum(ssz[:-1]))
+    rdisp = np.append(0, np.cumsum(rsz[:-1]))
     s_msg = [sbuf, (ssz, sdisp), MPI.BYTE]
     r_msg = [rbuf, (rsz, rdisp), MPI.BYTE]
     _comm.Alltoallv(s_msg, r_msg)
@@ -430,7 +430,7 @@ def redistribute(arr, dist=None, nodist=None):
         ofs = 0
         for i in range(ntask):
             lo, hi = _shareRange(arr.shape[arr._distaxis], ntask, i)
-            rslice[arr._distaxis] = slice(lo,hi)
+            rslice[arr._distaxis] = slice(lo, hi)
             sz = rsz[i]//arr._data.itemsize
             arrnew._data[rslice].flat = rbuf[ofs:ofs+sz]
             ofs += sz

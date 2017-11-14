@@ -4,6 +4,7 @@ import numpy as np
 
 np.random.seed(42)
 
+
 class DiagonalProber(ift.DiagonalProberMixin, ift.Prober):
     pass
 

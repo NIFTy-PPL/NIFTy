@@ -29,7 +29,8 @@ from . import Space,\
 from . import nifty_utilities as utilities
 from . import dobj
 
-__all__ = ['power_analyze',
+__all__ = ['PS_field',
+           'power_analyze',
            'power_synthesize',
            'power_synthesize_special',
            'create_power_field',
@@ -37,6 +38,12 @@ __all__ = ['power_analyze',
            'generate_posterior_sample',
            'create_composed_fft_operator']
 
+
+def PS_field(pspace, func, dtype=None):
+    if not isinstance(pspace, PowerSpace):
+        raise TypeError
+    data = dobj.from_global_data(func(pspace.k_lengths))
+    return Field(pspace, val=data, dtype=dtype)
 
 def _single_power_analyze(field, idx, binbounds):
     from .operators.power_projection_operator import PowerProjectionOperator
@@ -223,9 +230,7 @@ def create_power_field(domain, power_spectrum, dtype=None):
         fp = Field(power_domain, val=power_spectrum.val, dtype=dtype)
     else:
         power_domain = PowerSpace(domain)
-        fp = Field(power_domain,
-                   val=dobj.from_global_data(power_spectrum(power_domain.k_lengths)),
-                   dtype=dtype)
+        fp = PS_field(power_domain, power_spectrum, dtype)
     P = PowerProjectionOperator(domain, power_domain)
     f = P.adjoint_times(fp)
 
