@@ -16,13 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import print_function
 from __future__ import division
 from builtins import range
 import numpy as np
 
 from .line_search import LineSearch
 from ...energies import LineEnergy
+from ... import dobj
 
 
 class LineSearchStrongWolfe(LineSearch):
@@ -164,7 +164,7 @@ class LineSearchStrongWolfe(LineSearch):
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
         else:
-            print("max iterations reached")
+            dobj.mprint("max iterations reached")
             return le_alpha1.energy
         return result_energy
 
@@ -261,7 +261,7 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            print("The line search algorithm (zoom) did not converge.")
+            dobj.mprint("The line search algorithm (zoom) did not converge.")
             return le_alphaj
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):

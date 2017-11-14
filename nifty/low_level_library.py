@@ -56,6 +56,7 @@ if not special_hartley:
         _fill_upper_half(tmp, res, axes)
         return res
 
+
 def hartley(a, axes=None):
     # Check if the axes provided are valid given the shape
     if axes is not None and \
@@ -77,28 +78,28 @@ def hartley(a, axes=None):
 if use_numba:
     from numba import complex128 as ncplx, float64 as nflt, vectorize as nvct
 
-    @nvct([nflt(nflt,nflt,nflt), ncplx(nflt,ncplx,ncplx)], nopython=True,
+    @nvct([nflt(nflt, nflt, nflt), ncplx(nflt, ncplx, ncplx)], nopython=True,
           target="cpu")
     def _general_axpy(a, x, y):
         return a*x + y
 
     def general_axpy(a, x, y, out):
         if x.domain != y.domain or x.domain != out.domain:
-            raise ValueError ("Incompatible domains")
+            raise ValueError("Incompatible domains")
         return _general_axpy(a, x.val, y.val, out.val)
 
 else:
 
-    def general_axpy(a,x,y,out):
+    def general_axpy(a, x, y, out):
         if x.domain != y.domain or x.domain != out.domain:
-            raise ValueError ("Incompatible domains")
+            raise ValueError("Incompatible domains")
 
         if out is x:
             if a != 1.:
-                out*=a
+                out *= a
             out += y
         elif out is y:
-            if a!=1.:
+            if a != 1.:
                 out += a*x
             else:
                 out += x

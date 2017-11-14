@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
-import numpy as np
 from .field import Field
 from . import dobj
 
@@ -29,7 +28,7 @@ def _math_helper(x, function, out):
     if not isinstance(x, Field):
         raise TypeError("This function only accepts Field objects.")
     if out is not None:
-        if not isinstance(out, Field) or x.domain!=out.domain:
+        if not isinstance(out, Field) or x.domain != out.domain:
             raise ValueError("Bad 'out' argument")
         function(x.val, out=out.val)
         return out

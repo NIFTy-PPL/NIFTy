@@ -18,7 +18,6 @@
 
 from builtins import range
 from .linear_operator import LinearOperator
-from .. import DomainTuple
 
 
 class ComposedOperator(LinearOperator):
