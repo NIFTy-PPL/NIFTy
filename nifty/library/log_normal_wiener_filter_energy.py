@@ -1,8 +1,9 @@
-from ...minimization.energy import Energy
-from ...utilities import memo
-from . import LogNormalWienerFilterCurvature
-from ...sugar import create_composed_fft_operator
-from ...operators.inversion_enabler import InversionEnabler
+from ..minimization.energy import Energy
+from ..utilities import memo
+from .log_normal_wiener_filter_curvature import LogNormalWienerFilterCurvature
+from ..sugar import create_composed_fft_operator
+from ..operators.inversion_enabler import InversionEnabler
+
 
 class LogNormalWienerFilterEnergy(Energy):
     """The Energy for the log-normal Wiener filter.

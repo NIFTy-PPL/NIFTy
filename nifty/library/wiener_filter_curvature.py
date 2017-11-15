@@ -1,4 +1,4 @@
-from ...operators import EndomorphicOperator
+from ..operators import EndomorphicOperator
 
 
 class WienerFilterCurvature(EndomorphicOperator):

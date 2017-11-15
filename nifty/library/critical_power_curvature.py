@@ -1,5 +1,5 @@
-from ...operators.endomorphic_operator import EndomorphicOperator
-from ...operators.diagonal_operator import DiagonalOperator
+from ..operators.endomorphic_operator import EndomorphicOperator
+from ..operators.diagonal_operator import DiagonalOperator
 
 
 class CriticalPowerCurvature(EndomorphicOperator):

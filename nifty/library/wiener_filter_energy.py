@@ -1,7 +1,7 @@
-from ...minimization.energy import Energy
-from ...utilities import memo
-from ...operators.inversion_enabler import InversionEnabler
-from . import WienerFilterCurvature
+from ..minimization.energy import Energy
+from ..utilities import memo
+from ..operators.inversion_enabler import InversionEnabler
+from .wiener_filter_curvature import WienerFilterCurvature
 
 
 class WienerFilterEnergy(Energy):

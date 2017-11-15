@@ -1,11 +1,11 @@
-from ...minimization.energy import Energy
-from ...operators.smoothness_operator import SmoothnessOperator
-from ...operators.power_projection_operator import PowerProjectionOperator
-from ...operators.inversion_enabler import InversionEnabler
-from . import CriticalPowerCurvature
-from ...utilities import memo
-from ... import Field, exp
-from ...sugar import generate_posterior_sample
+from ..minimization.energy import Energy
+from ..operators.smoothness_operator import SmoothnessOperator
+from ..operators.power_projection_operator import PowerProjectionOperator
+from ..operators.inversion_enabler import InversionEnabler
+from .critical_power_curvature import CriticalPowerCurvature
+from ..utilities import memo
+from .. import Field, exp
+from ..sugar import generate_posterior_sample
 
 
 class CriticalPowerEnergy(Energy):
