@@ -19,7 +19,6 @@
 from __future__ import division
 import numpy as np
 from .. import utilities
-from ..low_level_library import hartley
 from .. import dobj
 from ..field import Field
 from ..spaces.gl_space import GLSpace
@@ -68,7 +67,7 @@ class RGRGTransformation(Transformation):
             newax = dobj.distaxis(tmp)
             ldat = dobj.local_data(tmp)
             if len(axes) == 1:  # only one transform needed
-                ldat = hartley(ldat, axes=(oldax,))
+                ldat = utilities.hartley(ldat, axes=(oldax,))
                 tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=newax)
                 tmp = dobj.redistribute(tmp, dist=oldax)
             else:  # two separate transforms needed, "real" FFT required
@@ -82,7 +81,7 @@ class RGRGTransformation(Transformation):
                 tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=oldax)
         else:
             ldat = dobj.local_data(x.val)
-            ldat = hartley(ldat, axes=axes)
+            ldat = utilities.hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=oldax)
         Tval = Field(tdom, tmp)
         fct = self.fct_p2h if p2h else self.fct_h2p

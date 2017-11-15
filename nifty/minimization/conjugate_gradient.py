@@ -19,7 +19,7 @@
 from __future__ import division
 from .minimizer import Minimizer
 from .. import Field
-from ..low_level_library import general_axpy
+from ..utilities import general_axpy
 
 
 class ConjugateGradient(Minimizer):

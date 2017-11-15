@@ -122,3 +122,66 @@ class _DocStringInheritor(type):
 
 class NiftyMeta(_DocStringInheritor, abc.ABCMeta):
     pass
+
+
+def _fill_upper_half(tmp, res, axes):
+    lastaxis = axes[-1]
+    nlast = res.shape[lastaxis]
+    ntmplast = tmp.shape[lastaxis]
+    nrem = nlast - ntmplast
+    slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
+    slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
+    for i in axes[:-1]:
+        slice1[i] = slice(1, None)
+        slice2[i] = slice(None, 0, -1)
+    np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
+    for i, ax in enumerate(axes[:-1]):
+        dim1 = [slice(None)]*ax + [slice(0, 1)]
+        axes2 = axes[:i] + axes[i+1:]
+        _fill_upper_half(tmp[dim1], res[dim1], axes2)
+
+
+def _fill_array(tmp, res, axes):
+    if axes is None:
+        axes = range(tmp.ndim)
+    lastaxis = axes[-1]
+    ntmplast = tmp.shape[lastaxis]
+    slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
+    np.add(tmp.real, tmp.imag, out=res[slice1])
+    _fill_upper_half(tmp, res, axes)
+    return res
+
+
+def hartley(a, axes=None):
+    # Check if the axes provided are valid given the shape
+    if axes is not None and \
+            not all(axis < len(a.shape) for axis in axes):
+        raise ValueError("Provided axes do not match array shape")
+    if issubclass(a.dtype.type, np.complexfloating):
+        raise TypeError("Hartley tansform requires real-valued arrays.")
+
+    from pyfftw.interfaces.numpy_fft import rfftn
+    tmp = rfftn(a, axes=axes)
+    return _fill_array(tmp, np.empty_like(a), axes)
+
+
+def general_axpy(a, x, y, out):
+    if x.domain != y.domain or x.domain != out.domain:
+        raise ValueError("Incompatible domains")
+
+    if out is x:
+        if a != 1.:
+            out *= a
+        out += y
+    elif out is y:
+        if a != 1.:
+            out += a*x
+        else:
+            out += x
+    else:
+        out.copy_content_from(y)
+        if a != 1.:
+            out += a*x
+        else:
+            out += x
+    return out
