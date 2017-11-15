@@ -28,8 +28,8 @@ class SmoothnessOperator(EndomorphicOperator):
 
     def __init__(self, domain, strength=1., logarithmic=True, space=None):
         super(SmoothnessOperator, self).__init__()
-        self._laplace = LaplaceOperator(domain,
-                                        logarithmic=logarithmic, space=space)
+        self._laplace = LaplaceOperator(domain, logarithmic=logarithmic,
+                                        space=space)
 
         if strength <= 0:
             raise ValueError("ERROR: invalid sigma.")
@@ -48,11 +48,8 @@ class SmoothnessOperator(EndomorphicOperator):
         return False
 
     def _times(self, x):
-        if self._strength != 0:
-            result = self._laplace.adjoint_times(self._laplace(x))
-            result *= self._strength**2
-        else:
-            result = Field.zeros_like(x)
+        result = self._laplace.adjoint_times(self._laplace(x))
+        result *= self._strength**2
         return result
 
     @property

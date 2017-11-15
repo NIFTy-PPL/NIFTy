@@ -1,4 +1,4 @@
-from ...energies.energy import Energy
+from ...minimization.energy import Energy
 from ...utilities import memo
 from . import LogNormalWienerFilterCurvature
 from ...sugar import create_composed_fft_operator

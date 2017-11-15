@@ -1,4 +1,4 @@
-from ...energies.energy import Energy
+from ...minimization.energy import Energy
 from ...utilities import memo
 from ...operators.inversion_enabler import InversionEnabler
 from . import WienerFilterCurvature

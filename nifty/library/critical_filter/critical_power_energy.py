@@ -1,4 +1,4 @@
-from ...energies.energy import Energy
+from ...minimization.energy import Energy
 from ...operators.smoothness_operator import SmoothnessOperator
 from ...operators.power_projection_operator import PowerProjectionOperator
 from ...operators.inversion_enabler import InversionEnabler

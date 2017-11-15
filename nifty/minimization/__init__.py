@@ -9,3 +9,6 @@ from .descent_minimizer import DescentMinimizer
 from .steepest_descent import SteepestDescent
 from .vl_bfgs import VL_BFGS
 from .relaxed_newton import RelaxedNewton
+from .energy import Energy
+from .quadratic_energy import QuadraticEnergy
+from .line_energy import LineEnergy
