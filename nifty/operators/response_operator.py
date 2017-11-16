@@ -16,7 +16,7 @@ class ResponseOperator(LinearOperator):
 
     Parameters
     ----------
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    domain : tuple of DomainObjects
         The domains on which the operator lives. Either one space or a list
         of spaces
     sigma : list(np.float)
@@ -29,9 +29,9 @@ class ResponseOperator(LinearOperator):
 
     Attributes
     ----------
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    domain : DomainTuple
         The domain on which the Operator's input Field lives.
-    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    target : DomainTuple
         The domain in which the outcome of the operator lives.
     unitary : boolean
         Indicates whether the Operator is unitary or not.

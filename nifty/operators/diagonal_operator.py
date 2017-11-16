@@ -37,7 +37,7 @@ class DiagonalOperator(EndomorphicOperator):
     diagonal : Field
         The diagonal entries of the operator
         (already containing volume factors).
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    domain : tuple of DomainObjects
         The domain on which the Operator's input Field lives.
         If None, use the domain of "diagonal".
     spaces : tuple of int
@@ -46,9 +46,9 @@ class DiagonalOperator(EndomorphicOperator):
 
     Attributes
     ----------
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    domain : DomainTuple
         The domain on which the Operator's input Field lives.
-    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    target : DomainTuple
         The domain in which the outcome of the operator lives. As the Operator
         is endomorphic this is the same as its domain.
     unitary : boolean

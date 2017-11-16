@@ -16,11 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .field_type import FieldType
+from ..domain_object import DomainObject
 from functools import reduce
 
 
-class FieldArray(FieldType):
+class FieldArray(DomainObject):
     def __init__(self, shape):
         super(FieldArray, self).__init__()
         self._needed_for_hash += ["_shape"]
@@ -39,3 +39,6 @@ class FieldArray(FieldType):
     @property
     def dim(self):
         return reduce(lambda x, y: x*y, self.shape)
+
+    def scalar_dvol(self):
+        return 1.

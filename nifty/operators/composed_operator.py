@@ -33,9 +33,9 @@ class ComposedOperator(LinearOperator):
 
     Attributes
     ----------
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    domain : DomainTuple
         The NIFTy.space in which the operator is defined.
-    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    target : DomainTuple
         The NIFTy.space in which the outcome of the operator lives
     unitary : boolean
         Indicates whether the Operator is unitary or not.

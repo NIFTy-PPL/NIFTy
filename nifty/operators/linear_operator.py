@@ -33,9 +33,9 @@ class LinearOperator(with_metaclass(
 
     Attributes
     ----------
-    domain : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    domain : DomainTuple
         The domain on which the Operator's input Field lives.
-    target : tuple of DomainObjects, i.e. Spaces and FieldTypes
+    target : DomainTuple
         The domain in which the Operators result lives.
     unitary : boolean
         Indicates whether the Operator is unitary or not.
