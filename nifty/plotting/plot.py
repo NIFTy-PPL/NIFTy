@@ -16,8 +16,7 @@ import os
 def _mollweide_helper(xsize):
     xsize = int(xsize)
     ysize = xsize//2
-    res = np.full(shape=(ysize, xsize), fill_value=np.nan,
-                  dtype=np.float64)
+    res = np.full(shape=(ysize, xsize), fill_value=np.nan, dtype=np.float64)
     xc = (xsize-1)*0.5
     yc = (ysize-1)*0.5
     u, v = np.meshgrid(np.arange(xsize), np.arange(ysize))

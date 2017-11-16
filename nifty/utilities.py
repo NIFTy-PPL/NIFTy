@@ -143,7 +143,7 @@ def _fill_upper_half(tmp, res, axes):
 
 def _fill_array(tmp, res, axes):
     if axes is None:
-        axes = range(tmp.ndim)
+        axes = tuple(range(tmp.ndim))
     lastaxis = axes[-1]
     ntmplast = tmp.shape[lastaxis]
     slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
