@@ -121,7 +121,6 @@ def power_analyze(field, spaces=None, binbounds=None,
 
 def _compute_spec(field, spaces):
     from .operators.power_projection_operator import PowerProjectionOperator
-    from .basic_arithmetics import sqrt
     if spaces is None:
         spaces = range(len(field.domain))
     else:

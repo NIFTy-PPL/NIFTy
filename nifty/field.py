@@ -24,6 +24,8 @@ from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
 
+__all__ = ["Field", "sqrt", "exp", "log", "conjugate"]
+
 
 class Field(object):
     """ The discrete representation of a continuous field over multiple spaces.
@@ -524,3 +526,33 @@ class Field(object):
                "\n- val         = " + repr(self.val) + \
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)
+
+
+# Arithmetic functions working on Fields
+
+def _math_helper(x, function, out):
+    if not isinstance(x, Field):
+        raise TypeError("This function only accepts Field objects.")
+    if out is not None:
+        if not isinstance(out, Field) or x.domain != out.domain:
+            raise ValueError("Bad 'out' argument")
+        function(x.val, out=out.val)
+        return out
+    else:
+        return Field(domain=x.domain, val=function(x.val))
+
+
+def sqrt(x, out=None):
+    return _math_helper(x, dobj.sqrt, out)
+
+
+def exp(x, out=None):
+    return _math_helper(x, dobj.exp, out)
+
+
+def log(x, out=None):
+    return _math_helper(x, dobj.log, out)
+
+
+def conjugate(x, out=None):
+    return _math_helper(x, dobj.conjugate, out)

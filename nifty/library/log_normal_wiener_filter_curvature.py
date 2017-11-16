@@ -1,6 +1,6 @@
 from ..operators import EndomorphicOperator
 from ..utilities import memo
-from ..basic_arithmetics import exp
+from ..field import exp
 from ..sugar import create_composed_fft_operator
 
 

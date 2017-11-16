@@ -19,8 +19,7 @@
 from __future__ import division
 import numpy as np
 from .space import Space
-from .. import Field
-from ..basic_arithmetics import exp
+from ..field import Field, exp
 from .. import dobj
 
 

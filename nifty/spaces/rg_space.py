@@ -21,8 +21,7 @@ from builtins import range
 from functools import reduce
 import numpy as np
 from .space import Space
-from .. import Field
-from ..basic_arithmetics import exp
+from ..field import Field, exp
 from .. import dobj
 
 
