@@ -101,7 +101,7 @@ In oder to run the tests one needs two additional packages:
 Afterwards the tests (including a coverage report) are run using the following
 command in the repository root:
 
-    nosetests --exe --cover-html
+    nosetests -x --with-coverage --cover-html --cover-package=nifty2go
 
 
 ### First Steps
