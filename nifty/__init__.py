@@ -4,7 +4,6 @@ from .field import *
 from .domain_tuple import DomainTuple
 from .domain_object import DomainObject
 from .utilities import *
-from .field_types import *
 from .minimization import *
 from .spaces import *
 from .operators import *

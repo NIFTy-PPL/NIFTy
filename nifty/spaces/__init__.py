@@ -4,3 +4,4 @@ from .lm_space import LMSpace
 from .power_space import PowerSpace
 from .rg_space import RGSpace
 from .space import Space
+from .field_array import FieldArray
