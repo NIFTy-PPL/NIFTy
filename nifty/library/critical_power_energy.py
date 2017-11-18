@@ -116,9 +116,8 @@ class CriticalPowerEnergy(Energy):
                 w = Field.zeros(self.position.domain, dtype=self.m.dtype)
                 for i in range(self.samples):
                     # self.logger.info("Drawing sample %i" % i)
-                    posterior_sample = generate_posterior_sample(
-                                                            self.m, self.D)
-                    w += self.P(abs(posterior_sample)**2)
+                    sample = generate_posterior_sample(self.m, self.D)
+                    w += self.P(abs(sample)**2)
 
                 w *= 1./self.samples
             else:

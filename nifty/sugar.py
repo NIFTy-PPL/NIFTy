@@ -289,7 +289,6 @@ def generate_posterior_sample(mean, covariance):
     -------
     sample : Field
         Returns the a sample from the Gaussian of given mean and covariance.
-
     """
 
     S = covariance.op.S
