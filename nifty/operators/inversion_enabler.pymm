@@ -50,12 +50,13 @@ class InversionEnabler(LinearOperator):
 
     def _operation(self, x, o1, o2, tdom):
         try:
-            return o1(x)
+            res = o1(x)
         except NotImplementedError:
             x0 = Field.zeros(tdom, dtype=x.dtype)
             energy = QuadraticEnergy(A=o2, b=x, position=x0)
             r = self._inverter(energy, preconditioner=self._preconditioner)[0]
-            return r.position
+            res = r.position
+        return res
 
     def _times(self, x):
         return self._operation(x, self._op._times,

@@ -91,7 +91,8 @@ class RGRGTransformation(Transformation):
                 if True:
                     if oldax != 0:
                         raise ValueError("bad distribution")
-                    ldat2 = ldat.reshape((ldat.shape[0],-1))
+                    ldat2 = ldat.reshape((ldat.shape[0],
+                                          np.prod(ldat.shape[1:])))
                     shp2d = (x.val.shape[0], np.prod(x.val.shape[1:]))
                     tmp = dobj.from_local_data(shp2d, ldat2, distaxis=0)
                     tmp = dobj.transpose(tmp)

@@ -18,12 +18,10 @@ class CriticalPowerCurvature(EndomorphicOperator):
         The smoothness prior contribution to the curvature.
     """
 
-    # ---Overwritten properties and methods---
-
     def __init__(self, theta, T):
+        super(CriticalPowerCurvature, self).__init__()
         self.theta = DiagonalOperator(theta)
         self.T = T
-        super(CriticalPowerCurvature, self).__init__()
 
     @property
     def preconditioner(self):
@@ -31,8 +29,6 @@ class CriticalPowerCurvature(EndomorphicOperator):
 
     def _times(self, x):
         return self.T(x) + self.theta(x)
-
-    # ---Mandatory properties and methods---
 
     @property
     def domain(self):

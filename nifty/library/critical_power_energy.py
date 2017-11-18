@@ -21,7 +21,7 @@ class CriticalPowerEnergy(Energy):
     position : Field,
         The current position of this energy.
     m : Field,
-        The map whichs power spectrum has to be inferred
+        The map whose power spectrum has to be inferred
     D : EndomorphicOperator,
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.
@@ -100,8 +100,7 @@ class CriticalPowerEnergy(Energy):
     @memo
     def curvature(self):
         curv = CriticalPowerCurvature(theta=self._theta, T=self.T)
-        return InversionEnabler(curv, inverter=self._inverter,
-                                preconditioner=curv.preconditioner)
+        return InversionEnabler(curv, inverter=self._inverter)
 
     # ---Added properties and methods---
 

@@ -438,7 +438,7 @@ def redistribute(arr, dist=None, nodist=None):
 
 def transpose(arr):
     if len(arr.shape) != 2 or arr._distaxis != 0:
-       raise ValueError("bad input")
+        raise ValueError("bad input")
     ssz0 = arr._data.size//arr.shape[1]
     ssz = np.empty(ntask, dtype=np.int)
     rszall = arr.size//arr.shape[1]*_shareSize(arr.shape[1], ntask, rank)
@@ -450,7 +450,7 @@ def transpose(arr):
     for i in range(ntask):
         lo, hi = _shareRange(arr.shape[1], ntask, i)
         ssz[i] = ssz0*(hi-lo)
-        sbuf[ofs:ofs+ssz[i]] = arr._data[:,lo:hi].flat
+        sbuf[ofs:ofs+ssz[i]] = arr._data[:, lo:hi].flat
         ofs += ssz[i]
         rsz[i] = rsz0*_shareSize(arr.shape[0], ntask, i)
     ssz *= arr._data.itemsize
@@ -463,10 +463,11 @@ def transpose(arr):
     del sbuf  # free memory
     arrnew = empty((arr.shape[1], arr.shape[0]), dtype=arr.dtype, distaxis=0)
     ofs = 0
+    sz2 = _shareSize(arr.shape[1], ntask, rank)
     for i in range(ntask):
         lo, hi = _shareRange(arr.shape[0], ntask, i)
         sz = rsz[i]//arr._data.itemsize
-        arrnew._data[:,lo:hi] = rbuf[ofs:ofs+sz].reshape(hi-lo,-1).T
+        arrnew._data[:, lo:hi] = rbuf[ofs:ofs+sz].reshape(hi-lo, sz2).T
         ofs += sz
     return arrnew
 
