@@ -52,8 +52,6 @@ class CriticalPowerEnergy(Energy):
         default : None
     """
 
-    # ---Overwritten properties and methods---
-
     def __init__(self, position, m, D=None, alpha=1.0, q=0.,
                  smoothness_prior=0., logarithmic=True, samples=3, w=None,
                  inverter=None):
@@ -61,8 +59,8 @@ class CriticalPowerEnergy(Energy):
         self.m = m
         self.D = D
         self.samples = samples
-        self.alpha = Field(self.position.domain, val=alpha)
-        self.q = Field(self.position.domain, val=q)
+        self.alpha = float(alpha)
+        self.q = float(q)
         self.T = SmoothnessOperator(domain=self.position.domain[0],
                                     strength=smoothness_prior,
                                     logarithmic=logarithmic)
@@ -70,8 +68,6 @@ class CriticalPowerEnergy(Energy):
                                          power_space=self.position.domain[0])
         self._w = w
         self._inverter = inverter
-
-    # ---Mandatory properties and methods---
 
     def at(self, position):
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
@@ -83,9 +79,9 @@ class CriticalPowerEnergy(Energy):
     @property
     @memo
     def value(self):
-        energy = Field.ones_like(self.position).vdot(self._theta)
-        energy += self.position.vdot(self.alpha-0.5)
-        energy += 0.5 * self.position.vdot(self._Tt)
+        energy = self._theta.integrate()
+        energy += self.position.integrate()*(self.alpha-0.5)
+        energy += 0.5*self.position.vdot(self._Tt)
         return energy.real
 
     @property
@@ -116,15 +112,15 @@ class CriticalPowerEnergy(Energy):
     def w(self):
         if self._w is None:
             # self.logger.info("Initializing w")
-            w = Field(domain=self.position.domain, val=0., dtype=self.m.dtype)
             if self.D is not None:
+                w = Field.zeros(self.position.domain, dtype=self.m.dtype)
                 for i in range(self.samples):
                     # self.logger.info("Drawing sample %i" % i)
                     posterior_sample = generate_posterior_sample(
                                                             self.m, self.D)
-                    w += self.P(abs(posterior_sample) ** 2)
+                    w += self.P(abs(posterior_sample)**2)
 
-                w /= float(self.samples)
+                w *= 1./self.samples
             else:
                 w = self.P(abs(self.m)**2)
             self._w = w
@@ -133,7 +129,7 @@ class CriticalPowerEnergy(Energy):
     @property
     @memo
     def _theta(self):
-        return exp(-self.position) * (self.q + self.w / 2.)
+        return exp(-self.position) * (self.q + self.w*0.5)
 
     @property
     @memo

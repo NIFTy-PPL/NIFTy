@@ -22,20 +22,13 @@ class LogNormalWienerFilterCurvature(EndomorphicOperator):
        The prior signal covariance
     """
 
-    def __init__(self, R, N, S, d, position, fft4exp=None):
+    def __init__(self, R, N, S, position, fft4exp):
+        super(LogNormalWienerFilterCurvature, self).__init__()
         self.R = R
         self.N = N
         self.S = S
-        self.d = d
         self.position = position
-
-        if fft4exp is None:
-            self._fft = create_composed_fft_operator(self.domain,
-                                                     all_to='position')
-        else:
-            self._fft = fft4exp
-
-        super(LogNormalWienerFilterCurvature, self).__init__()
+        self._fft = fft4exp
 
     @property
     def domain(self):
@@ -51,33 +44,14 @@ class LogNormalWienerFilterCurvature(EndomorphicOperator):
 
     def _times(self, x):
         part1 = self.S.inverse_times(x)
-        # part2 = self._exppRNRexppd * x
         part3 = self._fft.adjoint_times(self._expp_sspace * self._fft(x))
         part3 = self._fft.adjoint_times(
                     self._expp_sspace *
                     self._fft(self.R.adjoint_times(
                                 self.N.inverse_times(self.R(part3)))))
-        return part1 + part3  # + part2
+        return part1 + part3
 
     @property
     @memo
     def _expp_sspace(self):
         return exp(self._fft(self.position))
-
-    @property
-    @memo
-    def _Rexppd(self):
-        expp = self._fft.adjoint_times(self._expp_sspace)
-        return self.R(expp) - self.d
-
-    @property
-    @memo
-    def _NRexppd(self):
-        return self.N.inverse_times(self._Rexppd)
-
-    @property
-    @memo
-    def _exppRNRexppd(self):
-        return self._fft.adjoint_times(
-                    self._expp_sspace *
-                    self._fft(self.R.adjoint_times(self._NRexppd)))

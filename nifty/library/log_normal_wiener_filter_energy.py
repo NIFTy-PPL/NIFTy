@@ -48,19 +48,19 @@ class LogNormalWienerFilterEnergy(Energy):
     @memo
     def value(self):
         return 0.5*(self.position.vdot(self._Sp) +
-                    self.curvature.op._Rexppd.vdot(self.curvature.op._NRexppd))
+                    self._Rexppd.vdot(self._NRexppd))
 
     @property
     @memo
     def gradient(self):
-        return self._Sp + self.curvature.op._exppRNRexppd
+        return self._Sp + self._exppRNRexppd
 
     @property
     @memo
     def curvature(self):
         return InversionEnabler(
             LogNormalWienerFilterCurvature(R=self.R, N=self.N, S=self.S,
-                                           d=self.d, position=self.position,
+                                           position=self.position,
                                            fft4exp=self._fft),
             inverter=self._inverter)
 
@@ -68,3 +68,21 @@ class LogNormalWienerFilterEnergy(Energy):
     @memo
     def _Sp(self):
         return self.S.inverse_times(self.position)
+
+    @property
+    @memo
+    def _Rexppd(self):
+        expp = self._fft.adjoint_times(self.curvature.op._expp_sspace)
+        return self.R(expp) - self.d
+
+    @property
+    @memo
+    def _NRexppd(self):
+        return self.N.inverse_times(self._Rexppd)
+
+    @property
+    @memo
+    def _exppRNRexppd(self):
+        return self._fft.adjoint_times(
+                    self.curvature.op._expp_sspace *
+                    self._fft(self.R.adjoint_times(self._NRexppd)))

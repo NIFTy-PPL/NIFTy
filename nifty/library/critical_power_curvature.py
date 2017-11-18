@@ -9,7 +9,6 @@ class CriticalPowerCurvature(EndomorphicOperator):
     CriticalPowerEnergy used in some minimization algorithms or
     for error estimates of the power spectrum.
 
-
     Parameters
     ----------
     theta: Field,
@@ -20,19 +19,19 @@ class CriticalPowerCurvature(EndomorphicOperator):
 
     def __init__(self, theta, T):
         super(CriticalPowerCurvature, self).__init__()
-        self.theta = DiagonalOperator(theta)
-        self.T = T
+        self._theta = DiagonalOperator(theta)
+        self._T = T
 
     @property
     def preconditioner(self):
-        return self.theta.inverse_times
+        return self._theta.inverse_times
 
     def _times(self, x):
-        return self.T(x) + self.theta(x)
+        return self._T(x) + self._theta(x)
 
     @property
     def domain(self):
-        return self.theta.domain
+        return self._theta.domain
 
     @property
     def self_adjoint(self):
