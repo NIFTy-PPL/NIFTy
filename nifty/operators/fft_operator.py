@@ -72,6 +72,7 @@ class FFTOperator(LinearOperator):
         if "domain" or "target" are not of the proper type.
     """
 
+    # MR FIXME: target should only be a single DomainObject, not the full tuple
     def __init__(self, domain, target=None, space=None):
         super(FFTOperator, self).__init__()
 

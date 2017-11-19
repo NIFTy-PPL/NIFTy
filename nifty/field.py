@@ -36,15 +36,12 @@ class Field(object):
 
     Parameters
     ----------
-    domain : DomainObject
-        One of the space types NIFTY supports. RGSpace, GLSpace, HPSpace,
-        LMSpace or PowerSpace. It might also be a FieldArray, which is
-        an unstructured domain.
+    domain : None, DomainTuple, tuple of DomainObjects, or single DomainObject
 
-    val : scalar, numpy.ndarray, Field
+    val : None, Field, data_object, or scalar
         The values the array should contain after init. A scalar input will
-        fill the whole array with this scalar. If an array is provided the
-        array's dimensions must match the domain's.
+        fill the whole array with this scalar. If a data_object is provided,
+        its dimensions must match the domain's.
 
     dtype : type
         A numpy.type. Most common are float and complex.
@@ -53,23 +50,13 @@ class Field(object):
 
     Attributes
     ----------
-    val : numpy.ndarray
+    val : data_object
 
     domain : DomainTuple
-        See Parameters.
+
     dtype : type
         Contains the datatype stored in the Field.
-
-    Raise
-    -----
-    TypeError
-        Raised if
-            *the given domain contains something that is not a DomainObject
-             instance
-            *val is an array that has a different dimension than the domain
     """
-
-    # ---Initialization methods---
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
         self.domain = self._parse_domain(domain=domain, val=val)
@@ -188,8 +175,6 @@ class Field(object):
     def fill(self, fill_value):
         self._val.fill(fill_value)
 
-    # ---Properties---
-
     @property
     def val(self):
         """ Returns the data object associated with this Field.
@@ -233,8 +218,6 @@ class Field(object):
     def imag(self):
         """ The imaginary part of the field (data is not copied)."""
         return Field(self.domain, self.val.imag)
-
-    # ---Special unary/binary operations---
 
     def copy(self):
         """ Returns a full copy of the Field.
@@ -455,8 +438,6 @@ class Field(object):
         if other.domain != self.domain:
             raise ValueError("domains are incompatible.")
         dobj.local_data(self.val)[()] = dobj.local_data(other.val)[()]
-
-    # ---General binary methods---
 
     def _binary_helper(self, other, op):
         # if other is a field, make sure that the domains match

@@ -124,34 +124,6 @@ class NiftyMeta(_DocStringInheritor, abc.ABCMeta):
     pass
 
 
-def _fill_upper_half(tmp, res, axes):
-    lastaxis = axes[-1]
-    nlast = res.shape[lastaxis]
-    ntmplast = tmp.shape[lastaxis]
-    nrem = nlast - ntmplast
-    slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
-    slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
-    for i in axes[:-1]:
-        slice1[i] = slice(1, None)
-        slice2[i] = slice(None, 0, -1)
-    np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
-    for i, ax in enumerate(axes[:-1]):
-        dim1 = [slice(None)]*ax + [slice(0, 1)]
-        axes2 = axes[:i] + axes[i+1:]
-        _fill_upper_half(tmp[dim1], res[dim1], axes2)
-
-
-def _fill_array(tmp, res, axes):
-    if axes is None:
-        axes = tuple(range(tmp.ndim))
-    lastaxis = axes[-1]
-    ntmplast = tmp.shape[lastaxis]
-    slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
-    np.add(tmp.real, tmp.imag, out=res[slice1])
-    _fill_upper_half(tmp, res, axes)
-    return res
-
-
 def hartley(a, axes=None):
     # Check if the axes provided are valid given the shape
     if axes is not None and \
@@ -162,36 +134,35 @@ def hartley(a, axes=None):
 
     from pyfftw.interfaces.numpy_fft import rfftn
     tmp = rfftn(a, axes=axes)
+
+    def _fill_array(tmp, res, axes):
+        if axes is None:
+            axes = tuple(range(tmp.ndim))
+        lastaxis = axes[-1]
+        ntmplast = tmp.shape[lastaxis]
+        slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
+        np.add(tmp.real, tmp.imag, out=res[slice1])
+
+        def _fill_upper_half(tmp, res, axes):
+            lastaxis = axes[-1]
+            nlast = res.shape[lastaxis]
+            ntmplast = tmp.shape[lastaxis]
+            nrem = nlast - ntmplast
+            slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
+            slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
+            for i in axes[:-1]:
+                slice1[i] = slice(1, None)
+                slice2[i] = slice(None, 0, -1)
+            np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
+            for i, ax in enumerate(axes[:-1]):
+                dim1 = [slice(None)]*ax + [slice(0, 1)]
+                axes2 = axes[:i] + axes[i+1:]
+                _fill_upper_half(tmp[dim1], res[dim1], axes2)
+
+        _fill_upper_half(tmp, res, axes)
+        return res
+
     return _fill_array(tmp, np.empty_like(a), axes)
-
-
-def _fill_upper_half_complex(tmp, res, axes):
-    lastaxis = axes[-1]
-    nlast = res.shape[lastaxis]
-    ntmplast = tmp.shape[lastaxis]
-    nrem = nlast - ntmplast
-    slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
-    slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
-    for i in axes[:-1]:
-        slice1[i] = slice(1, None)
-        slice2[i] = slice(None, 0, -1)
-    #np.conjugate(tmp[slice2], out=res[slice1])
-    res[slice1] = np.conjugate(tmp[slice2])
-    for i, ax in enumerate(axes[:-1]):
-        dim1 = [slice(None)]*ax + [slice(0, 1)]
-        axes2 = axes[:i] + axes[i+1:]
-        _fill_upper_half_complex(tmp[dim1], res[dim1], axes2)
-
-
-def _fill_complex_array(tmp, res, axes):
-    if axes is None:
-        axes = tuple(range(tmp.ndim))
-    lastaxis = axes[-1]
-    ntmplast = tmp.shape[lastaxis]
-    slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
-    res[slice1] = tmp
-    _fill_upper_half_complex(tmp, res, axes)
-    return res
 
 
 # Do a real-to-complex forward FFT and return the _full_ output array
@@ -205,7 +176,36 @@ def my_fftn_r2c(a, axes=None):
 
     from pyfftw.interfaces.numpy_fft import rfftn
     tmp = rfftn(a, axes=axes)
-    return _fill_complex_array(tmp, np.empty_like(a,dtype=tmp.dtype), axes)
+
+    def _fill_complex_array(tmp, res, axes):
+        if axes is None:
+            axes = tuple(range(tmp.ndim))
+        lastaxis = axes[-1]
+        ntmplast = tmp.shape[lastaxis]
+        slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
+        res[slice1] = tmp
+
+        def _fill_upper_half_complex(tmp, res, axes):
+            lastaxis = axes[-1]
+            nlast = res.shape[lastaxis]
+            ntmplast = tmp.shape[lastaxis]
+            nrem = nlast - ntmplast
+            slice1 = [slice(None)]*lastaxis + [slice(ntmplast, None)]
+            slice2 = [slice(None)]*lastaxis + [slice(nrem, 0, -1)]
+            for i in axes[:-1]:
+                slice1[i] = slice(1, None)
+                slice2[i] = slice(None, 0, -1)
+            # np.conjugate(tmp[slice2], out=res[slice1])
+            res[slice1] = np.conjugate(tmp[slice2])
+            for i, ax in enumerate(axes[:-1]):
+                dim1 = [slice(None)]*ax + [slice(0, 1)]
+                axes2 = axes[:i] + axes[i+1:]
+                _fill_upper_half_complex(tmp[dim1], res[dim1], axes2)
+
+        _fill_upper_half_complex(tmp, res, axes)
+        return res
+
+    return _fill_complex_array(tmp, np.empty_like(a, dtype=tmp.dtype), axes)
 
 
 def general_axpy(a, x, y, out):

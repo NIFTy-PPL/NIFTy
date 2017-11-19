@@ -297,6 +297,9 @@ def from_object(object, dtype=None, copy=True):
 
 # This function draws all random numbers on all tasks, to produce the same
 # array independent on the number of tasks
+# MR FIXME: depending on what is really wanted/needed (i.e. same result
+# independent of number of tasks, performance etc.) we need to adjust the
+# algorithm.
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
     for i in range(ntask):
@@ -387,8 +390,6 @@ def redistribute(arr, dist=None, nodist=None):
         return from_global_data(out, distaxis=-1)
 
     # real redistribution via Alltoallv
-    # temporary slow, but simple solution for comparison purposes:
-    # return redistribute(redistribute(arr,dist=-1),dist=dist)
     ssz0 = arr._data.size//arr.shape[dist]
     ssz = np.empty(ntask, dtype=np.int)
     rszall = arr.size//arr.shape[dist]*_shareSize(arr.shape[dist], ntask, rank)

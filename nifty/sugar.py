@@ -39,7 +39,6 @@ def PS_field(pspace, func, dtype=None):
 
 
 def _single_power_analyze(field, idx, binbounds):
-    from .operators.power_projection_operator import PowerProjectionOperator
     power_domain = PowerSpace(field.domain[idx], binbounds)
     ppo = PowerProjectionOperator(field.domain, power_domain, idx)
     return ppo(field.weight(-1))
@@ -76,11 +75,6 @@ def power_analyze(field, spaces=None, binbounds=None,
         of power_analyze with keep_phase_information=False.
         (default : False).
 
-    Raise
-    -----
-    TypeError
-        Raised if any of the input field's domains is not harmonic
-
     Returns
     -------
     out : Field
@@ -88,14 +82,11 @@ def power_analyze(field, spaces=None, binbounds=None,
         the power spectrum of 'field'.
     """
 
-    # check if all spaces in `field.domain` are either harmonic or
-    # power_space instances
     for sp in field.domain:
         if not sp.harmonic and not isinstance(sp, PowerSpace):
             dobj.mprint("WARNING: Field has a space in `domain` which is "
                         "neither harmonic nor a PowerSpace.")
 
-    # check if the `spaces` input is valid
     if spaces is None:
         spaces = range(len(field.domain))
     else:
@@ -120,15 +111,10 @@ def power_analyze(field, spaces=None, binbounds=None,
 
 
 def _compute_spec(field, spaces):
-    from .operators.power_projection_operator import PowerProjectionOperator
-    if spaces is None:
-        spaces = range(len(field.domain))
-    else:
-        spaces = utilities.cast_iseq_to_tuple(spaces)
+    spaces = range(len(field.domain)) if spaces is None \
+             else utilities.cast_iseq_to_tuple(spaces)
 
-    # create the result domain
     result_domain = list(field.domain)
-
     spec = sqrt(field)
     for i in spaces:
         result_domain[i] = field.domain[i].harmonic_partner
@@ -174,7 +160,6 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
     Raises
     ------
     ValueError : If domain specified by `spaces` is not a PowerSpace.
-
     """
 
     spec = _compute_spec(field, spaces)
@@ -187,12 +172,11 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
                                 else np.complex)
               for x in range(1 if real_power else 2)]
 
-    # MR: dummy call - will be removed soon
+    # MR FIXME: dummy call - will be removed soon
     if real_signal:
         field.from_random('normal', mean=0., std=1.,
                           domain=spec.domain, dtype=np.float)
 
-    # apply the rescaler to the random fields
     result[0] *= spec.real
     if not real_power:
         result[1] *= spec.imag
@@ -203,7 +187,7 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
 def power_synthesize_special(field, spaces=None):
     spec = _compute_spec(field, spaces)
 
-    # MR: dummy call - will be removed soon
+    # MR FIXME: dummy call - will be removed soon
     field.from_random('normal', mean=0., std=1.,
                       domain=spec.domain, dtype=np.complex)
 
@@ -223,8 +207,7 @@ def create_power_field(domain, power_spectrum, dtype=None):
     else:
         power_domain = PowerSpace(domain)
         fp = PS_field(power_domain, power_spectrum, dtype)
-    P = PowerProjectionOperator(domain, power_domain)
-    f = P.adjoint_times(fp)
+    f = PowerProjectionOperator(domain, power_domain).adjoint_times(fp)
 
     if not issubclass(fp.dtype.type, np.complexfloating):
         f = f.real
@@ -263,8 +246,7 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
             space = 0
     space = int(space)
     return DiagonalOperator(
-        create_power_field(domain[space],
-                           power_spectrum, dtype).weight(1),
+        create_power_field(domain[space], power_spectrum, dtype).weight(1),
         domain=domain,
         spaces=space)
 
@@ -330,5 +312,6 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
                 interdomain[i] = codomain[i]
             fft_op_list += [FFTOperator(domain=domain, target=interdomain,
                                         space=i)]
+        # MR FIXME: this looks slightly fishy...
         domain = interdomain
     return ComposedOperator(fft_op_list)

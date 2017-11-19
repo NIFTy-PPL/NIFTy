@@ -24,38 +24,31 @@ class Random(object):
     @staticmethod
     def pm1(dtype, shape):
         if issubclass(dtype, (complex, np.complexfloating)):
-            x = np.array([1 + 0j, 0 + 1j, -1 + 0j, 0 - 1j], dtype=dtype)
+            x = np.array([1+0j, 0+1j, -1+0j, 0-1j], dtype=dtype)
             x = x[np.random.randint(4, size=shape)]
         else:
-            x = 2 * np.random.randint(2, size=shape) - 1
-
-        return x.astype(dtype)
+            x = 2*np.random.randint(2, size=shape) - 1
+        return x.astype(dtype, copy=False)
 
     @staticmethod
     def normal(dtype, shape, mean=0., std=1.):
         if issubclass(dtype, (complex, np.complexfloating)):
             x = np.empty(shape, dtype=dtype)
-            x.real = np.random.normal(loc=mean.real, scale=std*np.sqrt(0.5),
-                                      size=shape)
-            x.imag = np.random.normal(loc=mean.imag, scale=std*np.sqrt(0.5),
-                                      size=shape)
+            x.real = np.random.normal(mean.real, std*np.sqrt(0.5), shape)
+            x.imag = np.random.normal(mean.imag, std*np.sqrt(0.5), shape)
         else:
-            x = np.random.normal(loc=mean, scale=std, size=shape)
-            x = x.astype(dtype, copy=False)
+            x = np.random.normal(mean, std, shape).astype(dtype, copy=False)
         return x
 
     @staticmethod
     def uniform(dtype, shape, low=0., high=1.):
         if issubclass(dtype, (complex, np.complexfloating)):
             x = np.empty(shape, dtype=dtype)
-            x.real = (high - low) * np.random.random(shape) + low
-            x.imag = (high - low) * np.random.random(shape) + low
+            x.real = np.random.uniform(low, high, shape)
+            x.imag = np.random.uniform(low, high, shape)
         elif dtype in [np.dtype('int8'), np.dtype('int16'), np.dtype('int32'),
                        np.dtype('int64')]:
-            x = np.random.random_integers(min(low, high),
-                                          high=max(low, high),
-                                          size=shape)
+            x = np.random.random.randint(low, high+1, shape)
         else:
-            x = (high - low) * np.random.random(shape) + low
-
+            x = np.random.uniform(low, high, shape)
         return x.astype(dtype, copy=False)
