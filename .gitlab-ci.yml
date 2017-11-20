@@ -1,4 +1,5 @@
-image: ubuntu:artful
+#image: ubuntu:artful
+image: debian:testing
 
 stages:
   - test
