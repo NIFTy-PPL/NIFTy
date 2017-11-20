@@ -1,4 +1,4 @@
 parameterized
 coverage
 pyfftw
-git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.gitt
+git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
