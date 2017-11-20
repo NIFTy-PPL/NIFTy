@@ -20,6 +20,8 @@ test_min:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
     - nosetests
+    - mpiexec --allow-run-as-root -n 4 nosetests -x
+    - mpiexec --allow-run-as-root -n 4 nosetests3 -x
     - nosetests3 -x --with-coverage --cover-package=nifty2go --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
