@@ -1,5 +1,5 @@
 #image: ubuntu:artful
-image: debian:testing
+image: debian:testing-slim
 
 stages:
   - test
