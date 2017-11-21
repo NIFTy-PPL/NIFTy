@@ -1,6 +1,9 @@
-from ...energies.energy import Energy
-from ...memoization import memo
 from .nonlinear_signal_curvature import NonlinearSignalCurvature
+from .. import Field, exp
+from ..utilities import memo
+from ..sugar import generate_posterior_sample
+from ..minimization.energy import Energy
+from ..operators.inversion_enabler import InversionEnabler
 from .response_operators import LinearizedSignalResponse
 
 
@@ -68,4 +71,4 @@ class NonlinearWienerFilterEnergy(Energy):
         curvature = NonlinearSignalCurvature(R=self.LinearizedResponse,
                                              N=self.N,
                                              S=self.S, inverter=self.inverter)
-        return curvature
+        return InversionEnabler(curvature, inverter=self.inverter)

@@ -1,8 +1,8 @@
-from ... import Field, exp
-from ...energies.energy import Energy
-from ...memoization import memo
-from ...operators.diagonal_operator import DiagonalOperator
-from ...sugar import generate_posterior_sample
+from .. import Field, exp
+from ..operators.diagonal_operator import DiagonalOperator
+from ..sugar import generate_posterior_sample
+from ..minimization.energy import Energy
+from ..utilities import memo
 
 
 class NoiseEnergy(Energy):

@@ -1,6 +1,5 @@
-from ...operators.endomorphic_operator import EndomorphicOperator
-from ...operators.invertible_operator_mixin import InvertibleOperatorMixin
+from ..operators.endomorphic_operator import EndomorphicOperator
 
 
-class NoiseCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+class NoiseCurvature(EndomorphicOperator):
     pass

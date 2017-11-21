@@ -1,10 +1,11 @@
-from ... import Field, exp
-from ...energies.energy import Energy
-from ...memoization import memo
-from ...operators.smoothness_operator import SmoothnessOperator
-from ...sugar import generate_posterior_sample
+from .. import Field, exp
+from ..utilities import memo
+from ..operators.smoothness_operator import SmoothnessOperator
+from ..sugar import generate_posterior_sample
 from .nonlinear_power_curvature import NonlinearPowerCurvature
 from .response_operators import LinearizedPowerResponse
+from ..minimization.energy import Energy
+from ..operators.inversion_enabler import InversionEnabler
 
 
 class NonlinearPowerEnergy(Energy):
@@ -111,4 +112,4 @@ class NonlinearPowerEnergy(Energy):
     def curvature(self):
         curvature = NonlinearPowerCurvature(self.position, self.FFT, self.Instrument, self.nonlinearity,
                                             self.Projection, self.N, self.T, self.sample_list, inverter=self.inverter)
-        return curvature
+        return InversionEnabler(curvature, inverter=self.inverter)

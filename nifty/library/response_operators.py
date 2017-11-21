@@ -1,5 +1,5 @@
-from ... import exp
-from ...operators.linear_operator import LinearOperator
+from .. import exp
+from ..operators.linear_operator import LinearOperator
 
 
 class AdjointFFTResponse(LinearOperator):

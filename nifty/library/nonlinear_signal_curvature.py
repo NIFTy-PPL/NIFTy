@@ -1,8 +1,7 @@
-from ...operators.endomorphic_operator import EndomorphicOperator
-from ...operators.invertible_operator_mixin import InvertibleOperatorMixin
+from ..operators.endomorphic_operator import EndomorphicOperator
 
 
-class NonlinearSignalCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+class NonlinearSignalCurvature(EndomorphicOperator):
     def __init__(self, R, N, S, inverter=None):
         self.R = R
         self.N = N

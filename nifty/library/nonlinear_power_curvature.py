@@ -1,10 +1,9 @@
-from ... import Field
-from ...operators.endomorphic_operator import EndomorphicOperator
-from ...operators.invertible_operator_mixin import InvertibleOperatorMixin
+from .. import Field
+from ..operators.endomorphic_operator import EndomorphicOperator
 from .response_operators import LinearizedPowerResponse
 
 
-class NonlinearPowerCurvature(InvertibleOperatorMixin, EndomorphicOperator):
+class NonlinearPowerCurvature(EndomorphicOperator):
 
     def __init__(self, position, FFT, Instrument, nonlinearity,
                  Projection, N, T, sample_list, inverter=None):
