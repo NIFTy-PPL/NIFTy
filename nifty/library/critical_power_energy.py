@@ -73,7 +73,7 @@ class CriticalPowerEnergy(Energy):
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
                               q=self.q, smoothness_prior=self.smoothness_prior,
                               logarithmic=self.logarithmic,
-                              w=self.w, samples=self.samples,
+                              samples=self.samples, w=self.w,
                               inverter=self._inverter)
 
     @property
