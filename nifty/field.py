@@ -540,5 +540,9 @@ def log(x, out=None):
     return _math_helper(x, dobj.log, out)
 
 
+def tanh(x, out=None):
+    return _math_helper(x, dobj.tanh, out)
+
+
 def conjugate(x, out=None):
     return _math_helper(x, dobj.conjugate, out)

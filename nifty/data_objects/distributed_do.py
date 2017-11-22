@@ -285,6 +285,10 @@ def log(a, out=None):
     return _math_helper(a, np.log, out)
 
 
+def tanh(a, out=None):
+    return _math_helper(a, np.tanh, out)
+
+
 def sqrt(a, out=None):
     return _math_helper(a, np.sqrt, out)
 

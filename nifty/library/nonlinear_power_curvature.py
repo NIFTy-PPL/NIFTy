@@ -6,7 +6,7 @@ from .response_operators import LinearizedPowerResponse
 class NonlinearPowerCurvature(EndomorphicOperator):
 
     def __init__(self, position, FFT, Instrument, nonlinearity,
-                 Projection, N, T, sample_list, inverter=None):
+                 Projection, N, T, sample_list):
         self.N = N
         self.FFT = FFT
         self.Instrument = Instrument
@@ -20,7 +20,7 @@ class NonlinearPowerCurvature(EndomorphicOperator):
         # if preconditioner is None:
         #     preconditioner = self.theta.inverse_times
         self._domain = self.position.domain
-        super(NonlinearPowerCurvature, self).__init__(inverter=inverter)
+        super(NonlinearPowerCurvature, self).__init__()
 
     @property
     def domain(self):
@@ -34,9 +34,7 @@ class NonlinearPowerCurvature(EndomorphicOperator):
     def unitary(self):
         return False
 
-    # ---Added properties and methods---
-
-    def _times(self, x, spaces):
+    def _times(self, x):
 
         result = Field(self.domain, val=0.)
         for i in range(self.samples):

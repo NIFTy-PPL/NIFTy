@@ -111,5 +111,5 @@ class NonlinearPowerEnergy(Energy):
     @memo
     def curvature(self):
         curvature = NonlinearPowerCurvature(self.position, self.FFT, self.Instrument, self.nonlinearity,
-                                            self.Projection, self.N, self.T, self.sample_list, inverter=self.inverter)
+                                            self.Projection, self.N, self.T, self.sample_list)
         return InversionEnabler(curvature, inverter=self.inverter)

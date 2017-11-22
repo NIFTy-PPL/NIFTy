@@ -13,8 +13,7 @@ class NoiseEnergy(Energy):
         self.m = m
         self.D = D
         self.d = d
-        self.N = DiagonalOperator(
-            self.position.domain, diagonal=exp(self.position))
+        self.N = DiagonalOperator(diagonal=exp(self.position))
         self.t = t
         self.samples = samples
         self.FFT = FFT

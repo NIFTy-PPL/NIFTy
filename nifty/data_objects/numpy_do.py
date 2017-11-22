@@ -4,7 +4,7 @@ from __future__ import print_function
 import numpy as np
 from numpy import ndarray as data_object
 from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, abs, \
-                  exp, log
+                  exp, log, tanh
 from .random import Random
 
 ntask = 1
