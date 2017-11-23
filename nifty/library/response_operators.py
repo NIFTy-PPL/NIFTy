@@ -1,31 +1,35 @@
-from .. import exp
+from ..field import exp
 from ..operators.linear_operator import LinearOperator
 
 
 class LinearizedSignalResponse(LinearOperator):
     def __init__(self, Instrument, nonlinearity, FFT, power, m):
         super(LinearizedSignalResponse, self).__init__()
-        self._target = Instrument.target
-        self._domain = FFT.target
         self.Instrument = Instrument
         self.FFT = FFT
         self.power = power
-        position = FFT.adjoint_times(self.power * m)
+        position = FFT.adjoint_times(self.power*m)
         self.linearization = nonlinearity.derivative(position)
 
     def _times(self, x):
-        return self.Instrument(self.linearization * self.FFT.adjoint_times(self.power * x))
+        tmp = self.FFT.adjoint_times(self.power*x)
+        tmp *= self.linearization
+        return self.Instrument(tmp)
 
     def _adjoint_times(self, x):
-        return self.power * self.FFT(self.linearization * self.Instrument.adjoint_times(x))
+        tmp = self.Instrument.adjoint_times(x)
+        tmp *= self.linearization
+        tmp = self.FFT(tmp)
+        tmp *= self.power
+        return tmp
 
     @property
     def domain(self):
-        return self._domain
+        return self.FFT.target
 
     @property
     def target(self):
-        return self._target
+        return self.Instrument.target
 
     @property
     def unitary(self):
@@ -35,8 +39,6 @@ class LinearizedSignalResponse(LinearOperator):
 class LinearizedPowerResponse(LinearOperator):
     def __init__(self, Instrument, nonlinearity, FFT, Projection, t, m):
         super(LinearizedPowerResponse, self).__init__()
-        self._target = Instrument.target
-        self._domain = t.domain
         self.Instrument = Instrument
         self.FFT = FFT
         self.Projection = Projection
@@ -47,22 +49,31 @@ class LinearizedPowerResponse(LinearOperator):
         self.linearization = nonlinearity.derivative(position)
 
     def _times(self, x):
-        return 0.5 * self.Instrument(self.linearization
-                                     * self.FFT.adjoint_times(self.m
-                                                              * self.Projection.adjoint_times(self.power * x)))
+        tmp = self.Projection.adjoint_times(self.power*x)
+        tmp *= self.m
+        tmp = self.FFT.adjoint_times(tmp)
+        tmp *= self.linearization
+        tmp = self.Instrument(tmp)
+        tmp *= 0.5
+        return tmp
 
     def _adjoint_times(self, x):
-        return 0.5 * self.power * self.Projection(self.m.conjugate()
-                                                  * self.FFT(self.linearization
-                                                             * self.Instrument.adjoint_times(x)))  # .weight(-1)
+        tmp = self.Instrument.adjoint_times(x)
+        tmp *= self.linearization
+        tmp = self.FFT(tmp)
+        tmp *= self.m.conjugate()
+        tmp = self.Projection(tmp)
+        tmp *= self.power
+        tmp *= 0.5
+        return tmp
 
     @property
     def domain(self):
-        return self._domain
+        return self.power.domain
 
     @property
     def target(self):
-        return self._target
+        return self.Instrument.target
 
     @property
     def unitary(self):

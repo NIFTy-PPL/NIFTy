@@ -45,9 +45,7 @@ class NonlinearWienerFilterEnergy(Energy):
     @property
     @memo
     def gradient(self):
-        gradient = self._t1.copy()
-        gradient -= self.LinearizedResponse.adjoint_times(self._t2)
-        return gradient
+        return self._t1 - self.LinearizedResponse.adjoint_times(self._t2)
 
     @property
     @memo
