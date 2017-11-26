@@ -111,6 +111,8 @@ if __name__ == "__main__":
             val=ift.dobj.from_global_data(np.log(1./(1+p_space.k_lengths)**2)))
 
     for i in range(500):
+        # FIXME: Do not use ps0 for the inference! This is cheating!
+        # My critical filter version breaks, if I put power_spectrum=t0.
         S0 = ift.create_power_operator(h_space, power_spectrum=ps0)
 
         # Initialize non-linear Wiener Filter energy
