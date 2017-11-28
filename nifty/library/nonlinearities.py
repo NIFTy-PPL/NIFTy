@@ -1,5 +1,4 @@
 from numpy import logical_and, where
-
 from ... import Field, exp, tanh
 
 

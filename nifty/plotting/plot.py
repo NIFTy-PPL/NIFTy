@@ -42,7 +42,7 @@ def _find_closest(A, target):
     return idx
 
 
-def _makeplot(name):
+def _mpl_makeplot(name):
     import matplotlib.pyplot as plt
     if dobj.rank != 0:
         return
@@ -70,7 +70,7 @@ def _makeplot(name):
         raise ValueError("file format not understood")
 
 
-def _limit_xy(**kwargs):
+def _mpl_limit_xy(**kwargs):
     import matplotlib.pyplot as plt
     x1, x2, y1, y2 = plt.axis()
     x1 = _get_kw("xmin", x1, **kwargs)
@@ -145,12 +145,11 @@ def _register_cmaps():
 
 
 def _get_kw(kwname, kwdefault=None, **kwargs):
-    if kwargs.get(kwname) is not None:
-        return kwargs.get(kwname)
-    return kwdefault
+    res = kwargs.get(kwname)
+    return kwdefault if res is None else res
 
 
-def plot(f, **kwargs):
+def _mpl_plot(f, **kwargs):
     import matplotlib.pyplot as plt
     _register_cmaps()
     if not isinstance(f, Field):
@@ -176,8 +175,8 @@ def plot(f, **kwargs):
             xcoord = np.arange(npoints, dtype=np.float64)*dist
             ycoord = dobj.to_global_data(f.val)
             plt.plot(xcoord, ycoord)
-            _limit_xy(**kwargs)
-            _makeplot(kwargs.get("name"))
+            _mpl_limit_xy(**kwargs)
+            _mpl_makeplot(kwargs.get("name"))
             return
         elif len(dom.shape) == 2:
             nx = dom.shape[0]
@@ -195,8 +194,8 @@ def plot(f, **kwargs):
             # cax = divider.append_axes("right", size="5%", pad=0.05)
             # plt.colorbar(im,cax=cax)
             plt.colorbar(im)
-            _limit_xy(**kwargs)
-            _makeplot(kwargs.get("name"))
+            _mpl_limit_xy(**kwargs)
+            _mpl_makeplot(kwargs.get("name"))
             return
     elif isinstance(dom, PowerSpace):
         xcoord = dom.k_lengths
@@ -205,8 +204,8 @@ def plot(f, **kwargs):
         plt.yscale('log')
         plt.title('power')
         plt.plot(xcoord, ycoord)
-        _limit_xy(**kwargs)
-        _makeplot(kwargs.get("name"))
+        _mpl_limit_xy(**kwargs)
+        _mpl_makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, HPSpace):
         import pyHealpix
@@ -222,7 +221,7 @@ def plot(f, **kwargs):
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
-        _makeplot(kwargs.get("name"))
+        _mpl_makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, GLSpace):
         import pyHealpix
@@ -239,7 +238,110 @@ def plot(f, **kwargs):
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
-        _makeplot(kwargs.get("name"))
+        _mpl_makeplot(kwargs.get("name"))
         return
 
     raise ValueError("Field type not(yet) supported")
+
+
+def _plotly_plot(f, **kwargs):
+    if not isinstance(f, Field):
+        raise TypeError("incorrect data type")
+    if len(f.domain) != 1:
+        raise ValueError("input field must have exactly one domain")
+
+    dom = f.domain[0]
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    xsize = _get_kw("xsize", 6, **kwargs)
+    ysize = _get_kw("ysize", 6, **kwargs)
+    fig.set_size_inches(xsize, ysize)
+    ax.set_title(_get_kw("title", "", **kwargs))
+    ax.set_xlabel(_get_kw("xlabel", "", **kwargs))
+    ax.set_ylabel(_get_kw("ylabel", "", **kwargs))
+    cmap = _get_kw("colormap", plt.rcParams['image.cmap'], **kwargs)
+    if isinstance(dom, RGSpace):
+        if len(dom.shape) == 1:
+            npoints = dom.shape[0]
+            dist = dom.distances[0]
+            xcoord = np.arange(npoints, dtype=np.float64)*dist
+            ycoord = dobj.to_global_data(f.val)
+            plt.plot(xcoord, ycoord)
+            _mpl_limit_xy(**kwargs)
+            _mpl_makeplot(kwargs.get("name"))
+            return
+        elif len(dom.shape) == 2:
+            nx = dom.shape[0]
+            ny = dom.shape[1]
+            dx = dom.distances[0]
+            dy = dom.distances[1]
+            xc = np.arange(nx, dtype=np.float64)*dx
+            yc = np.arange(ny, dtype=np.float64)*dy
+            im = ax.imshow(dobj.to_global_data(f.val),
+                           extent=[xc[0], xc[-1], yc[0], yc[-1]],
+                           vmin=kwargs.get("zmin"),
+                           vmax=kwargs.get("zmax"), cmap=cmap, origin="lower")
+            # from mpl_toolkits.axes_grid1 import make_axes_locatable
+            # divider = make_axes_locatable(ax)
+            # cax = divider.append_axes("right", size="5%", pad=0.05)
+            # plt.colorbar(im,cax=cax)
+            plt.colorbar(im)
+            _mpl_limit_xy(**kwargs)
+            _mpl_makeplot(kwargs.get("name"))
+            return
+    elif isinstance(dom, PowerSpace):
+        xcoord = dom.k_lengths
+        ycoord = dobj.to_global_data(f.val)
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.title('power')
+        plt.plot(xcoord, ycoord)
+        _mpl_limit_xy(**kwargs)
+        _mpl_makeplot(kwargs.get("name"))
+        return
+    elif isinstance(dom, HPSpace):
+        import pyHealpix
+        xsize = 800
+        res, mask, theta, phi = _mollweide_helper(xsize)
+
+        ptg = np.empty((phi.size, 2), dtype=np.float64)
+        ptg[:, 0] = theta
+        ptg[:, 1] = phi
+        base = pyHealpix.Healpix_Base(int(np.sqrt(f.val.size//12)), "RING")
+        res[mask] = dobj.to_global_data(f.val)[base.ang2pix(ptg)]
+        plt.axis('off')
+        plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                   cmap=cmap, origin="lower")
+        plt.colorbar(orientation="horizontal")
+        _mpl_makeplot(kwargs.get("name"))
+        return
+    elif isinstance(dom, GLSpace):
+        import pyHealpix
+        xsize = 800
+        res, mask, theta, phi = _mollweide_helper(xsize)
+        ra = np.linspace(0, 2*np.pi, dom.nlon+1)
+        dec = pyHealpix.GL_thetas(dom.nlat)
+        ilat = _find_closest(dec, theta)
+        ilon = _find_closest(ra, phi)
+        ilon = np.where(ilon == dom.nlon, 0, ilon)
+        res[mask] = dobj.to_global_data(f.val)[ilat*dom.nlon + ilon]
+
+        plt.axis('off')
+        plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
+                   cmap=cmap, origin="lower")
+        plt.colorbar(orientation="horizontal")
+        _mpl_makeplot(kwargs.get("name"))
+        return
+
+    raise ValueError("Field type not(yet) supported")
+
+
+def plot(f, **kwargs):
+    extension = os.path.splitext(kwargs.get("name"))[1]
+    if extension in [".html"]:
+        _plotly_plot(f, **kwargs)
+    elif extension in [".pdf", ".png"]:
+        _mpl_plot(f, **kwargs)
+    else:
+        raise ValueError("unknown file name extension: " + extension)
