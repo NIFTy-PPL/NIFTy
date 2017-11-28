@@ -8,5 +8,4 @@ from .noise_curvature import NoiseCurvature
 from .noise_energy import NoiseEnergy
 from .nonlinear_power_curvature import NonlinearPowerCurvature
 from .nonlinear_power_energy import NonlinearPowerEnergy
-from .nonlinear_signal_curvature import NonlinearSignalCurvature
 from .nonlinear_signal_energy import NonlinearWienerFilterEnergy
