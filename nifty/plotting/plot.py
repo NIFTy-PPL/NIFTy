@@ -153,12 +153,25 @@ def _get_kw(kwname, kwdefault=None, **kwargs):
 def plot(f, **kwargs):
     import matplotlib.pyplot as plt
     _register_cmaps()
-    if not isinstance(f, Field):
+    if isinstance(f, Field):
+        f = [f]
+    if not isinstance(f, list):
         raise TypeError("incorrect data type")
-    if len(f.domain) != 1:
-        raise ValueError("input field must have exactly one domain")
+    for i, fld in enumerate(f):
+        if not isinstance(fld, Field):
+            raise TypeError("incorrect data type")
+        if i == 0:
+            dom = fld.domain
+            if len(dom) != 1:
+                raise ValueError("input field must have exactly one domain")
+        else:
+            if fld.domain != dom:
+                raise ValueError("domain mismatch")
+            if not (isinstance(dom[0], PowerSpace) or
+                    (isinstance(dom[0], RGSpace) and len(dom[0].shape)==1)):
+                raise ValueError("PowerSpace or 1D RGSpace required")
 
-    dom = f.domain[0]
+    dom = dom[0]
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
 
@@ -174,12 +187,14 @@ def plot(f, **kwargs):
             npoints = dom.shape[0]
             dist = dom.distances[0]
             xcoord = np.arange(npoints, dtype=np.float64)*dist
-            ycoord = dobj.to_global_data(f.val)
-            plt.plot(xcoord, ycoord)
+            for fld in f:
+                ycoord = dobj.to_global_data(fld.val)
+                plt.plot(xcoord, ycoord)
             _limit_xy(**kwargs)
             _makeplot(kwargs.get("name"))
             return
         elif len(dom.shape) == 2:
+            f = f[0]
             nx = dom.shape[0]
             ny = dom.shape[1]
             dx = dom.distances[0]
@@ -199,16 +214,18 @@ def plot(f, **kwargs):
             _makeplot(kwargs.get("name"))
             return
     elif isinstance(dom, PowerSpace):
-        xcoord = dom.k_lengths
-        ycoord = dobj.to_global_data(f.val)
         plt.xscale('log')
         plt.yscale('log')
         plt.title('power')
-        plt.plot(xcoord, ycoord)
+        xcoord = dom.k_lengths
+        for fld in f:
+            ycoord = dobj.to_global_data(fld.val)
+            plt.plot(xcoord, ycoord)
         _limit_xy(**kwargs)
         _makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, HPSpace):
+        f = f[0]
         import pyHealpix
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
@@ -225,6 +242,7 @@ def plot(f, **kwargs):
         _makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, GLSpace):
+        f = f[0]
         import pyHealpix
         xsize = 800
         res, mask, theta, phi = _mollweide_helper(xsize)
