@@ -120,12 +120,12 @@ class FFTOperatorTests(unittest.TestCase):
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_dotsht2(self, lm, tp):
-        tol = _get_rtol(tp)
+        tol = 10*_get_rtol(tp)
         a = ift.LMSpace(lmax=lm)
         b = ift.HPSpace(nside=lm//2)
         fft = ift.FFTOperator(domain=a, target=b)
         inp = ift.Field.from_random(domain=a, random_type='normal',
-                                    std=1, mean=0.1, dtype=tp)
+                                    std=1, mean=0, dtype=tp)
         out = fft.times(inp)
         v1 = np.sqrt(out.vdot(out))
         v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
