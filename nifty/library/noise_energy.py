@@ -6,10 +6,10 @@ from ..utilities import memo
 
 
 class NoiseEnergy(Energy):
-    def __init__(self, position, d, m, D, t, FFT, Instrument, nonlinearity, alpha, q, Projection,
-                 samples=3, sample_list=None, inverter=None):
+    def __init__(self, position, d, m, D, t, FFT, Instrument, nonlinearity,
+                 alpha, q, Projection, samples=3, sample_list=None,
+                 inverter=None):
         super(NoiseEnergy, self).__init__(position=position.copy())
-        dummy = self.position.norm()
         self.m = m
         self.D = D
         self.d = d
@@ -39,13 +39,11 @@ class NoiseEnergy(Energy):
         self.inverter = inverter
 
     def at(self, position):
-        return self.__class__(position, self.d, self.m,
-                              self.D, self.t, self.FFT, self.Instrument, self.nonlinearity,
-                              self.alpha,
-                              self.q,
-                              self.Projection,
-                              sample_list=self.sample_list,
-                              samples=self.samples, inverter=self.inverter)
+        return self.__class__(
+            position, self.d, self.m, self.D, self.t, self.FFT,
+            self.Instrument, self.nonlinearity, self.alpha, self.q,
+            self.Projection, sample_list=self.sample_list,
+            samples=self.samples, inverter=self.inverter)
 
     @property
     @memo
@@ -53,8 +51,10 @@ class NoiseEnergy(Energy):
         likelihood = 0.
         for sample in self.sample_list:
             likelihood += self._likelihood(sample)
-        return ((likelihood / float(len(self.sample_list))) + 0.5 * self.one.vdot(self.position)
-                + (self.alpha - self.one).vdot(self.position) + self.q.vdot(exp(-self.position)))
+        return ((likelihood / float(len(self.sample_list))) +
+                0.5 * self.one.vdot(self.position) +
+                (self.alpha - self.one).vdot(self.position) +
+                self.q.vdot(exp(-self.position)))
 
     def _likelihood(self, m):
         residual = self.d - \
@@ -69,8 +69,9 @@ class NoiseEnergy(Energy):
         likelihood_gradient = Field(self.position.domain, val=0.)
         for sample in self.sample_list:
             likelihood_gradient += self._likelihood_gradient(sample)
-        return (likelihood_gradient / float(len(self.sample_list))
-                + 0.5 * self.one + (self.alpha - self.one) - self.q * (exp(-self.position)))
+        return (likelihood_gradient / float(len(self.sample_list)) +
+                0.5 * self.one + (self.alpha - self.one) -
+                self.q * (exp(-self.position)))
 
     def _likelihood_gradient(self, m):
         residual = self.d - \

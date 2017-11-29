@@ -1,7 +1,6 @@
 from ..operators import EndomorphicOperator
 from ..utilities import memo
 from ..field import exp
-from ..sugar import create_composed_fft_operator
 
 
 class LogNormalWienerFilterCurvature(EndomorphicOperator):
