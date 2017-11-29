@@ -10,7 +10,7 @@ def plot_parameters(m, t, p, p_d):
     t = t.val.real
     p = p.val.real
     p_d = p_d.val.real
-    ift.plotting.plot(m.real, name='map.pdf')
+    ift.plotting.plot(m.real, name='map.png')
 
 
 class AdjointFFTResponse(ift.LinearOperator):
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     data_power = ift.log(ift.power_analyze(fft(d),
                                            binbounds=p_space.binbounds))
     d_data = d.val.real
-    ift.plotting.plot(d.real, name="data.pdf")
+    ift.plotting.plot(d.real, name="data.png")
 
     IC1 = ift.GradientNormController(verbose=True, iteration_limit=100,
                                      tol_abs_gradnorm=0.1)

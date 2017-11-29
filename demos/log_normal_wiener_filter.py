@@ -66,19 +66,19 @@ if __name__ == "__main__":
     # m3 = fft(me3[0].position)
 
     # Plotting
-    ift.plotting.plot(mock_signal.real, name='mock_signal.pdf',
+    ift.plotting.plot(mock_signal.real, name='mock_signal.png',
                       colormap="plasma", xlabel="Pixel Index",
                       ylabel="Pixel Index")
     logdata = np.log(ift.dobj.to_global_data(data.val.real)).reshape(signal_space.shape)
     ift.plotting.plot(ift.Field(signal_space,
                                 val=ift.dobj.from_global_data(logdata)),
-                      name="log_of_data.pdf", colormap="plasma",
+                      name="log_of_data.png", colormap="plasma",
                       xlabel="Pixel Index", ylabel="Pixel Index")
-    # ift.plotting.plot(m1.real,name='m_LBFGS.pdf', colormap="plasma",
+    # ift.plotting.plot(m1.real,name='m_LBFGS.png', colormap="plasma",
     #                   xlabel="Pixel Index", ylabel="Pixel Index")
-    ift.plotting.plot(m2.real, name='m_Newton.pdf', colormap="plasma",
+    ift.plotting.plot(m2.real, name='m_Newton.png', colormap="plasma",
                       xlabel="Pixel Index", ylabel="Pixel Index")
-    # ift.plotting.plot(m3.real, name='m_SteepestDescent.pdf',
+    # ift.plotting.plot(m3.real, name='m_SteepestDescent.png',
     #                   colormap="plasma", xlabel="Pixel Index",
     #                   ylabel="Pixel Index")
 
@@ -90,4 +90,4 @@ if __name__ == "__main__":
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.02)
     variance = sm(proby.diagonal.weight(-1))
-    ift.plotting.plot(variance, name='variance.pdf')
+    ift.plotting.plot(variance, name='variance.png')

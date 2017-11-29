@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
     sm = ift.FFTSmoothingOperator(plot_space, sigma=0.03)
-    ift.plotting.plot(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), name='uncertainty.pdf',zmin=0.,zmax=3.,title="Uncertainty map",colormap="Planck-like")
-    ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real), name='mock_signal.pdf',colormap="Planck-like")
-    ift.plotting.plot(ift.Field(plot_space, val=data.val.real), name='data.pdf',colormap="Planck-like")
-    ift.plotting.plot(ift.Field(plot_space, val=m.val.real), name='map.pdf',colormap="Planck-like")
+    ift.plotting.plot(ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))), name='uncertainty.png',zmin=0.,zmax=3.,title="Uncertainty map",colormap="Planck-like")
+    ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real), name='mock_signal.png',colormap="Planck-like")
+    ift.plotting.plot(ift.Field(plot_space, val=data.val.real), name='data.png',colormap="Planck-like")
+    ift.plotting.plot(ift.Field(plot_space, val=m.val.real), name='map.png',colormap="Planck-like")

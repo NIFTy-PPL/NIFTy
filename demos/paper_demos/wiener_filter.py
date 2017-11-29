@@ -65,7 +65,7 @@ if __name__ == "__main__":
     variance = ift.sqrt(sm(proby.diagonal.weight(-1)))
 
     # Plotting
-    ift.plotting.plot(variance,name="uncertainty.pdf",xlabel='Pixel index', ylabel='Pixel index')
-    ift.plotting.plot(mock_signal,name="mock_signal.pdf",xlabel='Pixel index', ylabel='Pixel index')
-    ift.plotting.plot(ift.Field(signal_space, val=data.val),name="data.pdf",xlabel='Pixel index', ylabel='Pixel index')
-    ift.plotting.plot(m,name="map.pdf",xlabel='Pixel index', ylabel='Pixel index')
+    ift.plotting.plot(variance,name="uncertainty.png",xlabel='Pixel index', ylabel='Pixel index')
+    ift.plotting.plot(mock_signal,name="mock_signal.png",xlabel='Pixel index', ylabel='Pixel index')
+    ift.plotting.plot(ift.Field(signal_space, val=data.val),name="data.png",xlabel='Pixel index', ylabel='Pixel index')
+    ift.plotting.plot(m,name="map.png",xlabel='Pixel index', ylabel='Pixel index')
