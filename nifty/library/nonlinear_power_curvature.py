@@ -5,9 +5,10 @@ from .response_operators import LinearizedPowerResponse
 
 class NonlinearPowerCurvature(EndomorphicOperator):
 
-    def __init__(self, position, Instrument, nonlinearity,
+    def __init__(self, position, FFT, Instrument, nonlinearity,
                  Projection, N, T, sample_list):
         self.N = N
+        self.FFT = FFT
         self.Instrument = Instrument
         self.T = T
         self.sample_list = sample_list
@@ -32,14 +33,17 @@ class NonlinearPowerCurvature(EndomorphicOperator):
         return False
 
     def _times(self, x):
-        result = Field.zeros_like(self.position, dtype=np.float64)
+        result = None
         for sample in self.sample_list:
-            result += self._sample_times(x, sample)
+            if result is None:
+                result = self._sample_times(x, sample)
+            else:
+                result += self._sample_times(x, sample)
         result *= 1./len(self.sample_list)
         return result + self.T(x)
 
     def _sample_times(self, x, sample):
         LinearizedResponse = LinearizedPowerResponse(self.Instrument, self.nonlinearity,
-                                                     self.Projection, self.position, sample)
+                                                     self.FFT, self.Projection, self.position, sample)
         return LinearizedResponse.adjoint_times(
             self.N.inverse_times(LinearizedResponse(x)))
