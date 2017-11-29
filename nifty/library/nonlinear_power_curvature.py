@@ -1,4 +1,3 @@
-from .. import Field
 from ..operators.endomorphic_operator import EndomorphicOperator
 from .response_operators import LinearizedPowerResponse
 
@@ -7,6 +6,7 @@ class NonlinearPowerCurvature(EndomorphicOperator):
 
     def __init__(self, position, FFT, Instrument, nonlinearity,
                  Projection, N, T, sample_list):
+        super(NonlinearPowerCurvature, self).__init__()
         self.N = N
         self.FFT = FFT
         self.Instrument = Instrument
@@ -15,10 +15,6 @@ class NonlinearPowerCurvature(EndomorphicOperator):
         self.position = position
         self.Projection = Projection
         self.nonlinearity = nonlinearity
-
-        # if preconditioner is None:
-        #     preconditioner = self.theta.inverse_times
-        super(NonlinearPowerCurvature, self).__init__()
 
     @property
     def domain(self):
@@ -43,7 +39,8 @@ class NonlinearPowerCurvature(EndomorphicOperator):
         return result + self.T(x)
 
     def _sample_times(self, x, sample):
-        LinearizedResponse = LinearizedPowerResponse(self.Instrument, self.nonlinearity,
-                                                     self.FFT, self.Projection, self.position, sample)
+        LinearizedResponse = LinearizedPowerResponse(
+            self.Instrument, self.nonlinearity, self.FFT, self.Projection,
+            self.position, sample)
         return LinearizedResponse.adjoint_times(
             self.N.inverse_times(LinearizedResponse(x)))
