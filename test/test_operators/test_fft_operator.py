@@ -106,7 +106,7 @@ class FFTOperatorTests(unittest.TestCase):
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_dotsht(self, lm, tp):
-        tol = _get_rtol(tp)
+        tol = 10 * _get_rtol(tp)
         a = ift.LMSpace(lmax=lm)
         b = ift.GLSpace(nlat=lm+1)
         fft = ift.FFTOperator(domain=a, target=b)
@@ -120,7 +120,7 @@ class FFTOperatorTests(unittest.TestCase):
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_dotsht2(self, lm, tp):
-        tol = 10*_get_rtol(tp)
+        tol = 10 * _get_rtol(tp)
         a = ift.LMSpace(lmax=lm)
         b = ift.HPSpace(nside=lm//2)
         fft = ift.FFTOperator(domain=a, target=b)
