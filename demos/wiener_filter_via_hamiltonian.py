@@ -4,41 +4,14 @@ import numpy as np
 np.random.seed(42)
 
 
-class AdjointFFTResponse(ift.LinearOperator):
-    def __init__(self, FFT, R):
-        super(AdjointFFTResponse, self).__init__()
-        self._domain = FFT.target
-        self._target = R.target
-        self.R = R
-        self.FFT = FFT
-
-    def _times(self, x):
-        return self.R(self.FFT.adjoint_times(x))
-
-    def _adjoint_times(self, x):
-        return self.FFT(self.R.adjoint_times(x))
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
-    def unitary(self):
-        return False
-
-
 if __name__ == "__main__":
     # Set up position space
     s_space = ift.RGSpace([128, 128])
-    # s_space = HPSpace(32)
+    # s_space = ift.HPSpace(32)
 
-    # Define harmonic transformation and associated harmonic space
-    fft = ift.FFTOperator(s_space)
-    h_space = fft.target[0]
+    # Define associated harmonic space and harmonic transformation
+    h_space = s_space.get_default_codomain()
+    fft = ift.FFTOperator(h_space, s_space)
 
     # Setting up power space
     p_space = ift.PowerSpace(h_space)
@@ -52,7 +25,7 @@ if __name__ == "__main__":
     # Drawing a sample sh from the prior distribution in harmonic space
     sp = ift.PS_field(p_space, p_spec)
     sh = ift.power_synthesize(sp, real_signal=True)
-    ss = fft.adjoint_times(sh)
+    ss = fft.times(sh)
 
     # Choosing the measurement instrument
     # Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
@@ -62,7 +35,7 @@ if __name__ == "__main__":
     Instrument = ift.DiagonalOperator(diag)
 
     # Adding a harmonic transformation to the instrument
-    R = AdjointFFTResponse(fft, Instrument)
+    R = ift.ComposedOperator([fft, Instrument])
     signal_to_noise = 1.
     ndiag = ift.Field.full(s_space, ss.var()/signal_to_noise)
     N = ift.DiagonalOperator(ndiag.weight(1))
@@ -90,8 +63,7 @@ if __name__ == "__main__":
     m = energy.position
     D = energy.curvature
     ift.plotting.plot(ss, name="signal.png", colormap="Planck-like")
-    ift.plotting.plot(fft.inverse_times(m), name="m.png",
-                      colormap="Planck-like")
+    ift.plotting.plot(fft(m), name="m.png", colormap="Planck-like")
 
     # sampling the uncertainty map
     sample_variance = ift.Field.zeros(s_space)
@@ -99,7 +71,7 @@ if __name__ == "__main__":
 
     n_samples = 50
     for i in range(n_samples):
-        sample = fft.adjoint_times(ift.sugar.generate_posterior_sample(m, D))
+        sample = fft(ift.sugar.generate_posterior_sample(m, D))
         sample_variance += sample**2
         sample_mean += sample
     sample_mean /= n_samples
