@@ -1,5 +1,4 @@
 from ..minimization.energy import Energy
-from ..utilities import memo
 from ..operators.inversion_enabler import InversionEnabler
 from .wiener_filter_curvature import WienerFilterCurvature
 
@@ -26,41 +25,31 @@ class WienerFilterEnergy(Energy):
 
     def __init__(self, position, d, R, N, S, inverter, _j=None):
         super(WienerFilterEnergy, self).__init__(position=position)
-        self.d = d
         self.R = R
         self.N = N
         self.S = S
+        self._curvature = InversionEnabler(WienerFilterCurvature(R, N, S),
+                                           inverter=inverter)
         self._inverter = inverter
-        self._jpre = _j
+        if _j is None:
+            _j = self.R.adjoint_times(self.N.inverse_times(d))
+        self._j = _j
+        Dx = self._curvature(self.position)
+        self._value = 0.5*self.position.vdot(Dx) - self._j.vdot(self.position)
+        self._gradient = Dx - self._j
 
     def at(self, position):
-        return self.__class__(position=position, d=self.d, R=self.R, N=self.N,
-                              S=self.S, inverter=self._inverter, _j=self._jpre)
+        return self.__class__(position=position, d=None, R=self.R, N=self.N,
+                              S=self.S, inverter=self._inverter, _j=self._j)
 
     @property
-    @memo
     def value(self):
-        return 0.5*self.position.vdot(self._Dx) - self._j.vdot(self.position)
+        return self._value
 
     @property
-    @memo
     def gradient(self):
-        return self._Dx - self._j
+        return self._gradient
 
     @property
-    @memo
     def curvature(self):
-        return InversionEnabler(WienerFilterCurvature(R=self.R, N=self.N,
-                                                      S=self.S),
-                                inverter=self._inverter)
-
-    @property
-    @memo
-    def _Dx(self):
-        return self.curvature(self.position)
-
-    @property
-    def _j(self):
-        if self._jpre is None:
-            self._jpre = self.R.adjoint_times(self.N.inverse_times(self.d))
-        return self._jpre
+        return self._curvature

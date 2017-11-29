@@ -82,3 +82,6 @@ Significant differences between NIFTy nightly and nifty2go
 14) A new approach is used for FFTs along axes that are distributed among
    MPI tasks. As a consequence, nifty2go works well with the standard version
    of pyfftw and does not need the MPI-enabled fork.
+
+15) Arithmetic functions working on Fields have been moved from
+   basic_arithmetics.py to field.py.

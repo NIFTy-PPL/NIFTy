@@ -20,10 +20,10 @@ class WienerFilterCurvature(EndomorphicOperator):
     """
 
     def __init__(self, R, N, S):
+        super(WienerFilterCurvature, self).__init__()
         self.R = R
         self.N = N
         self.S = S
-        super(WienerFilterCurvature, self).__init__()
 
     @property
     def preconditioner(self):

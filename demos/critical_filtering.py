@@ -104,14 +104,12 @@ if __name__ == "__main__":
     flat_power = ift.Field.full(p_space, 1e-8)
     m0 = ift.power_synthesize(flat_power, real_signal=True)
 
-    def ps0(k):
-        return (1./(1.+k)**2)
-
     t0 = ift.Field(p_space,
-            val=ift.dobj.from_global_data(np.log(1./(1+p_space.k_lengths)**2)))
+            val=ift.dobj.from_global_data(-7.))
 
     for i in range(500):
-        S0 = ift.create_power_operator(h_space, power_spectrum=ps0)
+
+        S0 = ift.create_power_operator(h_space, power_spectrum=ift.exp(t0))
 
         # Initialize non-linear Wiener Filter energy
         ICI = ift.GradientNormController(verbose=False, name="ICI",
