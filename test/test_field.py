@@ -37,7 +37,7 @@ class Test_Interface(unittest.TestCase):
     def test_return_types(self, domain, attribute_desired_type):
         attribute = attribute_desired_type[0]
         desired_type = attribute_desired_type[1]
-        f = ift.Field(domain=domain)
+        f = ift.Field(domain=domain, val=1.)
         assert_equal(isinstance(getattr(f, attribute), desired_type), True)
 
 

@@ -137,14 +137,15 @@ class Field(object):
             raise TypeError("could not infer domain from value")
         return DomainTuple.make(domain)
 
-    # MR: this needs some rethinking ... do we need to have at least float64?
     @staticmethod
     def _infer_dtype(dtype, val):
-        if val is None or dtype is not None:
-            return np.result_type(dtype, np.float64)
+        if dtype is not None:
+            return dtype
+        if val is None:
+            raise ValueError("could not infer dtype")
         if isinstance(val, Field):
             return val.dtype
-        return np.result_type(val, np.float64)
+        return np.result_type(val)
 
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
