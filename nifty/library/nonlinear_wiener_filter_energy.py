@@ -19,12 +19,15 @@ class NonlinearWienerFilterEnergy(Energy):
                                      self.position)
 
         position_map = FFT.adjoint_times(self.power * self.position)
-        self.residual = d - Instrument(nonlinearity(position_map))
+        residual = d - Instrument(nonlinearity(position_map))
         self.N = N
         self.S = S
         self.inverter = inverter
-        self._t1 = self.S.inverse_times(self.position)
-        self._t2 = self.N.inverse_times(self.residual)
+        t1 = self.S.inverse_times(self.position)
+        t2 = self.N.inverse_times(residual)
+        tmp = self.position.vdot(t1) + residual.vdot(t2)
+        self._value = 0.5 * tmp.real
+        self._gradient = t1 - self.LinearizedResponse.adjoint_times(t2)
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
@@ -32,15 +35,12 @@ class NonlinearWienerFilterEnergy(Energy):
                               self.S, inverter=self.inverter)
 
     @property
-    @memo
     def value(self):
-        energy = self.position.vdot(self._t1) + self.residual.vdot(self._t2)
-        return 0.5 * energy.real
+        return self._value
 
     @property
-    @memo
     def gradient(self):
-        return self._t1 - self.LinearizedResponse.adjoint_times(self._t2)
+        return self._gradient
 
     @property
     @memo

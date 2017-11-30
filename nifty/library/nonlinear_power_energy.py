@@ -46,73 +46,61 @@ class NonlinearPowerEnergy(Energy):
         self.sigma = sigma
         self.T = SmoothnessOperator(domain=self.position.domain[0],
                                     strength=self.sigma, logarithmic=True)
-        self.samples = samples
         self.FFT = FFT
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.Projection = Projection
-        self.LinearizedResponse = LinearizedPowerResponse(
-            self.Instrument, self.nonlinearity, self.FFT, self.Projection,
-            self.position, self.m)
 
         self.power = self.Projection.adjoint_times(exp(0.5*self.position))
         if sample_list is None:
             if samples is None or samples == 0:
-                sample_list = [self.m]
+                sample_list = [m]
             else:
                 sample_list = [generate_posterior_sample(m, D)
                                for _ in range(samples)]
-                # sample_list = []
-                # for i in range(samples):
-                #     sample = generate_posterior_sample(m, D)
-                #     # MR FIXME: really needed? For RGSpaces this is a no-op
-                #     sample = FFT(FFT.adjoint_times(sample))
-                #     sample_list.append(sample)
         self.sample_list = sample_list
         self.inverter = inverter
+        self._value, self._gradient = self._value_and_grad()
 
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.m, self.D,
                               self.FFT, self.Instrument, self.nonlinearity,
                               self.Projection, sigma=self.sigma,
+                              samples=len(self.sample_list),
                               sample_list=self.sample_list,
-                              samples=self.samples, inverter=self.inverter)
+                              inverter=self.inverter)
 
-    @property
-    @memo
-    def value(self):
-        likelihood = 0.
-        for sample in self.sample_list:
-            likelihood += self._likelihood(sample)
-        likelihood /= float(len(self.sample_list))
-        return 0.5*self.position.vdot(self.T(self.position)) + likelihood
-
-    def _likelihood(self, m):
-        residual = self.d - \
-            self.Instrument(self.nonlinearity(
-                self.FFT.adjoint_times(self.power*m)))
-        return 0.5 * residual.vdot(self.N.inverse_times(residual)).real
-
-    @property
-    @memo
-    def gradient(self):
+    def _value_and_grad(self):
         likelihood_gradient = None
         for sample in self.sample_list:
+            residual = self.d - \
+                self.Instrument(self.nonlinearity(
+                    self.FFT.adjoint_times(self.power*sample)))
+            lh = 0.5 * residual.vdot(self.N.inverse_times(residual)).real
+            LinR = LinearizedPowerResponse(
+                self.Instrument, self.nonlinearity, self.FFT, self.Projection,
+                self.position, sample)
+            grad = LinR.adjoint_times(self.N.inverse_times(residual))
             if likelihood_gradient is None:
-                likelihood_gradient = self._likelihood_gradient(sample)
+                likelihood = lh
+                likelihood_gradient = grad.copy()
             else:
-                likelihood_gradient += self._likelihood_gradient(sample)
-        return -likelihood_gradient / float(len(self.sample_list)) + \
-            self.T(self.position)
+                likelihood += lh
+                likelihood_gradient += grad
+        Tpos = self.T(self.position)
+        likelihood *= 1./len(self.sample_list)
+        likelihood += 0.5*self.position.vdot(Tpos)
+        likelihood_gradient *= -1./len(self.sample_list)
+        likelihood_gradient += Tpos
+        return likelihood, likelihood_gradient
 
-    def _likelihood_gradient(self, m):
-        residual = self.d - \
-            self.Instrument(self.nonlinearity(
-                self.FFT.adjoint_times(self.power*m)))
-        LinearizedResponse = LinearizedPowerResponse(
-            self.Instrument, self.nonlinearity, self.FFT, self.Projection,
-            self.position, m)
-        return LinearizedResponse.adjoint_times(self.N.inverse_times(residual))
+    @property
+    def value(self):
+        return self._value
+
+    @property
+    def gradient(self):
+        return self._gradient
 
     @property
     @memo
