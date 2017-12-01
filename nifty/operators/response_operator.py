@@ -56,16 +56,15 @@ class ResponseOperator(LinearOperator):
         if spaces is None:
             spaces = range(len(self._domain))
 
-        kernel_smoothing = [FFTSmoothingOperator(self._domain, sigma[x],
-                                                 space=spaces[x])
-                            for x in range(nsigma)]
-        kernel_exposure = [DiagonalOperator(Field(self._domain[spaces[x]],
-                                                  exposure[x]),
-                                            domain=self._domain,
-                                            spaces=(spaces[x],))
-                           for x in range(nsigma)]
-
+        kernel_smoothing = [
+            FFTSmoothingOperator(self._domain, sigma[x], space=spaces[x])
+            for x in range(nsigma)]
         self._composed_kernel = ComposedOperator(kernel_smoothing)
+
+        kernel_exposure = [
+            DiagonalOperator(Field(self._domain[spaces[x]], exposure[x]),
+                             domain=self._domain, spaces=(spaces[x],))
+            for x in range(nsigma)]
         self._composed_exposure = ComposedOperator(kernel_exposure)
 
         target_list = [FieldArray(self._domain[i].shape) for i in spaces]

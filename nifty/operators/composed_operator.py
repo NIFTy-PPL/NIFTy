@@ -39,30 +39,22 @@ class ComposedOperator(LinearOperator):
         The NIFTy.space in which the outcome of the operator lives
     unitary : boolean
         Indicates whether the Operator is unitary or not.
-
-    Raises
-    ------
-    TypeError
-        Raised if
-            * an element of the operator list is not an instance of the
-              LinearOperator base class.
     """
 
-    # ---Overwritten properties and methods---
     def __init__(self, operators):
         super(ComposedOperator, self).__init__()
 
-        for i in range(1, len(operators)):
-            if operators[i].domain != operators[i-1].target:
-                raise ValueError("incompatible domains")
         self._operator_store = ()
+        old_op = None
         for op in operators:
             if not isinstance(op, LinearOperator):
                 raise TypeError("The elements of the operator list must be"
                                 "instances of the LinearOperator base class")
+            if old_op is not None and op.domain != old_op.target:
+                raise ValueError("incompatible domains")
             self._operator_store += (op,)
+            old_op = op
 
-    # ---Mandatory properties and methods---
     @property
     def domain(self):
         return self._operator_store[0].domain

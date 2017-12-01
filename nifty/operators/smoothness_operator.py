@@ -1,6 +1,5 @@
 from .endomorphic_operator import EndomorphicOperator
 from .laplace_operator import LaplaceOperator
-from .. import Field
 
 
 class SmoothnessOperator(EndomorphicOperator):
