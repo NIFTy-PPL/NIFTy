@@ -1,3 +1,4 @@
+import numpy as np
 from .space import Space
 
 
@@ -23,7 +24,7 @@ class DOFSpace(Space):
         return None
 
     def dvol(self):
-        return self._dvol
+        return np.array(self._dvol)
 
     def __repr__(self):
         return 'this is a dof space'

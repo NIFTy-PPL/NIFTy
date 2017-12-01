@@ -5,9 +5,11 @@ from ..spaces import DOFSpace
 
 
 class DOFProjectionOperator(LinearOperator):
-    def __init__(self, domain, dofdex, space=None):
+    def __init__(self, dofdex, domain=None, space=None):
         super(DOFProjectionOperator, self).__init__()
 
+        if domain is None:
+            domain = dofdex.domain
         self._domain = DomainTuple.make(domain)
         if space is None and len(self._domain) == 1:
             space = 0
@@ -17,15 +19,19 @@ class DOFProjectionOperator(LinearOperator):
         partner = self._domain[space]
         if not isinstance(dofdex, Field):
             raise TypeError("dofdex must be a Field")
-        if not isinstance(dofdex.dtype, np.integer):
+        if not len(dofdex.domain) == 1:
+            raise ValueError("dofdex must live on exactly one Space")
+        if not np.issubdtype(dofdex.dtype, np.integer):
+            print (dofdex.dtype.type, np.integer)
             raise TypeError("dofdex must contain integer numbers")
-        if partner != dofdex.domain:
+        if partner != dofdex.domain[0]:
+            print(partner, dofdex.domain[0])
             raise ValueError("incorrect dofdex domain")
 
         nbin = dofdex.max()
         if partner.scalar_dvol() is not None:
             wgt = np.bincount(dobj.local_data(dofdex.val).ravel(),
-                              minlength=nbin)
+                              minlength=nbin).astype(np.float64)
             wgt *= partner.scalar_dvol()
         else:
             dvol = dobj.local_data(partner.dvol())
@@ -45,9 +51,9 @@ class DOFProjectionOperator(LinearOperator):
         self._target = DomainTuple.make(tgt)
 
         if dobj.default_distaxis() in self.domain.axes[self._space]:
-            dofdex = dobj.local_data(dofdex)
+            dofdex = dobj.local_data(dofdex.val)
         else:  # dofdex must be available fully on every task
-            dofdex = dobj.to_global_data(dofdex)
+            dofdex = dobj.to_global_data(dofdex.val)
         self._dofdex = dofdex.ravel()
         firstaxis = self._domain.axes[self._space][0]
         lastaxis = self._domain.axes[self._space][-1]
