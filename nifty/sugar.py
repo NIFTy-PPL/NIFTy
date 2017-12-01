@@ -94,10 +94,17 @@ def power_analyze(field, spaces=None, binbounds=None,
     if len(spaces) == 0:
         raise ValueError("No space for analysis specified.")
 
+    field_real = not np.issubdtype(field.dtype, np.complexfloating)
+    if (not field_real) and keep_phase_information:
+        raise ValueError("cannot keep phase from real-valued input Field")
+
     if keep_phase_information:
         parts = [field.real*field.real, field.imag*field.imag]
     else:
-        parts = [field.real*field.real + field.imag*field.imag]
+        if field_real:
+            parts = [field**2]
+        else:
+            parts = [field.real*field.real + field.imag*field.imag]
 
     parts = [part.weight(1, spaces) for part in parts]
     for space_index in spaces:
@@ -162,6 +169,9 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
     """
 
     spec = _compute_spec(field, spaces)
+    self_real = not np.issubdtype(spec.dtype, np.complexfloating)
+    if (not real_power) and self_real:
+        raise ValueError("can't draw complex realizations from real spectrum")
 
     # create random samples: one or two, depending on whether the
     # power spectrum is real or complex
@@ -176,7 +186,7 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
         field.from_random('normal', mean=0., std=1.,
                           domain=spec.domain, dtype=np.float)
 
-    result[0] *= spec.real
+    result[0] *= spec if self_real else spec.real
     if not real_power:
         result[1] *= spec.imag
 
@@ -190,7 +200,7 @@ def power_synthesize_special(field, spaces=None):
     field.from_random('normal', mean=0., std=1.,
                       domain=spec.domain, dtype=np.complex)
 
-    return spec.real
+    return spec
 
 
 def create_power_field(domain, power_spectrum, dtype=None):
@@ -206,12 +216,8 @@ def create_power_field(domain, power_spectrum, dtype=None):
     else:
         power_domain = PowerSpace(domain)
         fp = PS_field(power_domain, power_spectrum, dtype)
-    f = PowerProjectionOperator(domain, power_domain).adjoint_times(fp)
 
-    if not issubclass(fp.dtype.type, np.complexfloating):
-        f = f.real
-
-    return f
+    return PowerProjectionOperator(domain, power_domain).adjoint_times(fp)
 
 
 def create_power_operator(domain, power_spectrum, space=None, dtype=None):

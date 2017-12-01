@@ -140,7 +140,7 @@ class DiagonalOperator(EndomorphicOperator):
     @property
     def self_adjoint(self):
         if self._self_adjoint is None:
-            if not issubclass(self._diagonal.dtype.type, np.complexfloating):
+            if not np.issubdtype(self._diagonal.dtype, np.complexfloating):
                 self._self_adjoint = True
             else:
                 self._self_adjoint = (self._diagonal.val.imag == 0).all()

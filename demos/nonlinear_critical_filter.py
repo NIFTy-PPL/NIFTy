@@ -46,7 +46,7 @@ if __name__ == "__main__":
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
     mask = np.ones(s_space.shape)
     mask[6000:8000] = 0.
-    mask = ift.Field(s_space, val=mask)
+    mask = ift.Field(s_space, val=ift.dobj.from_global_data(mask))
 
     MaskOperator = ift.DiagonalOperator(mask)
     InstrumentResponse = ift.ResponseOperator(s_space, sigma=[0.0])

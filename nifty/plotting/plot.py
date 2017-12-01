@@ -45,9 +45,11 @@ def _find_closest(A, target):
 def _makeplot(name):
     import matplotlib.pyplot as plt
     if dobj.rank != 0:
+        plt.close()
         return
     if name is None:
         plt.show()
+        plt.close()
         return
     extension = os.path.splitext(name)[1]
     if extension == ".pdf":

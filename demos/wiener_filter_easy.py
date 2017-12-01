@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec)
 
-    sp = ift.Field(p_space, val=pow_spec(p_space.k_lengths))
+    sp = ift.PS_field(p_space, pow_spec)
     sh = ift.power_synthesize(sp, real_signal=True)
     ss = fft.inverse_times(sh)
 

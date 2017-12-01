@@ -23,7 +23,7 @@ import numpy as np
 class Random(object):
     @staticmethod
     def pm1(dtype, shape):
-        if issubclass(dtype, (complex, np.complexfloating)):
+        if np.issubdtype(dtype, np.complexfloating):
             x = np.array([1+0j, 0+1j, -1+0j, 0-1j], dtype=dtype)
             x = x[np.random.randint(4, size=shape)]
         else:
@@ -32,7 +32,7 @@ class Random(object):
 
     @staticmethod
     def normal(dtype, shape, mean=0., std=1.):
-        if issubclass(dtype, (complex, np.complexfloating)):
+        if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
             x.real = np.random.normal(mean.real, std*np.sqrt(0.5), shape)
             x.imag = np.random.normal(mean.imag, std*np.sqrt(0.5), shape)
@@ -42,12 +42,11 @@ class Random(object):
 
     @staticmethod
     def uniform(dtype, shape, low=0., high=1.):
-        if issubclass(dtype, (complex, np.complexfloating)):
+        if np.issubdtype(dtype, np.complexfloating):
             x = np.empty(shape, dtype=dtype)
             x.real = np.random.uniform(low, high, shape)
             x.imag = np.random.uniform(low, high, shape)
-        elif dtype in [np.dtype('int8'), np.dtype('int16'), np.dtype('int32'),
-                       np.dtype('int64')]:
+        elif np.issubdtype(dtype, np.integer):
             x = np.random.random.randint(low, high+1, shape)
         else:
             x = np.random.uniform(low, high, shape)

@@ -107,7 +107,7 @@ class FFTOperator(LinearOperator):
             self._trafo = SphericalTransformation(pdom, hdom, space)
 
     def _times_helper(self, x):
-        if issubclass(x.dtype.type, np.complexfloating):
+        if np.issubdtype(x.dtype, np.complexfloating):
             res = (self._trafo.transform(x.real) +
                    1j * self._trafo.transform(x.imag))
         else:

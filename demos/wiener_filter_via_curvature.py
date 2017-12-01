@@ -47,7 +47,6 @@ if __name__ == "__main__":
 
     mock_power = ift.PS_field(power_space, power_spectrum)
     mock_harmonic = ift.power_synthesize(mock_power, real_signal=True)
-    mock_harmonic = mock_harmonic.real
     mock_signal = fft(mock_harmonic)
 
     exposure = 1.
@@ -78,9 +77,9 @@ if __name__ == "__main__":
 
     sspace2 = ift.RGSpace(shape, distances=L/N_pixels/nu.m)
 
-    ift.plotting.plot(ift.Field(sspace2, mock_signal.real.val)/nu.K,
+    ift.plotting.plot(ift.Field(sspace2, mock_signal.val)/nu.K,
                       name="mock_signal.png")
-    data = ift.dobj.to_global_data(data.val.real).reshape(sspace2.shape)/nu.K
+    data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)/nu.K
     data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))/nu.K
     ift.plotting.plot(ift.Field(sspace2, val=data), name="data.png")
-    ift.plotting.plot(ift.Field(sspace2, m_s.real.val)/nu.K, name="map.png")
+    ift.plotting.plot(ift.Field(sspace2, m_s.val)/nu.K, name="map.png")

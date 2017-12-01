@@ -66,19 +66,18 @@ if __name__ == "__main__":
     # m3 = fft(me3[0].position)
 
     # Plotting
-    ift.plotting.plot(mock_signal.real, name='mock_signal.png',
-                      colormap="plasma", xlabel="Pixel Index",
-                      ylabel="Pixel Index")
-    logdata = np.log(ift.dobj.to_global_data(data.val.real)).reshape(signal_space.shape)
+    ift.plotting.plot(mock_signal, name='mock_signal.png', colormap="plasma",
+                      xlabel="Pixel Index", ylabel="Pixel Index")
+    logdata = np.log(ift.dobj.to_global_data(data.val)).reshape(signal_space.shape)
     ift.plotting.plot(ift.Field(signal_space,
                                 val=ift.dobj.from_global_data(logdata)),
                       name="log_of_data.png", colormap="plasma",
                       xlabel="Pixel Index", ylabel="Pixel Index")
-    # ift.plotting.plot(m1.real,name='m_LBFGS.png', colormap="plasma",
+    # ift.plotting.plot(m1,name='m_LBFGS.png', colormap="plasma",
     #                   xlabel="Pixel Index", ylabel="Pixel Index")
-    ift.plotting.plot(m2.real, name='m_Newton.png', colormap="plasma",
+    ift.plotting.plot(m2, name='m_Newton.png', colormap="plasma",
                       xlabel="Pixel Index", ylabel="Pixel Index")
-    # ift.plotting.plot(m3.real, name='m_SteepestDescent.png',
+    # ift.plotting.plot(m3, name='m_SteepestDescent.png',
     #                   colormap="plasma", xlabel="Pixel Index",
     #                   ylabel="Pixel Index")
 

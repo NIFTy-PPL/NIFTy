@@ -129,7 +129,7 @@ def hartley(a, axes=None):
     if axes is not None and \
             not all(axis < len(a.shape) for axis in axes):
         raise ValueError("Provided axes do not match array shape")
-    if issubclass(a.dtype.type, np.complexfloating):
+    if np.issubdtype(a.dtype, np.complexfloating):
         raise TypeError("Hartley transform requires real-valued arrays.")
 
     from pyfftw.interfaces.numpy_fft import rfftn
@@ -171,7 +171,7 @@ def my_fftn_r2c(a, axes=None):
     if axes is not None and \
             not all(axis < len(a.shape) for axis in axes):
         raise ValueError("Provided axes do not match array shape")
-    if issubclass(a.dtype.type, np.complexfloating):
+    if np.issubdtype(a.dtype, np.complexfloating):
         raise TypeError("Transform requires real-valued input arrays.")
 
     from pyfftw.interfaces.numpy_fft import rfftn

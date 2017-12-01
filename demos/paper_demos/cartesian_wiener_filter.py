@@ -53,7 +53,6 @@ if __name__ == "__main__":
                      ift.dobj.to_global_data(mock_power_2.val))))
 
     diagonal = ift.power_synthesize_special(mock_power, spaces=(0, 1))**2
-    diagonal = diagonal.real
 
     S = ift.DiagonalOperator(diagonal)
 
