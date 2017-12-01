@@ -1,5 +1,6 @@
+import numpy as np
 from .linear_operator import LinearOperator
-from .. import Field
+from .. import Field, DomainTuple, dobj
 from ..spaces import DOFSpace
 
 
