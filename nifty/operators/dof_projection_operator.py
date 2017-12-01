@@ -29,8 +29,8 @@ class DOFProjectionOperator(LinearOperator):
         nbin = dofdex.max()
         if partner.scalar_dvol() is not None:
             wgt = np.bincount(dobj.local_data(dofdex.val).ravel(),
-                              minlength=nbin).astype(np.float64)
-            wgt *= partner.scalar_dvol()
+                              minlength=nbin)
+            wgt = wgt*partner.scalar_dvol()
         else:
             dvol = dobj.local_data(partner.dvol())
             wgt = np.bincount(dobj.local_data(dofdex.val).ravel(),

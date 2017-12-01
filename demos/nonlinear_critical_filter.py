@@ -34,12 +34,12 @@ if __name__ == "__main__":
     s_spec = ift.Field(p_space, val=1.)
     # Choosing the prior correlation structure and defining
     # correlation operator
-    p = ift.Field(p_space, val=p_spec(p_space.k_lengths))
+    p = ift.PS_field(p_space, p_spec)
     log_p = ift.log(p)
     S = ift.create_power_operator(h_space, power_spectrum=s_spec)
 
     # Drawing a sample sh from the prior distribution in harmonic space
-    sp = ift.Field(p_space,  val=s_spec)
+    sp = ift.Field(p_space, val=s_spec)
     sh = ift.power_synthesize(sp)
 
     # Choosing the measurement instrument
@@ -56,19 +56,16 @@ if __name__ == "__main__":
 
     noise_covariance = ift.Field(d_space, val=noise_level**2).weight()
     N = ift.DiagonalOperator(noise_covariance)
-    n = ift.Field.from_random(domain=d_space,
-                              random_type='normal',
-                              std=noise_level,
-                              mean=0)
+    n = ift.Field.from_random(domain=d_space, random_type='normal',
+                              std=noise_level)
     Projection = ift.PowerProjectionOperator(domain=h_space,
                                              power_space=p_space)
-    power = Projection.adjoint_times(ift.exp(0.5 * log_p))
+    power = Projection.adjoint_times(ift.exp(0.5*log_p))
     # Creating the mock data
-    true_sky = nonlinearity(FFT.adjoint_times(power * sh))
+    true_sky = nonlinearity(FFT.adjoint_times(power*sh))
     d = MeasurementOperator(true_sky) + n
 
-    flat_power = ift.Field(p_space, val=1e-7)
-    m0 = ift.power_synthesize(flat_power)
+    m0 = ift.power_synthesize(ift.Field(p_space, val=1e-7))
     t0 = ift.Field(p_space, val=-4.)
     power0 = Projection.adjoint_times(ift.exp(0.5 * t0))
 
@@ -83,7 +80,6 @@ if __name__ == "__main__":
     inverter = ift.ConjugateGradient(controller=ICI)
 
     for i in range(20):
-
         power0 = Projection.adjoint_times(ift.exp(0.5*t0))
         map0_energy = ift.library.NonlinearWienerFilterEnergy(
             m0, d, MeasurementOperator, nonlinearity, FFT, power0, N, S,
@@ -102,10 +98,9 @@ if __name__ == "__main__":
             Instrument=MeasurementOperator, nonlinearity=nonlinearity,
             Projection=Projection, sigma=1., samples=2, inverter=inverter)
 
-        (power0_energy, convergence) = minimizer(power0_energy)
+        power0_energy = minimizer(power0_energy)[0]
 
         # Setting new power spectrum
-        t0_ = t0.copy()
         t0 = power0_energy.position
 
         # break degeneracy between amplitude and excitation by setting

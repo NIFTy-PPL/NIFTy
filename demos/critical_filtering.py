@@ -5,49 +5,14 @@ np.random.seed(42)
 # np.seterr(all="raise",under="ignore")
 
 
-def plot_parameters(m, t, p, p_d):
-    m = fft.adjoint_times(m)
-    t = t.val.real
-    p = p.val.real
-    p_d = p_d.val.real
-    ift.plotting.plot(m.real, name='map.png')
-
-
-class AdjointFFTResponse(ift.LinearOperator):
-    def __init__(self, FFT, R):
-        super(AdjointFFTResponse, self).__init__()
-        self._domain = FFT.target
-        self._target = R.target
-        self.R = R
-        self.FFT = FFT
-
-    def _times(self, x):
-        return self.R(self.FFT.adjoint_times(x))
-
-    def _adjoint_times(self, x):
-        return self.FFT(self.R.adjoint_times(x))
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
-    def unitary(self):
-        return False
-
-
 if __name__ == "__main__":
     # Set up position space
     s_space = ift.RGSpace([128, 128])
     # s_space = ift.HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
-    fft = ift.FFTOperator(s_space)
-    h_space = fft.target[0]
+    h_space = s_space.get_default_codomain()
+    fft = ift.FFTOperator(h_space, s_space)
 
     # Set up power space
     p_space = ift.PowerSpace(h_space,
@@ -69,14 +34,12 @@ if __name__ == "__main__":
     # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
     # Add a harmonic transformation to the instrument
-    R = AdjointFFTResponse(fft, Instrument)
+    R = ift.ComposedOperator([fft, Instrument])
 
     noise = 1.
     N = ift.DiagonalOperator(ift.Field.full(s_space, noise).weight(1))
-    n = ift.Field.from_random(domain=s_space,
-                              random_type='normal',
-                              std=np.sqrt(noise),
-                              mean=0)
+    n = ift.Field.from_random(domain=s_space, random_type='normal',
+                              std=np.sqrt(noise), mean=0)
 
     # Create mock data
     d = R(sh) + n
@@ -85,59 +48,47 @@ if __name__ == "__main__":
     j = R.adjoint_times(N.inverse_times(d))
     realized_power = ift.log(ift.power_analyze(sh,
                                                binbounds=p_space.binbounds))
-    data_power = ift.log(ift.power_analyze(fft(d),
+    data_power = ift.log(ift.power_analyze(fft.adjoint_times(d),
                                            binbounds=p_space.binbounds))
-    d_data = d.val.real
-    ift.plotting.plot(d.real, name="data.png")
+    d_data = d.val
+    ift.plotting.plot(d, name="data.png")
 
     IC1 = ift.GradientNormController(verbose=True, iteration_limit=100,
                                      tol_abs_gradnorm=0.1)
-    minimizer1 = ift.RelaxedNewton(IC1)
-    IC2 = ift.GradientNormController(verbose=True, iteration_limit=100,
-                                     tol_abs_gradnorm=0.1)
-    minimizer2 = ift.VL_BFGS(IC2, max_history_length=20)
-    IC3 = ift.GradientNormController(verbose=True, iteration_limit=1000,
-                                     tol_abs_gradnorm=0.1)
-    minimizer3 = ift.SteepestDescent(IC3)
+    minimizer = ift.RelaxedNewton(IC1)
+
+    ICI = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=0.1)
+    map_inverter = ift.ConjugateGradient(controller=ICI)
+
+    ICI2 = ift.GradientNormController(iteration_limit=200,
+                                      tol_abs_gradnorm=1e-5)
+    power_inverter = ift.ConjugateGradient(controller=ICI2)
 
     # Set starting position
     flat_power = ift.Field.full(p_space, 1e-8)
     m0 = ift.power_synthesize(flat_power, real_signal=True)
-
-    t0 = ift.Field(p_space,
-            val=ift.dobj.from_global_data(-7.))
+    t0 = ift.Field(p_space, val=-7.)
 
     for i in range(500):
-
         S0 = ift.create_power_operator(h_space, power_spectrum=ift.exp(t0))
 
         # Initialize non-linear Wiener Filter energy
-        ICI = ift.GradientNormController(verbose=False, name="ICI",
-                                         iteration_limit=500,
-                                         tol_abs_gradnorm=0.1)
-        map_inverter = ift.ConjugateGradient(controller=ICI)
-        map_energy = ift.library.WienerFilterEnergy(position=m0,
-                                                    d=d, R=R, N=N, S=S0,
-                                                    inverter=map_inverter)
+        map_energy = ift.library.WienerFilterEnergy(
+            position=m0, d=d, R=R, N=N, S=S0, inverter=map_inverter)
         # Solve the Wiener Filter analytically
         D0 = map_energy.curvature
         m0 = D0.inverse_times(j)
         # Initialize power energy with updated parameters
-        ICI2 = ift.GradientNormController(name="powI",
-                                          verbose=False,
-                                          iteration_limit=200,
-                                          tol_abs_gradnorm=1e-5)
-        power_inverter = ift.ConjugateGradient(controller=ICI2)
         power_energy = ift.library.CriticalPowerEnergy(
             position=t0, m=m0, D=D0, smoothness_prior=10., samples=3,
             inverter=power_inverter)
 
-        (power_energy, convergence) = minimizer1(power_energy)
+        power_energy = minimizer(power_energy)[0]
 
         # Set new power spectrum
-        t0 = power_energy.position.real
+        t0 = power_energy.position
 
         # Plot current estimate
         ift.dobj.mprint(i)
         if i % 5 == 0:
-            plot_parameters(m0, t0, ift.log(sp), data_power)
+            ift.plotting.plot(fft(m0), name='map.png')
