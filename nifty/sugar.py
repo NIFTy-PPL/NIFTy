@@ -27,7 +27,6 @@ __all__ = ['PS_field',
            'power_synthesize_special',
            'create_power_field',
            'create_power_operator',
-           'generate_posterior_sample',
            'create_composed_fft_operator']
 
 
@@ -249,49 +248,6 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
         create_power_field(domain[space], power_spectrum, dtype).weight(1),
         domain=domain,
         spaces=space)
-
-
-def generate_posterior_sample(mean, covariance):
-    """ Generates a posterior sample from a Gaussian distribution with given
-    mean and covariance
-
-    This method generates samples by setting up the observation and
-    reconstruction of a mock signal in order to obtain residuals of the right
-    correlation which are added to the given mean.
-
-    Parameters
-    ----------
-    mean : Field
-        the mean of the posterior Gaussian distribution
-    covariance : WienerFilterCurvature
-        The posterior correlation structure consisting of a
-        response operator, noise covariance and prior signal covariance
-
-    Returns
-    -------
-    sample : Field
-        Returns the a sample from the Gaussian of given mean and covariance.
-    """
-
-    S = covariance.op.S
-    R = covariance.op.R
-    N = covariance.op.N
-
-    power = sqrt(power_analyze(S.diagonal()))
-    mock_signal = power_synthesize(power, real_signal=True)
-
-    noise = N.diagonal().weight(-1)
-
-    mock_noise = Field.from_random(random_type="normal", domain=N.domain,
-                                   dtype=noise.dtype.type)
-    mock_noise *= sqrt(noise)
-
-    mock_data = R(mock_signal) + mock_noise
-
-    mock_j = R.adjoint_times(N.inverse_times(mock_data))
-    mock_m = covariance.inverse_times(mock_j)
-    sample = mock_signal - mock_m + mean
-    return sample
 
 
 def create_composed_fft_operator(domain, codomain=None, all_to='other'):

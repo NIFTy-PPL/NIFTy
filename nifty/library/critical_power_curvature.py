@@ -1,8 +1,7 @@
-from ..operators.endomorphic_operator import EndomorphicOperator
-from ..operators.diagonal_operator import DiagonalOperator
+from ..operators import EndomorphicOperator, InversionEnabler, DiagonalOperator
 
 
-class CriticalPowerCurvature(EndomorphicOperator):
+class CriticalPowerCurvature(InversionEnabler, EndomorphicOperator):
     """The curvature of the CriticalPowerEnergy.
 
     This operator implements the second derivative of the
@@ -17,14 +16,11 @@ class CriticalPowerCurvature(EndomorphicOperator):
         The smoothness prior contribution to the curvature.
     """
 
-    def __init__(self, theta, T):
-        super(CriticalPowerCurvature, self).__init__()
+    def __init__(self, theta, T, inverter):
+        EndomorphicOperator.__init__(self)
         self._theta = DiagonalOperator(theta)
+        InversionEnabler.__init__(self, inverter, self._theta.inverse_times)
         self._T = T
-
-    @property
-    def preconditioner(self):
-        return self._theta.inverse_times
 
     def _times(self, x):
         return self._T(x) + self._theta(x)

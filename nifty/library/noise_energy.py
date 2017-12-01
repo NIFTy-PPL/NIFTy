@@ -1,6 +1,5 @@
 from .. import Field, exp
 from ..operators.diagonal_operator import DiagonalOperator
-from ..sugar import generate_posterior_sample
 from ..minimization.energy import Energy
 from ..utilities import memo
 
@@ -31,7 +30,7 @@ class NoiseEnergy(Energy):
                 sample_list.append(self.m)
             else:
                 for i in range(samples):
-                    sample = generate_posterior_sample(m, D)
+                    sample = D.generate_posterior_sample(m)
                     sample = FFT(Field(FFT.domain, val=(
                         FFT.adjoint_times(sample).val)))
                     sample_list.append(sample)

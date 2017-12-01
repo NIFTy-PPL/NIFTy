@@ -1,7 +1,6 @@
 from .wiener_filter_curvature import WienerFilterCurvature
 from ..utilities import memo
 from ..minimization.energy import Energy
-from ..operators.inversion_enabler import InversionEnabler
 from .response_operators import LinearizedSignalResponse
 
 
@@ -45,6 +44,5 @@ class NonlinearWienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        curvature = WienerFilterCurvature(R=self.LinearizedResponse,
-                                          N=self.N, S=self.S)
-        return InversionEnabler(curvature, inverter=self.inverter)
+        return WienerFilterCurvature(R=self.LinearizedResponse, N=self.N,
+                                     S=self.S, inverter=self.inverter)

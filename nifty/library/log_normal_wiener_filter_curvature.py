@@ -1,9 +1,9 @@
-from ..operators import EndomorphicOperator
+from ..operators import EndomorphicOperator, InversionEnabler
 from ..utilities import memo
 from ..field import exp
 
 
-class LogNormalWienerFilterCurvature(EndomorphicOperator):
+class LogNormalWienerFilterCurvature(InversionEnabler, EndomorphicOperator):
     """The curvature of the LogNormalWienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -21,8 +21,9 @@ class LogNormalWienerFilterCurvature(EndomorphicOperator):
        The prior signal covariance
     """
 
-    def __init__(self, R, N, S, position, fft4exp):
-        super(LogNormalWienerFilterCurvature, self).__init__()
+    def __init__(self, R, N, S, position, fft4exp, inverter):
+        InversionEnabler.__init__(self, inverter)
+        EndomorphicOperator.__init__(self)
         self.R = R
         self.N = N
         self.S = S

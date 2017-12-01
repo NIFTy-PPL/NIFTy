@@ -1,11 +1,9 @@
 from ..minimization.energy import Energy
 from ..operators.smoothness_operator import SmoothnessOperator
 from ..operators.power_projection_operator import PowerProjectionOperator
-from ..operators.inversion_enabler import InversionEnabler
 from .critical_power_curvature import CriticalPowerCurvature
 from ..utilities import memo
 from .. import Field, exp
-from ..sugar import generate_posterior_sample
 
 
 class CriticalPowerEnergy(Energy):
@@ -67,14 +65,12 @@ class CriticalPowerEnergy(Energy):
         self._inverter = inverter
 
         if w is None:
-            # self.logger.info("Initializing w")
             P = PowerProjectionOperator(domain=self.m.domain,
                                         power_space=self.position.domain[0])
             if self.D is not None:
                 w = Field.zeros(self.position.domain, dtype=self.m.dtype)
                 for i in range(self.samples):
-                    # self.logger.info("Drawing sample %i" % i)
-                    sample = generate_posterior_sample(self.m, self.D)
+                    sample = self.D.generate_posterior_sample(self.m)
                     w += P(abs(sample)**2)
 
                 w *= 1./self.samples
@@ -82,15 +78,15 @@ class CriticalPowerEnergy(Energy):
                 w = P(abs(self.m)**2)
         self._w = w
 
-        theta = exp(-self.position) * (self.q + self._w*0.5)
+        self._theta = exp(-self.position) * (self.q + self._w*0.5)
         Tt = self.T(self.position)
 
-        energy = theta.integrate()
+        energy = self._theta.integrate()
         energy += self.position.integrate()*(self.alpha-0.5)
         energy += 0.5*self.position.vdot(Tt)
         self._value = energy.real
 
-        gradient = -theta
+        gradient = -self._theta
         gradient += self.alpha-0.5
         gradient += Tt
         self._gradient = gradient.real
@@ -99,7 +95,7 @@ class CriticalPowerEnergy(Energy):
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
                               q=self.q, smoothness_prior=self.smoothness_prior,
                               logarithmic=self.logarithmic,
-                              samples=self.samples, w=self.w,
+                              samples=self.samples, w=self._w,
                               inverter=self._inverter)
 
     @property
@@ -113,8 +109,8 @@ class CriticalPowerEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        curv = CriticalPowerCurvature(theta=self._theta, T=self.T)
-        return InversionEnabler(curv, inverter=self._inverter)
+        return CriticalPowerCurvature(theta=self._theta, T=self.T,
+                                      inverter=self._inverter)
 
     @property
     def logarithmic(self):

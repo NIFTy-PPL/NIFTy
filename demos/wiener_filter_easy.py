@@ -5,9 +5,10 @@ import nifty2go as ift
 # Note that the constructor of PropagatorOperator takes as arguments the
 # response R and noise covariance N operating on signal space and signal
 # covariance operating on harmonic space.
-class PropagatorOperator(ift.EndomorphicOperator):
-    def __init__(self, R, N, Sh):
-        super(PropagatorOperator, self).__init__()
+class PropagatorOperator(ift.InversionEnabler, ift.EndomorphicOperator):
+    def __init__(self, R, N, Sh, inverter):
+        ift.InversionEnabler.__init__(self, inverter)
+        ift.EndomorphicOperator.__init__(self)
 
         self.R = R
         self.N = N
@@ -84,7 +85,6 @@ if __name__ == "__main__":
     j = R.adjoint_times(N.inverse_times(d))
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
-    D = ift.InversionEnabler(PropagatorOperator(Sh=Sh, N=N, R=R),
-                             inverter=inverter)
+    D = PropagatorOperator(Sh=Sh, N=N, R=R, inverter=inverter)
 
     m = D(j)

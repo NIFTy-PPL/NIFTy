@@ -1,12 +1,13 @@
-from ..operators.endomorphic_operator import EndomorphicOperator
+from ..operators import EndomorphicOperator, InversionEnabler
 from .response_operators import LinearizedPowerResponse
 
 
-class NonlinearPowerCurvature(EndomorphicOperator):
+class NonlinearPowerCurvature(InversionEnabler, EndomorphicOperator):
 
     def __init__(self, position, FFT, Instrument, nonlinearity,
-                 Projection, N, T, sample_list):
-        super(NonlinearPowerCurvature, self).__init__()
+                 Projection, N, T, sample_list, inverter):
+        InversionEnabler.__init__(self, inverter)
+        EndomorphicOperator.__init__(self)
         self.N = N
         self.FFT = FFT
         self.Instrument = Instrument

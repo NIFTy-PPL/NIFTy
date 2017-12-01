@@ -1,5 +1,4 @@
 from ..minimization.energy import Energy
-from ..operators.inversion_enabler import InversionEnabler
 from .wiener_filter_curvature import WienerFilterCurvature
 
 
@@ -28,8 +27,7 @@ class WienerFilterEnergy(Energy):
         self.R = R
         self.N = N
         self.S = S
-        self._curvature = InversionEnabler(WienerFilterCurvature(R, N, S),
-                                           inverter=inverter)
+        self._curvature = WienerFilterCurvature(R, N, S, inverter=inverter)
         self._inverter = inverter
         if _j is None:
             _j = self.R.adjoint_times(self.N.inverse_times(d))

@@ -1,11 +1,9 @@
 from .. import exp
 from ..utilities import memo
 from ..operators.smoothness_operator import SmoothnessOperator
-from ..sugar import generate_posterior_sample
 from .nonlinear_power_curvature import NonlinearPowerCurvature
 from .response_operators import LinearizedPowerResponse
 from ..minimization.energy import Energy
-from ..operators.inversion_enabler import InversionEnabler
 
 
 class NonlinearPowerEnergy(Energy):
@@ -56,7 +54,7 @@ class NonlinearPowerEnergy(Energy):
             if samples is None or samples == 0:
                 sample_list = [m]
             else:
-                sample_list = [generate_posterior_sample(m, D)
+                sample_list = [D.generate_posterior_sample(m)
                                for _ in range(samples)]
         self.sample_list = sample_list
         self.inverter = inverter
@@ -105,7 +103,7 @@ class NonlinearPowerEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        curvature = NonlinearPowerCurvature(
+        return NonlinearPowerCurvature(
             self.position, self.FFT, self.Instrument, self.nonlinearity,
-            self.Projection, self.N, self.T, self.sample_list)
-        return InversionEnabler(curvature, inverter=self.inverter)
+            self.Projection, self.N, self.T, self.sample_list,
+            inverter=self.inverter)

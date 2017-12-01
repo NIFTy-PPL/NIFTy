@@ -18,57 +18,29 @@
 
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..field import Field
-from .linear_operator import LinearOperator
 
 
-class InversionEnabler(LinearOperator):
+class InversionEnabler(object):
 
-    def __init__(self, op, inverter, preconditioner=None):
-        self._op = op
-        self._inverter = inverter
-        if preconditioner is None and hasattr(op, "preconditioner"):
-            self._preconditioner = op.preconditioner
-        else:
-            self._preconditioner = preconditioner
+    def __init__(self, inverter, preconditioner=None):
         super(InversionEnabler, self).__init__()
+        self._inverter = inverter
+        self._preconditioner = preconditioner
 
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def target(self):
-        return self._op.target
-
-    @property
-    def unitary(self):
-        return self._op.unitary
-
-    @property
-    def op(self):
-        return self._op
-
-    def _operation(self, x, o1, o2, tdom):
-        try:
-            return o1(x)
-        except NotImplementedError:
-            x0 = Field.zeros(tdom, dtype=x.dtype)
-            energy = QuadraticEnergy(A=o2, b=x, position=x0)
-            r = self._inverter(energy, preconditioner=self._preconditioner)[0]
-            return r.position
+    def _operation(self, x, op, tdom):
+        x0 = Field.zeros(tdom, dtype=x.dtype)
+        energy = QuadraticEnergy(A=op, b=x, position=x0)
+        r = self._inverter(energy, preconditioner=self._preconditioner)[0]
+        return r.position
 
     def _times(self, x):
-        return self._operation(x, self._op._times,
-                               self._op.inverse_times, self.target)
+        return self._operation(x, self._inverse_times, self.target)
 
     def _adjoint_times(self, x):
-        return self._operation(x, self._op._adjoint_times,
-                               self._op._adjoint_inverse_times, self.domain)
+        return self._operation(x, self._adjoint_inverse_times, self.domain)
 
     def _inverse_times(self, x):
-        return self._operation(x, self._op._inverse_times,
-                               self._op._times, self.domain)
+        return self._operation(x, self._times, self.domain)
 
     def _adjoint_inverse_times(self, x):
-        return self._operation(x, self._op._adjoint_inverse_times,
-                               self._op._adjoint_times, self.target)
+        return self._operation(x, self._adjoint_times, self.target)

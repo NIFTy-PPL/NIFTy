@@ -32,9 +32,6 @@ class ConjugateGradient(Minimizer):
     ----------
     controller : IterationController
         Object that decides when to terminate the minimization.
-    preconditioner : Operator *optional*
-        This operator can be provided which transforms the variables of the
-        system to improve the conditioning (default: None).
 
     References
     ----------
@@ -42,8 +39,7 @@ class ConjugateGradient(Minimizer):
     2006, Springer-Verlag New York
     """
 
-    def __init__(self, controller, preconditioner=None):
-        self._preconditioner = preconditioner
+    def __init__(self, controller):
         self._controller = controller
 
     def __call__(self, energy, preconditioner=None):
@@ -54,6 +50,9 @@ class ConjugateGradient(Minimizer):
         energy : Energy object at the starting point of the iteration.
             Its curvature operator must be independent of position, otherwise
             linear conjugate gradient minimization will fail.
+        preconditioner : Operator *optional*
+            This operator can be provided which transforms the variables of the
+            system to improve the conditioning (default: None).
 
         Returns
         -------
@@ -62,9 +61,6 @@ class ConjugateGradient(Minimizer):
         status : integer
             Can be controller.CONVERGED or controller.ERROR
         """
-        if preconditioner is None:
-            preconditioner = self._preconditioner
-
         controller = self._controller
         status = controller.start(energy)
         if status != controller.CONTINUE:

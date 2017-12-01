@@ -49,9 +49,8 @@ if __name__ == "__main__":
     j = R_harmonic.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(verbose=True, tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
-    wiener_curvature = ift.library.WienerFilterCurvature(S=S, N=N,
-                                                         R=R_harmonic)
-    wiener_curvature = ift.InversionEnabler(wiener_curvature, inverter)
+    wiener_curvature = ift.library.WienerFilterCurvature(
+        S=S, N=N, R=R_harmonic, inverter=inverter)
     m_k = wiener_curvature.inverse_times(j)
     m = fft(m_k)
 

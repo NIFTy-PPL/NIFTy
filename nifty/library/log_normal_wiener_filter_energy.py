@@ -2,7 +2,6 @@ from ..minimization.energy import Energy
 from ..utilities import memo
 from .log_normal_wiener_filter_curvature import LogNormalWienerFilterCurvature
 from ..sugar import create_composed_fft_operator
-from ..operators.inversion_enabler import InversionEnabler
 
 
 class LogNormalWienerFilterEnergy(Energy):
@@ -58,11 +57,9 @@ class LogNormalWienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return InversionEnabler(
-            LogNormalWienerFilterCurvature(R=self.R, N=self.N, S=self.S,
-                                           position=self.position,
-                                           fft4exp=self._fft),
-            inverter=self._inverter)
+        return LogNormalWienerFilterCurvature(
+            R=self.R, N=self.N, S=self.S, position=self.position,
+            fft4exp=self._fft, inverter=self._inverter)
 
     @property
     @memo
@@ -72,7 +69,7 @@ class LogNormalWienerFilterEnergy(Energy):
     @property
     @memo
     def _Rexppd(self):
-        expp = self._fft.adjoint_times(self.curvature.op._expp_sspace)
+        expp = self._fft.adjoint_times(self.curvature._expp_sspace)
         return self.R(expp) - self.d
 
     @property
@@ -84,5 +81,5 @@ class LogNormalWienerFilterEnergy(Energy):
     @memo
     def _exppRNRexppd(self):
         return self._fft.adjoint_times(
-                    self.curvature.op._expp_sspace *
+                    self.curvature._expp_sspace *
                     self._fft(self.R.adjoint_times(self._NRexppd)))

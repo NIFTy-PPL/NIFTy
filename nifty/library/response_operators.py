@@ -42,7 +42,7 @@ class LinearizedPowerResponse(LinearOperator):
         self.Instrument = Instrument
         self.FFT = FFT
         self.Projection = Projection
-        self.power = exp(0.5 * t)
+        self.power = exp(0.5*t)
         self.m = m
         position = FFT.adjoint_times(
             self.Projection.adjoint_times(self.power) * self.m)
