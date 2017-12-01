@@ -22,10 +22,8 @@ class DOFProjectionOperator(LinearOperator):
         if not len(dofdex.domain) == 1:
             raise ValueError("dofdex must live on exactly one Space")
         if not np.issubdtype(dofdex.dtype, np.integer):
-            print (dofdex.dtype.type, np.integer)
             raise TypeError("dofdex must contain integer numbers")
         if partner != dofdex.domain[0]:
-            print(partner, dofdex.domain[0])
             raise ValueError("incorrect dofdex domain")
 
         nbin = dofdex.max()
