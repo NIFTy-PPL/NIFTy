@@ -4,7 +4,6 @@ from .log_normal_wiener_filter_energy import LogNormalWienerFilterEnergy
 from .log_normal_wiener_filter_curvature import LogNormalWienerFilterCurvature
 from .wiener_filter_energy import WienerFilterEnergy
 from .wiener_filter_curvature import WienerFilterCurvature
-from .noise_curvature import NoiseCurvature
 from .noise_energy import NoiseEnergy
 from .nonlinear_power_curvature import NonlinearPowerCurvature
 from .nonlinear_power_energy import NonlinearPowerEnergy
