@@ -1,5 +1,4 @@
 from .energy import Energy
-from ..utilities import memo
 
 
 class QuadraticEnergy(Energy):
@@ -13,9 +12,12 @@ class QuadraticEnergy(Energy):
         self._A = A
         self._b = b
         if _grad is not None:
-            self._Ax = _grad + self._b
+            self._grad = _grad
+            Ax = _grad + self._b
         else:
-            self._Ax = self._A(self.position)
+            Ax = self._A(self.position)
+            self._grad = Ax - self._b
+        self._value = 0.5*self.position.vdot(Ax) - b.vdot(self.position)
 
     def at(self, position):
         return QuadraticEnergy(position=position, A=self._A, b=self._b)
@@ -25,14 +27,12 @@ class QuadraticEnergy(Energy):
                                _grad=grad)
 
     @property
-    @memo
     def value(self):
-        return 0.5*self.position.vdot(self._Ax) - self._b.vdot(self.position)
+        return self._value
 
     @property
-    @memo
     def gradient(self):
-        return self._Ax - self._b
+        return self._grad
 
     @property
     def curvature(self):

@@ -74,7 +74,7 @@ class NonlinearPowerEnergy(Energy):
             residual = self.d - \
                 self.Instrument(self.nonlinearity(
                     self.FFT.adjoint_times(self.power*sample)))
-            lh = 0.5 * residual.vdot(self.N.inverse_times(residual)).real
+            lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
             LinR = LinearizedPowerResponse(
                 self.Instrument, self.nonlinearity, self.FFT, self.Projection,
                 self.position, sample)
