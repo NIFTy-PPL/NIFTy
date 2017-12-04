@@ -119,7 +119,7 @@ class LineSearchStrongWolfe(LineSearch):
             if alpha1 < 0:
                 alpha1 = 1.0
         else:
-            alpha1 = 1.0/abs(pk).max()
+            alpha1 = 1.0/pk.norm()
 
         # start the minimization loop
         iteration_number = 0
