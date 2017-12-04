@@ -6,3 +6,4 @@ rm -f log.log*
 rm -f *.pdf *.png
 rm -rf nifty2go
 find . -type d -empty -delete
+rm -rf docs/build docs/source/mod
