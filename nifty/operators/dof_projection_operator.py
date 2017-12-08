@@ -43,15 +43,18 @@ class DOFProjectionOperator(LinearOperator):
         if (wgt == 0).any():
             raise ValueError("empty bins detected")
 
+        self._init2(dofdex.val, space, DOFSpace(wgt))
+
+    def _init2(self, dofdex, space, other_space):
         self._space = space
         tgt = list(self._domain)
-        tgt[self._space] = DOFSpace(wgt)
+        tgt[self._space] = other_space
         self._target = DomainTuple.make(tgt)
 
-        if dobj.default_distaxis() in self.domain.axes[self._space]:
-            dofdex = dobj.local_data(dofdex.val)
+        if dobj.default_distaxis() in self._domain.axes[self._space]:
+            dofdex = dobj.local_data(dofdex)
         else:  # dofdex must be available fully on every task
-            dofdex = dobj.to_global_data(dofdex.val)
+            dofdex = dobj.to_global_data(dofdex)
         self._dofdex = dofdex.ravel()
         firstaxis = self._domain.axes[self._space][0]
         lastaxis = self._domain.axes[self._space][-1]
