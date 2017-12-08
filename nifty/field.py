@@ -59,7 +59,7 @@ class Field(object):
     """
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
-        self.domain = self._parse_domain(domain=domain, val=val)
+        self.domain = self._infer_domain(domain=domain, val=val)
 
         dtype = self._infer_dtype(dtype=dtype, val=val)
         if isinstance(val, Field):
@@ -128,7 +128,7 @@ class Field(object):
         return Field.empty(field.domain, dtype)
 
     @staticmethod
-    def _parse_domain(domain, val=None):
+    def _infer_domain(domain, val=None):
         if domain is None:
             if isinstance(val, Field):
                 return val.domain

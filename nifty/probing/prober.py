@@ -21,7 +21,6 @@ from builtins import range
 from builtins import object
 import numpy as np
 from ..field import Field, DomainTuple
-from .. import utilities
 
 
 class Prober(object):
@@ -38,14 +37,15 @@ class Prober(object):
                  compute_variance=False, ncpu=1):
 
         self._domain = DomainTuple.make(domain)
-        self._probe_count = self._parse_probe_count(probe_count)
-        self._ncpu = self._parse_probe_count(ncpu)
-        self._random_type = self._parse_random_type(random_type)
+        self._probe_count = int(probe_count)
+        self._ncpu = int(ncpu)
+        if random_type not in ["pm1", "normal"]:
+            raise ValueError(
+                "unsupported random type: '" + str(random_type) + "'.")
+        self._random_type = random_type
         self.compute_variance = bool(compute_variance)
         self.probe_dtype = np.dtype(probe_dtype)
         self._uid_counter = 0
-
-    # ---Properties---
 
     @property
     def domain(self):
@@ -55,22 +55,11 @@ class Prober(object):
     def probe_count(self):
         return self._probe_count
 
-    def _parse_probe_count(self, probe_count):
-        return int(probe_count)
-
     @property
     def random_type(self):
         return self._random_type
 
-    def _parse_random_type(self, random_type):
-        if random_type not in ["pm1", "normal"]:
-            raise ValueError(
-                "unsupported random type: '" + str(random_type) + "'.")
-        return random_type
-
-    # ---Probing methods---
-
-    def gen_parallel_probe(self,callee):
+    def gen_parallel_probe(self, callee):
         for i in range(self.probe_count):
             yield (callee, self.get_probe(i))
 
@@ -87,7 +76,7 @@ class Prober(object):
             pool = Pool(self._ncpu)
             for i in pool.imap_unordered(self.evaluate_probe_parallel,
                                          self.gen_parallel_probe(callee)):
-                self.finish_probe(i[0],i[1])
+                self.finish_probe(i[0], i[1])
 
     def evaluate_probe_parallel(self, argtuple):
         callee = argtuple[0]
@@ -104,8 +93,7 @@ class Prober(object):
     def generate_probe(self):
         """ a random-probe generator """
         f = Field.from_random(random_type=self.random_type,
-                              domain=self.domain,
-                              dtype=self.probe_dtype.type)
+                              domain=self.domain, dtype=self.probe_dtype)
         uid = self._uid_counter
         self._uid_counter += 1
         return (uid, f)

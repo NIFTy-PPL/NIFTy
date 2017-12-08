@@ -53,7 +53,19 @@ class RGSpace(Space):
         if np.isscalar(shape):
             shape = (shape,)
         self._shape = tuple(int(i) for i in shape)
-        self._distances = self._parse_distances(distances)
+
+        if distances is None:
+            if self.harmonic:
+                self._distances = (1.,) * len(self._shape)
+            else:
+                self._distances = tuple(1./s for s in self._shape)
+        elif np.isscalar(distances):
+            self._distances = (float(distances),) * len(self._shape)
+        else:
+            temp = np.empty(len(self.shape), dtype=np.float64)
+            temp[:] = distances
+            self._distances = tuple(temp)
+
         self._dvol = float(reduce(lambda x, y: x*y, self._distances))
         self._dim = int(reduce(lambda x, y: x*y, self._shape))
 
@@ -169,14 +181,3 @@ class RGSpace(Space):
         distance between neighboring grid points along the n-th dimension.
         """
         return self._distances
-
-    def _parse_distances(self, distances):
-        if distances is None:
-            if self.harmonic:
-                temp = np.ones_like(self.shape, dtype=np.float64)
-            else:
-                temp = 1./np.array(self.shape, dtype=np.float64)
-        else:
-            temp = np.empty(len(self.shape), dtype=np.float64)
-            temp[:] = distances
-        return tuple(temp)

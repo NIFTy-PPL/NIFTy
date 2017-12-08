@@ -71,8 +71,7 @@ class WienerFilterCurvature(InversionEnabler, EndomorphicOperator):
         noise = self.N.diagonal().weight(-1)
 
         mock_noise = Field.from_random(random_type="normal",
-                                       domain=self.N.domain,
-                                       dtype=noise.dtype.type)
+                                       domain=self.N.domain, dtype=noise.dtype)
         mock_noise *= sqrt(noise)
 
         mock_data = self.R(mock_signal) + mock_noise
