@@ -76,10 +76,6 @@ class DomainTuple(object):
         return self._dom[i]
 
     @property
-    def domains(self):
-        return self._dom
-
-    @property
     def shape(self):
         return self._shape
 
@@ -108,7 +104,7 @@ class DomainTuple(object):
         return not self.__eq__(x)
 
     def __str__(self):
-        res = "DomainTuple, len: " + str(len(self.domains))
-        for i in self.domains:
+        res = "DomainTuple, len: " + str(len(self))
+        for i in self:
             res += "\n" + str(i)
         return res

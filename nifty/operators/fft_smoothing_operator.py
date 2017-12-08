@@ -11,11 +11,11 @@ class FFTSmoothingOperator(EndomorphicOperator):
         dom = DomainTuple.make(domain)
         self._sigma = float(sigma)
         if space is None:
-            if len(dom.domains) != 1:
+            if len(dom) != 1:
                 raise ValueError("need a Field with exactly one domain")
             space = 0
         space = int(space)
-        if space < 0 or space >= len(dom.domains):
+        if space < 0 or space >= len(dom):
             raise ValueError("space index out of range")
         self._space = space
 

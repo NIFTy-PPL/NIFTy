@@ -81,9 +81,9 @@ class DiagonalOperator(EndomorphicOperator):
         else:
             self._spaces = cast_iseq_to_tuple(spaces)
             nspc = len(self._spaces)
-            if nspc != len(diagonal.domain.domains):
+            if nspc != len(diagonal.domain):
                 raise ValueError("spaces and domain must have the same length")
-            if nspc > len(self._domain.domains):
+            if nspc > len(self._domain):
                 raise ValueError("too many spaces")
             if nspc > len(set(self._spaces)):
                 raise ValueError("non-unique space indices")
@@ -92,7 +92,7 @@ class DiagonalOperator(EndomorphicOperator):
             for i, j in enumerate(self._spaces):
                 if diagonal.domain[i] != self._domain[j]:
                     raise ValueError("domain mismatch")
-            if self._spaces == tuple(range(len(self._domain.domains))):
+            if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
         self._diagonal = diagonal.copy()

@@ -45,11 +45,11 @@ class LaplaceOperator(EndomorphicOperator):
         super(LaplaceOperator, self).__init__()
         self._domain = DomainTuple.make(domain)
         if space is None:
-            if len(self._domain.domains) != 1:
+            if len(self._domain) != 1:
                 raise ValueError("need a Field with exactly one domain")
             space = 0
         space = int(space)
-        if space < 0 or space >= len(self._domain.domains):
+        if space < 0 or space >= len(self._domain):
             raise ValueError("space index out of range")
         self._space = space
 
