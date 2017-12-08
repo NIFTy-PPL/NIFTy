@@ -37,9 +37,7 @@ class HPSpace(Space):
 
     See Also
     --------
-    GLSpace : A class for the Gauss-Legendre discretization of the
-        sphere [#]_.
-    LMSpace : A class for spherical harmonic components.
+    GLSpace, LMSpace
 
     References
     ----------

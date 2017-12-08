@@ -58,12 +58,6 @@ class EndomorphicOperator(LinearOperator):
         else:
             return super(EndomorphicOperator, self).adjoint_inverse_times(x)
 
-    def inverse_adjoint_times(self, x):
-        if self.self_adjoint:
-            return self.inverse_times(x)
-        else:
-            return super(EndomorphicOperator, self).inverse_adjoint_times(x)
-
     @property
     def target(self):
         return self.domain

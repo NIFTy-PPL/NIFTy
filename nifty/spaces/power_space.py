@@ -50,8 +50,6 @@ class PowerSpace(Space):
 
     _powerIndexCache = {}
 
-    # ---Overwritten properties and methods---
-
     @staticmethod
     def linear_binbounds(nbin, first_bound, last_bound):
         """
@@ -158,15 +156,11 @@ class PowerSpace(Space):
                 minlength=nbin).astype(np.float64, copy=False)
             temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho
             temp_dvol = temp_rho*pdvol
-            self._powerIndexCache[key] = (binbounds,
-                                          temp_pindex,
-                                          temp_k_lengths,
-                                          temp_dvol)
+            self._powerIndexCache[key] = (binbounds, temp_pindex,
+                                          temp_k_lengths, temp_dvol)
 
         (self._binbounds, self._pindex, self._k_lengths, self._dvol) = \
             self._powerIndexCache[key]
-
-    # ---Mandatory properties and methods---
 
     def __repr__(self):
         return ("PowerSpace(harmonic_partner=%r, binbounds=%r)"
@@ -189,8 +183,6 @@ class PowerSpace(Space):
 
     def dvol(self):
         return self._dvol
-
-    # ---Added properties and methods---
 
     @property
     def harmonic_partner(self):

@@ -40,8 +40,7 @@ class GLSpace(Space):
 
     See Also
     --------
-    hp_space : A class for the HEALPix discretization of the sphere [#]_.
-    lm_space : A class for spherical harmonic components.
+    HPSpace, LMSpace
 
     References
     ----------
@@ -52,8 +51,6 @@ class GLSpace(Space):
            High-Resolution Discretization and Fast Analysis of Data
            Distributed on the Sphere", *ApJ* 622..759G.
     """
-
-    # ---Overwritten properties and methods---
 
     def __init__(self, nlat, nlon=None):
         super(GLSpace, self).__init__()
@@ -69,8 +66,6 @@ class GLSpace(Space):
             if self._nlon < 1:
                 raise ValueError("nlon must be a positive number.")
         self._dvol = None
-
-    # ---Mandatory properties and methods---
 
     def __repr__(self):
         return ("GLSpace(nlat=%r, nlon=%r)" % (self.nlat, self.nlon))

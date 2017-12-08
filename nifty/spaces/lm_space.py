@@ -42,9 +42,7 @@ class LMSpace(Space):
 
     See Also
     --------
-    HPSpace : A class for the HEALPix discretization of the sphere [#]_.
-    GLSpace : A class for the Gauss-Legendre discretization of the
-        sphere [#]_.
+    HPSpace, GLSpace
 
     References
     ----------

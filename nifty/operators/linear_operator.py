@@ -171,6 +171,7 @@ class LinearOperator(with_metaclass(
         return y
 
     def inverse_adjoint_times(self, x):
+        """Same as adjoint_inverse_times()"""
         return self.adjoint_inverse_times(x)
 
     def _times(self, x):
