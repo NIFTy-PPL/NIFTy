@@ -52,7 +52,7 @@ if __name__ == "__main__":
             np.outer(ift.dobj.to_global_data(mock_power_1.val),
                      ift.dobj.to_global_data(mock_power_2.val))))
 
-    diagonal = ift.power_synthesize_special(mock_power, spaces=(0, 1))**2
+    diagonal = ift.power_synthesize_nonrandom(mock_power, spaces=(0, 1))**2
 
     S = ift.DiagonalOperator(diagonal)
 

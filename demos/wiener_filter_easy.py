@@ -13,7 +13,7 @@ class PropagatorOperator(ift.InversionEnabler, ift.EndomorphicOperator):
         self.R = R
         self.N = N
         self.Sh = Sh
-        self.fft = ift.FFTOperator(R.domain, target=Sh.domain)
+        self.fft = ift.FFTOperator(R.domain, target=Sh.domain[0])
 
     def _inverse_times(self, x):
         return self.R.adjoint_times(self.N.inverse_times(self.R(x))) \

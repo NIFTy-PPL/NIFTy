@@ -72,7 +72,6 @@ class FFTOperator(LinearOperator):
         if "domain" or "target" are not of the proper type.
     """
 
-    # MR FIXME: target should only be a single DomainObject, not the full tuple
     def __init__(self, domain, target=None, space=None):
         super(FFTOperator, self).__init__()
 
@@ -89,13 +88,13 @@ class FFTOperator(LinearOperator):
 
         adom = self.domain[self._space]
         if target is None:
-            target = [dom for dom in self.domain]
-            target[self._space] = adom.get_default_codomain()
+            target = adom.get_default_codomain()
 
-        self._target = DomainTuple.make(target)
-        atgt = self._target[space]
-        adom.check_codomain(atgt)
-        atgt.check_codomain(adom)
+        self._target = [dom for dom in self.domain]
+        self._target[self._space] = target
+        self._target = DomainTuple.make(self._target)
+        adom.check_codomain(target)
+        target.check_codomain(adom)
 
         if self._target[space].harmonic:
             pdom, hdom = (self._domain, self._target)

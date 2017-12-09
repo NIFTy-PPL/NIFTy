@@ -24,7 +24,7 @@ from . import Space, PowerSpace, Field, ComposedOperator, DiagonalOperator,\
 __all__ = ['PS_field',
            'power_analyze',
            'power_synthesize',
-           'power_synthesize_special',
+           'power_synthesize_nonrandom',
            'create_power_field',
            'create_power_operator',
            'create_composed_fft_operator']
@@ -58,7 +58,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     field : Field
         The field to be analyzed
     spaces : int *optional*
-        The subspace for which the powerspectrum shall be computed.
+        The set of subspaces for which the powerspectrum shall be computed.
         (default : None).
     binbounds : array-like *optional*
         Inner bounds of the bins (default : None).
@@ -116,7 +116,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
 
 
-def _compute_spec(field, spaces):
+def power_synthesize_nonrandom(field, spaces=None):
     spaces = range(len(field.domain)) if spaces is None \
              else utilities.cast_iseq_to_tuple(spaces)
 
@@ -168,7 +168,7 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
     ValueError : If domain specified by `spaces` is not a PowerSpace.
     """
 
-    spec = _compute_spec(field, spaces)
+    spec = power_synthesize_nonrandom(field, spaces)
     self_real = not np.issubdtype(spec.dtype, np.complexfloating)
     if (not real_power) and self_real:
         raise ValueError("can't draw complex realizations from real spectrum")
@@ -181,26 +181,11 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
                                 else np.complex)
               for x in range(1 if real_power else 2)]
 
-    # MR FIXME: dummy call - will be removed soon
-    if real_signal:
-        field.from_random('normal', mean=0., std=1.,
-                          domain=spec.domain, dtype=np.float)
-
     result[0] *= spec if self_real else spec.real
     if not real_power:
         result[1] *= spec.imag
 
     return result[0] if real_power else result[0] + 1j*result[1]
-
-
-def power_synthesize_special(field, spaces=None):
-    spec = _compute_spec(field, spaces)
-
-    # MR FIXME: dummy call - will be removed soon
-    field.from_random('normal', mean=0., std=1.,
-                      domain=spec.domain, dtype=np.complex)
-
-    return spec
 
 
 def create_power_field(domain, power_spectrum, dtype=None):
@@ -241,7 +226,6 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
     Returns
     -------
     DiagonalOperator : An operator that implements the given power spectrum.
-
     """
     domain = DomainTuple.make(domain)
     if space is None:
@@ -261,7 +245,7 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
 
     if codomain is None:
         codomain = [None]*len(domain)
-    interdomain = list(domain)
+    tdom = list(domain)
     for i, space in enumerate(domain):
         if not isinstance(space, Space):
             continue
@@ -269,11 +253,9 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
                 (all_to == 'position' and space.harmonic) or
                 (all_to == 'harmonic' and not space.harmonic)):
             if codomain[i] is None:
-                interdomain[i] = domain[i].get_default_codomain()
+                tgt = domain[i].get_default_codomain()
             else:
-                interdomain[i] = codomain[i]
-            fft_op_list += [FFTOperator(domain=domain, target=interdomain,
-                                        space=i)]
-        # MR FIXME: this looks slightly fishy...
-        domain = interdomain
+                tgt = codomain[i]
+            fft_op_list += [FFTOperator(domain=tdom, target=tgt, space=i)]
+            tdom[i] = tgt
     return ComposedOperator(fft_op_list)
