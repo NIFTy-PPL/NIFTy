@@ -41,9 +41,8 @@ class NonlinearPowerEnergy(Energy):
         self.D = D
         self.d = d
         self.N = N
-        self.sigma = sigma
         self.T = SmoothnessOperator(domain=self.position.domain[0],
-                                    strength=self.sigma, logarithmic=True)
+                                    strength=sigma, logarithmic=True)
         self.FFT = FFT
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
@@ -63,7 +62,7 @@ class NonlinearPowerEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.m, self.D,
                               self.FFT, self.Instrument, self.nonlinearity,
-                              self.Projection, sigma=self.sigma,
+                              self.Projection, sigma=self.T.strength,
                               samples=len(self.sample_list),
                               sample_list=self.sample_list,
                               inverter=self.inverter)
