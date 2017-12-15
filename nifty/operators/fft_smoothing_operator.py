@@ -1,5 +1,6 @@
 from .endomorphic_operator import EndomorphicOperator
 from .fft_operator import FFTOperator
+from ..utilities import infer_space
 from .diagonal_operator import DiagonalOperator
 from .. import DomainTuple
 
@@ -10,23 +11,16 @@ class FFTSmoothingOperator(EndomorphicOperator):
 
         dom = DomainTuple.make(domain)
         self._sigma = float(sigma)
-        if space is None:
-            if len(dom) != 1:
-                raise ValueError("need a Field with exactly one domain")
-            space = 0
-        space = int(space)
-        if space < 0 or space >= len(dom):
-            raise ValueError("space index out of range")
-        self._space = space
+        self._space = infer_space(dom, space)
 
-        self._FFT = FFTOperator(dom, space=space)
-        codomain = self._FFT.domain[space].get_default_codomain()
+        self._FFT = FFTOperator(dom, space=self._space)
+        codomain = self._FFT.domain[self._space].get_default_codomain()
         kernel = codomain.get_k_length_array()
         smoother = codomain.get_fft_smoothing_kernel_function(self._sigma)
         kernel = smoother(kernel)
         ddom = list(dom)
-        ddom[space] = codomain
-        self._diag = DiagonalOperator(kernel, ddom, space)
+        ddom[self._space] = codomain
+        self._diag = DiagonalOperator(kernel, ddom, self._space)
 
     def _times(self, x):
         if self._sigma == 0:

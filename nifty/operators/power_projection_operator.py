@@ -19,6 +19,7 @@
 import numpy as np
 from .dof_projection_operator import DOFProjectionOperator
 from .. import Field, DomainTuple, dobj
+from ..utilities import infer_space
 from ..spaces import PowerSpace
 
 
@@ -26,12 +27,8 @@ class PowerProjectionOperator(DOFProjectionOperator):
     def __init__(self, domain, power_space=None, space=None):
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
-        if space is None and len(self._domain) == 1:
-            space = 0
-        space = int(space)
-        if space < 0 or space >= len(self.domain):
-            raise ValueError("space index out of range")
-        hspace = self._domain[space]
+        self._space = infer_space(self._domain, space)
+        hspace = self._domain[self._space]
         if not hspace.harmonic:
             raise ValueError("Operator acts on harmonic spaces only")
         if power_space is None:
@@ -42,4 +39,4 @@ class PowerProjectionOperator(DOFProjectionOperator):
             if power_space.harmonic_partner != hspace:
                 raise ValueError("power_space does not match its partner")
 
-        self._init2(power_space.pindex, space, power_space)
+        self._init2(power_space.pindex, self._space, power_space)

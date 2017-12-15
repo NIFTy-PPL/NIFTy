@@ -1,5 +1,6 @@
 import numpy as np
 from .linear_operator import LinearOperator
+from ..utilities import infer_space
 from .. import Field, DomainTuple, dobj
 from ..spaces import DOFSpace
 
@@ -11,11 +12,7 @@ class DOFProjectionOperator(LinearOperator):
         if domain is None:
             domain = dofdex.domain
         self._domain = DomainTuple.make(domain)
-        if space is None and len(self._domain) == 1:
-            space = 0
-        space = int(space)
-        if space < 0 or space >= len(self.domain):
-            raise ValueError("space index out of range")
+        space = infer_space(self._domain, space)
         partner = self._domain[space]
         if not isinstance(dofdex, Field):
             raise TypeError("dofdex must be a Field")

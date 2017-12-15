@@ -20,6 +20,7 @@ import numpy as np
 from ..field import Field
 from ..spaces.power_space import PowerSpace
 from .endomorphic_operator import EndomorphicOperator
+from ..utilities import infer_space
 from .. import DomainTuple
 from .. import dobj
 
@@ -44,14 +45,7 @@ class LaplaceOperator(EndomorphicOperator):
     def __init__(self, domain, space=None, logarithmic=True):
         super(LaplaceOperator, self).__init__()
         self._domain = DomainTuple.make(domain)
-        if space is None:
-            if len(self._domain) != 1:
-                raise ValueError("need a Field with exactly one domain")
-            space = 0
-        space = int(space)
-        if space < 0 or space >= len(self._domain):
-            raise ValueError("space index out of range")
-        self._space = space
+        self._space = infer_space(self._domain, space)
 
         if not isinstance(self._domain[self._space], PowerSpace):
             raise ValueError("Operator must act on a PowerSpace.")

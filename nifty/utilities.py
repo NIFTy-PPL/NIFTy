@@ -73,6 +73,17 @@ def cast_iseq_to_tuple(seq):
     return tuple(int(item) for item in seq)
 
 
+def infer_space(domain, space):
+    if space is None:
+        if len(domain) != 1:
+            raise ValueError("need a Field with exactly one domain")
+        space = 0
+    space = int(space)
+    if space < 0 or space >= len(domain):
+        raise ValueError("space index out of range")
+    return space
+
+
 def memo(f):
     name = f.__name__
 

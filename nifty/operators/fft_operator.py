@@ -19,6 +19,7 @@
 import numpy as np
 from .. import DomainTuple
 from ..spaces import RGSpace
+from ..utilities import infer_space
 from .linear_operator import LinearOperator
 from .fft_operator_support import RGRGTransformation, SphericalTransformation
 
@@ -77,14 +78,7 @@ class FFTOperator(LinearOperator):
 
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
-        if space is None:
-            if len(self._domain) != 1:
-                raise ValueError("need a Field with exactly one domain")
-            space = 0
-        space = int(space)
-        if space < 0 or space >= len(self._domain):
-            raise ValueError("space index out of range")
-        self._space = space
+        self._space = infer_space(self._domain, space)
 
         adom = self.domain[self._space]
         if target is None:
@@ -96,14 +90,14 @@ class FFTOperator(LinearOperator):
         adom.check_codomain(target)
         target.check_codomain(adom)
 
-        if self._target[space].harmonic:
+        if self._target[self._space].harmonic:
             pdom, hdom = (self._domain, self._target)
         else:
             pdom, hdom = (self._target, self._domain)
-        if isinstance(pdom[space], RGSpace):
-            self._trafo = RGRGTransformation(pdom, hdom, space)
+        if isinstance(pdom[self._space], RGSpace):
+            self._trafo = RGRGTransformation(pdom, hdom, self._space)
         else:
-            self._trafo = SphericalTransformation(pdom, hdom, space)
+            self._trafo = SphericalTransformation(pdom, hdom, self._space)
 
     def _times_helper(self, x):
         if np.issubdtype(x.dtype, np.complexfloating):
