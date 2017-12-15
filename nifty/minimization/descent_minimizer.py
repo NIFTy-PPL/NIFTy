@@ -91,6 +91,9 @@ class DescentMinimizer(Minimizer):
             if new_energy.value > energy.value:
                 return energy, controller.ERROR
 
+            if new_energy.value == energy.value:
+                return new_energy, controller.CONVERGED
+
             energy = new_energy
             status = self._controller.check(energy)
             if status != controller.CONTINUE:
