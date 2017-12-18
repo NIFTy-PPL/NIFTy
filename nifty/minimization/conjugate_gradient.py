@@ -18,7 +18,7 @@
 
 from __future__ import division
 from .minimizer import Minimizer
-from .. import Field
+from .. import Field, dobj
 from ..utilities import general_axpy
 
 
@@ -80,10 +80,12 @@ class ConjugateGradient(Minimizer):
             q = energy.curvature(d)
             ddotq = d.vdot(q).real
             if ddotq == 0.:
+                dobj.mprint("Error: ConjugateGradient: ddotq==0.")
                 return energy, controller.ERROR
             alpha = previous_gamma/ddotq
 
             if alpha < 0:
+                dobj.mprint("Error: ConjugateGradient: alpha<0.")
                 return energy, controller.ERROR
 
             general_axpy(-alpha, q, r, out=r)
@@ -98,8 +100,9 @@ class ConjugateGradient(Minimizer):
 
             gamma = r.vdot(s).real
             if gamma < 0:
-                raise RuntimeError(
+                dobj.mprint(
                     "Positive definiteness of preconditioner violated!")
+                return energy, controller.ERROR
             if gamma == 0:
                 return energy, controller.CONVERGED
 

@@ -70,6 +70,8 @@ class GradientNormController(IterationController):
         # Are we done?
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
+                dobj.mprint(
+                    "Warning:Iteration limit reached. Assuming convergence")
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:
             return self.CONVERGED

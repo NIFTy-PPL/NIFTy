@@ -17,7 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..minimization.quadratic_energy import QuadraticEnergy
-from ..field import Field
+from ..minimization.iteration_controller import IterationController
+from ..field import Field, dobj
 
 
 class InversionEnabler(object):
@@ -30,7 +31,9 @@ class InversionEnabler(object):
     def _operation(self, x, op, tdom):
         x0 = Field.zeros(tdom, dtype=x.dtype)
         energy = QuadraticEnergy(A=op, b=x, position=x0)
-        r = self._inverter(energy, preconditioner=self._preconditioner)[0]
+        r, stat = self._inverter(energy, preconditioner=self._preconditioner)
+        if stat != IterationController.CONVERGED:
+            dobj.mprint("Error detected during operator inversion")
         return r.position
 
     def _times(self, x):
