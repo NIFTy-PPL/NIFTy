@@ -95,7 +95,3 @@ class DOFProjectionOperator(LinearOperator):
     @property
     def target(self):
         return self._target
-
-    @property
-    def unitary(self):
-        return False

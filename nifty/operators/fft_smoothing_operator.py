@@ -35,7 +35,3 @@ class FFTSmoothingOperator(EndomorphicOperator):
     @property
     def self_adjoint(self):
         return True
-
-    @property
-    def unitary(self):
-        return False

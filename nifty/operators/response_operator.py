@@ -33,8 +33,6 @@ class ResponseOperator(LinearOperator):
         The domain on which the Operator's input Field lives.
     target : DomainTuple
         The domain in which the outcome of the operator lives.
-    unitary : boolean
-        Indicates whether the Operator is unitary or not.
 
     Raises
     ------
@@ -77,10 +75,6 @@ class ResponseOperator(LinearOperator):
     @property
     def target(self):
         return self._target
-
-    @property
-    def unitary(self):
-        return False
 
     def _times(self, x):
         res = self._composed_kernel.times(x)

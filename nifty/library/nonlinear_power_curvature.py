@@ -25,10 +25,6 @@ class NonlinearPowerCurvature(InversionEnabler, EndomorphicOperator):
     def self_adjoint(self):
         return True
 
-    @property
-    def unitary(self):
-        return False
-
     def _times(self, x):
         result = None
         for sample in self.sample_list:

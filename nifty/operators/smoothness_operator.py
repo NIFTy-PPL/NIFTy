@@ -39,10 +39,6 @@ class SmoothnessOperator(EndomorphicOperator):
         return self._laplace._domain
 
     @property
-    def unitary(self):
-        return False
-
-    @property
     def self_adjoint(self):
         return False
 

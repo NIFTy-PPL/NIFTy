@@ -38,10 +38,6 @@ class LogNormalWienerFilterCurvature(InversionEnabler, EndomorphicOperator):
     def self_adjoint(self):
         return True
 
-    @property
-    def unitary(self):
-        return False
-
     def _times(self, x):
         part1 = self.S.inverse_times(x)
         part3 = self._fft.adjoint_times(self._expp_sspace * self._fft(x))

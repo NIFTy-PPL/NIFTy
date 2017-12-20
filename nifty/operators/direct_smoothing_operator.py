@@ -42,10 +42,6 @@ class DirectSmoothingOperator(EndomorphicOperator):
     def self_adjoint(self):
         return True
 
-    @property
-    def unitary(self):
-        return False
-
     def _precompute(self, x):
         """ Does precomputations for Gaussian smoothing on a 1D irregular grid.
 

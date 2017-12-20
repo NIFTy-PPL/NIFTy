@@ -37,8 +37,6 @@ class ComposedOperator(LinearOperator):
         The NIFTy.space in which the operator is defined.
     target : DomainTuple
         The NIFTy.space in which the outcome of the operator lives
-    unitary : boolean
-        Indicates whether the Operator is unitary or not.
     """
 
     def __init__(self, operators):
@@ -62,10 +60,6 @@ class ComposedOperator(LinearOperator):
     @property
     def target(self):
         return self._operator_store[-1].target
-
-    @property
-    def unitary(self):
-        return False
 
     def _times(self, x):
         return self._times_helper(x, func='times')

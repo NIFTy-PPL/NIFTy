@@ -34,8 +34,6 @@ class EndomorphicOperator(LinearOperator):
     target : DomainTuple
         The domain in which the outcome of the operator lives. As the Operator
         is endomorphic this is the same as its domain.
-    unitary : boolean
-        Indicates whether the Operator is unitary or not.
     self_adjoint : boolean
         Indicates whether the operator is self_adjoint or not.
     """

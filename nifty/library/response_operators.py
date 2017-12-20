@@ -31,10 +31,6 @@ class LinearizedSignalResponse(LinearOperator):
     def target(self):
         return self.Instrument.target
 
-    @property
-    def unitary(self):
-        return False
-
 
 class LinearizedPowerResponse(LinearOperator):
     def __init__(self, Instrument, nonlinearity, FFT, Projection, t, m):
@@ -74,7 +70,3 @@ class LinearizedPowerResponse(LinearOperator):
     @property
     def target(self):
         return self.Instrument.target
-
-    @property
-    def unitary(self):
-        return False

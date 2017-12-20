@@ -36,10 +36,6 @@ class WienerFilterCurvature(InversionEnabler, EndomorphicOperator):
     def self_adjoint(self):
         return True
 
-    @property
-    def unitary(self):
-        return False
-
     def _times(self, x):
         res = self.R.adjoint_times(self.N.inverse_times(self.R(x)))
         res += self.S.inverse_times(x)

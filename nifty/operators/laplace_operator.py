@@ -71,10 +71,6 @@ class LaplaceOperator(EndomorphicOperator):
         return self._domain
 
     @property
-    def unitary(self):
-        return False
-
-    @property
     def self_adjoint(self):
         return False
 

@@ -64,15 +64,15 @@ class LinearOperator(with_metaclass(
         """
         raise NotImplementedError
 
-    @abc.abstractproperty
+    @property
     def unitary(self):
         """
         unitary : boolean
             States whether the Operator is unitary or not.
-            Every Operator which inherits from the abstract LinearOperator
-            base class must have this attribute.
+            Since the majority of operators will not be unitary, this property
+            returns False, unless it is overridden in a subclass.
         """
-        raise NotImplementedError
+        return False
 
     def __call__(self, x):
         return self.times(x)
