@@ -65,7 +65,7 @@ class LineSearchStrongWolfe(LineSearch):
 
     def __init__(self, c1=1e-4, c2=0.9,
                  max_step_size=1000000000, max_iterations=100,
-                 max_zoom_iterations=30):
+                 max_zoom_iterations=100):
 
         super(LineSearchStrongWolfe, self).__init__()
 
