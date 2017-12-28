@@ -27,7 +27,7 @@ class WienerFilterEnergy(Energy):
         self.R = R
         self.N = N
         self.S = S
-        self._curvature = WienerFilterCurvature(R, N, S, inverter=inverter)
+        self._curvature = WienerFilterCurvature(R, N, S, inverter)
         self._inverter = inverter
         if _j is None:
             _j = self.R.adjoint_times(self.N.inverse_times(d))

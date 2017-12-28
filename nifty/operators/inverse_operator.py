@@ -19,22 +19,22 @@
 from .linear_operator import LinearOperator
 
 
-class EndomorphicOperator(LinearOperator):
-    """ NIFTY class for endomorphic operators.
+class InverseOperator(LinearOperator):
+    def __init__(self, op):
+        super(InverseOperator, self).__init__()
+        self._op = op
 
-    The  NIFTY EndomorphicOperator class is a class derived from the
-    LinearOperator. By definition, domain and target are the same in
-    EndomorphicOperator.
-
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
-    target : DomainTuple
-        The domain in which the outcome of the operator lives. As the Operator
-        is endomorphic this is the same as its domain.
-    """
+    @property
+    def domain(self):
+        return self._op.target
 
     @property
     def target(self):
-        return self.domain
+        return self._op.domain
+
+    @property
+    def capability(self):
+        return self._inverseCapability[self._op.capability]
+
+    def apply(self, x, mode):
+        return self._op.apply(x, self._inverseMode[mode])

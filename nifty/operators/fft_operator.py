@@ -63,9 +63,6 @@ class FFTOperator(LinearOperator):
     target: Tuple of Spaces
         The domain of the data that is output by "times" and input by
         "adjoint_times".
-    unitary: bool
-        Returns True if the operator is unitary (currently only the case if
-        the domain and codomain are RGSpaces), else False.
 
     Raises
     ------
@@ -107,10 +104,8 @@ class FFTOperator(LinearOperator):
             res = self._trafo.transform(x)
         return res
 
-    def _times(self, x):
-        return self._times_helper(x)
-
-    def _adjoint_times(self, x):
+    def apply(self, x, mode):
+        self._check_input(x, mode)
         return self._times_helper(x)
 
     @property
@@ -122,5 +117,8 @@ class FFTOperator(LinearOperator):
         return self._target
 
     @property
-    def unitary(self):
-        return self._trafo.unitary
+    def capability(self):
+        res = self.TIMES | self.ADJOINT_TIMES
+        if self._trafo.unitary:
+            res |= self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES
+        return res

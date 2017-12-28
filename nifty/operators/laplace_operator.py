@@ -71,8 +71,8 @@ class LaplaceOperator(EndomorphicOperator):
         return self._domain
 
     @property
-    def self_adjoint(self):
-        return False
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
 
     @property
     def logarithmic(self):
@@ -129,3 +129,9 @@ class LaplaceOperator(EndomorphicOperator):
         if dobj.distaxis(yf) != dobj.distaxis(x.val):
             ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
         return Field(self.domain, val=ret).weight(-1, spaces=self._space)
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            return self._times(x)
+        return self._adjoint_times(x)

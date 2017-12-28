@@ -76,6 +76,10 @@ class ResponseOperator(LinearOperator):
     def target(self):
         return self._target
 
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
     def _times(self, x):
         res = self._composed_kernel.times(x)
         res = self._composed_exposure.times(res)
@@ -88,3 +92,8 @@ class ResponseOperator(LinearOperator):
         res = self._composed_exposure.adjoint_times(res)
         res = res.weight(power=-1)
         return self._composed_kernel.adjoint_times(res)
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return self._times(x) if mode == self.TIMES else self._adjoint_times(x)
+

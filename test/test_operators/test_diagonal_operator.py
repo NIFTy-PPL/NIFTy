@@ -16,10 +16,6 @@ class DiagonalOperator_Tests(unittest.TestCase):
         D = ift.DiagonalOperator(diag)
         if D.domain[0] != space:
             raise TypeError
-        if D.unitary:
-            raise TypeError
-        if not D.self_adjoint:
-            raise TypeError
 
     @expand(product(spaces))
     def test_times_adjoint(self, space):

@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from builtins import str
 import abc
 from ..utilities import NiftyMeta
 from ..field import Field
@@ -25,21 +24,19 @@ from future.utils import with_metaclass
 
 class LinearOperator(with_metaclass(
         NiftyMeta, type('NewBase', (object,), {}))):
-    """NIFTY base class for linear operators.
 
-    The base NIFTY operator class is an abstract class from which
-    other specific operator subclasses are derived.
+    _validMode = (False, True, True, False, True, False, False, False, True)
+    _inverseMode = (0, 4, 8, 0, 1, 0, 0, 0, 2)
+    _inverseCapability = (0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15)
+    _adjointMode = (0, 2, 1, 0, 8, 0, 0, 0, 4)
+    _adjointCapability = (0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15)
+    _addInverse = (0, 5, 10, 15, 5, 5, 15, 15, 10, 15, 10, 15, 15, 15, 15, 15)
 
+    def _dom(self, mode):
+        return self.domain if (mode & 9) else self.target
 
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
-    target : DomainTuple
-        The domain in which the Operators result lives.
-    unitary : boolean
-        Indicates whether the Operator is unitary or not.
-    """
+    def _tgt(self, mode):
+        return self.domain if (mode & 6) else self.target
 
     def __init__(self):
         pass
@@ -65,138 +62,87 @@ class LinearOperator(with_metaclass(
         raise NotImplementedError
 
     @property
-    def unitary(self):
-        """
-        unitary : boolean
-            States whether the Operator is unitary or not.
-            Since the majority of operators will not be unitary, this property
-            returns False, unless it is overridden in a subclass.
-        """
+    def TIMES(self):
+        return 1
+
+    @property
+    def ADJOINT_TIMES(self):
+        return 2
+
+    @property
+    def INVERSE_TIMES(self):
+        return 4
+
+    @property
+    def ADJOINT_INVERSE_TIMES(self):
+        return 8
+
+    @property
+    def INVERSE_ADJOINT_TIMES(self):
+        return 8
+
+    @property
+    def inverse(self):
+        from .inverse_operator import InverseOperator
+        return InverseOperator(self)
+
+    @property
+    def adjoint(self):
+        from .adjoint_operator import AdjointOperator
+        return AdjointOperator(self)
+
+    def __mul__(self, other):
+        from .chain_operator import ChainOperator
+        return ChainOperator(self, other)
+
+    def __add__(self, other):
+        from .sum_operator import SumOperator
+        return SumOperator(self, other)
+
+    def __sub__(self, other):
+        from .sum_operator import SumOperator
+        return SumOperator(self, other, neg=True)
+
+    def supports(self, ops):
         return False
 
+    @abc.abstractproperty
+    def capability(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def apply(self, x, mode):
+        raise NotImplementedError
+
     def __call__(self, x):
-        return self.times(x)
+        return self.apply(x, self.TIMES)
 
     def times(self, x):
-        """ Applies the Operator to a given Field.
-
-        Parameters
-        ----------
-        x : Field
-            The input Field, living on the Operator's domain.
-
-        Returns
-        -------
-        out : Field
-            The processed Field living on the Operator's target domain.
-        """
-        self._check_input_compatibility(x)
-        return self._times(x)
+        return self.apply(x, self.TIMES)
 
     def inverse_times(self, x):
-        """Applies the inverse Operator to a given Field.
-
-        Parameters
-        ----------
-        x : Field
-            The input Field, living on the Operator's target domain
-
-        Returns
-        -------
-        out : Field
-            The processed Field living on the Operator's domain.
-        """
-        self._check_input_compatibility(x, inverse=True)
-        try:
-            y = self._inverse_times(x)
-        except NotImplementedError:
-            if self.unitary:
-                y = self._adjoint_times(x)
-            else:
-                raise
-        return y
+        return self.apply(x, self.INVERSE_TIMES)
 
     def adjoint_times(self, x):
-        """Applies the adjoint-Operator to a given Field.
-
-        Parameters
-        ----------
-        x : Field
-            The input Field, living on the Operator's target domain
-
-        Returns
-        -------
-        out : Field
-            The processed Field living on the Operator's domain.
-        """
-        if self.unitary:
-            return self.inverse_times(x)
-
-        self._check_input_compatibility(x, inverse=True)
-        try:
-            y = self._adjoint_times(x)
-        except NotImplementedError:
-            if self.unitary:
-                y = self._inverse_times(x)
-            else:
-                raise
-        return y
+        return self.apply(x, self.ADJOINT_TIMES)
 
     def adjoint_inverse_times(self, x):
-        """ Applies the adjoint-inverse Operator to a given Field.
-
-        Parameters
-        ----------
-        x : Field
-            The input Field, living on the Operator's domain.
-
-        Returns
-        -------
-        out : Field
-            The processed Field living on the Operator's target domain.
-
-        Notes
-        -----
-        If the operator has an `inverse` then the inverse adjoint is identical
-        to the adjoint inverse. We provide both names for convenience.
-        """
-        self._check_input_compatibility(x)
-        try:
-            y = self._adjoint_inverse_times(x)
-        except NotImplementedError:
-            if self.unitary:
-                y = self._times(x)
-            else:
-                raise
-        return y
+        return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
     def inverse_adjoint_times(self, x):
-        """Same as adjoint_inverse_times()"""
-        return self.adjoint_inverse_times(x)
+        return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
-    def _times(self, x):
-        raise NotImplementedError(
-            "no generic instance method 'times'.")
+    def _check_mode(self, mode):
+        if not self._validMode[mode]:
+            raise ValueError("invalid operator mode specified")
+        if mode & self.capability == 0:
+            raise ValueError("requested operator mode is not supported")
 
-    def _adjoint_times(self, x):
-        raise NotImplementedError(
-            "no generic instance method 'adjoint_times'.")
-
-    def _inverse_times(self, x):
-        raise NotImplementedError(
-            "no generic instance method 'inverse_times'.")
-
-    def _adjoint_inverse_times(self, x):
-        raise NotImplementedError(
-            "no generic instance method 'adjoint_inverse_times'.")
-
-    def _check_input_compatibility(self, x, inverse=False):
+    def _check_input(self, x, mode):
         if not isinstance(x, Field):
             raise ValueError("supplied object is not a `Field`.")
 
-        if x.domain != (self.target if inverse else self.domain):
-            raise ValueError("The operator's and and field's domains "
-                             "don't match.")
-
-    def __repr__(self):
-        return str(self.__class__)
+        self._check_mode(mode)
+        if x.domain != self._dom(mode):
+                raise ValueError("The operator's and and field's domains "
+                                 "don't match.")

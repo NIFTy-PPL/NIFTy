@@ -3,7 +3,7 @@ from ..field import Field, sqrt
 from ..sugar import power_analyze, power_synthesize
 
 
-class WienerFilterCurvature(InversionEnabler, EndomorphicOperator):
+class WienerFilterCurvature(EndomorphicOperator):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -22,37 +22,31 @@ class WienerFilterCurvature(InversionEnabler, EndomorphicOperator):
     """
 
     def __init__(self, R, N, S, inverter):
-        EndomorphicOperator.__init__(self)
-        InversionEnabler.__init__(self, inverter, S.times)
+        super(WienerFilterCurvature, self).__init__()
         self.R = R
         self.N = N
         self.S = S
+        op = R.adjoint*N.inverse*R + S.inverse
+        self._op = InversionEnabler(op, inverter, S.times)
 
     @property
     def domain(self):
         return self.S.domain
 
     @property
-    def self_adjoint(self):
-        return True
+    def capability(self):
+        return self._op.capability
 
-    def _times(self, x):
-        res = self.R.adjoint_times(self.N.inverse_times(self.R(x)))
-        res += self.S.inverse_times(x)
-        return res
+    def apply(self, x, mode):
+        return self._op.apply(x, mode)
 
-    def generate_posterior_sample(self, mean):
+    def generate_posterior_sample(self):
         """ Generates a posterior sample from a Gaussian distribution with
         given mean and covariance.
 
         This method generates samples by setting up the observation and
         reconstruction of a mock signal in order to obtain residuals of the
         right correlation which are added to the given mean.
-
-        Parameters
-        ----------
-        mean : Field
-            the mean of the posterior Gaussian distribution
 
         Returns
         -------
@@ -74,5 +68,5 @@ class WienerFilterCurvature(InversionEnabler, EndomorphicOperator):
 
         mock_j = self.R.adjoint_times(self.N.inverse_times(mock_data))
         mock_m = self.inverse_times(mock_j)
-        sample = mock_signal - mock_m + mean
+        sample = mock_signal - mock_m
         return sample

@@ -48,13 +48,6 @@ class DiagonalOperator(EndomorphicOperator):
     ----------
     domain : DomainTuple
         The domain on which the Operator's input Field lives.
-    target : DomainTuple
-        The domain in which the outcome of the operator lives. As the Operator
-        is endomorphic this is the same as its domain.
-    unitary : boolean
-        Indicates whether the Operator is unitary or not.
-    self_adjoint : boolean
-        Indicates whether the operator is self-adjoint or not.
 
     NOTE: the fields given to __init__ and returned from .diagonal() are
     considered to be non-bare, i.e. during operator application, no additional
@@ -114,20 +107,23 @@ class DiagonalOperator(EndomorphicOperator):
         else:
             self._ldiag = dobj.local_data(self._diagonal.val)
 
-        self._self_adjoint = None
-        self._unitary = None
+    def apply(self, x, mode):
+        self._check_input(x, mode)
 
-    def _times(self, x):
-        return Field(x.domain, val=x.val*self._ldiag)
-
-    def _adjoint_times(self, x):
-        return Field(x.domain, val=x.val*self._ldiag.conj())
-
-    def _inverse_times(self, x):
-        return Field(x.domain, val=x.val/self._ldiag)
-
-    def _adjoint_inverse_times(self, x):
-        return Field(x.domain, val=x.val/self._ldiag.conj())
+        if mode == self.TIMES:
+            return Field(x.domain, val=x.val*self._ldiag)
+        elif mode == self.ADJOINT_TIMES:
+            if np.issubdtype(self._ldiag.dtype, np.floating):
+                return Field(x.domain, val=x.val*self._ldiag)
+            else:
+                return Field(x.domain, val=x.val*self._ldiag.conj())
+        elif mode == self.INVERSE_TIMES:
+            return Field(x.domain, val=x.val/self._ldiag)
+        else:
+            if np.issubdtype(self._ldiag.dtype, np.floating):
+                return Field(x.domain, val=x.val/self._ldiag)
+            else:
+                return Field(x.domain, val=x.val/self._ldiag.conj())
 
     def diagonal(self):
         """ Returns the diagonal of the Operator."""
@@ -138,16 +134,6 @@ class DiagonalOperator(EndomorphicOperator):
         return self._domain
 
     @property
-    def self_adjoint(self):
-        if self._self_adjoint is None:
-            if not np.issubdtype(self._diagonal.dtype, np.complexfloating):
-                self._self_adjoint = True
-            else:
-                self._self_adjoint = (self._diagonal.val.imag == 0).all()
-        return self._self_adjoint
-
-    @property
-    def unitary(self):
-        if self._unitary is None:
-            self._unitary = (abs(self._diagonal.val) == 1.).all()
-        return self._unitary
+    def capability(self):
+        return (self.TIMES | self.ADJOINT_TIMES |
+                self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)

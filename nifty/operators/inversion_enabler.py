@@ -19,31 +19,41 @@
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
 from ..field import Field, dobj
+from .linear_operator import LinearOperator
 
 
-class InversionEnabler(object):
-
-    def __init__(self, inverter, preconditioner=None):
+class InversionEnabler(LinearOperator):
+    def __init__(self, op, inverter, preconditioner=None):
         super(InversionEnabler, self).__init__()
+        self._op = op
         self._inverter = inverter
         self._preconditioner = preconditioner
 
-    def _operation(self, x, op, tdom):
+    @property
+    def domain(self):
+        return self._op.domain
+
+    @property
+    def target(self):
+        return self._op.target
+
+    @property
+    def capability(self):
+        return self._addInverse[self._op.capability]
+
+    def apply(self, x, mode):
+        self._check_mode(mode)
+        if self._op.capability & mode:
+            return self._op.apply(x, mode)
+
+        tdom = self._tgt(mode)
         x0 = Field.zeros(tdom, dtype=x.dtype)
-        energy = QuadraticEnergy(A=op, b=x, position=x0)
+
+        def func(x):
+            return self._op.apply(x, self._inverseMode[mode])
+
+        energy = QuadraticEnergy(A=func, b=x, position=x0)
         r, stat = self._inverter(energy, preconditioner=self._preconditioner)
         if stat != IterationController.CONVERGED:
             dobj.mprint("Error detected during operator inversion")
         return r.position
-
-    def _times(self, x):
-        return self._operation(x, self._inverse_times, self.target)
-
-    def _adjoint_times(self, x):
-        return self._operation(x, self._adjoint_inverse_times, self.domain)
-
-    def _inverse_times(self, x):
-        return self._operation(x, self._times, self.domain)
-
-    def _adjoint_inverse_times(self, x):
-        return self._operation(x, self._adjoint_times, self.target)

@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     n_samples = 50
     for i in range(n_samples):
-        sample = fft(D.generate_posterior_sample(m))
+        sample = fft(D.generate_posterior_sample() + m)
         sample_variance += sample**2
         sample_mean += sample
     sample_mean /= n_samples

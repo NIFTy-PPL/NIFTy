@@ -88,6 +88,12 @@ class DOFProjectionOperator(LinearOperator):
         oarr[()] = arr[(slice(None), self._dofdex, slice(None))]
         return res
 
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            return self._times(x)
+        return self._adjoint_times(x)
+
     @property
     def domain(self):
         return self._domain
@@ -95,3 +101,7 @@ class DOFProjectionOperator(LinearOperator):
     @property
     def target(self):
         return self._target
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES

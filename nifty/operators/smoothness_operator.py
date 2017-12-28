@@ -39,10 +39,12 @@ class SmoothnessOperator(EndomorphicOperator):
         return self._laplace._domain
 
     @property
-    def self_adjoint(self):
-        return False
+    def capability(self):
+        return self.TIMES
 
-    def _times(self, x):
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+
         if self._strength == 0.:
             return x.zeros_like(x)
         result = self._laplace.adjoint_times(self._laplace(x))

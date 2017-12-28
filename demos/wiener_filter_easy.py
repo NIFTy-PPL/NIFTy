@@ -2,36 +2,6 @@ import numpy as np
 import nifty2go as ift
 
 
-# Note that the constructor of PropagatorOperator takes as arguments the
-# response R and noise covariance N operating on signal space and signal
-# covariance operating on harmonic space.
-class PropagatorOperator(ift.InversionEnabler, ift.EndomorphicOperator):
-    def __init__(self, R, N, Sh, inverter):
-        ift.InversionEnabler.__init__(self, inverter)
-        ift.EndomorphicOperator.__init__(self)
-
-        self.R = R
-        self.N = N
-        self.Sh = Sh
-        self.fft = ift.FFTOperator(R.domain, target=Sh.domain[0])
-
-    def _inverse_times(self, x):
-        return self.R.adjoint_times(self.N.inverse_times(self.R(x))) \
-               + self.fft.adjoint_times(self.Sh.inverse_times(self.fft(x)))
-
-    @property
-    def domain(self):
-        return self.R.domain
-
-    @property
-    def unitary(self):
-        return False
-
-    @property
-    def self_adjoint(self):
-        return True
-
-
 if __name__ == "__main__":
     # Set up physical constants
     # Total length of interval or volume the field lives on, e.g. in meters
@@ -85,6 +55,6 @@ if __name__ == "__main__":
     j = R.adjoint_times(N.inverse_times(d))
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
-    D = PropagatorOperator(Sh=Sh, N=N, R=R, inverter=inverter)
-
+    D = (R.adjoint*N.inverse*R + fft.adjoint*Sh.inverse*fft).inverse
+    D = ift.InversionEnabler(D, inverter)
     m = D(j)

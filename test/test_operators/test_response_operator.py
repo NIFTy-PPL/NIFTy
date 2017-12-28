@@ -14,8 +14,6 @@ class ResponseOperator_Tests(unittest.TestCase):
                                   exposure=[exposure])
         if op.domain[0] != space:
             raise TypeError
-        if op.unitary:
-            raise ValueError
 
     @expand(product(spaces, [0.,  5., 1.], [0., 1., .33]))
     def test_times_adjoint_times(self, space, sigma, exposure):

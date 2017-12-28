@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from builtins import range
 from .linear_operator import LinearOperator
 
 
@@ -29,7 +28,6 @@ class ComposedOperator(LinearOperator):
     ----------
     operators : tuple of NIFTy Operators
         The tuple of LinearOperators.
-
 
     Attributes
     ----------
@@ -44,6 +42,7 @@ class ComposedOperator(LinearOperator):
 
         self._operator_store = ()
         old_op = None
+        self._capability = operators[0].capability
         for op in operators:
             if not isinstance(op, LinearOperator):
                 raise TypeError("The elements of the operator list must be"
@@ -51,7 +50,10 @@ class ComposedOperator(LinearOperator):
             if old_op is not None and op.domain != old_op.target:
                 raise ValueError("incompatible domains")
             self._operator_store += (op,)
+            self._capability &= op.capability
             old_op = op
+        if self._capability == 0:
+            raise ValueError("composed operator does not support any mode")
 
     @property
     def domain(self):
@@ -61,24 +63,16 @@ class ComposedOperator(LinearOperator):
     def target(self):
         return self._operator_store[-1].target
 
-    def _times(self, x):
-        return self._times_helper(x, func='times')
+    @property
+    def capability(self):
+        return self._capability
 
-    def _adjoint_times(self, x):
-        return self._inverse_times_helper(x, func='adjoint_times')
-
-    def _inverse_times(self, x):
-        return self._inverse_times_helper(x, func='inverse_times')
-
-    def _adjoint_inverse_times(self, x):
-        return self._times_helper(x, func='adjoint_inverse_times')
-
-    def _times_helper(self, x, func):
-        for op in self._operator_store:
-            x = getattr(op, func)(x)
-        return x
-
-    def _inverse_times_helper(self, x, func):
-        for op in reversed(self._operator_store):
-            x = getattr(op, func)(x)
+    def apply(self, x, mode):
+        self._check_mode(mode)
+        if mode == self.TIMES or mode == self.ADJOINT_INVERSE_TIMES:
+            for op in self._operator_store:
+                x = op.apply(x, mode)
+        else:
+            for op in reversed(self._operator_store):
+                x = op.apply(x, mode)
         return x

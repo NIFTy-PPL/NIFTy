@@ -28,7 +28,8 @@ class DirectSmoothingOperator(EndomorphicOperator):
 
             self._ibegin, self._nval, self._wgt = self._precompute(distances)
 
-    def _times(self, x):
+    def apply(self, x, mode):
+        self._check_input(x, mode)
         if self._sigma == 0:
             return x.copy()
 
@@ -39,8 +40,8 @@ class DirectSmoothingOperator(EndomorphicOperator):
         return self._domain
 
     @property
-    def self_adjoint(self):
-        return True
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
 
     def _precompute(self, x):
         """ Does precomputations for Gaussian smoothing on a 1D irregular grid.

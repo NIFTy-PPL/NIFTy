@@ -27,7 +27,7 @@ class NoiseEnergy(Energy):
             if samples is None or samples == 0:
                 sample_list = [m]
             else:
-                sample_list = [D.generate_posterior_sample(m)
+                sample_list = [D.generate_posterior_sample() + m
                                for _ in range(samples)]
         self.sample_list = sample_list
         self.inverter = inverter

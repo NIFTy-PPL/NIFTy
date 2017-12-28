@@ -31,6 +31,14 @@ class LinearizedSignalResponse(LinearOperator):
     def target(self):
         return self.Instrument.target
 
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return self._times(x) if mode & self.TIMES else self._adjoint_times(x)
+
 
 class LinearizedPowerResponse(LinearOperator):
     def __init__(self, Instrument, nonlinearity, FFT, Projection, t, m):
@@ -70,3 +78,11 @@ class LinearizedPowerResponse(LinearOperator):
     @property
     def target(self):
         return self.Instrument.target
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return self._times(x) if mode & self.TIMES else self._adjoint_times(x)

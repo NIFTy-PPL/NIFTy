@@ -12,3 +12,7 @@ from .laplace_operator import LaplaceOperator
 from .smoothness_operator import SmoothnessOperator
 from .power_projection_operator import PowerProjectionOperator
 from .dof_projection_operator import DOFProjectionOperator
+from .chain_operator import ChainOperator
+from .sum_operator import SumOperator
+from .inverse_operator import InverseOperator
+from .adjoint_operator import AdjointOperator

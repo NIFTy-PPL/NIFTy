@@ -22,7 +22,8 @@ class FFTSmoothingOperator(EndomorphicOperator):
         ddom[self._space] = codomain
         self._diag = DiagonalOperator(kernel, ddom, self._space)
 
-    def _times(self, x):
+    def apply(self, x, mode):
+        self._check_input(x, mode)
         if self._sigma == 0:
             return x.copy()
 
@@ -33,5 +34,5 @@ class FFTSmoothingOperator(EndomorphicOperator):
         return self._FFT.domain
 
     @property
-    def self_adjoint(self):
-        return True
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES

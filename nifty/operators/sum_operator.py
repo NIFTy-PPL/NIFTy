@@ -19,22 +19,30 @@
 from .linear_operator import LinearOperator
 
 
-class EndomorphicOperator(LinearOperator):
-    """ NIFTY class for endomorphic operators.
+class SumOperator(LinearOperator):
+    def __init__(self, op1, op2, neg=False):
+        super(SumOperator, self).__init__()
+        if op1.domain != op2.domain or op1.target != op2.target:
+            raise ValueError("domain mismatch")
+        self._op1 = op1
+        self._op2 = op2
+        self._neg = bool(neg)
 
-    The  NIFTY EndomorphicOperator class is a class derived from the
-    LinearOperator. By definition, domain and target are the same in
-    EndomorphicOperator.
-
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
-    target : DomainTuple
-        The domain in which the outcome of the operator lives. As the Operator
-        is endomorphic this is the same as its domain.
-    """
+    @property
+    def domain(self):
+        return self._op1.domain
 
     @property
     def target(self):
-        return self.domain
+        return self._op1.target
+
+    @property
+    def capability(self):
+        return (self._op1.capability & self._op2.capability &
+                (self.TIMES | self.ADJOINT_TIMES))
+
+    def apply(self, x, mode):
+        self._check_mode(mode)
+        res1 = self._op1.apply(x, mode)
+        res2 = self._op2.apply(x, mode)
+        return res1 - res2 if self._neg else res1 + res2

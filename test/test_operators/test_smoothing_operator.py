@@ -39,10 +39,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
         op = ift.FFTSmoothingOperator(space, sigma=sigma)
         if op.domain[0] != space:
             raise TypeError
-        if op.unitary:
-            raise ValueError
-        if not op.self_adjoint:
-            raise ValueError
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_adjoint_times(self, space, sigma):

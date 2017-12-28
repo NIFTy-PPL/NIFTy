@@ -16,9 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-import numpy as np
 from .dof_projection_operator import DOFProjectionOperator
-from .. import Field, DomainTuple, dobj
+from .. import DomainTuple
 from ..utilities import infer_space
 from ..spaces import PowerSpace
 
