@@ -452,8 +452,11 @@ class Field(object):
             tval = getattr(self.val, op)(other.val)
             return self if tval is self.val else Field(self.domain, tval)
 
-        tval = getattr(self.val, op)(other)
-        return self if tval is self.val else Field(self.domain, tval)
+        if np.isscalar(other) or isinstance(other, dobj.data_object):
+            tval = getattr(self.val, op)(other)
+            return self if tval is self.val else Field(self.domain, tval)
+
+        raise NotImplementedError
 
     def __add__(self, other):
         return self._binary_helper(other, op='__add__')

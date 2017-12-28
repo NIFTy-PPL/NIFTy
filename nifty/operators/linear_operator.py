@@ -20,6 +20,7 @@ import abc
 from ..utilities import NiftyMeta
 from ..field import Field
 from future.utils import with_metaclass
+import numpy as np
 
 
 class LinearOperator(with_metaclass(
@@ -91,17 +92,45 @@ class LinearOperator(with_metaclass(
         from .adjoint_operator import AdjointOperator
         return AdjointOperator(self)
 
+    @staticmethod
+    def _toOperator(thing, dom):
+        from .diagonal_operator import DiagonalOperator
+        from .scaling_operator import ScalingOperator
+        if isinstance(thing, LinearOperator):
+            return thing
+        if isinstance(thing, Field):
+            return DiagonalOperator(thing)
+        if np.isscalar(thing):
+            return ScalingOperator(thing, dom)
+        raise NotImplementedError
+
     def __mul__(self, other):
         from .chain_operator import ChainOperator
+        other = self._toOperator(other, self.domain)
         return ChainOperator(self, other)
+
+    def __rmul__(self, other):
+        from .chain_operator import ChainOperator
+        other = self._toOperator(other, self.target)
+        return ChainOperator(other, self)
 
     def __add__(self, other):
         from .sum_operator import SumOperator
+        other = self._toOperator(other, self.domain)
         return SumOperator(self, other)
+
+    def __radd__(self, other):
+        return self.__add__(other)
 
     def __sub__(self, other):
         from .sum_operator import SumOperator
+        other = self._toOperator(other, self.domain)
         return SumOperator(self, other, neg=True)
+
+    def __rsub__(self, other):
+        from .sum_operator import SumOperator
+        other = self._toOperator(other, self.domain)
+        return SumOperator(other, self, neg=True)
 
     def supports(self, ops):
         return False
