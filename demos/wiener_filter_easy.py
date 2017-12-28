@@ -57,7 +57,8 @@ if __name__ == "__main__":
     IC = ift.GradientNormController(verbose=True, iteration_limit=500,
                                     tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
-    D = (R.adjoint*N.inverse*R + fft.adjoint*Sh.inverse*fft).inverse
+    S_inv = fft.adjoint*Sh.inverse*fft
+    D = (R.adjoint*N.inverse*R + S_inv).inverse
     # MR FIXME: we can/should provide a preconditioner here as well!
     D = ift.InversionEnabler(D, inverter)
     m = D(j)
