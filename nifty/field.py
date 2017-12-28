@@ -295,7 +295,8 @@ class Field(object):
                 if dobj.distaxis(self._val) >= 0 and ind == 0:
                     # we need to distribute the weights along axis 0
                     wgt = dobj.local_data(dobj.from_global_data(wgt))
-                out *= wgt**power
+                lout = dobj.local_data(out.val)
+                lout *= wgt**power
         fct = fct**power
         if fct != 1.:
             out *= fct
