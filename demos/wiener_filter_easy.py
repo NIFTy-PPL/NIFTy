@@ -3,6 +3,7 @@ import nifty2go as ift
 
 
 if __name__ == "__main__":
+    np.random.seed(43)
     # Set up physical constants
     # Total length of interval or volume the field lives on, e.g. in meters
     L = 2.
@@ -53,8 +54,10 @@ if __name__ == "__main__":
     # Wiener filter
 
     j = R.adjoint_times(N.inverse_times(d))
-    IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=0.1)
+    IC = ift.GradientNormController(verbose=True, iteration_limit=500,
+                                    tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
     D = (R.adjoint*N.inverse*R + fft.adjoint*Sh.inverse*fft).inverse
+    # MR FIXME: we can/should provide a preconditioner here as well!
     D = ift.InversionEnabler(D, inverter)
     m = D(j)
