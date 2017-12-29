@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     mock_power_2 = ift.PS_field(power_space_2, power_spectrum_2)
 
-    fft = ift.ComposedOperator((fft_1, fft_2))
+    fft = fft_2*fft_1
 
     mock_power = ift.Field(
         (power_space_1, power_space_2),
@@ -74,7 +74,7 @@ if __name__ == "__main__":
                              sigma=(response_sigma_1, response_sigma_2),
                              exposure=(mask_1, mask_2))
     data_domain = R.target
-    R_harmonic = ift.ComposedOperator([fft, R])
+    R_harmonic = R*fft
 
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
@@ -105,13 +105,15 @@ if __name__ == "__main__":
 
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
     sm = ift.FFTSmoothingOperator(plot_space, sigma=0.03)
+    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
+                "colormap": "Planck-like"}
     ift.plotting.plot(
         ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))),
         name='uncertainty.png', zmin=0., zmax=3., title="Uncertainty map",
-        colormap="Planck-like")
+        **plotdict)
     ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real),
-                      name='mock_signal.png', colormap="Planck-like")
+                      name='mock_signal.png', **plotdict)
     ift.plotting.plot(ift.Field(plot_space, val=data.val.real),
-                      name='data.png', colormap="Planck-like")
+                      name='data.png', **plotdict)
     ift.plotting.plot(ift.Field(plot_space, val=m.val.real),
-                      name='map.png', colormap="Planck-like")
+                      name='map.png', **plotdict)

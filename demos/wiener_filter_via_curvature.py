@@ -53,7 +53,7 @@ if __name__ == "__main__":
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
                              exposure=(exposure,))
     data_domain = R.target[0]
-    R_harmonic = ift.ComposedOperator([fft, R])
+    R_harmonic = R*fft
 
     N = ift.DiagonalOperator(
         ift.Field.full(data_domain,

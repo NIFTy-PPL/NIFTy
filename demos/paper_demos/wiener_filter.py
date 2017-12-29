@@ -38,7 +38,7 @@ if __name__ == "__main__":
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
                              exposure=(mask,))
     data_domain = R.target[0]
-    R_harmonic = ift.ComposedOperator([fft, R])
+    R_harmonic = R * fft
 
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
@@ -67,12 +67,10 @@ if __name__ == "__main__":
     variance = ift.sqrt(sm(proby.diagonal.weight(-1)))
 
     # Plotting
-    ift.plotting.plot(variance, name="uncertainty.png", xlabel='Pixel index',
-                      ylabel='Pixel index')
-    ift.plotting.plot(mock_signal, name="mock_signal.png",
-                      xlabel='Pixel index', ylabel='Pixel index')
+    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
+                "colormap": "Planck-like"}
+    ift.plotting.plot(variance, name="uncertainty.png", **plotdict)
+    ift.plotting.plot(mock_signal, name="mock_signal.png", **plotdict)
     ift.plotting.plot(ift.Field(signal_space, val=data.val),
-                      name="data.png", xlabel='Pixel index',
-                      ylabel='Pixel index')
-    ift.plotting.plot(m, name="map.png", xlabel='Pixel index',
-                      ylabel='Pixel index')
+                      name="data.png", **plotdict)
+    ift.plotting.plot(m, name="map.png", **plotdict)

@@ -38,6 +38,7 @@ class SmoothnessOperator(EndomorphicOperator):
     def domain(self):
         return self._laplace._domain
 
+    # MR FIXME: shouldn't this operator actually be self-adjoint?
     @property
     def capability(self):
         return self.TIMES

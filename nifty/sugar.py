@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from . import Space, PowerSpace, Field, ComposedOperator, DiagonalOperator,\
+from . import Space, PowerSpace, Field, DiagonalOperator,\
               PowerProjectionOperator, FFTOperator, sqrt, DomainTuple, dobj,\
               utilities
 
@@ -241,11 +241,10 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
 
 
 def create_composed_fft_operator(domain, codomain=None, all_to='other'):
-    fft_op_list = []
-
     if codomain is None:
         codomain = [None]*len(domain)
     tdom = list(domain)
+    res = None
     for i, space in enumerate(domain):
         if not isinstance(space, Space):
             continue
@@ -256,6 +255,9 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
                 tgt = domain[i].get_default_codomain()
             else:
                 tgt = codomain[i]
-            fft_op_list += [FFTOperator(domain=tdom, target=tgt, space=i)]
+            op = FFTOperator(domain=tdom, target=tgt, space=i)
+            res = op if res is None else op*res
             tdom[i] = tgt
-    return ComposedOperator(fft_op_list)
+    if res is None:
+        raise ValueError("empty operator")
+    return res

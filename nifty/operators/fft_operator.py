@@ -54,20 +54,6 @@ class FFTOperator(LinearOperator):
         For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
         co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
-
-    Attributes
-    ----------
-    domain: Tuple of Spaces
-        The domain of the data that is input by "times" and output by
-        "adjoint_times".
-    target: Tuple of Spaces
-        The domain of the data that is output by "times" and input by
-        "adjoint_times".
-
-    Raises
-    ------
-    ValueError:
-        if "domain" or "target" are not of the proper type.
     """
 
     def __init__(self, domain, target=None, space=None):
@@ -96,17 +82,14 @@ class FFTOperator(LinearOperator):
         else:
             self._trafo = SphericalTransformation(pdom, hdom, self._space)
 
-    def _times_helper(self, x):
+    def apply(self, x, mode):
+        self._check_input(x, mode)
         if np.issubdtype(x.dtype, np.complexfloating):
             res = (self._trafo.transform(x.real) +
                    1j * self._trafo.transform(x.imag))
         else:
             res = self._trafo.transform(x)
         return res
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        return self._times_helper(x)
 
     @property
     def domain(self):

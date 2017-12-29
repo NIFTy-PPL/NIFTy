@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
     # Add a harmonic transformation to the instrument
-    R = ift.ComposedOperator([fft, Instrument])
+    R = Instrument*fft
 
     noise = 1.
     N = ift.DiagonalOperator(ift.Field.full(s_space, noise).weight(1))

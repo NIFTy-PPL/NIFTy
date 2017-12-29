@@ -31,7 +31,7 @@ class WienerFilterCurvature(EndomorphicOperator):
 
     @property
     def domain(self):
-        return self.S.domain
+        return self._op.domain
 
     @property
     def capability(self):

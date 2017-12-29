@@ -50,8 +50,8 @@ if __name__ == "__main__":
 
     MaskOperator = ift.DiagonalOperator(mask)
     InstrumentResponse = ift.ResponseOperator(s_space, sigma=[0.0])
-    MeasurementOperator = ift.ComposedOperator([MaskOperator,
-                                                InstrumentResponse])
+    MeasurementOperator = InstrumentResponse*MaskOperator
+
     d_space = MeasurementOperator.target
 
     noise_covariance = ift.Field(d_space, val=noise_level**2).weight()

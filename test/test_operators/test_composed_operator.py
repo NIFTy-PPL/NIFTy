@@ -17,7 +17,7 @@ class ComposedOperator_Tests(unittest.TestCase):
         op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
         op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-        op = ift.ComposedOperator((op1, op2))
+        op = op2*op1
 
         rand1 = ift.Field.from_random('normal', domain=(space1, space2))
         rand2 = ift.Field.from_random('normal', domain=(space1, space2))
@@ -34,7 +34,7 @@ class ComposedOperator_Tests(unittest.TestCase):
         op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
         op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-        op = ift.ComposedOperator((op1, op2))
+        op = op2*op1
 
         rand1 = ift.Field.from_random('normal', domain=(space1, space2))
         tt1 = op.inverse_times(op.times(rand1))

@@ -36,7 +36,7 @@ if __name__ == "__main__":
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
                              exposure=(mask,))
     data_domain = R.target[0]
-    R_harmonic = ift.ComposedOperator([fft, R])
+    R_harmonic = R*fft
 
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
@@ -66,20 +66,16 @@ if __name__ == "__main__":
     # m3 = fft(me3[0].position)
 
     # Plotting
-    ift.plotting.plot(mock_signal, name='mock_signal.png', colormap="plasma",
-                      xlabel="Pixel Index", ylabel="Pixel Index")
+    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
+                "colormap": "Planck-like"}
+    ift.plotting.plot(mock_signal, name="mock_signal.png", **plotdict)
     logdata = np.log(ift.dobj.to_global_data(data.val)).reshape(signal_space.shape)
     ift.plotting.plot(ift.Field(signal_space,
                                 val=ift.dobj.from_global_data(logdata)),
-                      name="log_of_data.png", colormap="plasma",
-                      xlabel="Pixel Index", ylabel="Pixel Index")
-    # ift.plotting.plot(m1,name='m_LBFGS.png', colormap="plasma",
-    #                   xlabel="Pixel Index", ylabel="Pixel Index")
-    ift.plotting.plot(m2, name='m_Newton.png', colormap="plasma",
-                      xlabel="Pixel Index", ylabel="Pixel Index")
-    # ift.plotting.plot(m3, name='m_SteepestDescent.png',
-    #                   colormap="plasma", xlabel="Pixel Index",
-    #                   ylabel="Pixel Index")
+                      name="log_of_data.png", **plotdict)
+    # ift.plotting.plot(m1,name='m_LBFGS.png', **plotdict)
+    ift.plotting.plot(m2, name='m_Newton.png', **plotdict)
+    # ift.plotting.plot(m3, name='m_SteepestDescent.png', **plotdict)
 
     # Probing the variance
     class Proby(ift.DiagonalProberMixin, ift.Prober):
@@ -89,4 +85,4 @@ if __name__ == "__main__":
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.02)
     variance = sm(proby.diagonal.weight(-1))
-    ift.plotting.plot(variance, name='variance.png')
+    ift.plotting.plot(variance, name='variance.png', **plotdict)

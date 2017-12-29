@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     # Choosing the prior correlation structure and defining
     # correlation operator
-    p_spec = (lambda k: (42 / (k + 1) ** 3))
+    p_spec = (lambda k: (42/(k+1)**3))
 
     S = ift.create_power_operator(h_space, power_spectrum=p_spec)
 
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     Instrument = ift.DiagonalOperator(diag)
 
     # Adding a harmonic transformation to the instrument
-    R = ift.ComposedOperator([fft, Instrument])
+    R = Instrument*fft
     signal_to_noise = 1.
     ndiag = ift.Field.full(s_space, ss.var()/signal_to_noise)
     N = ift.DiagonalOperator(ndiag.weight(1))
