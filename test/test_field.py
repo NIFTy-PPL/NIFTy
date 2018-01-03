@@ -129,3 +129,11 @@ class Test_Functionality(unittest.TestCase):
         f2 = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
         assert_allclose(f1.vdot(f2), f1.vdot(f2, spaces=0))
         assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
+
+    def test_vdot2(self):
+        x1 = ift.RGSpace((200,))
+        x2 = ift.RGSpace((150,))
+        m = ift.Field((x1, x2), val=.5)
+        res = m.vdot(m, spaces=1)
+        assert_allclose(ift.dobj.to_global_data(res.val),
+                        ift.dobj.to_global_data(ift.Field(x1, val=.25).val))

@@ -86,10 +86,7 @@ def power_analyze(field, spaces=None, binbounds=None,
             dobj.mprint("WARNING: Field has a space in `domain` which is "
                         "neither harmonic nor a PowerSpace.")
 
-    if spaces is None:
-        spaces = range(len(field.domain))
-    else:
-        spaces = utilities.cast_iseq_to_tuple(spaces)
+    spaces = utilities.parse_spaces(spaces, len(field.domain))
 
     if len(spaces) == 0:
         raise ValueError("No space for analysis specified.")
@@ -117,8 +114,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
 
 def power_synthesize_nonrandom(field, spaces=None):
-    spaces = range(len(field.domain)) if spaces is None \
-             else utilities.cast_iseq_to_tuple(spaces)
+    spaces = utilities.parse_spaces(spaces, len(field.domain))
 
     result_domain = list(field.domain)
     spec = sqrt(field)

@@ -277,10 +277,7 @@ class Field(object):
             if out is not self:
                 out.copy_content_from(self)
 
-        if spaces is None:
-            spaces = range(len(self.domain))
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
+        spaces = utilities.parse_spaces(spaces, len(self.domain))
 
         fct = 1.
         for ind in spaces:
@@ -308,44 +305,41 @@ class Field(object):
         Parameters
         ----------
         x : Field
-            The domain of x must contain `self.domain`
+            x must live on the same domain as `self`.
 
-        spaces : tuple of ints
-            If the domain of `self` and `x` are not the same, `spaces` defines
-            which domains of `x` are mapped to those of `self`.
+        spaces : None, int or tuple of ints (default: None)
+            The dot product is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
 
         Returns
         -------
-        out : float, complex, either scalar or Field
+        out : float, complex, either scalar (for full dot products)
+                              or Field (for partial dot products)
         """
         if not isinstance(x, Field):
             raise ValueError("The dot-partner must be an instance of " +
                              "the NIFTy field class")
 
-        # Compute the dot respecting the fact of discrete/continuous spaces
-        tmp = self.scalar_weight(spaces)
-        if tmp is None:
-            fct = 1.
-            y = self.weight(power=1)
-        else:
-            y = self
-            fct = tmp
+        if x.domain != self.domain:
+            raise ValueError("Domain mismatch")
 
-        if spaces is None:
+        ndom = len(self.domain)
+        spaces = utilities.parse_spaces(spaces, ndom)
+
+        if len(spaces) == ndom:
+            tmp = self.scalar_weight(spaces)
+            if tmp is None:
+                fct = 1.
+                y = self.weight(power=1)
+            else:
+                y = self
+                fct = tmp
+
             return fct*dobj.vdot(y.val, x.val)
 
-        spaces = utilities.cast_iseq_to_tuple(spaces)
-        if spaces == tuple(range(len(self.domain))):  # full contraction
-            return fct*dobj.vdot(y.val, x.val)
-
-        raise NotImplementedError("special case for vdot not yet implemented")
-        active_axes = []
-        for i in spaces:
-            active_axes += self.domain.axes[i]
-        res = 0.
-        for sl in utilities.get_slice_list(self.shape, active_axes):
-            res += dobj.vdot(y.val, x.val[sl])
-        return res*fct
+        # If we arrive here, we have to do a partial dot product.
+        # For the moment, do this the explicit, non-optimized way
+        return (self.conjugate()*x).integrate(spaces=spaces)
 
     def norm(self):
         """ Computes the L2-norm of the field values.
@@ -380,8 +374,8 @@ class Field(object):
     def _contraction_helper(self, op, spaces):
         if spaces is None:
             return getattr(self.val, op)()
-        else:
-            spaces = utilities.cast_iseq_to_tuple(spaces)
+
+        spaces = utilities.parse_spaces(spaces, len(self.domain))
 
         axes_list = tuple(self.domain.axes[sp_index] for sp_index in spaces)
 

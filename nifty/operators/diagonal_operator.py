@@ -21,7 +21,7 @@ import numpy as np
 from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
-from ..utilities import cast_iseq_to_tuple
+from .. import utilities
 from .. import dobj
 
 
@@ -79,14 +79,9 @@ class DiagonalOperator(EndomorphicOperator):
             if diagonal.domain != self._domain:
                 raise ValueError("domain mismatch")
         else:
-            self._spaces = cast_iseq_to_tuple(spaces)
-            nspc = len(self._spaces)
-            if nspc != len(diagonal.domain):
+            self._spaces = utilities.parse_spaces(spaces, len(self._domain))
+            if len(self._spaces) != len(diagonal.domain):
                 raise ValueError("spaces and domain must have the same length")
-            if nspc > len(self._domain):
-                raise ValueError("too many spaces")
-            if nspc > len(set(self._spaces)):
-                raise ValueError("non-unique space indices")
             # if nspc==len(self.diagonal.domain),
             # we could do some optimization
             for i, j in enumerate(self._spaces):
