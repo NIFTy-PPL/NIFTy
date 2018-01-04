@@ -102,7 +102,7 @@ class LinearOperator(with_metaclass(
             return DiagonalOperator(thing)
         if np.isscalar(thing):
             return ScalingOperator(thing, dom)
-        raise NotImplementedError
+        raise TypeError
 
     def __mul__(self, other):
         from .chain_operator import ChainOperator
