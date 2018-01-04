@@ -451,7 +451,7 @@ class Field(object):
             tval = getattr(self.val, op)(other)
             return self if tval is self.val else Field(self.domain, tval)
 
-        raise TypeError
+        return NotImplemented
 
     def __add__(self, other):
         return self._binary_helper(other, op='__add__')
