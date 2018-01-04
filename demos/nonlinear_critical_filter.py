@@ -49,7 +49,8 @@ if __name__ == "__main__":
     mask = ift.Field(s_space, val=ift.dobj.from_global_data(mask))
 
     MaskOperator = ift.DiagonalOperator(mask)
-    InstrumentResponse = ift.ResponseOperator(s_space, sigma=[0.0])
+    InstrumentResponse = ift.ResponseOperator(s_space, sigma=[0.0],
+                                              exposure=[1.0])
     MeasurementOperator = InstrumentResponse*MaskOperator
 
     d_space = MeasurementOperator.target
