@@ -65,12 +65,27 @@ def get_slice_list(shape, axes):
         yield [slice(None, None)]
 
 
-def cast_iseq_to_tuple(seq):
-    if seq is None:
-        return None
-    if np.isscalar(seq):
-        return (int(seq),)
-    return tuple(int(item) for item in seq)
+def safe_cast(tfunc, val):
+    tmp = tfunc(val)
+    if val != tmp:
+        raise ValueError("value changed during cast")
+    return tmp
+
+
+def parse_spaces(spaces, maxidx):
+    maxidx = safe_cast(int, maxidx)
+    if spaces is None:
+        return tuple(range(maxidx))
+    elif np.isscalar(spaces):
+        spaces = (safe_cast(int, spaces),)
+    else:
+        spaces = tuple(safe_cast(int, item) for item in spaces)
+    tmp = tuple(set(spaces))
+    if tmp[0] < 0 or tmp[-1] >= maxidx:
+        raise ValueError("space index out of range")
+    if len(tmp) != len(spaces):
+        raise ValueError("multiply defined space indices")
+    return spaces
 
 
 def infer_space(domain, space):
