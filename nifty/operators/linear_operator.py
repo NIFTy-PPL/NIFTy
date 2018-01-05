@@ -33,6 +33,7 @@ class LinearOperator(with_metaclass(
     _adjointCapability = (0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15)
     _addInverse = (0, 5, 10, 15, 5, 5, 15, 15, 10, 15, 10, 15, 15, 15, 15, 15)
     _backwards = 6
+    _all_ops = 15
     TIMES = 1
     ADJOINT_TIMES = 2
     INVERSE_TIMES = 4
@@ -93,12 +94,12 @@ class LinearOperator(with_metaclass(
     def __mul__(self, other):
         from .chain_operator import ChainOperator
         other = self._toOperator(other, self.domain)
-        return ChainOperator(self, other)
+        return ChainOperator.make([self, other])
 
     def __rmul__(self, other):
         from .chain_operator import ChainOperator
         other = self._toOperator(other, self.target)
-        return ChainOperator(other, self)
+        return ChainOperator.make([other, self])
 
     def __add__(self, other):
         from .sum_operator import SumOperator

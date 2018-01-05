@@ -130,5 +130,13 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def capability(self):
-        return (self.TIMES | self.ADJOINT_TIMES |
-                self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)
+        return self._all_ops
+
+    @property
+    def inverse(self):
+        return DiagonalOperator(1./self._diagonal, self._domain, self._spaces)
+
+    @property
+    def adjoint(self):
+        return DiagonalOperator(self._diagonal.conjugate(), self._domain,
+                                self._spaces)

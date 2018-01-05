@@ -154,9 +154,14 @@ class data_object(object):
                 raise ValueError("distributions are incompatible.")
             a = a._data
             b = b._data
-        else:
+        elif np.isscalar(other):
             a = a._data
             b = other
+        elif isinstance(other, np.ndarray):
+            a = a._data
+            b = other
+        else:
+            return NotImplemented
 
         tval = getattr(a, op)(b)
         if tval is a:
