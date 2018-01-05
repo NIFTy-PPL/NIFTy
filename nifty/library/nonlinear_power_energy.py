@@ -47,6 +47,7 @@ class NonlinearPowerEnergy(Energy):
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.Projection = Projection
+        self._sigma = sigma
 
         self.power = self.Projection.adjoint_times(exp(0.5*self.position))
         if sample_list is None:
@@ -62,7 +63,7 @@ class NonlinearPowerEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.m, self.D,
                               self.FFT, self.Instrument, self.nonlinearity,
-                              self.Projection, sigma=self.T.strength,
+                              self.Projection, sigma=self._sigma,
                               samples=len(self.sample_list),
                               sample_list=self.sample_list,
                               inverter=self.inverter)

@@ -32,6 +32,12 @@ class LinearOperator(with_metaclass(
     _adjointMode = (0, 2, 1, 0, 8, 0, 0, 0, 4)
     _adjointCapability = (0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15)
     _addInverse = (0, 5, 10, 15, 5, 5, 15, 15, 10, 15, 10, 15, 15, 15, 15, 15)
+    _backwards = 6
+    TIMES = 1
+    ADJOINT_TIMES = 2
+    INVERSE_TIMES = 4
+    ADJOINT_INVERSE_TIMES = 8
+    INVERSE_ADJOINT_TIMES = 8
 
     def _dom(self, mode):
         return self.domain if (mode & 9) else self.target
@@ -61,26 +67,6 @@ class LinearOperator(with_metaclass(
             base class must have this attribute.
         """
         raise NotImplementedError
-
-    @property
-    def TIMES(self):
-        return 1
-
-    @property
-    def ADJOINT_TIMES(self):
-        return 2
-
-    @property
-    def INVERSE_TIMES(self):
-        return 4
-
-    @property
-    def ADJOINT_INVERSE_TIMES(self):
-        return 8
-
-    @property
-    def INVERSE_ADJOINT_TIMES(self):
-        return 8
 
     @property
     def inverse(self):
@@ -127,6 +113,7 @@ class LinearOperator(with_metaclass(
         other = self._toOperator(other, self.domain)
         return SumOperator(self, other, neg=True)
 
+    # MR FIXME: this might be more complicated ...
     def __rsub__(self, other):
         from .sum_operator import SumOperator
         other = self._toOperator(other, self.domain)

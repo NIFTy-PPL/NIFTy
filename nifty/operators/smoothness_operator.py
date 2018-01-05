@@ -1,8 +1,8 @@
-from .endomorphic_operator import EndomorphicOperator
+from .scaling_operator import ScalingOperator
 from .laplace_operator import LaplaceOperator
 
 
-class SmoothnessOperator(EndomorphicOperator):
+def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
     """An operator measuring the smoothness on an irregular grid with respect
     to some scale.
 
@@ -18,44 +18,15 @@ class SmoothnessOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    strength: float,
+    strength: nonnegative float
         Specifies the strength of the SmoothnessOperator
-    logarithmic : boolean,
+    logarithmic : boolean
         Whether smoothness is calculated on a logarithmic scale or linear scale
         default : True
     """
-
-    def __init__(self, domain, strength=1., logarithmic=True, space=None):
-        super(SmoothnessOperator, self).__init__()
-        self._laplace = LaplaceOperator(domain, logarithmic=logarithmic,
-                                        space=space)
-
-        if strength < 0:
-            raise ValueError("ERROR: strength must be >=0.")
-        self._strength = strength
-
-    @property
-    def domain(self):
-        return self._laplace._domain
-
-    # MR FIXME: shouldn't this operator actually be self-adjoint?
-    @property
-    def capability(self):
-        return self.TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-
-        if self._strength == 0.:
-            return x.zeros_like(x)
-        result = self._laplace.adjoint_times(self._laplace(x))
-        result *= self._strength**2
-        return result
-
-    @property
-    def logarithmic(self):
-        return self._laplace.logarithmic
-
-    @property
-    def strength(self):
-        return self._strength
+    if strength < 0:
+        raise ValueError("ERROR: strength must be nonnegative.")
+    if strength == 0.:
+        return ScalingOperator(0., domain)
+    laplace = LaplaceOperator(domain, logarithmic=logarithmic, space=space)
+    return (strength**2)*laplace.adjoint*laplace

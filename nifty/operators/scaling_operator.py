@@ -21,7 +21,6 @@ import numpy as np
 from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
-from .. import dobj
 
 
 class ScalingOperator(EndomorphicOperator):
@@ -54,6 +53,11 @@ class ScalingOperator(EndomorphicOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
 
+        if self._factor == 1.:
+            return x.copy()
+        if self._factor == 0.:
+            return Field.zeros_like(x, dtype=x.dtype)
+
         if mode == self.TIMES:
             return x*self._factor
         elif mode == self.ADJOINT_TIMES:
@@ -62,6 +66,14 @@ class ScalingOperator(EndomorphicOperator):
             return x*(1./self._factor)
         else:
             return x*(1./np.conj(self._factor))
+
+    @property
+    def inverse(self):
+        return ScalingOperator(1./self._factor, self._domain)
+
+    @property
+    def adjoint(self):
+        return ScalingOperator(np.conj(self.factor), self._domain)
 
     @property
     def domain(self):

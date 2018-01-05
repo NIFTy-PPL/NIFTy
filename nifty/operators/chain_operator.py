@@ -24,23 +24,26 @@ class ChainOperator(LinearOperator):
         super(ChainOperator, self).__init__()
         if op2.target != op1.domain:
             raise ValueError("domain mismatch")
-        self._op1 = op1
-        self._op2 = op2
+        self._capability = op1.capability & op2.capability
+        op1 = op1._ops if isinstance(op1, ChainOperator) else (op1,)
+        op2 = op2._ops if isinstance(op2, ChainOperator) else (op2,)
+        self._ops = op1 + op2
 
     @property
     def domain(self):
-        return self._op2.domain
+        return self._ops[-1].domain
 
     @property
     def target(self):
-        return self._op1.target
+        return self._ops[0].target
 
     @property
     def capability(self):
-        return self._op1.capability & self._op2.capability
+        return self._capability
 
     def apply(self, x, mode):
         self._check_mode(mode)
-        if mode == self.TIMES or mode == self.ADJOINT_INVERSE_TIMES:
-            return self._op1.apply(self._op2.apply(x, mode), mode)
-        return self._op2.apply(self._op1.apply(x, mode), mode)
+        t_ops = self._ops if mode & self._backwards else reversed(self._ops)
+        for op in t_ops:
+            x = op.apply(x, mode)
+        return x

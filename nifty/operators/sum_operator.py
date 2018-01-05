@@ -24,25 +24,37 @@ class SumOperator(LinearOperator):
         super(SumOperator, self).__init__()
         if op1.domain != op2.domain or op1.target != op2.target:
             raise ValueError("domain mismatch")
-        self._op1 = op1
-        self._op2 = op2
-        self._neg = bool(neg)
+        self._capability = (op1.capability & op2.capability &
+                            (self.TIMES | self.ADJOINT_TIMES))
+        op1 = op1._ops if isinstance(op1, SumOperator) else (op1,)
+        neg1 = op1._neg if isinstance(op1, SumOperator) else (False,)
+        op2 = op2._ops if isinstance(op2, SumOperator) else (op2,)
+        neg2 = op2._neg if isinstance(op2, SumOperator) else (False,)
+        if neg:
+            neg2 = tuple(not n for n in neg2)
+        self._ops = op1 + op2
+        self._neg = neg1 + neg2
 
     @property
     def domain(self):
-        return self._op1.domain
+        return self._ops[0].domain
 
     @property
     def target(self):
-        return self._op1.target
+        return self._ops[0].target
 
     @property
     def capability(self):
-        return (self._op1.capability & self._op2.capability &
-                (self.TIMES | self.ADJOINT_TIMES))
+        return self._capability
 
     def apply(self, x, mode):
         self._check_mode(mode)
-        res1 = self._op1.apply(x, mode)
-        res2 = self._op2.apply(x, mode)
-        return res1 - res2 if self._neg else res1 + res2
+        for i, op in enumerate(self._ops):
+            if i == 0:
+                res = -op.apply(x, mode) if self._neg[i] else op.apply(x, mode)
+            else:
+                if self._neg[i]:
+                    res -= op.apply(x, mode)
+                else:
+                    res += op.apply(x, mode)
+        return res

@@ -32,7 +32,6 @@ class Field(object):
 
     In NIFTY, Fields are used to store data arrays and carry all the needed
     metainformation (i.e. the domain) for operators to be able to work on them.
-    In addition, Field has methods to work with power spectra.
 
     Parameters
     ----------
@@ -59,23 +58,23 @@ class Field(object):
     """
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
-        self.domain = self._infer_domain(domain=domain, val=val)
+        self._domain = self._infer_domain(domain=domain, val=val)
 
         dtype = self._infer_dtype(dtype=dtype, val=val)
         if isinstance(val, Field):
-            if self.domain != val.domain:
+            if self._domain != val._domain:
                 raise ValueError("Domain mismatch")
             self._val = dobj.from_object(val.val, dtype=dtype, copy=copy)
         elif (np.isscalar(val)):
-            self._val = dobj.full(self.domain.shape, dtype=dtype,
+            self._val = dobj.full(self._domain.shape, dtype=dtype,
                                   fill_value=val)
         elif isinstance(val, dobj.data_object):
-            if self.domain.shape == val.shape:
+            if self._domain.shape == val.shape:
                 self._val = dobj.from_object(val, dtype=dtype, copy=copy)
             else:
                 raise ValueError("Shape mismatch")
         elif val is None:
-            self._val = dobj.empty(self.domain.shape, dtype=dtype)
+            self._val = dobj.empty(self._domain.shape, dtype=dtype)
         else:
             raise TypeError("unknown source type")
 
@@ -101,7 +100,7 @@ class Field(object):
     def full_like(field, val, dtype=None):
         if not isinstance(field, Field):
             raise TypeError("field must be of Field type")
-        return Field.full(field.domain, val, dtype)
+        return Field.full(field._domain, val, dtype)
 
     @staticmethod
     def zeros_like(field, dtype=None):
@@ -109,7 +108,7 @@ class Field(object):
             raise TypeError("field must be of Field type")
         if dtype is None:
             dtype = field.dtype
-        return Field.zeros(field.domain, dtype)
+        return Field.zeros(field._domain, dtype)
 
     @staticmethod
     def ones_like(field, dtype=None):
@@ -117,7 +116,7 @@ class Field(object):
             raise TypeError("field must be of Field type")
         if dtype is None:
             dtype = field.dtype
-        return Field.ones(field.domain, dtype)
+        return Field.ones(field._domain, dtype)
 
     @staticmethod
     def empty_like(field, dtype=None):
@@ -125,13 +124,13 @@ class Field(object):
             raise TypeError("field must be of Field type")
         if dtype is None:
             dtype = field.dtype
-        return Field.empty(field.domain, dtype)
+        return Field.empty(field._domain, dtype)
 
     @staticmethod
     def _infer_domain(domain, val=None):
         if domain is None:
             if isinstance(val, Field):
-                return val.domain
+                return val._domain
             if np.isscalar(val):
                 return DomainTuple.make(())  # empty domain tuple
             raise TypeError("could not infer domain from value")
@@ -188,6 +187,10 @@ class Field(object):
         return self._val.dtype
 
     @property
+    def domain(self):
+        return self._domain
+
+    @property
     def shape(self):
         """ Returns the total shape of the Field's data array.
 
@@ -195,7 +198,7 @@ class Field(object):
         -------
         Integer tuple containing the dimensions of the spaces in domain.
         """
-        return self.domain.shape
+        return self._domain.shape
 
     @property
     def dim(self):
@@ -208,21 +211,21 @@ class Field(object):
         out : int
             The dimension of the Field.
         """
-        return self.domain.dim
+        return self._domain.dim
 
     @property
     def real(self):
         """ The real part of the field (data is not copied)."""
         if not np.issubdtype(self.dtype, np.complexfloating):
             raise ValueError(".real called on a non-complex Field")
-        return Field(self.domain, self.val.real)
+        return Field(self._domain, self.val.real)
 
     @property
     def imag(self):
         """ The imaginary part of the field (data is not copied)."""
         if not np.issubdtype(self.dtype, np.complexfloating):
             raise ValueError(".imag called on a non-complex Field")
-        return Field(self.domain, self.val.imag)
+        return Field(self._domain, self.val.imag)
 
     def copy(self):
         """ Returns a full copy of the Field.
@@ -238,13 +241,13 @@ class Field(object):
 
     def scalar_weight(self, spaces=None):
         if np.isscalar(spaces):
-            return self.domain[spaces].scalar_dvol()
+            return self._domain[spaces].scalar_dvol()
 
         if spaces is None:
-            spaces = range(len(self.domain))
+            spaces = range(len(self._domain))
         res = 1.
         for i in spaces:
-            tmp = self.domain[i].scalar_dvol()
+            tmp = self._domain[i].scalar_dvol()
             if tmp is None:
                 return None
             res *= tmp
@@ -277,17 +280,17 @@ class Field(object):
             if out is not self:
                 out.copy_content_from(self)
 
-        spaces = utilities.parse_spaces(spaces, len(self.domain))
+        spaces = utilities.parse_spaces(spaces, len(self._domain))
 
         fct = 1.
         for ind in spaces:
-            wgt = self.domain[ind].dvol()
+            wgt = self._domain[ind].dvol()
             if np.isscalar(wgt):
                 fct *= wgt
             else:
                 new_shape = np.ones(len(self.shape), dtype=np.int)
-                new_shape[self.domain.axes[ind][0]:
-                          self.domain.axes[ind][-1]+1] = wgt.shape
+                new_shape[self._domain.axes[ind][0]:
+                          self._domain.axes[ind][-1]+1] = wgt.shape
                 wgt = wgt.reshape(new_shape)
                 if dobj.distaxis(self._val) >= 0 and ind == 0:
                     # we need to distribute the weights along axis 0
@@ -321,10 +324,10 @@ class Field(object):
             raise ValueError("The dot-partner must be an instance of " +
                              "the NIFTy field class")
 
-        if x.domain != self.domain:
+        if x._domain != self._domain:
             raise ValueError("Domain mismatch")
 
-        ndom = len(self.domain)
+        ndom = len(self._domain)
         spaces = utilities.parse_spaces(spaces, ndom)
 
         if len(spaces) == ndom:
@@ -359,7 +362,7 @@ class Field(object):
         -------
         The complex conjugated field.
         """
-        return Field(self.domain, self.val.conjugate(), self.dtype)
+        return Field(self._domain, self.val.conjugate(), self.dtype)
 
     # ---General unary/contraction methods---
 
@@ -367,18 +370,18 @@ class Field(object):
         return self.copy()
 
     def __neg__(self):
-        return Field(self.domain, -self.val, self.dtype)
+        return Field(self._domain, -self.val, self.dtype)
 
     def __abs__(self):
-        return Field(self.domain, dobj.abs(self.val), self.dtype)
+        return Field(self._domain, dobj.abs(self.val), self.dtype)
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
             return getattr(self.val, op)()
 
-        spaces = utilities.parse_spaces(spaces, len(self.domain))
+        spaces = utilities.parse_spaces(spaces, len(self._domain))
 
-        axes_list = tuple(self.domain.axes[sp_index] for sp_index in spaces)
+        axes_list = tuple(self._domain.axes[sp_index] for sp_index in spaces)
 
         if len(axes_list) > 0:
             axes_list = reduce(lambda x, y: x+y, axes_list)
@@ -391,7 +394,7 @@ class Field(object):
             return data
         else:
             return_domain = tuple(dom
-                                  for i, dom in enumerate(self.domain)
+                                  for i, dom in enumerate(self._domain)
                                   if i not in spaces)
 
             return Field(domain=return_domain, val=data, copy=False)
@@ -435,21 +438,21 @@ class Field(object):
     def copy_content_from(self, other):
         if not isinstance(other, Field):
             raise TypeError("argument must be a Field")
-        if other.domain != self.domain:
+        if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
         dobj.local_data(self.val)[()] = dobj.local_data(other.val)[()]
 
     def _binary_helper(self, other, op):
         # if other is a field, make sure that the domains match
         if isinstance(other, Field):
-            if other.domain != self.domain:
+            if other._domain != self._domain:
                 raise ValueError("domains are incompatible.")
             tval = getattr(self.val, op)(other.val)
-            return self if tval is self.val else Field(self.domain, tval)
+            return self if tval is self.val else Field(self._domain, tval)
 
         if np.isscalar(other) or isinstance(other, dobj.data_object):
             tval = getattr(self.val, op)(other)
-            return self if tval is self.val else Field(self.domain, tval)
+            return self if tval is self.val else Field(self._domain, tval)
 
         return NotImplemented
 
@@ -511,7 +514,7 @@ class Field(object):
         minmax = [self.min(), self.max()]
         mean = self.mean()
         return "nifty2go.Field instance\n- domain      = " + \
-               repr(self.domain) + \
+               repr(self._domain) + \
                "\n- val         = " + repr(self.val) + \
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)
@@ -523,12 +526,12 @@ def _math_helper(x, function, out):
     if not isinstance(x, Field):
         raise TypeError("This function only accepts Field objects.")
     if out is not None:
-        if not isinstance(out, Field) or x.domain != out.domain:
+        if not isinstance(out, Field) or x._domain != out._domain:
             raise ValueError("Bad 'out' argument")
         function(x.val, out=out.val)
         return out
     else:
-        return Field(domain=x.domain, val=function(x.val))
+        return Field(domain=x._domain, val=function(x.val))
 
 
 def sqrt(x, out=None):

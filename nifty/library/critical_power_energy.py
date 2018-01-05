@@ -59,6 +59,8 @@ class CriticalPowerEnergy(Energy):
         self.samples = samples
         self.alpha = float(alpha)
         self.q = float(q)
+        self._smoothness_prior = smoothness_prior
+        self._logarithmic = logarithmic
         self.T = SmoothnessOperator(domain=self.position.domain[0],
                                     strength=smoothness_prior,
                                     logarithmic=logarithmic)
@@ -93,8 +95,9 @@ class CriticalPowerEnergy(Energy):
 
     def at(self, position):
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,
-                              q=self.q, smoothness_prior=self.smoothness_prior,
-                              logarithmic=self.logarithmic,
+                              q=self.q,
+                              smoothness_prior=self._smoothness_prior,
+                              logarithmic=self._logarithmic,
                               samples=self.samples, w=self._w,
                               inverter=self._inverter)
 
@@ -111,11 +114,3 @@ class CriticalPowerEnergy(Energy):
     def curvature(self):
         return CriticalPowerCurvature(theta=self._theta, T=self.T,
                                       inverter=self._inverter)
-
-    @property
-    def logarithmic(self):
-        return self.T.logarithmic
-
-    @property
-    def smoothness_prior(self):
-        return self.T.strength
