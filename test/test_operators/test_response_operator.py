@@ -6,7 +6,7 @@ from test.common import expand
 
 
 class ResponseOperator_Tests(unittest.TestCase):
-    spaces = [ift.RGSpace(128)]
+    spaces = [ift.RGSpace(128), ift.GLSpace(nlat=37)]
 
     @expand(product(spaces, [0.,  5., 1.], [0., 1., .33]))
     def test_property(self, space, sigma, exposure):
