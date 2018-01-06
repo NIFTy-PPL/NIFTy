@@ -90,9 +90,7 @@ class DOFProjectionOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if mode == self.TIMES:
-            return self._times(x)
-        return self._adjoint_times(x)
+        return self._times(x) if mode == self.TIMES else self._adjoint_times(x)
 
     @property
     def domain(self):
