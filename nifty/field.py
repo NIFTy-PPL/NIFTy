@@ -423,13 +423,19 @@ class Field(object):
         return self._contraction_helper('max', spaces)
 
     def mean(self, spaces=None):
-        return self._contraction_helper('mean', spaces)
+        if self.scalar_weight(spaces) is not None:
+            return self._contraction_helper('mean', spaces)
+        raise NotImplementedError
 
     def var(self, spaces=None):
-        return self._contraction_helper('var', spaces)
+        if self.scalar_weight(spaces) is not None:
+            return self._contraction_helper('var', spaces)
+        raise NotImplementedError
 
     def std(self, spaces=None):
-        return self._contraction_helper('std', spaces)
+        if self.scalar_weight(spaces) is not None:
+            return self._contraction_helper('std', spaces)
+        return sqrt(self.var(spaces))
 
     def copy_content_from(self, other):
         if not isinstance(other, Field):
