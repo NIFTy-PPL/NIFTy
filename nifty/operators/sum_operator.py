@@ -26,10 +26,10 @@ class SumOperator(LinearOperator):
             raise ValueError("domain mismatch")
         self._capability = (op1.capability & op2.capability &
                             (self.TIMES | self.ADJOINT_TIMES))
-        op1 = op1._ops if isinstance(op1, SumOperator) else (op1,)
         neg1 = op1._neg if isinstance(op1, SumOperator) else (False,)
-        op2 = op2._ops if isinstance(op2, SumOperator) else (op2,)
+        op1 = op1._ops if isinstance(op1, SumOperator) else (op1,)
         neg2 = op2._neg if isinstance(op2, SumOperator) else (False,)
+        op2 = op2._ops if isinstance(op2, SumOperator) else (op2,)
         if neg:
             neg2 = tuple(not n for n in neg2)
         self._ops = op1 + op2
