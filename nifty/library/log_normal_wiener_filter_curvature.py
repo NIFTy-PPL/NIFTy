@@ -1,5 +1,6 @@
 from ..operators import InversionEnabler
 
+
 def LogNormalWienerFilterCurvature(R, N, S, fft, expp_sspace, inverter):
     part1 = S.inverse
     part3 = (fft.adjoint * expp_sspace * fft *
