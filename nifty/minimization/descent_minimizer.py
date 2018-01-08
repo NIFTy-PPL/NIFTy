@@ -84,7 +84,7 @@ class DescentMinimizer(Minimizer):
                 new_energy = self.line_searcher.perform_line_search(
                     energy=energy, pk=self.get_descent_direction(energy),
                     f_k_minus_1=f_k_minus_1)
-            except RuntimeError:
+            except ValueError:
                 return energy, controller.ERROR
 
             f_k_minus_1 = energy.value

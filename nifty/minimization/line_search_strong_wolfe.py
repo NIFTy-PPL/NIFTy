@@ -106,7 +106,7 @@ class LineSearchStrongWolfe(LineSearch):
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 >= 0:
             dobj.mprint("Error: search direction is not a descent direction")
-            raise RuntimeError("search direction must be a descent direction")
+            raise ValueError("search direction must be a descent direction")
 
         # set alphas
         alpha0 = 0.
