@@ -20,20 +20,80 @@ from .linear_operator import LinearOperator
 
 
 class SumOperator(LinearOperator):
-    def __init__(self, op1, op2, neg=False):
+    def __init__(self, ops, neg, _callingfrommake=False):
+        if not _callingfrommake:
+            raise NotImplementedError
         super(SumOperator, self).__init__()
-        if op1.domain != op2.domain or op1.target != op2.target:
-            raise ValueError("domain mismatch")
-        self._capability = (op1.capability & op2.capability &
-                            (self.TIMES | self.ADJOINT_TIMES))
-        neg1 = op1._neg if isinstance(op1, SumOperator) else (False,)
-        op1 = op1._ops if isinstance(op1, SumOperator) else (op1,)
-        neg2 = op2._neg if isinstance(op2, SumOperator) else (False,)
-        op2 = op2._ops if isinstance(op2, SumOperator) else (op2,)
-        if neg:
-            neg2 = tuple(not n for n in neg2)
-        self._ops = op1 + op2
-        self._neg = neg1 + neg2
+        self._ops = ops
+        self._neg = neg
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        for op in ops:
+            self._capability &= op.capability
+
+    @staticmethod
+    def simplify(ops, neg):
+        from .scaling_operator import ScalingOperator
+        from .diagonal_operator import DiagonalOperator
+        # Step 1: verify domains
+        for op in ops[1:]:
+            if op.domain != ops[0].domain or op.target != ops[0].target:
+                raise ValueError("domain mismatch")
+        # Step 2: unpack SumOperators
+        opsnew = []
+        negnew = []
+        for op, ng in zip (ops, neg):
+            if isinstance(op, SumOperator):
+                opsnew += op._ops
+                if ng:
+                    negtmp += [not n for n in ng]
+                else:
+                    negtmp += list(ng)
+            else:
+                opsnew.append(op)
+                negnew.append(ng)
+        ops = opsnew
+        neg = negnew
+        # Step 3: collect ScalingOperators
+        sum = 0.
+        opsnew = []
+        negnew = []
+        lastdom = ops[-1].domain
+        for op, ng in zip(ops, neg):
+            if isinstance(op, ScalingOperator):
+                sum += op._factor * (-1 if ng else 1)
+            else:
+                opsnew.append(op)
+                negnew.append(ng)
+        if sum != 0.:
+            # try to absorb the factor into a DiagonalOperator
+            for i in range(len(opsnew)):
+                if isinstance(opsnew[i], DiagonalOperator):
+                    sum *= (-1 if negnew[i] else 1)
+                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal()+sum,
+                                                 domain=opsnew[i].domain,
+                                                 spaces=opsnew[i]._spaces)
+                    sum = 0.
+                    break
+        if sum != 0:
+            # have to add the scaling operator at the end
+            opsnew.append(ScalingOperator(sum, lastdom))
+            newnew.append(False)
+        ops = opsnew
+        neg = negnew
+        # Step 4: combine DiagonalOperators where possible
+        # (TBD)
+        return ops, neg
+
+    @staticmethod
+    def make(ops, neg):
+        ops = tuple(ops)
+        neg = tuple(neg)
+        if len(ops)!= len(neg):
+            raise ValueError("length mismatch between ops and neg")
+        ops, neg = SumOperator.simplify(ops, neg)
+        if len(ops) == 1 and not neg[0]:
+            return ops[0]
+        return SumOperator(ops, neg, _callingfrommake=True)
 
     @property
     def domain(self):

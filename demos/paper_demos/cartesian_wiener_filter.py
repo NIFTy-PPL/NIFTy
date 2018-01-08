@@ -70,7 +70,7 @@ if __name__ == "__main__":
     mask_2[N2_10*7:N2_10*9] = 0.
     mask_2 = ift.Field(signal_space_2, ift.dobj.from_global_data(mask_2))
 
-    R = ift.ResponseOperator(signal_domain, spaces=(0, 1),
+    R = ift.ResponseOperator(signal_domain,
                              sigma=(response_sigma_1, response_sigma_2),
                              exposure=(mask_1, mask_2))
     data_domain = R.target

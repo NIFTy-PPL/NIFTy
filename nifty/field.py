@@ -370,10 +370,10 @@ class Field(object):
         return self.copy()
 
     def __neg__(self):
-        return Field(self._domain, -self.val, self.dtype)
+        return Field(self._domain, -self.val)
 
     def __abs__(self):
-        return Field(self._domain, dobj.abs(self.val), self.dtype)
+        return Field(self._domain, dobj.abs(self.val))
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:

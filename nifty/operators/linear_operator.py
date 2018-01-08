@@ -104,7 +104,7 @@ class LinearOperator(with_metaclass(
     def __add__(self, other):
         from .sum_operator import SumOperator
         other = self._toOperator(other, self.domain)
-        return SumOperator(self, other)
+        return SumOperator.make([self, other], [False, False])
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -112,13 +112,13 @@ class LinearOperator(with_metaclass(
     def __sub__(self, other):
         from .sum_operator import SumOperator
         other = self._toOperator(other, self.domain)
-        return SumOperator(self, other, neg=True)
+        return SumOperator.make([self, other], [False, True])
 
     # MR FIXME: this might be more complicated ...
     def __rsub__(self, other):
         from .sum_operator import SumOperator
         other = self._toOperator(other, self.domain)
-        return SumOperator(other, self, neg=True)
+        return SumOperator.make(other, self, [False, True])
 
     def supports(self, ops):
         return False
