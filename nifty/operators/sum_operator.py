@@ -77,7 +77,7 @@ class SumOperator(LinearOperator):
         if sum != 0:
             # have to add the scaling operator at the end
             opsnew.append(ScalingOperator(sum, lastdom))
-            newnew.append(False)
+            negnew.append(False)
         ops = opsnew
         neg = negnew
         # Step 4: combine DiagonalOperators where possible
