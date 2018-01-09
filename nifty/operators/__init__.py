@@ -13,5 +13,6 @@ from .power_projection_operator import PowerProjectionOperator
 from .dof_projection_operator import DOFProjectionOperator
 from .chain_operator import ChainOperator
 from .sum_operator import SumOperator
+from .scaling_operator import ScalingOperator
 from .inverse_operator import InverseOperator
 from .adjoint_operator import AdjointOperator

@@ -1,5 +1,5 @@
 import unittest
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_equal
 import nifty2go as ift
 from test.common import generate_spaces
 from itertools import product
@@ -41,3 +41,23 @@ class ComposedOperator_Tests(unittest.TestCase):
 
         assert_allclose(ift.dobj.to_global_data(tt1.val),
                         ift.dobj.to_global_data(rand1.val))
+
+    @expand(product(spaces))
+    def test_sum(self, space):
+        op1 = ift.DiagonalOperator(ift.Field(space, 2.))
+        op2 = ift.ScalingOperator(3., space)
+        full_op = op1 + op2 - (op2 - op1) + op1 + op1 + op2
+        x = ift.Field(space, 1.)
+        res = full_op(x)
+        assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
+        assert_allclose(ift.dobj.to_global_data(res.val), 11.)
+
+    @expand(product(spaces))
+    def test_chain(self, space):
+        op1 = ift.DiagonalOperator(ift.Field(space, 2.))
+        op2 = ift.ScalingOperator(3., space)
+        full_op = op1 * op2 * (op2 * op1) * op1 * op1 * op2
+        x = ift.Field(space, 1.)
+        res = full_op(x)
+        assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
+        assert_allclose(ift.dobj.to_global_data(res.val), 432.)

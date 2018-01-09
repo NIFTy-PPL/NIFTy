@@ -41,7 +41,7 @@ class SumOperator(LinearOperator):
         # Step 2: unpack SumOperators
         opsnew = []
         negnew = []
-        for op, ng in zip (ops, neg):
+        for op, ng in zip(ops, neg):
             if isinstance(op, SumOperator):
                 opsnew += op._ops
                 if ng:
@@ -81,14 +81,33 @@ class SumOperator(LinearOperator):
         ops = opsnew
         neg = negnew
         # Step 4: combine DiagonalOperators where possible
-        # (TBD)
+        processed = [False] * len(ops)
+        opsnew = []
+        negnew = []
+        for i in range(len(ops)):
+            if not processed[i]:
+                if isinstance(ops[i], DiagonalOperator):
+                    diag = ops[i].diagonal()*(-1 if neg[i] else 1)
+                    for j in range(i+1, len(ops)):
+                        if (isinstance(ops[j], DiagonalOperator) and
+                                ops[i]._spaces == ops[j]._spaces):
+                            diag += ops[j].diagonal()*(-1 if neg[j] else 1)
+                            processed[j] = True
+                    opsnew.append(DiagonalOperator(diag, ops[i].domain,
+                                                   ops[i]._spaces))
+                    negnew.append(False)
+                else:
+                    opsnew.append(ops[i])
+                    negnew.append(neg[i])
+        ops = opsnew
+        neg = negnew
         return ops, neg
 
     @staticmethod
     def make(ops, neg):
         ops = tuple(ops)
         neg = tuple(neg)
-        if len(ops)!= len(neg):
+        if len(ops) != len(neg):
             raise ValueError("length mismatch between ops and neg")
         ops, neg = SumOperator.simplify(ops, neg)
         if len(ops) == 1 and not neg[0]:
