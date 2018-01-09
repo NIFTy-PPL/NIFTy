@@ -45,9 +45,9 @@ class SumOperator(LinearOperator):
             if isinstance(op, SumOperator):
                 opsnew += op._ops
                 if ng:
-                    negnew += [not n for n in ops._neg]
+                    negnew += [not n for n in op._neg]
                 else:
-                    negnew += list(ops._neg)
+                    negnew += list(op._neg)
             else:
                 opsnew.append(op)
                 negnew.append(ng)

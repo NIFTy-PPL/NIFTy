@@ -238,6 +238,8 @@ class data_object(object):
     def any(self):
         return self.sum() != 0
 
+    def fill(self, value):
+        self._data.fill(value)
 
 def full(shape, fill_value, dtype=None, distaxis=0):
     return data_object(shape, np.full(local_shape(shape, distaxis),
