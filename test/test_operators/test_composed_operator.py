@@ -61,3 +61,13 @@ class ComposedOperator_Tests(unittest.TestCase):
         res = full_op(x)
         assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
         assert_allclose(ift.dobj.to_global_data(res.val), 432.)
+
+    @expand(product(spaces))
+    def test_mix(self, space):
+        op1 = ift.DiagonalOperator(ift.Field(space, 2.))
+        op2 = ift.ScalingOperator(3., space)
+        full_op = op1 * (op2 + op2) * op1 * op1 - op1 * op2
+        x = ift.Field(space, 1.)
+        res = full_op(x)
+        assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
+        assert_allclose(ift.dobj.to_global_data(res.val), 42.)

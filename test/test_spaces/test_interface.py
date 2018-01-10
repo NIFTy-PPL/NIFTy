@@ -21,7 +21,7 @@ from numpy.testing import assert_
 from itertools import product
 from types import LambdaType
 from test.common import expand, generate_spaces, generate_harmonic_spaces
-from nifty2go import *  # ugly, but needed for the eval() below
+import nifty2go as ift
 
 
 class SpaceInterfaceTests(unittest.TestCase):
@@ -34,14 +34,10 @@ class SpaceInterfaceTests(unittest.TestCase):
                            attr_expected_type[1]))
 
     @expand(product(generate_harmonic_spaces(), [
-        ['get_k_length_array', Field],
+        ['get_k_length_array', ift.Field],
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
     def test_method_ret_type(self, space, method_expected_type):
         assert_(type(getattr(space, method_expected_type[0])(
                           *method_expected_type[1:-1])) is
                 method_expected_type[-1])
-
-    @expand([[space] for space in generate_spaces()])
-    def test_repr(self, space):
-        assert_(space == eval(space.__repr__()))
