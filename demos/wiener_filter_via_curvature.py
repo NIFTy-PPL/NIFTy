@@ -4,8 +4,8 @@ import numericalunits as nu
 
 if __name__ == "__main__":
     # In MPI mode, the random seed for numericalunits must be set by hand
-    nu.reset_units(43)
-    dimensionality = 2
+    #nu.reset_units(43)
+    dimensionality = 1
     np.random.seed(43)
 
     # Setting up variable parameters
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     mock_harmonic = ift.power_synthesize(mock_power, real_signal=True)
     mock_signal = fft(mock_harmonic)
 
-    exposure = 1.
+    exposure = 1./nu.K
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
                              exposure=(exposure,))
     data_domain = R.target[0]
@@ -57,17 +57,18 @@ if __name__ == "__main__":
 
     N = ift.DiagonalOperator(
         ift.Field.full(data_domain,
-                       mock_signal.var()/signal_to_noise).weight(1))
+                       mock_signal.var()/signal_to_noise))
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
-    data = R(mock_signal) + noise
-
-    # Wiener filter
+    data = R(mock_signal) #+ noise
+    print data.val[5]
+    print mock_signal.val[5]/nu.K
+     # Wiener filter
 
     j = R_harmonic.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(
-        verbose=True, tol_abs_gradnorm=1e-4/nu.K/(nu.m**(0.5*dimensionality)))
+        verbose=True, tol_abs_gradnorm=1e-4/nu.K)
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(
         S=S, N=N, R=R_harmonic, inverter=inverter)
@@ -79,7 +80,7 @@ if __name__ == "__main__":
 
     ift.plotting.plot(ift.Field(sspace2, mock_signal.val)/nu.K,
                       name="mock_signal.png")
-    data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)/nu.K
-    data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))/nu.K
+    data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)
+    data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))
     ift.plotting.plot(ift.Field(sspace2, val=data), name="data.png")
     ift.plotting.plot(ift.Field(sspace2, m_s.val)/nu.K, name="map.png")
