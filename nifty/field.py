@@ -842,7 +842,7 @@ class Field(Loggable, Versionable, object):
 
     @property
     def real(self):
-        """ The real part of the field (data is not copied).
+        """ The real part of the field.
         """
         real_part = self.val.real
         result = self.copy_empty(dtype=real_part.dtype)
@@ -851,7 +851,7 @@ class Field(Loggable, Versionable, object):
 
     @property
     def imag(self):
-        """ The imaginary part of the field (data is not copied).
+        """ The imaginary part of the field.
         """
         imag_part = self.val.imag
         result = self.copy_empty(dtype=imag_part.dtype)
