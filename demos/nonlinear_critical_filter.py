@@ -5,12 +5,14 @@ np.random.seed(42)
 
 
 def adjust_zero_mode(m0, t0):
+    mtmp = ift.dobj.to_global_data(m0.val)
     zero_position = len(m0.shape)*(0,)
-    zero_mode = m0.val[zero_position]
-    m0.val[zero_position] = zero_mode / abs(zero_mode)
-    t0.val[0] += 2 * np.log(abs(zero_mode))
-    return m0, t0
-
+    zero_mode = mtmp[zero_position]
+    mtmp[zero_position] = zero_mode / abs(zero_mode)
+    ttmp = ift.dobj.to_global_data(t0.val)
+    ttmp[0] += 2 * np.log(abs(zero_mode))
+    return (ift.Field(m0.domain, ift.dobj.from_global_data(mtmp)),
+            ift.Field(t0.domain, ift.dobj.from_global_data(ttmp)))
 
 if __name__ == "__main__":
 
