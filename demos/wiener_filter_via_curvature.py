@@ -16,12 +16,13 @@ if __name__ == "__main__":
     field_sigma = 2. * nu.K
     # smoothing length of response
     response_sigma = 0.01*nu.m
-    # The signal to noise ratio
+    # The signal to noise ratio ***CURRENTLY BROKEN***
     signal_to_noise = 70.7
 
     # note that field_variance**2 = a*k_0/4. for this analytic form of power
     # spectrum
     def power_spectrum(k):
+    	#RL FIXME: signal_amplitude is not how much signal varies
         cldim = correlation_length**(2*dimensionality)
         a = 4/(2*np.pi) * cldim * field_sigma**2
         # to be integrated over spherical shells later on
