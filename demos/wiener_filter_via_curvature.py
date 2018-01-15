@@ -47,7 +47,9 @@ if __name__ == "__main__":
 
     mock_power = ift.PS_field(power_space, power_spectrum)
     mock_harmonic = ift.power_synthesize(mock_power, real_signal=True)
+    print mock_harmonic.val[0]/nu.K/(nu.m**dimensionality)
     mock_signal = fft(mock_harmonic)
+    print mock_signal.val[0]/nu.K
 
     exposure = 1./nu.K
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
@@ -63,7 +65,6 @@ if __name__ == "__main__":
         std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
     data = R(mock_signal) #+ noise
     print data.val[5]
-    print mock_signal.val[5]/nu.K
      # Wiener filter
 
     j = R_harmonic.adjoint_times(N.inverse_times(data))

@@ -25,18 +25,14 @@ from .fft_operator_support import RGRGTransformation, SphericalTransformation
 
 
 class FFTOperator(LinearOperator):
-    """Transforms between a pair of position and harmonic domains.
+    """Transforms between a pair of harmonic and position domains.
 
     Built-in domain pairs are
-      - a harmonic and a non-harmonic RGSpace (with matching distances)
-      - a HPSpace and a LMSpace
-      - a GLSpace and a LMSpace
-    Within a domain pair, both orderings are possible.
-
-    The operator provides a "times" and an "adjoint_times" operation.
-    For a pair of RGSpaces, the "adjoint_times" operation is equivalent to
-    "inverse_times"; for the sphere-related domains this is not the case, since
-    the operator matrix is not square.
+      - harmonic RGSpace / nonharmonic RGSpace (with matching distances)
+      - LMSpace / HPSpace
+      - LMSpace / GLSpace
+    The times() operation always transforms from the harmonic to the
+    position domain.
 
     Parameters
     ----------
@@ -49,9 +45,9 @@ class FFTOperator(LinearOperator):
         The domain of the data that is output by "times" and input by
         "adjoint_times".
         If omitted, a co-domain will be chosen automatically.
-        Whenever "domain" is an RGSpace, the codomain (and its parameters) are
-        uniquely determined.
-        For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
+        Whenever "domain" is a harmonic RGSpace, the codomain
+        (and its parameters) are uniquely determined.
+        For LMSpace, a sensible (but not unique)
         co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
     """
@@ -62,6 +58,8 @@ class FFTOperator(LinearOperator):
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
         self._space = infer_space(self._domain, space)
+        if not self._domain[self._space].harmonic:
+            raise TypeError("H2POperator must work on a harmonic domain")
 
         adom = self.domain[self._space]
         if target is None:
@@ -73,14 +71,11 @@ class FFTOperator(LinearOperator):
         adom.check_codomain(target)
         target.check_codomain(adom)
 
-        if self._target[self._space].harmonic:
-            pdom, hdom = (self._domain, self._target)
-        else:
-            pdom, hdom = (self._target, self._domain)
+        hdom, pdom = (self._domain, self._target)
         if isinstance(pdom[self._space], RGSpace):
-            self._trafo = RGRGTransformation(pdom, hdom, self._space)
+            self._trafo = RGRGTransformation(hdom, pdom, self._space)
         else:
-            self._trafo = SphericalTransformation(pdom, hdom, self._space)
+            self._trafo = SphericalTransformation(hdom, pdom, self._space)
 
     def apply(self, x, mode):
         self._check_input(x, mode)

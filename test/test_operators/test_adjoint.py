@@ -39,5 +39,7 @@ class Adjointness_Tests(unittest.TestCase):
     @expand(product(_harmonic_spaces+_position_spaces,
                     [np.float64, np.complex128]))
     def testFFT(self, sp, dtype):
+        if not sp.harmonic:
+            sp = sp.get_default_codomain()
         op = ift.FFTOperator(sp)
         _check_adjointness(op, dtype)

@@ -17,6 +17,8 @@ class ResponseOperator_Tests(unittest.TestCase):
 
     @expand(product(spaces, [0.,  5., 1.], [0., 1., .33]))
     def test_times_adjoint_times(self, space, sigma, exposure):
+        if not isinstance(space, ift.RGSpace): # no smoothing supported
+            sigma = 0.
         op = ift.ResponseOperator(space, sigma=[sigma],
                                   exposure=[exposure])
         rand1 = ift.Field.from_random('normal', domain=space)

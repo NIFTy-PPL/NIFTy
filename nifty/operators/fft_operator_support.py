@@ -26,24 +26,19 @@ from .linear_operator import LinearOperator
 
 
 class Transformation(object):
-    def __init__(self, pdom, hdom, space):
-        self.pdom = pdom
+    def __init__(self, hdom, pdom, space):
         self.hdom = hdom
+        self.pdom = pdom
         self.space = space
 
 
 class RGRGTransformation(Transformation):
-    def __init__(self, pdom, hdom, space):
+    def __init__(self, hdom, pdom, space):
         import pyfftw
-        super(RGRGTransformation, self).__init__(pdom, hdom, space)
+        super(RGRGTransformation, self).__init__(hdom, pdom, space)
         pyfftw.interfaces.cache.enable()
-        # correct for forward/inverse fft.
-        # naively one would set power to 0.5 here in order to
-        # apply effectively a factor of 1/sqrt(N) to the field.
-        # BUT: the pixel volumes of the domain and codomain are different.
-        # Hence, in order to produce the same scalar product, power==1.
-        self.fct_noninverse = pdom[space].scalar_dvol()
-        self.fct_inverse = 1./(pdom[space].scalar_dvol()*hdom[space].dim)
+        self.fct_noninverse = hdom[space].scalar_dvol()
+        self.fct_inverse = 1./(hdom[space].scalar_dvol()*hdom[space].dim)
 
     @property
     def unitary(self):
@@ -138,8 +133,8 @@ class RGRGTransformation(Transformation):
 
 
 class SphericalTransformation(Transformation):
-    def __init__(self, pdom, hdom, space):
-        super(SphericalTransformation, self).__init__(pdom, hdom, space)
+    def __init__(self, hdom, pdom, space):
+        super(SphericalTransformation, self).__init__(hdom, pdom, space)
         from pyHealpix import sharpjob_d
 
         self.lmax = self.hdom[self.space].lmax

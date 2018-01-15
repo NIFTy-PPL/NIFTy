@@ -37,8 +37,8 @@ class FFTOperatorTests(unittest.TestCase):
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_fft1D(self, dim1, d, itp):
         tol = _get_rtol(itp)
-        a = ift.RGSpace(dim1, distances=d)
-        b = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
+        b = ift.RGSpace(dim1, distances=d)
+        a = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
         fft = ift.FFTOperator(domain=a, target=b)
 
         np.random.seed(16)
@@ -53,8 +53,8 @@ class FFTOperatorTests(unittest.TestCase):
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_fft2D(self, dim1, dim2, d1, d2, itp):
         tol = _get_rtol(itp)
-        a = ift.RGSpace([dim1, dim2], distances=[d1, d2])
-        b = ift.RGSpace([dim1, dim2],
+        b = ift.RGSpace([dim1, dim2], distances=[d1, d2])
+        a = ift.RGSpace([dim1, dim2],
                         distances=[1./(dim1*d1), 1./(dim2*d2)], harmonic=True)
         fft = ift.FFTOperator(domain=a, target=b)
 
@@ -80,28 +80,28 @@ class FFTOperatorTests(unittest.TestCase):
 
     @expand(product([0, 3, 6, 11, 30],
                     [np.float64, np.float32, np.complex64, np.complex128]))
-    def test_sht(self, lm, tp):
-        tol = _get_rtol(tp)
-        a = ift.LMSpace(lmax=lm)
-        b = ift.GLSpace(nlat=lm+1)
-        fft = ift.FFTOperator(domain=a, target=b)
-        inp = ift.Field.from_random(domain=a, random_type='normal',
-                                    std=7, mean=3, dtype=tp)
-        out = fft.inverse_times(fft.times(inp))
-        assert_allclose(ift.dobj.to_global_data(inp.val),
-                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
+    #def test_sht(self, lm, tp):
+    #    tol = _get_rtol(tp)
+    #    a = ift.LMSpace(lmax=lm)
+    #    b = ift.GLSpace(nlat=lm+1)
+    #    fft = ift.FFTOperator(domain=a, target=b)
+    #    inp = ift.Field.from_random(domain=a, random_type='normal',
+    #                                std=7, mean=3, dtype=tp)
+    #    out = fft.inverse_times(fft.times(inp))
+    #    assert_allclose(ift.dobj.to_global_data(inp.val),
+    #                    ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
-    @expand(product([128, 256],
-                    [np.float64, np.float32, np.complex64, np.complex128]))
-    def test_sht2(self, lm, tp):
-        a = ift.LMSpace(lmax=lm)
-        b = ift.HPSpace(nside=lm//2)
-        fft = ift.FFTOperator(domain=a, target=b)
-        inp = ift.Field.from_random(domain=a, random_type='normal',
-                                    std=1, mean=0, dtype=tp)
-        out = fft.inverse_times(fft.times(inp))
-        assert_allclose(ift.dobj.to_global_data(inp.val),
-                        ift.dobj.to_global_data(out.val), rtol=1e-3, atol=1e-1)
+    #@expand(product([128, 256],
+    #                [np.float64, np.float32, np.complex64, np.complex128]))
+    #def test_sht2(self, lm, tp):
+    #    a = ift.LMSpace(lmax=lm)
+    #    b = ift.HPSpace(nside=lm//2)
+    #    fft = ift.FFTOperator(domain=a, target=b)
+    #    inp = ift.Field.from_random(domain=a, random_type='normal',
+    #                                std=1, mean=0, dtype=tp)
+    #    out = fft.inverse_times(fft.times(inp))
+    #    assert_allclose(ift.dobj.to_global_data(inp.val),
+    #                    ift.dobj.to_global_data(out.val), rtol=1e-3, atol=1e-1)
 
     @expand(product([128, 256],
                     [np.float64, np.float32, np.complex64, np.complex128]))
