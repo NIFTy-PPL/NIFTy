@@ -159,7 +159,7 @@ class SphericalTransformation(Transformation):
         res[0:self.lmax+1] = rr[0:self.lmax+1].real
         res[self.lmax+1::2] = np.sqrt(2)*rr[self.lmax+1:].real
         res[self.lmax+2::2] = np.sqrt(2)*rr[self.lmax+1:].imag
-        return res*(np.sqrt(4*np.pi)/inp.size)
+        return res/np.sqrt(np.pi*4)
 
     def _slice_h2p(self, inp):
         res = np.empty((len(inp)+self.lmax+1)//2, dtype=(inp[0]*1j).dtype)
@@ -169,7 +169,7 @@ class SphericalTransformation(Transformation):
         res[self.lmax+1:] = np.sqrt(0.5)*(inp[self.lmax+1::2] +
                                           1j*inp[self.lmax+2::2])
         res = self.sjob.alm2map(res)
-        return res*(np.sqrt(4*np.pi)/res.size)
+        return res/np.sqrt(np.pi*4)
 
     def apply(self, x, mode):
         axes = x.domain.axes[self.space]
