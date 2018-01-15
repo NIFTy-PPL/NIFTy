@@ -332,10 +332,9 @@ class Field(object):
 
         if len(spaces) == ndom:
             return dobj.vdot(self.val, x.val)
-        raise NotImplementedError
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
-        return (self.conjugate()*x).integrate(spaces=spaces)
+        return (self.conjugate()*x).sum(spaces=spaces)
 
     def norm(self):
         """ Computes the L2-norm of the field values.

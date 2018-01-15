@@ -22,6 +22,7 @@ from .. import utilities
 from .. import dobj
 from ..field import Field
 from ..spaces.gl_space import GLSpace
+from .linear_operator import LinearOperator
 
 
 class Transformation(object):
@@ -41,14 +42,14 @@ class RGRGTransformation(Transformation):
         # apply effectively a factor of 1/sqrt(N) to the field.
         # BUT: the pixel volumes of the domain and codomain are different.
         # Hence, in order to produce the same scalar product, power==1.
-        self.fct_p2h = pdom[space].scalar_dvol()
-        self.fct_h2p = 1./(pdom[space].scalar_dvol()*hdom[space].dim)
+        self.fct_noninverse = pdom[space].scalar_dvol()
+        self.fct_inverse = 1./(pdom[space].scalar_dvol()*hdom[space].dim)
 
     @property
     def unitary(self):
         return True
 
-    def transform(self, x):
+    def apply(self, x, mode):
         """
         RG -> RG transform method.
 
@@ -125,7 +126,11 @@ class RGRGTransformation(Transformation):
                 ldat = ldat.real+ldat.imag
                 tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=oldax)
         Tval = Field(tdom, tmp)
-        fct = self.fct_p2h if p2h else self.fct_h2p
+        if (mode == LinearOperator.TIMES or
+                mode == LinearOperator.ADJOINT_TIMES):
+            fct = self.fct_noninverse
+        else:
+            fct = self.fct_inverse
         if fct != 1:
             Tval *= fct
 
@@ -152,14 +157,14 @@ class SphericalTransformation(Transformation):
         return False
 
     def _slice_p2h(self, inp):
-        rr = self.sjob.map2alm(inp)
+        rr = self.sjob.alm2map_adjoint(inp)
         assert len(rr) == ((self.mmax+1)*(self.mmax+2))//2 + \
                           (self.mmax+1)*(self.lmax-self.mmax)
         res = np.empty(2*len(rr)-self.lmax-1, dtype=rr[0].real.dtype)
         res[0:self.lmax+1] = rr[0:self.lmax+1].real
         res[self.lmax+1::2] = np.sqrt(2)*rr[self.lmax+1:].real
         res[self.lmax+2::2] = np.sqrt(2)*rr[self.lmax+1:].imag
-        return res
+        return res*(np.sqrt(4*np.pi)/inp.size)
 
     def _slice_h2p(self, inp):
         res = np.empty((len(inp)+self.lmax+1)//2, dtype=(inp[0]*1j).dtype)
@@ -168,9 +173,10 @@ class SphericalTransformation(Transformation):
         res[0:self.lmax+1] = inp[0:self.lmax+1]
         res[self.lmax+1:] = np.sqrt(0.5)*(inp[self.lmax+1::2] +
                                           1j*inp[self.lmax+2::2])
-        return self.sjob.alm2map(res)
+        res = self.sjob.alm2map(res)
+        return res*(np.sqrt(4*np.pi)/res.size)
 
-    def transform(self, x):
+    def apply(self, x, mode):
         axes = x.domain.axes[self.space]
         axis = axes[0]
         tval = x.val

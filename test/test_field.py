@@ -135,5 +135,4 @@ class Test_Functionality(unittest.TestCase):
         x2 = ift.RGSpace((150,))
         m = ift.Field((x1, x2), val=.5)
         res = m.vdot(m, spaces=1)
-        assert_allclose(ift.dobj.to_global_data(res.val),
-                        ift.dobj.to_global_data(ift.Field(x1, val=.25).val))
+        assert_allclose(ift.dobj.to_global_data(res.val), 37.5)

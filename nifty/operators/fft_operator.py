@@ -85,10 +85,10 @@ class FFTOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if np.issubdtype(x.dtype, np.complexfloating):
-            res = (self._trafo.transform(x.real) +
-                   1j * self._trafo.transform(x.imag))
+            res = (self._trafo.apply(x.real, mode) +
+                   1j * self._trafo.apply(x.imag, mode))
         else:
-            res = self._trafo.transform(x)
+            res = self._trafo.apply(x, mode)
         return res
 
     @property

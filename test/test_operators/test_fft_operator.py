@@ -44,7 +44,7 @@ class FFTOperatorTests(unittest.TestCase):
         np.random.seed(16)
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
-        out = fft.adjoint_times(fft.times(inp))
+        out = fft.inverse_times(fft.times(inp))
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
@@ -60,7 +60,7 @@ class FFTOperatorTests(unittest.TestCase):
 
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
-        out = fft.adjoint_times(fft.times(inp))
+        out = fft.inverse_times(fft.times(inp))
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
@@ -74,7 +74,7 @@ class FFTOperatorTests(unittest.TestCase):
 
         inp = ift.Field.from_random(domain=(a1, a2, a3), random_type='normal',
                                     std=7, mean=3, dtype=dtype)
-        out = fft.adjoint_times(fft.times(inp))
+        out = fft.inverse_times(fft.times(inp))
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
@@ -87,7 +87,7 @@ class FFTOperatorTests(unittest.TestCase):
         fft = ift.FFTOperator(domain=a, target=b)
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=tp)
-        out = fft.adjoint_times(fft.times(inp))
+        out = fft.inverse_times(fft.times(inp))
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
@@ -99,7 +99,7 @@ class FFTOperatorTests(unittest.TestCase):
         fft = ift.FFTOperator(domain=a, target=b)
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=1, mean=0, dtype=tp)
-        out = fft.adjoint_times(fft.times(inp))
+        out = fft.inverse_times(fft.times(inp))
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=1e-3, atol=1e-1)
 

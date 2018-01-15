@@ -22,4 +22,4 @@ def FFTSmoothingOperator(domain, sigma, space=None):
     ddom = list(domain)
     ddom[space] = codomain
     diag = DiagonalOperator(kernel, ddom, space)
-    return FFT.adjoint*diag*FFT
+    return FFT.inverse*diag*FFT
