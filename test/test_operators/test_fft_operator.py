@@ -37,8 +37,8 @@ class FFTOperatorTests(unittest.TestCase):
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_fft1D(self, dim1, d, itp):
         tol = _get_rtol(itp)
-        b = ift.RGSpace(dim1, distances=d)
-        a = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
+        a = ift.RGSpace(dim1, distances=d)
+        b = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
         fft = ift.FFTOperator(domain=a, target=b)
 
         np.random.seed(16)
@@ -53,8 +53,8 @@ class FFTOperatorTests(unittest.TestCase):
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_fft2D(self, dim1, dim2, d1, d2, itp):
         tol = _get_rtol(itp)
-        b = ift.RGSpace([dim1, dim2], distances=[d1, d2])
-        a = ift.RGSpace([dim1, dim2],
+        a = ift.RGSpace([dim1, dim2], distances=[d1, d2])
+        b = ift.RGSpace([dim1, dim2],
                         distances=[1./(dim1*d1), 1./(dim2*d2)], harmonic=True)
         fft = ift.FFTOperator(domain=a, target=b)
 
@@ -78,8 +78,8 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
-    @expand(product([0, 3, 6, 11, 30],
-                    [np.float64, np.float32, np.complex64, np.complex128]))
+    #@expand(product([0, 3, 6, 11, 30],
+    #                [np.float64, np.float32, np.complex64, np.complex128]))
     #def test_sht(self, lm, tp):
     #    tol = _get_rtol(tp)
     #    a = ift.LMSpace(lmax=lm)
@@ -130,3 +130,15 @@ class FFTOperatorTests(unittest.TestCase):
         v1 = np.sqrt(out.vdot(out))
         v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
         assert_allclose(v1, v2, rtol=tol, atol=tol)
+
+    @expand(product([ift.RGSpace(128, distances=3.76, harmonic=True),
+                     ift.LMSpace(lmax=30, mmax=25)],
+                    [np.float64, np.float32, np.complex64, np.complex128]))
+    def test_normalisation(self, space, tp):
+        tol = 10 * _get_rtol(tp)
+        fft = ift.FFTOperator(space)
+        inp = ift.Field.from_random(domain=space, random_type='normal',
+                                    std=1, mean=2, dtype=tp)
+        out = fft.times(inp)
+        assert_allclose(ift.dobj.to_global_data(inp.val)[0], out.integrate(),
+                        rtol=tol, atol=tol)

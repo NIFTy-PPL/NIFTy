@@ -73,6 +73,7 @@ if __name__ == "__main__":
 
     j = R_harmonic.adjoint_times(N.inverse_times(data))
     print "xx",j.val[0]*nu.K*(nu.m**dimensionality)
+    exit()
     ctrl = ift.GradientNormController(
         verbose=True, tol_abs_gradnorm=1e-40/(nu.K*(nu.m**dimensionality)))
     inverter = ift.ConjugateGradient(controller=ctrl)
