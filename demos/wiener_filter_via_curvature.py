@@ -17,7 +17,7 @@ if __name__ == "__main__":
     # smoothing length of response
     response_sigma = 0.01*nu.m
     # The signal to noise ratio
-    signal_to_noise = 0.7
+    signal_to_noise = 70.7
 
     # note that field_variance**2 = a*k_0/4. for this analytic form of power
     # spectrum
@@ -49,27 +49,31 @@ if __name__ == "__main__":
     mock_harmonic = ift.power_synthesize(mock_power, real_signal=True)
     print mock_harmonic.val[0]/nu.K/(nu.m**dimensionality)
     mock_signal = fft(mock_harmonic)
-    print mock_signal.val[0]/nu.K
+    print "msig",mock_signal.val[0:10]/nu.K
 
-    exposure = 1./nu.K
-    R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
-                             exposure=(exposure,))
+    sensitivity = (1./nu.m)**dimensionality/nu.K
+    R = ift.ResponseOperator(signal_space, sigma=(0.*response_sigma,),
+                             sensitivity=(sensitivity,))
     data_domain = R.target[0]
     R_harmonic = R*fft
 
+    noise_amplitude = 1./signal_to_noise*field_sigma*sensitivity*((L/N_pixels)**dimensionality)
+    print noise_amplitude
     N = ift.DiagonalOperator(
-        ift.Field.full(data_domain,
-                       mock_signal.var()/signal_to_noise))
+        ift.Field.full(data_domain, noise_amplitude**2))
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
-        std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
-    data = R(mock_signal) #+ noise
-    print data.val[5]
+        std=noise_amplitude, mean=0)
+    data = R(mock_signal)
+    print data.val[5:10]
+    data += noise
+    print data.val[5:10]
      # Wiener filter
 
     j = R_harmonic.adjoint_times(N.inverse_times(data))
+    print "xx",j.val[0]*nu.K*(nu.m**dimensionality)
     ctrl = ift.GradientNormController(
-        verbose=True, tol_abs_gradnorm=1e-4/nu.K)
+        verbose=True, tol_abs_gradnorm=1e-40/(nu.K*(nu.m**dimensionality)))
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(
         S=S, N=N, R=R_harmonic, inverter=inverter)
