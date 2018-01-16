@@ -62,7 +62,7 @@ class DOFProjectionOperator(LinearOperator):
         self._pshape = (presize, self._dofdex.size, postsize)
 
     def _times(self, x):
-        arr = dobj.local_data(x.weight(1).val)
+        arr = dobj.local_data(x.val)
         arr = arr.reshape(self._pshape)
         oarr = np.zeros(self._hshape, dtype=x.dtype)
         np.add.at(oarr, (slice(None), self._dofdex, slice(None)), arr)
@@ -75,7 +75,7 @@ class DOFProjectionOperator(LinearOperator):
             res = Field(self._target,
                         dobj.from_local_data(self._target.shape, oarr,
                                              dobj.default_distaxis()))
-        return res.weight(-1, spaces=self._space)
+        return res
 
     def _adjoint_times(self, x):
         res = Field.empty(self._domain, dtype=x.dtype)

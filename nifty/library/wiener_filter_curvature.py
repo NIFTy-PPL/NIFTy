@@ -55,10 +55,10 @@ class WienerFilterCurvature(EndomorphicOperator):
             covariance.
         """
 
-        power = sqrt(power_analyze(self.S.diagonal()))
+        power = power_analyze(sqrt(self.S.diagonal()))
         mock_signal = power_synthesize(power, real_signal=True)
 
-        noise = self.N.diagonal().weight(-1)
+        noise = self.N.diagonal()
 
         mock_noise = Field.from_random(random_type="normal",
                                        domain=self.N.domain, dtype=noise.dtype)

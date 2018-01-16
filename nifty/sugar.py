@@ -40,7 +40,7 @@ def PS_field(pspace, func, dtype=None):
 def _single_power_analyze(field, idx, binbounds):
     power_domain = PowerSpace(field.domain[idx], binbounds)
     ppo = PowerProjectionOperator(field.domain, power_domain, idx)
-    return ppo(field.weight(-1))
+    return ppo(field.weight(1)).weight(-1)  # divides by bin size
 
 
 def power_analyze(field, spaces=None, binbounds=None,
@@ -103,7 +103,6 @@ def power_analyze(field, spaces=None, binbounds=None,
         else:
             parts = [field.real*field.real + field.imag*field.imag]
 
-    parts = [part.weight(1, spaces) for part in parts]
     for space_index in spaces:
         parts = [_single_power_analyze(field=part,
                                        idx=space_index,

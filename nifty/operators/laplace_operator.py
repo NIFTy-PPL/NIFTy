@@ -96,13 +96,13 @@ class LaplaceOperator(EndomorphicOperator):
         ret[sl_l] = deriv
         ret[prefix + (-1,)] = 0.
         ret[sl_r] -= deriv
-        ret /= np.sqrt(dposc)
+        ret /= dposc
         ret[prefix + (slice(None, 2),)] = 0.
         ret[prefix + (-1,)] = 0.
         ret = dobj.from_local_data(locval.shape, ret, dobj.distaxis(locval))
         if dobj.distaxis(locval) != dobj.distaxis(x.val):
             ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
-        return Field(self.domain, val=ret).weight(-0.5, spaces=self._space)
+        return Field(self.domain, val=ret)
 
     def _adjoint_times(self, x):
         axes = x.domain.axes[self._space]
@@ -113,11 +113,11 @@ class LaplaceOperator(EndomorphicOperator):
         sl_r = prefix + (slice(1, None),)  # "right" slice
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
-        yf = x.weight(0.5, spaces=self._space).val
+        yf = x.val
         if axis == dobj.distaxis(yf):
             yf = dobj.redistribute(yf, nodist=(axis,))
         y = dobj.local_data(yf)
-        y /= np.sqrt(dposc)
+        y /= dposc
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
         deriv = (y[sl_r]-y[sl_l])/dpos  # defined between points
@@ -128,7 +128,7 @@ class LaplaceOperator(EndomorphicOperator):
         ret = dobj.from_local_data(x.shape, ret, dobj.distaxis(yf))
         if dobj.distaxis(yf) != dobj.distaxis(x.val):
             ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
-        return Field(self.domain, val=ret).weight(-1, spaces=self._space)
+        return Field(self.domain, val=ret)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
