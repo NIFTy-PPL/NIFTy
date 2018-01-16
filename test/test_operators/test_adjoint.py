@@ -9,8 +9,17 @@ from numpy.testing import assert_allclose
 def _check_adjointness(op, dtype=np.float64):
     f1 = ift.Field.from_random("normal", domain=op.domain, dtype=dtype)
     f2 = ift.Field.from_random("normal", domain=op.target, dtype=dtype)
-    assert_allclose(f1.vdot(op.adjoint_times(f2)), op.times(f1).vdot(f2),
-                    rtol=1e-8)
+    cap = op.capability
+    if ((cap & ift.LinearOperator.TIMES) and
+            (cap & ift.LinearOperator.ADJOINT_TIMES)):
+        assert_allclose(f1.vdot(op.adjoint_times(f2)),
+                        op.times(f1).vdot(f2),
+                        rtol=1e-8)
+    if ((cap & ift.LinearOperator.INVERSE_TIMES) and
+            (cap & ift.LinearOperator.INVERSE_ADJOINT_TIMES)):
+        assert_allclose(f1.vdot(op.inverse_times(f2)),
+                        op.inverse_adjoint_times(f1).vdot(f2),
+                        rtol=1e-8)
 
 _harmonic_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
                     ift.RGSpace((12, 46), distances=(0.2, 0.3), harmonic=True),
@@ -40,4 +49,6 @@ class Adjointness_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def testFFT(self, sp, dtype):
         op = ift.FFTOperator(sp)
+        _check_adjointness(op, dtype)
+        op = ift.FFTOperator(sp.get_default_codomain())
         _check_adjointness(op, dtype)

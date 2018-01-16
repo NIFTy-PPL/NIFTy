@@ -39,9 +39,18 @@ class FFTOperatorTests(unittest.TestCase):
         tol = _get_rtol(itp)
         a = ift.RGSpace(dim1, distances=d)
         b = ift.RGSpace(dim1, distances=1./(dim1*d), harmonic=True)
-        fft = ift.FFTOperator(domain=a, target=b)
-
         np.random.seed(16)
+
+        fft = ift.FFTOperator(domain=a, target=b)
+        inp = ift.Field.from_random(domain=a, random_type='normal',
+                                    std=7, mean=3, dtype=itp)
+        out = fft.inverse_times(fft.times(inp))
+        assert_allclose(ift.dobj.to_global_data(inp.val),
+                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
+
+        a, b = b, a
+
+        fft = ift.FFTOperator(domain=a, target=b)
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
         out = fft.inverse_times(fft.times(inp))
@@ -56,8 +65,18 @@ class FFTOperatorTests(unittest.TestCase):
         a = ift.RGSpace([dim1, dim2], distances=[d1, d2])
         b = ift.RGSpace([dim1, dim2],
                         distances=[1./(dim1*d1), 1./(dim2*d2)], harmonic=True)
+
+        fft = ift.FFTOperator(domain=a, target=b)
+        inp = ift.Field.from_random(domain=a, random_type='normal',
+                                    std=7, mean=3, dtype=itp)
+        out = fft.inverse_times(fft.times(inp))
+        assert_allclose(ift.dobj.to_global_data(inp.val),
+                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
         fft = ift.FFTOperator(domain=a, target=b)
 
+        a, b = b, a
+
+        fft = ift.FFTOperator(domain=a, target=b)
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
         out = fft.inverse_times(fft.times(inp))
@@ -132,6 +151,7 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(v1, v2, rtol=tol, atol=tol)
 
     @expand(product([ift.RGSpace(128, distances=3.76, harmonic=True),
+                     ift.RGSpace(73, distances=0.5643),
                      ift.LMSpace(lmax=30, mmax=25)],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_normalisation(self, space, tp):
