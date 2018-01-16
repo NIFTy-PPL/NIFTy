@@ -52,9 +52,9 @@ class FFTOperator(LinearOperator):
         The domain of the data that is output by "times" and input by
         "adjoint_times".
         If omitted, a co-domain will be chosen automatically.
-        Whenever "domain" is a harmonic RGSpace, the codomain
-        (and its parameters) are uniquely determined.
-        For LMSpace, a sensible (but not unique)
+        Whenever "domain" is an RGSpace, the codomain (and its parameters) are
+        uniquely determined.
+        For GLSpace, HPSpace, and LMSpace, a sensible (but not unique)
         co-domain is chosen that should work satisfactorily in most situations,
         but for full control, the user should explicitly specify a codomain.
     """
