@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -35,6 +35,10 @@ class AdjointOperator(LinearOperator):
     @property
     def capability(self):
         return self._adjointCapability[self._op.capability]
+
+    @property
+    def adjoint(self):
+        return self._op
 
     def apply(self, x, mode):
         return self._op.apply(x, self._adjointMode[mode])

@@ -36,5 +36,9 @@ class InverseOperator(LinearOperator):
     def capability(self):
         return self._inverseCapability[self._op.capability]
 
+    @property
+    def inverse(self):
+        return self._op
+
     def apply(self, x, mode):
         return self._op.apply(x, self._inverseMode[mode])
