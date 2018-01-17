@@ -73,7 +73,7 @@ class WienerFilterCurvature(EndomorphicOperator):
     def generate_posterior_sample2(self):
         power = self.S.diagonal()
         mock_signal = Field.from_random(random_type="normal",
-                                        domain=self.S.domain, dtype=noise.dtype)
+                                        domain=self.S.domain, dtype=power.dtype)
         mock_signal *= sqrt(power)
 
         noise = self.N.diagonal()
