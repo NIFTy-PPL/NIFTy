@@ -70,7 +70,7 @@ Installation
 Optional dependencies:
 -   [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 -   [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix)
--   [mpi4py](https://gmpi4py.scipy.org)
+-   [mpi4py](https://mpi4py.scipy.org)
 
 ### Sources
 
