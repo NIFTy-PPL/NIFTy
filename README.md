@@ -91,8 +91,7 @@ Starting with a fresh Ubuntu installation move to a folder like
 
 -   Install pyHealpix:
 
-        git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
-        (cd pyHealpix && autoreconf -i && ./configure --prefix=$HOME/.local --enable-openmp --enable-native-optimizations && make -j4 install)
+        pip install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 
 -   Finally, NIFTy:
 
@@ -123,14 +122,7 @@ may cause trouble.
 
 -   Install pyHealpix:
 
-        git clone https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
-        cd pyHealpix
-        autoreconf -i && ./configure --prefix=`python-config --prefix` --enable-openmp --enable-native-optimizations && make -j4 && sudo make install
-        cd ..
-
-    (The third command installs the package system-wide. User-specific
-    installation would be preferrable, but we haven't found a simple recipe yet
-    how to determine the installation prefix ...)
+        pip install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 
 -   Install NIFTy:
 

@@ -14,10 +14,7 @@ ADD ci/requirements_extras.txt /tmp/requirements_extras.txt
 RUN pip install --upgrade -r /tmp/requirements_extras.txt
 
 
-# install pyHealpix, pyfftw and h5py
-ADD ci/install_pyHealpix.sh /tmp/install_pyHealpix.sh
-RUN cd /tmp && chmod +x install_pyHealpix.sh && ./install_pyHealpix.sh
-
+# install pyfftw and h5py
 ADD ci/install_mpi4py.sh /tmp/install_mpi4py.sh
 RUN cd /tmp && chmod +x install_mpi4py.sh && ./install_mpi4py.sh
 
