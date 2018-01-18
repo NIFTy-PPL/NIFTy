@@ -44,7 +44,7 @@ def _shareRange(nwork, nshares, myshare):
     return lo, hi
 
 
-def local_shape(shape, distaxis):
+def local_shape(shape, distaxis=0):
     if len(shape) == 0 or distaxis == -1:
         return shape
     shape2 = list(shape)
@@ -342,6 +342,14 @@ def from_random(random_type, shape, dtype=np.float64, **kwargs):
 
 def local_data(arr):
     return arr._data
+
+
+def ibegin_from_shape(glob_shape, distaxis=0):
+    res = [0] * len(glob_shape)
+    if distaxis<0:
+        return res
+    res[distaxis] = _shareRange(glob_shape[distaxis], ntask, rank)[0]
+    return tuple(res)
 
 
 def ibegin(arr):

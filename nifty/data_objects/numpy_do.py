@@ -47,6 +47,10 @@ def local_data(arr):
     return arr
 
 
+def ibegin_from_shape(glob_shape, distaxis=-1):
+    return (0,)*len(glob_shape)
+
+
 def ibegin(arr):
     return (0,)*arr.ndim
 
@@ -81,5 +85,5 @@ def default_distaxis():
     return -1
 
 
-def local_shape(glob_shape, distaxis):
+def local_shape(glob_shape, distaxis=-1):
     return glob_shape
