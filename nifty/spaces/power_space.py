@@ -22,7 +22,7 @@ from .. import dobj
 
 
 class PowerSpace(Space):
-    """NIFTY class for spaces of power spectra.
+    """NIFTy class for spaces of power spectra.
 
     Parameters
     ----------

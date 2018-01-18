@@ -22,7 +22,7 @@ from .space import Space
 
 
 class HPSpace(Space):
-    """NIFTY subclass for HEALPix discretizations of the two-sphere [#]_.
+    """NIFTy subclass for HEALPix discretizations of the two-sphere [#]_.
 
     Parameters
     ----------

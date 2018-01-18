@@ -26,9 +26,9 @@ from .. import dobj
 
 
 class DiagonalOperator(EndomorphicOperator):
-    """ NIFTY class for diagonal operators.
+    """ NIFTy class for diagonal operators.
 
-    The NIFTY DiagonalOperator class is a subclass derived from the
+    The NIFTy DiagonalOperator class is a subclass derived from the
     EndomorphicOperator. It multiplies an input field pixel-wise with its
     diagonal.
 

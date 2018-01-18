@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# NIFTY documentation build configuration file, created by
+# NIFTy documentation build configuration file, created by
 # sphinx-quickstart on Tue May 16 10:22:50 2017.
 #
 # This file is execfile()d with the current directory set to its
@@ -79,7 +79,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'NIFTY2go'
+project = u'NIFTy2go'
 copyright = u'2013-2017, Max-Planck-Society'
 author = u'Theo Steininger / Martin Reinecke'
 
@@ -240,7 +240,7 @@ html_domain_indices = False
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'NIFTYdoc'
+htmlhelp_basename = 'NIFTydoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -262,8 +262,8 @@ htmlhelp_basename = 'NIFTYdoc'
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 #latex_documents = [
-#    (master_doc, 'NIFTY.tex', u'NIFTY Documentation',
-#     u'NIFTY', 'manual'),
+#    (master_doc, 'NIFTy.tex', u'NIFTy Documentation',
+#     u'NIFTy', 'manual'),
 #]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -292,7 +292,7 @@ htmlhelp_basename = 'NIFTYdoc'
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 #man_pages = [
-#    (master_doc, 'nifty', u'NIFTY Documentation',
+#    (master_doc, 'nifty', u'NIFTy Documentation',
 #     [author], 1)
 #]
 
@@ -306,8 +306,8 @@ htmlhelp_basename = 'NIFTYdoc'
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 #texinfo_documents = [
-#    (master_doc, 'NIFTY', u'NIFTY Documentation',
-#     author, 'NIFTY', 'One line description of project.',
+#    (master_doc, 'NIFTy', u'NIFTy Documentation',
+#     author, 'NIFTy', 'One line description of project.',
 #     'Miscellaneous'),
 #]
 

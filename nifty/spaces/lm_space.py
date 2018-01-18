@@ -24,7 +24,7 @@ from .. import dobj
 
 
 class LMSpace(Space):
-    """NIFTY subclass for spherical harmonics components, for representations
+    """NIFTy subclass for spherical harmonics components, for representations
     of fields on the two-sphere.
 
     Parameters

@@ -22,7 +22,7 @@ from .space import Space
 
 
 class GLSpace(Space):
-    """NIFTY subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
+    """NIFTy subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
 
     Parameters
     ----------

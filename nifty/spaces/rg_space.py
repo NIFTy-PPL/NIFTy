@@ -26,7 +26,7 @@ from .. import dobj
 
 
 class RGSpace(Space):
-    """NIFTY subclass for spaces of regular Cartesian grids.
+    """NIFTy subclass for spaces of regular Cartesian grids.
 
     Parameters
     ----------

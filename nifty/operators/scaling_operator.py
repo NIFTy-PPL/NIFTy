@@ -24,9 +24,9 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class ScalingOperator(EndomorphicOperator):
-    """ NIFTY class for an operator which multiplies a Field with a scalar.
+    """ NIFTy class for an operator which multiplies a Field with a scalar.
 
-    The NIFTY ScalingOperator class is a subclass derived from the
+    The NIFTy ScalingOperator class is a subclass derived from the
     EndomorphicOperator. It multiplies an input field with a given factor.
 
     Parameters

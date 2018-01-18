@@ -30,7 +30,7 @@ __all__ = ["Field", "sqrt", "exp", "log", "conjugate"]
 class Field(object):
     """ The discrete representation of a continuous field over multiple spaces.
 
-    In NIFTY, Fields are used to store data arrays and carry all the needed
+    In NIFTy, Fields are used to store data arrays and carry all the needed
     metainformation (i.e. the domain) for operators to be able to work on them.
 
     Parameters
