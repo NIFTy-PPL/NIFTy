@@ -65,7 +65,12 @@ Installation
 ### Requirements
 
 -   [Python](http://www.python.org/) (v2.7.x or 3.5.x)
-    -   [NumPy](http://www.numpy.org/)
+-   [NumPy](http://www.numpy.org/)
+
+Optional dependencies:
+-   [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
+-   [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix)
+-   [mpi4py](https://gmpi4py.scipy.org)
 
 ### Sources
 
