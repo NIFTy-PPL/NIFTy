@@ -1,12 +1,3 @@
-WARNING:
-========
-
-The code on this branch is not meant to be an official version of NIFTy.
-As a consequence, it does not install as package "nifty", but rather as
-"nifty2go", to allow parallel installation alongside the official NIFTy and
-avoid any conflicts.
-
-
 NIFTy - Numerical Information Field Theory
 ==========================================
 [![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/nifty2go/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/nifty2go)
@@ -29,7 +20,7 @@ efficiency.
 
 NIFTy offers a toolkit that abstracts discretized representations of
 continuous spaces, fields in these spaces, and operators acting on
-fields into classes. Thereby, the correct normalization of operations on
+fields into classes. The correct normalization of operations on
 fields is taken care of automatically without concerning the user. This
 allows for an abstract formulation and programming of inference
 algorithms, including those derived within information field theory.
@@ -42,8 +33,8 @@ those.
 
 ### Class & Feature Overview
 
-The NIFTy library features three main classes: **spaces** that represent
-certain grids, **fields** that are defined on spaces, and **operators**
+The NIFTy library features three main classes: **Space**s that represent
+certain grids, **Field**s that are defined on spaces, and **LinearOperator**s
 that apply to fields.
 
 -   [Spaces](http://www.mpa-garching.mpg.de/ift/nifty/space.html)
@@ -67,9 +58,6 @@ that apply to fields.
                         counterparts
     -   (and more)
 -   (and more)
-
-*Parts of this summary are taken from* [1] *without marking them
-explicitly as quotations.*
 
 Installation
 ------------
@@ -126,7 +114,7 @@ phrase such as the following:
 Release Notes
 -------------
 
-The NIFTy package is licensed under the
+The NIFTy package is licensed under the terms of the
 [GPLv3](http://www.gnu.org/licenses/gpl.html) and is distributed
 *without any warranty*.
 
