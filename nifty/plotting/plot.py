@@ -29,6 +29,7 @@ import os
 # - axis on/off
 # - title
 # - axis labels
+# - labels
 
 
 def _mollweide_helper(xsize):
@@ -191,6 +192,12 @@ def plot(f, **kwargs):
                     (isinstance(dom[0], RGSpace) and len(dom[0].shape)==1)):
                 raise ValueError("PowerSpace or 1D RGSpace required")
 
+    label = _get_kw("label", None, **kwargs)
+    if label is None:
+        label = [None] * len(f)
+    if not isinstance (label, list):
+        label = [label]
+
     dom = dom[0]
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -207,10 +214,11 @@ def plot(f, **kwargs):
             npoints = dom.shape[0]
             dist = dom.distances[0]
             xcoord = np.arange(npoints, dtype=np.float64)*dist
-            for fld in f:
+            for i, fld in enumerate(f):
                 ycoord = dobj.to_global_data(fld.val)
-                plt.plot(xcoord, ycoord)
+                plt.plot(xcoord, ycoord,label=label[i])
             _limit_xy(**kwargs)
+            plt.legend()
             _makeplot(kwargs.get("name"))
             return
         elif len(dom.shape) == 2:
@@ -238,10 +246,11 @@ def plot(f, **kwargs):
         plt.yscale('log')
         plt.title('power')
         xcoord = dom.k_lengths
-        for fld in f:
+        for i, fld in enumerate(f):
             ycoord = dobj.to_global_data(fld.val)
-            plt.plot(xcoord, ycoord)
+            plt.plot(xcoord, ycoord, label=label[i])
         _limit_xy(**kwargs)
+        plt.legend()
         _makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, HPSpace):
