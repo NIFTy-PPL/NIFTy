@@ -20,6 +20,7 @@ from __future__ import division
 import abc
 from .utilities import NiftyMeta
 from future.utils import with_metaclass
+import numpy as np
 
 
 class DomainObject(with_metaclass(
@@ -109,3 +110,11 @@ class DomainObject(with_metaclass(
         float or numpy.ndarray(dtype=float): Volume factors
         """
         return self.scalar_dvol()
+
+    @property
+    def total_volume(self):
+        tmp = self.dvol()
+        if np.isscalar(tmp):
+            return self.dim * tmp
+        else:
+            return np.sum(tmp)

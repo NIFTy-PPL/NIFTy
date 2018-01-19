@@ -93,6 +93,9 @@ class GLSpace(Space):
             self._dvol = GL_weights(self.nlat, self.nlon)
         return np.repeat(self._dvol, self.nlon)
 
+    def total_volume(self):
+        return 4*np.pi
+
     @property
     def nlat(self):
         """ Number of latitudinal bins (or rings) that are used for this

@@ -253,6 +253,17 @@ class Field(object):
             res *= tmp
         return res
 
+    def total_volume(self, spaces=None):
+        if np.isscalar(spaces):
+            return self._domain[spaces].total_volume()
+
+        if spaces is None:
+            spaces = range(len(self._domain))
+        res = 1.
+        for i in spaces:
+            res *= self._domain[i].total_volume()
+        return res
+
     def weight(self, power=1, spaces=None, out=None):
         """ Weights the pixels of `self` with their invidual pixel-volume.
 
@@ -362,7 +373,7 @@ class Field(object):
         -------
         The complex conjugated field.
         """
-        return Field(self._domain, self.val.conjugate(), self.dtype)
+        return Field(self._domain, self.val.conjugate())
 
     # ---General unary/contraction methods---
 
@@ -429,12 +440,22 @@ class Field(object):
     def mean(self, spaces=None):
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('mean', spaces)
-        raise NotImplementedError
+        # MR FIXME: not very efficient
+        tmp = self.weight(1)
+        return tmp.sum(spaces)*(1./tmp.total_volume(spaces))
 
     def var(self, spaces=None):
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('var', spaces)
-        raise NotImplementedError
+        # MR FIXME: not very efficient or accurate
+        m1 = self.mean(spaces)
+        if np.issubdtype(self.dtype, np.complexfloating):
+            sq = abs(self)**2
+            m1 = abs(m1)**2
+        else:
+            sq = self**2
+            m1 **= 2
+        return sq.mean(spaces) - m1
 
     def std(self, spaces=None):
         if self.scalar_weight(spaces) is not None:
