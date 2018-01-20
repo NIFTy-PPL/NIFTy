@@ -1,5 +1,5 @@
 import numpy as np
-import nifty2go as ift
+import nifty4 as ift
 import numericalunits as nu
 
 if __name__ == "__main__":

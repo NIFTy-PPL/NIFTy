@@ -1,5 +1,5 @@
 import numpy as np
-import nifty2go as ift
+import nifty4 as ift
 
 if __name__ == "__main__":
     signal_to_noise = 1.5  # The signal to noise ratio

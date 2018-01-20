@@ -1,5 +1,5 @@
-import nifty2go as ift
-from nifty2go.library.nonlinearities import Exponential
+import nifty4 as ift
+from nifty4.library.nonlinearities import Exponential
 import numpy as np
 np.random.seed(42)
 

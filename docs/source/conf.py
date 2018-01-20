@@ -12,7 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-from nifty2go import *
+from nifty4 import *
 import sys
 import os
 

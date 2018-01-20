@@ -18,7 +18,7 @@
 
 import unittest
 from numpy.testing import assert_allclose
-import nifty2go as ift
+import nifty4 as ift
 from itertools import product
 from test.common import expand
 

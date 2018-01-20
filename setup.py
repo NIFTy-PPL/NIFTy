@@ -18,19 +18,16 @@
 
 from setuptools import setup, find_packages
 
-exec(open('nifty/version.py').read())
+exec(open('nifty4/version.py').read())
 
-setup(name="nifty2go",
+setup(name="nifty4",
       version=__version__,
       author="Theo Steininger, Martin Reinecke",
-      author_email="theos@mpa-garching.mpg.de",
+      author_email="martin@mpa-garching.mpg.de",
       description="Numerical Information Field Theory",
       url="http://www.mpa-garching.mpg.de/ift/nifty/",
-      package_dir = {"nifty2go": "nifty"},
-      packages=["nifty2go"] + ["nifty2go."+p for p in find_packages("nifty")],
+      packages=find_packages(include=["nifty4", "nifty4.*"]),
       zip_safe=False,
-      dependency_links=[
-               'git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git#egg=pyHealpix-0.0.1'],
       license="GPLv3",
       setup_requires=['future', 'numpy'],
       install_requires=['future', 'numpy'],

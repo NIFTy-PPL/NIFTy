@@ -1,6 +1,6 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/fun_with_operators/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/nifty2go)
+[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/fun_with_operators/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/nifty4)
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/fun_with_operators/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/nifty2go)
 
 **NIFTy** project homepage:
@@ -83,7 +83,7 @@ The current version of Nifty3 can be obtained by cloning the repository:
 
 It is possible to simply install NIFTy with all its dependencies via the command
 
-pip install --user --process-dependency-links --egg git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@nifty2go
+pip install --user --process-dependency-links --egg git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@nifty4
 
 ### Running the tests
 
@@ -94,7 +94,7 @@ In oder to run the tests one needs two additional packages:
 Afterwards the tests (including a coverage report) are run using the following
 command in the repository root:
 
-    nosetests -x --with-coverage --cover-html --cover-package=nifty2go
+    nosetests -x --with-coverage --cover-html --cover-package=nifty4
 
 
 ### First Steps

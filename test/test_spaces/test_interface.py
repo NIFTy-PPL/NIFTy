@@ -21,7 +21,7 @@ from numpy.testing import assert_
 from itertools import product
 from types import LambdaType
 from test.common import expand, generate_spaces, generate_harmonic_spaces
-import nifty2go as ift
+import nifty4 as ift
 
 
 class SpaceInterfaceTests(unittest.TestCase):

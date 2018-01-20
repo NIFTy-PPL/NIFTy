@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_, assert_equal, assert_raises,\
                           assert_almost_equal
-from nifty2go import HPSpace
+from nifty4 import HPSpace
 from test.common import expand
 
 # [nside, expected]

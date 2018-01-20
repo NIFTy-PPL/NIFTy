@@ -20,7 +20,7 @@ from __future__ import division
 import unittest
 import numpy as np
 from numpy.testing import assert_allclose
-import nifty2go as ift
+import nifty4 as ift
 from itertools import product
 from test.common import expand
 

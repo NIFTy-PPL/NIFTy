@@ -535,12 +535,12 @@ class Field(object):
         return self._binary_helper(other, op='__ipow__')
 
     def __repr__(self):
-        return "<nifty2go.Field>"
+        return "<nifty4.Field>"
 
     def __str__(self):
         minmax = [self.min(), self.max()]
         mean = self.mean()
-        return "nifty2go.Field instance\n- domain      = " + \
+        return "nifty4.Field instance\n- domain      = " + \
                repr(self._domain) + \
                "\n- val         = " + repr(self.val) + \
                "\n  - min.,max. = " + str(minmax) + \

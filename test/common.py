@@ -18,7 +18,7 @@
 
 from builtins import str
 from parameterized import parameterized
-import nifty2go as ift
+import nifty4 as ift
 import numpy as np
 
 np.seterr(all='raise', under='ignore')

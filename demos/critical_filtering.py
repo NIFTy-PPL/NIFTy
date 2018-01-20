@@ -1,5 +1,5 @@
 import numpy as np
-import nifty2go as ift
+import nifty4 as ift
 
 np.random.seed(42)
 # np.seterr(all="raise",under="ignore")

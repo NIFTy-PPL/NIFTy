@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import nifty2go as ift
+import nifty4 as ift
 import numpy as np
 from itertools import product
 from test.common import expand
