@@ -16,6 +16,7 @@ before_script:
 test_min:
   stage: test
   script:
+    - pip install --user .
     - nosetests -x --with-coverage --cover-package=nifty4 --cover-branches
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x --with-coverage --cover-package=nifty4 --cover-branches
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -x
