@@ -4,7 +4,7 @@ NIFTy - Numerical Information Field Theory
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_4/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_4)
 
 **NIFTy** project homepage:
-[http://www.mpa-garching.mpg.de/ift/nifty/](http://www.mpa-garching.mpg.de/ift/nifty/)
+[https://www.mpa-garching.mpg.de/ift/nifty/](https://www.mpa-garching.mpg.de/ift/nifty/)
 
 Summary
 -------
@@ -37,13 +37,13 @@ The NIFTy library features three main classes: **Space**s that represent
 certain grids, **Field**s that are defined on spaces, and **LinearOperator**s
 that apply to fields.
 
--   [Spaces](http://www.mpa-garching.mpg.de/ift/nifty/space.html)
+-   [Spaces](https://www.mpa-garching.mpg.de/ift/nifty/space.html)
     -   `RGSpace` - *n*-dimensional regular Euclidean grid
     -   `LMSpace` - spherical harmonics
     -   `GLSpace` - Gauss-Legendre grid on the 2-sphere
-    -   `HPSpace` - [HEALPix](http://sourceforge.net/projects/healpix/)
+    -   `HPSpace` - [HEALPix](https://sourceforge.net/projects/healpix/)
         grid on the 2-sphere
--   [Fields](http://www.mpa-garching.mpg.de/ift/nifty/field.html)
+-   [Fields](https://www.mpa-garching.mpg.de/ift/nifty/field.html)
     -   `Field` - generic class for (discretized) fields
 
 <!-- -->
@@ -51,7 +51,7 @@ that apply to fields.
     Field.conjugate     Field.dim          Field.norm
     Field.vdot          Field.weight
 
--   [Operators](http://www.mpa-garching.mpg.de/ift/nifty/operator.html)
+-   [Operators](https://www.mpa-garching.mpg.de/ift/nifty/operator.html)
     -   `DiagonalOperator` - purely diagonal matrices in a specified
         basis
     -   `FFTOperator` - conversion between spaces and their harmonic
@@ -64,9 +64,10 @@ Installation
 
 ### Requirements
 
--   [Python](http://www.python.org/) (v2.7.x or 3.5.x)
--   [NumPy](http://www.numpy.org/)
+-   [Python](https://www.python.org/) (v2.7.x or 3.5.x)
+-   [NumPy](https://www.numpy.org/)
 -   [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
+-   [matplotlib](https://matplotlib.org/)
 
 Optional dependencies:
 -   [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix)
@@ -80,12 +81,16 @@ switching to the NIFTy_4 branch:
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
     git checkout NIFTy_4
 
-
 ### Installation via pip
 
-It is possible to simply install NIFTy with all its dependencies via the command
+It is possible to simply install NIFTy with its mandatory dependencies via the command
 
-pip install --user --process-dependency-links --egg git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4
+    pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4
+
+The optional dependencies can be installed via
+
+    pip install --user mpi4py
+    pip install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 
 ### Running the tests
 
@@ -102,7 +107,7 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](http://www.mpa-garching.mpg.de/ift/nifty/start.html) or
+introduction](https://www.mpa-garching.mpg.de/ift/nifty/start.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python demos/wiener_filter_via_curvature.py
@@ -122,12 +127,12 @@ Release Notes
 -------------
 
 The NIFTy package is licensed under the terms of the
-[GPLv3](http://www.gnu.org/licenses/gpl.html) and is distributed
+[GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed
 *without any warranty*.
 
 * * * * *
 
 [1] Selig et al., "NIFTy - Numerical Information Field Theory - a
 versatile Python library for signal inference", [A&A, vol. 554, id.
-A26](http://dx.doi.org/10.1051/0004-6361/201321236), 2013;
-[arXiv:1301.4499](http://www.arxiv.org/abs/1301.4499)
+A26](https://dx.doi.org/10.1051/0004-6361/201321236), 2013;
+[arXiv:1301.4499](https://www.arxiv.org/abs/1301.4499)
