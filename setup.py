@@ -30,7 +30,7 @@ setup(name="nifty4",
       zip_safe=False,
       license="GPLv3",
       setup_requires=['future', 'numpy'],
-      install_requires=['future', 'numpy'],
+      install_requires=['future', 'numpy', 'pyfftw>=0.10.4'],
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",

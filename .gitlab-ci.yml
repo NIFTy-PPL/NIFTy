@@ -16,10 +16,7 @@ before_script:
 test_min:
   stage: test
   script:
-#    - python setup.py install --user -f
-#    - python3 setup.py install --user -f
     - nosetests -x --with-coverage --cover-package=nifty4 --cover-branches
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x --with-coverage --cover-package=nifty4 --cover-branches
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -x
-    - >
-      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
+    - coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
