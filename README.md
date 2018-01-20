@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/fun_with_operators/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/nifty4)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/fun_with_operators/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/nifty2go)
+[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_4/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_4)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_4/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_4)
 
 **NIFTy** project homepage:
 [http://www.mpa-garching.mpg.de/ift/nifty/](http://www.mpa-garching.mpg.de/ift/nifty/)
