@@ -67,11 +67,11 @@ Installation
 -   [Python](https://www.python.org/) (v2.7.x or 3.5.x)
 -   [NumPy](https://www.numpy.org/)
 -   [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
--   [matplotlib](https://matplotlib.org/)
 
 Optional dependencies:
 -   [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix)
 -   [mpi4py](https://mpi4py.scipy.org)
+-   [matplotlib](https://matplotlib.org/)
 
 ### Sources
 
