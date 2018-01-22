@@ -24,6 +24,9 @@ from .. import dobj
 class PowerSpace(Space):
     """NIFTy class for spaces of power spectra.
 
+    A power space is the result of a projection of a harmonic space where
+    k-modes of equal length get mapped to one power index.
+
     Parameters
     ----------
     harmonic_partner : Space
@@ -41,11 +44,6 @@ class PowerSpace(Space):
             of the last bin, i.e. thee will be len(binbounds)+1 bins in total,
             with the first and last bins reaching to -+infinity, respectively.
         (default : None)
-
-    Notes
-    -----
-    A power space is the result of a projection of a harmonic space where
-    k-modes of equal length get mapped to one power index.
     """
 
     _powerIndexCache = {}
@@ -53,15 +51,16 @@ class PowerSpace(Space):
     @staticmethod
     def linear_binbounds(nbin, first_bound, last_bound):
         """
+        This will produce a binbounds array with nbin-1 entries with
+        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
+        values equidistantly spaced (in linear scale) between these two.
+
         nbin: integer
             the number of bins
         first_bound, last_bound: float
             the k values for the right boundary of the first bin and the left
             boundary of the last bin, respectively. They are given in length
             units of the harmonic partner space.
-        This will produce a binbounds array with nbin-1 entries with
-        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
-        values equidistantly spaced (in linear scale) between these two.
         """
         nbin = int(nbin)
         assert nbin >= 3, "nbin must be at least 3"
@@ -70,16 +69,17 @@ class PowerSpace(Space):
     @staticmethod
     def logarithmic_binbounds(nbin, first_bound, last_bound):
         """
+        This will produce a binbounds array with nbin-1 entries with
+        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
+        values equidistantly spaced (in natural logarithmic scale)
+        between these two.
+
         nbin: integer
             the number of bins
         first_bound, last_bound: float
             the k values for the right boundary of the first bin and the left
             boundary of the last bin, respectively. They are given in length
             units of the harmonic partner space.
-        This will produce a binbounds array with nbin-1 entries with
-        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
-        values equidistantly spaced (in natural logarithmic scale)
-        between these two.
         """
         nbin = int(nbin)
         assert nbin >= 3, "nbin must be at least 3"

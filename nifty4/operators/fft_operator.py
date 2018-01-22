@@ -28,9 +28,11 @@ class FFTOperator(LinearOperator):
     """Transforms between a pair of position and harmonic domains.
 
     Built-in domain pairs are
+
       - a harmonic and a non-harmonic RGSpace (with matching distances)
       - a HPSpace and a LMSpace
       - a GLSpace and a LMSpace
+
     Within a domain pair, both orderings are possible.
 
     The operator provides a "times" and an "adjoint_times" operation.

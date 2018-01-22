@@ -31,7 +31,7 @@ class ConjugateGradient(Minimizer):
 
     Parameters
     ----------
-    controller : IterationController
+    controller : :py:class:`nifty4.IterationController`
         Object that decides when to terminate the minimization.
 
     References

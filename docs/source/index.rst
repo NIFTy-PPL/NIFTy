@@ -15,6 +15,14 @@ Documentation
 
 Welcome to NIFTy's documentation!
 
+Contents
+........
+
+.. toctree::
+   :maxdepth: 1
+
+   ift
+   start
 
 Indices and tables
 ..................
