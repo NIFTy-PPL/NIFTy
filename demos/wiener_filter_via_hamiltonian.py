@@ -62,8 +62,8 @@ if __name__ == "__main__":
     energy, convergence = minimizer(energy)
     m = energy.position
     D = energy.curvature
-    ift.plotting.plot(ss, name="signal.png", colormap="Planck-like")
-    ift.plotting.plot(fft(m), name="m.png", colormap="Planck-like")
+    ift.plot(ss, name="signal.png", colormap="Planck-like")
+    ift.plot(fft(m), name="m.png", colormap="Planck-like")
 
     # sampling the uncertainty map
     sample_variance = ift.Field.zeros(s_space)
@@ -77,4 +77,4 @@ if __name__ == "__main__":
     sample_mean /= n_samples
     sample_variance /= n_samples
     variance = sample_variance - sample_mean**2
-    ift.plotting.plot(variance, name="variance.png", colormap="Planck-like")
+    ift.plot(variance, name="variance.png", colormap="Planck-like")

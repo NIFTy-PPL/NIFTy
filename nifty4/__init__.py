@@ -9,6 +9,6 @@ from .spaces import *
 from .operators import *
 from .probing import *
 from .sugar import *
-from . import plotting
+from .plotting import plot
 from . import library
 from . import dobj

@@ -69,8 +69,8 @@ if __name__ == "__main__":
     # Plotting
     plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
                 "colormap": "Planck-like"}
-    ift.plotting.plot(variance, name="uncertainty.png", **plotdict)
-    ift.plotting.plot(mock_signal, name="mock_signal.png", **plotdict)
-    ift.plotting.plot(ift.Field(signal_space, val=data.val),
-                      name="data.png", **plotdict)
-    ift.plotting.plot(m, name="map.png", **plotdict)
+    ift.plot(variance, name="uncertainty.png", **plotdict)
+    ift.plot(mock_signal, name="mock_signal.png", **plotdict)
+    ift.plot(ift.Field(signal_space, val=data.val),
+             name="data.png", **plotdict)
+    ift.plot(m, name="map.png", **plotdict)

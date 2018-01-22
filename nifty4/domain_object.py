@@ -114,7 +114,4 @@ class DomainObject(with_metaclass(
     @property
     def total_volume(self):
         tmp = self.dvol()
-        if np.isscalar(tmp):
-            return self.dim * tmp
-        else:
-            return np.sum(tmp)
+        return self.dim * tmp if np.isscalar(tmp) else np.sum(tmp)

@@ -110,7 +110,7 @@ if __name__ == "__main__":
         # excitation monopole to 1
         m0, t0 = adjust_zero_mode(m0, t0)
 
-    ift.plotting.plot(true_sky)
-    ift.plotting.plot(nonlinearity(FFT.adjoint_times(power0*m0)),
-                      title='reconstructed_sky')
-    ift.plotting.plot(MeasurementOperator.adjoint_times(d))
+    ift.plot(true_sky)
+    ift.plot(nonlinearity(FFT.adjoint_times(power0*m0)),
+             title='reconstructed_sky')
+    ift.plot(MeasurementOperator.adjoint_times(d))

@@ -541,7 +541,7 @@ class Field(object):
         minmax = [self.min(), self.max()]
         mean = self.mean()
         return "nifty4.Field instance\n- domain      = " + \
-               repr(self._domain) + \
+               self._domain.__str__() + \
                "\n- val         = " + repr(self.val) + \
                "\n  - min.,max. = " + str(minmax) + \
                "\n  - mean = " + str(mean)

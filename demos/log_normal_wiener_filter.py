@@ -68,14 +68,13 @@ if __name__ == "__main__":
     # Plotting
     plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
                 "colormap": "Planck-like"}
-    ift.plotting.plot(mock_signal, name="mock_signal.png", **plotdict)
+    ift.plot(mock_signal, name="mock_signal.png", **plotdict)
     logdata = np.log(ift.dobj.to_global_data(data.val)).reshape(signal_space.shape)
-    ift.plotting.plot(ift.Field(signal_space,
-                                val=ift.dobj.from_global_data(logdata)),
-                      name="log_of_data.png", **plotdict)
-    # ift.plotting.plot(m1,name='m_LBFGS.png', **plotdict)
-    ift.plotting.plot(m2, name='m_Newton.png', **plotdict)
-    # ift.plotting.plot(m3, name='m_SteepestDescent.png', **plotdict)
+    ift.plot(ift.Field(signal_space, val=ift.dobj.from_global_data(logdata)),
+             name="log_of_data.png", **plotdict)
+    # ift.plot(m1,name='m_LBFGS.png', **plotdict)
+    ift.plot(m2, name='m_Newton.png', **plotdict)
+    # ift.plot(m3, name='m_SteepestDescent.png', **plotdict)
 
     # Probing the variance
     class Proby(ift.DiagonalProberMixin, ift.Prober):
@@ -85,4 +84,4 @@ if __name__ == "__main__":
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.02)
     variance = sm(proby.diagonal.weight(-1))
-    ift.plotting.plot(variance, name='variance.png', **plotdict)
+    ift.plot(variance, name='variance.png', **plotdict)

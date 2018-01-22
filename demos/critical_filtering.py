@@ -51,7 +51,7 @@ if __name__ == "__main__":
     data_power = ift.log(ift.power_analyze(fft.adjoint_times(d),
                                            binbounds=p_space.binbounds))
     d_data = d.val
-    ift.plotting.plot(d, name="data.png")
+    ift.plot(d, name="data.png")
 
     IC1 = ift.GradientNormController(verbose=True, iteration_limit=100,
                                      tol_abs_gradnorm=0.1)
@@ -90,5 +90,5 @@ if __name__ == "__main__":
 
         # Plot current estimate
         ift.dobj.mprint(i)
-        if i % 5 == 0:
-            ift.plotting.plot(fft(m0), name='map.png')
+        if i % 50 == 0:
+            ift.plot(fft(m0), name='map.png')

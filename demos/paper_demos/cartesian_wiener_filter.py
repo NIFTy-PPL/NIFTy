@@ -107,13 +107,12 @@ if __name__ == "__main__":
     sm = ift.FFTSmoothingOperator(plot_space, sigma=0.03)
     plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
                 "colormap": "Planck-like"}
-    ift.plotting.plot(
+    ift.plot(
         ift.log(ift.sqrt(sm(ift.Field(plot_space, val=variance.val.real)))),
         name='uncertainty.png', zmin=0., zmax=3., title="Uncertainty map",
         **plotdict)
-    ift.plotting.plot(ift.Field(plot_space, val=mock_signal.val.real),
-                      name='mock_signal.png', **plotdict)
-    ift.plotting.plot(ift.Field(plot_space, val=data.val.real),
-                      name='data.png', **plotdict)
-    ift.plotting.plot(ift.Field(plot_space, val=m.val.real),
-                      name='map.png', **plotdict)
+    ift.plot(ift.Field(plot_space, val=mock_signal.val.real),
+             name='mock_signal.png', **plotdict)
+    ift.plot(ift.Field(plot_space, val=data.val.real),
+             name='data.png', **plotdict)
+    ift.plot(ift.Field(plot_space, val=m.val.real), name='map.png', **plotdict)
