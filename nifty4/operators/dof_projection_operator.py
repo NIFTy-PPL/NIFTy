@@ -19,8 +19,10 @@
 import numpy as np
 from .linear_operator import LinearOperator
 from ..utilities import infer_space
-from .. import Field, DomainTuple, dobj
-from ..spaces import DOFSpace
+from ..field import Field
+from ..domain_tuple import DomainTuple
+from .. import dobj
+from ..spaces.dof_space import DOFSpace
 
 
 class DOFProjectionOperator(LinearOperator):

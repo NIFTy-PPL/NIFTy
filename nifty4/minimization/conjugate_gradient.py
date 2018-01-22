@@ -18,7 +18,8 @@
 
 from __future__ import division
 from .minimizer import Minimizer
-from .. import Field, dobj
+from ..field import Field
+from .. import dobj
 from ..utilities import general_axpy
 
 

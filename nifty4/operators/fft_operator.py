@@ -17,8 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .. import DomainTuple
-from ..spaces import RGSpace
+from ..domain_tuple import DomainTuple
+from ..spaces.rg_space import RGSpace
 from ..utilities import infer_space
 from .linear_operator import LinearOperator
 from .fft_operator_support import RGRGTransformation, SphericalTransformation

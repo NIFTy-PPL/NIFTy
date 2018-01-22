@@ -20,8 +20,11 @@ from __future__ import division
 from builtins import range
 import numpy as np
 from .endomorphic_operator import EndomorphicOperator
-from .. import dobj, utilities, Field, DomainTuple
-from ..spaces import PowerSpace
+from .. import dobj
+from .. import utilities
+from ..field import Field
+from ..domain_tuple import DomainTuple
+from ..spaces.power_space import PowerSpace
 
 
 class DirectSmoothingOperator(EndomorphicOperator):

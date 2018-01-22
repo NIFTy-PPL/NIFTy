@@ -17,9 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from . import Space, PowerSpace, Field, DiagonalOperator,\
-              PowerProjectionOperator, FFTOperator, sqrt, DomainTuple, dobj,\
-              utilities
+from .spaces.space import Space
+from .spaces.power_space import PowerSpace
+from .field import Field, sqrt
+from .operators.diagonal_operator import DiagonalOperator
+from .operators.power_projection_operator import PowerProjectionOperator
+from .operators.fft_operator import FFTOperator
+from .domain_tuple import DomainTuple
+from . import dobj, utilities
 
 __all__ = ['PS_field',
            'power_analyze',

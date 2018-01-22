@@ -20,7 +20,7 @@ from .scaling_operator import ScalingOperator
 from .fft_operator import FFTOperator
 from ..utilities import infer_space
 from .diagonal_operator import DiagonalOperator
-from .. import DomainTuple
+from ..domain_tuple import DomainTuple
 
 
 def FFTSmoothingOperator(domain, sigma, space=None):

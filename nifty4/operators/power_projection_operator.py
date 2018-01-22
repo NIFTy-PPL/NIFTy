@@ -17,9 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .dof_projection_operator import DOFProjectionOperator
-from .. import DomainTuple
+from ..domain_tuple import DomainTuple
 from ..utilities import infer_space
-from ..spaces import PowerSpace
+from ..spaces.power_space import PowerSpace
 
 
 class PowerProjectionOperator(DOFProjectionOperator):
