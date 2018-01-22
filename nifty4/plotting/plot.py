@@ -218,7 +218,8 @@ def plot(f, **kwargs):
                 ycoord = dobj.to_global_data(fld.val)
                 plt.plot(xcoord, ycoord,label=label[i])
             _limit_xy(**kwargs)
-            plt.legend()
+            if label != ([None]*len(f)):
+                plt.legend()
             _makeplot(kwargs.get("name"))
             return
         elif len(dom.shape) == 2:
@@ -250,7 +251,8 @@ def plot(f, **kwargs):
             ycoord = dobj.to_global_data(fld.val)
             plt.plot(xcoord, ycoord, label=label[i])
         _limit_xy(**kwargs)
-        plt.legend()
+        if label != ([None]*len(f)):
+            plt.legend()
         _makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, HPSpace):

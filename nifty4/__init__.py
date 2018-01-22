@@ -3,7 +3,6 @@ from .version import __version__
 from . import dobj
 
 from .domain_object import DomainObject
-from .domain_tuple import DomainTuple
 
 from .spaces.field_array import FieldArray
 from .spaces.space import Space
@@ -13,6 +12,8 @@ from .spaces.hp_space import HPSpace
 from .spaces.gl_space import GLSpace
 from .spaces.dof_space import DOFSpace
 from .spaces.power_space import PowerSpace
+
+from .domain_tuple import DomainTuple
 
 from .operators.linear_operator import LinearOperator
 from .operators.endomorphic_operator import EndomorphicOperator
@@ -50,3 +51,12 @@ from .minimization.line_energy import LineEnergy
 from .sugar import *
 from .plotting.plot import plot
 from . import library
+
+__all__= ["DomainObject", "FieldArray", "Space", "RGSpace", "LMSpace",
+          "HPSpace", "GLSpace", "DOFSpace", "PowerSpace", "DomainTuple",
+          "LinearOperator", "EndomorphicOperator", "Scalingperator",
+          "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
+          "DirectSmoothingOperator", "ResponseOperator", "LaplaceOperator",
+          "PowerProjectionOperator", "InversionEnabler",
+          "Field", "sqrt", "exp", "log",
+          "Prober", "DiagonalProberMixin", "TraceProberMixin"]

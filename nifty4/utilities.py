@@ -34,7 +34,7 @@ def get_slice_list(shape, axes):
     axes: tuple
         Axes which should not be iterated over.
 
-    Yields
+    Returns
     -------
     list
         The next list of indices and/or slice objects for each dimension.

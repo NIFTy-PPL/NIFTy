@@ -43,7 +43,7 @@ class Space(DomainObject):
         Returns
         -------
         Field
-            An array containing the  k vector lengths
+            An array containing the k vector lengths
         """
         raise NotImplementedError
 

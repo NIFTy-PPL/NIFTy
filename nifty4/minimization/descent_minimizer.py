@@ -61,8 +61,8 @@ class DescentMinimizer(Minimizer):
         status : integer
             Can be controller.CONVERGED or controller.ERROR
 
-        Note
-        ----
+        Notes
+        -----
         The minimization is stopped if
             * the controller returns controller.CONVERGED or controller.ERROR,
             * a perfectly flat point is reached,

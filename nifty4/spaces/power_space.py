@@ -36,14 +36,13 @@ class PowerSpace(Space):
             There will be as many bins as there are distinct k-vector lengths
             in the harmonic partner space.
             The "binbounds" property of the PowerSpace will also be None.
-
         else:
             the bin bounds requested for this PowerSpace. The array
             must be sorted and strictly ascending. The first entry is the right
             boundary of the first bin, and the last entry is the left boundary
             of the last bin, i.e. thee will be len(binbounds)+1 bins in total,
             with the first and last bins reaching to -+infinity, respectively.
-        (default : None)
+            (default : None)
     """
 
     _powerIndexCache = {}

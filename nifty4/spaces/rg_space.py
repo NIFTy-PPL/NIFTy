@@ -36,12 +36,11 @@ class RGSpace(Space):
         Distance between two grid points along each axis
         (default: None).
         If distances==None:
-            if harmonic==True, all distances will be set to 1
-            if harmonic==False, the distance along each axis will be
-              set to the inverse of the number of points along that
-              axis.
+        if harmonic==True, all distances will be set to 1
+        if harmonic==False, the distance along each axis will be
+        set to the inverse of the number of points along that axis.
     harmonic : bool, *optional*
-    Whether the space represents a grid in position or harmonic space.
+        Whether the space represents a grid in position or harmonic space.
         (default: False).
     """
 
