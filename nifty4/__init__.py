@@ -54,7 +54,7 @@ from . import library
 
 __all__= ["DomainObject", "FieldArray", "Space", "RGSpace", "LMSpace",
           "HPSpace", "GLSpace", "DOFSpace", "PowerSpace", "DomainTuple",
-          "LinearOperator", "EndomorphicOperator", "Scalingperator",
+          "LinearOperator", "EndomorphicOperator", "ScalingOperator",
           "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
           "DirectSmoothingOperator", "ResponseOperator", "LaplaceOperator",
           "PowerProjectionOperator", "InversionEnabler",

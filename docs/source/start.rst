@@ -40,7 +40,7 @@ Unstructured spaces
 ...................
 
 There are domains (e.g. the data domain) which have no geometry associated to the individual data values.
-In NIFTy4 they are represented by the :py:class:`FieldArray` class, which is dreived from
+In NIFTy4 they are represented by the :py:class:`FieldArray` class, which is derived from
 :py:class:`DomainObject` and simply returns 1.0 as the volume element for every pixel and the total
 number of pixels as the total volume.
 
