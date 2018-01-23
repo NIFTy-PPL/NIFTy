@@ -121,9 +121,28 @@ As an example, if :math:`A`, :math:`B` and :math:`C` are of type :py:class:`Line
     f2 = X(f1)
 
 will perform the operation suggested intuitively by the notation, checking domain compatibility while building the composed operator.
+The combined operator infers its domain and target from its constituents, as well as the set of operations it can support.
 
 
 .. _minimization:
 
 Minimization
 ............
+
+Most problems in IFT are solved by (possibly nested) minimizations of high-dimensional functions, which are often nonlinear.
+
+In NIFTy4 such functions are represented by objects of type :py:class:`Energy`.
+These hold the prescription how to calculate the function's value, gradient and (optionally) curvature at any given position.
+Function values are floating-point scalars, gradients have the form of fields living on the energy's position domain, and curvatures are represented by linear operator objects.
+
+Some examples of concrete energy classes delivered with NIFTy4 are :py:class:`QuadraticEnergy` (with position-independent curvature, mainly used with conjugate gradient minimization) and :py:class:`WienerFilterEnergy`.
+Energies are classes that typically have to be provided by the user when tackling new IFT problems.
+
+The minmization procedure can be carried out by one of several algorithms; NIFTy4 currently ships solvers based on
+
+- the conjugate gradient method (for quadratic energies)
+- the steepest descent method
+- the VL-BFGS method
+- the relaxed Newton method, and
+- a nonlinear conjugate gradient method
+
