@@ -45,7 +45,7 @@ def PS_field(pspace, func, dtype=None):
 def _single_power_analyze(field, idx, binbounds):
     power_domain = PowerSpace(field.domain[idx], binbounds)
     ppo = PowerProjectionOperator(field.domain, power_domain, idx)
-    return ppo(field.weight(-1))
+    return ppo(field.weight(1)).weight(-1)  # divides by bin size
 
 
 def power_analyze(field, spaces=None, binbounds=None,
@@ -108,7 +108,6 @@ def power_analyze(field, spaces=None, binbounds=None,
         else:
             parts = [field.real*field.real + field.imag*field.imag]
 
-    parts = [part.weight(1, spaces) for part in parts]
     for space_index in spaces:
         parts = [_single_power_analyze(field=part,
                                        idx=space_index,
@@ -178,8 +177,8 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
     # power spectrum is real or complex
     result = [field.from_random('normal', mean=0., std=1.,
                                 domain=spec.domain,
-                                dtype=np.float if real_signal
-                                else np.complex)
+                                dtype=np.float64 if real_signal
+                                else np.complex128)
               for x in range(1 if real_power else 2)]
 
     result[0] *= spec if self_real else spec.real
@@ -236,7 +235,7 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
             space = 0
     space = int(space)
     return DiagonalOperator(
-        create_power_field(domain[space], power_spectrum, dtype).weight(1),
+        create_power_field(domain[space], power_spectrum, dtype),
         domain=domain,
         spaces=space)
 
@@ -244,7 +243,6 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
 def create_composed_fft_operator(domain, codomain=None, all_to='other'):
     if codomain is None:
         codomain = [None]*len(domain)
-    tdom = list(domain)
     res = None
     for i, space in enumerate(domain):
         if not isinstance(space, Space):
@@ -252,13 +250,9 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
         if (all_to == 'other' or
                 (all_to == 'position' and space.harmonic) or
                 (all_to == 'harmonic' and not space.harmonic)):
-            if codomain[i] is None:
-                tgt = domain[i].get_default_codomain()
-            else:
-                tgt = codomain[i]
-            op = FFTOperator(domain=tdom, target=tgt, space=i)
+            tdom = domain if res is None else res.target
+            op = FFTOperator(domain=tdom, target=codomain[i], space=i)
             res = op if res is None else op*res
-            tdom[i] = tgt
     if res is None:
         raise ValueError("empty operator")
     return res

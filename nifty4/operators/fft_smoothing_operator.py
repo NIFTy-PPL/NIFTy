@@ -33,6 +33,8 @@ def FFTSmoothingOperator(domain, sigma, space=None):
     domain = DomainTuple.make(domain)
     space = infer_space(domain, space)
     FFT = FFTOperator(domain, space=space)
+    if domain[space].harmonic:
+        raise TypeError("domain must not be harmonic")
     codomain = FFT.domain[space].get_default_codomain()
     kernel = codomain.get_k_length_array()
     smoother = codomain.get_fft_smoothing_kernel_function(sigma)
@@ -40,4 +42,4 @@ def FFTSmoothingOperator(domain, sigma, space=None):
     ddom = list(domain)
     ddom[space] = codomain
     diag = DiagonalOperator(kernel, ddom, space)
-    return FFT.adjoint*diag*FFT
+    return FFT.inverse*diag*FFT

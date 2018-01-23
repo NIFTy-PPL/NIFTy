@@ -4,8 +4,8 @@ import numericalunits as nu
 
 if __name__ == "__main__":
     # In MPI mode, the random seed for numericalunits must be set by hand
-    nu.reset_units(43)
-    dimensionality = 2
+    #nu.reset_units(43)
+    dimensionality = 1
     np.random.seed(43)
 
     # Setting up variable parameters
@@ -16,12 +16,13 @@ if __name__ == "__main__":
     field_sigma = 2. * nu.K
     # smoothing length of response
     response_sigma = 0.01*nu.m
-    # The signal to noise ratio
-    signal_to_noise = 0.7
+    # The signal to noise ratio ***CURRENTLY BROKEN***
+    signal_to_noise = 70.7
 
     # note that field_variance**2 = a*k_0/4. for this analytic form of power
     # spectrum
     def power_spectrum(k):
+    	#RL FIXME: signal_amplitude is not how much signal varies
         cldim = correlation_length**(2*dimensionality)
         a = 4/(2*np.pi) * cldim * field_sigma**2
         # to be integrated over spherical shells later on
@@ -47,27 +48,34 @@ if __name__ == "__main__":
 
     mock_power = ift.PS_field(power_space, power_spectrum)
     mock_harmonic = ift.power_synthesize(mock_power, real_signal=True)
+    print mock_harmonic.val[0]/nu.K/(nu.m**dimensionality)
     mock_signal = fft(mock_harmonic)
+    print "msig",mock_signal.val[0:10]/nu.K
 
-    exposure = 1.
-    R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
-                             exposure=(exposure,))
+    sensitivity = (1./nu.m)**dimensionality/nu.K
+    R = ift.ResponseOperator(signal_space, sigma=(0.*response_sigma,),
+                             sensitivity=(sensitivity,))
     data_domain = R.target[0]
     R_harmonic = R*fft
 
+    noise_amplitude = 1./signal_to_noise*field_sigma*sensitivity*((L/N_pixels)**dimensionality)
+    print noise_amplitude
     N = ift.DiagonalOperator(
-        ift.Field.full(data_domain,
-                       mock_signal.var()/signal_to_noise).weight(1))
+        ift.Field.full(data_domain, noise_amplitude**2))
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
-        std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)
-    data = R(mock_signal) + noise
-
-    # Wiener filter
+        std=noise_amplitude, mean=0)
+    data = R(mock_signal)
+    print data.val[5:10]
+    data += noise
+    print data.val[5:10]
+     # Wiener filter
 
     j = R_harmonic.adjoint_times(N.inverse_times(data))
+    print "xx",j.val[0]*nu.K*(nu.m**dimensionality)
+    exit()
     ctrl = ift.GradientNormController(
-        verbose=True, tol_abs_gradnorm=1e-4/nu.K/(nu.m**(0.5*dimensionality)))
+        verbose=True, tol_abs_gradnorm=1e-40/(nu.K*(nu.m**dimensionality)))
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(
         S=S, N=N, R=R_harmonic, inverter=inverter)
@@ -78,7 +86,7 @@ if __name__ == "__main__":
     sspace2 = ift.RGSpace(shape, distances=L/N_pixels/nu.m)
 
     ift.plot(ift.Field(sspace2, mock_signal.val)/nu.K, name="mock_signal.png")
-    data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)/nu.K
-    data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))/nu.K
+    data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)
+    data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))
     ift.plot(ift.Field(sspace2, val=data), name="data.png")
     ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="map.png")

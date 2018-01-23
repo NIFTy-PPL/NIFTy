@@ -342,19 +342,10 @@ class Field(object):
         spaces = utilities.parse_spaces(spaces, ndom)
 
         if len(spaces) == ndom:
-            tmp = self.scalar_weight(spaces)
-            if tmp is None:
-                fct = 1.
-                y = self.weight(power=1)
-            else:
-                y = self
-                fct = tmp
-
-            return fct*dobj.vdot(y.val, x.val)
-
+            return dobj.vdot(self.val, x.val)
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
-        return (self.conjugate()*x).integrate(spaces=spaces)
+        return (self.conjugate()*x).sum(spaces=spaces)
 
     def norm(self):
         """ Computes the L2-norm of the field values.
