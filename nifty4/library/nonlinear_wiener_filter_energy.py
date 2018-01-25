@@ -35,7 +35,7 @@ class NonlinearWienerFilterEnergy(Energy):
         position_map = FFT.inverse_times(self.power * self.position)
         self.LinearizedResponse = \
             LinearizedSignalResponse(Instrument, nonlinearity, FFT, power,
-                                     position_map)
+                                     position_map, sunit)
         residual = d - Instrument(sunit * nonlinearity(position_map))
         self.N = N
         self.S = S
