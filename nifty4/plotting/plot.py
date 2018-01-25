@@ -246,7 +246,7 @@ def plot(f, **kwargs):
         plt.xscale('log')
         plt.yscale('log')
         plt.title('power')
-        xcoord = dom.k_lengths
+        xcoord = dom.k_lengths / kwargs.get("xunit")
         for i, fld in enumerate(f):
             ycoord = dobj.to_global_data(fld.val)
             plt.plot(xcoord, ycoord, label=label[i])
