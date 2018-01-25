@@ -151,14 +151,23 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(v1, v2, rtol=tol, atol=tol)
 
     @expand(product([ift.RGSpace(128, distances=3.76, harmonic=True),
+                     ift.RGSpace((15,27), distances=(1.7,3.33), harmonic=True),
                      ift.RGSpace(73, distances=0.5643),
                      ift.LMSpace(lmax=30, mmax=25)],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_normalisation(self, space, tp):
         tol = 10 * _get_rtol(tp)
-        fft = ift.FFTOperator(space)
+        cospace = space.get_default_codomain()
+        fft = ift.FFTOperator(space, cospace)
         inp = ift.Field.from_random(domain=space, random_type='normal',
                                     std=1, mean=2, dtype=tp)
         out = fft.times(inp)
-        assert_allclose(ift.dobj.to_global_data(inp.val)[0], out.integrate(),
+        fft2 = ift.FFTOperator(cospace, space)
+        out2 = fft2.inverse_times(inp)
+        zero_idx = tuple([0]*len(space.shape))
+        assert_allclose(ift.dobj.to_global_data(inp.val)[zero_idx],
+                        out.integrate(),
+                        rtol=tol, atol=tol)
+        assert_allclose(ift.dobj.to_global_data(out.val),
+                        ift.dobj.to_global_data(out2.val),
                         rtol=tol, atol=tol)
