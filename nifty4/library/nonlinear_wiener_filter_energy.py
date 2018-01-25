@@ -27,6 +27,7 @@ class NonlinearWienerFilterEnergy(Energy):
                  inverter=None):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
         self.d = d
+        self.sunit = sunit
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.FFT = FFT
@@ -48,7 +49,7 @@ class NonlinearWienerFilterEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
                               self.nonlinearity, self.FFT, self.power, self.N,
-                              self.S, inverter=self.inverter)
+                              self.S, self.sunit, inverter=self.inverter)
 
     @property
     def value(self):

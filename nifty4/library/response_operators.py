@@ -21,7 +21,7 @@ from ..field import exp
 
 def LinearizedSignalResponse(Instrument, nonlinearity, FFT, power, s):
     return (Instrument * nonlinearity.derivative(s) *
-            FFT.adjoint * power)
+            FFT.inverse * power)
 
 def LinearizedPowerResponse(Instrument, nonlinearity, FFT, Projection, t, m):
     power = exp(0.5*t)
