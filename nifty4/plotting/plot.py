@@ -209,6 +209,9 @@ def plot(f, **kwargs):
     ax.set_xlabel(_get_kw("xlabel", "", **kwargs))
     ax.set_ylabel(_get_kw("ylabel", "", **kwargs))
     cmap = _get_kw("colormap", plt.rcParams['image.cmap'], **kwargs)
+    unit = kwargs.get('xunit')
+    if not unit:
+        unit = 1.
     if isinstance(dom, RGSpace):
         if len(dom.shape) == 1:
             npoints = dom.shape[0]
@@ -228,8 +231,8 @@ def plot(f, **kwargs):
             ny = dom.shape[1]
             dx = dom.distances[0]
             dy = dom.distances[1]
-            xc = np.arange(nx, dtype=np.float64)*dx
-            yc = np.arange(ny, dtype=np.float64)*dy
+            xc = np.arange(nx, dtype=np.float64)*dx/unit
+            yc = np.arange(ny, dtype=np.float64)*dy/unit
             im = ax.imshow(dobj.to_global_data(f.val),
                            extent=[xc[0], xc[-1], yc[0], yc[-1]],
                            vmin=kwargs.get("zmin"),
@@ -246,7 +249,7 @@ def plot(f, **kwargs):
         plt.xscale('log')
         plt.yscale('log')
         plt.title('power')
-        xcoord = dom.k_lengths / kwargs.get("xunit")
+        xcoord = dom.k_lengths / unit
         for i, fld in enumerate(f):
             ycoord = dobj.to_global_data(fld.val)
             plt.plot(xcoord, ycoord, label=label[i])
