@@ -33,4 +33,4 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "log", "tanh", "sqrt", "from_object", "from_random",
            "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
-           "redistribute", "default_distaxis", "mprint"]
+           "redistribute", "default_distaxis", "mprint", "is_numpy"]

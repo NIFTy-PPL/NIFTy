@@ -19,6 +19,7 @@ from .operators.linear_operator import LinearOperator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.scaling_operator import ScalingOperator
 from .operators.diagonal_operator import DiagonalOperator
+from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.fft_operator import FFTOperator
 from .operators.fft_smoothing_operator import FFTSmoothingOperator
 from .operators.direct_smoothing_operator import DirectSmoothingOperator
@@ -44,6 +45,7 @@ from .minimization.descent_minimizer import DescentMinimizer
 from .minimization.steepest_descent import SteepestDescent
 from .minimization.vl_bfgs import VL_BFGS
 from .minimization.relaxed_newton import RelaxedNewton
+from .minimization.scipy_minimizer import NewtonCG, L_BFGS_B
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.line_energy import LineEnergy
