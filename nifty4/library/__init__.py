@@ -8,3 +8,4 @@ from .noise_energy import NoiseEnergy
 from .nonlinear_power_curvature import NonlinearPowerCurvature
 from .nonlinear_power_energy import NonlinearPowerEnergy
 from .nonlinear_wiener_filter_energy import NonlinearWienerFilterEnergy
+from .nonlinearities import Exponential, Linear, Tanh, PositiveTanh
