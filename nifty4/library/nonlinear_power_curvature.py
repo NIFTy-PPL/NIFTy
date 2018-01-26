@@ -21,12 +21,11 @@ from .response_operators import LinearizedPowerResponse
 
 
 def NonlinearPowerCurvature(position, FFT, Instrument, nonlinearity,
-                            Projection, N, T, sample_list, inverter):
+                            Projection, N, T, sample_list, inverter, munit=1., sunit=1.):
     result = None
     for sample in sample_list:
-        LinearizedResponse = LinearizedPowerResponse(
-            Instrument, nonlinearity, FFT, Projection, position, sample)
-        op = LinearizedResponse.adjoint*N.inverse*LinearizedResponse
+        LinR = LinearizedPowerResponse(Instrument, nonlinearity, FFT, Projection, position, sample, munit, sunit)
+        op = LinR.adjoint*N.inverse*LinR
         result = op if result is None else result + op
     result = result*(1./len(sample_list)) + T
     return InversionEnabler(result, inverter)

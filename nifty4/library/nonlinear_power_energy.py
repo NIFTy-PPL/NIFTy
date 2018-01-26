@@ -59,6 +59,7 @@ class NonlinearPowerEnergy(Energy):
         self.Projection = Projection
         self.sigma = sigma
         self.munit = munit
+        self.sunit = sunit
         if sample_list is None:
             if samples is None or samples == 0:
                 sample_list = [m]
@@ -99,9 +100,11 @@ class NonlinearPowerEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.m, self.D,
                               self.FFT, self.Instrument, self.nonlinearity,
-                              self.Projection, sigma=self._sigma,
+                              self.Projection, sigma=self.sigma,
                               samples=len(self.sample_list),
                               sample_list=self.sample_list,
+                              munit=self.munit,
+                              sunit=self.sunit,
                               inverter=self.inverter)
 
     @property
@@ -118,4 +121,4 @@ class NonlinearPowerEnergy(Energy):
         return NonlinearPowerCurvature(
             self.position, self.FFT, self.Instrument, self.nonlinearity,
             self.Projection, self.N, self.T, self.sample_list,
-            inverter=self.inverter)
+            self.inverter, self.munit, self.sunit)
