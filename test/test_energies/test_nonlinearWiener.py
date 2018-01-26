@@ -83,7 +83,7 @@ class Energy_Tests(unittest.TestCase):
         dim = len(space.shape)
         fft = ift.FFTOperator(space)
         hspace = fft.target[0]
-        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
+        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=True)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
