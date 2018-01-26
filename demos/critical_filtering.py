@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     # Define harmonic transformation and associated harmonic space
     h_space = s_space.get_default_codomain()
-    fft = ift.FFTOperator(h_space, s_space)
+    fft = ift.HarmonicTransformOperator(h_space, s_space)
 
     # Set up power space
     p_space = ift.PowerSpace(h_space,
