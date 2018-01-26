@@ -23,9 +23,9 @@ def LinearizedSignalResponse(Instrument, nonlinearity, FFT, power, s, sunit):
     return sunit * (Instrument * nonlinearity.derivative(s) * FFT.inverse * power)
 
 
-def LinearizedPowerResponse(Instrument, nonlinearity, FFT, Projection, t, m):
-    power = exp(0.5*t)
-    position = FFT.adjoint_times(Projection.adjoint_times(power) * m)
+def LinearizedPowerResponse(Instrument, nonlinearity, FFT, Projection, t, m, munit, sunit):
+    power = exp(0.5*t) * munit
+    position = FFT.inverse_times(Projection.adjoint_times(power) * m)
     linearization = nonlinearity.derivative(position)
-    return (0.5 * Instrument * linearization * FFT.adjoint * m *
-            Projection.adjoint * power)
+    return sunit * (0.5 * Instrument * linearization * FFT.inverse * m *
+                    Projection.adjoint * power)
