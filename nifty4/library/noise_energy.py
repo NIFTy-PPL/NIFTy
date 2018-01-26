@@ -22,9 +22,9 @@ from ..minimization.energy import Energy
 
 
 class NoiseEnergy(Energy):
-    def __init__(self, position, d, m, D, t, HarmonicTransform, Instrument, nonlinearity,
-                 alpha, q, Projection, munit=1., sunit=1., dunit=1., samples=3, sample_list=None,
-                 inverter=None):
+    def __init__(self, position, d, m, D, t, HarmonicTransform, Instrument,
+                 nonlinearity, alpha, q, Projection, munit=1., sunit=1.,
+                 dunit=1., samples=3, sample_list=None, inverter=None):
         super(NoiseEnergy, self).__init__(position=position)
         self.m = m
         self.D = D
@@ -53,14 +53,15 @@ class NoiseEnergy(Energy):
         self.sample_list = sample_list
         self.inverter = inverter
 
-        A = Projection.adjoint_times(munit * exp(.5*self.t)) # unit: munit
+        A = Projection.adjoint_times(munit * exp(.5 * self.t))  # unit: munit
         map_s = self.ht(A * m)
 
         self._gradient = None
         for sample in self.sample_list:
             map_s = self.ht(A * sample)
 
-            residual = self.d - self.Instrument(sunit * self.nonlinearity(map_s))
+            residual = self.d - \
+                self.Instrument(sunit * self.nonlinearity(map_s))
             lh = .5 * residual.vdot(self.N.inverse_times(residual))
             grad = -.5 * self.N.inverse_times(residual.conjugate() * residual)
 
@@ -71,11 +72,13 @@ class NoiseEnergy(Energy):
                 self._value += lh
                 self._gradient += grad
 
-        self._value *= 1./len(self.sample_list)
-        self._value += .5 * self.position.integrate() + (self.alpha - 1.).vdot(self.position) + self.q.vdot(exp(-self.position))
+        self._value *= 1. / len(self.sample_list)
+        self._value += .5 * self.position.integrate()
+        self._value += (self.alpha - 1.).vdot(self.position) + \
+            self.q.vdot(exp(-self.position))
 
-        self._gradient *= 1./len(self.sample_list)
-        self._gradient += (self.alpha-0.5) - self.q * (exp(-self.position))
+        self._gradient *= 1. / len(self.sample_list)
+        self._gradient += (self.alpha - 0.5) - self.q * (exp(-self.position))
 
     def at(self, position):
         return self.__class__(

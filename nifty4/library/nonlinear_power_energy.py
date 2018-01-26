@@ -51,7 +51,9 @@ class NonlinearPowerEnergy(Energy):
         default : 3
     """
 
-    def __init__(self, position, d, N, m, D, HarmonicTransform, Instrument, nonlinearity, Projection, sigma=0., samples=3, sample_list=None, munit=1., sunit=1., inverter=None):
+    def __init__(self, position, d, N, m, D, HarmonicTransform, Instrument,
+                 nonlinearity, Projection, sigma=0., samples=3,
+                 sample_list=None, munit=1., sunit=1., inverter=None):
         super(NonlinearPowerEnergy, self).__init__(position)
         self.d, self.N, self.m, self.D, self.ht = d, N, m, D, HarmonicTransform
         self.Instrument = Instrument
@@ -72,16 +74,25 @@ class NonlinearPowerEnergy(Energy):
         self.T = SmoothnessOperator(domain=self.position.domain[0],
                                     strength=sigma, logarithmic=True)
 
-        A = Projection.adjoint_times(munit * exp(.5*position)) # unit: munit
+        A = Projection.adjoint_times(munit * exp(.5 * position))  # unit: munit
         map_s = self.ht(A * m)
         Tpos = self.T(position)
 
         self._gradient = None
         for sample in self.sample_list:
             map_s = self.ht(A * sample)
-            LinR = LinearizedPowerResponse(Instrument, nonlinearity, self.ht, Projection, position, sample, munit, sunit)
+            LinR = LinearizedPowerResponse(
+                Instrument,
+                nonlinearity,
+                self.ht,
+                Projection,
+                position,
+                sample,
+                munit,
+                sunit)
 
-            residual = self.d - self.Instrument(sunit * self.nonlinearity(map_s))
+            residual = self.d - \
+                self.Instrument(sunit * self.nonlinearity(map_s))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
             grad = LinR.adjoint_times(self.N.inverse_times(residual))
 
@@ -92,9 +103,9 @@ class NonlinearPowerEnergy(Energy):
                 self._value += lh
                 self._gradient += grad
 
-        self._value *= 1./len(self.sample_list)
-        self._value += 0.5*self.position.vdot(Tpos)
-        self._gradient *= -1./len(self.sample_list)
+        self._value *= 1. / len(self.sample_list)
+        self._value += 0.5 * self.position.vdot(Tpos)
+        self._gradient *= -1. / len(self.sample_list)
         self._gradient += Tpos
 
     def at(self, position):
