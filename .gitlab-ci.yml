@@ -17,10 +17,11 @@ test_min:
   stage: test
   script:
     - pip install --user .
-    - nosetests -x --with-coverage --cover-package=nifty4 --cover-branches
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x --with-coverage --cover-package=nifty4 --cover-branches
+    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -q --with-coverage --cover-package=nifty4 --cover-branches
     - pip3 install --user .
-    - nosetests3 -x
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -x
+    - nosetests3 -q
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -q
     - >
+      coverage report
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
