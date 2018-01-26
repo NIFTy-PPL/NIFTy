@@ -23,7 +23,7 @@ from .response_operators import LinearizedSignalResponse
 
 
 class NonlinearWienerFilterEnergy(Energy):
-    def __init__(self, position, d, Instrument, nonlinearity, FFT, power, N, S, sunit,
+    def __init__(self, position, d, Instrument, nonlinearity, FFT, power, N, S, sunit=1.,
                  inverter=None):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
         self.d = d
