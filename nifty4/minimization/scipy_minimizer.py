@@ -45,7 +45,7 @@ class ScipyMinimizer(Minimizer):
         self._need_hessp = need_hessp
 
     def __call__(self, energy):
-        class _MinimizationDone:
+        class _MinimizationDone(BaseException):
             pass
 
         class _MinHelper(object):
