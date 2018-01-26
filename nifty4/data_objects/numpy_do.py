@@ -30,6 +30,10 @@ rank = 0
 master = True
 
 
+def is_numpy():
+    return True
+
+
 def mprint(*args):
     print(*args)
 

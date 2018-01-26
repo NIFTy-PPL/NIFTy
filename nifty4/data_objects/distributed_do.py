@@ -27,6 +27,10 @@ rank = _comm.Get_rank()
 master = (rank == 0)
 
 
+def is_numpy():
+    return False
+
+
 def mprint(*args):
     if master:
         print(*args)
@@ -259,6 +263,7 @@ class data_object(object):
     def fill(self, value):
         self._data.fill(value)
 
+
 def full(shape, fill_value, dtype=None, distaxis=0):
     return data_object(shape, np.full(local_shape(shape, distaxis),
                                       fill_value, dtype), distaxis)
@@ -346,7 +351,7 @@ def local_data(arr):
 
 def ibegin_from_shape(glob_shape, distaxis=0):
     res = [0] * len(glob_shape)
-    if distaxis<0:
+    if distaxis < 0:
         return res
     res[distaxis] = _shareRange(glob_shape[distaxis], ntask, rank)[0]
     return tuple(res)
