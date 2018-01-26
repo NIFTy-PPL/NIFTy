@@ -19,13 +19,13 @@
 from ..field import exp
 
 
-def LinearizedSignalResponse(Instrument, nonlinearity, FFT, power, s, sunit):
-    return sunit * (Instrument * nonlinearity.derivative(s) * FFT.inverse * power)
+def LinearizedSignalResponse(Instrument, nonlinearity, HarmonicTransform, power, s, sunit):
+    return sunit * (Instrument * nonlinearity.derivative(s) * HarmonicTransform * power)
 
 
-def LinearizedPowerResponse(Instrument, nonlinearity, FFT, Projection, t, m, munit, sunit):
+def LinearizedPowerResponse(Instrument, nonlinearity, HarmonicTransform, Projection, t, m, munit, sunit):
     power = exp(0.5*t) * munit
-    position = FFT.inverse_times(Projection.adjoint_times(power) * m)
+    position = HarmonicTransform(Projection.adjoint_times(power) * m)
     linearization = nonlinearity.derivative(position)
-    return sunit * (0.5 * Instrument * linearization * FFT.inverse * m *
+    return sunit * (0.5 * Instrument * linearization * HarmonicTransform * m *
                     Projection.adjoint * power)

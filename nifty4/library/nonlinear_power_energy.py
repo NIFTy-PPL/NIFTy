@@ -51,9 +51,9 @@ class NonlinearPowerEnergy(Energy):
         default : 3
     """
 
-    def __init__(self, position, d, N, m, D, FFT, Instrument, nonlinearity, Projection, sigma=0., samples=3, sample_list=None, munit=1., sunit=1., inverter=None):
+    def __init__(self, position, d, N, m, D, HarmonicTransform, Instrument, nonlinearity, Projection, sigma=0., samples=3, sample_list=None, munit=1., sunit=1., inverter=None):
         super(NonlinearPowerEnergy, self).__init__(position)
-        self.d, self.N, self.m, self.D, self.FFT = d, N, m, D, FFT
+        self.d, self.N, self.m, self.D, self.ht = d, N, m, D, HarmonicTransform
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.Projection = Projection
@@ -73,13 +73,13 @@ class NonlinearPowerEnergy(Energy):
                                     strength=sigma, logarithmic=True)
 
         A = Projection.adjoint_times(munit * exp(.5*position)) # unit: munit
-        map_s = FFT.inverse_times(A * m)
+        map_s = self.ht(A * m)
         Tpos = self.T(position)
 
         self._gradient = None
         for sample in self.sample_list:
-            map_s = FFT.inverse_times(A * sample)
-            LinR = LinearizedPowerResponse(Instrument, nonlinearity, FFT, Projection, position, sample, munit, sunit)
+            map_s = self.ht(A * sample)
+            LinR = LinearizedPowerResponse(Instrument, nonlinearity, self.ht, Projection, position, sample, munit, sunit)
 
             residual = self.d - self.Instrument(sunit * self.nonlinearity(map_s))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
@@ -99,7 +99,7 @@ class NonlinearPowerEnergy(Energy):
 
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.m, self.D,
-                              self.FFT, self.Instrument, self.nonlinearity,
+                              self.ht, self.Instrument, self.nonlinearity,
                               self.Projection, sigma=self.sigma,
                               samples=len(self.sample_list),
                               sample_list=self.sample_list,
@@ -119,6 +119,6 @@ class NonlinearPowerEnergy(Energy):
     @memo
     def curvature(self):
         return NonlinearPowerCurvature(
-            self.position, self.FFT, self.Instrument, self.nonlinearity,
+            self.position, self.ht, self.Instrument, self.nonlinearity,
             self.Projection, self.N, self.T, self.sample_list,
             self.inverter, self.munit, self.sunit)

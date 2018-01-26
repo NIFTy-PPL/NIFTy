@@ -22,7 +22,7 @@ from ..minimization.energy import Energy
 
 
 class NoiseEnergy(Energy):
-    def __init__(self, position, d, m, D, t, FFT, Instrument, nonlinearity,
+    def __init__(self, position, d, m, D, t, HarmonicTransform, Instrument, nonlinearity,
                  alpha, q, Projection, munit=1., sunit=1., dunit=1., samples=3, sample_list=None,
                  inverter=None):
         super(NoiseEnergy, self).__init__(position=position)
@@ -32,7 +32,7 @@ class NoiseEnergy(Energy):
         self.N = DiagonalOperator(diagonal=dunit**2 * exp(self.position))
         self.t = t
         self.samples = samples
-        self.FFT = FFT
+        self.ht = HarmonicTransform
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.munit = munit
@@ -54,11 +54,11 @@ class NoiseEnergy(Energy):
         self.inverter = inverter
 
         A = Projection.adjoint_times(munit * exp(.5*self.t)) # unit: munit
-        map_s = FFT.inverse_times(A * m)
+        map_s = self.ht(A * m)
 
         self._gradient = None
         for sample in self.sample_list:
-            map_s = FFT.inverse_times(A * sample)
+            map_s = self.ht(A * sample)
 
             residual = self.d - self.Instrument(sunit * self.nonlinearity(map_s))
             lh = .5 * residual.vdot(self.N.inverse_times(residual))
@@ -79,7 +79,7 @@ class NoiseEnergy(Energy):
 
     def at(self, position):
         return self.__class__(
-            position, self.d, self.m, self.D, self.t, self.FFT,
+            position, self.d, self.m, self.D, self.t, self.ht,
             self.Instrument, self.nonlinearity, self.alpha, self.q,
             self.Projection, munit=self.munit, sunit=self.sunit,
             dunit=self.dunit, sample_list=self.sample_list,
