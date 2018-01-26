@@ -83,6 +83,7 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
+
     @expand(product([0, 1, 2],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_composed_fft(self, index, dtype):
@@ -97,63 +98,10 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
-    #@expand(product([0, 3, 6, 11, 30],
-    #                [np.float64, np.float32, np.complex64, np.complex128]))
-    #def test_sht(self, lm, tp):
-    #    tol = _get_rtol(tp)
-    #    a = ift.LMSpace(lmax=lm)
-    #    b = ift.GLSpace(nlat=lm+1)
-    #    fft = ift.FFTOperator(domain=a, target=b)
-    #    inp = ift.Field.from_random(domain=a, random_type='normal',
-    #                                std=7, mean=3, dtype=tp)
-    #    out = fft.inverse_times(fft.times(inp))
-    #    assert_allclose(ift.dobj.to_global_data(inp.val),
-    #                    ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
-
-    #@expand(product([128, 256],
-    #                [np.float64, np.float32, np.complex64, np.complex128]))
-    #def test_sht2(self, lm, tp):
-    #    a = ift.LMSpace(lmax=lm)
-    #    b = ift.HPSpace(nside=lm//2)
-    #    fft = ift.FFTOperator(domain=a, target=b)
-    #    inp = ift.Field.from_random(domain=a, random_type='normal',
-    #                                std=1, mean=0, dtype=tp)
-    #    out = fft.inverse_times(fft.times(inp))
-    #    assert_allclose(ift.dobj.to_global_data(inp.val),
-    #                    ift.dobj.to_global_data(out.val), rtol=1e-3, atol=1e-1)
-
-    @expand(product([128, 256],
-                    [np.float64, np.float32, np.complex64, np.complex128]))
-    def test_dotsht(self, lm, tp):
-        tol = 10 * _get_rtol(tp)
-        a = ift.LMSpace(lmax=lm)
-        b = ift.GLSpace(nlat=lm+1)
-        fft = ift.FFTOperator(domain=a, target=b)
-        inp = ift.Field.from_random(domain=a, random_type='normal',
-                                    std=1, mean=0, dtype=tp)
-        out = fft.times(inp)
-        v1 = np.sqrt(out.vdot(out))
-        v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
-        assert_allclose(v1, v2, rtol=tol, atol=tol)
-
-    @expand(product([128, 256],
-                    [np.float64, np.float32, np.complex64, np.complex128]))
-    def test_dotsht2(self, lm, tp):
-        tol = 10 * _get_rtol(tp)
-        a = ift.LMSpace(lmax=lm)
-        b = ift.HPSpace(nside=lm//2)
-        fft = ift.FFTOperator(domain=a, target=b)
-        inp = ift.Field.from_random(domain=a, random_type='normal',
-                                    std=1, mean=0, dtype=tp)
-        out = fft.times(inp)
-        v1 = np.sqrt(out.vdot(out))
-        v2 = np.sqrt(inp.vdot(fft.adjoint_times(out)))
-        assert_allclose(v1, v2, rtol=tol, atol=tol)
 
     @expand(product([ift.RGSpace(128, distances=3.76, harmonic=True),
                      ift.RGSpace((15,27), distances=(1.7,3.33), harmonic=True),
-                     ift.RGSpace(73, distances=0.5643),
-                     ift.LMSpace(lmax=30, mmax=25)],
+                     ift.RGSpace(73, distances=0.5643)],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_normalisation(self, space, tp):
         tol = 10 * _get_rtol(tp)

@@ -28,6 +28,8 @@ class ResponseOperator_Tests(unittest.TestCase):
 
     @expand(product(spaces, [0.,  5., 1.], [0., 1., .33]))
     def test_property(self, space, sigma, sensitivity):
+        if not isinstance(space, ift.RGSpace):  # no smoothing supported
+            sigma = 0.
         op = ift.ResponseOperator(space, sigma=[sigma],
                                   sensitivity=[sensitivity])
         if op.domain[0] != space:

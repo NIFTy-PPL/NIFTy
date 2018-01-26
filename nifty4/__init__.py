@@ -19,6 +19,7 @@ from .operators.linear_operator import LinearOperator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.scaling_operator import ScalingOperator
 from .operators.diagonal_operator import DiagonalOperator
+from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.fft_operator import FFTOperator
 from .operators.fft_smoothing_operator import FFTSmoothingOperator
 from .operators.direct_smoothing_operator import DirectSmoothingOperator
