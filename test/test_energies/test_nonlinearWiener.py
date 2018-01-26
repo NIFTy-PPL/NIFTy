@@ -119,3 +119,56 @@ class Energy_Tests(unittest.TestCase):
         b = energy0.gradient.vdot(direction)
         tol = 1e-2
         assert_allclose(a, b, rtol=tol, atol=tol)
+
+    @expand(product([ift.RGSpace(64, distances=.789),
+                     ift.RGSpace([32, 32], distances=.789)],
+                    [ift.library.Exponential, ift.library.Linear]))
+    def testNoise(self, space, nonlinearity):
+        f = nonlinearity()
+        dim = len(space.shape)
+        fft = ift.FFTOperator(space)
+        hspace = fft.target[0]
+        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
+        pspace = ift.PowerSpace(hspace, binbounds=binbounds)
+        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        xi = ift.Field.from_random(domain=hspace, random_type='normal')
+
+        def pspec(k): return 1 / (1 + k**2)**dim
+        tau = ift.PS_field(pspace, pspec)
+        A = P.adjoint_times(ift.sqrt(tau))
+        n = ift.Field.from_random(domain=space, random_type='normal')
+        s = fft.inverse_times(xi * A)
+        diag = ift.Field.ones(space) * 10
+        R = ift.DiagonalOperator(diag)
+        diag = ift.Field.ones(space)
+        eta0 = ift.log(diag)
+        N = ift.DiagonalOperator(diag)
+        d = R(f(s)) + n
+
+        alpha = ift.Field(d.domain, val=2.)
+        q = ift.Field(d.domain, val=1e-5)
+
+        direction = ift.Field.from_random('normal', d.domain)
+        direction /= np.sqrt(direction.var())
+        eps = 1e-10
+        eta1 = eta0 + eps * direction
+
+        IC = ift.GradientNormController(name='IC', verbose=False, iteration_limit=100, tol_abs_gradnorm=1e-5)
+        inverter = ift.ConjugateGradient(IC)
+
+        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        D = ift.library.NonlinearWienerFilterEnergy(position=xi, d=d, Instrument=R, nonlinearity=f, FFT=fft, power=A, N=N, S=S, inverter=inverter).curvature
+
+        energy0 = ift.library.NoiseEnergy(
+            position=eta0, d=d, m=xi, D=D, t=tau, Instrument=R,
+            alpha=alpha, q=q, Projection=P, nonlinearity=f,
+            FFT=fft, samples=3)
+        energy1 = ift.library.NoiseEnergy(
+            position=eta1, d=d, m=xi, D=D, t=tau, Instrument=R,
+            alpha=alpha, q=q, Projection=P, nonlinearity=f,
+            FFT=fft, samples=3)
+
+        a = (energy1.value - energy0.value) / eps
+        b = energy0.gradient.vdot(direction)
+        tol = 1e-2
+        assert_allclose(a, b, rtol=tol, atol=tol)
