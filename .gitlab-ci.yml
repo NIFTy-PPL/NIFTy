@@ -22,6 +22,8 @@ test_min:
     - pip3 install --user .
     - nosetests3 -q
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -q
+    - echo cvg
+    - coverage report
+    - echo cvg
     - >
-      coverage report
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
