@@ -39,18 +39,17 @@ def _check_adjointness(op, dtype=np.float64):
                         op.inverse_adjoint_times(f1).vdot(f2),
                         rtol=1e-8)
 
-_harmonic_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
-                    ift.RGSpace((12, 46), distances=(0.2, 0.3), harmonic=True),
-                    ift.LMSpace(17)]
+_h_RG_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
+                ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)]
+_h_spaces = _h_RG_spaces + [ift.LMSpace(17)]
 
-_position_spaces = [ift.RGSpace(19, distances=0.7),
-                    ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8)),
-                    ift.HPSpace(17),
-                    ift.GLSpace(8, 13)]
+_p_RG_spaces = [ift.RGSpace(19, distances=0.7),
+                ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))]
+_p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
 
 
 class Adjointness_Tests(unittest.TestCase):
-    @expand(product(_harmonic_spaces, [np.float64, np.complex128]))
+    @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
         op = ift.PowerProjectionOperator(sp)
         _check_adjointness(op, dtype)
@@ -63,10 +62,15 @@ class Adjointness_Tests(unittest.TestCase):
         op = ift.PowerProjectionOperator(sp, ps)
         _check_adjointness(op, dtype)
 
-    @expand(product(_harmonic_spaces+_position_spaces,
+    @expand(product(_h_RG_spaces+_p_RG_spaces,
                     [np.float64, np.complex128]))
     def testFFT(self, sp, dtype):
         op = ift.FFTOperator(sp)
         _check_adjointness(op, dtype)
         op = ift.FFTOperator(sp.get_default_codomain())
+        _check_adjointness(op, dtype)
+
+    @expand(product(_h_spaces, [np.float64, np.complex128]))
+    def testHarmonic(self, sp, dtype):
+        op = ift.HarmonicTransformOperator(sp)
         _check_adjointness(op, dtype)

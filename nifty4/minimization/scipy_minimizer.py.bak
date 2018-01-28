@@ -29,23 +29,17 @@ class ScipyMinimizer(Minimizer):
     ----------
     controller : IterationController
         Object that decides when to terminate the minimization.
-    method     : str
-        The selected Scipy minimization method.
-    options    : dictionary
-        A set of custom options for the selected minimizer.
     """
 
-    def __init__(self, controller, method, options, need_hessp):
+    def __init__(self, controller, method="trust-ncg"):
         super(ScipyMinimizer, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
         self._controller = controller
         self._method = method
-        self._options = options
-        self._need_hessp = need_hessp
 
     def __call__(self, energy):
-        class _MinimizationDone(BaseException):
+        class _MinimizationDone:
             pass
 
         class _MinHelper(object):
@@ -77,33 +71,26 @@ class ScipyMinimizer(Minimizer):
                 return res.val.reshape(-1)
 
         import scipy.optimize as opt
-        hlp = _MinHelper(self._controller, energy)
-        energy = None
-        status = self._controller.start(hlp._energy)
+        status = self._controller.start(energy)
         if status != self._controller.CONTINUE:
-            return hlp._energy, status
+            return energy, status
+        hlp = _MinHelper(self._controller, energy)
+        options = {'disp': False,
+                   'xtol': 1e-15,
+                   'eps': 1.4901161193847656e-08,
+                   'return_all': False,
+                   'maxiter': None}
+        options = {'disp': False,
+                   'ftol': 1e-15,
+                   'gtol': 1e-15,
+                   'eps': 1.4901161193847656e-08}
         try:
-            if self._need_hessp:
-                opt.minimize(hlp.fun, hlp._energy.position.val.reshape(-1),
-                             method=self._method, jac=hlp.jac,
-                             hessp=hlp.hessp,
-                             options=self._options)
-            else:
-                opt.minimize(hlp.fun, hlp._energy.position.val.reshape(-1),
-                             method=self._method, jac=hlp.jac,
-                             options=self._options)
+            opt.minimize(hlp.fun, energy.position.val.reshape(-1),
+                         method=self._method, jac=hlp.jac,
+                         hessp=hlp.hessp,
+                         options=options)
         except _MinimizationDone:
-            status = self._controller.check(hlp._energy)
-            return hlp._energy, self._controller.check(hlp._energy)
+            energy = hlp._energy
+            status = self._controller.check(energy)
+            return energy, status
         return hlp._energy, self._controller.ERROR
-
-
-def NewtonCG(controller):
-    return ScipyMinimizer(controller, "Newton-CG",
-                          {"xtol": 1e-20, "maxiter": None}, True)
-
-
-def L_BFGS_B(controller, maxcor=10):
-    return ScipyMinimizer(controller, "L-BFGS-B",
-                          {"ftol": 1e-20, "gtol": 1e-20, "maxcor": maxcor},
-                          False)
