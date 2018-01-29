@@ -313,5 +313,5 @@ class Curvature_Tests(unittest.TestCase):
 
         a = (gradient1 - gradient0) / eps
         b = energy0.curvature(direction)
-        tol = 1e-1
+        tol = 1e-3
         assert_allclose(a.val, b.val, rtol=tol, atol=tol)

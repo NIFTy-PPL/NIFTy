@@ -23,9 +23,9 @@ def LinearizedSignalResponse(Instrument, nonlinearity, ht, power, s, sunit):
     return sunit * (Instrument * nonlinearity.derivative(s) * ht * power)
 
 
-def LinearizedPowerResponse(Instrument, nonlinearity, ht, Projection, t, m, munit, sunit):
-    power = exp(0.5*t) * munit
-    position = ht(Projection.adjoint_times(power) * m)
+def LinearizedPowerResponse(Instrument, nonlinearity, ht, Projection, tau, xi, munit, sunit):
+    power = exp(0.5*tau) * munit
+    position = ht(Projection.adjoint_times(power) * xi)
     linearization = nonlinearity.derivative(position)
-    return sunit * (0.5 * Instrument * linearization * ht * m *
+    return sunit * (0.5 * Instrument * linearization * ht * xi *
                     Projection.adjoint * power)

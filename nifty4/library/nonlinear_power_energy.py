@@ -51,11 +51,11 @@ class NonlinearPowerEnergy(Energy):
         default : 3
     """
 
-    def __init__(self, position, d, N, m, D, ht, Instrument, nonlinearity,
+    def __init__(self, position, d, N, xi, D, ht, Instrument, nonlinearity,
                  Projection, sigma=0., samples=3, sample_list=None,
                  inverter=None, munit=1., sunit=1.):
         super(NonlinearPowerEnergy, self).__init__(position)
-        self.m = m
+        self.xi = xi
         self.D = D
         self.d = d
         self.N = N
@@ -70,36 +70,27 @@ class NonlinearPowerEnergy(Energy):
         self.sunit = sunit
         if sample_list is None:
             if samples is None or samples == 0:
-                sample_list = [m]
+                sample_list = [xi]
             else:
-                sample_list = [D.generate_posterior_sample() + m
+                sample_list = [D.generate_posterior_sample() + xi
                                for _ in range(samples)]
         self.sample_list = sample_list
         self.inverter = inverter
 
         A = Projection.adjoint_times(munit * exp(.5 * position))  # unit: munit
-        map_s = self.ht(A * m)
+        map_s = self.ht(A * xi)
         Tpos = self.T(position)
 
         self._gradient = None
-        for sample in self.sample_list:
-            map_s = self.ht(A * sample)
+        for xi_sample in self.sample_list:
+            map_s = self.ht(A * xi_sample)
             LinR = LinearizedPowerResponse(
-                Instrument,
-                nonlinearity,
-                self.ht,
-                Projection,
-                position,
-                sample,
-                munit,
-                sunit)
+                self.Instrument, self.nonlinearity, self.ht, self.Projection,
+                self.position, xi_sample, munit=self.munit, sunit=self.sunit)
 
             residual = self.d - \
                 self.Instrument(sunit * self.nonlinearity(map_s))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
-            LinR = LinearizedPowerResponse(
-                self.Instrument, self.nonlinearity, self.ht, self.Projection,
-                self.position, sample, munit=self.munit, sunit=self.sunit)
             grad = LinR.adjoint_times(self.N.inverse_times(residual))
 
             if self._gradient is None:
@@ -115,7 +106,7 @@ class NonlinearPowerEnergy(Energy):
         self._gradient += Tpos
 
     def at(self, position):
-        return self.__class__(position, self.d, self.N, self.m, self.D,
+        return self.__class__(position, self.d, self.N, self.xi, self.D,
                               self.ht, self.Instrument, self.nonlinearity,
                               self.Projection, sigma=self.sigma,
                               samples=len(self.sample_list),
