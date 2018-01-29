@@ -39,21 +39,26 @@ class Power_Energy_Tests(unittest.TestCase):
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
-        def pspec(k): return 1 / (1 + k**2)**dim
-        tau0 = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(tau0))
-        n = ift.Field.from_random(domain=space, random_type='normal')
+        # TODO Power spectrum abhängig von Anzahl der Pixel
+        def pspec(k): return 64 / (1 + k**2)**dim
+        pspec = ift.PS_field(pspace, pspec)
+        tau0 = ift.log(pspec)
+        A = P.adjoint_times(ift.sqrt(pspec))
+        n = ift.Field.from_random(domain=space, random_type='normal', std=.01)
+        N = ift.DiagonalOperator(n**2)
         s = xi * A
-        diag = ift.Field.ones(space) * 10
+        diag = ift.Field.ones(space)
         Instrument = ift.DiagonalOperator(diag)
         R = Instrument * ht
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
         d = R(s) + n
+        ift.plot(d, name='d.png')
+        ift.plot(ht(s), name='s.png')
+        ift.plot(n, name='n.png')
+        ift.plot(pspec, name='pspec.png')
 
         direction = ift.Field.from_random('normal', pspace)
         direction /= np.sqrt(direction.var())
-        eps = 1e-10
+        eps = 1e-7
         tau1 = tau0 + eps * direction
 
         IC = ift.GradientNormController(
@@ -68,14 +73,21 @@ class Power_Energy_Tests(unittest.TestCase):
         D = ift.library.WienerFilterEnergy(position=s, d=d, R=R, N=N, S=S,
                                            inverter=inverter).curvature
 
+        w = ift.Field.zeros_like(tau0)
+        Nsamples = 10
+        for i in range(Nsamples):
+            sample = D.generate_posterior_sample() + s
+            w += P(abs(sample)**2)
+        w /= Nsamples
+
         energy0 = ift.library.CriticalPowerEnergy(
-            position=tau0, m=xi, D=D, inverter=inverter)
+            position=tau0, m=s, inverter=inverter, w=w)
         energy1 = ift.library.CriticalPowerEnergy(
-            position=tau1, m=xi, D=D, inverter=inverter)
+            position=tau1, m=s, inverter=inverter, w=w)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
-        tol = 1e-10
+        tol = 1e-4
         assert_allclose(a, b, rtol=tol, atol=tol)
 
     @expand(product([ift.RGSpace(64, distances=.789),
