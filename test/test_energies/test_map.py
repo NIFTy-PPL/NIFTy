@@ -28,7 +28,7 @@ from numpy.testing import assert_allclose
 # TODO Set tolerances and eps to reasonable values
 
 
-class Map_Energy_Tests(unittest.TestCase):
+class Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [4, 78, 23]))
@@ -168,6 +168,8 @@ class Map_Energy_Tests(unittest.TestCase):
         tol = 1e-4
         assert_allclose(a, b, rtol=tol, atol=tol)
 
+
+class Curvature_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [4, 78, 23]))
