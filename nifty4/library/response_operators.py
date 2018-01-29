@@ -19,14 +19,15 @@
 from ..field import exp
 
 
-def LinearizedSignalResponse(Instrument, nonlinearity, FFT, power, m):
-    position = FFT.adjoint_times(power*m)
+def LinearizedSignalResponse(Instrument, nonlinearity, ht, power, m):
+    position = ht(power*m)
     return (Instrument * nonlinearity.derivative(position) *
-            FFT.adjoint * power)
+            ht * power)
 
-def LinearizedPowerResponse(Instrument, nonlinearity, FFT, Projection, t, m):
+
+def LinearizedPowerResponse(Instrument, nonlinearity, ht, Projection, t, m):
     power = exp(0.5*t)
-    position = FFT.adjoint_times(Projection.adjoint_times(power) * m)
+    position = ht(Projection.adjoint_times(power) * m)
     linearization = nonlinearity.derivative(position)
-    return (0.5 * Instrument * linearization * FFT.adjoint * m *
+    return (0.5 * Instrument * linearization * ht * m *
             Projection.adjoint * power)

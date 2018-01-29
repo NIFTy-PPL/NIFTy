@@ -51,7 +51,7 @@ class NonlinearPowerEnergy(Energy):
         default : 3
     """
 
-    def __init__(self, position, d, N, m, D, FFT, Instrument, nonlinearity,
+    def __init__(self, position, d, N, m, D, ht, Instrument, nonlinearity,
                  Projection, sigma=0., samples=3, sample_list=None,
                  inverter=None):
         super(NonlinearPowerEnergy, self).__init__(position)
@@ -61,7 +61,7 @@ class NonlinearPowerEnergy(Energy):
         self.N = N
         self.T = SmoothnessOperator(domain=self.position.domain[0],
                                     strength=sigma, logarithmic=True)
-        self.FFT = FFT
+        self.ht = ht
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.Projection = Projection
@@ -80,7 +80,7 @@ class NonlinearPowerEnergy(Energy):
 
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.m, self.D,
-                              self.FFT, self.Instrument, self.nonlinearity,
+                              self.ht, self.Instrument, self.nonlinearity,
                               self.Projection, sigma=self._sigma,
                               samples=len(self.sample_list),
                               sample_list=self.sample_list,
@@ -91,10 +91,10 @@ class NonlinearPowerEnergy(Energy):
         for sample in self.sample_list:
             residual = self.d - \
                 self.Instrument(self.nonlinearity(
-                    self.FFT.adjoint_times(self.power*sample)))
+                    self.ht(self.power*sample)))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
             LinR = LinearizedPowerResponse(
-                self.Instrument, self.nonlinearity, self.FFT, self.Projection,
+                self.Instrument, self.nonlinearity, self.ht, self.Projection,
                 self.position, sample)
             grad = LinR.adjoint_times(self.N.inverse_times(residual))
             if likelihood_gradient is None:
@@ -122,6 +122,6 @@ class NonlinearPowerEnergy(Energy):
     @memo
     def curvature(self):
         return NonlinearPowerCurvature(
-            self.position, self.FFT, self.Instrument, self.nonlinearity,
+            self.position, self.ht, self.Instrument, self.nonlinearity,
             self.Projection, self.N, self.T, self.sample_list,
             inverter=self.inverter)

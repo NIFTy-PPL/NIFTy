@@ -29,8 +29,10 @@ from numpy.testing import assert_allclose
 
 class Power_Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
-                     ift.RGSpace([32, 32], distances=.789)]))
-    def testLinearPower(self, space):
+                     ift.RGSpace([32, 32], distances=.789)],
+                    [132, 42, 3]))
+    def testLinearPower(self, space, seed):
+        np.random.seed(seed)
         dim = len(space.shape)
         hspace = space.get_default_codomain()
         ht = ift.HarmonicTransformOperator(hspace, space)
@@ -92,12 +94,14 @@ class Power_Energy_Tests(unittest.TestCase):
 
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Exponential, ift.library.Linear]))
-    def testNonlinearPower(self, space, nonlinearity):
+                    [ift.library.Exponential, ift.library.Linear],
+                    [132, 42, 3]))
+    def testNonlinearPower(self, space, nonlinearity, seed):
+        np.random.seed(seed)
         f = nonlinearity()
         dim = len(space.shape)
-        fft = ift.FFTOperator(space)
-        hspace = fft.target[0]
+        hspace = space.get_default_codomain()
+        ht = ift.HarmonicTransformOperator(hspace, space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=True)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
@@ -107,7 +111,7 @@ class Power_Energy_Tests(unittest.TestCase):
         tau0 = ift.PS_field(pspace, pspec)
         A = P.adjoint_times(ift.sqrt(tau0))
         n = ift.Field.from_random(domain=space, random_type='normal')
-        s = fft.inverse_times(xi * A)
+        s = ht(xi * A)
         diag = ift.Field.ones(space) * 10
         R = ift.DiagonalOperator(diag)
         diag = ift.Field.ones(space)
@@ -116,7 +120,7 @@ class Power_Energy_Tests(unittest.TestCase):
 
         direction = ift.Field.from_random('normal', pspace)
         direction /= np.sqrt(direction.var())
-        eps = 1e-10
+        eps = 1e-7
         tau1 = tau0 + eps * direction
 
         IC = ift.GradientNormController(
@@ -132,11 +136,13 @@ class Power_Energy_Tests(unittest.TestCase):
             d=d,
             Instrument=R,
             nonlinearity=f,
-            FFT=fft,
             power=A,
             N=N,
             S=S,
+            ht=ht,
             inverter=inverter).curvature
+        Nsamples = 10
+        sample_list = [D.generate_posterior_sample() + xi for _ in range(Nsamples)]
 
         energy0 = ift.library.NonlinearPowerEnergy(
             position=tau0,
@@ -146,9 +152,9 @@ class Power_Energy_Tests(unittest.TestCase):
             Instrument=R,
             Projection=P,
             nonlinearity=f,
-            FFT=fft,
+            ht=ht,
             N=N,
-            inverter=inverter)
+            sample_list=sample_list)
         energy1 = ift.library.NonlinearPowerEnergy(
             position=tau1,
             d=d,
@@ -157,11 +163,11 @@ class Power_Energy_Tests(unittest.TestCase):
             Instrument=R,
             Projection=P,
             nonlinearity=f,
-            FFT=fft,
+            ht=ht,
             N=N,
-            inverter=inverter)
+            sample_list=sample_list)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
-        tol = 1e-2
+        tol = 1e-4
         assert_allclose(a, b, rtol=tol, atol=tol)

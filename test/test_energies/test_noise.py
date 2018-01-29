@@ -30,12 +30,14 @@ from numpy.testing import assert_allclose
 class Noise_Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Exponential, ift.library.Linear]))
-    def testNoise(self, space, nonlinearity):
+                    [ift.library.Exponential, ift.library.Linear],
+                    [23, 131, 32]))
+    def testNoise(self, space, nonlinearity, seed):
+        np.random.seed(seed)
         f = nonlinearity()
         dim = len(space.shape)
-        fft = ift.FFTOperator(space)
-        hspace = fft.target[0]
+        hspace = space.get_default_codomain()
+        ht = ift.HarmonicTransformOperator(hspace, target=space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
@@ -44,13 +46,15 @@ class Noise_Energy_Tests(unittest.TestCase):
         def pspec(k): return 1 / (1 + k**2)**dim
         tau = ift.PS_field(pspace, pspec)
         A = P.adjoint_times(ift.sqrt(tau))
-        n = ift.Field.from_random(domain=space, random_type='normal')
-        s = fft.inverse_times(xi * A)
+        var = 1.
+        n = ift.Field.from_random(domain=space, random_type='normal', std=np.sqrt(var))
+        var = ift.Field(n.domain, val=var)
+        N = ift.DiagonalOperator(var)
+        eta0 = ift.log(var)
+        s = ht(xi * A)
         diag = ift.Field.ones(space) * 10
         R = ift.DiagonalOperator(diag)
         diag = ift.Field.ones(space)
-        eta0 = ift.log(diag)
-        N = ift.DiagonalOperator(diag)
         d = R(f(s)) + n
 
         alpha = ift.Field(d.domain, val=2.)
@@ -58,7 +62,7 @@ class Noise_Energy_Tests(unittest.TestCase):
 
         direction = ift.Field.from_random('normal', d.domain)
         direction /= np.sqrt(direction.var())
-        eps = 1e-10
+        eps = 1e-8
         eta1 = eta0 + eps * direction
 
         IC = ift.GradientNormController(
@@ -74,22 +78,24 @@ class Noise_Energy_Tests(unittest.TestCase):
             d=d,
             Instrument=R,
             nonlinearity=f,
-            FFT=fft,
+            ht=ht,
             power=A,
             N=N,
             S=S,
             inverter=inverter).curvature
+        Nsamples = 10
+        sample_list = [D.generate_posterior_sample() + xi for i in range(Nsamples)]
 
         energy0 = ift.library.NoiseEnergy(
             position=eta0, d=d, m=xi, D=D, t=tau, Instrument=R,
             alpha=alpha, q=q, Projection=P, nonlinearity=f,
-            FFT=fft, samples=3)
+            ht=ht, sample_list=sample_list)
         energy1 = ift.library.NoiseEnergy(
             position=eta1, d=d, m=xi, D=D, t=tau, Instrument=R,
             alpha=alpha, q=q, Projection=P, nonlinearity=f,
-            FFT=fft, samples=3)
+            ht=ht, sample_list=sample_list)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
-        tol = 1e-2
+        tol = 1e-5
         assert_allclose(a, b, rtol=tol, atol=tol)

@@ -20,9 +20,11 @@ from .. import Field, exp
 from ..operators.diagonal_operator import DiagonalOperator
 from ..minimization.energy import Energy
 
+# TODO Take only residual_sample_list as argument
+
 
 class NoiseEnergy(Energy):
-    def __init__(self, position, d, m, D, t, FFT, Instrument, nonlinearity,
+    def __init__(self, position, d, m, D, t, ht, Instrument, nonlinearity,
                  alpha, q, Projection, samples=3, sample_list=None,
                  inverter=None):
         super(NoiseEnergy, self).__init__(position=position)
@@ -32,7 +34,7 @@ class NoiseEnergy(Energy):
         self.N = DiagonalOperator(diagonal=exp(self.position))
         self.t = t
         self.samples = samples
-        self.FFT = FFT
+        self.ht = ht
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
 
@@ -53,7 +55,7 @@ class NoiseEnergy(Energy):
 
     def at(self, position):
         return self.__class__(
-            position, self.d, self.m, self.D, self.t, self.FFT,
+            position, self.d, self.m, self.D, self.t, self.ht,
             self.Instrument, self.nonlinearity, self.alpha, self.q,
             self.Projection, sample_list=self.sample_list,
             samples=self.samples, inverter=self.inverter)
@@ -63,7 +65,7 @@ class NoiseEnergy(Energy):
         for sample in self.sample_list:
             residual = self.d - \
                 self.Instrument(self.nonlinearity(
-                    self.FFT.adjoint_times(self.power*sample)))
+                    self.ht(self.power*sample)))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
             grad = -0.5 * self.N.inverse_times(residual.conjugate() * residual)
             if likelihood_gradient is None:
@@ -74,7 +76,7 @@ class NoiseEnergy(Energy):
                 likelihood_gradient += grad
 
         likelihood = ((likelihood / float(len(self.sample_list))) +
-                      0.5 * self.position.integrate() +
+                      0.5 * self.position.sum() +
                       (self.alpha - 1.).vdot(self.position) +
                       self.q.vdot(exp(-self.position)))
         likelihood_gradient = (

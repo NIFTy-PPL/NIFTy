@@ -43,7 +43,7 @@ class LogNormalWienerFilterEnergy(Energy):
        The prior signal covariance in harmonic space.
     """
 
-    def __init__(self, position, d, R, N, S, inverter, fft=None):
+    def __init__(self, position, d, R, N, S, inverter, ht=None):
         super(LogNormalWienerFilterEnergy, self).__init__(position=position)
         self.d = d
         self.R = R
@@ -51,21 +51,21 @@ class LogNormalWienerFilterEnergy(Energy):
         self.S = S
         self._inverter = inverter
 
-        if fft is None:
-            self._fft = create_composed_fft_operator(self.S.domain,
-                                                     all_to='position')
+        if ht is None:
+            self._ht = create_composed_fft_operator(self.S.domain,
+                                                    all_to='position')
         else:
-            self._fft = fft
+            self._ht = ht
 
-        self._expp_sspace = exp(self._fft(self.position))
+        self._expp_sspace = exp(self._ht(self.position))
 
         Sp = self.S.inverse_times(self.position)
-        expp = self._fft.adjoint_times(self._expp_sspace)
+        expp = self._ht.adjoint_times(self._expp_sspace)
         Rexppd = self.R(expp) - self.d
         NRexppd = self.N.inverse_times(Rexppd)
         self._value = 0.5*(self.position.vdot(Sp) + Rexppd.vdot(NRexppd))
-        exppRNRexppd = self._fft.adjoint_times(
-            self._expp_sspace * self._fft(self.R.adjoint_times(NRexppd)))
+        exppRNRexppd = self._ht.adjoint_times(
+            self._expp_sspace * self._ht(self.R.adjoint_times(NRexppd)))
         self._gradient = Sp + exppRNRexppd
 
     def at(self, position):
