@@ -24,9 +24,6 @@ from test.common import expand
 from numpy.testing import assert_allclose
 
 
-# TODO Add also other space types
-
-
 class Noise_Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],

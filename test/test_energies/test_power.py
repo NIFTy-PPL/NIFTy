@@ -24,9 +24,6 @@ from test.common import expand
 from numpy.testing import assert_allclose
 
 
-# TODO Add also other space types
-
-
 class Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
@@ -41,7 +38,6 @@ class Energy_Tests(unittest.TestCase):
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
-        # TODO Power spectrum should depend on number of pixels
         def pspec(k): return 64 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         tau0 = ift.log(pspec)
@@ -159,7 +155,6 @@ class Curvature_Tests(unittest.TestCase):
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
-        # TODO Power spectrum should depend on number of pixels
         def pspec(k): return 64 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         tau0 = ift.log(pspec)
