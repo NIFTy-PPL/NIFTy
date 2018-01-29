@@ -61,7 +61,7 @@ class GradientNormController(IterationController):
             if self._name is not None:
                 msg += self._name+":"
             msg += " Iteration #" + str(self._itcount)
-            msg += " energy={:.2E}".format(energy.value)
+            msg += " energy={:.6E}".format(energy.value)
             msg += " gradnorm={:.2E}".format(energy.gradient_norm)
             msg += " clvl=" + str(self._ccount)
             dobj.mprint(msg)

@@ -32,12 +32,11 @@ class NonlinearWienerFilterEnergy(Energy):
         self.nonlinearity = nonlinearity
         self.ht = ht
         self.power = power
-        position_map = self.ht(self.power * self.position)
+        m = self.ht(self.power * self.position)
         self.LinearizedResponse = LinearizedSignalResponse(
-            Instrument, nonlinearity, ht, power, position_map, sunit)
+            Instrument, nonlinearity, ht, power, m, sunit)
 
-        position_map = ht(self.power * self.position)
-        residual = d - Instrument(sunit * nonlinearity(position_map))
+        residual = d - Instrument(sunit * nonlinearity(m))
         self.N = N
         self.S = S
         self.inverter = inverter
