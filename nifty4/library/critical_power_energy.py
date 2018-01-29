@@ -101,8 +101,8 @@ class CriticalPowerEnergy(Energy):
         self._theta = exp(-self.position) * (self.q + self._w*0.5)
         Tt = self.T(self.position)
 
-        energy = self._theta.vdot(Field.ones_like(self._theta))
-        energy += self.position.vdot(Field.ones_like(self.position)) *(self.alpha-0.5)
+        energy = self._theta.sum()
+        energy += self.position.sum() * (self.alpha-0.5)
         energy += 0.5*self.position.vdot(Tt)
         self._value = energy.real
 
