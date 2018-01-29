@@ -167,3 +167,149 @@ class Map_Energy_Tests(unittest.TestCase):
         b = energy0.gradient.vdot(direction)
         tol = 1e-4
         assert_allclose(a, b, rtol=tol, atol=tol)
+
+    @expand(product([ift.RGSpace(64, distances=.789),
+                     ift.RGSpace([32, 32], distances=.789)],
+                    [4, 78, 23]))
+    def testLinearMapCurvature(self, space, seed):
+        np.random.seed(seed)
+        dim = len(space.shape)
+        hspace = space.get_default_codomain()
+        ht = ift.HarmonicTransformOperator(hspace, target=space)
+        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
+        pspace = ift.PowerSpace(hspace, binbounds=binbounds)
+        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
+
+        def pspec(k): return 1 / (1 + k**2)**dim
+        pspec = ift.PS_field(pspace, pspec)
+        A = P.adjoint_times(ift.sqrt(pspec))
+        n = ift.Field.from_random(domain=space, random_type='normal')
+        s0 = xi0 * A
+        diag = ift.Field.ones(space) * 10
+        Instrument = ift.DiagonalOperator(diag)
+        R = Instrument * ht
+        diag = ift.Field.ones(space)
+        N = ift.DiagonalOperator(diag)
+        d = R(s0) + n
+
+        direction = ift.Field.from_random('normal', hspace)
+        direction /= np.sqrt(direction.var())
+        eps = 1e-7
+        s1 = s0 + eps * direction
+
+        IC = ift.GradientNormController(
+            name='IC',
+            verbose=False,
+            iteration_limit=100,
+            tol_abs_gradnorm=1e-5)
+        inverter = ift.ConjugateGradient(IC)
+
+        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        energy0 = ift.library.WienerFilterEnergy(position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
+        gradient0 = energy0.gradient
+        gradient1 = energy0.at(s1).gradient
+
+        a = (gradient1 - gradient0) / eps
+        b = energy0.curvature(direction)
+        tol = 1e-7
+        assert_allclose(a.val, b.val, rtol=tol, atol=tol)
+
+    @expand(product([ift.RGSpace(64, distances=.789),
+                     ift.RGSpace([32, 32], distances=.789)],
+                     [4, 78, 23]))
+    def testLognormalMapCurvature(self, space, seed):
+        np.random.seed(seed)
+        dim = len(space.shape)
+        hspace = space.get_default_codomain()
+        ht = ift.HarmonicTransformOperator(hspace, target=space)
+        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
+        pspace = ift.PowerSpace(hspace, binbounds=binbounds)
+        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
+
+        def pspec(k): return 1 / (1 + k**2)**dim
+        pspec = ift.PS_field(pspace, pspec)
+        A = P.adjoint_times(ift.sqrt(pspec))
+        n = ift.Field.from_random(domain=space, random_type='normal')
+        sh0 = xi0 * A
+        s = ht(sh0)
+        diag = ift.Field.ones(space) * 10
+        Instrument = ift.DiagonalOperator(diag)
+        R = Instrument * ht
+        diag = ift.Field.ones(space)
+        N = ift.DiagonalOperator(diag)
+        d = Instrument(ift.exp(s)) + n
+
+        direction = ift.Field.from_random('normal', hspace)
+        direction /= np.sqrt(direction.var())
+        eps = 1e-7
+        sh1 = sh0 + eps * direction
+
+        IC = ift.GradientNormController(
+            name='IC',
+            verbose=False,
+            iteration_limit=100,
+            tol_abs_gradnorm=1e-5)
+        inverter = ift.ConjugateGradient(IC)
+
+        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+
+        energy0 = ift.library.LogNormalWienerFilterEnergy(
+            position=sh0, d=d, R=R, N=N, S=S, inverter=inverter)
+        gradient0 = energy0.gradient
+        gradient1 = energy0.at(sh1).gradient
+
+        a = (gradient1 - gradient0) / eps
+        b = energy0.curvature(direction)
+        tol = 1e-3
+        assert_allclose(a.val, b.val, rtol=tol, atol=tol)
+
+    @expand(product([ift.RGSpace(64, distances=.789),
+                     ift.RGSpace([32, 32], distances=.789)],
+                    [ift.library.Exponential, ift.library.Linear],
+                     [4, 78, 23]))
+    def testNonlinearMapCurvature(self, space, nonlinearity, seed):
+        np.random.seed(seed)
+        f = nonlinearity()
+        dim = len(space.shape)
+        hspace = space.get_default_codomain()
+        ht = ift.HarmonicTransformOperator(hspace, target=space)
+        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
+        pspace = ift.PowerSpace(hspace, binbounds=binbounds)
+        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
+
+        def pspec(k): return 1 / (1 + k**2)**dim
+        pspec = ift.PS_field(pspace, pspec)
+        A = P.adjoint_times(ift.sqrt(pspec))
+        n = ift.Field.from_random(domain=space, random_type='normal')
+        s = ht(xi0 * A)
+        diag = ift.Field.ones(space) * 10
+        R = ift.DiagonalOperator(diag)
+        diag = ift.Field.ones(space)
+        N = ift.DiagonalOperator(diag)
+        d = R(f(s)) + n
+
+        direction = ift.Field.from_random('normal', hspace)
+        direction /= np.sqrt(direction.var())
+        eps = 1e-7
+        xi1 = xi0 + eps * direction
+
+        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+
+        IC = ift.GradientNormController(
+            name='IC',
+            verbose=False,
+            iteration_limit=500,
+            tol_abs_gradnorm=1e-7)
+        inverter = ift.ConjugateGradient(IC)
+        energy0 = ift.library.NonlinearWienerFilterEnergy(
+            position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A, N=N, S=S, inverter=inverter)
+        gradient0 = energy0.gradient
+        gradient1 = energy0.at(xi1).gradient
+
+        a = (gradient1 - gradient0) / eps
+        b = energy0.curvature(direction)
+        tol = 1e-1
+        assert_allclose(a.val, b.val, rtol=tol, atol=tol)
