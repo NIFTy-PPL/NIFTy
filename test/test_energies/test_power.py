@@ -132,7 +132,7 @@ class Energy_Tests(unittest.TestCase):
             ht=ht,
             inverter=inverter).curvature
         Nsamples = 10
-        sample_list = [D.generate_posterior_sample() + xi for _ in range(Nsamples)]
+        xi_sample_list = [D.generate_posterior_sample() + xi for _ in range(Nsamples)]
 
         energy0 = ift.library.NonlinearPowerEnergy(
             position=tau0,
@@ -144,7 +144,7 @@ class Energy_Tests(unittest.TestCase):
             nonlinearity=f,
             ht=ht,
             N=N,
-            sample_list=sample_list)
+            xi_sample_list=xi_sample_list)
         energy1 = ift.library.NonlinearPowerEnergy(
             position=tau1,
             d=d,
@@ -155,7 +155,7 @@ class Energy_Tests(unittest.TestCase):
             nonlinearity=f,
             ht=ht,
             N=N,
-            sample_list=sample_list)
+            xi_sample_list=xi_sample_list)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
@@ -271,7 +271,7 @@ class Curvature_Tests(unittest.TestCase):
             ht=ht,
             inverter=inverter).curvature
         Nsamples = 10
-        sample_list = [D.generate_posterior_sample() + xi for _ in range(Nsamples)]
+        xi_sample_list = [D.generate_posterior_sample() + xi for _ in range(Nsamples)]
 
         energy0 = ift.library.NonlinearPowerEnergy(
             position=tau0,
@@ -283,7 +283,7 @@ class Curvature_Tests(unittest.TestCase):
             nonlinearity=f,
             ht=ht,
             N=N,
-            sample_list=sample_list)
+            xi_sample_list=xi_sample_list)
 
         gradient0 = energy0.gradient
         gradient1 = energy0.at(tau1).gradient

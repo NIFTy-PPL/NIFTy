@@ -52,7 +52,7 @@ class NonlinearPowerEnergy(Energy):
     """
 
     def __init__(self, position, d, N, xi, D, ht, Instrument, nonlinearity,
-                 Projection, sigma=0., samples=3, sample_list=None,
+                 Projection, sigma=0., samples=3, xi_sample_list=None,
                  inverter=None, munit=1., sunit=1.):
         super(NonlinearPowerEnergy, self).__init__(position)
         self.xi = xi
@@ -68,13 +68,13 @@ class NonlinearPowerEnergy(Energy):
         self.sigma = sigma
         self.munit = munit
         self.sunit = sunit
-        if sample_list is None:
+        if xi_sample_list is None:
             if samples is None or samples == 0:
-                sample_list = [xi]
+                xi_sample_list = [xi]
             else:
-                sample_list = [D.generate_posterior_sample() + xi
+                xi_sample_list = [D.generate_posterior_sample() + xi
                                for _ in range(samples)]
-        self.sample_list = sample_list
+        self.xi_sample_list = xi_sample_list
         self.inverter = inverter
 
         A = Projection.adjoint_times(munit * exp(.5 * position))  # unit: munit
@@ -82,7 +82,7 @@ class NonlinearPowerEnergy(Energy):
         Tpos = self.T(position)
 
         self._gradient = None
-        for xi_sample in self.sample_list:
+        for xi_sample in self.xi_sample_list:
             map_s = self.ht(A * xi_sample)
             LinR = LinearizedPowerResponse(
                 self.Instrument, self.nonlinearity, self.ht, self.Projection,
@@ -100,17 +100,17 @@ class NonlinearPowerEnergy(Energy):
                 self._value += lh
                 self._gradient += grad
 
-        self._value *= 1. / len(self.sample_list)
+        self._value *= 1. / len(self.xi_sample_list)
         self._value += 0.5 * self.position.vdot(Tpos)
-        self._gradient *= -1. / len(self.sample_list)
+        self._gradient *= -1. / len(self.xi_sample_list)
         self._gradient += Tpos
 
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.xi, self.D,
                               self.ht, self.Instrument, self.nonlinearity,
                               self.Projection, sigma=self.sigma,
-                              samples=len(self.sample_list),
-                              sample_list=self.sample_list,
+                              samples=len(self.xi_sample_list),
+                              xi_sample_list=self.xi_sample_list,
                               munit=self.munit,
                               sunit=self.sunit,
                               inverter=self.inverter)
@@ -128,5 +128,5 @@ class NonlinearPowerEnergy(Energy):
     def curvature(self):
         return NonlinearPowerCurvature(
             self.position, self.ht, self.Instrument, self.nonlinearity,
-            self.Projection, self.N, self.T, self.sample_list,
+            self.Projection, self.N, self.T, self.xi_sample_list,
             self.inverter, self.munit, self.sunit)

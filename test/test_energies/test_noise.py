@@ -80,16 +80,16 @@ class Noise_Energy_Tests(unittest.TestCase):
             S=S,
             inverter=inverter).curvature
         Nsamples = 10
-        sample_list = [D.generate_posterior_sample() + xi for i in range(Nsamples)]
+        xi_sample_list = [D.generate_posterior_sample() + xi for i in range(Nsamples)]
 
         energy0 = ift.library.NoiseEnergy(
-            position=eta0, d=d, m=xi, D=D, t=tau, Instrument=R,
+            position=eta0, d=d, xi=xi, D=D, t=tau, Instrument=R,
             alpha=alpha, q=q, Projection=P, nonlinearity=f,
-            ht=ht, sample_list=sample_list)
+            ht=ht, xi_sample_list=xi_sample_list)
         energy1 = ift.library.NoiseEnergy(
-            position=eta1, d=d, m=xi, D=D, t=tau, Instrument=R,
+            position=eta1, d=d, xi=xi, D=D, t=tau, Instrument=R,
             alpha=alpha, q=q, Projection=P, nonlinearity=f,
-            ht=ht, sample_list=sample_list)
+            ht=ht, xi_sample_list=xi_sample_list)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)

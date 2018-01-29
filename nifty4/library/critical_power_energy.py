@@ -37,7 +37,8 @@ class CriticalPowerEnergy(Energy):
     position : Field,
         The current position of this energy. (Logarithm of power spectrum)
     m : Field,
-        The map whose power spectrum has to be inferred
+        The map whose power spectrum is inferred. Needs to live in harmonic
+        signal space.
     D : EndomorphicOperator,
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.

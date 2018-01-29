@@ -19,8 +19,8 @@
 from ..field import exp
 
 
-def LinearizedSignalResponse(Instrument, nonlinearity, ht, power, s, sunit):
-    return sunit * (Instrument * nonlinearity.derivative(s) * ht * power)
+def LinearizedSignalResponse(Instrument, nonlinearity, ht, power, m, sunit):
+    return sunit * (Instrument * nonlinearity.derivative(m) * ht * power)
 
 
 def LinearizedPowerResponse(Instrument, nonlinearity, ht, Projection, tau, xi, munit, sunit):

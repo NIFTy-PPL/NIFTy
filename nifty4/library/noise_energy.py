@@ -24,11 +24,11 @@ from ..minimization.energy import Energy
 
 
 class NoiseEnergy(Energy):
-    def __init__(self, position, d, m, D, t, ht, Instrument,
+    def __init__(self, position, d, xi, D, t, ht, Instrument,
                  nonlinearity, alpha, q, Projection, munit=1., sunit=1.,
-                 dunit=1., samples=3, sample_list=None, inverter=None):
+                 dunit=1., samples=3, xi_sample_list=None, inverter=None):
         super(NoiseEnergy, self).__init__(position=position)
-        self.m = m
+        self.xi = xi
         self.D = D
         self.d = d
         self.N = DiagonalOperator(diagonal=dunit**2 * exp(self.position))
@@ -45,21 +45,19 @@ class NoiseEnergy(Energy):
         self.q = q
         self.Projection = Projection
         self.power = self.Projection.adjoint_times(munit * exp(0.5 * self.t))
-        self.one = Field(self.position.domain, val=1.)
-        if sample_list is None:
+        if xi_sample_list is None:
             if samples is None or samples == 0:
-                sample_list = [m]
+                xi_sample_list = [xi]
             else:
-                sample_list = [D.generate_posterior_sample() + m
+                xi_sample_list = [D.generate_posterior_sample() + xi
                                for _ in range(samples)]
-        self.sample_list = sample_list
+        self.xi_sample_list = xi_sample_list
         self.inverter = inverter
 
         A = Projection.adjoint_times(munit * exp(.5 * self.t))  # unit: munit
-        map_s = self.ht(A * m)
 
         self._gradient = None
-        for sample in self.sample_list:
+        for sample in self.xi_sample_list:
             map_s = self.ht(A * sample)
 
             residual = self.d - \
@@ -74,12 +72,12 @@ class NoiseEnergy(Energy):
                 self._value += lh
                 self._gradient += grad
 
-        self._value *= 1. / len(self.sample_list)
+        self._value *= 1. / len(self.xi_sample_list)
         self._value += .5 * self.position.sum()
         self._value += (self.alpha - 1.).vdot(self.position) + \
             self.q.vdot(exp(-self.position))
 
-        self._gradient *= 1. / len(self.sample_list)
+        self._gradient *= 1. / len(self.xi_sample_list)
         self._gradient += (self.alpha - 0.5) - self.q * (exp(-self.position))
 
     def at(self, position):
@@ -87,7 +85,7 @@ class NoiseEnergy(Energy):
             position, self.d, self.m, self.D, self.t, self.ht,
             self.Instrument, self.nonlinearity, self.alpha, self.q,
             self.Projection, munit=self.munit, sunit=self.sunit,
-            dunit=self.dunit, sample_list=self.sample_list,
+            dunit=self.dunit, xi_sample_list=self.xi_sample_list,
             samples=self.samples, inverter=self.inverter)
 
     @property
