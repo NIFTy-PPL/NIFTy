@@ -24,6 +24,7 @@ from .operators.fft_operator import FFTOperator
 from .operators.fft_smoothing_operator import FFTSmoothingOperator
 from .operators.direct_smoothing_operator import DirectSmoothingOperator
 from .operators.response_operator import ResponseOperator
+from .operators.response_operator import GeometryRemover
 from .operators.laplace_operator import LaplaceOperator
 from .operators.power_projection_operator import PowerProjectionOperator
 from .operators.inversion_enabler import InversionEnabler
