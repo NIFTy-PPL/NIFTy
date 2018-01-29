@@ -20,9 +20,11 @@ from .. import Field, exp
 from ..operators.diagonal_operator import DiagonalOperator
 from ..minimization.energy import Energy
 
+# TODO Take only residual_sample_list as argument
+
 
 class NoiseEnergy(Energy):
-    def __init__(self, position, d, m, D, t, HarmonicTransform, Instrument,
+    def __init__(self, position, d, m, D, t, ht, Instrument,
                  nonlinearity, alpha, q, Projection, munit=1., sunit=1.,
                  dunit=1., samples=3, sample_list=None, inverter=None):
         super(NoiseEnergy, self).__init__(position=position)
@@ -32,7 +34,7 @@ class NoiseEnergy(Energy):
         self.N = DiagonalOperator(diagonal=dunit**2 * exp(self.position))
         self.t = t
         self.samples = samples
-        self.ht = HarmonicTransform
+        self.ht = ht
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.munit = munit
@@ -73,7 +75,7 @@ class NoiseEnergy(Energy):
                 self._gradient += grad
 
         self._value *= 1. / len(self.sample_list)
-        self._value += .5 * self.position.integrate()
+        self._value += .5 * self.position.sum()
         self._value += (self.alpha - 1.).vdot(self.position) + \
             self.q.vdot(exp(-self.position))
 

@@ -23,19 +23,20 @@ from .response_operators import LinearizedSignalResponse
 
 
 class NonlinearWienerFilterEnergy(Energy):
-    def __init__(self, position, d, Instrument, nonlinearity, HarmonicTransform,
-                 power, N, S, sunit=1., inverter=None):
+    def __init__(self, position, d, Instrument, nonlinearity, ht, power, N, S,
+                 inverter=None, sunit=1.):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
         self.d = d
         self.sunit = sunit
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
-        self.ht = HarmonicTransform
+        self.ht = ht
         self.power = power
         position_map = self.ht(self.power * self.position)
-        self.LinearizedResponse = \
-            LinearizedSignalResponse(Instrument, nonlinearity, self.ht, power,
-                                     position_map, sunit)
+        self.LinearizedResponse = LinearizedSignalResponse(Instrument, nonlinearity, ht, power,
+                                                           position_map, sunit)
+
+        position_map = ht(self.power * self.position)
         residual = d - Instrument(sunit * nonlinearity(position_map))
         self.N = N
         self.S = S

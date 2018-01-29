@@ -51,11 +51,17 @@ class NonlinearPowerEnergy(Energy):
         default : 3
     """
 
-    def __init__(self, position, d, N, m, D, HarmonicTransform, Instrument,
-                 nonlinearity, Projection, sigma=0., samples=3,
-                 sample_list=None, munit=1., sunit=1., inverter=None):
+    def __init__(self, position, d, N, m, D, ht, Instrument, nonlinearity,
+                 Projection, sigma=0., samples=3, sample_list=None,
+                 inverter=None, munit=1., sunit=1.):
         super(NonlinearPowerEnergy, self).__init__(position)
-        self.d, self.N, self.m, self.D, self.ht = d, N, m, D, HarmonicTransform
+        self.m = m
+        self.D = D
+        self.d = d
+        self.N = N
+        self.T = SmoothnessOperator(domain=self.position.domain[0],
+                                    strength=sigma, logarithmic=True)
+        self.ht = ht
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.Projection = Projection
@@ -70,9 +76,6 @@ class NonlinearPowerEnergy(Energy):
                                for _ in range(samples)]
         self.sample_list = sample_list
         self.inverter = inverter
-
-        self.T = SmoothnessOperator(domain=self.position.domain[0],
-                                    strength=sigma, logarithmic=True)
 
         A = Projection.adjoint_times(munit * exp(.5 * position))  # unit: munit
         map_s = self.ht(A * m)
@@ -92,8 +95,12 @@ class NonlinearPowerEnergy(Energy):
                 sunit)
 
             residual = self.d - \
-                self.Instrument(sunit * self.nonlinearity(map_s))
+                self.Instrument(sunit * self.nonlinearity(
+                    self.ht(self.power*sample)))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
+            LinR = LinearizedPowerResponse(
+                self.Instrument, self.nonlinearity, self.ht, self.Projection,
+                self.position, sample)
             grad = LinR.adjoint_times(self.N.inverse_times(residual))
 
             if self._gradient is None:

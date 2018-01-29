@@ -19,16 +19,13 @@
 from ..field import exp
 
 
-def LinearizedSignalResponse(Instrument, nonlinearity, HarmonicTransform, power,
-                             s, sunit):
-    return sunit * (Instrument * nonlinearity.derivative(s) *
-                    HarmonicTransform * power)
+def LinearizedSignalResponse(Instrument, nonlinearity, ht, power, s, sunit):
+    return sunit * (Instrument * nonlinearity.derivative(s) * ht * power)
 
 
-def LinearizedPowerResponse(Instrument, nonlinearity, HarmonicTransform,
-                            Projection, t, m, munit, sunit):
-    power = exp(0.5 * t) * munit
-    position = HarmonicTransform(Projection.adjoint_times(power) * m)
+def LinearizedPowerResponse(Instrument, nonlinearity, ht, Projection, t, m, munit, sunit):
+    power = exp(0.5*t) * munit
+    position = ht(Projection.adjoint_times(power) * m)
     linearization = nonlinearity.derivative(position)
-    return sunit * (0.5 * Instrument * linearization * HarmonicTransform * m *
+    return sunit * (0.5 * Instrument * linearization * ht * m *
                     Projection.adjoint * power)
