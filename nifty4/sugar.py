@@ -32,7 +32,8 @@ __all__ = ['PS_field',
            'power_synthesize_nonrandom',
            'create_power_field',
            'create_power_operator',
-           'create_composed_fft_operator']
+           'create_composed_fft_operator',
+           'create_harmonic_smoothing_operator']
 
 
 def PS_field(pspace, func, dtype=None):
@@ -256,3 +257,9 @@ def create_composed_fft_operator(domain, codomain=None, all_to='other'):
     if res is None:
         raise ValueError("empty operator")
     return res
+
+
+def create_harmonic_smoothing_operator(domain, space, sigma):
+    kfunc = domain[space].get_fft_smoothing_kernel_function(sigma)
+    return DiagonalOperator(kfunc(domain[space].get_k_length_array()), domain,
+                            space)
