@@ -82,15 +82,11 @@ class Noise_Energy_Tests(unittest.TestCase):
             N=N,
             S=S,
             inverter=inverter).curvature
-        Nsamples = 10
-        xi_sample_list = [
-            D.generate_posterior_sample() +
-            xi for i in range(Nsamples)]
 
         energy0 = ift.library.NoiseEnergy(
             position=eta0, d=d, xi=xi, D=D, t=tau, Instrument=R,
             alpha=alpha, q=q, Projection=P, nonlinearity=f,
-            ht=ht, xi_sample_list=xi_sample_list)
+            ht=ht, samples=10)
         energy1 = energy0.at(eta1)
 
         a = (energy1.value - energy0.value) / eps
