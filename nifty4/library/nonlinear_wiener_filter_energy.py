@@ -50,7 +50,7 @@ class NonlinearWienerFilterEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
                               self.nonlinearity, self.ht, self.power, self.N,
-                              self.S, self.sunit, inverter=self.inverter)
+                              self.S, self.inverter, self.sunit)
 
     @property
     def value(self):
