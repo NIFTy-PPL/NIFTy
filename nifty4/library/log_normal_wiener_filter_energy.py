@@ -70,7 +70,7 @@ class LogNormalWienerFilterEnergy(Energy):
 
     def at(self, position):
         return self.__class__(position, self.d, self.R, self.N, self.S,
-                              self._inverter, self._fft)
+                              self._inverter, self._ht)
 
     @property
     def value(self):
@@ -84,5 +84,5 @@ class LogNormalWienerFilterEnergy(Energy):
     @memo
     def curvature(self):
         return LogNormalWienerFilterCurvature(
-            R=self.R, N=self.N, S=self.S, fft=self._fft,
+            R=self.R, N=self.N, S=self.S, ht=self._ht,
             expp_sspace=self._expp_sspace, inverter=self._inverter)
