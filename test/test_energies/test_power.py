@@ -77,8 +77,7 @@ class Energy_Tests(unittest.TestCase):
 
         energy0 = ift.library.CriticalPowerEnergy(
             position=tau0, m=s, inverter=inverter, w=w)
-        energy1 = ift.library.CriticalPowerEnergy(
-            position=tau1, m=s, inverter=inverter, w=w)
+        energy1 = energy0.at(tau1)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
@@ -147,17 +146,7 @@ class Energy_Tests(unittest.TestCase):
             ht=ht,
             N=N,
             xi_sample_list=xi_sample_list)
-        energy1 = ift.library.NonlinearPowerEnergy(
-            position=tau1,
-            d=d,
-            xi=xi,
-            D=D,
-            Instrument=R,
-            Projection=P,
-            nonlinearity=f,
-            ht=ht,
-            N=N,
-            xi_sample_list=xi_sample_list)
+        energy1 = energy0.at(tau1)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)

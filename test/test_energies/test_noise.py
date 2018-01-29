@@ -91,10 +91,7 @@ class Noise_Energy_Tests(unittest.TestCase):
             position=eta0, d=d, xi=xi, D=D, t=tau, Instrument=R,
             alpha=alpha, q=q, Projection=P, nonlinearity=f,
             ht=ht, xi_sample_list=xi_sample_list)
-        energy1 = ift.library.NoiseEnergy(
-            position=eta1, d=d, xi=xi, D=D, t=tau, Instrument=R,
-            alpha=alpha, q=q, Projection=P, nonlinearity=f,
-            ht=ht, xi_sample_list=xi_sample_list)
+        energy1 = energy0.at(eta1)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)

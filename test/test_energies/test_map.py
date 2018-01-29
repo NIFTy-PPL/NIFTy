@@ -65,8 +65,7 @@ class Energy_Tests(unittest.TestCase):
         S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
         energy0 = ift.library.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
-        energy1 = ift.library.WienerFilterEnergy(
-            position=s1, d=d, R=R, N=N, S=S, inverter=inverter)
+        energy1 = energy0.at(s1)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
@@ -110,8 +109,7 @@ class Energy_Tests(unittest.TestCase):
         S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
         energy0 = ift.library.LogNormalWienerFilterEnergy(
             position=sh0, d=d, R=R, N=N, S=S, inverter=inverter)
-        energy1 = ift.library.LogNormalWienerFilterEnergy(
-            position=sh1, d=d, R=R, N=N, S=S, inverter=inverter)
+        energy1 = energy0.at(sh1)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
@@ -150,8 +148,7 @@ class Energy_Tests(unittest.TestCase):
         S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
         energy0 = ift.library.NonlinearWienerFilterEnergy(
             position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A, N=N, S=S)
-        energy1 = ift.library.NonlinearWienerFilterEnergy(
-            position=xi1, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A, N=N, S=S)
+        energy1 = energy0.at(xi0)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)

@@ -82,7 +82,7 @@ class NoiseEnergy(Energy):
 
     def at(self, position):
         return self.__class__(
-            position, self.d, self.m, self.D, self.t, self.ht,
+            position, self.d, self.xi, self.D, self.t, self.ht,
             self.Instrument, self.nonlinearity, self.alpha, self.q,
             self.Projection, munit=self.munit, sunit=self.sunit,
             dunit=self.dunit, xi_sample_list=self.xi_sample_list,
