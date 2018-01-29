@@ -52,9 +52,7 @@ class Noise_Energy_Tests(unittest.TestCase):
         N = ift.DiagonalOperator(var)
         eta0 = ift.log(var)
         s = ht(xi * A)
-        diag = ift.Field.ones(space) * 10
-        R = ift.DiagonalOperator(diag)
-        diag = ift.Field.ones(space)
+        R = ift.ScalingOperator(10., space)
         d = R(f(s)) + n
 
         alpha = ift.Field(d.domain, val=2.)
@@ -66,8 +64,6 @@ class Noise_Energy_Tests(unittest.TestCase):
         eta1 = eta0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)

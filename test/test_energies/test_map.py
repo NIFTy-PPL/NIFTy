@@ -47,11 +47,9 @@ class Energy_Tests(unittest.TestCase):
         A = P.adjoint_times(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s0 = xi0 * A
-        diag = ift.Field.ones(space) * 10
-        Instrument = ift.DiagonalOperator(diag)
+        Instrument = ift.ScalingOperator(10., space)
         R = Instrument * ht
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
+        N = ift.ScalingOperator(1., space)
         d = R(s0) + n
 
         direction = ift.Field.from_random('normal', hspace)
@@ -60,8 +58,6 @@ class Energy_Tests(unittest.TestCase):
         s1 = s0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
@@ -96,11 +92,9 @@ class Energy_Tests(unittest.TestCase):
         n = ift.Field.from_random(domain=space, random_type='normal')
         sh0 = xi0 * A
         s = ht(sh0)
-        diag = ift.Field.ones(space) * 10
-        Instrument = ift.DiagonalOperator(diag)
+        Instrument = ift.ScalingOperator(10., space)
         R = Instrument * ht
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
+        N = ift.ScalingOperator(1., space)
         d = Instrument(ift.exp(s)) + n
 
         direction = ift.Field.from_random('normal', hspace)
@@ -109,8 +103,6 @@ class Energy_Tests(unittest.TestCase):
         sh1 = sh0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
@@ -146,10 +138,8 @@ class Energy_Tests(unittest.TestCase):
         A = P.adjoint_times(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(xi0 * A)
-        diag = ift.Field.ones(space) * 10
-        R = ift.DiagonalOperator(diag)
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
+        R = ift.ScalingOperator(10., space)
+        N = ift.ScalingOperator(1., space)
         d = R(f(s)) + n
 
         direction = ift.Field.from_random('normal', hspace)
@@ -188,11 +178,9 @@ class Curvature_Tests(unittest.TestCase):
         A = P.adjoint_times(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s0 = xi0 * A
-        diag = ift.Field.ones(space) * 10
-        Instrument = ift.DiagonalOperator(diag)
+        Instrument = ift.ScalingOperator(10., space)
         R = Instrument * ht
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
+        N = ift.ScalingOperator(1., space)
         d = R(s0) + n
 
         direction = ift.Field.from_random('normal', hspace)
@@ -201,8 +189,6 @@ class Curvature_Tests(unittest.TestCase):
         s1 = s0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
@@ -236,11 +222,9 @@ class Curvature_Tests(unittest.TestCase):
         n = ift.Field.from_random(domain=space, random_type='normal')
         sh0 = xi0 * A
         s = ht(sh0)
-        diag = ift.Field.ones(space) * 10
-        Instrument = ift.DiagonalOperator(diag)
+        Instrument = ift.ScalingOperator(10., space)
         R = Instrument * ht
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
+        N = ift.ScalingOperator(1., space)
         d = Instrument(ift.exp(s)) + n
 
         direction = ift.Field.from_random('normal', hspace)
@@ -249,8 +233,6 @@ class Curvature_Tests(unittest.TestCase):
         sh1 = sh0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
@@ -287,10 +269,8 @@ class Curvature_Tests(unittest.TestCase):
         A = P.adjoint_times(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(xi0 * A)
-        diag = ift.Field.ones(space) * 10
-        R = ift.DiagonalOperator(diag)
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
+        R = ift.ScalingOperator(10., space)
+        N = ift.ScalingOperator(1., space)
         d = R(f(s)) + n
 
         direction = ift.Field.from_random('normal', hspace)
@@ -301,8 +281,6 @@ class Curvature_Tests(unittest.TestCase):
         S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=500,
             tol_abs_gradnorm=1e-7)
         inverter = ift.ConjugateGradient(IC)

@@ -36,13 +36,13 @@ if __name__ == "__main__":
     mask[N10*5:N10*9, N10*5:N10*9] = 0.
     mask = ift.Field(signal_space, ift.dobj.from_global_data(mask))
     R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
-                             exposure=(mask,))
+                             sensitivity=(mask,))
     data_domain = R.target[0]
     R_harmonic = R * fft
 
     # Setting up the noise covariance and drawing a random noise realization
-    ndiag = ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
-    N = ift.DiagonalOperator(ndiag.weight(1))
+    ndiag = 1e-8*ift.Field.full(data_domain, mock_signal.var()/signal_to_noise)
+    N = ift.DiagonalOperator(ndiag)
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=mock_signal.std()/np.sqrt(signal_to_noise), mean=0)

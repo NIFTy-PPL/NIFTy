@@ -41,7 +41,7 @@ class Energy_Tests(unittest.TestCase):
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
-        # TODO Power spectrum abhängig von Anzahl der Pixel
+        # TODO Power spectrum should depend on number of pixels
         def pspec(k): return 64 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         tau0 = ift.log(pspec)
@@ -49,8 +49,7 @@ class Energy_Tests(unittest.TestCase):
         n = ift.Field.from_random(domain=space, random_type='normal', std=.01)
         N = ift.DiagonalOperator(n**2)
         s = xi * A
-        diag = ift.Field.ones(space)
-        Instrument = ift.DiagonalOperator(diag)
+        Instrument = ift.ScalingOperator(1., space)
         R = Instrument * ht
         d = R(s) + n
 
@@ -60,8 +59,6 @@ class Energy_Tests(unittest.TestCase):
         tau1 = tau0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
@@ -108,8 +105,7 @@ class Energy_Tests(unittest.TestCase):
         A = P.adjoint_times(ift.sqrt(tau0))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(xi * A)
-        diag = ift.Field.ones(space) * 10
-        R = ift.DiagonalOperator(diag)
+        R = ift.ScalingOperator(10., space)
         diag = ift.Field.ones(space)
         N = ift.DiagonalOperator(diag)
         d = R(f(s)) + n
@@ -120,8 +116,6 @@ class Energy_Tests(unittest.TestCase):
         tau1 = tau0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
@@ -183,7 +177,7 @@ class Curvature_Tests(unittest.TestCase):
         P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
-        # TODO Power spectrum abhängig von Anzahl der Pixel
+        # TODO Power spectrum should depend on number of pixels
         def pspec(k): return 64 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         tau0 = ift.log(pspec)
@@ -202,8 +196,6 @@ class Curvature_Tests(unittest.TestCase):
         tau1 = tau0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
@@ -263,8 +255,6 @@ class Curvature_Tests(unittest.TestCase):
         tau1 = tau0 + eps * direction
 
         IC = ift.GradientNormController(
-            name='IC',
-            verbose=False,
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
