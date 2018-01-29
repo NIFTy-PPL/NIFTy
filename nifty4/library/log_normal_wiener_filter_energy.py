@@ -63,7 +63,7 @@ class LogNormalWienerFilterEnergy(Energy):
         expp = self._ht.adjoint_times(self._expp_sspace)
         Rexppd = self.R(expp) - self.d
         NRexppd = self.N.inverse_times(Rexppd)
-        self._value = 0.5*(self.position.vdot(Sp) + Rexppd.vdot(NRexppd))
+        self._value = 0.5 * (self.position.vdot(Sp) + Rexppd.vdot(NRexppd))
         exppRNRexppd = self._ht.adjoint_times(
             self._expp_sspace * self._ht(self.R.adjoint_times(NRexppd)))
         self._gradient = Sp + exppRNRexppd

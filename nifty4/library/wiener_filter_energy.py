@@ -52,7 +52,8 @@ class WienerFilterEnergy(Energy):
             _j = self.R.adjoint_times(self.N.inverse_times(d))
         self._j = _j
         Dx = self._curvature(self.position)
-        self._value = 0.5*self.position.vdot(Dx) - self._j.vdot(self.position)
+        self._value = 0.5 * \
+            self.position.vdot(Dx) - self._j.vdot(self.position)
         self._gradient = Dx - self._j
 
     def at(self, position):

@@ -132,7 +132,9 @@ class Energy_Tests(unittest.TestCase):
             ht=ht,
             inverter=inverter).curvature
         Nsamples = 10
-        xi_sample_list = [D.generate_posterior_sample() + xi for _ in range(Nsamples)]
+        xi_sample_list = [
+            D.generate_posterior_sample() +
+            xi for _ in range(Nsamples)]
 
         energy0 = ift.library.NonlinearPowerEnergy(
             position=tau0,
@@ -271,7 +273,9 @@ class Curvature_Tests(unittest.TestCase):
             ht=ht,
             inverter=inverter).curvature
         Nsamples = 10
-        xi_sample_list = [D.generate_posterior_sample() + xi for _ in range(Nsamples)]
+        xi_sample_list = [
+            D.generate_posterior_sample() +
+            xi for _ in range(Nsamples)]
 
         energy0 = ift.library.NonlinearPowerEnergy(
             position=tau0,

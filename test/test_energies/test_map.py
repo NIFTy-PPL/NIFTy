@@ -75,7 +75,7 @@ class Energy_Tests(unittest.TestCase):
 
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                     [4, 78, 23]))
+                    [4, 78, 23]))
     def testLognormalMap(self, space, seed):
         np.random.seed(seed)
         dim = len(space.shape)
@@ -121,7 +121,7 @@ class Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [ift.library.Exponential, ift.library.Linear],
-                     [4, 78, 23]))
+                    [4, 78, 23]))
     def testNonlinearMap(self, space, nonlinearity, seed):
         np.random.seed(seed)
         f = nonlinearity()
@@ -194,7 +194,8 @@ class Curvature_Tests(unittest.TestCase):
         inverter = ift.ConjugateGradient(IC)
 
         S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
-        energy0 = ift.library.WienerFilterEnergy(position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
+        energy0 = ift.library.WienerFilterEnergy(
+            position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
         gradient0 = energy0.gradient
         gradient1 = energy0.at(s1).gradient
 
@@ -205,7 +206,7 @@ class Curvature_Tests(unittest.TestCase):
 
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                     [4, 78, 23]))
+                    [4, 78, 23]))
     def testLognormalMapCurvature(self, space, seed):
         np.random.seed(seed)
         dim = len(space.shape)
@@ -252,7 +253,7 @@ class Curvature_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [ift.library.Exponential, ift.library.Linear],
-                     [4, 78, 23]))
+                    [4, 78, 23]))
     def testNonlinearMapCurvature(self, space, nonlinearity, seed):
         np.random.seed(seed)
         f = nonlinearity()
@@ -285,7 +286,15 @@ class Curvature_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-7)
         inverter = ift.ConjugateGradient(IC)
         energy0 = ift.library.NonlinearWienerFilterEnergy(
-            position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A, N=N, S=S, inverter=inverter)
+            position=xi0,
+            d=d,
+            Instrument=R,
+            nonlinearity=f,
+            ht=ht,
+            power=A,
+            N=N,
+            S=S,
+            inverter=inverter)
         gradient0 = energy0.gradient
         gradient1 = energy0.at(xi1).gradient
 

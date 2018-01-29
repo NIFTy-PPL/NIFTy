@@ -47,7 +47,10 @@ class Noise_Energy_Tests(unittest.TestCase):
         tau = ift.PS_field(pspace, pspec)
         A = P.adjoint_times(ift.sqrt(tau))
         var = 1.
-        n = ift.Field.from_random(domain=space, random_type='normal', std=np.sqrt(var))
+        n = ift.Field.from_random(
+            domain=space,
+            random_type='normal',
+            std=np.sqrt(var))
         var = ift.Field(n.domain, val=var)
         N = ift.DiagonalOperator(var)
         eta0 = ift.log(var)
@@ -80,7 +83,9 @@ class Noise_Energy_Tests(unittest.TestCase):
             S=S,
             inverter=inverter).curvature
         Nsamples = 10
-        xi_sample_list = [D.generate_posterior_sample() + xi for i in range(Nsamples)]
+        xi_sample_list = [
+            D.generate_posterior_sample() +
+            xi for i in range(Nsamples)]
 
         energy0 = ift.library.NoiseEnergy(
             position=eta0, d=d, xi=xi, D=D, t=tau, Instrument=R,
