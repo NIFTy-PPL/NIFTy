@@ -95,12 +95,11 @@ class NonlinearPowerEnergy(Energy):
                 sunit)
 
             residual = self.d - \
-                self.Instrument(sunit * self.nonlinearity(
-                    self.ht(self.power*sample)))
+                self.Instrument(sunit * self.nonlinearity(map_s))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
             LinR = LinearizedPowerResponse(
                 self.Instrument, self.nonlinearity, self.ht, self.Projection,
-                self.position, sample)
+                self.position, sample, munit=self.munit, sunit=self.sunit)
             grad = LinR.adjoint_times(self.N.inverse_times(residual))
 
             if self._gradient is None:
