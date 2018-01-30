@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
     j = R.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(
-        verbose=True, tol_abs_gradnorm=1e-5/(nu.K*(nu.m**dimensionality)))
+        name="inverter", tol_abs_gradnorm=1e-5/(nu.K*(nu.m**dimensionality)))
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(
         S=S, N=N, R=R, inverter=inverter)

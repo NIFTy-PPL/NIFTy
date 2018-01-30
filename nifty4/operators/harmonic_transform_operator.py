@@ -149,8 +149,9 @@ class HarmonicTransformOperator(LinearOperator):
 
     def _slice_p2h(self, inp):
         rr = self.sjob.alm2map_adjoint(inp)
-        assert len(rr) == ((self.mmax+1)*(self.mmax+2))//2 + \
-                          (self.mmax+1)*(self.lmax-self.mmax)
+        if len(rr) != ((self.mmax+1)*(self.mmax+2))//2 + \
+                      (self.mmax+1)*(self.lmax-self.mmax):
+            raise ValueError("array length mismatch")
         res = np.empty(2*len(rr)-self.lmax-1, dtype=rr[0].real.dtype)
         res[0:self.lmax+1] = rr[0:self.lmax+1].real
         res[self.lmax+1::2] = np.sqrt(2)*rr[self.lmax+1:].real
@@ -159,8 +160,9 @@ class HarmonicTransformOperator(LinearOperator):
 
     def _slice_h2p(self, inp):
         res = np.empty((len(inp)+self.lmax+1)//2, dtype=(inp[0]*1j).dtype)
-        assert len(res) == ((self.mmax+1)*(self.mmax+2))//2 + \
-                           (self.mmax+1)*(self.lmax-self.mmax)
+        if len(res) != ((self.mmax+1)*(self.mmax+2))//2 + \
+                       (self.mmax+1)*(self.lmax-self.mmax):
+            raise ValueError("array length mismatch")
         res[0:self.lmax+1] = inp[0:self.lmax+1]
         res[self.lmax+1:] = np.sqrt(0.5)*(inp[self.lmax+1::2] +
                                           1j*inp[self.lmax+2::2])

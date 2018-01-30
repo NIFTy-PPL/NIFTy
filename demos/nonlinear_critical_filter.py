@@ -72,13 +72,12 @@ if __name__ == "__main__":
     t0 = ift.Field(p_space, val=-4.)
     power0 = Projection.adjoint_times(ift.exp(0.5 * t0))
 
-    IC1 = ift.GradientNormController(verbose=True, iteration_limit=100,
+    IC1 = ift.GradientNormController(name="IC1", iteration_limit=100,
                                      tol_abs_gradnorm=1e-3)
     LS = ift.LineSearchStrongWolfe(c2=0.02)
     minimizer = ift.RelaxedNewton(IC1, line_searcher=LS)
 
-    ICI = ift.GradientNormController(verbose=False, name="ICI",
-                                     iteration_limit=500,
+    ICI = ift.GradientNormController(iteration_limit=500,
                                      tol_abs_gradnorm=1e-3)
     inverter = ift.ConjugateGradient(controller=ICI)
 

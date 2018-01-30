@@ -22,15 +22,13 @@ from .. import dobj
 
 class GradientNormController(IterationController):
     def __init__(self, tol_abs_gradnorm=None, tol_rel_gradnorm=None,
-                 convergence_level=1, iteration_limit=None,
-                 name=None, verbose=None):
+                 convergence_level=1, iteration_limit=None, name=None):
         super(GradientNormController, self).__init__()
         self._tol_abs_gradnorm = tol_abs_gradnorm
         self._tol_rel_gradnorm = tol_rel_gradnorm
         self._convergence_level = convergence_level
         self._iteration_limit = iteration_limit
         self._name = name
-        self._verbose = verbose
 
     def start(self, energy):
         self._itcount = -1
@@ -56,10 +54,8 @@ class GradientNormController(IterationController):
             self._ccount = max(0, self._ccount-1)
 
         # report
-        if self._verbose:
-            msg = ""
-            if self._name is not None:
-                msg += self._name+":"
+        if self._name is not None:
+            msg = self._name+":"
             msg += " Iteration #" + str(self._itcount)
             msg += " energy={:.6E}".format(energy.value)
             msg += " gradnorm={:.2E}".format(energy.gradient_norm)

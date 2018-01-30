@@ -53,7 +53,7 @@ if __name__ == "__main__":
     d_data = d.val
     ift.plot(d, name="data.png")
 
-    IC1 = ift.GradientNormController(verbose=True, iteration_limit=100,
+    IC1 = ift.GradientNormController(name="IC1", iteration_limit=100,
                                      tol_abs_gradnorm=0.1)
     minimizer = ift.RelaxedNewton(IC1)
 

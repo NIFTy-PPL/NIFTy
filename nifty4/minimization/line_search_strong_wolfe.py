@@ -209,8 +209,10 @@ class LineSearchStrongWolfe(LineSearch):
         alpha_recent = None
         phi_recent = None
 
-        assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
-        assert phiprime_lo*(alpha_hi-alpha_lo) < 0.
+        if phi_lo > phi_0 + self.c1*alpha_lo*phiprime_0:
+            raise ValueError("inconsistent data")
+        if phiprime_lo*(alpha_hi-alpha_lo) >= 0.:
+            raise ValueError("inconsistent data")
         for i in range(self.max_zoom_iterations):
             # assert phi_lo <= phi_0 + self.c1*alpha_lo*phiprime_0
             # assert phiprime_lo*(alpha_hi-alpha_lo)<0.
