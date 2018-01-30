@@ -24,6 +24,10 @@ from test.common import expand
 from numpy.testing import assert_allclose
 
 
+def _flat_PS(k):
+    return np.ones_like(k)
+
+
 class Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
@@ -58,7 +62,7 @@ class Energy_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         energy0 = ift.library.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
         energy1 = energy0.at(s1)
@@ -102,7 +106,7 @@ class Energy_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         energy0 = ift.library.LogNormalWienerFilterEnergy(
             position=sh0, d=d, R=R, N=N, S=S, inverter=inverter)
         energy1 = energy0.at(sh1)
@@ -141,7 +145,7 @@ class Energy_Tests(unittest.TestCase):
         eps = 1e-7
         xi1 = xi0 + eps * direction
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         energy0 = ift.library.NonlinearWienerFilterEnergy(
             position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A, N=N, S=S)
         energy1 = energy0.at(xi1)
@@ -186,7 +190,7 @@ class Curvature_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         energy0 = ift.library.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
         gradient0 = energy0.gradient
@@ -195,7 +199,8 @@ class Curvature_Tests(unittest.TestCase):
         a = (gradient1 - gradient0) / eps
         b = energy0.curvature(direction)
         tol = 1e-7
-        assert_allclose(a.val, b.val, rtol=tol, atol=tol)
+        assert_allclose(ift.dobj.to_global_data(a.val),
+                        ift.dobj.to_global_data(b.val), rtol=tol, atol=tol)
 
 
     @expand(product([ift.RGSpace(64, distances=.789),
@@ -227,7 +232,7 @@ class Curvature_Tests(unittest.TestCase):
         eps = 1e-7
         xi1 = xi0 + eps * direction
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
 
         IC = ift.GradientNormController(
             iteration_limit=500,
@@ -251,4 +256,5 @@ class Curvature_Tests(unittest.TestCase):
         print(a.vdot(a))
         print(b.vdot(b))
         tol = 1e-7
-        assert_allclose(a.val, b.val, rtol=tol, atol=tol)
+        assert_allclose(ift.dobj.to_global_data(a.val),
+                        ift.dobj.to_global_data(b.val), rtol=tol, atol=tol)

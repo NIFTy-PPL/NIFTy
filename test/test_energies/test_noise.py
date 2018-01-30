@@ -24,6 +24,10 @@ from test.common import expand
 from numpy.testing import assert_allclose
 
 
+def _flat_PS(k):
+    return np.ones_like(k)
+
+
 class Noise_Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
@@ -68,7 +72,7 @@ class Noise_Energy_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         D = ift.library.NonlinearWienerFilterEnergy(
             position=xi,
             d=d,
