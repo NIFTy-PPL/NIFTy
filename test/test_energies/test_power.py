@@ -191,7 +191,7 @@ class Curvature_Tests(unittest.TestCase):
                                            inverter=inverter).curvature
 
         energy0 = ift.library.CriticalPowerEnergy(
-            position=tau0, m=s, inverter=inverter, samples=10)
+            position=tau0, m=s, inverter=inverter, samples=10, D=D, alpha=2.)
 
         gradient0 = energy0.gradient
         gradient1 = energy0.at(tau1).gradient
