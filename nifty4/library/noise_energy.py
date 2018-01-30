@@ -51,7 +51,7 @@ class NoiseEnergy(Energy):
         self.xi_sample_list = xi_sample_list
         self.inverter = inverter
 
-        A = Projection.adjoint_times(exp(.5 * self.t))
+        A = Projection.adjoint_times(exp(.5*self.t))
 
         self._gradient = None
         for sample in self.xi_sample_list:
@@ -60,7 +60,7 @@ class NoiseEnergy(Energy):
             residual = self.d - \
                 self.Instrument(self.nonlinearity(map_s))
             lh = .5 * residual.vdot(self.N.inverse_times(residual))
-            grad = -.5 * self.N.inverse_times(residual.conjugate() * residual)
+            grad = -.5 * self.N.inverse_times(residual.conjugate()*residual)
 
             if self._gradient is None:
                 self._value = lh
@@ -75,7 +75,7 @@ class NoiseEnergy(Energy):
             self.q.vdot(exp(-self.position))
 
         self._gradient *= 1. / len(self.xi_sample_list)
-        self._gradient += (self.alpha - 0.5) - self.q * (exp(-self.position))
+        self._gradient += (self.alpha-0.5) - self.q*(exp(-self.position))
 
     def at(self, position):
         return self.__class__(

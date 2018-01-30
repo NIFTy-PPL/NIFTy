@@ -94,21 +94,21 @@ class CriticalPowerEnergy(Energy):
                     sample = self.D.generate_posterior_sample() + self.m
                     w += P(abs(sample)**2)
 
-                w *= 1. / self.samples
+                w *= 1./self.samples
             else:
                 w = P(abs(self.m)**2)
         self._w = w
 
-        self._theta = exp(-self.position) * (self.q + self._w * 0.5)
+        self._theta = exp(-self.position) * (self.q + self._w*0.5)
         Tt = self.T(self.position)
 
         energy = self._theta.sum()
-        energy += self.position.sum() * (self.alpha - 0.5)
-        energy += 0.5 * self.position.vdot(Tt)
+        energy += self.position.sum() * (self.alpha-0.5)
+        energy += 0.5*self.position.vdot(Tt)
         self._value = energy.real
 
         gradient = -self._theta
-        gradient += self.alpha - 0.5
+        gradient += self.alpha-0.5
         gradient += Tt
         self._gradient = gradient
 

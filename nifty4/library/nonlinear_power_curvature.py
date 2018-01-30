@@ -26,7 +26,7 @@ def NonlinearPowerCurvature(tau, ht, Instrument, nonlinearity, Projection, N,
     for xi_sample in xi_sample_list:
         LinearizedResponse = LinearizedPowerResponse(
             Instrument, nonlinearity, ht, Projection, tau, xi_sample)
-        op = LinearizedResponse.adjoint * N.inverse * LinearizedResponse
+        op = LinearizedResponse.adjoint*N.inverse*LinearizedResponse
         result = op if result is None else result + op
-    result = result * (1. / len(xi_sample_list)) + T
+    result = result * (1./len(xi_sample_list)) + T
     return InversionEnabler(result, inverter)

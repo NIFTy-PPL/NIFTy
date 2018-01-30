@@ -147,7 +147,8 @@ class Energy_Tests(unittest.TestCase):
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         energy0 = ift.library.NonlinearWienerFilterEnergy(
-            position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A, N=N, S=S)
+            position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A,
+            N=N, S=S)
         energy1 = energy0.at(xi1)
 
         a = (energy1.value - energy0.value) / eps
@@ -204,7 +205,8 @@ class Curvature_Tests(unittest.TestCase):
 
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    # Only linear case due to approximation of Hessian in the case of nontrivial nonlinearities.
+                    # Only linear case due to approximation of Hessian in the
+                    # case of nontrivial nonlinearities.
                     [ift.library.Linear],
                     [4, 78, 23]))
     def testNonlinearMapCurvature(self, space, nonlinearity, seed):

@@ -23,6 +23,7 @@ from .field import Field, sqrt
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_projection_operator import PowerProjectionOperator
 from .operators.fft_operator import FFTOperator
+from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
 
@@ -32,6 +33,7 @@ __all__ = ['PS_field',
            'power_synthesize_nonrandom',
            'create_power_field',
            'create_power_operator',
+           'create_composed_ht_operator',
            'create_composed_fft_operator',
            'create_harmonic_smoothing_operator']
 
@@ -239,6 +241,20 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
         create_power_field(domain[space], power_spectrum, dtype),
         domain=domain,
         spaces=space)
+
+
+def create_composed_ht_operator(domain, codomain=None):
+    if codomain is None:
+        codomain = [None]*len(domain)
+    res = None
+    for i, space in enumerate(domain):
+        if isinstance(space, Space) and space.harmonic:
+            tdom = domain if res is None else res.target
+            op = HarmonicTransformOperator(tdom, codomain[i], i)
+            res = op if res is None else op*res
+    if res is None:
+        raise ValueError("empty operator")
+    return res
 
 
 def create_composed_fft_operator(domain, codomain=None, all_to='other'):

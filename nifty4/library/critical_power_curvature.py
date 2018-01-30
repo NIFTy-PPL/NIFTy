@@ -22,4 +22,4 @@ from ..operators.diagonal_operator import DiagonalOperator
 
 def CriticalPowerCurvature(theta, T, inverter):
     theta = DiagonalOperator(theta)
-    return InversionEnabler(T + theta, inverter, theta.inverse_times)
+    return InversionEnabler(T+theta, inverter, theta.inverse_times)

@@ -39,6 +39,7 @@ def _check_adjointness(op, dtype=np.float64):
                         op.inverse_adjoint_times(f1).vdot(f2),
                         rtol=1e-8)
 
+
 _h_RG_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
                 ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)]
 _h_spaces = _h_RG_spaces + [ift.LMSpace(17)]

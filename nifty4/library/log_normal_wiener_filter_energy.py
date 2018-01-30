@@ -19,7 +19,7 @@
 from ..minimization.energy import Energy
 from ..utilities import memo
 from .log_normal_wiener_filter_curvature import LogNormalWienerFilterCurvature
-from ..sugar import create_composed_fft_operator
+from ..sugar import create_composed_ht_operator
 from ..field import exp
 
 
@@ -52,8 +52,7 @@ class LogNormalWienerFilterEnergy(Energy):
         self._inverter = inverter
 
         if ht is None:
-            self._ht = create_composed_fft_operator(self.S.domain,
-                                                    all_to='position')
+            self._ht = create_composed_ht_operator(self.S.domain)
         else:
             self._ht = ht
 
@@ -63,7 +62,7 @@ class LogNormalWienerFilterEnergy(Energy):
         expp = self._ht.adjoint_times(self._expp_sspace)
         Rexppd = self.R(expp) - self.d
         NRexppd = self.N.inverse_times(Rexppd)
-        self._value = 0.5 * (self.position.vdot(Sp) + Rexppd.vdot(NRexppd))
+        self._value = 0.5*(self.position.vdot(Sp) + Rexppd.vdot(NRexppd))
         exppRNRexppd = self._ht.adjoint_times(
             self._expp_sspace * self._ht(self.R.adjoint_times(NRexppd)))
         self._gradient = Sp + exppRNRexppd

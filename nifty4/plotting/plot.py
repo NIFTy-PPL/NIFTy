@@ -189,13 +189,13 @@ def plot(f, **kwargs):
             if fld.domain != dom:
                 raise ValueError("domain mismatch")
             if not (isinstance(dom[0], PowerSpace) or
-                    (isinstance(dom[0], RGSpace) and len(dom[0].shape)==1)):
+                    (isinstance(dom[0], RGSpace) and len(dom[0].shape) == 1)):
                 raise ValueError("PowerSpace or 1D RGSpace required")
 
     label = _get_kw("label", None, **kwargs)
     if label is None:
         label = [None] * len(f)
-    if not isinstance (label, list):
+    if not isinstance(label, list):
         label = [label]
 
     dom = dom[0]
@@ -216,7 +216,7 @@ def plot(f, **kwargs):
             xcoord = np.arange(npoints, dtype=np.float64)*dist
             for i, fld in enumerate(f):
                 ycoord = dobj.to_global_data(fld.val)
-                plt.plot(xcoord, ycoord,label=label[i])
+                plt.plot(xcoord, ycoord, label=label[i])
             _limit_xy(**kwargs)
             if label != ([None]*len(f)):
                 plt.legend()

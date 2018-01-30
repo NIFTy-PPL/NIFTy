@@ -83,7 +83,6 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
-
     @expand(product([0, 1, 2],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_composed_fft(self, index, dtype):
@@ -98,9 +97,8 @@ class FFTOperatorTests(unittest.TestCase):
         assert_allclose(ift.dobj.to_global_data(inp.val),
                         ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
 
-
     @expand(product([ift.RGSpace(128, distances=3.76, harmonic=True),
-                     ift.RGSpace((15,27), distances=(1.7,3.33), harmonic=True),
+                     ift.RGSpace((15, 27), distances=(.7, .33), harmonic=True),
                      ift.RGSpace(73, distances=0.5643)],
                     [np.float64, np.float32, np.complex64, np.complex128]))
     def test_normalisation(self, space, tp):

@@ -20,7 +20,6 @@ from ..operators.inversion_enabler import InversionEnabler
 
 
 def LogNormalWienerFilterCurvature(R, N, S, ht, expp_sspace, inverter):
-    part1 = S.inverse
     LinResp = R * ht.adjoint * expp_sspace * ht
-    part3 = (LinResp.adjoint * N.inverse * LinResp)
-    return InversionEnabler(part1 + part3, inverter)
+    t_op = LinResp.adjoint * N.inverse * LinResp
+    return InversionEnabler(S.inverse + t_op, inverter)

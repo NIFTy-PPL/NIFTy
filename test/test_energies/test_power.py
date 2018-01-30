@@ -70,7 +70,8 @@ class Energy_Tests(unittest.TestCase):
                                            inverter=inverter).curvature
 
         energy0 = ift.library.CriticalPowerEnergy(
-            position=tau0, m=s, inverter=inverter, D=D, samples=10, smoothness_prior=1.)
+            position=tau0, m=s, inverter=inverter, D=D, samples=10,
+            smoothness_prior=1.)
         energy1 = energy0.at(tau1)
 
         a = (energy1.value - energy0.value) / eps
