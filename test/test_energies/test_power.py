@@ -146,6 +146,10 @@ class Energy_Tests(unittest.TestCase):
 
 
 class Curvature_Tests(unittest.TestCase):
+    # Note: It is only possible to test the linear power curvatures since the
+    # non-linear curvatures are not the exact second derivative but only a part
+    # of it. One term is neglected which would render the second derivative
+    # non-positive definite.
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [132, 42, 3]))
