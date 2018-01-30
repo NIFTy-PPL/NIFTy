@@ -55,11 +55,11 @@ from .sugar import *
 from .plotting.plot import plot
 from . import library
 
-__all__= ["DomainObject", "FieldArray", "Space", "RGSpace", "LMSpace",
-          "HPSpace", "GLSpace", "DOFSpace", "PowerSpace", "DomainTuple",
-          "LinearOperator", "EndomorphicOperator", "ScalingOperator",
-          "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
-          "DirectSmoothingOperator", "ResponseOperator", "LaplaceOperator",
-          "PowerProjectionOperator", "InversionEnabler",
-          "Field", "sqrt", "exp", "log",
-          "Prober", "DiagonalProberMixin", "TraceProberMixin"]
+__all__ = ["DomainObject", "FieldArray", "Space", "RGSpace", "LMSpace",
+           "HPSpace", "GLSpace", "DOFSpace", "PowerSpace", "DomainTuple",
+           "LinearOperator", "EndomorphicOperator", "ScalingOperator",
+           "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
+           "DirectSmoothingOperator", "ResponseOperator", "LaplaceOperator",
+           "PowerProjectionOperator", "InversionEnabler",
+           "Field", "sqrt", "exp", "log",
+           "Prober", "DiagonalProberMixin", "TraceProberMixin"]

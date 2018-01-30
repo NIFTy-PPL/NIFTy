@@ -69,7 +69,7 @@ class ScalingOperator(EndomorphicOperator):
 
     @property
     def inverse(self):
-        if self._factor!= 0.:
+        if self._factor != 0.:
             return ScalingOperator(1./self._factor, self._domain)
         from .inverse_operator import InverseOperator
         return InverseOperator(self)
@@ -84,7 +84,7 @@ class ScalingOperator(EndomorphicOperator):
 
     @property
     def capability(self):
-        if self._factor==0.:
+        if self._factor == 0.:
             return self.TIMES | self.ADJOINT_TIMES
         return (self.TIMES | self.ADJOINT_TIMES |
                 self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)

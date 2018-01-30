@@ -17,11 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .. import exp
-from ..utilities import memo
+from ..minimization.energy import Energy
 from ..operators.smoothness_operator import SmoothnessOperator
+from ..utilities import memo
 from .nonlinear_power_curvature import NonlinearPowerCurvature
 from .response_operators import LinearizedPowerResponse
-from ..minimization.energy import Energy
 
 
 class NonlinearPowerEnergy(Energy):
@@ -51,64 +51,65 @@ class NonlinearPowerEnergy(Energy):
         default : 3
     """
 
-    def __init__(self, position, d, N, m, D, FFT, Instrument, nonlinearity,
-                 Projection, sigma=0., samples=3, sample_list=None,
+    def __init__(self, position, d, N, xi, D, ht, Instrument, nonlinearity,
+                 Projection, sigma=0., samples=3, xi_sample_list=None,
                  inverter=None):
         super(NonlinearPowerEnergy, self).__init__(position)
-        self.m = m
+        self.xi = xi
         self.D = D
         self.d = d
         self.N = N
         self.T = SmoothnessOperator(domain=self.position.domain[0],
                                     strength=sigma, logarithmic=True)
-        self.FFT = FFT
+        self.ht = ht
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.Projection = Projection
-        self._sigma = sigma
-
-        self.power = self.Projection.adjoint_times(exp(0.5*self.position))
-        if sample_list is None:
+        self.sigma = sigma
+        if xi_sample_list is None:
             if samples is None or samples == 0:
-                sample_list = [m]
+                xi_sample_list = [xi]
             else:
-                sample_list = [D.generate_posterior_sample() + m
-                               for _ in range(samples)]
-        self.sample_list = sample_list
+                xi_sample_list = [D.generate_posterior_sample() + xi
+                                  for _ in range(samples)]
+        self.xi_sample_list = xi_sample_list
         self.inverter = inverter
-        self._value, self._gradient = self._value_and_grad()
+
+        A = Projection.adjoint_times(exp(.5 * position))
+        map_s = self.ht(A * xi)
+        Tpos = self.T(position)
+
+        self._gradient = None
+        for xi_sample in self.xi_sample_list:
+            map_s = self.ht(A * xi_sample)
+            LinR = LinearizedPowerResponse(
+                self.Instrument, self.nonlinearity, self.ht, self.Projection,
+                self.position, xi_sample)
+
+            residual = self.d - \
+                self.Instrument(self.nonlinearity(map_s))
+            lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
+            grad = LinR.adjoint_times(self.N.inverse_times(residual))
+
+            if self._gradient is None:
+                self._value = lh
+                self._gradient = grad.copy()
+            else:
+                self._value += lh
+                self._gradient += grad
+
+        self._value *= 1. / len(self.xi_sample_list)
+        self._value += 0.5 * self.position.vdot(Tpos)
+        self._gradient *= -1. / len(self.xi_sample_list)
+        self._gradient += Tpos
 
     def at(self, position):
-        return self.__class__(position, self.d, self.N, self.m, self.D,
-                              self.FFT, self.Instrument, self.nonlinearity,
-                              self.Projection, sigma=self._sigma,
-                              samples=len(self.sample_list),
-                              sample_list=self.sample_list,
+        return self.__class__(position, self.d, self.N, self.xi, self.D,
+                              self.ht, self.Instrument, self.nonlinearity,
+                              self.Projection, sigma=self.sigma,
+                              samples=len(self.xi_sample_list),
+                              xi_sample_list=self.xi_sample_list,
                               inverter=self.inverter)
-
-    def _value_and_grad(self):
-        likelihood_gradient = None
-        for sample in self.sample_list:
-            residual = self.d - \
-                self.Instrument(self.nonlinearity(
-                    self.FFT.adjoint_times(self.power*sample)))
-            lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
-            LinR = LinearizedPowerResponse(
-                self.Instrument, self.nonlinearity, self.FFT, self.Projection,
-                self.position, sample)
-            grad = LinR.adjoint_times(self.N.inverse_times(residual))
-            if likelihood_gradient is None:
-                likelihood = lh
-                likelihood_gradient = grad.copy()
-            else:
-                likelihood += lh
-                likelihood_gradient += grad
-        Tpos = self.T(self.position)
-        likelihood *= 1./len(self.sample_list)
-        likelihood += 0.5*self.position.vdot(Tpos)
-        likelihood_gradient *= -1./len(self.sample_list)
-        likelihood_gradient += Tpos
-        return likelihood, likelihood_gradient
 
     @property
     def value(self):
@@ -122,6 +123,6 @@ class NonlinearPowerEnergy(Energy):
     @memo
     def curvature(self):
         return NonlinearPowerCurvature(
-            self.position, self.FFT, self.Instrument, self.nonlinearity,
-            self.Projection, self.N, self.T, self.sample_list,
-            inverter=self.inverter)
+            self.position, self.ht, self.Instrument, self.nonlinearity,
+            self.Projection, self.N, self.T, self.xi_sample_list,
+            self.inverter)

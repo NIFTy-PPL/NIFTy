@@ -35,9 +35,10 @@ class CriticalPowerEnergy(Energy):
     Parameters
     ----------
     position : Field,
-        The current position of this energy.
+        The current position of this energy. (Logarithm of power spectrum)
     m : Field,
-        The map whose power spectrum has to be inferred
+        The map whose power spectrum is inferred. Needs to live in harmonic
+        signal space.
     D : EndomorphicOperator,
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.
@@ -101,8 +102,8 @@ class CriticalPowerEnergy(Energy):
         self._theta = exp(-self.position) * (self.q + self._w*0.5)
         Tt = self.T(self.position)
 
-        energy = self._theta.integrate()
-        energy += self.position.integrate()*(self.alpha-0.5)
+        energy = self._theta.sum()
+        energy += self.position.sum() * (self.alpha-0.5)
         energy += 0.5*self.position.vdot(Tt)
         self._value = energy.real
 

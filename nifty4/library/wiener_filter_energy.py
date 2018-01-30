@@ -29,11 +29,12 @@ class WienerFilterEnergy(Energy):
     Parameters
     ----------
     position: Field,
-        The current position.
+        The current map in harmonic space.
     d: Field,
        the data
     R: LinearOperator,
-       The response operator, description of the measurement process.
+       The response operator, description of the measurement process. It needs
+       to map from harmonic signal space to data space.
     N: EndomorphicOperator,
        The noise covariance in data space.
     S: EndomorphicOperator,
