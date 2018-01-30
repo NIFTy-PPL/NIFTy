@@ -59,15 +59,13 @@ class Energy_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
+        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1./(1+k**2))
 
         D = ift.library.WienerFilterEnergy(position=s, d=d, R=R, N=N, S=S,
                                            inverter=inverter).curvature
 
-        w = ift.Field.zeros_like(tau0)
-
         energy0 = ift.library.CriticalPowerEnergy(
-            position=tau0, m=s, inverter=inverter, w=w, samples=10)
+            position=tau0, m=s, inverter=inverter, D=D, samples=10, smoothness_prior=1.)
         energy1 = energy0.at(tau1)
 
         a = (energy1.value - energy0.value) / eps
@@ -191,72 +189,4 @@ class Curvature_Tests(unittest.TestCase):
         a = (gradient1 - gradient0) / eps
         b = energy0.curvature(direction)
         tol = 1e-5
-        assert_allclose(a.val, b.val, rtol=tol, atol=tol)
-
-    @expand(product([ift.RGSpace(64, distances=.789),
-                     ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Exponential, ift.library.Linear],
-                    [132, 42, 3]))
-    def testNonlinearPowerCurvature(self, space, nonlinearity, seed):
-        np.random.seed(seed)
-        f = nonlinearity()
-        dim = len(space.shape)
-        hspace = space.get_default_codomain()
-        ht = ift.HarmonicTransformOperator(hspace, space)
-        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=True)
-        pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
-        xi = ift.Field.from_random(domain=hspace, random_type='normal')
-
-        def pspec(k): return 1 / (1 + k**2)**dim
-        tau0 = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(tau0))
-        n = ift.Field.from_random(domain=space, random_type='normal')
-        s = ht(xi * A)
-        diag = ift.Field.ones(space) * 10
-        R = ift.DiagonalOperator(diag)
-        diag = ift.Field.ones(space)
-        N = ift.DiagonalOperator(diag)
-        d = R(f(s)) + n
-
-        direction = ift.Field.from_random('normal', pspace)
-        direction /= np.sqrt(direction.var())
-        eps = 1e-7
-        tau1 = tau0 + eps * direction
-
-        IC = ift.GradientNormController(
-            iteration_limit=100,
-            tol_abs_gradnorm=1e-5)
-        inverter = ift.ConjugateGradient(IC)
-
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
-        D = ift.library.NonlinearWienerFilterEnergy(
-            position=xi,
-            d=d,
-            Instrument=R,
-            nonlinearity=f,
-            power=A,
-            N=N,
-            S=S,
-            ht=ht,
-            inverter=inverter).curvature
-
-        energy0 = ift.library.NonlinearPowerEnergy(
-            position=tau0,
-            d=d,
-            xi=xi,
-            D=D,
-            Instrument=R,
-            Projection=P,
-            nonlinearity=f,
-            ht=ht,
-            N=N,
-            samples=10)
-
-        gradient0 = energy0.gradient
-        gradient1 = energy0.at(tau1).gradient
-
-        a = (gradient1 - gradient0) / eps
-        b = energy0.curvature(direction)
-        tol = 1e-3
         assert_allclose(a.val, b.val, rtol=tol, atol=tol)

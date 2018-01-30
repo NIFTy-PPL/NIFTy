@@ -144,11 +144,11 @@ class Energy_Tests(unittest.TestCase):
         S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
         energy0 = ift.library.NonlinearWienerFilterEnergy(
             position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A, N=N, S=S)
-        energy1 = energy0.at(xi0)
+        energy1 = energy0.at(xi1)
 
         a = (energy1.value - energy0.value) / eps
         b = energy0.gradient.vdot(direction)
-        tol = 1e-4
+        tol = 1e-5
         assert_allclose(a, b, rtol=tol, atol=tol)
 
 
@@ -197,55 +197,10 @@ class Curvature_Tests(unittest.TestCase):
         tol = 1e-7
         assert_allclose(a.val, b.val, rtol=tol, atol=tol)
 
-    @expand(product([ift.RGSpace(64, distances=.789),
-                     ift.RGSpace([32, 32], distances=.789)],
-                    [4, 78, 23]))
-    def testLognormalMapCurvature(self, space, seed):
-        np.random.seed(seed)
-        dim = len(space.shape)
-        hspace = space.get_default_codomain()
-        ht = ift.HarmonicTransformOperator(hspace, target=space)
-        binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
-        pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
-        xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
-
-        def pspec(k): return 1 / (1 + k**2)**dim
-        pspec = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(pspec))
-        n = ift.Field.from_random(domain=space, random_type='normal')
-        sh0 = xi0 * A
-        s = ht(sh0)
-        Instrument = ift.ScalingOperator(10., space)
-        R = Instrument * ht
-        N = ift.ScalingOperator(1., space)
-        d = Instrument(ift.exp(s)) + n
-
-        direction = ift.Field.from_random('normal', hspace)
-        direction /= np.sqrt(direction.var())
-        eps = 1e-7
-        sh1 = sh0 + eps * direction
-
-        IC = ift.GradientNormController(
-            iteration_limit=100,
-            tol_abs_gradnorm=1e-5)
-        inverter = ift.ConjugateGradient(IC)
-
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1.)
-
-        energy0 = ift.library.LogNormalWienerFilterEnergy(
-            position=sh0, d=d, R=R, N=N, S=S, inverter=inverter)
-        gradient0 = energy0.gradient
-        gradient1 = energy0.at(sh1).gradient
-
-        a = (gradient1 - gradient0) / eps
-        b = energy0.curvature(direction)
-        tol = 1e-3
-        assert_allclose(a.val, b.val, rtol=tol, atol=tol)
 
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Exponential, ift.library.Linear],
+                    [ift.library.Linear],  # Only linear case due to approximation of Hessian in the case of nontrivial nonlinearities.
                     [4, 78, 23]))
     def testNonlinearMapCurvature(self, space, nonlinearity, seed):
         np.random.seed(seed)
@@ -293,5 +248,7 @@ class Curvature_Tests(unittest.TestCase):
 
         a = (gradient1 - gradient0) / eps
         b = energy0.curvature(direction)
-        tol = 1e-3
+        print(a.vdot(a))
+        print(b.vdot(b))
+        tol = 1e-7
         assert_allclose(a.val, b.val, rtol=tol, atol=tol)
