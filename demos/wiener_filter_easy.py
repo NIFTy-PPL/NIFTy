@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # Wiener filter
 
     j = R.adjoint_times(N.inverse_times(d))
-    IC = ift.GradientNormController(verbose=True, iteration_limit=500,
+    IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
     S_inv = fft.adjoint*Sh.inverse*fft

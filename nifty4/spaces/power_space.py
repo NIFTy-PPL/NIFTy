@@ -62,7 +62,8 @@ class PowerSpace(Space):
             units of the harmonic partner space.
         """
         nbin = int(nbin)
-        assert nbin >= 3, "nbin must be at least 3"
+        if nbin < 3:
+            raise ValueError("nbin must be at least 3")
         return np.linspace(float(first_bound), float(last_bound), nbin-1)
 
     @staticmethod
@@ -81,7 +82,8 @@ class PowerSpace(Space):
             units of the harmonic partner space.
         """
         nbin = int(nbin)
-        assert nbin >= 3, "nbin must be at least 3"
+        if nbin < 3:
+            raise ValueError("nbin must be at least 3")
         return np.logspace(np.log(float(first_bound)),
                            np.log(float(last_bound)),
                            nbin-1, base=np.e)
@@ -107,7 +109,8 @@ class PowerSpace(Space):
         nbin_max = int((dists[-1]-dists[0])/binsz_min)+2
         if nbin is None:
             nbin = nbin_max
-        assert nbin >= 3, "nbin must be at least 3"
+        if nbin < 3:
+            raise ValueError("nbin must be at least 3")
         if nbin > nbin_max:
             raise ValueError("nbin is too large")
         if logarithmic:
@@ -141,16 +144,19 @@ class PowerSpace(Space):
                 tbb = binbounds
             locdat = np.searchsorted(tbb, dobj.local_data(k_length_array.val))
             temp_pindex = dobj.from_local_data(
-                k_length_array.val.shape, locdat, dobj.distaxis(k_length_array.val))
+                k_length_array.val.shape, locdat,
+                dobj.distaxis(k_length_array.val))
             nbin = len(tbb)+1
             temp_rho = np.bincount(dobj.local_data(temp_pindex).ravel(),
                                    minlength=nbin)
             temp_rho = dobj.np_allreduce_sum(temp_rho)
-            assert not (temp_rho == 0).any(), "empty bins detected"
+            if (temp_rho == 0).any():
+                raise ValueError("empty bins detected")
             # The explicit conversion to float64 is necessary because bincount
             # sometimes returns its result as an integer array, even when
             # floating-point weights are present ...
-            temp_k_lengths = np.bincount(dobj.local_data(temp_pindex).ravel(),
+            temp_k_lengths = np.bincount(
+                dobj.local_data(temp_pindex).ravel(),
                 weights=dobj.local_data(k_length_array.val).ravel(),
                 minlength=nbin).astype(np.float64, copy=False)
             temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho

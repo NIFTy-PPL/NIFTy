@@ -50,9 +50,9 @@ if __name__ == "__main__":
 
     # Choosing the minimization strategy
 
-    ctrl = ift.GradientNormController(verbose=True, tol_abs_gradnorm=0.1)
+    ctrl = ift.GradientNormController(name="inverter", tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
-    controller = ift.GradientNormController(verbose=True, tol_abs_gradnorm=0.1)
+    controller = ift.GradientNormController(name="min", tol_abs_gradnorm=0.1)
     minimizer = ift.RelaxedNewton(controller=controller)
     m0 = ift.Field.zeros(h_space)
     # Initializing the Wiener Filter energy
