@@ -53,7 +53,7 @@ class NonlinearPowerEnergy(Energy):
 
     def __init__(self, position, d, N, xi, D, ht, Instrument, nonlinearity,
                  Projection, sigma=0., samples=3, xi_sample_list=None,
-                 inverter=None, munit=1., sunit=1.):
+                 inverter=None):
         super(NonlinearPowerEnergy, self).__init__(position)
         self.xi = xi
         self.D = D
@@ -66,8 +66,6 @@ class NonlinearPowerEnergy(Energy):
         self.nonlinearity = nonlinearity
         self.Projection = Projection
         self.sigma = sigma
-        self.munit = munit
-        self.sunit = sunit
         if xi_sample_list is None:
             if samples is None or samples == 0:
                 xi_sample_list = [xi]
@@ -77,7 +75,7 @@ class NonlinearPowerEnergy(Energy):
         self.xi_sample_list = xi_sample_list
         self.inverter = inverter
 
-        A = Projection.adjoint_times(munit * exp(.5 * position))  # unit: munit
+        A = Projection.adjoint_times(exp(.5 * position))
         map_s = self.ht(A * xi)
         Tpos = self.T(position)
 
@@ -86,10 +84,10 @@ class NonlinearPowerEnergy(Energy):
             map_s = self.ht(A * xi_sample)
             LinR = LinearizedPowerResponse(
                 self.Instrument, self.nonlinearity, self.ht, self.Projection,
-                self.position, xi_sample, munit=self.munit, sunit=self.sunit)
+                self.position, xi_sample)
 
             residual = self.d - \
-                self.Instrument(sunit * self.nonlinearity(map_s))
+                self.Instrument(self.nonlinearity(map_s))
             lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
             grad = LinR.adjoint_times(self.N.inverse_times(residual))
 
@@ -111,8 +109,6 @@ class NonlinearPowerEnergy(Energy):
                               self.Projection, sigma=self.sigma,
                               samples=len(self.xi_sample_list),
                               xi_sample_list=self.xi_sample_list,
-                              munit=self.munit,
-                              sunit=self.sunit,
                               inverter=self.inverter)
 
     @property
@@ -129,4 +125,4 @@ class NonlinearPowerEnergy(Energy):
         return NonlinearPowerCurvature(
             self.position, self.ht, self.Instrument, self.nonlinearity,
             self.Projection, self.N, self.T, self.xi_sample_list,
-            self.inverter, self.munit, self.sunit)
+            self.inverter)

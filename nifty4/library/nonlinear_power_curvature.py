@@ -20,22 +20,12 @@ from ..operators.inversion_enabler import InversionEnabler
 from .response_operators import LinearizedPowerResponse
 
 
-def NonlinearPowerCurvature(
-        tau,
-        ht,
-        Instrument,
-        nonlinearity,
-        Projection,
-        N,
-        T,
-        xi_sample_list,
-        inverter,
-        munit=1.,
-        sunit=1.):
+def NonlinearPowerCurvature(tau, ht, Instrument, nonlinearity, Projection, N,
+                            T, xi_sample_list, inverter):
     result = None
     for xi_sample in xi_sample_list:
         LinearizedResponse = LinearizedPowerResponse(
-            Instrument, nonlinearity, ht, Projection, tau, xi_sample, munit, sunit)
+            Instrument, nonlinearity, ht, Projection, tau, xi_sample)
         op = LinearizedResponse.adjoint * N.inverse * LinearizedResponse
         result = op if result is None else result + op
     result = result * (1. / len(xi_sample_list)) + T

@@ -25,26 +25,23 @@ from ..minimization.energy import Energy
 
 class NoiseEnergy(Energy):
     def __init__(self, position, d, xi, D, t, ht, Instrument,
-                 nonlinearity, alpha, q, Projection, munit=1., sunit=1.,
-                 dunit=1., samples=3, xi_sample_list=None, inverter=None):
+                 nonlinearity, alpha, q, Projection, samples=3,
+                 xi_sample_list=None, inverter=None):
         super(NoiseEnergy, self).__init__(position=position)
         self.xi = xi
         self.D = D
         self.d = d
-        self.N = DiagonalOperator(diagonal=dunit**2 * exp(self.position))
+        self.N = DiagonalOperator(diagonal=exp(self.position))
         self.t = t
         self.samples = samples
         self.ht = ht
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
-        self.munit = munit
-        self.sunit = sunit
-        self.dunit = dunit
 
         self.alpha = alpha
         self.q = q
         self.Projection = Projection
-        self.power = self.Projection.adjoint_times(munit * exp(0.5 * self.t))
+        self.power = self.Projection.adjoint_times(exp(0.5 * self.t))
         if xi_sample_list is None:
             if samples is None or samples == 0:
                 xi_sample_list = [xi]
@@ -54,14 +51,14 @@ class NoiseEnergy(Energy):
         self.xi_sample_list = xi_sample_list
         self.inverter = inverter
 
-        A = Projection.adjoint_times(munit * exp(.5 * self.t))  # unit: munit
+        A = Projection.adjoint_times(exp(.5 * self.t))
 
         self._gradient = None
         for sample in self.xi_sample_list:
             map_s = self.ht(A * sample)
 
             residual = self.d - \
-                self.Instrument(sunit * self.nonlinearity(map_s))
+                self.Instrument(self.nonlinearity(map_s))
             lh = .5 * residual.vdot(self.N.inverse_times(residual))
             grad = -.5 * self.N.inverse_times(residual.conjugate() * residual)
 
@@ -84,8 +81,7 @@ class NoiseEnergy(Energy):
         return self.__class__(
             position, self.d, self.xi, self.D, self.t, self.ht,
             self.Instrument, self.nonlinearity, self.alpha, self.q,
-            self.Projection, munit=self.munit, sunit=self.sunit,
-            dunit=self.dunit, xi_sample_list=self.xi_sample_list,
+            self.Projection, xi_sample_list=self.xi_sample_list,
             samples=self.samples, inverter=self.inverter)
 
     @property

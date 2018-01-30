@@ -24,19 +24,18 @@ from .response_operators import LinearizedSignalResponse
 
 class NonlinearWienerFilterEnergy(Energy):
     def __init__(self, position, d, Instrument, nonlinearity, ht, power, N, S,
-                 inverter=None, sunit=1.):
+                 inverter=None):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
         self.d = d
-        self.sunit = sunit
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.ht = ht
         self.power = power
         m = self.ht(self.power * self.position)
         self.LinearizedResponse = LinearizedSignalResponse(
-            Instrument, nonlinearity, ht, power, m, sunit)
+            Instrument, nonlinearity, ht, power, m)
 
-        residual = d - Instrument(sunit * nonlinearity(m))
+        residual = d - Instrument(nonlinearity(m))
         self.N = N
         self.S = S
         self.inverter = inverter
@@ -49,7 +48,7 @@ class NonlinearWienerFilterEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
                               self.nonlinearity, self.ht, self.power, self.N,
-                              self.S, self.inverter, self.sunit)
+                              self.S, self.inverter)
 
     @property
     def value(self):
