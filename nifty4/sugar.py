@@ -22,7 +22,6 @@ from .spaces.power_space import PowerSpace
 from .field import Field, sqrt
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_projection_operator import PowerProjectionOperator
-from .operators.fft_operator import FFTOperator
 from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
@@ -34,7 +33,6 @@ __all__ = ['PS_field',
            'create_power_field',
            'create_power_operator',
            'create_composed_ht_operator',
-           'create_composed_fft_operator',
            'create_harmonic_smoothing_operator']
 
 
@@ -251,24 +249,6 @@ def create_composed_ht_operator(domain, codomain=None):
         if isinstance(space, Space) and space.harmonic:
             tdom = domain if res is None else res.target
             op = HarmonicTransformOperator(tdom, codomain[i], i)
-            res = op if res is None else op*res
-    if res is None:
-        raise ValueError("empty operator")
-    return res
-
-
-def create_composed_fft_operator(domain, codomain=None, all_to='other'):
-    if codomain is None:
-        codomain = [None]*len(domain)
-    res = None
-    for i, space in enumerate(domain):
-        if not isinstance(space, Space):
-            continue
-        if (all_to == 'other' or
-                (all_to == 'position' and space.harmonic) or
-                (all_to == 'harmonic' and not space.harmonic)):
-            tdom = domain if res is None else res.target
-            op = FFTOperator(domain=tdom, target=codomain[i], space=i)
             res = op if res is None else op*res
     if res is None:
         raise ValueError("empty operator")

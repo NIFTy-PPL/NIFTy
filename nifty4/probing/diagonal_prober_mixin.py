@@ -18,7 +18,7 @@
 
 from __future__ import division
 from builtins import object
-from ..sugar import create_composed_fft_operator
+from ..sugar import create_composed_ht_operator
 
 
 class DiagonalProberMixin(object):
@@ -36,8 +36,8 @@ class DiagonalProberMixin(object):
 
     def finish_probe(self, probe, pre_result):
         if self.__evaluate_probe_in_signal_space:
-            fft = create_composed_fft_operator(self._domain, all_to='position')
-            result = fft(probe[1]).conjugate()*fft(pre_result)
+            ht = create_composed_ht_operator(self._domain)
+            result = ht(probe[1]).conjugate()*ht(pre_result)
         else:
             result = probe[1].conjugate()*pre_result
         self.__sum_of_probings += result
