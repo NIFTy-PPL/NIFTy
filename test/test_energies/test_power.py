@@ -63,7 +63,8 @@ class Energy_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
         inverter = ift.ConjugateGradient(IC)
 
-        S = ift.create_power_operator(hspace, power_spectrum=lambda k: 1./(1+k**2))
+        S = ift.create_power_operator(
+            hspace, power_spectrum=lambda k: 1. / (1 + k**2))
 
         D = ift.library.WienerFilterEnergy(position=s, d=d, R=R, N=N, S=S,
                                            inverter=inverter).curvature

@@ -202,10 +202,10 @@ class Curvature_Tests(unittest.TestCase):
         assert_allclose(ift.dobj.to_global_data(a.val),
                         ift.dobj.to_global_data(b.val), rtol=tol, atol=tol)
 
-
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Linear],  # Only linear case due to approximation of Hessian in the case of nontrivial nonlinearities.
+                    # Only linear case due to approximation of Hessian in the case of nontrivial nonlinearities.
+                    [ift.library.Linear],
                     [4, 78, 23]))
     def testNonlinearMapCurvature(self, space, nonlinearity, seed):
         np.random.seed(seed)
