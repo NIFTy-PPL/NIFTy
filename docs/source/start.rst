@@ -19,6 +19,22 @@ You should be able to import NIFTy4 like this after a successful `installation <
 
 >>> import nifty4 as ift
 
+
+Technical bird's eye view
+.........................
+
+The fundamental building blocks required for IFT computations are best recognized from a large distance, ignoring all technical details.
+
+From such a perspective,
+
+- IFT problems largely consist of *minimization* problems involving a large number of equations.
+- The equations are built mostly from the application of *linear operators*, but there may also be nonlinear functions involved.
+- The unknowns in the equations represent either continuous physical *fields*, or they are simply individual measured *data* points.
+- The locations and volume elements attached to discretized *field* values are supplied by *space* objects. There are many variants of such discretized *spaces* supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *spaces*.
+
+In the following sections, the concepts briefly presented here will be discussed in more detail; this is done in reversed order of their introduction, to avoid forward references.
+
+
 .. _domainobjects:
 
 DomainObjects
