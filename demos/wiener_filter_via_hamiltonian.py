@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     # Define associated harmonic space and harmonic transformation
     h_space = s_space.get_default_codomain()
-    fft = ift.HarmonicTransformOperator(h_space, s_space)
+    ht = ift.HarmonicTransformOperator(h_space, s_space)
 
     # Setting up power space
     p_space = ift.PowerSpace(h_space)
@@ -25,27 +25,26 @@ if __name__ == "__main__":
     # Drawing a sample sh from the prior distribution in harmonic space
     sp = ift.PS_field(p_space, p_spec)
     sh = ift.power_synthesize(sp, real_signal=True)
-    ss = fft.times(sh)
 
     # Choosing the measurement instrument
-    # Instrument = ift.FFTSmoothingOperator(s_space, sigma=0.05)
     diag = np.ones(s_space.shape)
     diag[20:80, 20:80] = 0
     diag = ift.Field(s_space, ift.dobj.from_global_data(diag))
     Instrument = ift.DiagonalOperator(diag)
 
     # Adding a harmonic transformation to the instrument
-    R = Instrument*fft
+    R = Instrument*ht
+    noiseless_data = R(sh)
     signal_to_noise = 1.
-    ndiag = ift.Field.full(s_space, ss.var()/signal_to_noise)
-    N = ift.DiagonalOperator(ndiag.weight(1))
+    noise_amplitude = noiseless_data.std()/signal_to_noise
+    N = ift.DiagonalOperator(ift.Field.full(s_space, noise_amplitude**2))
     n = ift.Field.from_random(domain=s_space,
                               random_type='normal',
-                              std=ss.std()/np.sqrt(signal_to_noise),
+                              std=noise_amplitude,
                               mean=0)
 
     # Creating the mock data
-    d = R(sh) + n
+    d = noiseless_data + n
     j = R.adjoint_times(N.inverse_times(d))
 
     # Choosing the minimization strategy
@@ -62,8 +61,8 @@ if __name__ == "__main__":
     energy, convergence = minimizer(energy)
     m = energy.position
     D = energy.curvature
-    ift.plot(ss, name="signal.png", colormap="Planck-like")
-    ift.plot(fft(m), name="m.png", colormap="Planck-like")
+    ift.plot(ht(sh), name="signal.png", colormap="Planck-like")
+    ift.plot(ht(m), name="m.png", colormap="Planck-like")
 
     # sampling the uncertainty map
     sample_variance = ift.Field.zeros(s_space)
@@ -71,7 +70,7 @@ if __name__ == "__main__":
 
     n_samples = 50
     for i in range(n_samples):
-        sample = fft(D.generate_posterior_sample() + m)
+        sample = ht(D.generate_posterior_sample() + m)
         sample_variance += sample**2
         sample_mean += sample
     sample_mean /= n_samples

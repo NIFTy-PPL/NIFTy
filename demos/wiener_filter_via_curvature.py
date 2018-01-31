@@ -16,14 +16,14 @@ if __name__ == "__main__":
     # sigma of field in position space sqrt(<|s_x|^2>)
     field_sigma = 2. * nu.K
     # smoothing length of response
-    response_sigma = 0.01*nu.m
-    # The signal to noise ratio ***CURRENTLY BROKEN***
-    signal_to_noise = 70.7
+    response_sigma = 0.03*nu.m
+    # The signal to noise ratio
+    signal_to_noise = 1
 
     # note that field_variance**2 = a*k_0/4. for this analytic form of power
     # spectrum
     def power_spectrum(k):
-    	#RL FIXME: signal_amplitude is not how much signal varies
+        #RL FIXME: signal_amplitude is not how much signal varies
         cldim = correlation_length**(2*dimensionality)
         a = 4/(2*np.pi) * cldim * field_sigma**2
         # to be integrated over spherical shells later on
@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     signal_space = ift.RGSpace(shape, distances=L/N_pixels)
     harmonic_space = signal_space.get_default_codomain()
-    fft = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
+    ht = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
     power_space = ift.PowerSpace(harmonic_space)
 
     # Creating the mock data
@@ -53,18 +53,18 @@ if __name__ == "__main__":
     sensitivity = (1./nu.m)**dimensionality/nu.K
     R = ift.GeometryRemover(signal_space)
     R = R*ift.ScalingOperator(sensitivity, signal_space)
-    R = R*fft
+    R = R*ht
     R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
     data_domain = R.target[0]
 
-    noise_amplitude = 1./signal_to_noise*field_sigma*sensitivity*((L/N_pixels)**dimensionality)
-    print "noise amplitude:", noise_amplitude
+    noiseless_data = R(mock_signal)
+    noise_amplitude = noiseless_data.std()/signal_to_noise
     N = ift.DiagonalOperator(
         ift.Field.full(data_domain, noise_amplitude**2))
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=noise_amplitude, mean=0)
-    data = R(mock_signal) + noise
+    data = noiseless_data + noise
      # Wiener filter
 
     j = R.adjoint_times(N.inverse_times(data))
@@ -75,14 +75,14 @@ if __name__ == "__main__":
         S=S, N=N, R=R, inverter=inverter)
 
     m = wiener_curvature.inverse_times(j)
-    m_s = fft(m)
+    m_s = ht(m)
 
     sspace2 = ift.RGSpace(shape, distances=L/N_pixels/nu.m)
 
-    ift.plot(ift.Field(sspace2, fft(mock_signal).val)/nu.K, name="mock_signal.png")
+    ift.plot(ift.Field(sspace2, ht(mock_signal).val)/nu.K, name="mock_signal.png")
     #data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)
     #data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))
-    ift.plot(ift.Field(sspace2, val=fft(R.adjoint_times(data)).val), name="data.png")
-    print "msig",np.min(fft(mock_signal).val)/nu.K, np.max(fft(mock_signal).val)/nu.K
+    ift.plot(ift.Field(sspace2, val=data.val), name="data.png")
+    print "msig",np.min(ht(mock_signal).val)/nu.K, np.max(ht(mock_signal).val)/nu.K
     print "map",np.min(m_s.val)/nu.K, np.max(m_s.val)/nu.K
     ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="map.png")

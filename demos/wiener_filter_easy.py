@@ -27,8 +27,8 @@ if __name__ == "__main__":
 
     # Set up the geometry
     s_space = ift.RGSpace([N_pixels, N_pixels], distances=pixel_width)
-    fft = ift.FFTOperator(s_space)
-    h_space = fft.target[0]
+    h_space = s_space.get_default_codomain()
+    ht = ift.HarmonicTransformOperator(h_space, s_space)
     p_space = ift.PowerSpace(h_space)
 
     # Create mock data
@@ -37,19 +37,19 @@ if __name__ == "__main__":
 
     sp = ift.PS_field(p_space, pow_spec)
     sh = ift.power_synthesize(sp, real_signal=True)
-    ss = fft.inverse_times(sh)
 
-    R = ift.FFTSmoothingOperator(s_space, sigma=response_sigma)
+    R = ht*ift.create_harmonic_smoothing_operator((h_space,),0,response_sigma)
 
-    signal_to_noise = 1
-    diag = ift.Field(s_space, ss.var()/signal_to_noise).weight(1)
-    N = ift.DiagonalOperator(diag)
+    noiseless_data = R(sh)
+    signal_to_noise = 1.
+    noise_amplitude = noiseless_data.std()/signal_to_noise
+    N = ift.DiagonalOperator(ift.Field.full(s_space, noise_amplitude**2))
     n = ift.Field.from_random(domain=s_space,
                               random_type='normal',
-                              std=ss.std()/np.sqrt(signal_to_noise),
+                              std=noise_amplitude,
                               mean=0)
 
-    d = R(ss) + n
+    d = noiseless_data + n
 
     # Wiener filter
 
@@ -57,8 +57,14 @@ if __name__ == "__main__":
     IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
-    S_inv = fft.adjoint*Sh.inverse*fft
-    D = (R.adjoint*N.inverse*R + S_inv).inverse
+    D = (R.adjoint*N.inverse*R + Sh.inverse).inverse
     # MR FIXME: we can/should provide a preconditioner here as well!
     D = ift.InversionEnabler(D, inverter)
     m = D(j)
+
+    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
+                "colormap": "Planck-like"}
+    ift.plot(ht(sh), name="mock_signal.png", **plotdict)
+    ift.plot(ift.Field(s_space, val=d.val),
+             name="data.png", **plotdict)
+    ift.plot(ht(m), name="map.png", **plotdict)
