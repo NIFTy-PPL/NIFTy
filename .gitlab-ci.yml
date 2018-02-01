@@ -37,6 +37,10 @@ test_mpi_fftw:
     - ci/install_pyfftw.sh
     - nosetests -vv
     - nosetests3 -vv
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -x
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests3 -x
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -x
 
 test_mpi_fftw_hdf5:
   stage: test
@@ -46,10 +50,10 @@ test_mpi_fftw_hdf5:
     - ci/install_h5py.sh
     - nosetests -vv
     - nosetests3 -vv
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -x
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests3 -x
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -x
+    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -x
+    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x
+    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests3 -x
+    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -x
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
