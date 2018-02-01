@@ -33,7 +33,7 @@ setup(name="nifty2go",
                'git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git#egg=pyHealpix-0.0.1'],
       license="GPLv3",
       setup_requires=['future', 'numpy'],
-      install_requires=['future', 'numpy'],
+      install_requires=['future', 'numpy', 'pyfftw>=0.10.4'],
       classifiers=[
         "Development Status :: 4 - Beta",
         "Topic :: Utilities",
