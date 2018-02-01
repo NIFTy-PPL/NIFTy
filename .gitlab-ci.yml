@@ -20,16 +20,15 @@ before_script:
 test_min:
   stage: test
   script:
-    - nosetests-2* -vv
-    - nosetests-3* -vv
+    - nosetests -vv
+    - nosetests3 -vv
 
 test_mpi:
   stage: test
   script:
     - ci/install_mpi4py.sh
     - nosetests -vv
-    #- pip3 install --upgrade nose
-    #- nosetests -vv
+    - nosetests3 -vv
 
 test_mpi_fftw:
   stage: test
@@ -37,8 +36,7 @@ test_mpi_fftw:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - nosetests -vv
-    #- pip3 install --upgrade nose
-    #- nosetests -vv
+    - nosetests3 -vv
 
 test_mpi_fftw_hdf5:
   stage: test
@@ -46,11 +44,12 @@ test_mpi_fftw_hdf5:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - ci/install_h5py.sh
+    - nosetests -vv
+    - nosetests3 -vv
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -x
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x
-    #- pip3 install --upgrade nose
-    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -x
-    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests3 -x
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -x
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
