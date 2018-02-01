@@ -27,16 +27,18 @@ test_mpi:
   stage: test
   script:
     - ci/install_mpi4py.sh
-    - nosetests-2* -vv
-    - nosetests-3* -vv
+    - nosetests -vv
+    #- pip3 install --upgrade nose
+    #- nosetests -vv
 
 test_mpi_fftw:
   stage: test
   script:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
-    - nosetests-2* -vv
-    - nosetests-3* -vv
+    - nosetests -vv
+    #- pip3 install --upgrade nose
+    #- nosetests -vv
 
 test_mpi_fftw_hdf5:
   stage: test
@@ -44,10 +46,11 @@ test_mpi_fftw_hdf5:
     - ci/install_mpi4py.sh
     - ci/install_pyfftw.sh
     - ci/install_h5py.sh
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests-2* -x
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests-3* -x
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests-2* -x
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests-3* -x
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -x
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x
+    #- pip3 install --upgrade nose
+    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests -x
+    #- OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -x
     - nosetests -x --with-coverage --cover-package=nifty --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
