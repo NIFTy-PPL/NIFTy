@@ -30,7 +30,9 @@ from nifty import Field,\
                   RGSpace,\
                   LMSpace,\
                   PowerSpace,\
-                  nifty_configuration
+                  nifty_configuration,\
+                  create_power_operator,\
+                  sqrt
 
 import d2o
 from d2o import distributed_data_object
@@ -111,6 +113,7 @@ class Test_Functionality(unittest.TestCase):
         samples = 2000
         ps1 = 0.
         ps2 = 0.
+
         for ii in range(samples):
             sk = fp.power_synthesize(spaces=(0, 1), real_signal=True)
 
@@ -124,6 +127,52 @@ class Test_Functionality(unittest.TestCase):
         assert_allclose(ps2.val.get_full_data()/samples,
                         fp2.val.get_full_data(),
                         rtol=0.2)
+
+    @expand(product([RGSpace((8,), harmonic=True,
+                             zerocenter=False),
+                     RGSpace((8, 8), harmonic=True, distances=0.123,
+                             zerocenter=True)],
+                    [RGSpace((8,), harmonic=True,
+                             zerocenter=False),
+                     LMSpace(12)],
+                    ['real', 'complex']))
+    def test_DiagonalOperator_power_analyze(self, space1, space2, base):
+        nifty_configuration['harmonic_rg_base'] = base
+
+        d2o.random.seed(11)
+
+        p1 = PowerSpace(space1)
+        spec1 = lambda k: 42/(1+k)**2
+        fp1 = Field(p1, val=spec1)
+
+        p2 = PowerSpace(space2)
+        spec2 = lambda k: 42/(1+k)**3
+        fp2 = Field(p2, val=spec2)
+
+        S_1 = create_power_operator(space1, sqrt(fp1))
+        S_2 = create_power_operator(space2, sqrt(fp2))
+        S_1.set_diagonal(S_1.diagonal().weight(-1), bare=False)
+        S_2.set_diagonal(S_2.diagonal().weight(-1), bare=False)
+
+        samples = 2000
+        ps1 = 0.
+        ps2 = 0.
+
+        for ii in range(samples):
+            rand_k = Field.from_random('normal', domain=(space1, space2))
+            sk = S_1.times(S_2.times(rand_k, spaces=1), spaces=0)
+            sp = sk.power_analyze(spaces=(0, 1), keep_phase_information=False)
+            ps1 += sp.sum(spaces=1)/fp2.sum()
+            ps2 += sp.sum(spaces=0)/fp1.sum()
+
+        assert_allclose(ps1.val.get_full_data()/samples,
+                        fp1.val.get_full_data(),
+                        rtol=0.2)
+        assert_allclose(ps2.val.get_full_data()/samples,
+                        fp2.val.get_full_data(),
+                        rtol=0.2)
+
+
 
     def test_vdot(self):
         s=RGSpace((10,))
