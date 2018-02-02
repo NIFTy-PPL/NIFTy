@@ -37,8 +37,6 @@ if __name__ == "__main__":
     R = R*ift.DiagonalOperator(mask)
     R = R*ht
     R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
-    #R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
-    #                         sensitivity=(mask,))
     data_domain = R.target[0]
 
     # Setting up the noise covariance and drawing a random noise realization
