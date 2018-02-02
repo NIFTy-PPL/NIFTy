@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..field import Field
-from ..spaces.field_array import FieldArray
+from ..spaces.unstructured_domain import UnstructuredDomain
 from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
 from .fft_smoothing_operator import FFTSmoothingOperator
@@ -30,7 +30,7 @@ class GeometryRemover(LinearOperator):
     def __init__(self, domain):
         super(GeometryRemover, self).__init__()
         self._domain = DomainTuple.make(domain)
-        target_list = [FieldArray(dom.shape) for dom in self._domain]
+        target_list = [UnstructuredDomain(dom.shape) for dom in self._domain]
         self._target = DomainTuple.make(target_list)
 
     @property

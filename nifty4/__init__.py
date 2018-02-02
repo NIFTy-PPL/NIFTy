@@ -2,10 +2,9 @@ from .version import __version__
 
 from . import dobj
 
-from .domain_object import DomainObject
-
-from .spaces.field_array import FieldArray
-from .spaces.space import Space
+from .spaces.domain import Domain
+from .spaces.unstructured_domain import UnstructuredDomain
+from .spaces.structured_domain import StructuredDomain
 from .spaces.rg_space import RGSpace
 from .spaces.lm_space import LMSpace
 from .spaces.hp_space import HPSpace
@@ -55,7 +54,7 @@ from .sugar import *
 from .plotting.plot import plot
 from . import library
 
-__all__ = ["DomainObject", "FieldArray", "Space", "RGSpace", "LMSpace",
+__all__ = ["Domain", "UnstructuredDomain", "StructuredDomain", "RGSpace", "LMSpace",
            "HPSpace", "GLSpace", "DOFSpace", "PowerSpace", "DomainTuple",
            "LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",

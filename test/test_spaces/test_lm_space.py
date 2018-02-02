@@ -31,14 +31,14 @@ CONSTRUCTOR_CONFIGS = [
             'mmax': 5,
             'shape': (36,),
             'harmonic': True,
-            'dim': 36,
+            'size': 36,
             }],
         [7, 4, {
             'lmax': 7,
             'mmax': 4,
             'shape': (52,),
             'harmonic': True,
-            'dim': 52,
+            'size': 52,
             }],
         [-1, 28, {
             'error': ValueError
@@ -69,7 +69,7 @@ def get_k_length_array_configs():
 class LMSpaceInterfaceTests(unittest.TestCase):
     @expand([['lmax', int],
             ['mmax', int],
-            ['dim', int]])
+            ['size', int]])
     def test_property_ret_type(self, attribute, expected_type):
         l = ift.LMSpace(7, 5)
         assert_(isinstance(getattr(l, attribute), expected_type))

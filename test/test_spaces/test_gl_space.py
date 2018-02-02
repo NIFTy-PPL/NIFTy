@@ -31,7 +31,7 @@ CONSTRUCTOR_CONFIGS = [
             'nlon': 3,
             'harmonic': False,
             'shape': (6,),
-            'dim': 6,
+            'size': 6,
             }],
         [0, None, {
             'error': ValueError

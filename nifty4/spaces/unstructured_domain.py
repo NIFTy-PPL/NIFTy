@@ -16,13 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..domain_object import DomainObject
+from .domain import Domain
 from functools import reduce
 
 
-class FieldArray(DomainObject):
+class UnstructuredDomain(Domain):
     def __init__(self, shape):
-        super(FieldArray, self).__init__()
+        super(UnstructuredDomain, self).__init__()
         self._needed_for_hash += ["_shape"]
         try:
             self._shape = tuple([int(i) for i in shape])
@@ -30,15 +30,12 @@ class FieldArray(DomainObject):
             self._shape = (int(shape), )
 
     def __repr__(self):
-        return "FieldArray(shape=%r)" % (self.shape, )
+        return "UnstructuredDomain(shape=%r)" % (self.shape, )
 
     @property
     def shape(self):
         return self._shape
 
     @property
-    def dim(self):
+    def size(self):
         return reduce(lambda x, y: x*y, self.shape)
-
-    def scalar_dvol(self):
-        return 1.

@@ -33,7 +33,7 @@ class Test_Interface(unittest.TestCase):
                     [['domain', ift.DomainTuple],
                      ['val', ift.dobj.data_object],
                      ['shape', tuple],
-                     ['dim', (np.int, np.int64)]]))
+                     ['size', (np.int, np.int64)]]))
     def test_return_types(self, domain, attribute_desired_type):
         attribute = attribute_desired_type[0]
         desired_type = attribute_desired_type[1]

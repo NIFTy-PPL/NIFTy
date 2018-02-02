@@ -17,10 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .space import Space
+from .structured_domain import StructuredDomain
 
 
-class DOFSpace(Space):
+class DOFSpace(StructuredDomain):
     def __init__(self, dof_weights):
         super(DOFSpace, self).__init__()
         self._dvol = tuple(dof_weights)
@@ -35,7 +35,7 @@ class DOFSpace(Space):
         return (len(self._dvol),)
 
     @property
-    def dim(self):
+    def size(self):
         return len(self._dvol)
 
     def scalar_dvol(self):

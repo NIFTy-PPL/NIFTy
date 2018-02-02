@@ -16,19 +16,15 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division
 import abc
-from .utilities import NiftyMeta
+from ..utilities import NiftyMeta
 from future.utils import with_metaclass
 import numpy as np
 
 
-class DomainObject(with_metaclass(
+class Domain(with_metaclass(
         NiftyMeta, type('NewBase', (object,), {}))):
-    """The abstract class that can be used as a domain for a field.
-
-    This holds all the information and functionality a field needs to know
-    about its domain and how the data of the field are stored.
+    """The abstract class repesenting a (structured or unstructured) domain.
     """
 
     def __init__(self):
@@ -45,16 +41,16 @@ class DomainObject(with_metaclass(
         return result_hash
 
     def __eq__(self, x):
-        """Checks if two domain_objects are equal.
+        """Checks if two domains are equal.
 
         Parameters
         ----------
-        x: domain_object
-            The domain_object `self` is compared to.
+        x: Domain
+            The domain `self` is compared to.
 
         Returns
         -------
-        bool: True iff `self` and x describe the same manifold.
+        bool: True iff `self` and x describe the same domain.
         """
         if self is x:  # shortcut for simple case
             return True
@@ -70,47 +66,22 @@ class DomainObject(with_metaclass(
 
     @abc.abstractproperty
     def shape(self):
-        """The domain-object's shape contribution to the underlying array.
+        """The shape of the array-like object required to store information
+        living on the domain.
 
         Returns
         -------
-        tuple of ints: shape of the underlying array-like object
+        tuple of ints: shape of the required array-like object
         """
         raise NotImplementedError
 
     @abc.abstractproperty
-    def dim(self):
-        """ Returns the number of pixel-dimensions the object has.
+    def size(self):
+        """Number of data elements associated with this domain.
+        Equivalent to the products over all entries in the domain's shape.
 
         Returns
         -------
-        int: number of pixels
+        int: number of data elements
         """
         raise NotImplementedError
-
-    @abc.abstractmethod
-    def scalar_dvol(self):
-        """Returns the volume factors of this domain as a floating
-        point scalar, if the volume factors are all identical, otherwise
-        returns None.
-
-        Returns
-        -------
-        float or None: Volume factor
-        """
-        raise NotImplementedError
-
-    def dvol(self):
-        """Returns the volume factors of this domain, either as a floating
-        point scalar (if the volume factors are all identical) or as a
-        floating point array with a shape of `self.shape`.
-
-        Returns
-        -------
-        float or numpy.ndarray(dtype=float): Volume factors
-        """
-        return self.scalar_dvol()
-
-    def total_volume(self):
-        tmp = self.dvol()
-        return self.dim * tmp if np.isscalar(tmp) else np.sum(tmp)
