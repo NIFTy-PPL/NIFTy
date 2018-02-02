@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     # Setting up the noise covariance and drawing a random noise realization
     noiseless_data = R(mock_signal)
-    noise_amplitude = noiseless_data.std()/signal_to_noise
+    noise_amplitude = noiseless_data.val.std()/signal_to_noise
     N = ift.DiagonalOperator(
         ift.Field.full(data_domain, noise_amplitude**2))
     noise = ift.Field.from_random(
@@ -56,9 +56,9 @@ if __name__ == "__main__":
     inverter = ift.ConjugateGradient(controller=ctrl)
     energy = ift.library.LogNormalWienerFilterEnergy(m0, data, R,
                                                      N, S, inverter=inverter)
-    # minimizer = ift.VL_BFGS(controller=ctrl2, max_history_length=20)
+    #minimizer = ift.VL_BFGS(controller=ctrl2, max_history_length=20)
     minimizer = ift.RelaxedNewton(controller=ctrl2)
-    # minimizer = ift.SteepestDescent(controller=ctrl2)
+    #minimizer = ift.SteepestDescent(controller=ctrl2)
 
     me = minimizer(energy)
     m = ht(me[0].position)

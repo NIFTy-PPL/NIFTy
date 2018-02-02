@@ -81,7 +81,7 @@ if __name__ == "__main__":
     data_domain = R.target
 
     noiseless_data = R(mock_signal)
-    noise_amplitude = noiseless_data.std()/signal_to_noise
+    noise_amplitude = noiseless_data.val.std()/signal_to_noise
     # Setting up the noise covariance and drawing a random noise realization
     ndiag = ift.Field.full(data_domain, noise_amplitude**2)
     N = ift.DiagonalOperator(ndiag)
