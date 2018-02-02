@@ -74,32 +74,8 @@ class WienerFilterCurvature(EndomorphicOperator):
             covariance.
         """
 
-        power = power_analyze(sqrt(self.S.diagonal()))
-        mock_signal = power_synthesize(power, real_signal=True)
-
-        noise = self.N.diagonal()
-
-        mock_noise = Field.from_random(random_type="normal",
-                                       domain=self.N.domain, dtype=noise.dtype)
-        mock_noise *= sqrt(noise)
-
-        mock_data = self.R(mock_signal) + mock_noise
-
-        mock_j = self.R.adjoint_times(self.N.inverse_times(mock_data))
-        mock_m = self.inverse_times(mock_j)
-        return mock_signal - mock_m
-
-    def generate_posterior_sample2(self):
-        power = self.S.diagonal()
-        mock_signal = Field.from_random(random_type="normal",
-                                        domain=self.S.domain,
-                                        dtype=power.dtype)
-        mock_signal *= sqrt(power)
-
-        noise = self.N.diagonal()
-        mock_noise = Field.from_random(random_type="normal",
-                                       domain=self.N.domain, dtype=noise.dtype)
-        mock_noise *= sqrt(noise)
+        mock_signal = self.S.generate_posterior_sample()
+        mock_noise = self.N.generate_posterior_sample()
 
         mock_data = self.R(mock_signal) + mock_noise
 

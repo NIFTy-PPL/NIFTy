@@ -217,7 +217,7 @@ class Field(object):
     def real(self):
         """ The real part of the field (data is not copied)."""
         if not np.issubdtype(self.dtype, np.complexfloating):
-            raise ValueError(".real called on a non-complex Field")
+            return self
         return Field(self._domain, self.val.real)
 
     @property

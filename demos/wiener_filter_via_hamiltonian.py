@@ -68,12 +68,6 @@ if __name__ == "__main__":
     sample_variance = ift.Field.zeros(s_space)
     sample_mean = ift.Field.zeros(s_space)
 
-    n_samples = 50
-    for i in range(n_samples):
-        sample = ht(D.generate_posterior_sample() + m)
-        sample_variance += sample**2
-        sample_mean += sample
-    sample_mean /= n_samples
-    sample_variance /= n_samples
-    variance = sample_variance - sample_mean**2
+    mean, variance = ift.probe_with_posterior_samples(D, ht, 50)
     ift.plot(variance, name="variance.png", colormap="Planck-like")
+    ift.plot(mean, name="mean.png", colormap="Planck-like")

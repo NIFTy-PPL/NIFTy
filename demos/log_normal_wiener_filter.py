@@ -64,8 +64,7 @@ if __name__ == "__main__":
     m = ht(me[0].position)
 
     # Plotting
-    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
-                "colormap": "Planck-like"}
+    plotdict = {"colormap": "Planck-like"}
     ift.plot(ht(mock_signal), name="mock_signal.png", **plotdict)
     logdata = np.log(ift.dobj.to_global_data(data.val)).reshape(signal_space.shape)
     ift.plot(ift.Field(signal_space, val=ift.dobj.from_global_data(logdata)),

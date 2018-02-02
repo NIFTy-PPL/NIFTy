@@ -32,6 +32,7 @@ from .field import Field, sqrt, exp, log
 from .probing.prober import Prober
 from .probing.diagonal_prober_mixin import DiagonalProberMixin
 from .probing.trace_prober_mixin import TraceProberMixin
+from .probing.utils import probe_with_posterior_samples
 
 from .minimization.line_search import LineSearch
 from .minimization.line_search_strong_wolfe import LineSearchStrongWolfe
