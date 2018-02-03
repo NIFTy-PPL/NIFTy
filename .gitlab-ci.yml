@@ -20,7 +20,7 @@ test_min:
     - pip3 install --user .
     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches
     - nosetests3 -q
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -q
-    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -q
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -q 2>/dev/null
+    - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -q 2>/dev/null
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
