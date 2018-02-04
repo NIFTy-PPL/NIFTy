@@ -2,10 +2,10 @@ import numpy as np
 
 from ..field import Field
 
-__all__ = ['adjointness_implementation', 'inverse_implemenation']
+__all__ = ['adjoint_implementation', 'inverse_implemenation']
 
 
-def adjointness_implementation(op, domain_dtype=np.float64, target_dtype=np.float64, atol=0, rtol=1e-7):
+def adjoint_implementation(op, domain_dtype=np.float64, target_dtype=np.float64, atol=0, rtol=1e-7):
     f1 = Field.from_random("normal", domain=op.domain, dtype=domain_dtype)
     f2 = Field.from_random("normal", domain=op.target, dtype=target_dtype)
     res1 = f1.vdot(op.adjoint_times(f2))
