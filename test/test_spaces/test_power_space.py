@@ -49,7 +49,7 @@ CONSTRUCTOR_CONFIGS = [
     [ift.RGSpace((8,), harmonic=True), None, None, None, {
         'harmonic': False,
         'shape': (5,),
-        'dim': 5,
+        'size': 5,
         'harmonic_partner': ift.RGSpace((8,), harmonic=True),
         'binbounds': None,
         'pindex': ift.dobj.from_global_data(
@@ -59,7 +59,7 @@ CONSTRUCTOR_CONFIGS = [
     [ift.RGSpace((8,), harmonic=True), True, None, None, {
         'harmonic': False,
         'shape': (4,),
-        'dim': 4,
+        'size': 4,
         'harmonic_partner': ift.RGSpace((8,), harmonic=True),
         'binbounds': (0.5, 1.3228756555322954, 3.5),
         'pindex': ift.dobj.from_global_data(
@@ -78,7 +78,7 @@ def k_lengths_configs():
 
 class PowerSpaceInterfaceTest(unittest.TestCase):
     @expand([
-        ['harmonic_partner', ift.Space],
+        ['harmonic_partner', ift.StructuredDomain],
         ['binbounds', type(None)],
         ['pindex', ift.dobj.data_object],
         ['k_lengths', np.ndarray],
@@ -129,7 +129,7 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
         hp = ift.RGSpace(10, harmonic=True)
         p = ift.PowerSpace(harmonic_partner=hp)
         v1 = hp.dvol()
-        v1 = hp.dim*v1 if np.isscalar(v1) else np.sum(v1)
+        v1 = hp.size*v1 if np.isscalar(v1) else np.sum(v1)
         v2 = p.dvol()
-        v2 = p.dim*v2 if np.isscalar(v2) else np.sum(v2)
+        v2 = p.size*v2 if np.isscalar(v2) else np.sum(v2)
         assert_allclose(v1, v2)

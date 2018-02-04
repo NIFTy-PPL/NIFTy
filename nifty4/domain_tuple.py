@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from functools import reduce
-from .domain_object import DomainObject
+from .spaces.domain import Domain
 
 
 class DomainTuple(object):
@@ -28,12 +28,10 @@ class DomainTuple(object):
         self._axtuple = self._get_axes_tuple()
         shape_tuple = tuple(sp.shape for sp in self._dom)
         self._shape = reduce(lambda x, y: x + y, shape_tuple, ())
-        self._dim = reduce(lambda x, y: x * y, self._shape, 1)
-        self._accdims = (1,)
+        self._size = reduce(lambda x, y: x * y, self._shape, 1)
         prod = 1
         for dom in self._dom:
-            prod *= dom.dim
-            self._accdims += (prod,)
+            prod *= dom.size
 
     def _get_axes_tuple(self):
         i = 0
@@ -60,16 +58,16 @@ class DomainTuple(object):
     def _parse_domain(domain):
         if domain is None:
             return ()
-        if isinstance(domain, DomainObject):
+        if isinstance(domain, Domain):
             return (domain,)
 
         if not isinstance(domain, tuple):
             domain = tuple(domain)
         for d in domain:
-            if not isinstance(d, DomainObject):
+            if not isinstance(d, Domain):
                 raise TypeError(
                     "Given object contains something that is not an "
-                    "instance of DomainObject class.")
+                    "instance of Domain class.")
         return domain
 
     def __getitem__(self, i):
@@ -80,8 +78,8 @@ class DomainTuple(object):
         return self._shape
 
     @property
-    def dim(self):
-        return self._dim
+    def size(self):
+        return self._size
 
     @property
     def axes(self):

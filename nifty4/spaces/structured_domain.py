@@ -17,28 +17,56 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-from ..domain_object import DomainObject
+from .domain import Domain
+import numpy as np
 
 
-class Space(DomainObject):
-    """The abstract base class for all NIFTy spaces.
+class StructuredDomain(Domain):
+    """The abstract base class for all structured NIFTy domains.
 
     An instance of a space contains information about the manifold's
-    geometry and enhances the functionality of DomainObject by methods that
+    geometry and enhances the functionality of Domain by methods that
     are needed for power spectrum analysis and smoothing.
     """
 
     def __init__(self):
-        super(Space, self).__init__()
+        super(StructuredDomain, self).__init__()
+
+    @abc.abstractmethod
+    def scalar_dvol(self):
+        """Returns the volume factors of this domain as a floating
+        point scalar, if the volume factors are all identical, otherwise
+        returns None.
+
+        Returns
+        -------
+        float or None: Volume factor
+        """
+        raise NotImplementedError
+
+    def dvol(self):
+        """Returns the volume factors of this domain, either as a floating
+        point scalar (if the volume factors are all identical) or as a
+        floating point array with a shape of `self.shape`.
+
+        Returns
+        -------
+        float or numpy.ndarray(dtype=float): Volume factors
+        """
+        return self.scalar_dvol()
+
+    def total_volume(self):
+        tmp = self.dvol()
+        return self.size * tmp if np.isscalar(tmp) else np.sum(tmp)
 
     @abc.abstractproperty
     def harmonic(self):
-        """ Returns True iff this space is a harmonic space."""
+        """ Returns True iff this domain is a harmonic domain."""
         raise NotImplementedError
 
     def get_k_length_array(self):
         """The length of the k vector for every pixel.
-        This method is only implemented for harmonic spaces.
+        This method is only implemented for harmonic domains.
 
         Returns
         -------
@@ -49,27 +77,26 @@ class Space(DomainObject):
 
     def get_unique_k_lengths(self):
         """ Returns an array of floats containing the unique k vector lengths
-        for this space.
-        This method is only implemented for harmonic spaces.
+        for this domain.
+        This method is only implemented for harmonic domains.
         """
         raise NotImplementedError
 
     def get_fft_smoothing_kernel_function(self, sigma):
         """This method returns a smoothing kernel function.
 
-        This method, which is only implemented for harmonic spaces, helps
-        smoothing fields that live in a position space that has this space as
-        its harmonic space. The returned function multiplies field values of a
-        field with a zero centered Gaussian which corresponds to a convolution
-        with a Gaussian kernel and sigma standard deviation in position space.
+        This method, which is only implemented for harmonic domains, helps
+        smoothing fields that live on a domain that has this domain as
+        its harmonic partner. The returned function multiplies field values of
+        a field with a zero centered Gaussian which corresponds to a
+        convolution with a Gaussian kernel and sigma standard deviation in
+        position space.
 
         Parameters
         ----------
         sigma : float
             A real number representing a physical scale on which the smoothing
-            takes place. The smoothing is defined with respect to the real
-            physical field and points that are closer together than one sigma
-            are blurred together. Mathematically sigma is the standard
+            takes place. Mathematically sigma is the standard
             deviation of a convolution with a normalized, zero-centered
             Gaussian that takes place in position space.
 

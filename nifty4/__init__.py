@@ -2,10 +2,9 @@ from .version import __version__
 
 from . import dobj
 
-from .domain_object import DomainObject
-
-from .spaces.field_array import FieldArray
-from .spaces.space import Space
+from .spaces.domain import Domain
+from .spaces.unstructured_domain import UnstructuredDomain
+from .spaces.structured_domain import StructuredDomain
 from .spaces.rg_space import RGSpace
 from .spaces.lm_space import LMSpace
 from .spaces.hp_space import HPSpace
@@ -23,8 +22,7 @@ from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.fft_operator import FFTOperator
 from .operators.fft_smoothing_operator import FFTSmoothingOperator
 from .operators.direct_smoothing_operator import DirectSmoothingOperator
-from .operators.response_operator import ResponseOperator
-from .operators.response_operator import GeometryRemover
+from .operators.geometry_remover import GeometryRemover
 from .operators.laplace_operator import LaplaceOperator
 from .operators.power_projection_operator import PowerProjectionOperator
 from .operators.inversion_enabler import InversionEnabler
@@ -34,6 +32,7 @@ from .field import Field, sqrt, exp, log
 from .probing.prober import Prober
 from .probing.diagonal_prober_mixin import DiagonalProberMixin
 from .probing.trace_prober_mixin import TraceProberMixin
+from .probing.utils import probe_with_posterior_samples
 
 from .minimization.line_search import LineSearch
 from .minimization.line_search_strong_wolfe import LineSearchStrongWolfe
@@ -55,11 +54,11 @@ from .sugar import *
 from .plotting.plot import plot
 from . import library
 
-__all__ = ["DomainObject", "FieldArray", "Space", "RGSpace", "LMSpace",
+__all__ = ["Domain", "UnstructuredDomain", "StructuredDomain", "RGSpace", "LMSpace",
            "HPSpace", "GLSpace", "DOFSpace", "PowerSpace", "DomainTuple",
            "LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
-           "DirectSmoothingOperator", "ResponseOperator", "LaplaceOperator",
+           "DirectSmoothingOperator", "LaplaceOperator",
            "PowerProjectionOperator", "InversionEnabler",
            "Field", "sqrt", "exp", "log",
            "Prober", "DiagonalProberMixin", "TraceProberMixin"]

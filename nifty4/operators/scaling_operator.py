@@ -88,3 +88,23 @@ class ScalingOperator(EndomorphicOperator):
             return self.TIMES | self.ADJOINT_TIMES
         return (self.TIMES | self.ADJOINT_TIMES |
                 self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)
+
+    def generate_posterior_sample(self):
+        """ Generates a posterior sample from a Gaussian distribution with
+        given mean and covariance.
+
+        This method generates samples by setting up the observation and
+        reconstruction of a mock signal in order to obtain residuals of the
+        right correlation which are added to the given mean.
+
+        Returns
+        -------
+        sample : Field
+            Returns the a sample from the Gaussian of given mean and
+            covariance.
+        """
+
+        return Field.from_random(random_type="normal",
+                                 domain=self._domain,
+                                 std=np.sqrt(self._factor),
+                                 dtype=np.result_type(self._factor))

@@ -30,35 +30,35 @@ CONSTRUCTOR_CONFIGS = [
                 'shape': (8,),
                 'distances': (0.125,),
                 'harmonic': False,
-                'dim': 8,
+                'size': 8,
             }],
         [(8,), None, True,
             {
                 'shape': (8,),
                 'distances': (1.0,),
                 'harmonic': True,
-                'dim': 8,
+                'size': 8,
             }],
         [(8,), (12,), True,
             {
                 'shape': (8,),
                 'distances': (12.0,),
                 'harmonic': True,
-                'dim': 8,
+                'size': 8,
             }],
         [(11, 11), None, False,
             {
                 'shape': (11, 11),
                 'distances': (1/11, 1/11),
                 'harmonic': False,
-                'dim': 121,
+                'size': 121,
             }],
         [(12, 12), (1.3, 1.3), True,
             {
                 'shape': (12, 12),
                 'distances': (1.3, 1.3),
                 'harmonic': True,
-                'dim': 144,
+                'size': 144,
             }]
 
     ]

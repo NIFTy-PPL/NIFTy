@@ -18,10 +18,10 @@
 
 from __future__ import division
 import numpy as np
-from .space import Space
+from .structured_domain import StructuredDomain
 
 
-class HPSpace(Space):
+class HPSpace(StructuredDomain):
     """NIFTy subclass for HEALPix discretizations of the two-sphere [#]_.
 
     Parameters
@@ -65,10 +65,10 @@ class HPSpace(Space):
 
     @property
     def shape(self):
-        return (self.dim,)
+        return (self.size,)
 
     @property
-    def dim(self):
+    def size(self):
         return np.int(12 * self.nside * self.nside)
 
     def scalar_dvol(self):

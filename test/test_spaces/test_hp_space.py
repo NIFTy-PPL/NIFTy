@@ -30,19 +30,19 @@ CONSTRUCTOR_CONFIGS = [
             'nside': 2,
             'harmonic': False,
             'shape': (48,),
-            'dim': 48,
+            'size': 48,
             }],
         [5, {
             'nside': 5,
             'harmonic': False,
             'shape': (300,),
-            'dim': 300,
+            'size': 300,
             }],
         [1, {
             'nside': 1,
             'harmonic': False,
             'shape': (12,),
-            'dim': 12,
+            'size': 12,
             }],
         [0, {
             'error': ValueError

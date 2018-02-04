@@ -18,10 +18,10 @@
 
 from __future__ import division
 import numpy as np
-from .space import Space
+from .structured_domain import StructuredDomain
 
 
-class GLSpace(Space):
+class GLSpace(StructuredDomain):
     """NIFTy subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
 
     Parameters
@@ -79,7 +79,7 @@ class GLSpace(Space):
         return (np.int((self.nlat * self.nlon)),)
 
     @property
-    def dim(self):
+    def size(self):
         return np.int((self.nlat * self.nlon))
 
     def scalar_dvol(self):

@@ -18,12 +18,12 @@
 
 from __future__ import division
 import numpy as np
-from .space import Space
+from .structured_domain import StructuredDomain
 from ..field import Field, exp
 from .. import dobj
 
 
-class LMSpace(Space):
+class LMSpace(StructuredDomain):
     """NIFTy subclass for spherical harmonics components, for representations
     of fields on the two-sphere.
 
@@ -75,10 +75,10 @@ class LMSpace(Space):
 
     @property
     def shape(self):
-        return (self.dim, )
+        return (self.size, )
 
     @property
-    def dim(self):
+    def size(self):
         l = self._lmax
         m = self._mmax
         # the LMSpace consists of the full triangle (including -m's!),
@@ -91,7 +91,7 @@ class LMSpace(Space):
     def get_k_length_array(self):
         lmax = self._lmax
         mmax = self._mmax
-        ldist = np.empty((self.dim,), dtype=np.float64)
+        ldist = np.empty((self.size,), dtype=np.float64)
         ldist[0:lmax+1] = np.arange(lmax+1, dtype=np.float64)
         tmp = np.empty((2*lmax+2), dtype=np.float64)
         tmp[0::2] = np.arange(lmax+1)

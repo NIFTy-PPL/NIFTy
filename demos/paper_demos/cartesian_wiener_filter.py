@@ -81,10 +81,10 @@ if __name__ == "__main__":
     data_domain = R.target
 
     noiseless_data = R(mock_signal)
-    noise_amplitude = noiseless_data.std()/signal_to_noise
+    noise_amplitude = noiseless_data.val.std()/signal_to_noise
     # Setting up the noise covariance and drawing a random noise realization
-    ndiag = ift.Field.full(data_domain, noise_amplitude**2)
-    N = ift.DiagonalOperator(ndiag)
+    #ndiag = ift.Field.full(data_domain, noise_amplitude**2)
+    N = ift.ScalingOperator(noise_amplitude**2, data_domain)
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=noise_amplitude, mean=0)
@@ -108,12 +108,5 @@ if __name__ == "__main__":
     ift.plot(ift.Field(plot_space,val=data.val), name='data.png', **plotdict)
     ift.plot(ift.Field(plot_space,val=m.val), name='map.png', **plotdict)
     # sampling the uncertainty map
-    sample_variance = ift.Field.zeros(signal_domain)
-    sample_mean = ift.Field.zeros(signal_domain)
-    n_samples = 10
-    for i in range(n_samples):
-        sample = ht(wiener_curvature.generate_posterior_sample()) + m
-        sample_variance += sample**2
-        sample_mean += sample
-    variance = sample_variance/n_samples - (sample_mean/n_samples)**2
+    mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 10)
     ift.plot(ift.Field(plot_space, val=ift.sqrt(variance).val), name="uncertainty.png", **plotdict)

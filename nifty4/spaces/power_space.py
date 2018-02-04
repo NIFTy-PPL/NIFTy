@@ -17,11 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .space import Space
+from .structured_domain import StructuredDomain
 from .. import dobj
 
 
-class PowerSpace(Space):
+class PowerSpace(StructuredDomain):
     """NIFTy class for spaces of power spectra.
 
     A power space is the result of a projection of a harmonic space where
@@ -90,7 +90,7 @@ class PowerSpace(Space):
 
     @staticmethod
     def useful_binbounds(space, logarithmic, nbin=None):
-        if not (isinstance(space, Space) and space.harmonic):
+        if not (isinstance(space, StructuredDomain) and space.harmonic):
             raise ValueError("first argument must be a harmonic space.")
         if logarithmic is None and nbin is None:
             return None
@@ -122,7 +122,7 @@ class PowerSpace(Space):
         super(PowerSpace, self).__init__()
         self._needed_for_hash += ['_harmonic_partner', '_binbounds']
 
-        if not (isinstance(harmonic_partner, Space) and
+        if not (isinstance(harmonic_partner, StructuredDomain) and
                 harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
         if harmonic_partner.scalar_dvol() is None:
@@ -180,7 +180,7 @@ class PowerSpace(Space):
         return self.k_lengths.shape
 
     @property
-    def dim(self):
+    def size(self):
         return self.shape[0]
 
     def scalar_dvol(self):

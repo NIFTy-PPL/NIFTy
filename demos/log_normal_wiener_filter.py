@@ -37,13 +37,11 @@ if __name__ == "__main__":
     R = R*ift.DiagonalOperator(mask)
     R = R*ht
     R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
-    #R = ift.ResponseOperator(signal_space, sigma=(response_sigma,),
-    #                         sensitivity=(mask,))
     data_domain = R.target[0]
 
     # Setting up the noise covariance and drawing a random noise realization
     noiseless_data = R(mock_signal)
-    noise_amplitude = noiseless_data.std()/signal_to_noise
+    noise_amplitude = noiseless_data.val.std()/signal_to_noise
     N = ift.DiagonalOperator(
         ift.Field.full(data_domain, noise_amplitude**2))
     noise = ift.Field.from_random(
@@ -58,16 +56,15 @@ if __name__ == "__main__":
     inverter = ift.ConjugateGradient(controller=ctrl)
     energy = ift.library.LogNormalWienerFilterEnergy(m0, data, R,
                                                      N, S, inverter=inverter)
-    # minimizer = ift.VL_BFGS(controller=ctrl2, max_history_length=20)
+    #minimizer = ift.VL_BFGS(controller=ctrl2, max_history_length=20)
     minimizer = ift.RelaxedNewton(controller=ctrl2)
-    # minimizer = ift.SteepestDescent(controller=ctrl2)
+    #minimizer = ift.SteepestDescent(controller=ctrl2)
 
     me = minimizer(energy)
     m = ht(me[0].position)
 
     # Plotting
-    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
-                "colormap": "Planck-like"}
+    plotdict = {"colormap": "Planck-like"}
     ift.plot(ht(mock_signal), name="mock_signal.png", **plotdict)
     logdata = np.log(ift.dobj.to_global_data(data.val)).reshape(signal_space.shape)
     ift.plot(ift.Field(signal_space, val=ift.dobj.from_global_data(logdata)),

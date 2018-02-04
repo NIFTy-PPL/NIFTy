@@ -20,13 +20,13 @@ from __future__ import division
 from builtins import range
 from functools import reduce
 import numpy as np
-from .space import Space
+from .structured_domain import StructuredDomain
 from ..field import Field, exp
 from .. import dobj
 
 
-class RGSpace(Space):
-    """NIFTy subclass for spaces of regular Cartesian grids.
+class RGSpace(StructuredDomain):
+    """NIFTy subclass for regular Cartesian grids.
 
     Parameters
     ----------
@@ -66,7 +66,7 @@ class RGSpace(Space):
             self._distances = tuple(temp)
 
         self._dvol = float(reduce(lambda x, y: x*y, self._distances))
-        self._dim = int(reduce(lambda x, y: x*y, self._shape))
+        self._size = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
         return ("RGSpace(shape=%r, distances=%r, harmonic=%r)"
@@ -81,8 +81,8 @@ class RGSpace(Space):
         return self._shape
 
     @property
-    def dim(self):
-        return self._dim
+    def size(self):
+        return self._size
 
     def scalar_dvol(self):
         return self._dvol

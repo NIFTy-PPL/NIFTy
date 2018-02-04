@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .spaces.space import Space
+from .spaces.structured_domain import StructuredDomain
 from .spaces.power_space import PowerSpace
 from .field import Field, sqrt
 from .operators.diagonal_operator import DiagonalOperator
@@ -246,7 +246,7 @@ def create_composed_ht_operator(domain, codomain=None):
         codomain = [None]*len(domain)
     res = None
     for i, space in enumerate(domain):
-        if isinstance(space, Space) and space.harmonic:
+        if isinstance(space, StructuredDomain) and space.harmonic:
             tdom = domain if res is None else res.target
             op = HarmonicTransformOperator(tdom, codomain[i], i)
             res = op if res is None else op*res

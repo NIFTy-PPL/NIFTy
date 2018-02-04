@@ -18,7 +18,7 @@
 
 from __future__ import division
 import numpy as np
-from ..field import Field
+from ..field import Field, sqrt
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
 from .. import utilities
@@ -140,3 +140,27 @@ class DiagonalOperator(EndomorphicOperator):
     def adjoint(self):
         return DiagonalOperator(self._diagonal.conjugate(), self._domain,
                                 self._spaces)
+
+    def generate_posterior_sample(self):
+        """ Generates a posterior sample from a Gaussian distribution with
+        given mean and covariance.
+
+        This method generates samples by setting up the observation and
+        reconstruction of a mock signal in order to obtain residuals of the
+        right correlation which are added to the given mean.
+
+        Returns
+        -------
+        sample : Field
+            Returns the a sample from the Gaussian of given mean and
+            covariance.
+        """
+
+        if self._spaces is not None:
+            raise ValueError("Cannot draw (yet) from this operator")
+
+        res = Field.from_random(random_type="normal",
+                                domain=self._domain,
+                                dtype=self._diagonal.dtype)
+        res *= sqrt(self._diagonal)
+        return res

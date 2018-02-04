@@ -35,7 +35,7 @@ class Field(object):
 
     Parameters
     ----------
-    domain : None, DomainTuple, tuple of DomainObjects, or single DomainObject
+    domain : None, DomainTuple, tuple(Domain), or Domain
 
     val : None, Field, data_object, or scalar
         The values the array should contain after init. A scalar input will
@@ -156,7 +156,7 @@ class Field(object):
             'pm1', 'normal', 'uniform' are the supported arguments for this
             method.
 
-        domain : DomainObject
+        domain : DomainTuple
             The domain of the output random field
 
         dtype : type
@@ -201,7 +201,7 @@ class Field(object):
         return self._domain.shape
 
     @property
-    def dim(self):
+    def size(self):
         """ Returns the total number of pixel-dimensions the field has.
 
         Effectively, all values from shape are multiplied.
@@ -211,13 +211,13 @@ class Field(object):
         out : int
             The dimension of the Field.
         """
-        return self._domain.dim
+        return self._domain.size
 
     @property
     def real(self):
         """ The real part of the field (data is not copied)."""
         if not np.issubdtype(self.dtype, np.complexfloating):
-            raise ValueError(".real called on a non-complex Field")
+            return self
         return Field(self._domain, self.val.real)
 
     @property
