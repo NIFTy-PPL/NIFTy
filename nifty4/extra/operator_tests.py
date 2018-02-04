@@ -16,16 +16,14 @@ def adjoint_implementation(op, domain_dtype=np.float64, target_dtype=np.float64,
     return (res1 - res2) / (res1 + res2) * 2
 
 
-def inverse_implementation(op, dtype_domain=np.float64, dtype_target=np.float64, atol=0, rtol=1e-7):
-    foo = Field.from_random(domain=op.target, random_type='normal', dtype=dtype_target)
+def inverse_implementation(op, domain_dtype=np.float64, target_dtype=np.float64, atol=0, rtol=1e-7):
+    foo = Field.from_random(domain=op.target, random_type='normal', dtype=target_dtype)
     res = op(op.inverse_times(foo)).val
-    ones = Field.ones(op.domain).val
-    np.testing.assert_allclose(res, ones, atol=atol, rtol=rtol)
+    np.testing.assert_allclose(res, foo.val, atol=atol, rtol=rtol)
 
-    foo = Field.from_random(domain=op.domain, random_type='normal', dtype=dtype_domain)
+    foo = Field.from_random(domain=op.domain, random_type='normal', dtype=domain_dtype)
     res = op.inverse_times(op(foo)).val
-    ones = Field.ones(op.target).val
-    np.testing.assert_allclose(res, ones, atol=atol, rtol=rtol)
+    np.testing.assert_allclose(res, foo.val, atol=atol, rtol=rtol)
 
     # Return relative error
-    return (res - ones) / (res + ones) * 2
+    return (res - foo.val) / (res + foo.val) * 2
