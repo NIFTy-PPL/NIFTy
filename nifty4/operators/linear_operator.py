@@ -179,16 +179,15 @@ class LinearOperator(with_metaclass(
     def test_inverse(self, dtype_domain=np.float64, dtype_target=np.float64, atol=0, rtol=1e-7):
         foo = Field.from_random(
             domain=self.target, random_type='normal', dtype=dtype_target)
-        bar = self.times(self.inverse_times(foo)).val
-        np.testing.assert_allclose(bar, Field.ones(self.target).val)
+        res = self.times(self.inverse_times(foo)).val
+        ones = Field.ones(self.domain).val
+        np.testing.assert_allclose(res, ones, atol=atol, rtol=rtol)
 
         foo = Field.from_random(
             domain=self.domain, random_type='normal', dtype=dtype_domain)
-
-        res1 = self.inverse_times(self.times(foo)).val
-        res2 = Field.ones(self.domain).val
-
-        np.testing.assert_allclose(res1, res2, atol=atol, rtol=rtol)
+        res = self.inverse_times(self.times(foo)).val
+        ones = Field.ones(self.target).val
+        np.testing.assert_allclose(res, ones, atol=atol, rtol=rtol)
 
         # Return relative error
-        return (res1 - res2) / (res1 + res2) * 2
+        return (res - ones) / (res + ones) * 2
