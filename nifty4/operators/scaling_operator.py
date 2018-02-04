@@ -76,7 +76,7 @@ class ScalingOperator(EndomorphicOperator):
 
     @property
     def adjoint(self):
-        return ScalingOperator(np.conj(self.factor), self._domain)
+        return ScalingOperator(np.conj(self._factor), self._domain)
 
     @property
     def domain(self):
