@@ -2,10 +2,10 @@ import numpy as np
 
 from ..field import Field
 
-__all__ = ['test_adjointness', 'test_inverse']
+__all__ = ['adjointness_implementation', 'inverse_implemenation']
 
 
-def test_adjointness(op, domain_dtype=np.float64, target_dtype=np.float64, atol=0, rtol=1e-7):
+def adjointness_implementation(op, domain_dtype=np.float64, target_dtype=np.float64, atol=0, rtol=1e-7):
     f1 = Field.from_random("normal", domain=op.domain, dtype=domain_dtype)
     f2 = Field.from_random("normal", domain=op.target, dtype=target_dtype)
     res1 = f1.vdot(op.adjoint_times(f2))
@@ -16,7 +16,7 @@ def test_adjointness(op, domain_dtype=np.float64, target_dtype=np.float64, atol=
     return (res1 - res2) / (res1 + res2) * 2
 
 
-def test_inverse(op, dtype_domain=np.float64, dtype_target=np.float64, atol=0, rtol=1e-7):
+def inverse_implementation(op, dtype_domain=np.float64, dtype_target=np.float64, atol=0, rtol=1e-7):
     foo = Field.from_random(domain=op.target, random_type='normal', dtype=dtype_target)
     res = op(op.inverse_times(foo)).val
     ones = Field.ones(op.domain).val
