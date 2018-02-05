@@ -121,6 +121,16 @@ phrase such as the following:
 > *"Some of the results in this publication have been derived using the
 > NIFTy package [Selig et al., 2013]."*
 
+Or the following BibTeX entry:
+
+> @software{nifty,
+>   author = {{Martin Reinecke, Theo Steininger}},
+>   title = {NIFTy -- Numerical Information Field TheorY},
+>   url = {https://gitlab.mpcdf.mpg.de/ift/NIFTy},
+>   version = {nifty4},
+>   date = {2018-04-05},
+> }
+
 ### References
 
 Release Notes
