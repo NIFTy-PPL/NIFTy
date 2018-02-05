@@ -52,4 +52,7 @@ def probe_with_posterior_samples(op, post_op, nprobes):
     for i in range(nprobes):
         sample = post_op(op.generate_posterior_sample())
         sc.add(sample)
+
+    if nprobes == 1:
+        return sc.mean, None
     return sc.mean, sc.var
