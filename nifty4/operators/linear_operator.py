@@ -161,6 +161,4 @@ class LinearOperator(with_metaclass(
 
         self._check_mode(mode)
         if x.domain != self._dom(mode):
-            raise ValueError("The operator's and and field's domains "
-                             "don't match.")
-
+            raise ValueError("The operator's and field's domains don't match.")
