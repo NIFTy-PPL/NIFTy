@@ -1,1 +1,1 @@
-from .operator_tests import adjoint_implementation, inverse_implementation
+from .operator_tests import adjoint_implementation, inverse_implementation, full_implementation

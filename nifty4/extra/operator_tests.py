@@ -2,7 +2,7 @@ import numpy as np
 
 from ..field import Field
 
-__all__ = ['adjoint_implementation', 'inverse_implemenation']
+__all__ = ['adjoint_implementation', 'inverse_implemenation', 'full_implementation']
 
 
 def adjoint_implementation(op, domain_dtype=np.float64, target_dtype=np.float64, atol=0, rtol=1e-7):
@@ -27,3 +27,11 @@ def inverse_implementation(op, domain_dtype=np.float64, target_dtype=np.float64,
 
     # Return relative error
     return (res - foo.val) / (res + foo.val) * 2
+
+
+def full_implementation(op, domain_dtype=np.float64, target_dtype=np.float64, atol=0, rtol=1e-7):
+    res1 = inverse_implementation(op, domain_dtype, target_dtype, atol, rtol)
+    res2 = adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol)
+    res3 = adjoint_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol)
+
+    return res1, res2, res3
