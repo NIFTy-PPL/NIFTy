@@ -59,23 +59,22 @@ class WienerFilterCurvature(EndomorphicOperator):
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
-    def generate_posterior_sample(self):
-        """ Generates a posterior sample from a Gaussian distribution with
-        given mean and covariance.
+    def draw_sample(self):
+        """ Generates a sample from a Gaussian distribution with
+        covariance given by the operator.
 
         This method generates samples by setting up the observation and
         reconstruction of a mock signal in order to obtain residuals of the
-        right correlation which are added to the given mean.
+        right correlation.
 
         Returns
         -------
         sample : Field
-            Returns the a sample from the Gaussian of given mean and
-            covariance.
+            Returns the a sample from the Gaussian of given covariance.
         """
 
-        mock_signal = self.S.generate_posterior_sample()
-        mock_noise = self.N.generate_posterior_sample()
+        mock_signal = self.S.draw_sample()
+        mock_noise = self.N.draw_sample()
 
         mock_data = self.R(mock_signal) + mock_noise
 

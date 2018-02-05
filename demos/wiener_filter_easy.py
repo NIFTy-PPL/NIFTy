@@ -62,9 +62,12 @@ if __name__ == "__main__":
     D = ift.InversionEnabler(D, inverter)
     m = D(j)
 
+    # Plotting
+    d_field = ift.Field(s_space, val=d.val)
+    zmax = max(ht(sh).max(), d_field.max(), ht(m).max())
+    zmin = min(ht(sh).min(), d_field.min(), ht(m).min())
     plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
-                "colormap": "Planck-like"}
+                "colormap": "Planck-like", "zmax": zmax, "zmin": zmin}
     ift.plot(ht(sh), name="mock_signal.png", **plotdict)
-    ift.plot(ift.Field(s_space, val=d.val),
-             name="data.png", **plotdict)
-    ift.plot(ht(m), name="map.png", **plotdict)
+    ift.plot(d_field, name="data.png", **plotdict)
+    ift.plot(ht(m), name="reconstruction.png", **plotdict)

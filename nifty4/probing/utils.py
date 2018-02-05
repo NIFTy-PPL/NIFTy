@@ -47,9 +47,12 @@ class StatCalculator(object):
         return self._M2 * (1./(self._count-1))
 
 
-def probe_with_posterior_samples(op, post_op, nprobes):
+def probe_with_posterior_samples(op, m, post_op, nprobes):
     sc = StatCalculator()
     for i in range(nprobes):
-        sample = post_op(op.generate_posterior_sample())
+        sample = post_op(op.draw_sample() + m)
         sc.add(sample)
+
+    if nprobes == 1:
+        return sc.mean, None
     return sc.mean, sc.var
