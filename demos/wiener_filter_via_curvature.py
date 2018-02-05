@@ -65,7 +65,6 @@ if __name__ == "__main__":
         domain=data_domain, random_type='normal',
         std=noise_amplitude, mean=0)
     data = noiseless_data + noise
-     # Wiener filter
 
     j = R.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(
@@ -79,10 +78,10 @@ if __name__ == "__main__":
 
     sspace2 = ift.RGSpace(shape, distances=L/N_pixels/nu.m)
 
-    ift.plot(ift.Field(sspace2, ht(mock_signal).val)/nu.K, name="mock_signal.png")
-    #data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)
-    #data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))
+    zmax = max(m_s.max(), ht(mock_signal).max())
+    zmin = min(m_s.min(), ht(mock_signal).min())
+    plotdict = {"zmax": zmax/nu.K, "zmin": zmin/nu.K}
+
+    ift.plot(ift.Field(sspace2, ht(mock_signal).val)/nu.K, name="mock_signal.png", **plotdict)
     ift.plot(ift.Field(sspace2, val=data.val), name="data.png")
-    print("msig",np.min(ht(mock_signal).val)/nu.K, np.max(ht(mock_signal).val)/nu.K)
-    print("map",np.min(m_s.val)/nu.K, np.max(m_s.val)/nu.K)
-    ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="map.png")
+    ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="reconstruction.png", **plotdict)
