@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -21,23 +21,6 @@ import nifty4 as ift
 import numpy as np
 from itertools import product
 from test.common import expand
-from numpy.testing import assert_allclose
-
-
-def _check_adjointness(op, dtype=np.float64):
-    f1 = ift.Field.from_random("normal", domain=op.domain, dtype=dtype)
-    f2 = ift.Field.from_random("normal", domain=op.target, dtype=dtype)
-    cap = op.capability
-    if ((cap & ift.LinearOperator.TIMES) and
-            (cap & ift.LinearOperator.ADJOINT_TIMES)):
-        assert_allclose(f1.vdot(op.adjoint_times(f2)),
-                        op.times(f1).vdot(f2),
-                        rtol=1e-8)
-    if ((cap & ift.LinearOperator.INVERSE_TIMES) and
-            (cap & ift.LinearOperator.INVERSE_ADJOINT_TIMES)):
-        assert_allclose(f1.vdot(op.inverse_times(f2)),
-                        op.inverse_adjoint_times(f1).vdot(f2),
-                        rtol=1e-8)
 
 
 _h_RG_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
@@ -49,29 +32,35 @@ _p_RG_spaces = [ift.RGSpace(19, distances=0.7),
 _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
 
 
-class Adjointness_Tests(unittest.TestCase):
+class Consistency_Tests(unittest.TestCase):
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
         op = ift.PowerProjectionOperator(sp)
-        _check_adjointness(op, dtype)
+        ift.extra.consistency_check(op, dtype, dtype)
         ps = ift.PowerSpace(
             sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=False, nbin=3))
         op = ift.PowerProjectionOperator(sp, ps)
-        _check_adjointness(op, dtype)
+        ift.extra.consistency_check(op, dtype, dtype)
         ps = ift.PowerSpace(
             sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
         op = ift.PowerProjectionOperator(sp, ps)
-        _check_adjointness(op, dtype)
+        ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_RG_spaces+_p_RG_spaces,
                     [np.float64, np.complex128]))
     def testFFT(self, sp, dtype):
         op = ift.FFTOperator(sp)
-        _check_adjointness(op, dtype)
+        ift.extra.consistency_check(op, dtype, dtype)
         op = ift.FFTOperator(sp.get_default_codomain())
-        _check_adjointness(op, dtype)
+        ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testHarmonic(self, sp, dtype):
         op = ift.HarmonicTransformOperator(sp)
-        _check_adjointness(op, dtype)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_h_spaces+_p_spaces, [np.float64, np.complex128]))
+    def testDiagonal(self, sp, dtype):
+        op = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
+                                                        dtype=dtype))
+        ift.extra.consistency_check(op, dtype, dtype)
