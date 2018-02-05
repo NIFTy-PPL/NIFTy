@@ -141,19 +141,18 @@ class DiagonalOperator(EndomorphicOperator):
         return DiagonalOperator(self._diagonal.conjugate(), self._domain,
                                 self._spaces)
 
-    def generate_posterior_sample(self):
-        """ Generates a posterior sample from a Gaussian distribution with
-        given mean and covariance.
+    def draw_sample(self):
+        """ Generates a sample from a Gaussian distribution with
+        covariance given by the operator.
 
         This method generates samples by setting up the observation and
         reconstruction of a mock signal in order to obtain residuals of the
-        right correlation which are added to the given mean.
+        right correlation.
 
         Returns
         -------
         sample : Field
-            Returns the a sample from the Gaussian of given mean and
-            covariance.
+            Returns the a sample from the Gaussian of given covariance.
         """
 
         if self._spaces is not None:

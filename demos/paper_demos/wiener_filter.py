@@ -72,7 +72,7 @@ if __name__ == "__main__":
     sample_mean = ift.Field.zeros(signal_space)
     n_samples = 10
     for i in range(n_samples):
-        sample = ht(wiener_curvature.generate_posterior_sample()) + m
+        sample = ht(wiener_curvature.draw_sample()) + m
         sample_variance += sample**2
         sample_mean += sample
     variance = sample_variance/n_samples - (sample_mean/n_samples)**2

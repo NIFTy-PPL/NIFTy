@@ -91,7 +91,7 @@ class CriticalPowerEnergy(Energy):
             if self.D is not None:
                 w = Field.zeros(self.position.domain, dtype=self.m.dtype)
                 for i in range(self.samples):
-                    sample = self.D.generate_posterior_sample() + self.m
+                    sample = self.D.draw_sample() + self.m
                     w += P(abs(sample)**2)
 
                 w *= 1./self.samples
