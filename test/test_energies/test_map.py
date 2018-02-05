@@ -259,8 +259,6 @@ class Curvature_Tests(unittest.TestCase):
 
         a = (gradient1 - gradient0) / eps
         b = energy0.curvature(direction)
-        print(a.vdot(a))
-        print(b.vdot(b))
         tol = 1e-7
         assert_allclose(ift.dobj.to_global_data(a.val),
                         ift.dobj.to_global_data(b.val), rtol=tol, atol=tol)
