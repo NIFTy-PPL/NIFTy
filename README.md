@@ -123,13 +123,13 @@ phrase such as the following:
 
 Or the following BibTeX entry:
 
-> @software{nifty,
->   author = {{Martin Reinecke, Theo Steininger}},
->   title = {NIFTy -- Numerical Information Field TheorY},
->   url = {https://gitlab.mpcdf.mpg.de/ift/NIFTy},
->   version = {nifty4},
->   date = {2018-04-05},
-> }
+    @software{nifty,
+      author = {{Martin Reinecke, Theo Steininger}},
+      title = {NIFTy -- Numerical Information Field TheorY},
+      url = {https://gitlab.mpcdf.mpg.de/ift/NIFTy},
+      version = {nifty4},
+      date = {2018-04-05},
+    }
 
 ### References
 
