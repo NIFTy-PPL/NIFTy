@@ -70,8 +70,8 @@ class WienerFilterCurvature(EndomorphicOperator):
         Returns
         -------
         sample : Field
-            Returns the a sample from the Gaussian of given mean and
-            covariance.
+            Returns the a sample from the Gaussian of mean zero and
+            given covariance.
         """
 
         mock_signal = self.S.generate_posterior_sample()
