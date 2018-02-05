@@ -83,6 +83,6 @@ if __name__ == "__main__":
     #data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)
     #data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))
     ift.plot(ift.Field(sspace2, val=data.val), name="data.png")
-    print "msig",np.min(ht(mock_signal).val)/nu.K, np.max(ht(mock_signal).val)/nu.K
-    print "map",np.min(m_s.val)/nu.K, np.max(m_s.val)/nu.K
+    print("msig",np.min(ht(mock_signal).val)/nu.K, np.max(ht(mock_signal).val)/nu.K)
+    print("map",np.min(m_s.val)/nu.K, np.max(m_s.val)/nu.K)
     ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="map.png")
