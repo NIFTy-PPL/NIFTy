@@ -14,6 +14,7 @@ pages:
   script:
   - pip install sphinx
   - pip install sphinx_rtd_theme
+  - pip install numpydoc
   - sphinx-apidoc -l -e -d 3 -o docs/source/mod nifty4
   - sphinx-build -b html docs/source/ docs/build/
   artifacts:
