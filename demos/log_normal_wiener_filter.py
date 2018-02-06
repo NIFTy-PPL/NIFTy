@@ -77,5 +77,5 @@ if __name__ == "__main__":
     proby(lambda z: HT(me2[0].curvature.inverse_times(HT.adjoint_times(z))))
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.02)
-    variance = sm(proby.diagonal.weigHT(-1))
+    variance = sm(proby.diagonal.weight(-1))
     ift.plot(variance, name='variance.png', **plotdict)

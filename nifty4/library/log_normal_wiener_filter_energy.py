@@ -36,7 +36,7 @@ class LogNormalWienerFilterEnergy(Energy):
     d: Field,
        the data.
     R: Operator,
-       The response operator, describtion of the measurement process.
+       The response operator, description of the measurement process.
     N: EndomorphicOperator,
        The noise covariance in data space.
     S: EndomorphicOperator,
