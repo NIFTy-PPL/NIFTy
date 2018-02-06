@@ -132,5 +132,5 @@ The NIFTy package is licensed under the terms of the
 
 * * * * *
 
-[1] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", [submitted to PLOS/1], 2018;
+[1] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, submitted to PLOS One;
 [arXiv:1708.01073](https://arxiv.org/abs/1708.01073)
