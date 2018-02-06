@@ -7,8 +7,8 @@ np.random.seed(42)
 
 if __name__ == "__main__":
     # Set up position space
-    #s_space = ift.RGSpace([128, 128])
-    s_space = ift.HPSpace(32)
+    s_space = ift.RGSpace([128, 128])
+    #s_space = ift.HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
     h_space = s_space.get_default_codomain()
@@ -36,13 +36,17 @@ if __name__ == "__main__":
     # Add a harmonic transformation to the instrument
     R = Instrument*HT
 
-    noise = 1.
-    N = ift.ScalingOperator(noise, s_space)
-    n = ift.Field.from_random(domain=s_space, random_type='normal',
-                              std=np.sqrt(noise), mean=0)
+    noiseless_data = R(sh)
+    signal_to_noise = 1.
+    noise_amplitude = noiseless_data.val.std()/signal_to_noise
+    N = ift.ScalingOperator(noise_amplitude**2, s_space)
+    n = ift.Field.from_random(domain=s_space,
+                              random_type='normal',
+                              std=noise_amplitude,
+                              mean=0)
 
     # Create mock data
-    d = R(sh) + n
+    d = noiseless_data + n
 
     # The information source
     j = R.adjoint_times(N.inverse_times(d))
@@ -51,17 +55,19 @@ if __name__ == "__main__":
     data_power = ift.log(ift.power_analyze(HT.adjoint_times(d),
                                            binbounds=p_space.binbounds))
     d_data = d.val
-    ift.plot(d, name="data.png")
+    plotdict = {"colormap": "Planck-like"}
+    ift.plot(d, name="data.png", **plotdict)
+    ift.plot(HT(sh), name="mock_signal.png", **plotdict)
 
     IC1 = ift.GradientNormController(name="IC1", iteration_limit=100,
-                                     tol_abs_gradnorm=0.1)
+                                     tol_abs_gradnorm=1e-15)
     minimizer = ift.RelaxedNewton(IC1)
 
-    ICI = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=0.1)
+    ICI = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-10)
     map_inverter = ift.ConjugateGradient(controller=ICI)
 
     ICI2 = ift.GradientNormController(iteration_limit=200,
-                                      tol_abs_gradnorm=1e-5)
+                                      tol_abs_gradnorm=1e-10)
     power_inverter = ift.ConjugateGradient(controller=ICI2)
 
     # Set starting position
@@ -91,4 +97,4 @@ if __name__ == "__main__":
         # Plot current estimate
         ift.dobj.mprint(i)
         if i % 50 == 0:
-            ift.plot(HT(m0), name='map.png')
+            ift.plot(HT(m0), name='map.png', **plotdict)
