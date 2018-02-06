@@ -90,19 +90,6 @@ class ScalingOperator(EndomorphicOperator):
                 self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)
 
     def draw_sample(self):
-        """ Generates a sample from a Gaussian distribution with
-        covariance given by the operator.
-
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation.
-
-        Returns
-        -------
-        sample : Field
-            Returns the a sample from the Gaussian of given covariance.
-        """
-
         return Field.from_random(random_type="normal",
                                  domain=self._domain,
                                  std=np.sqrt(self._factor),

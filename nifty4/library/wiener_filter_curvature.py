@@ -60,19 +60,6 @@ class WienerFilterCurvature(EndomorphicOperator):
         return self._op.apply(x, mode)
 
     def draw_sample(self):
-        """ Generates a sample from a Gaussian distribution with
-        covariance given by the operator.
-
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation.
-
-        Returns
-        -------
-        sample : Field
-            Returns the a sample from the Gaussian of given covariance.
-        """
-
         mock_signal = self.S.draw_sample()
         mock_noise = self.N.draw_sample()
 
