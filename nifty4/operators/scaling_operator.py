@@ -81,8 +81,7 @@ class ScalingOperator(EndomorphicOperator):
     def capability(self):
         if self._factor == 0.:
             return self.TIMES | self.ADJOINT_TIMES
-        return (self.TIMES | self.ADJOINT_TIMES |
-                self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)
+        return self._all_ops
 
     def draw_sample(self):
         return Field.from_random(random_type="normal",
