@@ -152,7 +152,7 @@ Function values are floating-point scalars, gradients have the form of fields li
 Some examples of concrete energy classes delivered with NIFTy4 are :py:class:`QuadraticEnergy` (with position-independent curvature, mainly used with conjugate gradient minimization) and :py:class:`WienerFilterEnergy`.
 Energies are classes that typically have to be provided by the user when tackling new IFT problems.
 
-The minmization procedure can be carried out by one of several algorithms; NIFTy4 currently ships solvers based on
+The minimization procedure can be carried out by one of several algorithms; NIFTy4 currently ships solvers based on
 
 - the conjugate gradient method (for quadratic energies)
 - the steepest descent method
