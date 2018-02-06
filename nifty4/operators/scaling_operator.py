@@ -35,11 +35,6 @@ class ScalingOperator(EndomorphicOperator):
         The multiplication factor
     domain : tuple of DomainObjects
         The domain on which the Operator's input Field lives.
-
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
     """
 
     def __init__(self, factor, domain):

@@ -44,11 +44,6 @@ class DiagonalOperator(EndomorphicOperator):
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
 
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
-
     NOTE: the fields given to __init__ and returned from .diagonal() are
     considered to be non-bare, i.e. during operator application, no additional
     volume factors are applied!

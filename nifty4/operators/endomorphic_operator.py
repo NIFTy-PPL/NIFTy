@@ -25,14 +25,6 @@ class EndomorphicOperator(LinearOperator):
     The  NIFTy EndomorphicOperator class is a class derived from the
     LinearOperator. By definition, domain and target are the same in
     EndomorphicOperator.
-
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
-    target : DomainTuple
-        The domain in which the outcome of the operator lives. As the Operator
-        is endomorphic this is the same as its domain.
     """
 
     @property

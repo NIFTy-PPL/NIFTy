@@ -46,15 +46,6 @@ class Field(object):
         A numpy.type. Most common are float and complex.
 
     copy: boolean
-
-    Attributes
-    ----------
-    val : data_object
-
-    domain : DomainTuple
-
-    dtype : type
-        Contains the datatype stored in the Field.
     """
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False):

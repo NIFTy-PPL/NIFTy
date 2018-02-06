@@ -48,19 +48,6 @@ class LineSearchStrongWolfe(LineSearch):
     max_zoom_iterations : integer
         Maximum number of iterations performed by the zoom algorithm.
         (Default: 10)
-
-    Attributes
-    ----------
-    c1 : float
-        Parameter for Armijo condition rule.
-    c2 : float
-        Parameter for curvature condition rule.
-    max_step_size : float
-        Maximum step allowed in to be made in the descent direction.
-    max_iterations : integer
-        Maximum number of iterations performed by the line search algorithm.
-    max_zoom_iterations : integer
-        Maximum number of iterations performed by the zoom algorithm.
     """
 
     def __init__(self, c1=1e-4, c2=0.9,
