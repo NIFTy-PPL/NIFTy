@@ -6,7 +6,13 @@ import numericalunits as nu
 if __name__ == "__main__":
     # In MPI mode, the random seed for numericalunits must be set by hand
     #nu.reset_units(43)
+
+    # the number of dimensions for the problem
+    # For dimensionality>2, you should probably reduce N_pixels, otherwise
+    # the code may run out of memory
     dimensionality = 2
+    # Grid resolution (pixels per axis)
+    N_pixels = 512
     np.random.seed(43)
 
     # Setting up variable parameters
@@ -33,13 +39,11 @@ if __name__ == "__main__":
 
     # Total side-length of the domain
     L = 2.*nu.m
-    # Grid resolution (pixels per axis)
-    N_pixels = 512
     shape = [N_pixels]*dimensionality
 
     signal_space = ift.RGSpace(shape, distances=L/N_pixels)
     harmonic_space = signal_space.get_default_codomain()
-    ht = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
+    HT = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
     power_space = ift.PowerSpace(harmonic_space)
 
     # Creating the mock data
@@ -53,7 +57,7 @@ if __name__ == "__main__":
     sensitivity = (1./nu.m)**dimensionality/nu.K
     R = ift.GeometryRemover(signal_space)
     R = R*ift.ScalingOperator(sensitivity, signal_space)
-    R = R*ht
+    R = R*HT
     R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
     data_domain = R.target[0]
 
@@ -73,14 +77,14 @@ if __name__ == "__main__":
         S=S, N=N, R=R, inverter=inverter)
 
     m = wiener_curvature.inverse_times(j)
-    m_s = ht(m)
+    m_s = HT(m)
 
     sspace2 = ift.RGSpace(shape, distances=L/N_pixels/nu.m)
 
-    zmax = max(m_s.max(), ht(mock_signal).max())
-    zmin = min(m_s.min(), ht(mock_signal).min())
+    zmax = max(m_s.max(), HT(mock_signal).max())
+    zmin = min(m_s.min(), HT(mock_signal).min())
     plotdict = {"zmax": zmax/nu.K, "zmin": zmin/nu.K}
 
-    ift.plot(ift.Field(sspace2, ht(mock_signal).val)/nu.K, name="mock_signal.png", **plotdict)
+    ift.plot(ift.Field(sspace2, HT(mock_signal).val)/nu.K, name="mock_signal.png", **plotdict)
     ift.plot(ift.Field(sspace2, val=data.val), name="data.png")
     ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="reconstruction.png", **plotdict)
