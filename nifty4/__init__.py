@@ -55,8 +55,9 @@ from .plotting.plot import plot
 from . import library
 from . import extra
 
-__all__ = ["Domain", "UnstructuredDomain", "StructuredDomain", "RGSpace", "LMSpace",
-           "HPSpace", "GLSpace", "DOFSpace", "PowerSpace", "DomainTuple",
+__all__ = ["Domain", "UnstructuredDomain", "StructuredDomain",
+           "RGSpace", "LMSpace", "HPSpace", "GLSpace", "DOFSpace",
+           "PowerSpace", "DomainTuple",
            "LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
            "DirectSmoothingOperator", "LaplaceOperator",

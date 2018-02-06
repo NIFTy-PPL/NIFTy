@@ -3,9 +3,17 @@ import nifty4 as ift
 import numericalunits as nu
 
 
+def init_nu():
+    if ift.dobj.ntask > 1:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        data = np.random.randint(10000000, size=1)
+        data = comm.bcast(data, root=0)
+        nu.reset_units(data[0])
+
 if __name__ == "__main__":
     # In MPI mode, the random seed for numericalunits must be set by hand
-    #nu.reset_units(43)
+    init_nu()
 
     # the number of dimensions for the problem
     # For dimensionality>2, you should probably reduce N_pixels, otherwise
@@ -29,7 +37,7 @@ if __name__ == "__main__":
     # note that field_variance**2 = a*k_0/4. for this analytic form of power
     # spectrum
     def power_spectrum(k):
-        #RL FIXME: signal_amplitude is not how much signal varies
+        # RL FIXME: signal_amplitude is not how much signal varies
         cldim = correlation_length**(2*dimensionality)
         a = 4/(2*np.pi) * cldim * field_sigma**2
         # to be integrated over spherical shells later on
@@ -58,7 +66,8 @@ if __name__ == "__main__":
     R = ift.GeometryRemover(signal_space)
     R = R*ift.ScalingOperator(sensitivity, signal_space)
     R = R*HT
-    R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
+    R = R * ift.create_harmonic_smoothing_operator(
+        (harmonic_space,), 0, response_sigma)
     data_domain = R.target[0]
 
     noiseless_data = R(mock_signal)
@@ -85,6 +94,8 @@ if __name__ == "__main__":
     zmin = min(m_s.min(), HT(mock_signal).min())
     plotdict = {"zmax": zmax/nu.K, "zmin": zmin/nu.K}
 
-    ift.plot(ift.Field(sspace2, HT(mock_signal).val)/nu.K, name="mock_signal.png", **plotdict)
+    ift.plot(ift.Field(sspace2, HT(mock_signal).val)/nu.K,
+             name="mock_signal.png", **plotdict)
     ift.plot(ift.Field(sspace2, val=data.val), name="data.png")
-    ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="reconstruction.png", **plotdict)
+    ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="reconstruction.png",
+             **plotdict)

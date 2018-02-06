@@ -164,12 +164,8 @@ class LinearOperator(with_metaclass(
             raise ValueError("The operator's and field's domains don't match.")
 
     def draw_sample(self):
-        """ Generates a sample from a Gaussian distribution with
+        """ Generates a sample from a Gaussian distribution with zero mean and
         covariance given by the operator.
-
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation.
 
         Returns
         -------

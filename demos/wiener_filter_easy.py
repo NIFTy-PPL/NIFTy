@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # Set up the geometry
     s_space = ift.RGSpace([N_pixels, N_pixels], distances=pixel_width)
     h_space = s_space.get_default_codomain()
-    ht = ift.HarmonicTransformOperator(h_space, s_space)
+    HT = ift.HarmonicTransformOperator(h_space, s_space)
     p_space = ift.PowerSpace(h_space)
 
     # Create mock data
@@ -38,7 +38,8 @@ if __name__ == "__main__":
     sp = ift.PS_field(p_space, pow_spec)
     sh = ift.power_synthesize(sp, real_signal=True)
 
-    R = ht*ift.create_harmonic_smoothing_operator((h_space,),0,response_sigma)
+    R = HT*ift.create_harmonic_smoothing_operator((h_space,), 0,
+                                                  response_sigma)
 
     noiseless_data = R(sh)
     signal_to_noise = 1.
@@ -64,10 +65,9 @@ if __name__ == "__main__":
 
     # Plotting
     d_field = ift.Field(s_space, val=d.val)
-    zmax = max(ht(sh).max(), d_field.max(), ht(m).max())
-    zmin = min(ht(sh).min(), d_field.min(), ht(m).min())
-    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
-                "colormap": "Planck-like", "zmax": zmax, "zmin": zmin}
-    ift.plot(ht(sh), name="mock_signal.png", **plotdict)
+    zmax = max(HT(sh).max(), d_field.max(), HT(m).max())
+    zmin = min(HT(sh).min(), d_field.min(), HT(m).min())
+    plotdict = {"colormap": "Planck-like", "zmax": zmax, "zmin": zmin}
+    ift.plot(HT(sh), name="mock_signal.png", **plotdict)
     ift.plot(d_field, name="data.png", **plotdict)
-    ift.plot(ht(m), name="reconstruction.png", **plotdict)
+    ift.plot(HT(m), name="reconstruction.png", **plotdict)
