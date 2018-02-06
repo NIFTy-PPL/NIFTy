@@ -33,3 +33,19 @@ class LaplaceOperatorTests(unittest.TestCase):
         L = ift.LaplaceOperator(p, logarithmic=log2)
         fp = ift.Field.from_random("normal", domain=p, dtype=np.float64)
         assert_allclose(L(fp).vdot(L(fp)), L.adjoint_times(L(fp)).vdot(fp))
+
+    @expand(product([10, 100, 1000]))
+    def test_Laplace(self, sz):
+        s = ift.RGSpace(sz, harmonic=True)
+        bb = ift.PowerSpace.useful_binbounds(s, logarithmic=False)
+        p = ift.PowerSpace(s, binbounds=bb)
+
+        foo = ift.PS_field(p, lambda k: 2*k**2)
+        L = ift.LaplaceOperator(p, logarithmic=False)
+
+        result = ift.Field(p, val=2*2.)
+        result.val[0] = 0.
+        result.val[1] = 0.
+        result.val[-1] = 0.
+
+        assert_allclose(L(foo).val, result.val)
