@@ -60,11 +60,11 @@ class WienerFilterCurvature(EndomorphicOperator):
         return self._op.apply(x, mode)
 
     def draw_sample(self):
-        mock_signal = self.S.draw_sample()
-        mock_noise = self.N.draw_sample()
+        n = self.N.draw_sample()
+        s = self.S.draw_sample()
 
-        mock_data = self.R(mock_signal) + mock_noise
+        d = self.R(s) + n
 
-        mock_j = self.R.adjoint_times(self.N.inverse_times(mock_data))
-        mock_m = self.inverse_times(mock_j)
-        return mock_signal - mock_m
+        j = self.R.adjoint_times(self.N.inverse_times(d))
+        m = self.inverse_times(j)
+        return s - m
