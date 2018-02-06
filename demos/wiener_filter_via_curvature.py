@@ -59,8 +59,7 @@ if __name__ == "__main__":
 
     noiseless_data = R(mock_signal)
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
-    N = ift.DiagonalOperator(
-        ift.Field.full(data_domain, noise_amplitude**2))
+    N = ift.ScalingOperator(noise_amplitude**2, data_domain)
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=noise_amplitude, mean=0)

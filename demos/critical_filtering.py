@@ -7,12 +7,12 @@ np.random.seed(42)
 
 if __name__ == "__main__":
     # Set up position space
-    s_space = ift.RGSpace([128, 128])
-    # s_space = ift.HPSpace(32)
+    #s_space = ift.RGSpace([128, 128])
+    s_space = ift.HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
     h_space = s_space.get_default_codomain()
-    fft = ift.HarmonicTransformOperator(h_space, s_space)
+    HT = ift.HarmonicTransformOperator(h_space, s_space)
 
     # Set up power space
     p_space = ift.PowerSpace(h_space,
@@ -34,10 +34,10 @@ if __name__ == "__main__":
     # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
     # Add a harmonic transformation to the instrument
-    R = Instrument*fft
+    R = Instrument*HT
 
     noise = 1.
-    N = ift.DiagonalOperator(ift.Field.full(s_space, noise).weight(1))
+    N = ift.ScalingOperator(noise, s_space)
     n = ift.Field.from_random(domain=s_space, random_type='normal',
                               std=np.sqrt(noise), mean=0)
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     j = R.adjoint_times(N.inverse_times(d))
     realized_power = ift.log(ift.power_analyze(sh,
                                                binbounds=p_space.binbounds))
-    data_power = ift.log(ift.power_analyze(fft.adjoint_times(d),
+    data_power = ift.log(ift.power_analyze(HT.adjoint_times(d),
                                            binbounds=p_space.binbounds))
     d_data = d.val
     ift.plot(d, name="data.png")
@@ -91,4 +91,4 @@ if __name__ == "__main__":
         # Plot current estimate
         ift.dobj.mprint(i)
         if i % 50 == 0:
-            ift.plot(fft(m0), name='map.png')
+            ift.plot(HT(m0), name='map.png')

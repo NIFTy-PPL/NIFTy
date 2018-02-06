@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # signal_space = ift.RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     signal_space = ift.HPSpace(16)
     harmonic_space = signal_space.get_default_codomain()
-    ht = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
+    HT = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
     power_space = ift.PowerSpace(harmonic_space)
 
     # Creating the mock signal
@@ -35,15 +35,14 @@ if __name__ == "__main__":
     # mask.val[N10*5:N10*9, N10*5:N10*9] = 0.
     R = ift.GeometryRemover(signal_space)
     R = R*ift.DiagonalOperator(mask)
-    R = R*ht
+    R = R*HT
     R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
     data_domain = R.target[0]
 
     # Setting up the noise covariance and drawing a random noise realization
     noiseless_data = R(mock_signal)
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
-    N = ift.DiagonalOperator(
-        ift.Field.full(data_domain, noise_amplitude**2))
+    N = ift.ScalingOperator(noise_amplitude**2, data_domain)
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=noise_amplitude, mean=0)
@@ -61,11 +60,11 @@ if __name__ == "__main__":
     #minimizer = ift.SteepestDescent(controller=ctrl2)
 
     me = minimizer(energy)
-    m = ht(me[0].position)
+    m = HT(me[0].position)
 
     # Plotting
     plotdict = {"colormap": "Planck-like"}
-    ift.plot(ht(mock_signal), name="mock_signal.png", **plotdict)
+    ift.plot(HT(mock_signal), name="mock_signal.png", **plotdict)
     logdata = np.log(ift.dobj.to_global_data(data.val)).reshape(signal_space.shape)
     ift.plot(ift.Field(signal_space, val=ift.dobj.from_global_data(logdata)),
              name="log_of_data.png", **plotdict)
@@ -75,8 +74,8 @@ if __name__ == "__main__":
     class Proby(ift.DiagonalProberMixin, ift.Prober):
         pass
     proby = Proby(signal_space, probe_count=1)
-    proby(lambda z: ht(me2[0].curvature.inverse_times(ht.adjoint_times(z))))
+    proby(lambda z: HT(me2[0].curvature.inverse_times(HT.adjoint_times(z))))
 
     sm = ift.FFTSmoothingOperator(signal_space, sigma=0.02)
-    variance = sm(proby.diagonal.weight(-1))
+    variance = sm(proby.diagonal.weigHT(-1))
     ift.plot(variance, name='variance.png', **plotdict)

@@ -43,7 +43,7 @@ if __name__ == "__main__":
     noiseless_data = R(sh)
     signal_to_noise = 1.
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
-    N = ift.DiagonalOperator(ift.Field.full(s_space, noise_amplitude**2))
+    N = ift.ScalingOperator(noise_amplitude**2, s_space)
     n = ift.Field.from_random(domain=s_space,
                               random_type='normal',
                               std=noise_amplitude,

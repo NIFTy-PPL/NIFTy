@@ -66,8 +66,7 @@ if __name__ == "__main__":
     true_sky = nonlinearity(HT(power*sh))
     noiseless_data = MeasurementOperator(true_sky)
     noise_amplitude = noiseless_data.val.std()*noise_level
-    N = ift.DiagonalOperator(
-        ift.Field.full(d_space, noise_amplitude**2))
+    N = ift.ScalingOperator(noise_amplitude**2, d_space)
     n = ift.Field.from_random(
         domain=d_space, random_type='normal',
         std=noise_amplitude, mean=0)
