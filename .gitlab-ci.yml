@@ -17,9 +17,10 @@ pages:
   - pip install numpydoc
   - sphinx-apidoc -l -e -d 3 -o docs/source/mod nifty4
   - sphinx-build -b html docs/source/ docs/build/
+  - mv docs/build/ public/
   artifacts:
     paths:
-    - ./docs/build
+    - public
   only:
   - experiment_sphinx_gitlabpages
 
