@@ -124,7 +124,7 @@ phrase such as the following:
 Or the following BibTeX entry:
 
     @software{nifty,
-      author = {{Martin Reinecke, Theo Steininger}},
+      author = {{Martin Reinecke, Theo Steininger, Marco Selig}},
       title = {NIFTy -- Numerical Information Field TheorY},
       url = {https://gitlab.mpcdf.mpg.de/ift/NIFTy},
       version = {nifty4},
