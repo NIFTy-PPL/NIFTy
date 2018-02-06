@@ -119,7 +119,7 @@ Please acknowledge the use of NIFTy in your publication(s) by using a
 phrase such as the following:
 
 > *"Some of the results in this publication have been derived using the
-> NIFTy package [Selig et al., 2013]."*
+> NIFTy package [Steininger et al., 2018]."*
 
 ### References
 
@@ -132,7 +132,5 @@ The NIFTy package is licensed under the terms of the
 
 * * * * *
 
-[1] Selig et al., "NIFTy - Numerical Information Field Theory - a
-versatile Python library for signal inference", [A&A, vol. 554, id.
-A26](https://dx.doi.org/10.1051/0004-6361/201321236), 2013;
-[arXiv:1301.4499](https://www.arxiv.org/abs/1301.4499)
+[1] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", [submitted to PLOS/1], 2018;
+[arXiv:1708.01073](https://arxiv.org/abs/1708.01073)
