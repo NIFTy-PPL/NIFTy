@@ -36,7 +36,7 @@ class LaplaceOperatorTests(unittest.TestCase):
 
     @expand(product([10, 100, 1000]))
     def test_Laplace(self, sz):
-        s = ift.RGSpace(sz, harmonic=True)
+        s = ift.RGSpace(sz, harmonic=True, distances=0.764)
         bb = ift.PowerSpace.useful_binbounds(s, logarithmic=False)
         p = ift.PowerSpace(s, binbounds=bb)
 
