@@ -47,7 +47,7 @@ A domain must be able to answer the following queries:
 
 - its total number of data entries (pixels)
 - the shape of the array that is supposed to hold them
-- equality/unequality to another :py:class:`DomainObject` instance
+- equality/inequality to another :py:class:`DomainObject` instance
 
 .. _domains:
 
