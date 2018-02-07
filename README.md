@@ -93,10 +93,10 @@ NIFTy4 and its mandatory dependencies can be installed via:
     sudo apt-get install git libfftw3-dev python python-pip python-dev
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4
 
-Note: If you encounter problems related to `pyFFTW`, make sure that you are
+(Note: If you encounter problems related to `pyFFTW`, make sure that you are
 using a pip-installed `pyFFTW` package. Unfortunately, some distributions are
 shipping an incorrectly configured `pyFFTW` package, which does not cooperate
-with the installed `FFTW3` libraries.
+with the installed `FFTW3` libraries.)
 
 Plotting support is added via:
 
