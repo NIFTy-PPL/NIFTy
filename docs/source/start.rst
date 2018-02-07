@@ -131,6 +131,7 @@ typical examples for this category are the :py:class:`ScalingOperator`, which si
 
 Nifty4 allows simple and intuitive construction of combined operators.
 As an example, if :math:`A`, :math:`B` and :math:`C` are of type :py:class:`LinearOperator` and :math:`f_1` and :math:`f_2` are fields, writing::
+
     X = A*B.inverse*A.adjoint + C
     f2 = X(f1)
 
