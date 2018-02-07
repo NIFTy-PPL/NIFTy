@@ -152,6 +152,7 @@ phrase such as the following:
 > *"Some of the results in this publication have been derived using the
 > NIFTy package [Steininger et al., 2017][1]."
 
+[Steininger et al., 2017][1]
 ### References
 
 Release Notes
