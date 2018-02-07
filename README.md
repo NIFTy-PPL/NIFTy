@@ -64,14 +64,16 @@ Installation
 
 ### Requirements
 
--   [Python](https://www.python.org/) (v2.7.x or 3.5.x)
--   [NumPy](https://www.numpy.org/)
--   [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
+- [Python](https://www.python.org/) (v2.7.x or 3.5.x)
+- [NumPy](https://www.numpy.org/)
+- [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 
 Optional dependencies:
--   [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix)
--   [mpi4py](https://mpi4py.scipy.org)
--   [matplotlib](https://matplotlib.org/)
+- [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix) (for harmonic
+    transforms involving domains on the sphere)
+- [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
+- [matplotlib](https://matplotlib.org/) (for field plotting)
+- [SciPy](https://www.scipy.org/) (for additional minimization algorithms)
 
 ### Sources
 
@@ -81,22 +83,46 @@ switching to the NIFTy_4 branch:
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
     git checkout NIFTy_4
 
-### Installation via pip
+### Installation
 
-It is possible to simply install NIFTy with its mandatory dependencies via the command
+In the following, we assume a Debian-based distribution. For other
+distributions, the "apt" lines will need slight changes.
 
+NIFTy4 and its mandatory dependencies can be installed via:
+    sudo apt-get install git libfftw3-dev python  python-pip  python-dev
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4
 
-The optional dependencies can be installed via
+(Note: if you encounter problems related to pyFFTW, make sure that you are using
+a pip-installed pyFFTW package! Some distributions are unfortunately shipping
+an incorrectly configured pyFFTW package, which does not cooperate with the
+installed FFTW3 libraries)
 
-    pip install --user mpi4py
+Plotting support is added via:
+    pip install --user matplotlib
+
+Support for spherical harmonic transforms is added via:
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+
+MPI support is added via:
+    sudo apt-get install openmpi-bin libopenmpi-dev
+    pip install --user mpi4py
+
+Scipy-based minimizers are enabled via:
+    pip install --user scipy
+
+### Installation for Python 3
+
+If you want to run NIFTy with Python 3, you need to make the following changes
+to the instructions above:
+
+- in all `apt-get` commands, replace `python-*` by `python3-*`
+- in all `pip` commands, replace `pip` by `pip3`
 
 ### Running the tests
 
 In oder to run the tests one needs two additional packages:
 
-    pip install --user nose parameterized
+    pip install --user nose parameterized coverage
 
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:
