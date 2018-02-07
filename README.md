@@ -150,9 +150,8 @@ Please acknowledge the use of NIFTy in your publication(s) by using a
 phrase such as the following:
 
 > *"Some of the results in this publication have been derived using the
-> NIFTy package [Steininger et al., 2017][1]."
+> NIFTy package [Steininger et al., 2017]."[1]
 
-[Steininger et al., 2017][1]
 ### References
 
 Release Notes
@@ -164,5 +163,5 @@ The NIFTy package is licensed under the terms of the
 
 * * * * *
 
-[1]: Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, submitted to PLOS One;
+[1] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, submitted to PLOS One;
 [arXiv:1708.01073](https://arxiv.org/abs/1708.01073)
