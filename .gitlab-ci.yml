@@ -1,6 +1,9 @@
 #image: ubuntu:artful
 image: debian:testing-slim
 
+# stages:
+#   - test
+
 variables:
   DOCKER_DRIVER: overlay
 
@@ -9,6 +12,19 @@ before_script:
   - sh ci/install_basics.sh
   - pip install --process-dependency-links -r ci/requirements.txt
   - pip3 install --process-dependency-links -r ci/requirements.txt
+
+# test_min:
+#   stage: test
+#   script:
+#     - pip install --user .
+#     - pip3 install --user .
+#     - nosetests -q
+#     - nosetests3 -q
+#     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -q 2>/dev/null
+#     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -q 2>/dev/null
+#     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
+#     - >
+#       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
 pages:
   script:
@@ -22,8 +38,4 @@ pages:
     paths:
     - public
   only:
-  - experiment_sphinx_gitlabpages
-
-
-
-
+  - nifty_documentation
