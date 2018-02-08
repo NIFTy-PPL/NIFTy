@@ -81,7 +81,6 @@ The current version of Nifty4 can be obtained by cloning the repository and
 switching to the NIFTy_4 branch:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-    git checkout NIFTy_4
 
 ### Installation
 

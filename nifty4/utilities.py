@@ -232,25 +232,3 @@ def my_fftn_r2c(a, axes=None):
         return res
 
     return _fill_complex_array(tmp, np.empty_like(a, dtype=tmp.dtype), axes)
-
-
-def general_axpy(a, x, y, out):
-    if x.domain != y.domain or x.domain != out.domain:
-        raise ValueError("Incompatible domains")
-
-    if out is x:
-        if a != 1.:
-            out *= a
-        out += y
-    elif out is y:
-        if a != 1.:
-            out += a*x
-        else:
-            out += x
-    else:
-        out.copy_content_from(y)
-        if a != 1.:
-            out += a*x
-        else:
-            out += x
-    return out
