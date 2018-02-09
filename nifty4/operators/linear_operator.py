@@ -25,6 +25,11 @@ import numpy as np
 
 class LinearOperator(with_metaclass(
         NiftyMeta, type('NewBase', (object,), {}))):
+    """NIFTY base class for linear operators.
+
+    The base NIFTY operator class is an abstract class from which
+    other specific operator subclasses are derived.
+    """
 
     _validMode = (False, True, True, False, True, False, False, False, True)
     _inverseMode = (0, 4, 8, 0, 1, 0, 0, 0, 2)
@@ -71,11 +76,21 @@ class LinearOperator(with_metaclass(
 
     @property
     def inverse(self):
+        """
+        inverse : LinearOperator
+            Returns a LinearOperator object which behaves as if it were
+            the inverse of this operator.
+        """
         from .inverse_operator import InverseOperator
         return InverseOperator(self)
 
     @property
     def adjoint(self):
+        """
+        adjoint : LinearOperator
+            Returns a LinearOperator object which behaves as if it were
+            the adjoint of this operator.
+        """
         from .adjoint_operator import AdjointOperator
         return AdjointOperator(self)
 
@@ -120,33 +135,116 @@ class LinearOperator(with_metaclass(
         other = self._toOperator(other, self.domain)
         return SumOperator.make(other, self, [False, True])
 
-    def supports(self, ops):
-        return False
-
     @abc.abstractproperty
     def capability(self):
+        """ Specifies the application modes supported by this operator
+
+        Returns
+        -------
+        out : integer
+            This is any subset of LinearOperator.{TIMES, ADJOINT_TIMES,
+            INVERSE_TIMES, ADJOINT_INVERSE_TIMES, INVERSE_ADJOINT_TIMES},
+            joined together by the "|" operator.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def apply(self, x, mode):
+        """ Applies the Operator to a given Field, in a specified mode.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's domain or target,
+            depending on mode.
+
+        mode : integer
+            LinearOperator.TIMES: normal application
+            LinearOperator.ADJOINT_TIMES: adjoint application
+            LinearOperator.INVERSE_TIMES: inverse application
+            LinearOperator.ADJOINT_INVERSE_TIMES or
+            LinearOperator.INVERSE_ADJOINT_TIMES:
+            adjoint inverse application
+
+        Returns
+        -------
+        out : Field
+            The processed Field living on the Operator's target or domain,
+            depending on mode.
+        """
         raise NotImplementedError
 
     def __call__(self, x):
+        """Same as times()"""
         return self.apply(x, self.TIMES)
 
     def times(self, x):
+        """ Applies the Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's domain.
+
+        Returns
+        -------
+        out : Field
+            The processed Field living on the Operator's target domain.
+        """
         return self.apply(x, self.TIMES)
 
     def inverse_times(self, x):
+        """Applies the inverse Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's target domain
+
+        Returns
+        -------
+        out : Field
+            The processed Field living on the Operator's domain.
+        """
         return self.apply(x, self.INVERSE_TIMES)
 
     def adjoint_times(self, x):
+        """Applies the adjoint-Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's target domain
+
+        Returns
+        -------
+        out : Field
+            The processed Field living on the Operator's domain.
+        """
         return self.apply(x, self.ADJOINT_TIMES)
 
     def adjoint_inverse_times(self, x):
+        """ Applies the adjoint-inverse Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's domain.
+
+        Returns
+        -------
+        out : Field
+            The processed Field living on the Operator's target domain.
+
+        Notes
+        -----
+        If the operator has an `inverse` then the inverse adjoint is identical
+        to the adjoint inverse. We provide both names for convenience.
+        """
         return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
     def inverse_adjoint_times(self, x):
+        """Same as adjoint_inverse_times()"""
         return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
     def _check_mode(self, mode):

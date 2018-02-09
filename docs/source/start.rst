@@ -31,40 +31,38 @@ From such a perspective,
 - IFT problems largely consist of *minimization* problems involving a large number of equations.
 - The equations are built mostly from the application of *linear operators*, but there may also be nonlinear functions involved.
 - The unknowns in the equations represent either continuous physical *fields*, or they are simply individual measured *data* points.
-- The locations and volume elements attached to discretized *field* values are supplied by *domain* objects. There are many variants of such discretized *domain* supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *domains*.
+- The locations and volume elements attached to discretized *field* values are supplied by *domain* objects. There are many variants of such discretized *domain*s supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *domains*.
 
 In the following sections, the concepts briefly presented here will be discussed in more detail; this is done in reversed order of their introduction, to avoid forward references.
 
 
-.. _domainobjects:
+.. _domains:
 
-DomainObjects
-.............
+Domains
+.......
 
 One of the fundamental building blocks of the NIFTy4 framework is the /domain/.
-Its required capabilities are expressed by the abstract :py:class:`DomainObject` class.
+Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
 
 - its total number of data entries (pixels)
 - the shape of the array that is supposed to hold them
-- equality/inequality to another :py:class:`DomainObject` instance
-
-.. _domains:
+- equality/inequality to another :py:class:`Domain` instance
 
 Unstructured domains
 ....................
 
 There are domains (e.g. the data domain) which have no geometry associated to the individual data values.
 In NIFTy4 they are represented by the :py:class:`UnstructuredDomain` class, which is derived from
-:py:class:`DomainObject`.
+:py:class:`Domain`.
 
 
 Structured domains
 ..................
 
-All domains defined on a geometrical manifold are derived from :py:class:`StructuredDomain` (which is in turn derived from :py:class:`DomainObject`).
+All domains defined on a geometrical manifold are derived from :py:class:`StructuredDomain` (which is in turn derived from :py:class:`Domain`).
 
-In addition to the capabilities of :py:class:`DomainObject`, :py:class:`StructuredDomain` offers the following functionality:
+In addition to the capabilities of :py:class:`Domain`, :py:class:`StructuredDomain` offers the following functionality:
 
 - methods returing the pixel volume(s) and the total volume
 - a :py:attr:`harmonic` property
