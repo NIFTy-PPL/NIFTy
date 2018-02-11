@@ -78,6 +78,6 @@ if __name__ == "__main__":
     sample_variance = ift.Field.zeros(s_space)
     sample_mean = ift.Field.zeros(s_space)
 
-    mean, variance = ift.probe_with_posterior_samples(curv, sh, ht, 50)
+    mean, variance = ift.probe_with_posterior_samples(curv, m, ht, 50)
     ift.plot(variance, name="posterior_variance.png", colormap="Planck-like")
     ift.plot(mean, name="posterior_mean.png", **plotdict)
