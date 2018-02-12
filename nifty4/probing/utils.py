@@ -58,7 +58,7 @@ def probe_with_posterior_samples(op, post_op, nprobes):
     return sc.mean, sc.var
 
 
-def probe_diagonal(op, nprobes, random_type="normal"):
+def probe_diagonal(op, nprobes, random_type="pm1"):
     sc = StatCalculator()
     for i in range(nprobes):
         input = Field.from_random(random_type, op.domain)

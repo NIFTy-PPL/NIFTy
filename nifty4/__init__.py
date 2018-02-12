@@ -29,9 +29,6 @@ from .operators.inversion_enabler import InversionEnabler
 
 from .field import Field, sqrt, exp, log
 
-from .probing.prober import Prober
-from .probing.diagonal_prober_mixin import DiagonalProberMixin
-from .probing.trace_prober_mixin import TraceProberMixin
 from .probing.utils import probe_with_posterior_samples, probe_diagonal
 
 from .minimization.line_search import LineSearch
@@ -62,5 +59,4 @@ __all__ = ["Domain", "UnstructuredDomain", "StructuredDomain",
            "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
            "DirectSmoothingOperator", "LaplaceOperator",
            "PowerProjectionOperator", "InversionEnabler",
-           "Field", "sqrt", "exp", "log",
-           "Prober", "DiagonalProberMixin", "TraceProberMixin"]
+           "Field", "sqrt", "exp", "log"]
