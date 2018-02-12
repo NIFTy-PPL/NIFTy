@@ -24,10 +24,11 @@ Contents
 ........
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    ift
    start
+   code
 
 Indices and tables
 ..................
