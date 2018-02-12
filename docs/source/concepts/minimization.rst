@@ -4,6 +4,7 @@ Minimization
 Description of Minimization
 
 .. toctree::
+    :maxdepth: 1
     :caption: Minimization Concepts
 
     Conjugate Gradient                      <../mod/nifty4.minimization.conjugate_gradient>

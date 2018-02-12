@@ -4,6 +4,7 @@ Operators
 Description of Operators
 
 .. toctree::
+    :maxdepth: 1
     :caption: Types of Operators
 
     Adjoint                             <../mod/nifty4.operators.adjoint_operator>

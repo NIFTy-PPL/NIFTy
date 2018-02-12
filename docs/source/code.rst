@@ -5,7 +5,7 @@ The NIFTy code is divided in the concepts Spaces, Fields, Operators and Minimiza
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Concepts
    :glob:
 

@@ -4,6 +4,7 @@ Spaces
 Description of Spaces
 
 .. toctree::
+    :maxdepth: 1
     :caption: Types of Spaces
 
     DOF                             <../mod/nifty4.spaces.dof_space>

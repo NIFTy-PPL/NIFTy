@@ -1,4 +1,3 @@
 rm -rf docs/build docs/source/mod
-sphinx-apidoc -l -e -d 3 -o docs/source/mod nifty4
+better-apidoc -l -e -d 2 -t docs/generation-templates -o docs/source/mod nifty4
 sphinx-build -b html docs/source/ docs/build/
-
