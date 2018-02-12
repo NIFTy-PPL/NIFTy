@@ -11,13 +11,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from builtins import object
-
+from ..field import Field
 
 class StatCalculator(object):
     def __init__(self):
@@ -47,12 +47,21 @@ class StatCalculator(object):
         return self._M2 * (1./(self._count-1))
 
 
-def probe_with_posterior_samples(op, m, post_op, nprobes):
+def probe_with_posterior_samples(op, post_op, nprobes):
     sc = StatCalculator()
     for i in range(nprobes):
-        sample = post_op(op.draw_sample() + m)
+        sample = post_op(op.draw_sample())
         sc.add(sample)
 
     if nprobes == 1:
         return sc.mean, None
     return sc.mean, sc.var
+
+
+def probe_diagonal(op, nprobes, random_type="normal"):
+    sc = StatCalculator()
+    for i in range(nprobes):
+        input = Field.from_random(random_type, op.domain)
+        output = op(input)
+        sc.add(output.conjugate()*input)
+    return sc.mean

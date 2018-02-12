@@ -66,6 +66,6 @@ if __name__ == "__main__":
     ift.plot(m, name="map.png", **plotdict)
 
     # sampling the uncertainty map
-    mean, variance = ift.probe_with_posterior_samples(wiener_curvature, m_k, ht, 5)
+    mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 5)
     ift.plot(ift.sqrt(variance), name="uncertainty.png", **plotdict)
-    ift.plot(mean, name="posterior_mean.png", **plotdict)
+    ift.plot(mean+m, name="posterior_mean.png", **plotdict)

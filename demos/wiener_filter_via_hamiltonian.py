@@ -78,6 +78,11 @@ if __name__ == "__main__":
     sample_variance = ift.Field.zeros(s_space)
     sample_mean = ift.Field.zeros(s_space)
 
-    mean, variance = ift.probe_with_posterior_samples(curv, m, ht, 50)
+    mean, variance = ift.probe_with_posterior_samples(curv, ht, 50)
     ift.plot(variance, name="posterior_variance.png", **plotdict)
-    ift.plot(mean, name="posterior_mean.png", **plotdict)
+    ift.plot(mean+ht(m), name="posterior_mean.png", **plotdict)
+
+    # try to do the same with diagonal probing
+    variance = ift.probe_diagonal(ht*curv.inverse*ht.adjoint, 100)
+    #sm = ift.FFTSmoothingOperator(s_space, sigma=0.015)
+    ift.plot(variance, name="posterior_variance2.png", **plotdict)
