@@ -29,10 +29,6 @@ before_script:
 
 pages:
   script:
-  - pip install sphinx
-  - pip install sphinx_rtd_theme
-  - pip install better-apidoc
-  - pip install numpydoc
   - better-apidoc -l -e -d 2 -t docs/generation-templates -o docs/source/mod nifty4
   - sphinx-build -b html docs/source/ docs/build/
   - mv docs/build/ public/

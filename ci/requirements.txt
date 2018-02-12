@@ -1,3 +1,7 @@
 parameterized
 coverage
 git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+sphinx
+sphinx_rtd_theme
+better-apidoc
+numpydoc
