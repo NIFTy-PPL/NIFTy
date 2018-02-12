@@ -33,7 +33,8 @@ pages:
   - pip install sphinx_rtd_theme
   - pip install better-apidoc
   - pip install numpydoc
-  - sh docs/generate.sh
+  - better-apidoc -l -e -d 2 -t docs/generation-templates -o docs/source/mod nifty4
+  - sphinx-build -b html docs/source/ docs/build/
   - mv docs/build/ public/
   artifacts:
     paths:
