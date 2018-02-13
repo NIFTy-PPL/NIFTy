@@ -16,10 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-"""
-Sample documentation for DOF space. (or any other module). This will be displayed under Summary section of module documentation
-"""
-
 import numpy as np
 from .structured_domain import StructuredDomain
 

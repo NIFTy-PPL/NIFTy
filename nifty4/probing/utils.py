@@ -19,6 +19,7 @@
 from builtins import object
 from ..field import Field
 
+
 class StatCalculator(object):
     def __init__(self):
         self._count = 0
