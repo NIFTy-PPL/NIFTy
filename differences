@@ -93,11 +93,3 @@ Significant differences between NIFTy3 and nifty4
    its adjoint and inverse, respectively.
 
 18) Handling of volume factors has been changed completely.
-
-
-Obsolescent functionality:
-
-- DirectSmoothingOperator
-- LaplaceOperator(?)
-- FFTSmoothingOperator(?)
-- most of the probing machinery(?)

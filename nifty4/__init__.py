@@ -21,7 +21,6 @@ from .operators.diagonal_operator import DiagonalOperator
 from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.fft_operator import FFTOperator
 from .operators.fft_smoothing_operator import FFTSmoothingOperator
-from .operators.direct_smoothing_operator import DirectSmoothingOperator
 from .operators.geometry_remover import GeometryRemover
 from .operators.laplace_operator import LaplaceOperator
 from .operators.power_projection_operator import PowerProjectionOperator
@@ -57,6 +56,6 @@ __all__ = ["Domain", "UnstructuredDomain", "StructuredDomain",
            "PowerSpace", "DomainTuple",
            "LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "FFTOperator", "FFTSmoothingOperator",
-           "DirectSmoothingOperator", "LaplaceOperator",
+           "LaplaceOperator",
            "PowerProjectionOperator", "InversionEnabler",
            "Field", "sqrt", "exp", "log"]
