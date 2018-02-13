@@ -41,7 +41,7 @@ In the following sections, the concepts briefly presented here will be discussed
 Domains
 .......
 
-One of the fundamental building blocks of the NIFTy4 framework is the /domain/.
+One of the fundamental building blocks of the NIFTy4 framework is the *domain*.
 Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
 
