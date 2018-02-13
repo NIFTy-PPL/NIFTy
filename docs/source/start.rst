@@ -11,8 +11,9 @@ NIFTy4 Tutorial
 .. automodule:: nifty4
 
 NIFTy4 enables the programming of grid and resolution independent algorithms.
-In particular for signal inference algorithms, where a continuous signal field is to be recovered, this freedom is desirable.
-It is achieved with an object-oriented infrastructure that comprises, among others, abstract classes for :ref:`Spaces <spaces>`, :ref:`Fields <fields>`, and :ref:`Operators <operators>`.
+This freedom is particularly desirable for signal inference algorithms, where
+a continuous signal field is to be recovered.
+It is achieved by means of an object-oriented infrastructure that comprises, among others, abstract classes for :ref:`Domains <domains>`, :ref:`Fields <fields>`, and :ref:`Operators <operators>`.
 All those are covered in this tutorial.
 
 You should be able to import NIFTy4 like this after a successful `installation <install.html>`_.
@@ -30,60 +31,56 @@ From such a perspective,
 - IFT problems largely consist of *minimization* problems involving a large number of equations.
 - The equations are built mostly from the application of *linear operators*, but there may also be nonlinear functions involved.
 - The unknowns in the equations represent either continuous physical *fields*, or they are simply individual measured *data* points.
-- The locations and volume elements attached to discretized *field* values are supplied by *space* objects. There are many variants of such discretized *spaces* supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *spaces*.
+- The locations and volume elements attached to discretized *field* values are supplied by *domain* objects. There are many variants of such discretized *domain*s supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *domains*.
 
 In the following sections, the concepts briefly presented here will be discussed in more detail; this is done in reversed order of their introduction, to avoid forward references.
 
 
-.. _domainobjects:
+.. _domains:
 
-DomainObjects
-.............
+Domains
+.......
 
 One of the fundamental building blocks of the NIFTy4 framework is the /domain/.
-Its required capabilities are expressed by the abstract :py:class:`DomainObject` class.
+Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
 
 - its total number of data entries (pixels)
 - the shape of the array that is supposed to hold them
-- the pixel volume(s)
-- the total volume
-- equality/unequality to another :py:class:`DomainObject` instance
+- equality/inequality to another :py:class:`Domain` instance
 
-.. _spaces:
-
-Unstructured spaces
-...................
+Unstructured domains
+....................
 
 There are domains (e.g. the data domain) which have no geometry associated to the individual data values.
-In NIFTy4 they are represented by the :py:class:`FieldArray` class, which is derived from
-:py:class:`DomainObject` and simply returns 1.0 as the volume element for every pixel and the total
-number of pixels as the total volume.
+In NIFTy4 they are represented by the :py:class:`UnstructuredDomain` class, which is derived from
+:py:class:`Domain`.
 
 
-Structured Spaces
-.................
+Structured domains
+..................
 
-All domains defined on a geometrical manifold are derived from :py:class:`Space` (which is in turn derived from :py:class:`DomainObject`).
+All domains defined on a geometrical manifold are derived from :py:class:`StructuredDomain` (which is in turn derived from :py:class:`Domain`).
 
-In addition to the capabilities of :py:class:`DomainObject`, :py:class:`Space` offers the following functionality:
+In addition to the capabilities of :py:class:`Domain`, :py:class:`StructuredDomain` offers the following functionality:
 
+- methods returing the pixel volume(s) and the total volume
 - a :py:attr:`harmonic` property
-- (iff the space is harmonic) some methods concerned with Gaussian convolution and the absolute distances of the individual grid cells from the origin
+- (iff the domain is harmonic) some methods concerned with Gaussian convolution and the absolute distances of the individual grid cells from the origin
 
-Examples for structured spaces are
+Examples for structured domains are
 
 - :py:class:`RGSpace` (an equidistant Cartesian grid with a user-definable number of dimensions),
 - :py:class:`GLSpace` (a Gauss-Legendre grid on the sphere), and
 - :py:class:`LMSpace` (a grid storing spherical harmonic coefficients).
 
-Among these, :py:class:`RGSpace` can be harmonic or not (depending on constructor arguments), :py:class:`GLSpace` is a pure position space (i.e. nonharmonic), and :py:class:`LMSpace` is always harmonic.
+Among these, :py:class:`RGSpace` can be harmonic or not (depending on constructor arguments), :py:class:`GLSpace` is a pure position domain (i.e. nonharmonic), and :py:class:`LMSpace` is always harmonic.
 
 Full domains
 ............
 
-A field can live on a single space, but it can also live on a product of spaces (or no space at all, in which case it is a scalar).
-The tuple of spaces on which a field lives is a called a *domain* in NIFTy terminology; it is described by a :py:class:`DomainTuple` object.
+A field can live on a single domain, but it can also live on a product of domains (or no domain at all, in which case it is a scalar).
+The tuple of domain on which a field lives is described by the :py:class:`DomainTuple` class.
 A :py:class:`DomainTuple` object can be constructed from
 
 - a single instance of anything derived from :py:class:`DomainTuple`
@@ -132,6 +129,7 @@ typical examples for this category are the :py:class:`ScalingOperator`, which si
 
 Nifty4 allows simple and intuitive construction of combined operators.
 As an example, if :math:`A`, :math:`B` and :math:`C` are of type :py:class:`LinearOperator` and :math:`f_1` and :math:`f_2` are fields, writing::
+
     X = A*B.inverse*A.adjoint + C
     f2 = X(f1)
 
@@ -153,7 +151,7 @@ Function values are floating-point scalars, gradients have the form of fields li
 Some examples of concrete energy classes delivered with NIFTy4 are :py:class:`QuadraticEnergy` (with position-independent curvature, mainly used with conjugate gradient minimization) and :py:class:`WienerFilterEnergy`.
 Energies are classes that typically have to be provided by the user when tackling new IFT problems.
 
-The minmization procedure can be carried out by one of several algorithms; NIFTy4 currently ships solvers based on
+The minimization procedure can be carried out by one of several algorithms; NIFTy4 currently ships solvers based on
 
 - the conjugate gradient method (for quadratic energies)
 - the steepest descent method

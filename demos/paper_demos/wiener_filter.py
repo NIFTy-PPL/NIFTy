@@ -44,8 +44,7 @@ if __name__ == "__main__":
     noiseless_data = R(mock_signal)
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
     # Setting up the noise covariance and drawing a random noise realization
-    ndiag = ift.Field.full(data_domain, noise_amplitude**2)
-    N = ift.DiagonalOperator(ndiag)
+    N = ift.ScalingOperator(noise_amplitude**2, data_domain)
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=noise_amplitude, mean=0)
@@ -60,20 +59,13 @@ if __name__ == "__main__":
     m_k = wiener_curvature.inverse_times(j)
     m = ht(m_k)
 
-    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
-                "colormap": "Planck-like"}
+    plotdict = {"colormap": "Planck-like"}
     ift.plot(ht(mock_signal), name="mock_signal.png", **plotdict)
     ift.plot(ift.Field(signal_space, val=data.val),
              name="data.png", **plotdict)
     ift.plot(m, name="map.png", **plotdict)
 
     # sampling the uncertainty map
-    sample_variance = ift.Field.zeros(signal_space)
-    sample_mean = ift.Field.zeros(signal_space)
-    n_samples = 10
-    for i in range(n_samples):
-        sample = ht(wiener_curvature.generate_posterior_sample()) + m
-        sample_variance += sample**2
-        sample_mean += sample
-    variance = sample_variance/n_samples - (sample_mean/n_samples)**2
+    mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 5)
     ift.plot(ift.sqrt(variance), name="uncertainty.png", **plotdict)
+    ift.plot(mean+m, name="posterior_mean.png", **plotdict)

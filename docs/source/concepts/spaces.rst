@@ -9,7 +9,7 @@ Description of Spaces
 
     DOF                             <../mod/nifty4.spaces.dof_space>
     Gauss-Legendre                  <../mod/nifty4.spaces.gl_space>
-    HEALPix                         <../mod/nifty4.spaces.gl_space>
+    HEALPix                         <../mod/nifty4.spaces.hp_space>
     Power                           <../mod/nifty4.spaces.power_space>
     LM                              <../mod/nifty4.spaces.lm_space>
     RG                              <../mod/nifty4.spaces.rg_space>

@@ -44,11 +44,6 @@ class DiagonalOperator(EndomorphicOperator):
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
 
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
-
     NOTE: the fields given to __init__ and returned from .diagonal() are
     considered to be non-bare, i.e. during operator application, no additional
     volume factors are applied!
@@ -141,21 +136,7 @@ class DiagonalOperator(EndomorphicOperator):
         return DiagonalOperator(self._diagonal.conjugate(), self._domain,
                                 self._spaces)
 
-    def generate_posterior_sample(self):
-        """ Generates a posterior sample from a Gaussian distribution with
-        given mean and covariance.
-
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation which are added to the given mean.
-
-        Returns
-        -------
-        sample : Field
-            Returns the a sample from the Gaussian of given mean and
-            covariance.
-        """
-
+    def draw_sample(self):
         if self._spaces is not None:
             raise ValueError("Cannot draw (yet) from this operator")
 

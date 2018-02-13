@@ -3,10 +3,24 @@ import nifty4 as ift
 import numericalunits as nu
 
 
+def init_nu():
+    if ift.dobj.ntask > 1:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        data = np.random.randint(10000000, size=1)
+        data = comm.bcast(data, root=0)
+        nu.reset_units(data[0])
+
 if __name__ == "__main__":
     # In MPI mode, the random seed for numericalunits must be set by hand
-    #nu.reset_units(43)
+    init_nu()
+
+    # the number of dimensions for the problem
+    # For dimensionality>2, you should probably reduce N_pixels, otherwise
+    # the code may run out of memory
     dimensionality = 2
+    # Grid resolution (pixels per axis)
+    N_pixels = 512
     np.random.seed(43)
 
     # Setting up variable parameters
@@ -23,7 +37,7 @@ if __name__ == "__main__":
     # note that field_variance**2 = a*k_0/4. for this analytic form of power
     # spectrum
     def power_spectrum(k):
-        #RL FIXME: signal_amplitude is not how much signal varies
+        # RL FIXME: signal_amplitude is not how much signal varies
         cldim = correlation_length**(2*dimensionality)
         a = 4/(2*np.pi) * cldim * field_sigma**2
         # to be integrated over spherical shells later on
@@ -33,13 +47,11 @@ if __name__ == "__main__":
 
     # Total side-length of the domain
     L = 2.*nu.m
-    # Grid resolution (pixels per axis)
-    N_pixels = 512
     shape = [N_pixels]*dimensionality
 
     signal_space = ift.RGSpace(shape, distances=L/N_pixels)
     harmonic_space = signal_space.get_default_codomain()
-    ht = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
+    HT = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
     power_space = ift.PowerSpace(harmonic_space)
 
     # Creating the mock data
@@ -53,19 +65,18 @@ if __name__ == "__main__":
     sensitivity = (1./nu.m)**dimensionality/nu.K
     R = ift.GeometryRemover(signal_space)
     R = R*ift.ScalingOperator(sensitivity, signal_space)
-    R = R*ht
-    R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
+    R = R*HT
+    R = R * ift.create_harmonic_smoothing_operator(
+        (harmonic_space,), 0, response_sigma)
     data_domain = R.target[0]
 
     noiseless_data = R(mock_signal)
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
-    N = ift.DiagonalOperator(
-        ift.Field.full(data_domain, noise_amplitude**2))
+    N = ift.ScalingOperator(noise_amplitude**2, data_domain)
     noise = ift.Field.from_random(
         domain=data_domain, random_type='normal',
         std=noise_amplitude, mean=0)
     data = noiseless_data + noise
-     # Wiener filter
 
     j = R.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(
@@ -75,14 +86,16 @@ if __name__ == "__main__":
         S=S, N=N, R=R, inverter=inverter)
 
     m = wiener_curvature.inverse_times(j)
-    m_s = ht(m)
+    m_s = HT(m)
 
     sspace2 = ift.RGSpace(shape, distances=L/N_pixels/nu.m)
 
-    ift.plot(ift.Field(sspace2, ht(mock_signal).val)/nu.K, name="mock_signal.png")
-    #data = ift.dobj.to_global_data(data.val).reshape(sspace2.shape)
-    #data = ift.Field(sspace2, val=ift.dobj.from_global_data(data))
+    zmax = max(m_s.max(), HT(mock_signal).max())
+    zmin = min(m_s.min(), HT(mock_signal).min())
+    plotdict = {"zmax": zmax/nu.K, "zmin": zmin/nu.K}
+
+    ift.plot(ift.Field(sspace2, HT(mock_signal).val)/nu.K,
+             name="mock_signal.png", **plotdict)
     ift.plot(ift.Field(sspace2, val=data.val), name="data.png")
-    print "msig",np.min(ht(mock_signal).val)/nu.K, np.max(ht(mock_signal).val)/nu.K
-    print "map",np.min(m_s.val)/nu.K, np.max(m_s.val)/nu.K
-    ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="map.png")
+    ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="reconstruction.png",
+             **plotdict)

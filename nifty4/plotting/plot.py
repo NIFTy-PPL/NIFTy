@@ -97,7 +97,7 @@ def _limit_xy(**kwargs):
     x1 = _get_kw("xmin", x1, **kwargs)
     x2 = _get_kw("xmax", x2, **kwargs)
     y1 = _get_kw("ymin", y1, **kwargs)
-    y2 = _get_kw("xmax", y2, **kwargs)
+    y2 = _get_kw("ymax", y2, **kwargs)
     plt.axis((x1, x2, y1, y2))
 
 

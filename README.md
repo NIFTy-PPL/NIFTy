@@ -64,14 +64,16 @@ Installation
 
 ### Requirements
 
--   [Python](https://www.python.org/) (v2.7.x or 3.5.x)
--   [NumPy](https://www.numpy.org/)
--   [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
+- [Python](https://www.python.org/) (v2.7.x or 3.5.x)
+- [NumPy](https://www.numpy.org/)
+- [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 
 Optional dependencies:
--   [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix)
--   [mpi4py](https://mpi4py.scipy.org)
--   [matplotlib](https://matplotlib.org/)
+- [pyHealpix](https://gitlab.mpcdf.mpg.de/ift/pyHealpix) (for harmonic
+    transforms involving domains on the sphere)
+- [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
+- [matplotlib](https://matplotlib.org/) (for field plotting)
+- [SciPy](https://www.scipy.org/) (for additional minimization algorithms)
 
 ### Sources
 
@@ -79,24 +81,52 @@ The current version of Nifty4 can be obtained by cloning the repository and
 switching to the NIFTy_4 branch:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
-    git checkout NIFTy_4
 
-### Installation via pip
+### Installation
 
-It is possible to simply install NIFTy with its mandatory dependencies via the command
+In the following, we assume a Debian-based distribution. For other
+distributions, the "apt" lines will need slight changes.
 
+NIFTy4 and its mandatory dependencies can be installed via:
+
+    sudo apt-get install git libfftw3-dev python python-pip python-dev
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4
 
-The optional dependencies can be installed via
+(Note: If you encounter problems related to `pyFFTW`, make sure that you are
+using a pip-installed `pyFFTW` package. Unfortunately, some distributions are
+shipping an incorrectly configured `pyFFTW` package, which does not cooperate
+with the installed `FFTW3` libraries.)
 
-    pip install --user mpi4py
+Plotting support is added via:
+
+    pip install --user matplotlib
+
+Support for spherical harmonic transforms is added via:
+
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+
+MPI support is added via:
+
+    sudo apt-get install openmpi-bin libopenmpi-dev
+    pip install --user mpi4py
+
+Scipy-based minimizers are enabled via:
+
+    pip install --user scipy
+
+### Installation for Python 3
+
+If you want to run NIFTy with Python 3, you need to make the following changes
+to the instructions above:
+
+- in all `apt-get` commands, replace `python-*` by `python3-*`
+- in all `pip` commands, replace `pip` by `pip3`
 
 ### Running the tests
 
 In oder to run the tests one needs two additional packages:
 
-    pip install --user nose parameterized
+    pip install --user nose parameterized coverage
 
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:
@@ -119,7 +149,7 @@ Please acknowledge the use of NIFTy in your publication(s) by using a
 phrase such as the following:
 
 > *"Some of the results in this publication have been derived using the
-> NIFTy package [Selig et al., 2013]."*
+> NIFTy package [Steininger et al., 2017]."[1]
 
 ### References
 
@@ -132,7 +162,5 @@ The NIFTy package is licensed under the terms of the
 
 * * * * *
 
-[1] Selig et al., "NIFTy - Numerical Information Field Theory - a
-versatile Python library for signal inference", [A&A, vol. 554, id.
-A26](https://dx.doi.org/10.1051/0004-6361/201321236), 2013;
-[arXiv:1301.4499](https://www.arxiv.org/abs/1301.4499)
+[1] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, submitted to PLOS One;
+[arXiv:1708.01073](https://arxiv.org/abs/1708.01073)

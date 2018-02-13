@@ -123,6 +123,10 @@ class SumOperator(LinearOperator):
         return self._ops[0].target
 
     @property
+    def adjoint(self):
+        return self.make([op.adjoint for op in self._ops], self._neg)
+
+    @property
     def capability(self):
         return self._capability
 

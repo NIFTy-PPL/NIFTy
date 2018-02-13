@@ -29,13 +29,6 @@ class LineSearch(with_metaclass(abc.ABCMeta,
     Initialize the line search procedure which can be used by a specific line
     search method. It finds the step size in a specific direction in the
     minimization process.
-
-    Attributes
-    ----------
-    line_energy : LineEnergy Object
-        LineEnergy object from which we can extract energy at a specific point.
-    preferred_initial_step_size : float
-        Initial guess for the step length.
     """
 
     def __init__(self):

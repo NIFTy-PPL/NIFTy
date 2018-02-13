@@ -35,11 +35,6 @@ class ScalingOperator(EndomorphicOperator):
         The multiplication factor
     domain : tuple of DomainObjects
         The domain on which the Operator's input Field lives.
-
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
     """
 
     def __init__(self, factor, domain):
@@ -86,24 +81,9 @@ class ScalingOperator(EndomorphicOperator):
     def capability(self):
         if self._factor == 0.:
             return self.TIMES | self.ADJOINT_TIMES
-        return (self.TIMES | self.ADJOINT_TIMES |
-                self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)
+        return self._all_ops
 
-    def generate_posterior_sample(self):
-        """ Generates a posterior sample from a Gaussian distribution with
-        given mean and covariance.
-
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation which are added to the given mean.
-
-        Returns
-        -------
-        sample : Field
-            Returns the a sample from the Gaussian of given mean and
-            covariance.
-        """
-
+    def draw_sample(self):
         return Field.from_random(random_type="normal",
                                  domain=self._domain,
                                  std=np.sqrt(self._factor),

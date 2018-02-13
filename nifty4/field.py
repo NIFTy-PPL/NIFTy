@@ -46,15 +46,6 @@ class Field(object):
         A numpy.type. Most common are float and complex.
 
     copy: boolean
-
-    Attributes
-    ----------
-    val : data_object
-
-    domain : DomainTuple
-
-    dtype : type
-        Contains the datatype stored in the Field.
     """
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
@@ -529,13 +520,9 @@ class Field(object):
         return "<nifty4.Field>"
 
     def __str__(self):
-        minmax = [self.min(), self.max()]
-        mean = self.mean()
         return "nifty4.Field instance\n- domain      = " + \
                self._domain.__str__() + \
-               "\n- val         = " + repr(self.val) + \
-               "\n  - min.,max. = " + str(minmax) + \
-               "\n  - mean = " + str(mean)
+               "\n- val         = " + repr(self.val)
 
 
 # Arithmetic functions working on Fields

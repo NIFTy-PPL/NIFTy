@@ -100,6 +100,14 @@ class ChainOperator(LinearOperator):
         return self._ops[0].target
 
     @property
+    def inverse(self):
+        return self.make([op.inverse for op in reversed(self._ops)])
+
+    @property
+    def adjoint(self):
+        return self.make([op.adjoint for op in reversed(self._ops)])
+
+    @property
     def capability(self):
         return self._capability
 

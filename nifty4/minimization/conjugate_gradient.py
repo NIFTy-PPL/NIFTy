@@ -20,7 +20,6 @@ from __future__ import division
 from .minimizer import Minimizer
 from ..field import Field
 from .. import dobj
-from ..utilities import general_axpy
 
 
 class ConjugateGradient(Minimizer):
@@ -68,15 +67,12 @@ class ConjugateGradient(Minimizer):
             return energy, status
 
         r = energy.gradient
-        if preconditioner is not None:
-            d = preconditioner(r)
-        else:
-            d = r.copy()
+        d = r.copy() if preconditioner is None else preconditioner(r)
+
         previous_gamma = (r.vdot(d)).real
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
-        tpos = Field(d.domain, dtype=d.dtype)  # temporary buffer
         while True:
             q = energy.curvature(d)
             ddotq = d.vdot(q).real
@@ -89,15 +85,12 @@ class ConjugateGradient(Minimizer):
                 dobj.mprint("Error: ConjugateGradient: alpha<0.")
                 return energy, controller.ERROR
 
-            general_axpy(-alpha, q, r, out=r)
+            q *= -alpha
+            r += q
 
-            general_axpy(-alpha, d, energy.position, out=tpos)
-            energy = energy.at_with_grad(tpos, r)
+            energy = energy.at_with_grad(energy.position - alpha*d, r)
 
-            if preconditioner is not None:
-                s = preconditioner(r)
-            else:
-                s = r
+            s = r if preconditioner is None else preconditioner(r)
 
             gamma = r.vdot(s).real
             if gamma < 0:
@@ -111,6 +104,7 @@ class ConjugateGradient(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
 
-            general_axpy(max(0, gamma/previous_gamma), d, s, out=d)
+            d *= max(0, gamma/previous_gamma)
+            d += s
 
             previous_gamma = gamma

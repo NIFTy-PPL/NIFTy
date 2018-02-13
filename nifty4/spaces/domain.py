@@ -35,13 +35,20 @@ class Domain(with_metaclass(
         raise NotImplementedError
 
     def __hash__(self):
+        """Returns a hash value for the object.
+
+        Notes
+        -----
+            Only members that are explicitly added to
+            :py:attr:`._needed_for_hash` will be used for hashing.
+        """
         result_hash = 0
         for key in self._needed_for_hash:
             result_hash ^= hash(vars(self)[key])
         return result_hash
 
     def __eq__(self, x):
-        """Checks if two domains are equal.
+        """Checks whether two domains are equal.
 
         Parameters
         ----------
@@ -62,6 +69,7 @@ class Domain(with_metaclass(
         return True
 
     def __ne__(self, x):
+        """Returns the opposite of :py:meth:`.__eq__()`"""
         return not self.__eq__(x)
 
     @abc.abstractproperty
