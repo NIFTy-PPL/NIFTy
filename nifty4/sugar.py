@@ -17,8 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .spaces.structured_domain import StructuredDomain
-from .spaces.power_space import PowerSpace
+from .domains.structured_domain import StructuredDomain
+from .domains.power_space import PowerSpace
 from .field import Field, sqrt
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_projection_operator import PowerProjectionOperator

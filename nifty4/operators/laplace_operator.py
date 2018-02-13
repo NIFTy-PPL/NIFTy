@@ -18,7 +18,7 @@
 
 import numpy as np
 from ..field import Field
-from ..spaces.power_space import PowerSpace
+from ..domains.power_space import PowerSpace
 from .endomorphic_operator import EndomorphicOperator
 from ..utilities import infer_space
 from ..domain_tuple import DomainTuple

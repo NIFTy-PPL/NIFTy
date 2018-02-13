@@ -2,7 +2,7 @@ from .version import __version__
 
 from . import dobj
 
-from .spaces import *
+from .domains import *
 
 from .domain_tuple import DomainTuple
 
@@ -19,5 +19,6 @@ from .plotting.plot import plot
 from . import library
 from . import extra
 
-__all__ = spaces.__all__ + operators.__all__ +minimization.__all__ + \
+__all__ = ["__version__", "dobj", "DomainTuple"] + \
+          domains.__all__ + operators.__all__ + minimization.__all__ + \
           ["DomainTuple", "Field", "sqrt", "exp", "log"]

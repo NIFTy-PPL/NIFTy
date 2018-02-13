@@ -19,7 +19,7 @@
 from .dof_projection_operator import DOFProjectionOperator
 from ..domain_tuple import DomainTuple
 from ..utilities import infer_space
-from ..spaces.power_space import PowerSpace
+from ..domains.power_space import PowerSpace
 
 
 class PowerProjectionOperator(DOFProjectionOperator):

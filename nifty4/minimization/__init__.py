@@ -14,7 +14,8 @@ from .energy import Energy
 from .quadratic_energy import QuadraticEnergy
 from .line_energy import LineEnergy
 
-__all__ = ["LineSearch", "IterationController", "GradientNormController",
+__all__ = ["LineSearch", "LineSearchStrongWolfe", "IterationController",
+           "GradientNormController",
            "Minimizer", "ConjugateGradient", "NonlinearCG", "DescentMinimizer",
            "SteepestDescent", "VL_BFGS", "RelaxedNewton", "NewtonCG",
            "L_BFGS_B", "Energy", "QuadraticEnergy", "LineEnergy"]

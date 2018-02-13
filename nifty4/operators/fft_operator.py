@@ -18,7 +18,7 @@
 
 import numpy as np
 from ..domain_tuple import DomainTuple
-from ..spaces.rg_space import RGSpace
+from ..domains.rg_space import RGSpace
 from .linear_operator import LinearOperator
 from .. import dobj
 from .. import utilities
