@@ -24,7 +24,3 @@ Description of Operators
     Scaling                             <../mod/nifty4.operators.smoothness_operator>
     Smoothness                          <../mod/nifty4.operators.smoothness_operator>
     Sum                                 <../mod/nifty4.operators.sum_operator>
-
-
-
-

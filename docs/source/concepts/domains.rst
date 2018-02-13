@@ -15,12 +15,4 @@ Description of Domains
     RG                              <../mod/nifty4.domains.rg_space>
     Domain                          <../mod/nifty4.domains.domain>
     Structured Domain               <../mod/nifty4.domains.structured_domain>
-    Unstrcutured Domain             <../mod/nifty4.domains.unstructured_domain>
-
-
-
-
-
-
-
-
+    Unstructured Domain             <../mod/nifty4.domains.unstructured_domain>

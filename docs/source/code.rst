@@ -13,10 +13,3 @@ The NIFTy code is divided in the concepts Domains, Fields, Operators and Minimiz
    Fields         <concepts/field>
    Operators      <concepts/operators>
    Minimization   <concepts/minimization>
-
-
-
-
-
-
-

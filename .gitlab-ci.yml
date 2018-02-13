@@ -8,15 +8,14 @@ variables:
   DOCKER_DRIVER: overlay
 
 before_script:
-  - apt-get update
-  - sh ci/install_basics.sh
-  - pip install --process-dependency-links -r ci/requirements.txt
-  - pip3 install --process-dependency-links -r ci/requirements.txt
-  - python setup.py install
 
 test_min:
   stage: test
   script:
+    - apt-get update
+    - sh ci/install_basics.sh
+    - pip install --process-dependency-links -r ci/requirements.txt
+    - pip3 install --process-dependency-links -r ci/requirements.txt
     - pip install --user .
     - pip3 install --user .
     - nosetests -q
@@ -29,7 +28,7 @@ test_min:
 
 pages:
   script:
-  - sh docs/generate.sh
+  - sh PYTHONPATH=. docs/generate.sh
   - mv docs/build/ public/
   artifacts:
     paths:
