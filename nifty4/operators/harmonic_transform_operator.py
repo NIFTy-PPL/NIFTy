@@ -18,12 +18,12 @@
 
 import numpy as np
 from ..domain_tuple import DomainTuple
-from ..spaces.rg_space import RGSpace
+from ..domains.rg_space import RGSpace
 from .linear_operator import LinearOperator
 from .. import dobj
 from .. import utilities
 from ..field import Field
-from ..spaces.gl_space import GLSpace
+from ..domains.gl_space import GLSpace
 
 
 class HarmonicTransformOperator(LinearOperator):

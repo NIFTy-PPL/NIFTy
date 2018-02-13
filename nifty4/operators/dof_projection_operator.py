@@ -22,7 +22,7 @@ from ..utilities import infer_space
 from ..field import Field
 from ..domain_tuple import DomainTuple
 from .. import dobj
-from ..spaces.dof_space import DOFSpace
+from ..domains.dof_space import DOFSpace
 
 
 class DOFProjectionOperator(LinearOperator):

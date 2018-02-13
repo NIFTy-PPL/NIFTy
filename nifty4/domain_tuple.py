@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from functools import reduce
-from .spaces.domain import Domain
+from .domains.domain import Domain
 
 
 class DomainTuple(object):

@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..field import Field
-from ..spaces.unstructured_domain import UnstructuredDomain
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
 
