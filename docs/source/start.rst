@@ -83,7 +83,7 @@ A field can live on a single domain, but it can also live on a product of domain
 The tuple of domain on which a field lives is described by the :py:class:`DomainTuple` class.
 A :py:class:`DomainTuple` object can be constructed from
 
-- a single instance of anything derived from :py:class:`DomainTuple`
+- a single instance of anything derived from :py:class:`Domain`
 - a tuple of such instances (possibly empty)
 - another :py:class:`DomainTuple` object
 
@@ -125,10 +125,10 @@ There are two domains associated with a :py:class:`LinearOperator`: a *domain* a
 Direct multiplication and adjoint inverse multiplication transform a field living on the operator's *domain* to one living on the operator's *target*, whereas adjoint multiplication and inverse multiplication transform from *target* to *domain*.
 
 Operators with identical domain and target can be derived from :py:class:`EndomorphicOperator`;
-typical examples for this category are the :py:class:`ScalingOperator`, which simply multiplies its input by a scalar value and :py:class:`DiagonalOperator`, which multiplies every value of its input field with potentially different values.
+typical examples for this category are the :py:class:`ScalingOperator`, which simply multiplies its input by a scalar value, and :py:class:`DiagonalOperator`, which multiplies every value of its input field with potentially different values.
 
 Nifty4 allows simple and intuitive construction of combined operators.
-As an example, if :math:`A`, :math:`B` and :math:`C` are of type :py:class:`LinearOperator` and :math:`f_1` and :math:`f_2` are fields, writing::
+As an example, if ``A``, ``B`` and ``C`` are of type :py:class:`LinearOperator` and ``f1`` and ``f2`` are :py:class:`Field` s, writing::
 
     X = A*B.inverse*A.adjoint + C
     f2 = X(f1)
