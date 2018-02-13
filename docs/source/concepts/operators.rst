@@ -11,7 +11,6 @@ Description of Operators
     Chain                               <../mod/nifty4.operators.chain_operator>
     Diagonal                            <../mod/nifty4.operators.diagonal_operator>
     DOF Projection                      <../mod/nifty4.operators.dof_projection_operator>
-    Direct Smoothing                    <../mod/nifty4.operators.direct_smoothing_operator>
     Endomorphic                         <../mod/nifty4.operators.endomorphic_operator>
     FFT                                 <../mod/nifty4.operators.fft_operator>
     FFT Smoothing                       <../mod/nifty4.operators.fft_smoothing_operator>

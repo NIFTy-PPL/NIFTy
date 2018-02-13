@@ -1,7 +1,7 @@
 NIFTy Code
 ==========
 
-The NIFTy code is divided in the concepts Spaces, Fields, Operators and Minimization
+The NIFTy code is divided in the concepts Domains, Fields, Operators and Minimization
 
 
 .. toctree::
@@ -9,7 +9,7 @@ The NIFTy code is divided in the concepts Spaces, Fields, Operators and Minimiza
    :caption: Concepts
    :glob:
 
-   Spaces         <concepts/spaces>
+   Domains        <concepts/domains>
    Fields         <concepts/field>
    Operators      <concepts/operators>
    Minimization   <concepts/minimization>
