@@ -51,9 +51,9 @@ class NonlinearCG(Minimizer):
 
         Returns
         -------
-        energy :
+        Energy
             state at last point of the iteration
-        status : integer
+        int
             Can be controller.CONVERGED or controller.ERROR
         """
         controller = self._controller

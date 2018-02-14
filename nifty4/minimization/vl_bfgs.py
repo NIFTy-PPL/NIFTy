@@ -87,7 +87,7 @@ class InformationStore(object):
 
     Parameters
     ----------
-    max_history_length : integer
+    max_history_length : int
         Maximum number of stored past updates.
     x0 : Field
         Initial position in variable space.
@@ -96,7 +96,7 @@ class InformationStore(object):
 
     Attributes
     ----------
-    max_history_length : integer
+    max_history_length : int
         Maximum number of stored past updates.
     s : List
         Circular buffer of past position differences, which are Fields.
@@ -106,7 +106,7 @@ class InformationStore(object):
         Latest position in variable space.
     last_gradient : Field
         Gradient at latest position.
-    k : integer
+    k : int
         Number of updates that have taken place
     ss : numpy.ndarray
         2D circular buffer of scalar products between different elements of s.
@@ -139,7 +139,7 @@ class InformationStore(object):
 
         Returns
         -------
-        result : List
+        List
             List of new basis vectors.
         """
         result = []
@@ -165,7 +165,7 @@ class InformationStore(object):
 
         Returns
         -------
-        result : numpy.ndarray
+        numpy.ndarray
             Scalar matrix.
         """
         m = self.history_length
@@ -207,7 +207,7 @@ class InformationStore(object):
 
         Returns
         -------
-        delta : List
+        List
             List of the new scalar coefficients (deltas).
         """
         m = self.history_length

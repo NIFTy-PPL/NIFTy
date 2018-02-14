@@ -35,7 +35,7 @@ class LaplaceOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    logarithmic : boolean,
+    logarithmic : bool, optional
         Whether smoothness is calculated on a logarithmic scale or linear scale
         default : True
     space : int

@@ -34,18 +34,18 @@ class NonlinearPowerEnergy(Energy):
 
     Parameters
     ----------
-    position : Field,
+    position : Field
         The current position of this energy.
-    m : Field,
+    m : Field
         The map whichs power spectrum has to be inferred
-    D : EndomorphicOperator,
+    D : EndomorphicOperator
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.
         default : None
     sigma : float
         The parameter of the smoothness prior.
         default : ??? None? ???????
-    samples : integer
+    samples : int
         Number of samples used for the estimation of the uncertainty
         corrections.
         default : 3
