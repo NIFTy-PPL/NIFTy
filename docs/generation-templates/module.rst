@@ -7,6 +7,11 @@
 ({{ fullname }} module)
 {% endif %}
 
+{%- if doc:%}
+{{doc}}
+{%- endif %}
+
+
 .. currentmodule:: {{ fullname }}
 
 .. automodule:: {{ fullname }}
@@ -18,11 +23,6 @@
 
     Summary
     -------
-
-    {%- if doc:%}
-    Description:
-    {{doc}}
-    {%- endif %}
 
     {%- if exceptions %}
 
