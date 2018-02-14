@@ -1,12 +1,11 @@
 {% if name %}
 {{ name }}
 {% for item in range(8 + name|length) -%}={%- endfor %}
-({{ fullname }} package)
 {% else %}
 {{ fullname }}
 {% for item in range(8 + fullname|length) -%}={%- endfor %}
-({{ fullname }} package)
 {% endif %}
+({{ fullname }} package)
 
 .. automodule:: {{ fullname }}
     {% if members -%}

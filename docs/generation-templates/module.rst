@@ -4,8 +4,8 @@
 {% else %}
 {{ fullname }}
 {% for item in range(8 + fullname|length) -%}={%- endfor %}
-({{ fullname }} module)
 {% endif %}
+({{ fullname }} module)
 
 .. currentmodule:: {{ fullname }}
 
