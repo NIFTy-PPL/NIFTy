@@ -7,9 +7,9 @@
 ({{ fullname }} module)
 {% endif %}
 
-{%- if doc %}
+{% if doc %}
 {{doc}}
-{%- endif %}
+{% endif %}
 
 
 .. currentmodule:: {{ fullname }}

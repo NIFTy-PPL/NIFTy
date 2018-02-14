@@ -8,9 +8,9 @@
 ({{ fullname }} package)
 {% endif %}
 
-{%- if doc %}
+{% if doc %}
 {{doc}}
-{%- endif %}
+{% endif %}
 
 .. automodule:: {{ fullname }}
     {% if members -%}
