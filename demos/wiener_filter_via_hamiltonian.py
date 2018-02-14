@@ -70,7 +70,8 @@ if __name__ == "__main__":
     # Generate plots
     zmax = max(ht(sh).max(), ht(m).max())
     zmin = min(ht(sh).min(), ht(m).min())
-    plotdict = {"zmax": zmax, "zmin": zmin, "colormap": "Planck-like"}
+    plotdict = {"zmax": zmax, "zmin": zmin,"colormap": "Planck-like"}
+    plotdict2 = {"colormap": "Planck-like"}
     ift.plot(ht(sh), name="mock_signal.png", **plotdict)
     ift.plot(ht(m), name="reconstruction.png", **plotdict)
 
@@ -79,10 +80,10 @@ if __name__ == "__main__":
     sample_mean = ift.Field.zeros(s_space)
 
     mean, variance = ift.probe_with_posterior_samples(curv, ht, 50)
-    ift.plot(variance, name="posterior_variance.png", **plotdict)
+    ift.plot(variance, name="posterior_variance.png", **plotdict2)
     ift.plot(mean+ht(m), name="posterior_mean.png", **plotdict)
 
     # try to do the same with diagonal probing
     variance = ift.probe_diagonal(ht*curv.inverse*ht.adjoint, 100)
-    #sm = ift.FFTSmoothingOperator(s_space, sigma=0.015)
-    ift.plot(variance, name="posterior_variance2.png", **plotdict)
+    #sm = ift.FFTSmoothingOperator(s_space, sigma=0.005)
+    ift.plot(variance, name="posterior_variance2.png", **plotdict2)

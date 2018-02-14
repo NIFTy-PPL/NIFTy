@@ -39,13 +39,13 @@ class Energy_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=True)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 64 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         tau0 = ift.log(pspec)
-        A = P.adjoint_times(ift.sqrt(pspec))
+        A = Dist(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal', std=.01)
         N = ift.DiagonalOperator(n**2)
         s = xi * A
@@ -91,12 +91,12 @@ class Energy_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=True)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 1 / (1 + k**2)**dim
         tau0 = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(tau0))
+        A = Dist(ift.sqrt(tau0))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(xi * A)
         R = ift.ScalingOperator(10., space)
@@ -132,7 +132,7 @@ class Energy_Tests(unittest.TestCase):
             xi=xi,
             D=D,
             Instrument=R,
-            Projection=P,
+            Distribution=Dist,
             nonlinearity=f,
             ht=ht,
             N=N,
@@ -160,13 +160,13 @@ class Curvature_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=True)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 64 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         tau0 = ift.log(pspec)
-        A = P.adjoint_times(ift.sqrt(pspec))
+        A = Dist(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal', std=.01)
         N = ift.DiagonalOperator(n**2)
         s = xi * A

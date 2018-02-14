@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -39,12 +39,12 @@ class Energy_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, target=space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(pspec))
+        A = Dist(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s0 = xi0 * A
         Instrument = ift.ScalingOperator(10., space)
@@ -85,12 +85,12 @@ class Energy_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, target=space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(pspec))
+        A = Dist(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(xi0 * A)
         R = ift.ScalingOperator(10., space)
@@ -129,12 +129,12 @@ class Curvature_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, target=space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(pspec))
+        A = Dist(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s0 = xi0 * A
         Instrument = ift.ScalingOperator(10., space)
@@ -178,12 +178,12 @@ class Curvature_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, target=space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(pspec))
+        A = Dist(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(xi0 * A)
         R = ift.ScalingOperator(10., space)

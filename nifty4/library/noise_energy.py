@@ -25,7 +25,7 @@ from ..minimization.energy import Energy
 
 class NoiseEnergy(Energy):
     def __init__(self, position, d, xi, D, t, ht, Instrument,
-                 nonlinearity, alpha, q, Projection, samples=3,
+                 nonlinearity, alpha, q, Distribution, samples=3,
                  xi_sample_list=None, inverter=None):
         super(NoiseEnergy, self).__init__(position=position)
         self.xi = xi
@@ -40,8 +40,8 @@ class NoiseEnergy(Energy):
 
         self.alpha = alpha
         self.q = q
-        self.Projection = Projection
-        self.power = self.Projection.adjoint_times(exp(0.5 * self.t))
+        self.Distribution = Distribution
+        self.power = self.Distribution(exp(0.5 * self.t))
         if xi_sample_list is None:
             if samples is None or samples == 0:
                 xi_sample_list = [xi]
@@ -51,7 +51,7 @@ class NoiseEnergy(Energy):
         self.xi_sample_list = xi_sample_list
         self.inverter = inverter
 
-        A = Projection.adjoint_times(exp(.5*self.t))
+        A = Distribution(exp(.5*self.t))
 
         self._gradient = None
         for sample in self.xi_sample_list:
@@ -81,7 +81,7 @@ class NoiseEnergy(Energy):
         return self.__class__(
             position, self.d, self.xi, self.D, self.t, self.ht,
             self.Instrument, self.nonlinearity, self.alpha, self.q,
-            self.Projection, xi_sample_list=self.xi_sample_list,
+            self.Distribution, xi_sample_list=self.xi_sample_list,
             samples=self.samples, inverter=self.inverter)
 
     @property
