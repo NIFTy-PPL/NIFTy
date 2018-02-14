@@ -20,7 +20,8 @@
 
 
     {% if submodules %}
-    Submodules:
+    Submodules
+    ----------
 
     .. toctree::
         :maxdepth: 1
@@ -32,7 +33,8 @@
     {% if subpackages %}
 
 
-    Subpackages:
+    Subpackages
+    -----------
 
     .. toctree::
         :maxdepth: 1
@@ -46,9 +48,10 @@
     {% if members or doc %}
     Summary
     -------
-    {% if doc:%}
+    {%- if doc:%}
+    Description:
     {{doc}}
-    {% endif %}
+    {%- endif %}
 
     {%- if exceptions %}
 

@@ -18,9 +18,11 @@
 
     Summary
     -------
-    {% if doc:%}
+
+    {%- if doc:%}
+    Description:
     {{doc}}
-    {% endif %}
+    {%- endif %}
 
     {%- if exceptions %}
 
