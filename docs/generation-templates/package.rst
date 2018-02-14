@@ -2,12 +2,15 @@
 {{ name }}
 {% for item in range(8 + name|length) -%}={%- endfor %}
 ({{ fullname }} package)
-
 {% else %}
 {{ fullname }}
 {% for item in range(8 + fullname|length) -%}={%- endfor %}
 ({{ fullname }} package)
 {% endif %}
+
+{%- if doc %}
+{{doc}}
+{%- endif %}
 
 .. automodule:: {{ fullname }}
     {% if members -%}
@@ -15,8 +18,6 @@
     :undoc-members:
     :show-inheritance:
     {%- endif %}
-
-
 
 
     {% if submodules %}
@@ -45,13 +46,9 @@
 
     {%- endif %}
 
-    {% if members or doc %}
+    {% if members %}
     Summary
     -------
-    {%- if doc:%}
-    Description:
-    {{doc}}
-    {%- endif %}
 
     {%- if exceptions %}
 
