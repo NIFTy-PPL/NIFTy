@@ -72,7 +72,6 @@ class Energy_Tests(unittest.TestCase):
         tol = 1e-5
         assert_allclose(a, b, rtol=tol, atol=tol)
 
-
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [ift.library.Tanh, ift.library.Exponential,

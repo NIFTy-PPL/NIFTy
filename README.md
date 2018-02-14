@@ -4,7 +4,7 @@ NIFTy - Numerical Information Field Theory
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_4/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_4)
 
 **NIFTy** project homepage:
-[https://www.mpa-garching.mpg.de/ift/nifty/](https://www.mpa-garching.mpg.de/ift/nifty/)
+[http://ift.pages.mpcdf.de/NIFTy](http://ift.pages.mpcdf.de/NIFTy)
 
 Summary
 -------
@@ -31,33 +31,6 @@ point sets, *n*-dimensional regular grids, spherical spaces, their
 harmonic counterparts, and product spaces constructed as combinations of
 those.
 
-### Class & Feature Overview
-
-The NIFTy library features three main classes: **Space**s that represent
-certain grids, **Field**s that are defined on spaces, and **LinearOperator**s
-that apply to fields.
-
--   [Spaces](https://www.mpa-garching.mpg.de/ift/nifty/space.html)
-    -   `RGSpace` - *n*-dimensional regular Euclidean grid
-    -   `LMSpace` - spherical harmonics
-    -   `GLSpace` - Gauss-Legendre grid on the 2-sphere
-    -   `HPSpace` - [HEALPix](https://sourceforge.net/projects/healpix/)
-        grid on the 2-sphere
--   [Fields](https://www.mpa-garching.mpg.de/ift/nifty/field.html)
-    -   `Field` - generic class for (discretized) fields
-
-<!-- -->
-
-    Field.conjugate     Field.dim          Field.norm
-    Field.vdot          Field.weight
-
--   [Operators](https://www.mpa-garching.mpg.de/ift/nifty/operator.html)
-    -   `DiagonalOperator` - purely diagonal matrices in a specified
-        basis
-    -   `FFTOperator` - conversion between spaces and their harmonic
-                        counterparts
-    -   (and more)
--   (and more)
 
 Installation
 ------------
@@ -137,7 +110,7 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](https://www.mpa-garching.mpg.de/ift/nifty/start.html) or
+introduction](http://ift.pages.mpcdf.de/NIFTy/start.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python demos/wiener_filter_via_curvature.py

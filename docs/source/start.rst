@@ -16,7 +16,7 @@ a continuous signal field is to be recovered.
 It is achieved by means of an object-oriented infrastructure that comprises, among others, abstract classes for :ref:`Domains <domains>`, :ref:`Fields <fields>`, and :ref:`Operators <operators>`.
 All those are covered in this tutorial.
 
-You should be able to import NIFTy4 like this after a successful `installation <install.html>`_.
+You should be able to import NIFTy4 like this after a successful `installation <installation.html>`_.
 
 >>> import nifty4 as ift
 
@@ -31,7 +31,7 @@ From such a perspective,
 - IFT problems largely consist of *minimization* problems involving a large number of equations.
 - The equations are built mostly from the application of *linear operators*, but there may also be nonlinear functions involved.
 - The unknowns in the equations represent either continuous physical *fields*, or they are simply individual measured *data* points.
-- The locations and volume elements attached to discretized *field* values are supplied by *domain* objects. There are many variants of such discretized *domain*s supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *domains*.
+- The locations and volume elements attached to discretized *field* values are supplied by *domain* objects. There are many variants of such discretized *domains* supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *domains*.
 
 In the following sections, the concepts briefly presented here will be discussed in more detail; this is done in reversed order of their introduction, to avoid forward references.
 
@@ -41,13 +41,14 @@ In the following sections, the concepts briefly presented here will be discussed
 Domains
 .......
 
-One of the fundamental building blocks of the NIFTy4 framework is the /domain/.
+One of the fundamental building blocks of the NIFTy4 framework is the *domain*.
 Its required capabilities are expressed by the abstract :py:class:`Domain` class.
 A domain must be able to answer the following queries:
 
 - its total number of data entries (pixels)
 - the shape of the array that is supposed to hold them
 - equality/inequality to another :py:class:`Domain` instance
+
 
 Unstructured domains
 ....................
@@ -76,14 +77,15 @@ Examples for structured domains are
 
 Among these, :py:class:`RGSpace` can be harmonic or not (depending on constructor arguments), :py:class:`GLSpace` is a pure position domain (i.e. nonharmonic), and :py:class:`LMSpace` is always harmonic.
 
-Full domains
-............
+
+Combinations of domains
+.......................
 
 A field can live on a single domain, but it can also live on a product of domains (or no domain at all, in which case it is a scalar).
 The tuple of domain on which a field lives is described by the :py:class:`DomainTuple` class.
 A :py:class:`DomainTuple` object can be constructed from
 
-- a single instance of anything derived from :py:class:`DomainTuple`
+- a single instance of anything derived from :py:class:`Domain`
 - a tuple of such instances (possibly empty)
 - another :py:class:`DomainTuple` object
 
@@ -125,10 +127,10 @@ There are two domains associated with a :py:class:`LinearOperator`: a *domain* a
 Direct multiplication and adjoint inverse multiplication transform a field living on the operator's *domain* to one living on the operator's *target*, whereas adjoint multiplication and inverse multiplication transform from *target* to *domain*.
 
 Operators with identical domain and target can be derived from :py:class:`EndomorphicOperator`;
-typical examples for this category are the :py:class:`ScalingOperator`, which simply multiplies its input by a scalar value and :py:class:`DiagonalOperator`, which multiplies every value of its input field with potentially different values.
+typical examples for this category are the :py:class:`ScalingOperator`, which simply multiplies its input by a scalar value, and :py:class:`DiagonalOperator`, which multiplies every value of its input field with potentially different values.
 
 Nifty4 allows simple and intuitive construction of combined operators.
-As an example, if :math:`A`, :math:`B` and :math:`C` are of type :py:class:`LinearOperator` and :math:`f_1` and :math:`f_2` are fields, writing::
+As an example, if ``A``, ``B`` and ``C`` are of type :py:class:`LinearOperator` and ``f1`` and ``f2`` are :py:class:`Field` s, writing::
 
     X = A*B.inverse*A.adjoint + C
     f2 = X(f1)
