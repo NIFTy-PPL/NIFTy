@@ -28,6 +28,7 @@ Contents
 
    ift
    start
+   installation
    code
 
 Indices and tables

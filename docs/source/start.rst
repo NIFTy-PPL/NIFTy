@@ -16,7 +16,7 @@ a continuous signal field is to be recovered.
 It is achieved by means of an object-oriented infrastructure that comprises, among others, abstract classes for :ref:`Domains <domains>`, :ref:`Fields <fields>`, and :ref:`Operators <operators>`.
 All those are covered in this tutorial.
 
-You should be able to import NIFTy4 like this after a successful `installation <install.html>`_.
+You should be able to import NIFTy4 like this after a successful `installation <installation.html>`_.
 
 >>> import nifty4 as ift
 
@@ -31,7 +31,7 @@ From such a perspective,
 - IFT problems largely consist of *minimization* problems involving a large number of equations.
 - The equations are built mostly from the application of *linear operators*, but there may also be nonlinear functions involved.
 - The unknowns in the equations represent either continuous physical *fields*, or they are simply individual measured *data* points.
-- The locations and volume elements attached to discretized *field* values are supplied by *domain* objects. There are many variants of such discretized *domain*s supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *domains*.
+- The locations and volume elements attached to discretized *field* values are supplied by *domain* objects. There are many variants of such discretized *domains* supported by NIFTy4, including Cartesian and spherical geometries and their harmonic counterparts. *Fields* can live on arbitrary products of such *domains*.
 
 In the following sections, the concepts briefly presented here will be discussed in more detail; this is done in reversed order of their introduction, to avoid forward references.
 
@@ -48,6 +48,7 @@ A domain must be able to answer the following queries:
 - its total number of data entries (pixels)
 - the shape of the array that is supposed to hold them
 - equality/inequality to another :py:class:`Domain` instance
+
 
 Unstructured domains
 ....................
@@ -76,8 +77,9 @@ Examples for structured domains are
 
 Among these, :py:class:`RGSpace` can be harmonic or not (depending on constructor arguments), :py:class:`GLSpace` is a pure position domain (i.e. nonharmonic), and :py:class:`LMSpace` is always harmonic.
 
-Full domains
-............
+
+Combinations of domains
+.......................
 
 A field can live on a single domain, but it can also live on a product of domains (or no domain at all, in which case it is a scalar).
 The tuple of domain on which a field lives is described by the :py:class:`DomainTuple` class.
