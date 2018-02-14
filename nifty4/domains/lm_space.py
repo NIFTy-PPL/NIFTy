@@ -24,34 +24,22 @@ from .. import dobj
 
 
 class LMSpace(StructuredDomain):
-    """NIFTy subclass for spherical harmonics components, for representations
-    of fields on the two-sphere.
+    """NIFTy subclass for sets of spherical harmonic coefficients.
+
+    Its harmonic partner spaces are :class:`HPSpace` and :class:`GLSpace`.
 
     Parameters
     ----------
     lmax : int
-        The maximum :math:`l` value of any spherical harmonics
-        :math:`Y_{lm}` that is represented in this Space.
-        Must be >=0.
+        The maximum :math:`l` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        Must be :math:`\ge 0`.
 
-    mmax : int *optional*
-        The maximum :math:`m` value of any spherical harmonics
-        :math:`Y_{lm}` that is represented in this Space.
-        If not supplied, it is set to lmax.
-        Must be >=0 and <=lmax.
-
-    See Also
-    --------
-    HPSpace, GLSpace
-
-    References
-    ----------
-    .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-           High-Resolution Discretization and Fast Analysis of Data
-           Distributed on the Sphere", *ApJ* 622..759G.
-    .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-           harmonic transforms revisited";
-           `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+    mmax : int, optional
+        The maximum :math:`m` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        If not supplied, it is set to `lmax`.
+        Must be :math:`\ge 0` and :math:`\le` `lmax`.
     """
 
     def __init__(self, lmax, mmax=None):
@@ -122,14 +110,14 @@ class LMSpace(StructuredDomain):
     @property
     def lmax(self):
         """ Returns the maximum :math:`l` value of any spherical harmonic
-        :math:`Y_{lm}` that is represented in this Space.
+        coefficient :math:`a_{lm}` that is represented in this Space.
         """
         return self._lmax
 
     @property
     def mmax(self):
         """ Returns the maximum :math:`m` value of any spherical harmonic
-        :math:`Y_{lm}` that is represented in this Space.
+        coefficient :math:`a_{lm}` that is represented in this Space.
         """
         return self._mmax
 

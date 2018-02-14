@@ -35,7 +35,7 @@ class Field(object):
 
     Parameters
     ----------
-    domain : None, DomainTuple, tuple(Domain), or Domain
+    domain : None, DomainTuple, tuple of Domain, or Domain
 
     val : None, Field, data_object, or scalar
         The values the array should contain after init. A scalar input will
@@ -45,7 +45,7 @@ class Field(object):
     dtype : type
         A numpy.type. Most common are float and complex.
 
-    copy: boolean
+    copy: bool
     """
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False):
@@ -143,7 +143,7 @@ class Field(object):
 
         Parameters
         ----------
-        random_type : String
+        random_type : str
             'pm1', 'normal', 'uniform' are the supported arguments for this
             method.
 
@@ -155,7 +155,7 @@ class Field(object):
 
         Returns
         -------
-        out : Field
+        Field
             The output object.
         """
         domain = DomainTuple.make(domain)
@@ -187,7 +187,8 @@ class Field(object):
 
         Returns
         -------
-        Integer tuple containing the dimensions of the spaces in domain.
+        tuple of int
+            the dimensions of the spaces in domain.
         """
         return self._domain.shape
 
@@ -199,8 +200,8 @@ class Field(object):
 
         Returns
         -------
-        out : int
-            The dimension of the Field.
+        int
+            the dimension of the Field.
         """
         return self._domain.size
 
@@ -225,7 +226,7 @@ class Field(object):
 
         Returns
         -------
-        out : Field
+        Field
             The output object. An identical copy of 'self'.
         """
         return Field(val=self, copy=True)
@@ -263,7 +264,7 @@ class Field(object):
         power : number
             The pixels get weighted with the volume-factor**power.
 
-        spaces : tuple of ints
+        spaces : int or tuple of int
             Determines on which subspace the operation takes place.
 
         out : Field or None
@@ -273,7 +274,7 @@ class Field(object):
 
         Returns
         -------
-        out : Field
+        Field
             The weighted field.
         """
         if out is None:
@@ -313,13 +314,13 @@ class Field(object):
         x : Field
             x must live on the same domain as `self`.
 
-        spaces : None, int or tuple of ints (default: None)
+        spaces : None, int or tuple of int (default: None)
             The dot product is only carried out over the sub-domains in this
             tuple. If None, it is carried out over all sub-domains.
 
         Returns
         -------
-        out : float, complex, either scalar (for full dot products)
+        float, complex, either scalar (for full dot products)
                               or Field (for partial dot products)
         """
         if not isinstance(x, Field):
@@ -343,7 +344,7 @@ class Field(object):
 
         Returns
         -------
-        norm : float
+        float
             The L2-norm of the field values.
         """
         return np.sqrt(np.abs(self.vdot(x=self)))
@@ -353,7 +354,8 @@ class Field(object):
 
         Returns
         -------
-        The complex conjugated field.
+        Field:
+            The complex conjugated field.
         """
         return Field(self._domain, self.val.conjugate())
 
