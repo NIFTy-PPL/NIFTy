@@ -7,11 +7,6 @@
 ({{ fullname }} module)
 {% endif %}
 
-{% if doc %}
-{{doc}}
-{% endif %}
-
-
 .. currentmodule:: {{ fullname }}
 
 .. automodule:: {{ fullname }}

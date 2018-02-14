@@ -8,10 +8,6 @@
 ({{ fullname }} package)
 {% endif %}
 
-{% if doc %}
-{{doc}}
-{% endif %}
-
 .. automodule:: {{ fullname }}
     {% if members -%}
     :members: {{ members|join(", ") }}
