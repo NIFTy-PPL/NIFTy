@@ -13,6 +13,7 @@ before_script:
   - pip install --process-dependency-links -r ci/requirements.txt
   - pip3 install --process-dependency-links -r ci/requirements.txt
   - python2 setup.py install
+  - python3 setup.py install
 
   
 # test_min:
@@ -30,7 +31,7 @@ before_script:
 
 pages:
   script:
-  - python2 docs/better_apidoc.py -l -e -d 2 -t docs/generation-templates -o docs/source/mod nifty4
+  - python docs/better_apidoc.py -l -e -d 2 -t docs/generation-templates -o docs/source/mod nifty4
   - sphinx-build -b html docs/source/ docs/build/
   - mv docs/build/ public/
   artifacts:
