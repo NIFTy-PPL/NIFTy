@@ -71,8 +71,8 @@ if __name__ == "__main__":
     mask_2 = ift.Field(signal_space_2, ift.dobj.from_global_data(mask_2))
 
     R = ift.GeometryRemover(signal_domain)
-    R = R*ift.DiagonalOperator(mask_1, signal_domain,spaces=0)
-    R = R*ift.DiagonalOperator(mask_2, signal_domain,spaces=1)
+    R = R*ift.DiagonalOperator(mask_1, signal_domain, spaces=0)
+    R = R*ift.DiagonalOperator(mask_2, signal_domain, spaces=1)
     R = R*ht
     R = R * ift.create_harmonic_smoothing_operator(harmonic_domain, 0,
                                                    response_sigma_1)
@@ -101,11 +101,13 @@ if __name__ == "__main__":
 
     plotdict = {"colormap": "Planck-like"}
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
-    ift.plot(ift.Field(plot_space,val=ht(mock_signal).val), name='mock_signal.png',
-             **plotdict)
-    ift.plot(ift.Field(plot_space,val=data.val), name='data.png', **plotdict)
-    ift.plot(ift.Field(plot_space,val=m.val), name='map.png', **plotdict)
+    ift.plot(ift.Field(plot_space, val=ht(mock_signal).val),
+             name='mock_signal.png', **plotdict)
+    ift.plot(ift.Field(plot_space, val=data.val), name='data.png', **plotdict)
+    ift.plot(ift.Field(plot_space, val=m.val), name='map.png', **plotdict)
     # sampling the uncertainty map
     mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 10)
-    ift.plot(ift.Field(plot_space, val=ift.sqrt(variance).val), name="uncertainty.png", **plotdict)
-    ift.plot(ift.Field(plot_space, val=(mean+m).val), name="posterior_mean.png", **plotdict)
+    ift.plot(ift.Field(plot_space, val=ift.sqrt(variance).val),
+             name="uncertainty.png", **plotdict)
+    ift.plot(ift.Field(plot_space, val=(mean+m).val),
+             name="posterior_mean.png", **plotdict)

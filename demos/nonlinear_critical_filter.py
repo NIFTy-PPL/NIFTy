@@ -53,8 +53,9 @@ if __name__ == "__main__":
     MaskOperator = ift.DiagonalOperator(mask)
     R = ift.GeometryRemover(s_space)
     R = R*MaskOperator
-    #R = R*HT
-    #R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
+    # R = R*HT
+    # R = R * ift.create_harmonic_smoothing_operator((harmonic_space,), 0,
+    #                                                response_sigma)
     MeasurementOperator = R
 
     d_space = MeasurementOperator.target
