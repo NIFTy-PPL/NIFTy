@@ -85,5 +85,5 @@ if __name__ == "__main__":
 
     # try to do the same with diagonal probing
     variance = ift.probe_diagonal(ht*curv.inverse*ht.adjoint, 100)
-    #sm = ift.FFTSmoothingOperator(s_space, sigma=0.005)
-    ift.plot(variance, name="posterior_variance2.png", **plotdict2)
+    # sm = ift.FFTSmoothingOperator(s_space, sigma=0.015)
+    ift.plot(variance, name="posterior_variance2.png", **plotdict)

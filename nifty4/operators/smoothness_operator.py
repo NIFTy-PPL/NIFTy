@@ -36,9 +36,9 @@ def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
 
     Parameters
     ----------
-    strength: nonnegative float
+    strength : nonnegative float
         Specifies the strength of the SmoothnessOperator
-    logarithmic : boolean
+    logarithmic : bool, optional
         Whether smoothness is calculated on a logarithmic scale or linear scale
         default : True
     """

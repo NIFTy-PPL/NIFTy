@@ -8,7 +8,7 @@ np.random.seed(42)
 if __name__ == "__main__":
     # Set up position space
     s_space = ift.RGSpace([128, 128])
-    #s_space = ift.HPSpace(32)
+    # s_space = ift.HPSpace(32)
 
     # Define harmonic transformation and associated harmonic space
     h_space = s_space.get_default_codomain()
@@ -63,7 +63,8 @@ if __name__ == "__main__":
                                      tol_abs_gradnorm=1e-15)
     minimizer = ift.RelaxedNewton(IC1)
 
-    ICI = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-10)
+    ICI = ift.GradientNormController(iteration_limit=500,
+                                     tol_abs_gradnorm=1e-10)
     map_inverter = ift.ConjugateGradient(controller=ICI)
 
     ICI2 = ift.GradientNormController(iteration_limit=200,

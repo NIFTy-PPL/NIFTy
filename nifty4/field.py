@@ -354,7 +354,7 @@ class Field(object):
 
         Returns
         -------
-        Field:
+        Field
             The complex conjugated field.
         """
         return Field(self._domain, self.val.conjugate())

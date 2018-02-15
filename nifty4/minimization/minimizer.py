@@ -39,8 +39,9 @@ class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
 
         Returns
         -------
-        energy : Energy object
+        Energy
             Latest `energy` of the minimization.
-        status : integer
+        int
+            exit status of the minimization
         """
         raise NotImplementedError

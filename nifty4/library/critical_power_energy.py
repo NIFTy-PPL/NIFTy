@@ -34,33 +34,34 @@ class CriticalPowerEnergy(Energy):
 
     Parameters
     ----------
-    position : Field,
+    position : Field
         The current position of this energy. (Logarithm of power spectrum)
-    m : Field,
+    m : Field
         The map whose power spectrum is inferred. Needs to live in harmonic
         signal space.
-    D : EndomorphicOperator,
+    D : EndomorphicOperator, optional
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.
         default : None
-    alpha : float
+    alpha : float, optional
         The spectral prior of the inverse gamma distribution. 1.0 corresponds
         to non-informative.
         default : 1.0
-    q : float
+    q : float, optional
         The cutoff parameter of the inverse gamma distribution. 0.0 corresponds
         to non-informative.
         default : 0.0
-    smoothness_prior : float
+    smoothness_prior : float, optional
         Controls the strength of the smoothness prior
         default : 0.0
-    logarithmic : boolean
+    logarithmic : bool, optional
         Whether smoothness acts on linear or logarithmic scale.
-    samples : integer
+        default : True
+    samples : int, optional
         Number of samples used for the estimation of the uncertainty
         corrections.
         default : 3
-    w : Field
+    w : Field, optional
         The contribution from the map with or without uncertainty. It is used
         to pass on the result of the costly sampling during the minimization.
         default : None

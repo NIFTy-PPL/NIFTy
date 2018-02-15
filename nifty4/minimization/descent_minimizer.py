@@ -50,15 +50,15 @@ class DescentMinimizer(Minimizer):
 
         Parameters
         ----------
-        energy : Energy object
+        nergy : Energy
            Energy object which provides value, gradient and curvature at a
            specific position in parameter space.
 
         Returns
         -------
-        energy : Energy object
+        Energy
             Latest `energy` of the minimization.
-        status : integer
+        int
             Can be controller.CONVERGED or controller.ERROR
 
         Notes
