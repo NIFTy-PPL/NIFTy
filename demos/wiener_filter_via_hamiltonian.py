@@ -70,7 +70,7 @@ if __name__ == "__main__":
     # Generate plots
     zmax = max(ht(sh).max(), ht(m).max())
     zmin = min(ht(sh).min(), ht(m).min())
-    plotdict = {"zmax": zmax, "zmin": zmin,"colormap": "Planck-like"}
+    plotdict = {"zmax": zmax, "zmin": zmin, "colormap": "Planck-like"}
     plotdict2 = {"colormap": "Planck-like"}
     ift.plot(ht(sh), name="mock_signal.png", **plotdict)
     ift.plot(ht(m), name="reconstruction.png", **plotdict)
