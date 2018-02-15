@@ -41,13 +41,13 @@ class LineSearchStrongWolfe(LineSearch):
         Parameter for curvature condition rule. (Default: 0.9)
     max_step_size : float
         Maximum step allowed in to be made in the descent direction.
-        (Default: 50)
-    max_iterations : integer
+        (Default: 1000000000)
+    max_iterations : int, optional
         Maximum number of iterations performed by the line search algorithm.
-        (Default: 10)
-    max_zoom_iterations : integer
+        (Default: 100)
+    max_zoom_iterations : int, optional
         Maximum number of iterations performed by the zoom algorithm.
-        (Default: 10)
+        (Default: 100)
     """
 
     def __init__(self, c1=1e-4, c2=0.9,
@@ -71,18 +71,18 @@ class LineSearchStrongWolfe(LineSearch):
 
         Parameters
         ----------
-        energy : Energy object
+        energy : Energy
             Energy object from which we will calculate the energy and the
             gradient at a specific point.
         pk : Field
             Vector pointing into the search direction.
-        f_k_minus_1 : float
+        f_k_minus_1 : float, optional
             Value of the fuction (which is being minimized) at the k-1
             iteration of the line search procedure. (Default: None)
 
         Returns
         -------
-        energy_star : Energy object
+        Energy
             The new Energy object on the new position.
         """
         le_0 = LineEnergy(0., energy, pk, 0.)
@@ -188,7 +188,7 @@ class LineSearchStrongWolfe(LineSearch):
 
         Returns
         -------
-        energy_star : Energy object
+        Energy
             The new Energy object on the new position.
         """
         cubic_delta = 0.2  # cubic interpolant checks

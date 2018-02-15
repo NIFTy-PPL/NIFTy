@@ -30,7 +30,7 @@ def FFTSmoothingOperator(domain, sigma, space=None):
 
     Parameters
     ----------
-    domain : Domain, tuple of Domains, or DomainTuple
+    domain : Domain, tuple of Domain, or DomainTuple
        The total domain of the operator's input and output fields
 
     sigma : float>=0
@@ -38,7 +38,7 @@ def FFTSmoothingOperator(domain, sigma, space=None):
        the RGSpace the operator is working on.
        If `sigma==0`, an identity operator will be returned.
 
-    space: integer, *optional*
+    space : int, optional
        The index of the sub-domain on which the smoothing is performed.
        Can be omitted if `domain` only has one sub-domain.
 

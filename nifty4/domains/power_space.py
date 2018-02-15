@@ -24,14 +24,14 @@ from .. import dobj
 class PowerSpace(StructuredDomain):
     """NIFTy class for spaces of power spectra.
 
-    A power space is the result of a projection of a harmonic space where
+    A power space is the result of a projection of a harmonic domain where
     k-modes of equal length get mapped to one power index.
 
     Parameters
     ----------
-    harmonic_partner : Space
-        The harmonic Space of which this is the power space.
-    binbounds: None, or tuple/array/list of float
+    harmonic_partner : StructuredDomain
+        The harmonic dmain of which this is the power space.
+    binbounds : None, or tuple of float
         if None:
             There will be as many bins as there are distinct k-vector lengths
             in the harmonic partner space.
@@ -54,9 +54,9 @@ class PowerSpace(StructuredDomain):
         binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
         values equidistantly spaced (in linear scale) between these two.
 
-        nbin: integer
+        nbin : int
             the number of bins
-        first_bound, last_bound: float
+        first_bound, last_bound : float
             the k values for the right boundary of the first bin and the left
             boundary of the last bin, respectively. They are given in length
             units of the harmonic partner space.
@@ -74,9 +74,9 @@ class PowerSpace(StructuredDomain):
         values equidistantly spaced (in natural logarithmic scale)
         between these two.
 
-        nbin: integer
+        nbin : int
             the number of bins
-        first_bound, last_bound: float
+        first_bound, last_bound : float
             the k values for the right boundary of the first bin and the left
             boundary of the last bin, respectively. They are given in length
             units of the harmonic partner space.

@@ -22,14 +22,16 @@ from .structured_domain import StructuredDomain
 
 
 class GLSpace(StructuredDomain):
-    """NIFTy subclass for Gauss-Legendre pixelizations [#]_ of the two-sphere.
+    """NIFTy subclass for Gauss-Legendre pixelizations of the two-sphere.
+
+    Its harmonic partner is the :class:`LMSpace`
 
     Parameters
     ----------
     nlat : int
         Number of latitudinal bins (or rings) that are used for this
         pixelization.
-    nlon : int, *optional*
+    nlon : int, optional
         Number of longitudinal bins that are used for this pixelization.
         Default value is 2*nlat + 1.
 
@@ -37,19 +39,6 @@ class GLSpace(StructuredDomain):
     ------
     ValueError
         If input `nlat` or `nlon` is invalid.
-
-    See Also
-    --------
-    HPSpace, LMSpace
-
-    References
-    ----------
-    .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-           harmonic transforms revisited";
-           `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
-    .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-           High-Resolution Discretization and Fast Analysis of Data
-           Distributed on the Sphere", *ApJ* 622..759G.
     """
 
     def __init__(self, nlat, nlon=None):

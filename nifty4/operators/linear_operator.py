@@ -57,7 +57,7 @@ class LinearOperator(with_metaclass(
     @abc.abstractproperty
     def domain(self):
         """
-        domain : DomainTuple
+        DomainTuple
             The domain on which the Operator's input Field lives.
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
@@ -67,7 +67,7 @@ class LinearOperator(with_metaclass(
     @abc.abstractproperty
     def target(self):
         """
-        target : DomainTuple
+        DomainTuple
             The domain on which the Operator's output Field lives.
             Every Operator which inherits from the abstract LinearOperator
             base class must have this attribute.
@@ -77,7 +77,7 @@ class LinearOperator(with_metaclass(
     @property
     def inverse(self):
         """
-        inverse : LinearOperator
+        LinearOperator
             Returns a LinearOperator object which behaves as if it were
             the inverse of this operator.
         """
@@ -87,7 +87,7 @@ class LinearOperator(with_metaclass(
     @property
     def adjoint(self):
         """
-        adjoint : LinearOperator
+        LinearOperator
             Returns a LinearOperator object which behaves as if it were
             the adjoint of this operator.
         """
@@ -141,7 +141,7 @@ class LinearOperator(with_metaclass(
 
         Returns
         -------
-        out : integer
+        int
             This is any subset of LinearOperator.{TIMES, ADJOINT_TIMES,
             INVERSE_TIMES, ADJOINT_INVERSE_TIMES, INVERSE_ADJOINT_TIMES},
             joined together by the "|" operator.
@@ -158,7 +158,7 @@ class LinearOperator(with_metaclass(
             The input Field, living on the Operator's domain or target,
             depending on mode.
 
-        mode : integer
+        mode : int
             LinearOperator.TIMES: normal application
             LinearOperator.ADJOINT_TIMES: adjoint application
             LinearOperator.INVERSE_TIMES: inverse application
@@ -168,7 +168,7 @@ class LinearOperator(with_metaclass(
 
         Returns
         -------
-        out : Field
+        Field
             The processed Field living on the Operator's target or domain,
             depending on mode.
         """
@@ -188,7 +188,7 @@ class LinearOperator(with_metaclass(
 
         Returns
         -------
-        out : Field
+        Field
             The processed Field living on the Operator's target domain.
         """
         return self.apply(x, self.TIMES)
@@ -203,7 +203,7 @@ class LinearOperator(with_metaclass(
 
         Returns
         -------
-        out : Field
+        Field
             The processed Field living on the Operator's domain.
         """
         return self.apply(x, self.INVERSE_TIMES)
@@ -218,7 +218,7 @@ class LinearOperator(with_metaclass(
 
         Returns
         -------
-        out : Field
+        Field
             The processed Field living on the Operator's domain.
         """
         return self.apply(x, self.ADJOINT_TIMES)
@@ -233,7 +233,7 @@ class LinearOperator(with_metaclass(
 
         Returns
         -------
-        out : Field
+        Field
             The processed Field living on the Operator's target domain.
 
         Notes
@@ -267,7 +267,7 @@ class LinearOperator(with_metaclass(
 
         Returns
         -------
-        sample : Field
-            Returns the a sample from the Gaussian of given covariance.
+        Field
+            A sample from the Gaussian of given covariance.
         """
         raise NotImplementedError

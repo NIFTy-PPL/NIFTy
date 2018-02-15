@@ -2,7 +2,7 @@ Installation
 ============
 
 
-In the following, we assume a Debian-based distribution. For other
+In the following, we assume a Debian-based Linux distribution. For other
 distributions, the "apt" lines will need slight changes.
 
 NIFTy4 and its mandatory dependencies can be installed via::
@@ -19,7 +19,7 @@ Plotting support is added via::
 
     pip install --user matplotlib
 
-Support for spherical harmonic transforms is added via:
+Support for spherical harmonic transforms is added via::
 
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 

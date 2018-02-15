@@ -63,13 +63,14 @@ def power_analyze(field, spaces=None, binbounds=None,
     ----------
     field : Field
         The field to be analyzed
-    spaces : int *optional*
-        The set of subspaces for which the powerspectrum shall be computed.
+    spaces : None or int or tuple of int , optional
+        The set of subdomains for which the powerspectrum shall be computed.
+        If None, all subdomains will be converted.
         (default : None).
-    binbounds : array-like *optional*
+    binbounds : None or array-like, optional
         Inner bounds of the bins (default : None).
-        if binbounds==None : bins are inferred.
-    keep_phase_information : boolean, *optional*
+        if binbounds is None : bins are inferred.
+    keep_phase_information : bool, optional
         If False, return a real-valued result containing the power spectrum
         of the input Field.
         If True, return a complex-valued result whose real component
@@ -82,7 +83,7 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     Returns
     -------
-    out : Field
+    Field
         The output object. Its domain is a PowerSpace and it contains
         the power spectrum of 'field'.
     """
@@ -132,7 +133,7 @@ def power_synthesize_nonrandom(field, spaces=None):
 
 
 def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
-    """ Yields a sampled field with `field`**2 as its power spectrum.
+    """Returns a sampled field with `field`**2 as its power spectrum.
 
     This method draws a Gaussian random field in the harmonic partner
     domain of this field's domains, using this field as power spectrum.
@@ -141,20 +142,20 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
     ----------
     field : Field
         The input field containing the square root of the power spectrum
-    spaces : {tuple, int, None} *optional*
-        Specifies the subspace containing all the PowerSpaces which
+    spaces : None, int, or tuple of int, optional
+        Specifies the subdomains containing all the PowerSpaces which
         should be converted (default : None).
-        if spaces==None : Tries to convert the whole domain.
-    real_power : boolean *optional*
+        if spaces is None : Tries to convert the whole domain.
+    real_power : bool, optional
         Determines whether the power spectrum is treated as intrinsically
         real or complex (default : True).
-    real_signal : boolean *optional*
+    real_signal : bool, optional
         True will result in a purely real signal-space field
         (default : True).
 
     Returns
     -------
-    out : Field
+    Field
         The output object. A random field created with the power spectrum
         stored in the `spaces` in `field`.
 
@@ -166,7 +167,7 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
 
     Raises
     ------
-    ValueError : If domain specified by `spaces` is not a PowerSpace.
+    ValueError : If a domain specified by `spaces` is not a PowerSpace.
     """
 
     spec = power_synthesize_nonrandom(field, spaces)
@@ -213,20 +214,21 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
 
     Parameters
     ----------
-    domain : DomainObject
+    domain : Domain, tuple of Domain or DomainTuple
         Domain over which the power operator shall live.
-    power_spectrum : callable of Field
-        An object that implements the power spectrum as a function of k.
+    power_spectrum : callable or Field
+        An object that contains the power spectrum as a function of k.
     space : int
-            the domain index on which the power operator will work
-    dtype : type *optional*
+        the domain index on which the power operator will work
+    dtype : None or type, optional
         dtype that the field holding the power spectrum shall use
         (default : None).
-        if dtype == None: the dtype of `power_spectrum` will be used.
+        if dtype is None: the dtype of `power_spectrum` will be used.
 
     Returns
     -------
-    DiagonalOperator : An operator that implements the given power spectrum.
+    DiagonalOperator
+        An operator that implements the given power spectrum.
     """
     domain = DomainTuple.make(domain)
     if space is None:

@@ -38,7 +38,8 @@ if __name__ == "__main__":
     R = ift.GeometryRemover(signal_space)
     R = R*ift.DiagonalOperator(mask)
     R = R*ht
-    R = R * ift.create_harmonic_smoothing_operator((harmonic_space,),0,response_sigma)
+    R = R * ift.create_harmonic_smoothing_operator((harmonic_space,), 0,
+                                                   response_sigma)
     data_domain = R.target[0]
 
     noiseless_data = R(mock_signal)
