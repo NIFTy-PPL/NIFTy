@@ -6,7 +6,7 @@ NIFTy's domain classes
 
 **Abstract base class**
 
-:py:class:`Domain` is the abstract ancestor for all of NIFTy's domains.
+:class:`Domain` is the abstract ancestor for all of NIFTy's domains.
 
 .. toctree::
     :maxdepth: 1
@@ -21,7 +21,7 @@ associated with them, like position in space and volume factors),
 or *unstructured* (meaning that the data points have no associated manifold).
 
 Unstructured domains can be described by instances of NIFTy's
-:py:class:`UnstructuredDomain` class.
+:class:`UnstructuredDomain` class.
 
 .. toctree::
     :maxdepth: 1
@@ -34,24 +34,24 @@ Unstructured domains can be described by instances of NIFTy's
 In contrast to unstructured domains, these domains have an assigned geometry.
 NIFTy requires these domains to provide the volume elements of their grid cells.
 The additional methods are described in the abstract class
-:py:class:`StructuredDomain`.
+:class:`StructuredDomain`.
 
 .. toctree::
     :maxdepth: 1
 
     StructuredDomain                <../mod/nifty4.domains.structured_domain>
 
-NIFTy comes with several concrete subclasses of :py:class:`StructuredDomain`.
+NIFTy comes with several concrete subclasses of :class:`StructuredDomain`.
 
-:py:class:`RGSpace` represents a regular Cartesian grid with an arbitrary
+:class:`RGSpace` represents a regular Cartesian grid with an arbitrary
 number of dimensions, which is supposed to be periodic in each dimension.
 This domain can be constructed to represent either position or harmonic space.
 
-:py:class:`HPSpace` and :py:class:`GLSpace` describe pixelisations of the
-2-sphere; their counterpart in harmonic space is :py:class:`LMSpace`, which
+:class:`HPSpace` and :class:`GLSpace` describe pixelisations of the
+2-sphere; their counterpart in harmonic space is :class:`LMSpace`, which
 contains spherical harmonic coefficients.
 
-:py:class:`PowerSpace` is used to describe one-dimensional power spectra.
+:class:`PowerSpace` is used to describe one-dimensional power spectra.
 
 .. toctree::
     :maxdepth: 1

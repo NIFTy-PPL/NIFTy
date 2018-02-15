@@ -21,7 +21,7 @@ from .domains.structured_domain import StructuredDomain
 from .domains.power_space import PowerSpace
 from .field import Field, sqrt
 from .operators.diagonal_operator import DiagonalOperator
-from .operators.power_projection_operator import PowerProjectionOperator
+from .operators.power_distributor import PowerDistributor
 from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
@@ -45,8 +45,8 @@ def PS_field(pspace, func, dtype=None):
 
 def _single_power_analyze(field, idx, binbounds):
     power_domain = PowerSpace(field.domain[idx], binbounds)
-    ppo = PowerProjectionOperator(field.domain, power_domain, idx)
-    return ppo(field.weight(1)).weight(-1)  # divides by bin size
+    pd = PowerDistributor(field.domain, power_domain, idx)
+    return pd.adjoint_times(field.weight(1)).weight(-1)  # divides by bin size
 
 
 def power_analyze(field, spaces=None, binbounds=None,
@@ -126,8 +126,8 @@ def power_synthesize_nonrandom(field, spaces=None):
     spec = sqrt(field)
     for i in spaces:
         result_domain[i] = field.domain[i].harmonic_partner
-        ppo = PowerProjectionOperator(result_domain, field.domain[i], i)
-        spec = ppo.adjoint_times(spec)
+        pd = PowerDistributor(result_domain, field.domain[i], i)
+        spec = pd(spec)
 
     return spec
 
@@ -204,7 +204,7 @@ def create_power_field(domain, power_spectrum, dtype=None):
         power_domain = PowerSpace(domain)
         fp = PS_field(power_domain, power_spectrum, dtype)
 
-    return PowerProjectionOperator(domain, power_domain).adjoint_times(fp)
+    return PowerDistributor(domain, power_domain)(fp)
 
 
 def create_power_operator(domain, power_spectrum, space=None, dtype=None):

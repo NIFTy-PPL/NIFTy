@@ -35,15 +35,15 @@ _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
 class Consistency_Tests(unittest.TestCase):
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
-        op = ift.PowerProjectionOperator(sp)
+        op = ift.PowerDistributor(target=sp)
         ift.extra.consistency_check(op, dtype, dtype)
         ps = ift.PowerSpace(
             sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=False, nbin=3))
-        op = ift.PowerProjectionOperator(sp, ps)
+        op = ift.PowerDistributor(target=sp, power_space=ps)
         ift.extra.consistency_check(op, dtype, dtype)
         ps = ift.PowerSpace(
             sp, ift.PowerSpace.useful_binbounds(sp, logarithmic=True, nbin=3))
-        op = ift.PowerProjectionOperator(sp, ps)
+        op = ift.PowerDistributor(target=sp, power_space=ps)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_RG_spaces+_p_RG_spaces,

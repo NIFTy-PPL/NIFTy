@@ -60,9 +60,8 @@ if __name__ == "__main__":
 
     d_space = MeasurementOperator.target
 
-    Projection = ift.PowerProjectionOperator(domain=h_space,
-                                             power_space=p_space)
-    power = Projection.adjoint_times(ift.exp(0.5*log_p))
+    Distributor = ift.PowerDistributor(target=h_space, power_space=p_space)
+    power = Distributor(ift.exp(0.5*log_p))
     # Creating the mock data
     true_sky = nonlinearity(HT(power*sh))
     noiseless_data = MeasurementOperator(true_sky)
@@ -76,7 +75,7 @@ if __name__ == "__main__":
 
     m0 = ift.power_synthesize(ift.Field(p_space, val=1e-7))
     t0 = ift.Field(p_space, val=-4.)
-    power0 = Projection.adjoint_times(ift.exp(0.5 * t0))
+    power0 = Distributor.times(ift.exp(0.5 * t0))
 
     IC1 = ift.GradientNormController(name="IC1", iteration_limit=100,
                                      tol_abs_gradnorm=1e-3)
@@ -88,7 +87,7 @@ if __name__ == "__main__":
     inverter = ift.ConjugateGradient(controller=ICI)
 
     for i in range(20):
-        power0 = Projection.adjoint_times(ift.exp(0.5*t0))
+        power0 = Distributor(ift.exp(0.5*t0))
         map0_energy = ift.library.NonlinearWienerFilterEnergy(
             m0, d, MeasurementOperator, nonlinearity, HT, power0, N, S,
             inverter=inverter)
@@ -104,7 +103,7 @@ if __name__ == "__main__":
         power0_energy = ift.library.NonlinearPowerEnergy(
             position=t0, d=d, N=N, xi=m0, D=D0, ht=HT,
             Instrument=MeasurementOperator, nonlinearity=nonlinearity,
-            Projection=Projection, sigma=1., samples=2, inverter=inverter)
+            Distribution=Distributor, sigma=1., samples=2, inverter=inverter)
 
         power0_energy = minimizer(power0_energy)[0]
 

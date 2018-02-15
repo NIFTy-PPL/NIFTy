@@ -18,7 +18,7 @@
 
 from ..minimization.energy import Energy
 from ..operators.smoothness_operator import SmoothnessOperator
-from ..operators.power_projection_operator import PowerProjectionOperator
+from ..operators.power_distributor import PowerDistributor
 from .critical_power_curvature import CriticalPowerCurvature
 from ..utilities import memo
 from .. import Field, exp
@@ -87,17 +87,17 @@ class CriticalPowerEnergy(Energy):
         self._inverter = inverter
 
         if w is None:
-            P = PowerProjectionOperator(domain=self.m.domain,
-                                        power_space=self.position.domain[0])
+            Dist = PowerDistributor(target=self.m.domain,
+                                    power_space=self.position.domain[0])
             if self.D is not None:
                 w = Field.zeros(self.position.domain, dtype=self.m.dtype)
                 for i in range(self.samples):
                     sample = self.D.draw_sample() + self.m
-                    w += P(abs(sample)**2)
+                    w += Dist.adjoint_times(abs(sample)**2)
 
                 w *= 1./self.samples
             else:
-                w = P(abs(self.m)**2)
+                w = Dist.adjoint_times(abs(self.m)**2)
         self._w = w
 
         self._theta = exp(-self.position) * (self.q + self._w*0.5)

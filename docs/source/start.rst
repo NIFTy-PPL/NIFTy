@@ -3,9 +3,6 @@
 First steps -- An informal introduction
 =======================================
 
-NIFTy4 Tutorial
----------------
-
 .. currentmodule:: nifty4
 
 .. automodule:: nifty4
@@ -42,61 +39,61 @@ Domains
 .......
 
 One of the fundamental building blocks of the NIFTy4 framework is the *domain*.
-Its required capabilities are expressed by the abstract :py:class:`Domain` class.
+Its required capabilities are expressed by the abstract :class:`Domain` class.
 A domain must be able to answer the following queries:
 
 - its total number of data entries (pixels)
 - the shape of the array that is supposed to hold them
-- equality/inequality to another :py:class:`Domain` instance
+- equality/inequality to another :class:`Domain` instance
 
 
 Unstructured domains
 ....................
 
 There are domains (e.g. the data domain) which have no geometry associated to the individual data values.
-In NIFTy4 they are represented by the :py:class:`UnstructuredDomain` class, which is derived from
-:py:class:`Domain`.
+In NIFTy4 they are represented by the :class:`UnstructuredDomain` class, which is derived from
+:class:`Domain`.
 
 
 Structured domains
 ..................
 
-All domains defined on a geometrical manifold are derived from :py:class:`StructuredDomain` (which is in turn derived from :py:class:`Domain`).
+All domains defined on a geometrical manifold are derived from :class:`StructuredDomain` (which is in turn derived from :class:`Domain`).
 
-In addition to the capabilities of :py:class:`Domain`, :py:class:`StructuredDomain` offers the following functionality:
+In addition to the capabilities of :class:`Domain`, :class:`StructuredDomain` offers the following functionality:
 
-- methods returing the pixel volume(s) and the total volume
-- a :py:attr:`harmonic` property
+- methods :meth:`~StructuredDomain.scalar_dvol`, :meth:`~StructuredDomain.dvol`, and  :meth:`~StructuredDomain.total_volume` returning the pixel volume(s) and the total volume
+- a :attr:`~StructuredDomain.harmonic` property
 - (iff the domain is harmonic) some methods concerned with Gaussian convolution and the absolute distances of the individual grid cells from the origin
 
 Examples for structured domains are
 
-- :py:class:`RGSpace` (an equidistant Cartesian grid with a user-definable number of dimensions),
-- :py:class:`GLSpace` (a Gauss-Legendre grid on the sphere), and
-- :py:class:`LMSpace` (a grid storing spherical harmonic coefficients).
+- :class:`RGSpace` (an equidistant Cartesian grid with a user-definable number of dimensions),
+- :class:`GLSpace` (a Gauss-Legendre grid on the sphere), and
+- :class:`LMSpace` (a grid storing spherical harmonic coefficients).
 
-Among these, :py:class:`RGSpace` can be harmonic or not (depending on constructor arguments), :py:class:`GLSpace` is a pure position domain (i.e. nonharmonic), and :py:class:`LMSpace` is always harmonic.
+Among these, :class:`RGSpace` can be harmonic or not (depending on constructor arguments), :class:`GLSpace` is a pure position domain (i.e. nonharmonic), and :class:`LMSpace` is always harmonic.
 
 
 Combinations of domains
 .......................
 
 A field can live on a single domain, but it can also live on a product of domains (or no domain at all, in which case it is a scalar).
-The tuple of domain on which a field lives is described by the :py:class:`DomainTuple` class.
-A :py:class:`DomainTuple` object can be constructed from
+The tuple of domain on which a field lives is described by the :class:`DomainTuple` class.
+A :class:`DomainTuple` object can be constructed from
 
-- a single instance of anything derived from :py:class:`Domain`
+- a single instance of anything derived from :class:`Domain`
 - a tuple of such instances (possibly empty)
-- another :py:class:`DomainTuple` object
+- another :class:`DomainTuple` object
 
 .. _fields:
 
 Fields
 ......
 
-A :py:class:`Field` object consists of the following components:
+A :class:`Field` object consists of the following components:
 
-- a domain in form of a :py:class:`DomainTuple` object
+- a domain in form of a :class:`DomainTuple` object
 - a data type (e.g. numpy.float64)
 - an array containing the actual values
 
@@ -107,8 +104,8 @@ Fields support arithmetic operations, contractions, etc.
 Linear Operators
 ................
 
-A linear operator (represented by NIFTy4's abstract :py:class:`LinearOperator` class) can be interpreted as an (implicitly defined) matrix.
-It can be applied to :py:class:`Field` instances, resulting in other :py:class:`Field` instances that potentially live on other domains.
+A linear operator (represented by NIFTy4's abstract :class:`LinearOperator` class) can be interpreted as an (implicitly defined) matrix.
+It can be applied to :class:`Field` instances, resulting in other :class:`Field` instances that potentially live on other domains.
 
 There are four basic ways of applying an operator :math:`A` to a field :math:`f`:
 
@@ -123,14 +120,14 @@ Operator classes defined in NIFTy may implement an arbitrary subset of these fou
 If needed, the set of supported operations can be enhanced by iterative inversion methods;
 for example, an operator defining direct and adjoint multiplication, could be enhanced to support the complete set by this method.
 
-There are two domains associated with a :py:class:`LinearOperator`: a *domain* and a *target*.
+There are two domains associated with a :class:`LinearOperator`: a *domain* and a *target*.
 Direct multiplication and adjoint inverse multiplication transform a field living on the operator's *domain* to one living on the operator's *target*, whereas adjoint multiplication and inverse multiplication transform from *target* to *domain*.
 
-Operators with identical domain and target can be derived from :py:class:`EndomorphicOperator`;
-typical examples for this category are the :py:class:`ScalingOperator`, which simply multiplies its input by a scalar value, and :py:class:`DiagonalOperator`, which multiplies every value of its input field with potentially different values.
+Operators with identical domain and target can be derived from :class:`EndomorphicOperator`;
+typical examples for this category are the :class:`ScalingOperator`, which simply multiplies its input by a scalar value, and :class:`DiagonalOperator`, which multiplies every value of its input field with potentially different values.
 
 Nifty4 allows simple and intuitive construction of combined operators.
-As an example, if ``A``, ``B`` and ``C`` are of type :py:class:`LinearOperator` and ``f1`` and ``f2`` are :py:class:`Field` s, writing::
+As an example, if ``A``, ``B`` and ``C`` are of type :class:`LinearOperator` and ``f1`` and ``f2`` are :class:`Field` s, writing::
 
     X = A*B.inverse*A.adjoint + C
     f2 = X(f1)
@@ -146,11 +143,11 @@ Minimization
 
 Most problems in IFT are solved by (possibly nested) minimizations of high-dimensional functions, which are often nonlinear.
 
-In NIFTy4 such functions are represented by objects of type :py:class:`Energy`.
+In NIFTy4 such functions are represented by objects of type :class:`Energy`.
 These hold the prescription how to calculate the function's value, gradient and (optionally) curvature at any given position.
 Function values are floating-point scalars, gradients have the form of fields living on the energy's position domain, and curvatures are represented by linear operator objects.
 
-Some examples of concrete energy classes delivered with NIFTy4 are :py:class:`QuadraticEnergy` (with position-independent curvature, mainly used with conjugate gradient minimization) and :py:class:`WienerFilterEnergy`.
+Some examples of concrete energy classes delivered with NIFTy4 are :class:`QuadraticEnergy` (with position-independent curvature, mainly used with conjugate gradient minimization) and :class:`WienerFilterEnergy`.
 Energies are classes that typically have to be provided by the user when tackling new IFT problems.
 
 The minimization procedure can be carried out by one of several algorithms; NIFTy4 currently ships solvers based on

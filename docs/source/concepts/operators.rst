@@ -12,7 +12,7 @@ Description of Operators
     ScalingOperator                     <../mod/nifty4.operators.scaling_operator>
     DiagonalOperator                    <../mod/nifty4.operators.diagonal_operator>
     HarmonicTransformOperator           <../mod/nifty4.operators.harmonic_transform_operator>
-    PowerProjectionOperator             <../mod/nifty4.operators.power_projection_operator>
+    PowerDistributor                    <../mod/nifty4.operators.power_distributor>
 
 .. toctree::
     :maxdepth: 1
@@ -26,7 +26,7 @@ Description of Operators
 
 ..    Adjoint                             <../mod/nifty4.operators.adjoint_operator>
 ..    Chain                               <../mod/nifty4.operators.chain_operator>
-..    DOF Projection                      <../mod/nifty4.operators.dof_projection_operator>
+..    DOF Distributor                     <../mod/nifty4.operators.dof_distributor>
 ..    Inverse                             <../mod/nifty4.operators.inverse_operator>
 ..    Laplace                             <../mod/nifty4.operators.linear_operator>
 ..    Sum                                 <../mod/nifty4.operators.sum_operator>
