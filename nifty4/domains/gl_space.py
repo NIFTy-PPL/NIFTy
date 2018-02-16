@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -24,7 +24,8 @@ from .structured_domain import StructuredDomain
 class GLSpace(StructuredDomain):
     """NIFTy subclass for Gauss-Legendre pixelizations of the two-sphere.
 
-    Its harmonic partner is the :class:`LMSpace`
+    Its harmonic partner domain is the
+    :class:`~nifty4.domains.lm_space.LMSpace`.
 
     Parameters
     ----------
@@ -34,11 +35,6 @@ class GLSpace(StructuredDomain):
     nlon : int, optional
         Number of longitudinal bins that are used for this pixelization.
         Default value is 2*nlat + 1.
-
-    Raises
-    ------
-    ValueError
-        If input `nlat` or `nlon` is invalid.
     """
 
     def __init__(self, nlat, nlon=None):
