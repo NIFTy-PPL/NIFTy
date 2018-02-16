@@ -56,6 +56,12 @@ class StructuredDomain(Domain):
         return self.scalar_dvol()
 
     def total_volume(self):
+        """Returns the sum over all the domain's pixel volumes.
+
+        Returns
+        -------
+        float : sum of all pixel volume elements
+        """
         tmp = self.dvol()
         return self.size * tmp if np.isscalar(tmp) else np.sum(tmp)
 

@@ -98,10 +98,27 @@ class GLSpace(StructuredDomain):
         return self._nlon
 
     def get_default_codomain(self):
+        """Returns a :class:`LMSpace` object, which is capable of storing an
+        accurate representation of data residing on `self` (if this data is
+        band-limited).
+
+        Returns
+        -------
+        LMSpace
+            The parter domain
+        """
         from .. import LMSpace
         return LMSpace(lmax=self._nlat-1, mmax=self._nlon//2)
 
     def check_codomain(self, codomain):
+        """Raises `TypeError` if `codomain` is not a matching partner domain
+        for `self`.
+
+        Notes
+        -----
+        This function only checks whether `codomain` is of type
+        :class:`LMSpace`.
+        """
         from .. import LMSpace
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")

@@ -80,10 +80,31 @@ class HPSpace(StructuredDomain):
         return self._nside
 
     def get_default_codomain(self):
+        """Returns a :class:`LMSpace` object, which is capable of storing a
+        fairly accurate representation of data residing on `self`
+
+        Returns
+        -------
+        LMSpace
+            The parter domain
+
+        Notes
+        -----
+        The `lmax` and `mmax` parameters of the returned :class:`LMSpace` are
+        set to `2*self.nside`.
+        """
         from .. import LMSpace
         return LMSpace(lmax=2*self.nside)
 
     def check_codomain(self, codomain):
+        """Raises `TypeError` if `codomain` is not a matching partner domain
+        for `self`.
+
+        Notes
+        -----
+        This function only checks whether `codomain` is of type
+        :class:`LMSpace`.
+        """
         from .. import LMSpace
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")

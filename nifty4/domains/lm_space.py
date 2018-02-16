@@ -26,7 +26,8 @@ from .. import dobj
 class LMSpace(StructuredDomain):
     """NIFTy subclass for sets of spherical harmonic coefficients.
 
-    Its harmonic partner spaces are :class:`HPSpace` and :class:`GLSpace`.
+    Its harmonic partner spaces are :class:`~nifty4.domains.hp_space.HPSpace`
+    and :class:`~nifty4.domains.gl_space.GLSpace`.
 
     Parameters
     ----------
@@ -122,10 +123,27 @@ class LMSpace(StructuredDomain):
         return self._mmax
 
     def get_default_codomain(self):
+        """Returns a :class:`~nifty4.domains.gl_space.GLSpace` object, which is
+        capable of storing an accurate representation of data residing on
+        `self`.
+
+        Returns
+        -------
+        GLSpace
+            The parter domain
+        """
         from .. import GLSpace
         return GLSpace(self.lmax+1, self.mmax*2+1)
 
     def check_codomain(self, codomain):
+        """Raises `TypeError` if `codomain` is not a matching partner domain
+        for `self`.
+
+        Notes
+        -----
+        This function only checks whether `codomain` is of type
+        :class:`GLSpace` or :class:`HPSpace`.
+        """
         from .. import GLSpace, HPSpace
         if not isinstance(codomain, (GLSpace, HPSpace)):
             raise TypeError("codomain must be a GLSpace or HPSpace.")

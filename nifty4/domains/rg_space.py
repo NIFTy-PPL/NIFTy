@@ -150,10 +150,21 @@ class RGSpace(StructuredDomain):
         return lambda x: self._kernel(x, sigma)
 
     def get_default_codomain(self):
+        """Returns a :class:`RGSpace` object representing the (position or
+        harmonic) partner domain of `self`, depending on `self.harmonic`.
+
+        Returns
+        -------
+        RGSpace
+            The parter domain
+        """
         distances = 1. / (np.array(self.shape)*np.array(self.distances))
         return RGSpace(self.shape, distances, not self.harmonic)
 
     def check_codomain(self, codomain):
+        """Raises `TypeError` if `codomain` is not a matching partner domain
+        for `self`.
+        """
         if not isinstance(codomain, RGSpace):
             raise TypeError("domain is not a RGSpace")
 

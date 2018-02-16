@@ -21,6 +21,12 @@ from functools import reduce
 
 
 class UnstructuredDomain(Domain):
+    """A :class:`~nifty4.domains.domain.Domain` subclass for spaces with no
+    associated geometry.
+
+    Typically used for data spaces.
+    """
+
     def __init__(self, shape):
         super(UnstructuredDomain, self).__init__()
         self._needed_for_hash += ["_shape"]
