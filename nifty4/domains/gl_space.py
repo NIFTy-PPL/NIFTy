@@ -83,14 +83,12 @@ class GLSpace(StructuredDomain):
 
     @property
     def nlat(self):
-        """ Number of latitudinal bins (or rings) that are used for this
-        pixelization.
-        """
+        """int : number of rings in this domain"""
         return self._nlat
 
     @property
     def nlon(self):
-        """Number of longitudinal bins that are used for this pixelization."""
+        """int : pixels per ring in this domain"""
         return self._nlon
 
     def get_default_codomain(self):
@@ -101,7 +99,7 @@ class GLSpace(StructuredDomain):
         Returns
         -------
         LMSpace
-            The parter domain
+            The partner domain
         """
         from .. import LMSpace
         return LMSpace(lmax=self._nlat-1, mmax=self._nlon//2)

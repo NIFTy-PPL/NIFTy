@@ -29,8 +29,8 @@ class EndomorphicOperator(LinearOperator):
 
     @property
     def target(self):
-        """
-        DomainTuple
-            Returns `self.domain`, because this is also the target domain
-            for endomorphic operators."""
+        """DomainTuple : returns :attr:`domain`
+
+        Returns `self.domain`, because this is also the target domain
+        for endomorphic operators."""
         return self.domain

@@ -52,12 +52,12 @@ class Domain(with_metaclass(
 
         Parameters
         ----------
-        x: Domain
+        x : Domain
             The domain `self` is compared to.
 
         Returns
         -------
-        bool: True iff `self` and x describe the same domain.
+        bool : True iff `self` and x describe the same domain.
         """
         if self is x:  # shortcut for simple case
             return True
@@ -74,22 +74,17 @@ class Domain(with_metaclass(
 
     @abc.abstractproperty
     def shape(self):
-        """The shape of the array-like object required to store information
-        living on the domain.
+        """tuple of ints: number of pixels along each axis
 
-        Returns
-        -------
-        tuple of ints: shape of the required array-like object
+        The shape of the array-like object required to store information
+        living on the domain.
         """
         raise NotImplementedError
 
     @abc.abstractproperty
     def size(self):
-        """Number of data elements associated with this domain.
-        Equivalent to the products over all entries in the domain's shape.
+        """int: total number of pixels.
 
-        Returns
-        -------
-        int: number of data elements
+        Equivalent to the products over all entries in the domain's shape.
         """
         raise NotImplementedError

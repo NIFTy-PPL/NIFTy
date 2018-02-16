@@ -23,8 +23,8 @@ Contents
 
    ift
    Gallery <http://wwwmpa.mpa-garching.mpg.de/ift/nifty/gallery/>
-   start
    installation
+   start
    code
 
 Indices and tables

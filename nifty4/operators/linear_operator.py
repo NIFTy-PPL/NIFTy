@@ -56,41 +56,33 @@ class LinearOperator(with_metaclass(
 
     @abc.abstractproperty
     def domain(self):
-        """
-        DomainTuple
-            The domain on which the Operator's input Field lives.
-            Every Operator which inherits from the abstract LinearOperator
-            base class must have this attribute.
-        """
+        """DomainTuple : the operator's input domain
+
+            The domain on which the Operator's input Field lives."""
         raise NotImplementedError
 
     @abc.abstractproperty
     def target(self):
-        """
-        DomainTuple
-            The domain on which the Operator's output Field lives.
-            Every Operator which inherits from the abstract LinearOperator
-            base class must have this attribute.
-        """
+        """DomainTuple : the operator's output domain
+
+            The domain on which the Operator's output Field lives."""
         raise NotImplementedError
 
     @property
     def inverse(self):
-        """
-        LinearOperator
-            Returns a LinearOperator object which behaves as if it were
-            the inverse of this operator.
-        """
+        """LinearOperator : the inverse of `self`
+
+        Returns a LinearOperator object which behaves as if it were
+        the inverse of this operator."""
         from .inverse_operator import InverseOperator
         return InverseOperator(self)
 
     @property
     def adjoint(self):
-        """
-        LinearOperator
-            Returns a LinearOperator object which behaves as if it were
-            the adjoint of this operator.
-        """
+        """LinearOperator : the adjoint of `self`
+
+        Returns a LinearOperator object which behaves as if it were
+        the adjoint of this operator."""
         from .adjoint_operator import AdjointOperator
         return AdjointOperator(self)
 
@@ -137,20 +129,17 @@ class LinearOperator(with_metaclass(
 
     @abc.abstractproperty
     def capability(self):
-        """ Specifies the application modes supported by this operator
+        """int : the supported operation modes
 
-        Returns
-        -------
-        int
-            This is any subset of LinearOperator.{TIMES, ADJOINT_TIMES,
-            INVERSE_TIMES, ADJOINT_INVERSE_TIMES, INVERSE_ADJOINT_TIMES},
-            joined together by the "|" operator.
+        Returns the suppoerted subset of :attr:`TIMES`, :attr:`ADJOINT_TIMES`,
+        :attr:`INVERSE_TIMES`, and :attr:`ADJOINT_INVERSE_TIMES`,
+        joined together by the "|" operator.
         """
         raise NotImplementedError
 
     @abc.abstractmethod
     def apply(self, x, mode):
-        """ Applies the Operator to a given Field, in a specified mode.
+        """ Applies the Operator to a given `x`, in a specified `mode`.
 
         Parameters
         ----------
@@ -175,7 +164,7 @@ class LinearOperator(with_metaclass(
         raise NotImplementedError
 
     def __call__(self, x):
-        """Same as times()"""
+        """Same as :meth:`times`"""
         return self.apply(x, self.TIMES)
 
     def times(self, x):
@@ -244,7 +233,7 @@ class LinearOperator(with_metaclass(
         return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
     def inverse_adjoint_times(self, x):
-        """Same as adjoint_inverse_times()"""
+        """Same as :meth:`adjoint_inverse_times`"""
         return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
     def _check_mode(self, mode):
@@ -262,7 +251,9 @@ class LinearOperator(with_metaclass(
             raise ValueError("The operator's and field's domains don't match.")
 
     def draw_sample(self):
-        """ Generates a sample from a Gaussian distribution with zero mean and
+        """Generate a zero-mean sample
+
+        Generates a sample from a Gaussian distribution with zero mean and
         covariance given by the operator.
 
         Returns

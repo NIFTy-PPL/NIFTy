@@ -30,19 +30,19 @@ class PowerSpace(StructuredDomain):
     Parameters
     ----------
     harmonic_partner : StructuredDomain
-        The harmonic dmain of which this is the power space.
-    binbounds : None, or tuple of float
+        The harmonic domain of which this is the power space.
+    binbounds : None, or tuple of float (default: None)
         if None:
             There will be as many bins as there are distinct k-vector lengths
             in the harmonic partner space.
-            The "binbounds" property of the PowerSpace will also be None.
+            The `binbounds` property of the PowerSpace will also be None.
         else:
             the bin bounds requested for this PowerSpace. The array
             must be sorted and strictly ascending. The first entry is the right
             boundary of the first bin, and the last entry is the left boundary
-            of the last bin, i.e. thee will be len(binbounds)+1 bins in total,
-            with the first and last bins reaching to -+infinity, respectively.
-            (default : None)
+            of the last bin, i.e. thee will be `len(binbounds)+1` bins in
+            total, with the first and last bins reaching to -+infinity,
+            respectively.
     """
 
     _powerIndexCache = {}
@@ -191,6 +191,7 @@ class PowerSpace(StructuredDomain):
 
     @property
     def harmonic(self):
+        """bool : Always False for this class."""
         return False
 
     @property
@@ -209,12 +210,15 @@ class PowerSpace(StructuredDomain):
 
     @property
     def harmonic_partner(self):
-        """Returns the Space of which this is the power space."""
+        """StructuredDomain : the harmonic domain associated with `self`."""
         return self._harmonic_partner
 
     @property
     def binbounds(self):
-        """Returns the boundaries between the power spectrum bins as a tuple.
+        """None or tuple of float : inner bin boundaries
+
+        The boundaries between bins, starting with the right boundary of the
+        first bin, up to the left boundary of the last bin.
 
         `None` is used to indicate natural binning.
         """
@@ -222,12 +226,13 @@ class PowerSpace(StructuredDomain):
 
     @property
     def pindex(self):
-        """Returns a data object having the shape of the harmonic partner
-        space containing the indices of the power bin a pixel belongs to.
+        """data_object : bin indices
+
+        Bin index for every pixel in the harmonic partner.
         """
         return self._pindex
 
     @property
     def k_lengths(self):
-        """Returns a sorted array of all k-modes."""
+        """numpy.ndarray(float) : sorted array of all k-vector lengths."""
         return self._k_lengths

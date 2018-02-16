@@ -61,7 +61,7 @@ class HPSpace(StructuredDomain):
 
     @property
     def nside(self):
-        """Returns the nside of the corresponding HEALPix pixelization."""
+        """int : HEALPix Nside parameter of this domain"""
         return self._nside
 
     def get_default_codomain(self):
@@ -71,7 +71,7 @@ class HPSpace(StructuredDomain):
         Returns
         -------
         LMSpace
-            The parter domain
+            The partner domain
 
         Notes
         -----

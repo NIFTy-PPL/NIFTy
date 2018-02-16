@@ -67,7 +67,7 @@ class StructuredDomain(Domain):
 
     @abc.abstractproperty
     def harmonic(self):
-        """ Returns True iff this domain is a harmonic domain."""
+        """bool : True iff this domain is a harmonic domain."""
         raise NotImplementedError
 
     def get_k_length_array(self):

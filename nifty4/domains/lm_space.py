@@ -110,15 +110,19 @@ class LMSpace(StructuredDomain):
 
     @property
     def lmax(self):
-        """ Returns the maximum :math:`l` value of any spherical harmonic
-        coefficient :math:`a_{lm}` that is represented in this Space.
+        """int : maximum allowed :math:`l`
+
+        The maximum :math:`l` value of any spherical harmonic
+        coefficient :math:`a_{lm}` that is represented in this domain.
         """
         return self._lmax
 
     @property
     def mmax(self):
-        """ Returns the maximum :math:`m` value of any spherical harmonic
-        coefficient :math:`a_{lm}` that is represented in this Space.
+        """int : maximum allowed :math:`m`
+
+        The maximum :math:`m` value of any spherical harmonic
+        coefficient :math:`a_{lm}` that is represented in this domain.
         """
         return self._mmax
 
@@ -130,7 +134,7 @@ class LMSpace(StructuredDomain):
         Returns
         -------
         GLSpace
-            The parter domain
+            The partner domain
         """
         from .. import GLSpace
         return GLSpace(self.lmax+1, self.mmax*2+1)
