@@ -22,6 +22,7 @@ Contents
    :maxdepth: 2
 
    ift
+   Gallery <http://wwwmpa.mpa-garching.mpg.de/ift/nifty/gallery/>
    start
    installation
    code
