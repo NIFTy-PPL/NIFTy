@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -30,19 +30,6 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     ----------
     position : Field
         The input parameter of the scalar function.
-
-    Attributes
-    ----------
-    position : Field
-        The Field location in parameter space where value, gradient and
-        curvature are evaluated.
-    value : np.float
-        The value of the energy functional at given `position`.
-    gradient : Field
-        The gradient at given `position`.
-    curvature : LinearOperator, callable
-        A positive semi-definite operator or function describing the curvature
-        of the potential at the given `position`.
 
     Notes
     -----
@@ -76,7 +63,7 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
 
         Returns
         -------
-        out : Energy
+        Energy
             Energy object at new position.
         """
         return self.__class__(position)
@@ -92,14 +79,16 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     @property
     def value(self):
         """
-        The value of the energy functional at given `position`.
+        float
+            The value of the energy functional at given `position`.
         """
         raise NotImplementedError
 
     @property
     def gradient(self):
         """
-        The gradient at given `position`.
+        Field
+            The gradient at given `position`.
         """
         raise NotImplementedError
 
@@ -107,14 +96,16 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     @memo
     def gradient_norm(self):
         """
-        The length of the gradient at given `position`.
+        float
+            The length of the gradient at given `position`.
         """
         return self.gradient.norm()
 
     @property
     def curvature(self):
         """
-        A positive semi-definite operator or function describing the curvature
-        of the potential at the given `position`.
+        LinearOperator
+            A positive semi-definite operator or function describing the
+            curvature of the potential at the given `position`.
         """
         raise NotImplementedError

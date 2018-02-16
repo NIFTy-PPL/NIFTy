@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -30,7 +30,7 @@ class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
 
         Parameters
         ----------
-        energy : Energy object
+        energy : Energy
            Energy object which provides value, gradient and curvature at a
            specific position in parameter space.
 
