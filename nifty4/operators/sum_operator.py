@@ -20,6 +20,8 @@ from .linear_operator import LinearOperator
 
 
 class SumOperator(LinearOperator):
+    """Class representing sums of operators."""
+
     def __init__(self, ops, neg, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError

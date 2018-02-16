@@ -20,6 +20,8 @@ from .linear_operator import LinearOperator
 
 
 class ChainOperator(LinearOperator):
+    """Class representing chains of operators."""
+
     def __init__(self, ops, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError

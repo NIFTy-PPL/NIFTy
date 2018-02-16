@@ -23,6 +23,10 @@ from .linear_operator import LinearOperator
 
 
 class InversionEnabler(LinearOperator):
+    """Class which augments the capability of another operator object via
+    numerical inversion.
+    """
+
     def __init__(self, op, inverter, preconditioner=None):
         super(InversionEnabler, self).__init__()
         self._op = op

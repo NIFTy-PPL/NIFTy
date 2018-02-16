@@ -47,10 +47,6 @@ class DiagonalOperator(EndomorphicOperator):
     NOTE: the fields given to __init__ and returned from .diagonal() are
     considered to be non-bare, i.e. during operator application, no additional
     volume factors are applied!
-
-    See Also
-    --------
-    EndomorphicOperator
     """
 
     def __init__(self, diagonal, domain=None, spaces=None):

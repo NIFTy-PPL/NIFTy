@@ -23,6 +23,9 @@ from .linear_operator import LinearOperator
 
 
 class GeometryRemover(LinearOperator):
+    """Operator which transforms between a structured and an unstructured
+    domain."""
+
     def __init__(self, domain):
         super(GeometryRemover, self).__init__()
         self._domain = DomainTuple.make(domain)

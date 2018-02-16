@@ -26,6 +26,9 @@ from ..domains.dof_space import DOFSpace
 
 
 class DOFDistributor(LinearOperator):
+    """Operator transforming between a DOFSpace and any other domain by means
+    of distribution/projection."""
+
     def __init__(self, dofdex, target=None, space=None):
         super(DOFDistributor, self).__init__()
 
