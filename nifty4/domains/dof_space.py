@@ -22,10 +22,12 @@ from .structured_domain import StructuredDomain
 
 class DOFSpace(StructuredDomain):
     """Generic degree-of-freedom space."""
+
+    _needed_for_hash = ["_dvol"]
+
     def __init__(self, dof_weights):
         super(DOFSpace, self).__init__()
         self._dvol = tuple(dof_weights)
-        self._needed_for_hash += ['_dvol']
 
     @property
     def harmonic(self):

@@ -37,9 +37,10 @@ class GLSpace(StructuredDomain):
         Default value is 2*nlat + 1.
     """
 
+    _needed_for_hash = ["_nlat", "_nlon"]
+
     def __init__(self, nlat, nlon=None):
         super(GLSpace, self).__init__()
-        self._needed_for_hash += ["_nlat", "_nlon"]
 
         self._nlat = int(nlat)
         if self._nlat < 1:

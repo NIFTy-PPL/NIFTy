@@ -47,10 +47,10 @@ class RGSpace(StructuredDomain):
         Whether the space represents a grid in position or harmonic space.
         (default: False).
     """
+    _needed_for_hash = ["_distances", "_shape", "_harmonic"]
 
     def __init__(self, shape, distances=None, harmonic=False):
         super(RGSpace, self).__init__()
-        self._needed_for_hash += ["_distances", "_shape", "_harmonic"]
 
         self._harmonic = bool(harmonic)
         if np.isscalar(shape):

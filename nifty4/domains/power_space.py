@@ -46,6 +46,7 @@ class PowerSpace(StructuredDomain):
     """
 
     _powerIndexCache = {}
+    _needed_for_hash = ["_harmonic_partner", "_binbounds"]
 
     @staticmethod
     def linear_binbounds(nbin, first_bound, last_bound):
@@ -138,7 +139,6 @@ class PowerSpace(StructuredDomain):
 
     def __init__(self, harmonic_partner, binbounds=None):
         super(PowerSpace, self).__init__()
-        self._needed_for_hash += ['_harmonic_partner', '_binbounds']
 
         if not (isinstance(harmonic_partner, StructuredDomain) and
                 harmonic_partner.harmonic):

@@ -26,10 +26,10 @@ class UnstructuredDomain(Domain):
 
     Typically used for data spaces.
     """
+    _needed_for_hash = ["_shape"]
 
     def __init__(self, shape):
         super(UnstructuredDomain, self).__init__()
-        self._needed_for_hash += ["_shape"]
         try:
             self._shape = tuple([int(i) for i in shape])
         except TypeError:

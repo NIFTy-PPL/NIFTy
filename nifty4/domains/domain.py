@@ -25,16 +25,10 @@ import numpy as np
 class Domain(with_metaclass(
         NiftyMeta, type('NewBase', (object,), {}))):
     """The abstract class repesenting a (structured or unstructured) domain.
-
-    Attributes:
-    -----------
-    _needed_for_hash : list of str
-        the names of all members that are relevant for comparison against
-        other Domain objects.
     """
 
     def __init__(self):
-        self._needed_for_hash = []
+        pass
 
     @abc.abstractmethod
     def __repr__(self):
@@ -68,7 +62,7 @@ class Domain(with_metaclass(
         Notes
         -----
         Only members that are explicitly added to
-        :attr:`._needed_for_hash` will be used for comparisom.
+        :attr:`._needed_for_hash` will be used for comparison.
 
         Subclasses of Domain should not re-define :meth:`__eq__`,
         :meth:`__ne__`, or :meth:`__hash__`; they should instead add their
