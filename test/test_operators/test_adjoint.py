@@ -31,6 +31,7 @@ _p_RG_spaces = [ift.RGSpace(19, distances=0.7),
                 ift.RGSpace((1, 2, 3, 6), distances=(0.2, 0.25, 0.34, .8))]
 _p_spaces = _p_RG_spaces + [ift.HPSpace(17), ift.GLSpace(8, 13)]
 
+_pow_spaces = [ift.PowerSpace(ift.RGSpace((17,38), harmonic=True))]
 
 class Consistency_Tests(unittest.TestCase):
     @expand(product(_h_spaces, [np.float64, np.complex128]))
@@ -63,4 +64,9 @@ class Consistency_Tests(unittest.TestCase):
     def testDiagonal(self, sp, dtype):
         op = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
                                                         dtype=dtype))
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_pow_spaces, [np.float64, np.complex128]))
+    def testLaplace(self, sp, dtype):
+        op = ift.LaplaceOperator(sp)
         ift.extra.consistency_check(op, dtype, dtype)
