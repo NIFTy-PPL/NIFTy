@@ -335,7 +335,7 @@ def from_object(object, dtype, copy, set_locked):
         raise ValueError("cannot lock object without copying")
     data = np.array(object._data, dtype=dtype, copy=copy)
     if set_locked:
-        lock(data)
+        data.flags.writeable = False
     return data_object(object._shape, data, distaxis=object._distaxis)
 
 
