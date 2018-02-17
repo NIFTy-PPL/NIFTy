@@ -27,9 +27,6 @@ class Domain(with_metaclass(
     """The abstract class repesenting a (structured or unstructured) domain.
     """
 
-    def __init__(self):
-        pass
-
     @abc.abstractmethod
     def __repr__(self):
         raise NotImplementedError

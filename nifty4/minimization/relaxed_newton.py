@@ -26,11 +26,12 @@ class RelaxedNewton(DescentMinimizer):
     The descent direction is determined by weighting the gradient at the
     current parameter position with the inverse local curvature.
     """
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
+    def __init__(self, controller, line_searcher=None):
+        if line_searcher is None:
+            line_searcher = LineSearchStrongWolfe(
+                preferred_initial_step_size=1.)
         super(RelaxedNewton, self).__init__(controller=controller,
                                             line_searcher=line_searcher)
-        # FIXME: this does not look idiomatic
-        self.line_searcher.preferred_initial_step_size = 1.
 
     def get_descent_direction(self, energy):
         return -energy.curvature.inverse_times(energy.gradient)

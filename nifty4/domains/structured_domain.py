@@ -29,9 +29,6 @@ class StructuredDomain(Domain):
     are needed for power spectrum analysis and smoothing.
     """
 
-    def __init__(self):
-        super(StructuredDomain, self).__init__()
-
     @abc.abstractproperty
     def scalar_dvol(self):
         """float or None : uniform cell volume, if applicable

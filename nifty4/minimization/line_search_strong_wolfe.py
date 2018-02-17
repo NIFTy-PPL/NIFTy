@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -50,11 +50,12 @@ class LineSearchStrongWolfe(LineSearch):
         (Default: 100)
     """
 
-    def __init__(self, c1=1e-4, c2=0.9,
+    def __init__(self, preferred_initial_step_size=None, c1=1e-4, c2=0.9,
                  max_step_size=1000000000, max_iterations=100,
                  max_zoom_iterations=100):
 
-        super(LineSearchStrongWolfe, self).__init__()
+        super(LineSearchStrongWolfe, self).__init__(
+            preferred_initial_step_size)
 
         self.c1 = np.float(c1)
         self.c2 = np.float(c2)
