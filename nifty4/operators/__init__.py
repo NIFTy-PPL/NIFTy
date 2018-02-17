@@ -7,10 +7,12 @@ from .fft_operator import FFTOperator
 from .fft_smoothing_operator import FFTSmoothingOperator
 from .geometry_remover import GeometryRemover
 from .laplace_operator import LaplaceOperator
+from .smoothness_operator import SmoothnessOperator
 from .power_distributor import PowerDistributor
 from .inversion_enabler import InversionEnabler
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
            "FFTSmoothingOperator", "GeometryRemover",
-           "LaplaceOperator", "PowerDistributor", "InversionEnabler"]
+           "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
+           "InversionEnabler"]

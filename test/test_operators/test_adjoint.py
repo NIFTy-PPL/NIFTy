@@ -70,3 +70,8 @@ class Consistency_Tests(unittest.TestCase):
     def testLaplace(self, sp, dtype):
         op = ift.LaplaceOperator(sp)
         ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_pow_spaces, [np.float64, np.complex128]))
+    def testSmoothness(self, sp, dtype):
+        op = ift.SmoothnessOperator(sp)
+        ift.extra.consistency_check(op, dtype, dtype)
