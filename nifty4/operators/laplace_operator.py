@@ -117,7 +117,7 @@ class LaplaceOperator(EndomorphicOperator):
         if axis == dobj.distaxis(yf):
             yf = dobj.redistribute(yf, nodist=(axis,))
         y = dobj.local_data(yf)
-        y /= dposc
+        y = y/dposc
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
         deriv = (y[sl_r]-y[sl_l])/dpos  # defined between points
