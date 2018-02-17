@@ -76,9 +76,6 @@ if __name__ == "__main__":
     ift.plot(ht(m), name="reconstruction.png", **plotdict)
 
     # Sample uncertainty map
-    sample_variance = ift.Field.zeros(s_space)
-    sample_mean = ift.Field.zeros(s_space)
-
     mean, variance = ift.probe_with_posterior_samples(curv, ht, 50)
     ift.plot(variance, name="posterior_variance.png", **plotdict2)
     ift.plot(mean+ht(m), name="posterior_mean.png", **plotdict)

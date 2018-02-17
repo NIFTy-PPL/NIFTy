@@ -323,10 +323,20 @@ def sqrt(a, out=None):
     return _math_helper(a, np.sqrt, out)
 
 
-def from_object(object, dtype=None, copy=True):
-    return data_object(object._shape, np.array(object._data, dtype=dtype,
-                                               copy=copy),
-                       distaxis=object._distaxis)
+def from_object(object, dtype, copy, set_locked):
+    if dtype is None:
+        dtype = object.dtype
+    dtypes_equal = dtype == object.dtype
+    if set_locked and dtypes_equal and locked(object):
+        return object
+    if not dtypes_equal and not copy:
+        raise ValueError("cannot change data type without copying")
+    if set_locked and not copy:
+        raise ValueError("cannot lock object without copying")
+    data = np.array(object._data, dtype=dtype, copy=copy)
+    if set_locked:
+        lock(data)
+    return data_object(object._shape, data, distaxis=object._distaxis)
 
 
 # This function draws all random numbers on all tasks, to produce the same

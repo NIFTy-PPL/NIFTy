@@ -21,6 +21,17 @@ from .domains.domain import Domain
 
 
 class DomainTuple(object):
+    """Ordered sequence of Domain objects.
+
+    This class holds a set of :class:`Domain` objects, which together form the
+    space on which a :class:`Field` is defined.
+
+    Notes
+    -----
+
+    DomainTuples should never be created using the constructor, but rather
+    via the factory function :attr:`make`!
+    """
     _tupleCache = {}
 
     def __init__(self, domain):
@@ -44,6 +55,18 @@ class DomainTuple(object):
 
     @staticmethod
     def make(domain):
+        """Returns a DomainTuple matching `domain`.
+
+        This function checks whether a matching DomainTuple already exists.
+        If yes, this object is returned, otherwise a new DomainTuple object
+        is created and returned.
+
+        Parameters
+        ----------
+        domain : Domain or tuple of Domain or DomainTuple
+            The geometrical structure for which the DomainTuple shall be
+            obtained.
+        """
         if isinstance(domain, DomainTuple):
             return domain
         domain = DomainTuple._parse_domain(domain)
@@ -75,14 +98,24 @@ class DomainTuple(object):
 
     @property
     def shape(self):
+        """tuple of int: number of pixels along each axis
+
+        The shape of the array-like object required to store information
+        living on the DomainTuple.
+        """
         return self._shape
 
     @property
     def size(self):
+        """int : total number of pixels.
+
+        Equivalent to the products over all entries in the object's shape.
+        """
         return self._size
 
     @property
     def axes(self):
+        """tuple of tuple of int : shapes of the underlying domains"""
         return self._axtuple
 
     def __len__(self):

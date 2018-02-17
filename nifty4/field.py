@@ -45,29 +45,35 @@ class Field(object):
     dtype : type
         A numpy.type. Most common are float and complex.
 
-    copy: bool
+    copy : bool
     """
 
-    def __init__(self, domain=None, val=None, dtype=None, copy=False):
+    def __init__(self, domain=None, val=None, dtype=None, copy=False,
+                 locked=False):
         self._domain = self._infer_domain(domain=domain, val=val)
 
         dtype = self._infer_dtype(dtype=dtype, val=val)
         if isinstance(val, Field):
             if self._domain != val._domain:
                 raise ValueError("Domain mismatch")
-            self._val = dobj.from_object(val.val, dtype=dtype, copy=copy)
+            self._val = dobj.from_object(val.val, dtype=dtype, copy=copy,
+                                         set_locked=locked)
         elif (np.isscalar(val)):
             self._val = dobj.full(self._domain.shape, dtype=dtype,
                                   fill_value=val)
         elif isinstance(val, dobj.data_object):
             if self._domain.shape == val.shape:
-                self._val = dobj.from_object(val, dtype=dtype, copy=copy)
+                self._val = dobj.from_object(val, dtype=dtype, copy=copy,
+                                             set_locked=locked)
             else:
                 raise ValueError("Shape mismatch")
         elif val is None:
             self._val = dobj.empty(self._domain.shape, dtype=dtype)
         else:
             raise TypeError("unknown source type")
+
+        if locked:
+            dobj.lock(self._val)
 
     @staticmethod
     def full(domain, val, dtype=None):
@@ -251,9 +257,7 @@ class Field(object):
         """
         if self.locked:
             return self
-        res = Field(val=self, copy=True)
-        res.lock()
-        return res
+        return Field(val=self, copy=True, locked=True)
 
     def scalar_weight(self, spaces=None):
         if np.isscalar(spaces):

@@ -90,6 +90,7 @@ class CriticalPowerEnergy(Energy):
             Dist = PowerDistributor(target=self.m.domain,
                                     power_space=self.position.domain[0])
             if self.D is not None:
+                # MR FIXME: we should use stuff from probing.utils for this
                 w = Field.zeros(self.position.domain, dtype=self.m.dtype)
                 for i in range(self.samples):
                     sample = self.D.draw_sample() + self.m

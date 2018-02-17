@@ -239,5 +239,5 @@ class PowerSpace(StructuredDomain):
 
     @property
     def k_lengths(self):
-        """numpy.ndarray(float) : sorted array of all k-vector lengths."""
+        """numpy.ndarray(float) : k-vector length for each bin."""
         return self._k_lengths

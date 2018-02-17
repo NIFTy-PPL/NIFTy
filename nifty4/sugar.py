@@ -239,8 +239,7 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
     space = int(space)
     return DiagonalOperator(
         create_power_field(domain[space], power_spectrum, dtype),
-        domain=domain,
-        spaces=space)
+        domain=domain, spaces=space)
 
 
 def create_composed_ht_operator(domain, codomain=None):
