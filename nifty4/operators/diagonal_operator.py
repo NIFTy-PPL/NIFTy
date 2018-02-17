@@ -44,7 +44,7 @@ class DiagonalOperator(EndomorphicOperator):
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
 
-    NOTE: the fields given to __init__ and returned from .diagonal() are
+    NOTE: the fields given to __init__ and returned from .diagonal are
     considered to be non-bare, i.e. during operator application, no additional
     volume factors are applied!
     """
@@ -74,7 +74,7 @@ class DiagonalOperator(EndomorphicOperator):
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
-        self._diagonal = diagonal.copy()
+        self._diagonal = diagonal.locked_copy()
 
         if self._spaces is not None:
             active_axes = []
@@ -111,9 +111,10 @@ class DiagonalOperator(EndomorphicOperator):
             else:
                 return Field(x.domain, val=x.val/self._ldiag.conj())
 
+    @property
     def diagonal(self):
         """ Returns the diagonal of the Operator."""
-        return self._diagonal.copy()
+        return self._diagonal
 
     @property
     def domain(self):

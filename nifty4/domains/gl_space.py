@@ -67,17 +67,20 @@ class GLSpace(StructuredDomain):
     def size(self):
         return np.int((self.nlat * self.nlon))
 
+    @property
     def scalar_dvol(self):
         return None
 
     # MR FIXME: this is potentially wasteful, since the return array is
     #           blown up by a factor of self.nlon
+    @property
     def dvol(self):
         from pyHealpix import GL_weights
         if self._dvol is None:
             self._dvol = GL_weights(self.nlat, self.nlon)
         return np.repeat(self._dvol, self.nlon)
 
+    @property
     def total_volume(self):
         return 4*np.pi
 

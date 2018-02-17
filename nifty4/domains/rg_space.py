@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -35,10 +35,14 @@ class RGSpace(StructuredDomain):
     distances : None or float or tuple of float, optional
         Distance between two grid points along each axis
         (default: None).
-        If distances==None:
-        if harmonic==True, all distances will be set to 1
-        if harmonic==False, the distance along each axis will be
-        set to the inverse of the number of points along that axis.
+
+        If distances is None:
+
+          - if harmonic==True, all distances will be set to 1
+
+          - if harmonic==False, the distance along each axis will be
+            set to the inverse of the number of points along that axis.
+
     harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
         (default: False).
@@ -84,6 +88,7 @@ class RGSpace(StructuredDomain):
     def size(self):
         return self._size
 
+    @property
     def scalar_dvol(self):
         return self._dvol
 
@@ -186,8 +191,8 @@ class RGSpace(StructuredDomain):
 
     @property
     def distances(self):
-        """Distance between grid points along each axis. It is a tuple
-        of positive floating point numbers with the n-th entry giving the
-        distance between neighboring grid points along the n-th dimension.
+        """tuple of float : Distance between grid points along each axis.
+        The n-th entry of the tuple is the distance between neighboring
+        grid points along the n-th dimension.
         """
         return self._distances

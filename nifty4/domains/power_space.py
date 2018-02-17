@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -143,11 +143,11 @@ class PowerSpace(StructuredDomain):
         if not (isinstance(harmonic_partner, StructuredDomain) and
                 harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
-        if harmonic_partner.scalar_dvol() is None:
+        if harmonic_partner.scalar_dvol is None:
             raise ValueError("harmonic partner must have "
                              "scalar volume factors")
         self._harmonic_partner = harmonic_partner
-        pdvol = harmonic_partner.scalar_dvol()
+        pdvol = harmonic_partner.scalar_dvol
 
         if binbounds is not None:
             binbounds = tuple(binbounds)
@@ -178,7 +178,10 @@ class PowerSpace(StructuredDomain):
                 weights=dobj.local_data(k_length_array.val).ravel(),
                 minlength=nbin).astype(np.float64, copy=False)
             temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho
+            temp_k_lengths.flags.writeable = False
+            dobj.lock(temp_pindex)
             temp_dvol = temp_rho*pdvol
+            temp_dvol.flags.writeable = False
             self._powerIndexCache[key] = (binbounds, temp_pindex,
                                           temp_k_lengths, temp_dvol)
 
@@ -202,9 +205,11 @@ class PowerSpace(StructuredDomain):
     def size(self):
         return self.shape[0]
 
+    @property
     def scalar_dvol(self):
         return None
 
+    @property
     def dvol(self):
         return self._dvol
 

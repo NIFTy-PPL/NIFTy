@@ -166,6 +166,13 @@ class Field(object):
     def fill(self, fill_value):
         self._val.fill(fill_value)
 
+    def lock(self):
+        dobj.lock(self._val)
+
+    @property
+    def locked(self):
+        return dobj.locked(self._val)
+
     @property
     def val(self):
         """ Returns the data object associated with this Field.
@@ -227,19 +234,36 @@ class Field(object):
         Returns
         -------
         Field
-            The output object. An identical copy of 'self'.
+            An identical copy of 'self'.
         """
         return Field(val=self, copy=True)
 
+    def locked_copy(self):
+        """ Returns a read-only version of the Field.
+
+        If `self` is locked, returns `self`. Otherwise returns a locked copy
+        of `self`.
+
+        Returns
+        -------
+        Field
+            A read-only version of 'self'.
+        """
+        if self.locked:
+            return self
+        res = Field(val=self, copy=True)
+        res.lock()
+        return res
+
     def scalar_weight(self, spaces=None):
         if np.isscalar(spaces):
-            return self._domain[spaces].scalar_dvol()
+            return self._domain[spaces].scalar_dvol
 
         if spaces is None:
             spaces = range(len(self._domain))
         res = 1.
         for i in spaces:
-            tmp = self._domain[i].scalar_dvol()
+            tmp = self._domain[i].scalar_dvol
             if tmp is None:
                 return None
             res *= tmp
@@ -247,13 +271,13 @@ class Field(object):
 
     def total_volume(self, spaces=None):
         if np.isscalar(spaces):
-            return self._domain[spaces].total_volume()
+            return self._domain[spaces].total_volume
 
         if spaces is None:
             spaces = range(len(self._domain))
         res = 1.
         for i in spaces:
-            res *= self._domain[i].total_volume()
+            res *= self._domain[i].total_volume
         return res
 
     def weight(self, power=1, spaces=None, out=None):
@@ -287,7 +311,7 @@ class Field(object):
 
         fct = 1.
         for ind in spaces:
-            wgt = self._domain[ind].dvol()
+            wgt = self._domain[ind].dvol
             if np.isscalar(wgt):
                 fct *= wgt
             else:

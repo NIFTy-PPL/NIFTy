@@ -116,9 +116,9 @@ class FFTOperator(LinearOperator):
             tmp = dobj.from_local_data(x.val.shape, ldat2, distaxis=0)
         Tval = Field(tdom, tmp)
         if mode & (LinearOperator.TIMES | LinearOperator.ADJOINT_TIMES):
-            fct = self._domain[self._space].scalar_dvol()
+            fct = self._domain[self._space].scalar_dvol
         else:
-            fct = self._target[self._space].scalar_dvol()
+            fct = self._target[self._space].scalar_dvol
         if fct != 1:
             Tval *= fct
 

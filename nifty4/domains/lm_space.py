@@ -74,6 +74,7 @@ class LMSpace(StructuredDomain):
         # minus two little triangles if mmax < lmax
         return (l+1)**2 - (l-m)*(l-m+1)
 
+    @property
     def scalar_dvol(self):
         return 1.
 

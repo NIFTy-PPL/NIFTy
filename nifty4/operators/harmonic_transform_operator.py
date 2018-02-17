@@ -142,7 +142,7 @@ class HarmonicTransformOperator(LinearOperator):
             ldat2 = dobj.local_data(tmp).reshape(ldat.shape)
             tmp = dobj.from_local_data(x.val.shape, ldat2, distaxis=0)
         Tval = Field(tdom, tmp)
-        fct = self._domain[self._space].scalar_dvol()
+        fct = self._domain[self._space].scalar_dvol
         if fct != 1:
             Tval *= fct
 

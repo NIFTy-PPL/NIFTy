@@ -148,12 +148,11 @@ class LinearOperator(with_metaclass(
             depending on mode.
 
         mode : int
-            LinearOperator.TIMES: normal application
-            LinearOperator.ADJOINT_TIMES: adjoint application
-            LinearOperator.INVERSE_TIMES: inverse application
-            LinearOperator.ADJOINT_INVERSE_TIMES or
-            LinearOperator.INVERSE_ADJOINT_TIMES:
-            adjoint inverse application
+            - :attr:`TIMES`: normal application
+            - :attr:`ADJOINT_TIMES`: adjoint application
+            - :attr:`INVERSE_TIMES`: inverse application
+            - :attr:`ADJOINT_INVERSE_TIMES` or
+              :attr:`INVERSE_ADJOINT_TIMES`: adjoint inverse application
 
         Returns
         -------

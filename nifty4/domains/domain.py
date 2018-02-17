@@ -25,6 +25,12 @@ import numpy as np
 class Domain(with_metaclass(
         NiftyMeta, type('NewBase', (object,), {}))):
     """The abstract class repesenting a (structured or unstructured) domain.
+
+    Attributes:
+    -----------
+    _needed_for_hash : list of str
+        the names of all members that are relevant for comparison against
+        other Domain objects.
     """
 
     def __init__(self):
@@ -39,8 +45,8 @@ class Domain(with_metaclass(
 
         Notes
         -----
-            Only members that are explicitly added to
-            :py:attr:`._needed_for_hash` will be used for hashing.
+        Only members that are explicitly added to
+        :attr:`._needed_for_hash` will be used for hashing.
         """
         result_hash = 0
         for key in self._needed_for_hash:
@@ -58,6 +64,15 @@ class Domain(with_metaclass(
         Returns
         -------
         bool : True iff `self` and x describe the same domain.
+
+        Notes
+        -----
+        Only members that are explicitly added to
+        :attr:`._needed_for_hash` will be used for comparisom.
+
+        Subclasses of Domain should not re-define :meth:`__eq__`,
+        :meth:`__ne__`, or :meth:`__hash__`; they should instead add their
+        relevant attributes' names to :attr:`._needed_for_hash`.
         """
         if self is x:  # shortcut for simple case
             return True
@@ -69,12 +84,12 @@ class Domain(with_metaclass(
         return True
 
     def __ne__(self, x):
-        """Returns the opposite of :py:meth:`.__eq__()`"""
+        """Returns the opposite of :meth:`.__eq__()`"""
         return not self.__eq__(x)
 
     @abc.abstractproperty
     def shape(self):
-        """tuple of ints: number of pixels along each axis
+        """tuple of int: number of pixels along each axis
 
         The shape of the array-like object required to store information
         living on the domain.

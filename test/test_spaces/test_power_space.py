@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -98,7 +98,7 @@ class PowerSpaceConsistencyCheck(unittest.TestCase):
         p = ift.PowerSpace(harmonic_partner=harmonic_partner, binbounds=bb)
 
         assert_equal(np.bincount(ift.dobj.to_global_data(p.pindex).ravel()),
-                     p.dvol(), err_msg='rho is not equal to pindex degeneracy')
+                     p.dvol, err_msg='rho is not equal to pindex degeneracy')
 
 
 class PowerSpaceFunctionalityTest(unittest.TestCase):
@@ -128,8 +128,8 @@ class PowerSpaceFunctionalityTest(unittest.TestCase):
     def test_dvol(self):
         hp = ift.RGSpace(10, harmonic=True)
         p = ift.PowerSpace(harmonic_partner=hp)
-        v1 = hp.dvol()
+        v1 = hp.dvol
         v1 = hp.size*v1 if np.isscalar(v1) else np.sum(v1)
-        v2 = p.dvol()
+        v2 = p.dvol
         v2 = p.size*v2 if np.isscalar(v2) else np.sum(v2)
         assert_allclose(v1, v2)

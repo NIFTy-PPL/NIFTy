@@ -39,9 +39,11 @@ class DOFSpace(StructuredDomain):
     def size(self):
         return len(self._dvol)
 
+    @property
     def scalar_dvol(self):
         return None
 
+    @property
     def dvol(self):
         return np.array(self._dvol)
 

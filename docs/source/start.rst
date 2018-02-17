@@ -42,9 +42,11 @@ One of the fundamental building blocks of the NIFTy4 framework is the *domain*.
 Its required capabilities are expressed by the abstract :class:`Domain` class.
 A domain must be able to answer the following queries:
 
-- its total number of data entries (pixels)
-- the shape of the array that is supposed to hold them
-- equality/inequality to another :class:`Domain` instance
+- its total number of data entries (pixels), which is accessible via the
+  :attr:`~Domain.size` property
+- the shape of the array that is supposed to hold these data entries
+  (obtainable by means of the :attr:`~Domain.shape` property)
+- equality comparison to another :class:`Domain` instance
 
 
 Unstructured domains

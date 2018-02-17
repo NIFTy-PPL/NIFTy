@@ -60,7 +60,7 @@ class ChainOperator(LinearOperator):
             # try to absorb the factor into a DiagonalOperator
             for i in range(len(opsnew)):
                 if isinstance(opsnew[i], DiagonalOperator):
-                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal()*fct,
+                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal*fct,
                                                  domain=opsnew[i].domain,
                                                  spaces=opsnew[i]._spaces)
                     fct = 1.
@@ -76,8 +76,8 @@ class ChainOperator(LinearOperator):
                     isinstance(opsnew[-1], DiagonalOperator) and
                     isinstance(op, DiagonalOperator) and
                     op._spaces == opsnew[-1]._spaces):
-                opsnew[-1] = DiagonalOperator(opsnew[-1].diagonal() *
-                                              op.diagonal(),
+                opsnew[-1] = DiagonalOperator(opsnew[-1].diagonal *
+                                              op.diagonal,
                                               domain=opsnew[-1].domain,
                                               spaces=opsnew[-1]._spaces)
             else:
