@@ -91,3 +91,11 @@ def default_distaxis():
 
 def local_shape(glob_shape, distaxis=-1):
     return glob_shape
+
+
+def lock(arr):
+    arr.flags.writeable = False
+
+
+def locked(arr):
+    return not arr.flags.writeable

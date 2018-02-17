@@ -517,3 +517,11 @@ def transpose(arr):
 
 def default_distaxis():
     return 0
+
+
+def lock(arr):
+    arr._data.flags.writeable = False
+
+
+def locked(arr):
+    return not arr._data.flags.writeable

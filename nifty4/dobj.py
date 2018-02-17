@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -33,4 +33,5 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "log", "tanh", "sqrt", "from_object", "from_random",
            "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
-           "redistribute", "default_distaxis", "mprint", "is_numpy"]
+           "redistribute", "default_distaxis", "mprint", "is_numpy",
+           "lock", "locked"]
