@@ -29,6 +29,25 @@ class LinearOperator(with_metaclass(
 
     The base NIFTY operator class is an abstract class from which
     other specific operator subclasses are derived.
+
+    Attributes
+    ----------
+    TIMES : int
+        Symbolic constant representing normal operator application
+    ADJOINT_TIMES : int
+        Symbolic constant representing adjoint operator application
+    INVERSE_TIMES : int
+        Symbolic constant representing inverse operator application
+    ADJOINT_INVERSE_TIMES : int
+        Symbolic constant representing adjoint inverse operator application
+    INVERSE_ADJOINT_TIMES : int
+        same as ADJOINT_INVERSE_TIMES
+
+    Notes
+    -----
+    The symbolic constants for the operation modes can be combined by the
+    "bitwise-or" operator "|", for expressing the capability of the operator
+    by means of a single integer number.
     """
 
     _validMode = (False, True, True, False, True, False, False, False, True)
@@ -131,7 +150,7 @@ class LinearOperator(with_metaclass(
     def capability(self):
         """int : the supported operation modes
 
-        Returns the suppoerted subset of :attr:`TIMES`, :attr:`ADJOINT_TIMES`,
+        Returns the supported subset of :attr:`TIMES`, :attr:`ADJOINT_TIMES`,
         :attr:`INVERSE_TIMES`, and :attr:`ADJOINT_INVERSE_TIMES`,
         joined together by the "|" operator.
         """

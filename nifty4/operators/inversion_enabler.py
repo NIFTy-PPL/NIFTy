@@ -25,6 +25,20 @@ from .linear_operator import LinearOperator
 class InversionEnabler(LinearOperator):
     """Class which augments the capability of another operator object via
     numerical inversion.
+
+    Parameters
+    ----------
+    op : :class:`EndomorphicOperator`
+        The operator to be enhanced.
+        The InversionEnabler object will support the same operation modes as
+        `op`, and additionally the inverse set. The newly-added modes will
+        be computed by iterative inversion.
+    inverter : :class:`Minimizer`
+        The minimizer to use for the iterative numerical inversion.
+        Typically, this is a :class:`ConjugateGradient` object.
+    preconditioner : :class:`LinearOperator`, optional
+        if not None, this operator is used as a preconditioner during the
+        iterative inversion, to accelerate convergence.
     """
 
     def __init__(self, op, inverter, preconditioner=None):

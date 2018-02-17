@@ -24,7 +24,6 @@ Contents
    ift
    Gallery <http://wwwmpa.mpa-garching.mpg.de/ift/nifty/gallery/>
    installation
-   start
    code
 
 Indices and tables

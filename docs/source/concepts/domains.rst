@@ -37,8 +37,8 @@ NIFTy requires them to provide the volume elements of their grid cells.
 The additional methods are specified in the abstract class
 :class:`StructuredDomain`:
 
-- Methods :meth:`~StructuredDomain.scalar_dvol`,
-  :meth:`~StructuredDomain.dvol`, and  :meth:`~StructuredDomain.total_volume`
+- The attributes :attr:`~StructuredDomain.scalar_dvol`,
+  :attr:`~StructuredDomain.dvol`, and  :attr:`~StructuredDomain.total_volume`
   provide information about the domain's pixel volume(s) and its total volume.
 - The property :attr:`~StructuredDomain.harmonic` specifies whether a domain
   is harmonic (i.e. describes a frequency space) or not
