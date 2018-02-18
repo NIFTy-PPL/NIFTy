@@ -42,6 +42,24 @@ class QuadraticEnergy(Energy):
         return QuadraticEnergy(position=position, A=self._A, b=self._b)
 
     def at_with_grad(self, position, grad):
+        """ Specialized version of `at`, taking also a gradient.
+
+        This custom method is meant for use within :class:ConjugateGradient`
+        minimizers, which already have the gradient available. It saves time
+        by not recomputing it.
+
+        Parameters
+        ----------
+        position : Field
+            Location in parameter space for the new Energy object.
+        grad : Field
+            Energy gradient at the new position.
+
+        Returns
+        -------
+        Energy
+            Energy object at new position.
+        """
         return QuadraticEnergy(position=position, A=self._A, b=self._b,
                                _grad=grad)
 

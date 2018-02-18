@@ -53,12 +53,12 @@ class Energy(NiftyMetaBase()):
         self._position = position.lock()
 
     def at(self, position):
-        """ Initializes and returns a new Energy object at the new position.
+        """ Returns a new Energy object, initialized at `position`.
 
         Parameters
         ----------
         position : Field
-            Parameter for the new Energy object.
+            Location in parameter space for the new Energy object.
 
         Returns
         -------
@@ -70,15 +70,16 @@ class Energy(NiftyMetaBase()):
     @property
     def position(self):
         """
-        The Field location in parameter space where value, gradient and
-        curvature are evaluated.
+        Field : selected location in parameter space
+            The Field location in parameter space where value, gradient and
+            curvature are evaluated.
         """
         return self._position
 
     @property
     def value(self):
         """
-        float
+        float : value of the functional
             The value of the energy functional at given `position`.
         """
         raise NotImplementedError
@@ -86,8 +87,7 @@ class Energy(NiftyMetaBase()):
     @property
     def gradient(self):
         """
-        Field
-            The gradient at given `position`.
+        Field : The gradient at given `position`.
         """
         raise NotImplementedError
 
@@ -95,15 +95,14 @@ class Energy(NiftyMetaBase()):
     @memo
     def gradient_norm(self):
         """
-        float
-            The length of the gradient at given `position`.
+        float : L2-norm of the gradient at given `position`.
         """
         return self.gradient.norm()
 
     @property
     def curvature(self):
         """
-        LinearOperator
+        LinearOperator : implicitly defined curvature
             A positive semi-definite operator or function describing the
             curvature of the potential at the given `position`.
         """

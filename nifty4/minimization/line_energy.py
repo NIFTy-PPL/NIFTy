@@ -77,24 +77,21 @@ class LineEnergy(object):
     @property
     def energy(self):
         """
-        Energy
-            The underlying Energy object
+        Energy : The underlying Energy object
         """
         return self._energy
 
     @property
     def value(self):
         """
-        float
-            The value of the energy functional at given `position`.
+        float : The value of the energy functional at given `position`.
         """
         return self._energy.value
 
     @property
     def directional_derivative(self):
         """
-        float
-            The directional derivative at the given `position`.
+        float : The directional derivative at the given `position`.
         """
         res = self._energy.gradient.vdot(self._line_direction)
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
