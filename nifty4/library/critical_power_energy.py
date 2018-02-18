@@ -112,7 +112,7 @@ class CriticalPowerEnergy(Energy):
         gradient = -self._theta
         gradient += self.alpha-0.5
         gradient += Tt
-        self._gradient = gradient
+        self._gradient = gradient.lock()
 
     def at(self, position):
         return self.__class__(position, self.m, D=self.D, alpha=self.alpha,

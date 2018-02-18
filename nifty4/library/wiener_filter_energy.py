@@ -54,6 +54,7 @@ class WienerFilterEnergy(Energy):
         Dx = self._curvature(self.position)
         self._value = 0.5*self.position.vdot(Dx) - self._j.vdot(self.position)
         self._gradient = Dx - self._j
+        self._gradient.lock()
 
     def at(self, position):
         return self.__class__(position=position, d=None, R=self.R, N=self.N,

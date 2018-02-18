@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division
+from __future__ import division, print_function
 from .minimizer import Minimizer
 from ..field import Field
 from .. import dobj
@@ -57,7 +57,7 @@ class ScipyMinimizer(Minimizer):
             def _update(self, x):
                 pos = Field(self._domain, x.reshape(self._domain.shape))
                 if (pos.val != self._energy.position.val).any():
-                    self._energy = self._energy.at(pos)
+                    self._energy = self._energy.at(pos.locked_copy())
                     status = self._controller.check(self._energy)
                     if status != self._controller.CONTINUE:
                         raise _MinimizationDone
@@ -68,13 +68,13 @@ class ScipyMinimizer(Minimizer):
 
             def jac(self, x):
                 self._update(x)
-                return self._energy.gradient.val.reshape(-1)
+                return self._energy.gradient.val.flatten()
 
             def hessp(self, x, p):
                 self._update(x)
                 vec = Field(self._domain, p.reshape(self._domain.shape))
                 res = self._energy.curvature(vec)
-                return res.val.reshape(-1)
+                return res.val.flatten()
 
         import scipy.optimize as opt
         hlp = _MinHelper(self._controller, energy)
@@ -82,19 +82,24 @@ class ScipyMinimizer(Minimizer):
         status = self._controller.start(hlp._energy)
         if status != self._controller.CONTINUE:
             return hlp._energy, status
+        x = hlp._energy.position.val.flatten()
         try:
             if self._need_hessp:
-                opt.minimize(hlp.fun, hlp._energy.position.val.reshape(-1),
-                             method=self._method, jac=hlp.jac,
-                             hessp=hlp.hessp,
-                             options=self._options)
+                r = opt.minimize(hlp.fun, x,
+                                 method=self._method, jac=hlp.jac,
+                                 hessp=hlp.hessp,
+                                 options=self._options)
             else:
-                opt.minimize(hlp.fun, hlp._energy.position.val.reshape(-1),
-                             method=self._method, jac=hlp.jac,
-                             options=self._options)
+                r = opt.minimize(hlp.fun, x,
+                                 method=self._method, jac=hlp.jac,
+                                 options=self._options)
         except _MinimizationDone:
             status = self._controller.check(hlp._energy)
             return hlp._energy, self._controller.check(hlp._energy)
+        if not r.success:
+            print("Problem in Scipy minimization:", r.message)
+        else:
+            print("Problem in Scipy minimization")
         return hlp._energy, self._controller.ERROR
 
 

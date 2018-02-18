@@ -95,7 +95,7 @@ class RGSpace(StructuredDomain):
     def get_k_length_array(self):
         if (not self.harmonic):
             raise NotImplementedError
-        out = Field((self,), dtype=np.float64)
+        out = Field(self, dtype=np.float64)
         oloc = out.local_data
         ibegin = dobj.ibegin(out.val)
         res = np.arange(oloc.shape[0], dtype=np.float64) + ibegin[0]

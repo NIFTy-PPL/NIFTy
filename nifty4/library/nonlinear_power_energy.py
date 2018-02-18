@@ -102,6 +102,7 @@ class NonlinearPowerEnergy(Energy):
         self._value += 0.5 * self.position.vdot(Tpos)
         self._gradient *= -1. / len(self.xi_sample_list)
         self._gradient += Tpos
+        self._gradient.lock()
 
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.xi, self.D,

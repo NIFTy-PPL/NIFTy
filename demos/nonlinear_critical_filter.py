@@ -5,11 +5,11 @@ np.random.seed(42)
 
 
 def adjust_zero_mode(m0, t0):
-    mtmp = m0.to_global_data()
+    mtmp = m0.to_global_data().copy()
     zero_position = len(m0.shape)*(0,)
     zero_mode = mtmp[zero_position]
     mtmp[zero_position] = zero_mode / abs(zero_mode)
-    ttmp = t0.to_global_data()
+    ttmp = t0.to_global_data().copy()
     ttmp[0] += 2 * np.log(abs(zero_mode))
     return (ift.Field.from_global_data(m0.domain, mtmp),
             ift.Field.from_global_data(t0.domain, ttmp))

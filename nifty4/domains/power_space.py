@@ -52,16 +52,22 @@ class PowerSpace(StructuredDomain):
     def linear_binbounds(nbin, first_bound, last_bound):
         """Produces linearly spaced bin bounds.
 
-        This will produce a binbounds array with nbin-1 entries with
-        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
-        values equidistantly spaced (in linear scale) between these two.
-
+        Parameters
+        ----------
         nbin : int
             the number of bins
         first_bound, last_bound : float
             the k values for the right boundary of the first bin and the left
             boundary of the last bin, respectively. They are given in length
             units of the harmonic partner space.
+
+        Returns
+        -------
+        numpy.ndarray(numpy.float64)
+            binbounds array with nbin-1 entries with
+            binbounds[0]=first_bound and binbounds[-1]=last_bound and the
+            remaining values equidistantly spaced (in linear scale) between
+            these two.
         """
         nbin = int(nbin)
         if nbin < 3:
@@ -72,17 +78,22 @@ class PowerSpace(StructuredDomain):
     def logarithmic_binbounds(nbin, first_bound, last_bound):
         """Produces logarithmically spaced bin bounds.
 
-        This will produce a binbounds array with nbin-1 entries with
-        binbounds[0]=first_bound and binbounds[-1]=last_bound and the remaining
-        values equidistantly spaced (in natural logarithmic scale)
-        between these two.
-
+        Parameters
+        ----------
         nbin : int
             the number of bins
         first_bound, last_bound : float
             the k values for the right boundary of the first bin and the left
             boundary of the last bin, respectively. They are given in length
             units of the harmonic partner space.
+
+        Returns
+        -------
+        numpy.ndarray(numpy.float64)
+            binbounds array with nbin-1 entries with
+            binbounds[0]=first_bound and binbounds[-1]=last_bound and the
+            remaining values equidistantly spaced (in natural logarithmic
+            scale) between these two.
         """
         nbin = int(nbin)
         if nbin < 3:
@@ -95,19 +106,24 @@ class PowerSpace(StructuredDomain):
     def useful_binbounds(space, logarithmic, nbin=None):
         """Produces bin bounds suitable for a given domain.
 
-        This will produce a binbounds array with `nbin-1` entries, if `nbin` is
-        supplied, or the maximum number of entries that does not produce empty
-        bins, if `nbin` is not supplied.
-        The first and last bin boundary are inferred from `space`.
-
+        Parameters
+        ----------
         space : StructuredDomain
             the domain for which the binbounds will be computed.
         logarithmic : bool
             If True bins will have equal size in linear space; otherwise they
-            will have equali size in logarithmic space.
+            will have equal size in logarithmic space.
         nbin : int, optional
             the number of bins
             If None, the highest possible number of bins will be used
+
+        Returns
+        -------
+        numpy.ndarray(numpy.float64)
+            Binbounds array with `nbin-1` entries, if `nbin` is
+            supplied, or the maximum number of entries that does not produce
+            empty bins, if `nbin` is not supplied.
+            The first and last bin boundary are inferred from `space`.
         """
         if not (isinstance(space, StructuredDomain) and space.harmonic):
             raise ValueError("first argument must be a harmonic space.")

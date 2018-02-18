@@ -86,7 +86,7 @@ class ConjugateGradient(Minimizer):
                 return energy, controller.ERROR
 
             q *= -alpha
-            r += q
+            r = r + q
 
             energy = energy.at_with_grad(energy.position - alpha*d, r)
 

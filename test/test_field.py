@@ -79,10 +79,8 @@ class Test_Functionality(unittest.TestCase):
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
-        assert_allclose((ps1/samples).to_global_data(),
-                        fp1.to_global_data(), rtol=0.2)
-        assert_allclose((ps2/samples).to_global_data(),
-                        fp2.to_global_data(), rtol=0.2)
+        assert_allclose((ps1/samples).local_data, fp1.local_data, rtol=0.2)
+        assert_allclose((ps2/samples).local_data, fp2.local_data, rtol=0.2)
 
     @expand(product([ift.RGSpace((8,), harmonic=True),
                      ift.RGSpace((8, 8), harmonic=True, distances=0.123)],
@@ -118,10 +116,8 @@ class Test_Functionality(unittest.TestCase):
             ps1 += sp.sum(spaces=1)/fp2.sum()
             ps2 += sp.sum(spaces=0)/fp1.sum()
 
-        assert_allclose((ps1/samples).to_global_data(),
-                        fp1.to_global_data(), rtol=0.2)
-        assert_allclose((ps2/samples).to_global_data(),
-                        fp2.to_global_data(), rtol=0.2)
+        assert_allclose((ps1/samples).local_data, fp1.local_data, rtol=0.2)
+        assert_allclose((ps2/samples).local_data, fp2.local_data, rtol=0.2)
 
     def test_vdot(self):
         s = ift.RGSpace((10,))
@@ -135,4 +131,4 @@ class Test_Functionality(unittest.TestCase):
         x2 = ift.RGSpace((150,))
         m = ift.Field.full((x1, x2), .5)
         res = m.vdot(m, spaces=1)
-        assert_allclose(res.to_global_data(), 37.5)
+        assert_allclose(res.local_data, 37.5)

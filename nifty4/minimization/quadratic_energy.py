@@ -35,6 +35,7 @@ class QuadraticEnergy(Energy):
         else:
             Ax = self._A(self.position)
             self._grad = Ax - self._b
+        self._grad.lock()
         self._value = 0.5*self.position.vdot(Ax) - b.vdot(self.position)
 
     def at(self, position):

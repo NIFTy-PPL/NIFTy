@@ -74,7 +74,7 @@ class DiagonalOperator(EndomorphicOperator):
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
-        self._diagonal = diagonal.locked_copy()
+        self._diagonal = diagonal.lock()
 
         if self._spaces is not None:
             active_axes = []
