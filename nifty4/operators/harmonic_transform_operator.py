@@ -104,7 +104,7 @@ class HarmonicTransformOperator(LinearOperator):
         tdom = self._target if x.domain == self._domain else self._domain
         oldax = dobj.distaxis(x.val)
         if oldax not in axes:  # straightforward, no redistribution needed
-            ldat = dobj.local_data(x.val)
+            ldat = x.local_data
             ldat = utilities.hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=oldax)
         elif len(axes) < len(x.shape) or len(axes) == 1:

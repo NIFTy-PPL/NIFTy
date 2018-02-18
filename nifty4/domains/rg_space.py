@@ -96,7 +96,7 @@ class RGSpace(StructuredDomain):
         if (not self.harmonic):
             raise NotImplementedError
         out = Field((self,), dtype=np.float64)
-        oloc = dobj.local_data(out.val)
+        oloc = out.local_data
         ibegin = dobj.ibegin(out.val)
         res = np.arange(oloc.shape[0], dtype=np.float64) + ibegin[0]
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]

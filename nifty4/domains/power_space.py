@@ -160,7 +160,7 @@ class PowerSpace(StructuredDomain):
                 tbb = 0.5*(tmp[:-1]+tmp[1:])
             else:
                 tbb = binbounds
-            locdat = np.searchsorted(tbb, dobj.local_data(k_length_array.val))
+            locdat = np.searchsorted(tbb, k_length_array.local_data)
             temp_pindex = dobj.from_local_data(
                 k_length_array.val.shape, locdat,
                 dobj.distaxis(k_length_array.val))
@@ -175,7 +175,7 @@ class PowerSpace(StructuredDomain):
             # floating-point weights are present ...
             temp_k_lengths = np.bincount(
                 dobj.local_data(temp_pindex).ravel(),
-                weights=dobj.local_data(k_length_array.val).ravel(),
+                weights=k_length_array.local_data.ravel(),
                 minlength=nbin).astype(np.float64, copy=False)
             temp_k_lengths = dobj.np_allreduce_sum(temp_k_lengths) / temp_rho
             temp_k_lengths.flags.writeable = False

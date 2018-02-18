@@ -130,6 +130,10 @@ class Field(object):
     def to_global_data(self):
         return dobj.to_global_data(self._val)
 
+    @property
+    def local_data(self):
+        return dobj.local_data(self._val)
+
     def cast_domain(self, new_domain):
         return Field(new_domain, self._val)
 
@@ -337,8 +341,7 @@ class Field(object):
                 if dobj.distaxis(self._val) >= 0 and ind == 0:
                     # we need to distribute the weights along axis 0
                     wgt = dobj.local_data(dobj.from_global_data(wgt))
-                lout = dobj.local_data(out.val)
-                lout *= wgt**power
+                out.local_data[()] *= wgt**power
         fct = fct**power
         if fct != 1.:
             out *= fct
@@ -490,7 +493,7 @@ class Field(object):
             raise TypeError("argument must be a Field")
         if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
-        dobj.local_data(self.val)[()] = dobj.local_data(other.val)[()]
+        self.local_data[()] = other.local_data[()]
 
     def _binary_helper(self, other, op):
         # if other is a field, make sure that the domains match

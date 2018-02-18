@@ -48,12 +48,11 @@ class DOFDistributor(LinearOperator):
 
         nbin = dofdex.max()
         if partner.scalar_dvol is not None:
-            wgt = np.bincount(dobj.local_data(dofdex.val).ravel(),
-                              minlength=nbin)
+            wgt = np.bincount(dofdex.local_data.ravel(), minlength=nbin)
             wgt = wgt*partner.scalar_dvol
         else:
             dvol = dobj.local_data(partner.dvol)
-            wgt = np.bincount(dobj.local_data(dofdex.val).ravel(),
+            wgt = np.bincount(dofdex.local_data.ravel(),
                               minlength=nbin, weights=dvol)
         # The explicit conversion to float64 is necessary because bincount
         # sometimes returns its result as an integer array, even when
@@ -85,7 +84,7 @@ class DOFDistributor(LinearOperator):
         self._pshape = (presize, self._dofdex.size, postsize)
 
     def _adjoint_times(self, x):
-        arr = dobj.local_data(x.val)
+        arr = x.local_data
         arr = arr.reshape(self._pshape)
         oarr = np.zeros(self._hshape, dtype=x.dtype)
         np.add.at(oarr, (slice(None), self._dofdex, slice(None)), arr)
@@ -105,9 +104,9 @@ class DOFDistributor(LinearOperator):
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
             arr = x.to_global_data()
         else:
-            arr = dobj.local_data(x.val)
+            arr = x.local_data
         arr = arr.reshape(self._hshape)
-        oarr = dobj.local_data(res.val).reshape(self._pshape)
+        oarr = res.local_data.reshape(self._pshape)
         oarr[()] = arr[(slice(None), self._dofdex, slice(None))]
         return res
 

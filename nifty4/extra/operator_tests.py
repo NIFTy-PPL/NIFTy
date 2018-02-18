@@ -18,7 +18,6 @@
 
 import numpy as np
 from ..field import Field
-from .. import dobj
 
 __all__ = ["consistency_check"]
 

@@ -82,16 +82,16 @@ class DiagonalOperator(EndomorphicOperator):
                 active_axes += self._domain.axes[space_index]
 
             if self._spaces[0] == 0:
-                self._ldiag = dobj.local_data(self._diagonal.val)
+                self._ldiag = self._diagonal.local_data
             else:
-                self._ldiag = dobj.to_global_data(self._diagonal.val)
+                self._ldiag = self._diagonal.to_global_data()
             locshape = dobj.local_shape(self._domain.shape, 0)
             self._reshaper = [shp if i in active_axes else 1
                               for i, shp in enumerate(locshape)]
             self._ldiag = self._ldiag.reshape(self._reshaper)
 
         else:
-            self._ldiag = dobj.local_data(self._diagonal.val)
+            self._ldiag = self._diagonal.local_data
 
     def apply(self, x, mode):
         self._check_input(x, mode)
