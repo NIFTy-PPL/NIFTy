@@ -18,12 +18,10 @@
 
 from builtins import range
 import abc
-from ..utilities import NiftyMeta
-from future.utils import with_metaclass
+from ..utilities import NiftyMetaBase
 
 
-class IterationController(with_metaclass(NiftyMeta, type('NewBase',
-                                         (object,), {}))):
+class IterationController(NiftyMetaBase()):
     """The abstract base class for all iteration controllers.
     An iteration controller is an object that monitors the progress of a
     minimization iteration. At the begin of the minimization, its start()

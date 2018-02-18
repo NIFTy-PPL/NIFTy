@@ -17,13 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-from ..utilities import NiftyMeta
-from future.utils import with_metaclass
+from ..utilities import NiftyMetaBase
 import numpy as np
 
 
-class Domain(with_metaclass(
-        NiftyMeta, type('NewBase', (object,), {}))):
+class Domain(NiftyMetaBase()):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
 

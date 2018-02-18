@@ -16,11 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..utilities import memo, NiftyMeta
-from future.utils import with_metaclass
+from ..utilities import memo, NiftyMetaBase
 
 
-class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
+class Energy(NiftyMetaBase()):
     """ Provides the functional used by minimization schemes.
 
    The Energy object is an implementation of a scalar function including its

@@ -20,7 +20,11 @@ from builtins import next, range
 import numpy as np
 from itertools import product
 import abc
+from future.utils import with_metaclass
 
+
+__all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
+           "memo", "NiftyMetaBase", "hartley", "my_fftn_r2c"]
 
 def get_slice_list(shape, axes):
     """
@@ -148,6 +152,10 @@ class _DocStringInheritor(type):
 
 class NiftyMeta(_DocStringInheritor, abc.ABCMeta):
     pass
+
+
+def NiftyMetaBase():
+    return with_metaclass(NiftyMeta, type('NewBase', (object,), {}))
 
 
 def hartley(a, axes=None):

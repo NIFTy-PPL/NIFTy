@@ -17,14 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-from ..utilities import NiftyMeta
+from ..utilities import NiftyMetaBase
 from ..field import Field
-from future.utils import with_metaclass
 import numpy as np
 
 
-class LinearOperator(with_metaclass(
-        NiftyMeta, type('NewBase', (object,), {}))):
+class LinearOperator(NiftyMetaBase()):
     """NIFTY base class for linear operators.
 
     The base NIFTY operator class is an abstract class from which

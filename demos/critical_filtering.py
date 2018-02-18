@@ -28,10 +28,7 @@ if __name__ == "__main__":
     sh = ift.power_synthesize(sp, real_signal=True)
 
     # Choose the measurement instrument
-    # Instrument = SmoothingOperator(s_space, sigma=0.01)
     Instrument = ift.ScalingOperator(1., s_space)
-    # Instrument._diagonal.val[200:400, 200:400] = 0
-    # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
     # Add a harmonic transformation to the instrument
     R = Instrument*HT
@@ -40,10 +37,7 @@ if __name__ == "__main__":
     signal_to_noise = 1.
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
     N = ift.ScalingOperator(noise_amplitude**2, s_space)
-    n = ift.Field.from_random(domain=s_space,
-                              random_type='normal',
-                              std=noise_amplitude,
-                              mean=0)
+    n = ift.Field.from_random("normal", s_space, std=noise_amplitude, mean=0)
 
     # Create mock data
     d = noiseless_data + n
@@ -54,7 +48,6 @@ if __name__ == "__main__":
                                                binbounds=p_space.binbounds))
     data_power = ift.log(ift.power_analyze(HT.adjoint_times(d),
                                            binbounds=p_space.binbounds))
-    d_data = d.val
     plotdict = {"colormap": "Planck-like"}
     ift.plot(d, name="data.png", **plotdict)
     ift.plot(HT(sh), name="mock_signal.png", **plotdict)

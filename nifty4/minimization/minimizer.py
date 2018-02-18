@@ -17,11 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-from ..utilities import NiftyMeta
-from future.utils import with_metaclass
+from ..utilities import NiftyMetaBase
 
 
-class Minimizer(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
+class Minimizer(NiftyMetaBase()):
     """ A base class used by all minimizers."""
 
     @abc.abstractmethod
