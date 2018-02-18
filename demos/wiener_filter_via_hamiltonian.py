@@ -34,7 +34,7 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
 
-    diag = ift.Field(s_space, ift.dobj.from_global_data(diag))
+    diag = ift.Field.from_global_data(s_space, diag).lock()
     Instrument = ift.DiagonalOperator(diag)
 
     # Add harmonic transformation to the instrument

@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     # Choose the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
-    Instrument = ift.DiagonalOperator(ift.Field(s_space, 1.))
+    Instrument = ift.ScalingOperator(1., s_space)
     # Instrument._diagonal.val[200:400, 200:400] = 0
     # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     # Set starting position
     flat_power = ift.Field.full(p_space, 1e-8)
     m0 = ift.power_synthesize(flat_power, real_signal=True)
-    t0 = ift.Field(p_space, val=-7.)
+    t0 = ift.Field.full(p_space, -7.)
 
     for i in range(500):
         S0 = ift.create_power_operator(h_space, power_spectrum=ift.exp(t0))

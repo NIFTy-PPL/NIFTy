@@ -5,14 +5,14 @@ np.random.seed(42)
 
 
 def adjust_zero_mode(m0, t0):
-    mtmp = ift.dobj.to_global_data(m0.val)
+    mtmp = m0.to_global_data()
     zero_position = len(m0.shape)*(0,)
     zero_mode = mtmp[zero_position]
     mtmp[zero_position] = zero_mode / abs(zero_mode)
-    ttmp = ift.dobj.to_global_data(t0.val)
+    ttmp = t0.to_global_data()
     ttmp[0] += 2 * np.log(abs(zero_mode))
-    return (ift.Field(m0.domain, ift.dobj.from_global_data(mtmp)),
-            ift.Field(t0.domain, ift.dobj.from_global_data(ttmp)))
+    return (ift.Field.from_global_data(m0.domain, mtmp),
+            ift.Field.from_global_data(t0.domain, ttmp))
 
 if __name__ == "__main__":
 
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
     mask = np.ones(s_space.shape)
     mask[6000:8000] = 0.
-    mask = ift.Field(s_space, val=ift.dobj.from_global_data(mask))
+    mask = ift.Field.from_global_data(s_space, mask)
 
     MaskOperator = ift.DiagonalOperator(mask)
     R = ift.GeometryRemover(s_space)

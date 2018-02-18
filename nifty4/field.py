@@ -124,6 +124,13 @@ class Field(object):
         return Field.empty(field._domain, dtype)
 
     @staticmethod
+    def from_global_data(domain, dobject):
+        return Field(domain, dobj.from_global_data(dobject))
+
+    def to_global_data(self):
+        return dobj.to_global_data(self._val)
+
+    @staticmethod
     def _infer_domain(domain, val=None):
         if domain is None:
             if isinstance(val, Field):
@@ -174,6 +181,7 @@ class Field(object):
 
     def lock(self):
         dobj.lock(self._val)
+        return self
 
     @property
     def locked(self):

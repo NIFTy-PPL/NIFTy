@@ -46,11 +46,10 @@ if __name__ == "__main__":
 
     ht = ht_2*ht_1
 
-    mock_power = ift.Field(
+    mock_power = ift.Field.from_global_data(
         (power_space_1, power_space_2),
-        val=ift.dobj.from_global_data(
-            np.outer(ift.dobj.to_global_data(mock_power_1.val),
-                     ift.dobj.to_global_data(mock_power_2.val))))
+        np.outer(mock_power_1.to_global_data(),
+                 mock_power_2.to_global_data()))
 
     diagonal = ift.power_synthesize_nonrandom(mock_power, spaces=(0, 1))**2
 
@@ -63,12 +62,12 @@ if __name__ == "__main__":
     N1_10 = int(N_pixels_1/10)
     mask_1 = np.ones(signal_space_1.shape)
     mask_1[N1_10*7:N1_10*9] = 0.
-    mask_1 = ift.Field(signal_space_1, ift.dobj.from_global_data(mask_1))
+    mask_1 = ift.Field.from_global_data(signal_space_1, mask_1)
 
     N2_10 = int(N_pixels_2/10)
     mask_2 = np.ones(signal_space_2.shape)
     mask_2[N2_10*7:N2_10*9] = 0.
-    mask_2 = ift.Field(signal_space_2, ift.dobj.from_global_data(mask_2))
+    mask_2 = ift.Field.from_global_data(signal_space_2, mask_2)
 
     R = ift.GeometryRemover(signal_domain)
     R = R*ift.DiagonalOperator(mask_1, signal_domain, spaces=0)

@@ -91,7 +91,7 @@ class DOFDistributor(LinearOperator):
         np.add.at(oarr, (slice(None), self._dofdex, slice(None)), arr)
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
             oarr = dobj.np_allreduce_sum(oarr).reshape(self._domain.shape)
-            res = Field(self._domain, dobj.from_global_data(oarr))
+            res = Field.from_global_data(self._domain, oarr)
         else:
             oarr = oarr.reshape(dobj.local_shape(self._domain.shape,
                                                  dobj.distaxis(x.val)))
@@ -103,7 +103,7 @@ class DOFDistributor(LinearOperator):
     def _times(self, x):
         res = Field.empty(self._target, dtype=x.dtype)
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
-            arr = dobj.to_global_data(x.val)
+            arr = x.to_global_data()
         else:
             arr = dobj.local_data(x.val)
         arr = arr.reshape(self._hshape)

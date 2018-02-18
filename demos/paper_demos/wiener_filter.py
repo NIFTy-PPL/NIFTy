@@ -34,7 +34,7 @@ if __name__ == "__main__":
     mask = np.ones(signal_space.shape)
     N10 = int(N_pixels/10)
     mask[N10*5:N10*9, N10*5:N10*9] = 0.
-    mask = ift.Field(signal_space, ift.dobj.from_global_data(mask))
+    mask = ift.Field.from_global_data(signal_space, mask).lock()
     R = ift.GeometryRemover(signal_space)
     R = R*ift.DiagonalOperator(mask)
     R = R*ht
