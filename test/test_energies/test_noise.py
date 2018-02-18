@@ -52,15 +52,15 @@ class Noise_Energy_Tests(unittest.TestCase):
             domain=space,
             random_type='normal',
             std=np.sqrt(var))
-        var = ift.Field(n.domain, val=var)
+        var = ift.Field.full(n.domain, var)
         N = ift.DiagonalOperator(var)
         eta0 = ift.log(var)
         s = ht(xi * A)
         R = ift.ScalingOperator(10., space)
         d = R(f(s)) + n
 
-        alpha = ift.Field(d.domain, val=2.)
-        q = ift.Field(d.domain, val=1e-5)
+        alpha = ift.Field.full(d.domain, 2.)
+        q = ift.Field.full(d.domain, 1e-5)
 
         direction = ift.Field.from_random('normal', d.domain)
         direction /= np.sqrt(direction.var())

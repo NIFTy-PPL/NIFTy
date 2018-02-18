@@ -62,8 +62,7 @@ if __name__ == "__main__":
 
     plotdict = {"colormap": "Planck-like"}
     ift.plot(ht(mock_signal), name="mock_signal.png", **plotdict)
-    ift.plot(ift.Field(signal_space, val=data.val),
-             name="data.png", **plotdict)
+    ift.plot(data.cast_domain(signal_space), name="data.png", **plotdict)
     ift.plot(m, name="map.png", **plotdict)
 
     # sampling the uncertainty map

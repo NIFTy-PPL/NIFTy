@@ -100,13 +100,13 @@ if __name__ == "__main__":
 
     plotdict = {"colormap": "Planck-like"}
     plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
-    ift.plot(ift.Field(plot_space, val=ht(mock_signal).val),
+    ift.plot(ht(mock_signal).cast_domain(plot_space),
              name='mock_signal.png', **plotdict)
-    ift.plot(ift.Field(plot_space, val=data.val), name='data.png', **plotdict)
-    ift.plot(ift.Field(plot_space, val=m.val), name='map.png', **plotdict)
+    ift.plot(data.cast_domain(plot_space), name='data.png', **plotdict)
+    ift.plot(m.cast_domain(plot_space), name='map.png', **plotdict)
     # sampling the uncertainty map
     mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 10)
-    ift.plot(ift.Field(plot_space, val=ift.sqrt(variance).val),
+    ift.plot(ift.sqrt(variance).cast_domain(plot_space),
              name="uncertainty.png", **plotdict)
-    ift.plot(ift.Field(plot_space, val=(mean+m).val),
+    ift.plot((mean+m).cast_domain(plot_space),
              name="posterior_mean.png", **plotdict)

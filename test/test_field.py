@@ -37,7 +37,7 @@ class Test_Interface(unittest.TestCase):
     def test_return_types(self, domain, attribute_desired_type):
         attribute = attribute_desired_type[0]
         desired_type = attribute_desired_type[1]
-        f = ift.Field(domain=domain, val=1.)
+        f = ift.Field.full(domain, 1.)
         assert_equal(isinstance(getattr(f, attribute), desired_type), True)
 
 
@@ -133,6 +133,6 @@ class Test_Functionality(unittest.TestCase):
     def test_vdot2(self):
         x1 = ift.RGSpace((200,))
         x2 = ift.RGSpace((150,))
-        m = ift.Field((x1, x2), val=.5)
+        m = ift.Field.full((x1, x2), .5)
         res = m.vdot(m, spaces=1)
         assert_allclose(res.to_global_data(), 37.5)

@@ -57,35 +57,34 @@ class ComposedOperator_Tests(unittest.TestCase):
         rand1 = ift.Field.from_random('normal', domain=(space1, space2))
         tt1 = op.inverse_times(op.times(rand1))
 
-        assert_allclose(ift.dobj.to_global_data(tt1.val),
-                        ift.dobj.to_global_data(rand1.val))
+        assert_allclose(tt1.to_global_data(), rand1.to_global_data())
 
     @expand(product(spaces))
     def test_sum(self, space):
-        op1 = ift.DiagonalOperator(ift.Field(space, 2.))
+        op1 = ift.DiagonalOperator(ift.Field.full(space, 2.))
         op2 = ift.ScalingOperator(3., space)
         full_op = op1 + op2 - (op2 - op1) + op1 + op1 + op2
-        x = ift.Field(space, 1.)
+        x = ift.Field.full(space, 1.)
         res = full_op(x)
         assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-        assert_allclose(ift.dobj.to_global_data(res.val), 11.)
+        assert_allclose(res.to_global_data(), 11.)
 
     @expand(product(spaces))
     def test_chain(self, space):
-        op1 = ift.DiagonalOperator(ift.Field(space, 2.))
+        op1 = ift.DiagonalOperator(ift.Field.full(space, 2.))
         op2 = ift.ScalingOperator(3., space)
         full_op = op1 * op2 * (op2 * op1) * op1 * op1 * op2
-        x = ift.Field(space, 1.)
+        x = ift.Field.full(space, 1.)
         res = full_op(x)
         assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-        assert_allclose(ift.dobj.to_global_data(res.val), 432.)
+        assert_allclose(res.to_global_data(), 432.)
 
     @expand(product(spaces))
     def test_mix(self, space):
-        op1 = ift.DiagonalOperator(ift.Field(space, 2.))
+        op1 = ift.DiagonalOperator(ift.Field.full(space, 2.))
         op2 = ift.ScalingOperator(3., space)
         full_op = op1 * (op2 + op2) * op1 * op1 - op1 * op2
-        x = ift.Field(space, 1.)
+        x = ift.Field.full(space, 1.)
         res = full_op(x)
         assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
-        assert_allclose(ift.dobj.to_global_data(res.val), 42.)
+        assert_allclose(res.to_global_data(), 42.)

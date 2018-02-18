@@ -64,7 +64,7 @@ if __name__ == "__main__":
     m = D(j)
 
     # Plotting
-    d_field = ift.Field(s_space, val=d.val)
+    d_field = d.cast_domain(s_space)
     zmax = max(HT(sh).max(), d_field.max(), HT(m).max())
     zmin = min(HT(sh).min(), d_field.min(), HT(m).min())
     plotdict = {"colormap": "Planck-like", "zmax": zmax, "zmin": zmin}

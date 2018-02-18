@@ -92,5 +92,4 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, lmax, expected):
         l = ift.LMSpace(lmax)
-        assert_allclose(ift.dobj.to_global_data(l.get_k_length_array().val),
-                        expected)
+        assert_allclose(l.get_k_length_array().to_global_data(), expected)

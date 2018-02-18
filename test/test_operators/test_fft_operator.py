@@ -45,8 +45,8 @@ class FFTOperatorTests(unittest.TestCase):
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
         out = fft.inverse_times(fft.times(inp))
-        assert_allclose(ift.dobj.to_global_data(inp.val),
-                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
+        assert_allclose(inp.to_global_data(), out.to_global_data(),
+                        rtol=tol, atol=tol)
 
         a, b = b, a
 
@@ -54,8 +54,8 @@ class FFTOperatorTests(unittest.TestCase):
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
         out = fft.inverse_times(fft.times(inp))
-        assert_allclose(ift.dobj.to_global_data(inp.val),
-                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
+        assert_allclose(inp.to_global_data(), out.to_global_data(),
+                        rtol=tol, atol=tol)
 
     @expand(product([12, 15], [9, 12], [0.1, 1, 3.7],
                     [0.4, 1, 2.7],
@@ -70,9 +70,8 @@ class FFTOperatorTests(unittest.TestCase):
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
         out = fft.inverse_times(fft.times(inp))
-        assert_allclose(ift.dobj.to_global_data(inp.val),
-                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
-        fft = ift.FFTOperator(domain=a, target=b)
+        assert_allclose(inp.to_global_data(), out.to_global_data(),
+                        rtol=tol, atol=tol)
 
         a, b = b, a
 
@@ -80,8 +79,8 @@ class FFTOperatorTests(unittest.TestCase):
         inp = ift.Field.from_random(domain=a, random_type='normal',
                                     std=7, mean=3, dtype=itp)
         out = fft.inverse_times(fft.times(inp))
-        assert_allclose(ift.dobj.to_global_data(inp.val),
-                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
+        assert_allclose(inp.to_global_data(), out.to_global_data(),
+                        rtol=tol, atol=tol)
 
     @expand(product([0, 1, 2],
                     [np.float64, np.float32, np.complex64, np.complex128]))
@@ -94,8 +93,8 @@ class FFTOperatorTests(unittest.TestCase):
         inp = ift.Field.from_random(domain=(a1, a2, a3), random_type='normal',
                                     std=7, mean=3, dtype=dtype)
         out = fft.inverse_times(fft.times(inp))
-        assert_allclose(ift.dobj.to_global_data(inp.val),
-                        ift.dobj.to_global_data(out.val), rtol=tol, atol=tol)
+        assert_allclose(inp.to_global_data(), out.to_global_data(),
+                        rtol=tol, atol=tol)
 
     @expand(product([ift.RGSpace(128, distances=3.76, harmonic=True),
                      ift.RGSpace((15, 27), distances=(.7, .33), harmonic=True),
@@ -111,9 +110,7 @@ class FFTOperatorTests(unittest.TestCase):
         fft2 = ift.FFTOperator(cospace, space)
         out2 = fft2.inverse_times(inp)
         zero_idx = tuple([0]*len(space.shape))
-        assert_allclose(ift.dobj.to_global_data(inp.val)[zero_idx],
-                        out.integrate(),
+        assert_allclose(inp.to_global_data()[zero_idx], out.integrate(),
                         rtol=tol, atol=tol)
-        assert_allclose(ift.dobj.to_global_data(out.val),
-                        ift.dobj.to_global_data(out2.val),
+        assert_allclose(out.to_global_data(), out2.to_global_data(),
                         rtol=tol, atol=tol)

@@ -47,5 +47,5 @@ class GeometryRemover(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return Field(self._target, val=x.weight(1).val)
-        return Field(self._domain, val=x.val).weight(1)
+            return x.weight(1).cast_domain(self._target)
+        return x.cast_domain(self._domain).weight(1)

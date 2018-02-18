@@ -110,8 +110,7 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, shape, distances, expected):
         r = ift.RGSpace(shape=shape, distances=distances, harmonic=True)
-        assert_allclose(ift.dobj.to_global_data(r.get_k_length_array().val),
-                        expected)
+        assert_allclose(r.get_k_length_array().to_global_data(), expected)
 
     @expand(get_dvol_configs())
     def test_dvol(self, shape, distances, harmonic, power):

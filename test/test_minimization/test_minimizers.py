@@ -53,8 +53,8 @@ class Test_Minimizers(unittest.TestCase):
             raise SkipTest
 
         assert_equal(convergence, IC.CONVERGED)
-        assert_allclose(ift.dobj.to_global_data(energy.position.val),
-                        1./ift.dobj.to_global_data(covariance_diagonal.val),
+        assert_allclose(energy.position.to_global_data(),
+                        1./covariance_diagonal.to_global_data(),
                         rtol=1e-3, atol=1e-3)
 
 

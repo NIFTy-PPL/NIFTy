@@ -130,6 +130,9 @@ class Field(object):
     def to_global_data(self):
         return dobj.to_global_data(self._val)
 
+    def cast_domain(self, new_domain):
+        return Field(new_domain, self._val)
+
     @staticmethod
     def _infer_domain(domain, val=None):
         if domain is None:

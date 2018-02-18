@@ -46,4 +46,4 @@ class LaplaceOperatorTests(unittest.TestCase):
         result = np.full(p.shape, 2*2.)
         result[0] = result[1] = result[-1] = 0.
 
-        assert_allclose(ift.dobj.to_global_data(L(foo).val), result)
+        assert_allclose(L(foo).to_global_data(), result)

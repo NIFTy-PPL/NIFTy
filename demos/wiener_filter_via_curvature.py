@@ -94,8 +94,8 @@ if __name__ == "__main__":
     zmin = min(m_s.min(), HT(mock_signal).min())
     plotdict = {"zmax": zmax/nu.K, "zmin": zmin/nu.K}
 
-    ift.plot(ift.Field(sspace2, HT(mock_signal).val)/nu.K,
+    ift.plot((HT(mock_signal)/nu.K).cast_domain(sspace2),
              name="mock_signal.png", **plotdict)
-    ift.plot(ift.Field(sspace2, val=data.val), name="data.png")
-    ift.plot(ift.Field(sspace2, m_s.val)/nu.K, name="reconstruction.png",
+    ift.plot(data.cast_domain(sspace2), name="data.png")
+    ift.plot((m_s/nu.K).cast_domain(sspace2), name="reconstruction.png",
              **plotdict)
