@@ -113,7 +113,9 @@ if __name__ == "__main__":
         # excitation monopole to 1
         m0, t0 = adjust_zero_mode(m0, t0)
 
-    ift.plot(true_sky)
+    plotdict = {"colormap": "Planck-like"}
+    ift.plot(true_sky, name="true_sky.png", **plotdict)
     ift.plot(nonlinearity(HT(power0*m0)),
-             title='reconstructed_sky')
-    ift.plot(MeasurementOperator.adjoint_times(d))
+             name="reconstructed_sky.png", **plotdict)
+    ift.plot(MeasurementOperator.adjoint_times(d), name="data.png", **plotdict)
+    ift.plot([ift.exp(t0),p], name="ps.png")

@@ -1,5 +1,5 @@
 import nifty4 as ift
-from nifty4.library.nonlinearities import Linear
+from nifty4.library.nonlinearities import Linear, Tanh, Exponential
 import numpy as np
 np.random.seed(42)
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     p_space = ift.PowerSpace(h_space,
                              binbounds=ift.PowerSpace.useful_binbounds(
                                  h_space, logarithmic=True))
-    s_spec = ift.Field.full(p_space, 1.)
+    s_spec = ift.Field.full(p_space, 1e-5)
     # Choosing the prior correlation structure and defining
     # correlation operator
     p = ift.PS_field(p_space, p_spec)
@@ -44,6 +44,7 @@ if __name__ == "__main__":
     # Choosing the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
     mask = np.ones(s_space.shape)
+    #mask[6000:8000] = 0.
     mask[30:70,30:70] = 0.
     mask = ift.Field.from_global_data(s_space, mask)
 
@@ -73,6 +74,13 @@ if __name__ == "__main__":
     m0 = ift.power_synthesize(ift.Field.full(p_space, 1e-7))
     t0 = ift.Field.full(p_space, -4.)
     power0 = Distributor.times(ift.exp(0.5 * t0))
+
+    plotdict = {"colormap": "Planck-like"}
+    zmin = true_sky.min()
+    zmax = true_sky.max()
+    ift.plot(true_sky, title="True sky", name="true_sky.png", **plotdict)
+    ift.plot(MeasurementOperator.adjoint_times(d), title="Data",
+             name="data.png", **plotdict)
 
     IC1 = ift.GradientNormController(name="IC1", iteration_limit=100,
                                      tol_abs_gradnorm=1e-3)
@@ -111,9 +119,8 @@ if __name__ == "__main__":
         # excitation monopole to 1
         m0, t0 = adjust_zero_mode(m0, t0)
 
-    plotdict = {"colormap": "Planck-like"}
-    ift.plot(true_sky, title="True sky", name="true_sky.png", **plotdict)
     ift.plot(nonlinearity(HT(power0*m0)), title="Reconstructed sky",
-             name="reconstructed_sky.png", **plotdict)
-    ift.plot(MeasurementOperator.adjoint_times(d), title="Data",
-             name="data.png", **plotdict)
+             name="reconstructed_sky.png", zmin=zmin, zmax=zmax, **plotdict)
+    ymin = np.min(p.to_global_data())
+    ift.plot([ift.exp(t0),p], title="Power spectra",
+             name="ps.png", ymin=ymin, **plotdict)
