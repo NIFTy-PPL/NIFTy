@@ -104,11 +104,23 @@ class ScipyMinimizer(Minimizer):
 
 
 def NewtonCG(controller):
+    """Returns a ScipyMinimizer object carrying out the Newton-CG algorithm.
+
+    See Also
+    --------
+    ScipyMinimizer
+    """
     return ScipyMinimizer(controller, "Newton-CG",
                           {"xtol": 1e-20, "maxiter": None}, True)
 
 
 def L_BFGS_B(controller, maxcor=10):
+    """Returns a ScipyMinimizer object carrying out the L-BFGS-B algorithm.
+
+    See Also
+    --------
+    ScipyMinimizer
+    """
     return ScipyMinimizer(controller, "L-BFGS-B",
                           {"ftol": 1e-20, "gtol": 1e-20, "maxcor": maxcor},
                           False)

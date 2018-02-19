@@ -288,6 +288,11 @@ Of these algorithms, only :class:`RelaxedNewton` requires the energy object to
 provide a :attr:`~Energy.curvature` property, the others only need energy
 values and gradients.
 
+The flexibility of NIFTy's design allows using externally provided
+minimizers. With only small effort, adapters for two SciPy minimizers were
+written; they are available under the names :class:`NewtonCG` and
+:class:`L_BFGS_B`.
+
 
 Application to operator inversion
 ---------------------------------
@@ -302,5 +307,5 @@ A classical example is the information propagator
 which must be applied when calculating a Wiener filter. Only its inverse
 application is straightforward; to use it in forward direction, we make use
 of NIFTy's :class:`InversionEnabler` class, which internally performs a
-minimization of a :class:`QuadraticEnergy` by means of a
+minimization of a :class:`QuadraticEnergy` by means of the
 :class:`ConjugateGradient` algorithm.
