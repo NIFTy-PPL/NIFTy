@@ -71,6 +71,5 @@ class HarmonicTransformOperatorTests(unittest.TestCase):
                                     std=1, mean=2, dtype=tp)
         out = fft.times(inp)
         zero_idx = tuple([0]*len(space.shape))
-        assert_allclose(ift.dobj.to_global_data(inp.val)[zero_idx],
-                        out.integrate(),
+        assert_allclose(inp.to_global_data()[zero_idx], out.integrate(),
                         rtol=tol, atol=tol)

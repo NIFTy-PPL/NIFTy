@@ -25,7 +25,14 @@ class UnstructuredDomain(Domain):
     associated geometry.
 
     Typically used for data spaces.
+
+    Parameters
+    ----------
+    shape : tuple of int
+        The required shape for an array which can hold the unstructured
+        domain's data.
     """
+
     _needed_for_hash = ["_shape"]
 
     def __init__(self, shape):

@@ -15,15 +15,13 @@ From such a perspective,
 
 - IFT problems largely consist of *minimization* problems involving a large
   number of equations.
-- The equations are built mostly from the application of *linear operators*, but
-  there may also be nonlinear functions involved.
+- The equations are built mostly from the application of *linear operators*,
+  but there may also be nonlinear functions involved.
 - The unknowns in the equations represent either continuous physical *fields*,
-  or they are simply individual measured *data* points.
-- The locations and volume elements attached to discretized *field* values are
-  supplied by *domain* objects. There are many variants of such discretized
-  *domains* supported by NIFTy4, including Cartesian and spherical geometries
-  and their harmonic counterparts. *Fields* can live on arbitrary products of
-  such *domains*.
+  or they are simply individual measured *data points*.
+- Discretized *fields* have geometrical information (like locations and volume
+  elements) associated with every entry; this information is called the field's
+  *domain*.
 
 In the following sections, the concepts briefly presented here will be
 discussed in more detail; this is done in reversed order of their introduction,
@@ -67,7 +65,7 @@ NIFTy requires them to provide the volume elements of their grid cells.
 The additional methods are specified in the abstract class
 :class:`StructuredDomain`:
 
-- The attributes :attr:`~StructuredDomain.scalar_dvol`,
+- The properties :attr:`~StructuredDomain.scalar_dvol`,
   :attr:`~StructuredDomain.dvol`, and  :attr:`~StructuredDomain.total_volume`
   provide information about the domain's pixel volume(s) and its total volume.
 - The property :attr:`~StructuredDomain.harmonic` specifies whether a domain
@@ -105,13 +103,17 @@ Some examples are:
   a product of an :class:`HPSpace` (for location) with an :class:`RGSpace`
   (for energy).
 - a polarised field, which could be modeled as a product of any structured
-  domain representing location with a four-element :class:`UnstructuredDomain`
-  holding Stokes I, Q, U and V components.
+  domain (representing location) with a four-element
+  :class:`UnstructuredDomain` holding Stokes I, Q, U and V components.
 
 Consequently, NIFTy defines a class called :class:`DomainTuple` holding
 a sequence of :class:`Domain` objects, which is used to specify full field
 domains. In principle, a :class:`DomainTuple` can even be empty, which implies
 that the field living on it is a scalar.
+
+A :class:`DomainTuple` supports iteration and indexing, and also provides the
+properties :attr:`~DomainTuple.shape`, :attr:`~DomainTuple.size` in analogy to
+the elementary :class:`Domain`.
 
 
 Fields
@@ -123,7 +125,28 @@ A :class:`Field` object consists of the following components:
 - a data type (e.g. numpy.float64)
 - an array containing the actual values
 
-Fields support arithmetic operations, contractions, etc.
+Usually, the array is stored in the for of a ``numpy.ndarray``, but for very
+resource-intensive tasks NIFTy also provides an alternative storage method to
+be used with distributed memory processing.
+
+Fields support a wide range of arithmetic operations, either involving two
+fields with equal domains, or a field and a scalar.
+Contractions (like summation, integration, minimum/maximum, computation of
+statistical moments) can be carried out either over an entire field (producing
+a scalar result) or over sub-domains (resulting in a field living on a smaller
+domain). Scalar products of two fields can also be computed easily.
+
+There is also a set of convenience functions to generate fields with constant
+values or fields filled with random numbers according to a user-specified
+distribution.
+
+Fields are the only fundamental NIFTy objects which can change state after they
+have been constructed: while their data type, domain, and array shape cannot
+be modified, the actual data content of the array may be manipulated during the
+lifetime of the object. This is a slight deviation from the philosophy that all
+NIFTy objects should be immutable, but this choice offers considerable
+performance benefits.
+
 
 Linear Operators
 ================
@@ -162,7 +185,7 @@ four operations. This subset can be queried using the
 If needed, the set of supported operations can be enhanced by iterative
 inversion methods;
 for example, an operator defining direct and adjoint multiplication could be
-enhanced to support the complete set by this method. This functionality is
+enhanced by this approach to support the complete set. This functionality is
 provided by NIFTy's :class:`InversionEnabler` class, which is itself a linear
 operator.
 
@@ -180,10 +203,10 @@ field with potentially different values.
 
 Further operator classes provided by NIFTy are
 
-- :class:`HarmonicTransformOperator` for transforms from harmonic domain to
-  their counterparts in position space, and their adjoint
+- :class:`HarmonicTransformOperator` for transforms from a harmonic domain to
+  its counterpart in position space, and their adjoint
 - :class:`PowerDistributor` for transforms from a :class:`PowerSpace` to
-  the associated harmonic domain, and their adjoint
+  an associated harmonic domain, and their adjoint
 - :class:`GeometryRemover`, which transforms from structured domains to
   unstructured ones. This is typically needed when building instrument response
   operators.
@@ -225,23 +248,24 @@ Energy functionals
 In NIFTy4 such functions are represented by objects of type :class:`Energy`.
 These hold the prescription how to calculate the function's
 :attr:`~Energy.value`, :attr:`~Energy.gradient` and
-(optionally) :attr:`~Energy.curvature` at any given position.
+(optionally) :attr:`~Energy.curvature` at any given :attr:`~Energy.position`
+in parameter space.
 Function values are floating-point scalars, gradients have the form of fields
 living on the energy's position domain, and curvatures are represented by
 linear operator objects.
 
+Energies are classes that typically have to be provided by the user when
+tackling new IFT problems.
 Some examples of concrete energy classes delivered with NIFTy4 are
 :class:`QuadraticEnergy` (with position-independent curvature, mainly used with
 conjugate gradient minimization) and :class:`~nifty4.library.WienerFilterEnergy`.
-Energies are classes that typically have to be provided by the user when
-tackling new IFT problems.
 
 
 Iteration control
 -----------------
 
 Iterative minimization of an energy reqires some means of
-controlling the quality of the current solution estimate and stopping once
+checking the quality of the current solution estimate and stopping once
 it is sufficiently accurate. In case of numerical problems, the iteration needs
 to be terminated as well, returning a suitable error description.
 
@@ -275,7 +299,7 @@ choice of algorithm is the :class:`ConjugateGradient` minimizer.
 A similar algorithm suited for nonlinear problems is provided by
 :class:`NonlinearCG`.
 
-Many minimizers for nonlinear problems can be described as
+Many minimizers for nonlinear problems can be characterized as
 
 - first deciding on a direction for the next step
 - then finding a suitable step length along this direction, resulting in the
