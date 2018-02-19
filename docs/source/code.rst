@@ -184,8 +184,8 @@ Further operator classes provided by NIFTy are
   operators.
 
 
-Syntatic sugar
---------------
+Syntactic sugar
+---------------
 
 Nifty4 allows simple and intuitive construction of altered and combined
 operators.
