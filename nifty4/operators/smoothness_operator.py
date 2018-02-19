@@ -26,8 +26,7 @@ def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
 
     This operator applies the irregular LaplaceOperator and its adjoint to some
     Field over a PowerSpace which corresponds to its smoothness and weights the
-    result with a scale parameter sigma. It is used in the smoothness prior
-    terms of the CriticalPowerEnergy. For this purpose we use free boundary
+    result with a scale parameter sigma. For this purpose we use free boundary
     conditions in the LaplaceOperator, having no curvature at both ends. In
     addition the first entry is ignored as well, corresponding to the overall
     mean of the map. The mean is therefore not considered in the smoothness

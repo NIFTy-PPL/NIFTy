@@ -44,7 +44,7 @@ if __name__ == "__main__":
     # Choosing the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
     mask = np.ones(s_space.shape)
-    mask[6000:8000] = 0.
+    mask[30:70,30:70] = 0.
     mask = ift.Field.from_global_data(s_space, mask)
 
     MaskOperator = ift.DiagonalOperator(mask)
@@ -111,7 +111,9 @@ if __name__ == "__main__":
         # excitation monopole to 1
         m0, t0 = adjust_zero_mode(m0, t0)
 
-    ift.plot(true_sky)
-    ift.plot(nonlinearity(HT(power0*m0)),
-             title='reconstructed_sky')
-    ift.plot(MeasurementOperator.adjoint_times(d))
+    plotdict = {"colormap": "Planck-like"}
+    ift.plot(true_sky, title="True sky", name="true_sky.png", **plotdict)
+    ift.plot(nonlinearity(HT(power0*m0)), title="Reconstructed sky",
+             name="reconstructed_sky.png", **plotdict)
+    ift.plot(MeasurementOperator.adjoint_times(d), title="Data",
+             name="data.png", **plotdict)
