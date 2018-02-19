@@ -23,9 +23,10 @@ from ..utilities import NiftyMetaBase
 class LineSearch(NiftyMetaBase()):
     """Class for determining the optimal step size along some descent direction.
 
-    Initialize the line search procedure which can be used by a specific line
-    search method. It finds the step size in a specific direction in the
-    minimization process.
+    Parameters
+    ----------
+    preferred_initial_step_size : float, optional
+        Newton-based methods should intialize this to 1.
     """
 
     def __init__(self, preferred_initial_step_size=None):
@@ -33,4 +34,25 @@ class LineSearch(NiftyMetaBase()):
 
     @abc.abstractmethod
     def perform_line_search(self, energy, pk, f_k_minus_1=None):
+        """Find step size and advance.
+
+        Determines a good step size and advances the current estimate
+        by this step size in the search direction.
+
+        Parameters
+        ----------
+        energy : Energy
+            Energy object from which we will calculate the energy and the
+            gradient at a specific point.
+        pk : Field
+            Vector pointing into the search direction.
+        f_k_minus_1 : float, optional
+            Value of the fuction (which is being minimized) at the k-1
+            iteration of the line search procedure. (Default: None)
+
+        Returns
+        -------
+        Energy
+            The new Energy object on the new position.
+        """
         raise NotImplementedError

@@ -43,7 +43,8 @@ class IterationController(NiftyMetaBase()):
 
     @abc.abstractmethod
     def start(self, energy):
-        """
+        """Starts the iteration.
+
         Parameters
         ----------
         energy : Energy object
@@ -57,7 +58,8 @@ class IterationController(NiftyMetaBase()):
 
     @abc.abstractmethod
     def check(self, energy):
-        """
+        """Checks the state of the iteration. Called after every step.
+
         Parameters
         ----------
         energy : Energy object

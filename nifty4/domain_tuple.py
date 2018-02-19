@@ -115,7 +115,7 @@ class DomainTuple(object):
 
     @property
     def axes(self):
-        """tuple of tuple of int : shapes of the underlying domains"""
+        """tuple of tuple of int : axis indices of the underlying domains"""
         return self._axtuple
 
     def __len__(self):
