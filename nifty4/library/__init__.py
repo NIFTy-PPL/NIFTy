@@ -1,5 +1,3 @@
-from .critical_power_energy import CriticalPowerEnergy
-from .critical_power_curvature import CriticalPowerCurvature
 from .wiener_filter_energy import WienerFilterEnergy
 from .wiener_filter_curvature import WienerFilterCurvature
 from .noise_energy import NoiseEnergy
