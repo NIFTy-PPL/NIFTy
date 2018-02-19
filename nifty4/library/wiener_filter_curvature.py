@@ -32,12 +32,14 @@ class WienerFilterCurvature(EndomorphicOperator):
 
     Parameters
     ----------
-    R: LinearOperator,
-       The response operator of the Wiener filter measurement.
+    R: LinearOperator
+        The response operator of the Wiener filter measurement.
     N: EndomorphicOperator
-       The noise covariance.
-    S: DiagonalOperator,
-       The prior signal covariance
+        The noise covariance.
+    S: EndomorphicOperator
+        The prior signal covariance
+    inverter : Minimizer
+        The minimizer to use during numerical inversion
     """
 
     def __init__(self, R, N, S, inverter):

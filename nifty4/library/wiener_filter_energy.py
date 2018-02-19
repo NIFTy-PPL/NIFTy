@@ -28,17 +28,17 @@ class WienerFilterEnergy(Energy):
 
     Parameters
     ----------
-    position: Field,
+    position: Field
         The current map in harmonic space.
-    d: Field,
-       the data
-    R: LinearOperator,
-       The response operator, description of the measurement process. It needs
-       to map from harmonic signal space to data space.
-    N: EndomorphicOperator,
-       The noise covariance in data space.
-    S: EndomorphicOperator,
-       The prior signal covariance in harmonic space.
+    d: Field
+        the data
+    R: LinearOperator
+        The response operator, description of the measurement process. It needs
+        to map from harmonic signal space to data space.
+    N: EndomorphicOperator
+        The noise covariance in data space.
+    S: EndomorphicOperator
+        The prior signal covariance in harmonic space.
     """
 
     def __init__(self, position, d, R, N, S, inverter, _j=None):

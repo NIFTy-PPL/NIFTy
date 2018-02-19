@@ -50,7 +50,7 @@ class NonlinearPowerEnergy(Energy):
         corrections.
         default : 3
     """
-
+    # MR FIXME: docstring incomplete and outdated
     def __init__(self, position, d, N, xi, D, ht, Instrument, nonlinearity,
                  Distribution, sigma=0., samples=3, xi_sample_list=None,
                  inverter=None):
