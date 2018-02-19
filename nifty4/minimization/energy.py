@@ -70,16 +70,18 @@ class Energy(NiftyMetaBase()):
     @property
     def position(self):
         """
-        Field : selected location in parameter space
-            The Field location in parameter space where value, gradient and
-            curvature are evaluated.
+        Field : selected location in parameter space.
+
+        The Field location in parameter space where value, gradient and
+        curvature are evaluated.
         """
         return self._position
 
     @property
     def value(self):
         """
-        float : value of the functional
+        float : value of the functional.
+
             The value of the energy functional at given `position`.
         """
         raise NotImplementedError
@@ -102,7 +104,7 @@ class Energy(NiftyMetaBase()):
     @property
     def curvature(self):
         """
-        LinearOperator : implicitly defined curvature
+        LinearOperator : implicitly defined curvature.
             A positive semi-definite operator or function describing the
             curvature of the potential at the given `position`.
         """

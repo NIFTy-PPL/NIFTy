@@ -22,13 +22,17 @@ from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class NonlinearCG(Minimizer):
-    """ Implementation of the nonlinear Conjugate Gradient scheme according to
-        Polak-Ribiere.
+    """ Nonlinear Conjugate Gradient scheme according to Polak-Ribiere.
+
+    Algorithm 5.4 from Nocedal & Wright.
+    Eq. (5.41a) has been replaced by eq. (5.49)
 
     Parameters
     ----------
     controller : IterationController
         Object that decides when to terminate the minimization.
+    line_searcher : LineSearch, optional
+        The line search algorithm to be used
 
     References
     ----------
@@ -41,21 +45,6 @@ class NonlinearCG(Minimizer):
         self._line_searcher = line_searcher
 
     def __call__(self, energy):
-        """ Runs the conjugate gradient minimization.
-        Algorithm 5.4 from Nocedal & Wright
-        Eq. (5.41a) has been replaced by eq. (5.49)
-
-        Parameters
-        ----------
-        energy : Energy object at the starting point of the iteration.
-
-        Returns
-        -------
-        Energy
-            state at last point of the iteration
-        int
-            Can be controller.CONVERGED or controller.ERROR
-        """
         controller = self._controller
         status = controller.start(energy)
         if status != controller.CONTINUE:

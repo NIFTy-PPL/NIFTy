@@ -23,6 +23,7 @@ from ..utilities import NiftyMetaBase
 class Minimizer(NiftyMetaBase()):
     """ A base class used by all minimizers."""
 
+    # MR FIXME: the docstring is partially ignored by Sphinx. Why?
     @abc.abstractmethod
     def __call__(self, energy, preconditioner=None):
         """ Performs the minimization of the provided Energy functional.
@@ -30,17 +31,15 @@ class Minimizer(NiftyMetaBase()):
         Parameters
         ----------
         energy : Energy
-           Energy object which provides value, gradient and curvature at a
-           specific position in parameter space.
+           Energy object at the starting point of the iteration
 
         preconditioner : LinearOperator, optional
            Preconditioner to accelerate the minimization
 
         Returns
         -------
-        Energy
-            Latest `energy` of the minimization.
-        int
-            exit status of the minimization
+        Energy : Latest `energy` of the minimization.
+        int : exit status of the minimization
+            Can be controller.CONVERGED or controller.ERROR
         """
         raise NotImplementedError

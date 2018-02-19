@@ -1,7 +1,12 @@
 .. currentmodule:: nifty4
 
+=============
 Code Overview
 =============
+
+
+Executive summary
+=================
 
 The fundamental building blocks required for IFT computations are best
 recognized from a large distance, ignoring all technical details.
@@ -190,7 +195,7 @@ Syntactic sugar
 Nifty4 allows simple and intuitive construction of altered and combined
 operators.
 As an example, if ``A``, ``B`` and ``C`` are of type :class:`LinearOperator`
-and ``f1`` and ``f2`` are :class:`Field` s, writing::
+and ``f1`` and ``f2`` are of type :class:`Field`, writing::
 
     X = A*B.inverse*A.adjoint + C
     f2 = X(f1)
@@ -205,6 +210,7 @@ were the original operator's adjoint or inverse, respectively.
 
 
 .. _minimization:
+
 
 Minimization
 ============
@@ -224,9 +230,15 @@ Function values are floating-point scalars, gradients have the form of fields
 living on the energy's position domain, and curvatures are represented by
 linear operator objects.
 
+Some examples of concrete energy classes delivered with NIFTy4 are
+:class:`QuadraticEnergy` (with position-independent curvature, mainly used with
+conjugate gradient minimization) and :class:`~nifty4.library.WienerFilterEnergy`.
+Energies are classes that typically have to be provided by the user when
+tackling new IFT problems.
 
-Convergence control
--------------------
+
+Iteration control
+-----------------
 
 Iterative minimization of an energy reqires some means of
 controlling the quality of the current solution estimate and stopping once
@@ -250,6 +262,36 @@ for their specific applications.
 Minimization algorithms
 -----------------------
 
+All minimization algorithms in NIFTy inherit from the abstract
+:class:`Minimizer` class, which presents a minimalistic interface consisting
+only of a :meth:`~Minimizer.__call__` method taking an :class:`Energy` object
+and optionally a preconditioning operator, and returning the energy at the
+discovered minimum and a status code.
+
+For energies with a quadratic form (i.e. which
+can be expressed by means of a :class:`QuadraticEnergy` object), an obvious
+choice of algorithm is the :class:`ConjugateGradient` minimizer.
+
+A similar algorithm suited for nonlinear problems is provided by
+:class:`NonlinearCG`.
+
+Many minimizers for nonlinear problems can be described as
+
+- first deciding on a direction for the next step
+- then finding a suitable step length along this direction, resulting in the
+  next energy estimate.
+
+This family of algorithms is encapsulated in NIFTy's :class:`DescentMinimizer`
+class, which currently has three concrete implementations:
+:class:`SteepestDescent`, :class:`VL_BFGS`, and :class:`RelaxedNewton`.
+Of these algorithms, only :class:`RelaxedNewton` requires the energy object to
+provide a :attr:`~Energy.curvature` property, the others only need energy
+values and gradients.
+
+
+Application to operator inversion
+---------------------------------
+
 It is important to realize that the machinery presented here cannot only be
 used for minimizing IFT Hamiltonians, but also for the numerical inversion of
 linear operators, if the desired application mode is not directly available.
@@ -262,19 +304,3 @@ application is straightforward; to use it in forward direction, we make use
 of NIFTy's :class:`InversionEnabler` class, which internally performs a
 minimization of a :class:`QuadraticEnergy` by means of a
 :class:`ConjugateGradient` algorithm.
-
-Some examples of concrete energy classes delivered with NIFTy4 are
-:class:`QuadraticEnergy` (with position-independent curvature, mainly used with
-conjugate gradient minimization) and :class:`WienerFilterEnergy`.
-Energies are classes that typically have to be provided by the user when
-tackling new IFT problems.
-
-The minimization procedure can be carried out by one of several algorithms;
-NIFTy4 currently ships solvers based on
-
-- the conjugate gradient method (for quadratic energies)
-- the steepest descent method
-- the VL-BFGS method
-- the relaxed Newton method, and
-- a nonlinear conjugate gradient method
-
