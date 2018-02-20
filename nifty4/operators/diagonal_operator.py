@@ -140,5 +140,5 @@ class DiagonalOperator(EndomorphicOperator):
         res = Field.from_random(random_type="normal",
                                 domain=self._domain,
                                 dtype=self._diagonal.dtype)
-        res.val[()] *= np.sqrt(self._ldiag)
+        res.local_data[()] *= np.sqrt(self._ldiag)
         return res
