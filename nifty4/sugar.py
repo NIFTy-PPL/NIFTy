@@ -63,8 +63,9 @@ def power_analyze(field, spaces=None, binbounds=None,
     ----------
     field : Field
         The field to be analyzed
-    spaces : None or int or tuple of int , optional
-        The set of subdomains for which the powerspectrum shall be computed.
+    spaces : None or int or tuple of int, optional
+        The indices of subdomains for which the power spectrum shall be
+        computed.
         If None, all subdomains will be converted.
         (default : None).
     binbounds : None or array-like, optional
@@ -85,7 +86,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     -------
     Field
         The output object. Its domain is a PowerSpace and it contains
-        the power spectrum of 'field'.
+        the power spectrum of `field`.
     """
 
     for sp in field.domain:
@@ -133,7 +134,7 @@ def power_synthesize_nonrandom(field, spaces=None):
 
 
 def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
-    """Returns a sampled field with `field`**2 as its power spectrum.
+    """Returns a sampled field with `field`\**2 as its power spectrum.
 
     This method draws a Gaussian random field in the harmonic partner
     domain of this field's domains, using this field as power spectrum.
@@ -231,12 +232,7 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
         An operator that implements the given power spectrum.
     """
     domain = DomainTuple.make(domain)
-    if space is None:
-        if len(domain) != 1:
-            raise ValueError("space keyword must be set")
-        else:
-            space = 0
-    space = int(space)
+    space = utilities.infer_space(domain, space)
     return DiagonalOperator(
         create_power_field(domain[space], power_spectrum, dtype),
         domain=domain, spaces=space)

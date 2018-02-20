@@ -73,9 +73,7 @@ if __name__ == "__main__":
     noiseless_data = R(mock_signal)
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
     N = ift.ScalingOperator(noise_amplitude**2, data_domain)
-    noise = ift.Field.from_random(
-        domain=data_domain, random_type='normal',
-        std=noise_amplitude, mean=0)
+    noise = N.draw_sample()
     data = noiseless_data + noise
 
     j = R.adjoint_times(N.inverse_times(data))

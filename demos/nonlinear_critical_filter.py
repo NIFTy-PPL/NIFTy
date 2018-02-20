@@ -66,9 +66,7 @@ if __name__ == "__main__":
     noiseless_data = MeasurementOperator(true_sky)
     noise_amplitude = noiseless_data.val.std()*noise_level
     N = ift.ScalingOperator(noise_amplitude**2, d_space)
-    n = ift.Field.from_random(
-        domain=d_space, random_type='normal',
-        std=noise_amplitude, mean=0)
+    n = N.draw_sample()
     # Creating the mock data
     d = noiseless_data + n
 

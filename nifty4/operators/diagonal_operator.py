@@ -134,11 +134,11 @@ class DiagonalOperator(EndomorphicOperator):
                                 self._spaces)
 
     def draw_sample(self):
-        if self._spaces is not None:
-            raise ValueError("Cannot draw (yet) from this operator")
+        if np.issubdtype(self._ldiag.dtype, np.complexfloating):
+            raise ValueError("cannot draw sample from complex-valued operator")
 
         res = Field.from_random(random_type="normal",
                                 domain=self._domain,
                                 dtype=self._diagonal.dtype)
-        res *= sqrt(self._diagonal)
+        res.val[()] *= np.sqrt(self._ldiag)
         return res
