@@ -82,7 +82,7 @@ class Energy_Tests(unittest.TestCase):
             xi=xi,
             D=D,
             Instrument=R,
-            Distribution=Dist,
+            Distributor=Dist,
             nonlinearity=f,
             ht=ht,
             N=N,

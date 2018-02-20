@@ -106,7 +106,7 @@ if __name__ == "__main__":
         power0_energy = ift.library.NonlinearPowerEnergy(
             position=t0, d=d, N=N, xi=m0, D=D0, ht=HT,
             Instrument=MeasurementOperator, nonlinearity=nonlinearity,
-            Distribution=Distributor, sigma=1., samples=2, inverter=inverter)
+            Distributor=Distributor, sigma=1., samples=2, inverter=inverter)
 
         power0_energy = minimizer(power0_energy)[0]
 

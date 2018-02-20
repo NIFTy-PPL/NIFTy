@@ -86,7 +86,7 @@ class Noise_Energy_Tests(unittest.TestCase):
 
         energy0 = ift.library.NoiseEnergy(
             position=eta0, d=d, xi=xi, D=D, t=tau, Instrument=R,
-            alpha=alpha, q=q, Distribution=Dist, nonlinearity=f,
+            alpha=alpha, q=q, Distributor=Dist, nonlinearity=f,
             ht=ht, samples=10)
         energy1 = energy0.at(eta1)
 
