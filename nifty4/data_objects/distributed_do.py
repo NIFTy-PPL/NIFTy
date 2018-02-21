@@ -383,7 +383,7 @@ def distaxis(arr):
     return arr._distaxis
 
 
-def from_local_data(shape, arr, distaxis):
+def from_local_data(shape, arr, distaxis=0):
     return data_object(shape, arr, distaxis)
 
 
