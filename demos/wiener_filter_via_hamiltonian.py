@@ -13,17 +13,13 @@ if __name__ == "__main__":
     h_space = s_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(h_space, s_space)
 
-    # Set up power space
-    p_space = ift.PowerSpace(h_space)
-
     # Choose prior correlation structure and define correlation operator
     p_spec = (lambda k: (42/(k+1)**3))
 
     S = ift.create_power_operator(h_space, power_spectrum=p_spec)
 
     # Draw sample sh from the prior distribution in harmonic space
-    sp = ift.PS_field(p_space, p_spec)
-    sh = ift.power_synthesize(sp, real_signal=True)
+    sh = S.draw_sample()
 
     # Choose measurement instrument
     diag = np.ones(s_space.shape)

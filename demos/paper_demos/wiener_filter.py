@@ -20,15 +20,11 @@ if __name__ == "__main__":
     signal_space = ift.RGSpace([N_pixels, N_pixels], distances=L/N_pixels)
     harmonic_space = signal_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
-    power_space = ift.PowerSpace(
-        harmonic_space, binbounds=ift.PowerSpace.useful_binbounds(
-            harmonic_space, logarithmic=True))
 
     # Creating the mock signal
     S = ift.create_power_operator(harmonic_space,
                                   power_spectrum=power_spectrum)
-    mock_power = ift.PS_field(power_space, power_spectrum)
-    mock_signal = ift.power_synthesize(mock_power, real_signal=True)
+    mock_signal = S.draw_sample()
 
     # Setting up an exemplary response
     mask = np.ones(signal_space.shape)

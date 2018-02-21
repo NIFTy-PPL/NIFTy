@@ -22,9 +22,9 @@ from itertools import product
 import abc
 from future.utils import with_metaclass
 
-
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "hartley", "my_fftn_r2c"]
+
 
 def get_slice_list(shape, axes):
     """

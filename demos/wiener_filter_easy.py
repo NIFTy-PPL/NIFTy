@@ -9,7 +9,7 @@ if __name__ == "__main__":
     L = 2.
     # Typical distance over which the field is correlated (in same unit as L)
     correlation_length = 0.1
-    # Variance of field in position space sqrt(<|s_x|^2>) (in unit of s)
+    # Variance of field in position space sqrt(<|s_x|^2>) (in same unit as s)
     field_variance = 2.
     # Smoothing length of response (in same unit as L)
     response_sigma = 0.01
@@ -29,14 +29,11 @@ if __name__ == "__main__":
     s_space = ift.RGSpace([N_pixels, N_pixels], distances=pixel_width)
     h_space = s_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(h_space, s_space)
-    p_space = ift.PowerSpace(h_space)
 
     # Create mock data
 
     Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec)
-
-    sp = ift.PS_field(p_space, pow_spec)
-    sh = ift.power_synthesize(sp, real_signal=True)
+    sh = Sh.draw_sample()
 
     R = HT*ift.create_harmonic_smoothing_operator((h_space,), 0,
                                                   response_sigma)

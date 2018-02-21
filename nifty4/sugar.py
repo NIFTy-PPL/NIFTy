@@ -28,18 +28,16 @@ from . import dobj, utilities
 
 __all__ = ['PS_field',
            'power_analyze',
-           'power_synthesize',
-           'power_synthesize_nonrandom',
            'create_power_field',
            'create_power_operator',
            'create_harmonic_smoothing_operator']
 
 
-def PS_field(pspace, func, dtype=None):
+def PS_field(pspace, func):
     if not isinstance(pspace, PowerSpace):
         raise TypeError
     data = dobj.from_global_data(func(pspace.k_lengths))
-    return Field(pspace, val=data, dtype=dtype)
+    return Field(pspace, val=data)
 
 
 def _single_power_analyze(field, idx, binbounds):
@@ -119,21 +117,21 @@ def power_analyze(field, spaces=None, binbounds=None,
     return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
 
 
-def power_synthesize_nonrandom(field, spaces=None):
+def _power_synthesize_nonrandom(field, spaces=None):
     spaces = utilities.parse_spaces(spaces, len(field.domain))
 
     result_domain = list(field.domain)
-    spec = sqrt(field)
+    amplitude = sqrt(field)
     for i in spaces:
         result_domain[i] = field.domain[i].harmonic_partner
         pd = PowerDistributor(result_domain, field.domain[i], i)
-        spec = pd(spec)
+        amplitude = pd(amplitude)
 
-    return spec
+    return amplitude
 
 
-def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
-    """Returns a sampled field with `field`\**2 as its power spectrum.
+def _power_synthesize(field, spaces=None, real_power=True, real_signal=True):
+    """Returns a sampled field with `field` as its power spectrum.
 
     This method draws a Gaussian random field in the harmonic partner
     domain of this field's domains, using this field as power spectrum.
@@ -141,7 +139,7 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
     Parameters
     ----------
     field : Field
-        The input field containing the square root of the power spectrum
+        The input field containing the power spectrum
     spaces : None, int, or tuple of int, optional
         Specifies the subdomains containing all the PowerSpaces which
         should be converted (default : None).
@@ -161,16 +159,16 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
 
     Notes
     -----
-    For this the spaces specified by `spaces` must be a PowerSpace.
-    This expects this field to be the square root of a power spectrum, i.e.
-    to have the unit of the field to be sampled.
+    For this the spaces specified by `spaces` must be of type PowerSpace.
+    This expects this field to be a power spectrum, i.e.
+    to have the unit of "field to be sampled"**2.
 
     Raises
     ------
     ValueError : If a domain specified by `spaces` is not a PowerSpace.
     """
 
-    spec = power_synthesize_nonrandom(field, spaces)
+    spec = _power_synthesize_nonrandom(field, spaces)
     self_real = not np.issubdtype(spec.dtype, np.complexfloating)
     if (not real_power) and self_real:
         raise ValueError("can't draw complex realizations from real spectrum")
@@ -190,7 +188,7 @@ def power_synthesize(field, spaces=None, real_power=True, real_signal=True):
     return result[0] if real_power else result[0] + 1j*result[1]
 
 
-def create_power_field(domain, power_spectrum, dtype=None):
+def create_power_field(domain, power_spectrum):
     if not callable(power_spectrum):  # we have a Field living on a PowerSpace
         if not isinstance(power_spectrum, Field):
             raise TypeError("Field object expected")
@@ -199,15 +197,15 @@ def create_power_field(domain, power_spectrum, dtype=None):
         if not isinstance(power_spectrum.domain[0], PowerSpace):
             raise TypeError("PowerSpace required")
         power_domain = power_spectrum.domain[0]
-        fp = Field(power_domain, val=power_spectrum.val, dtype=dtype)
+        fp = Field(power_domain, val=power_spectrum.val)
     else:
         power_domain = PowerSpace(domain)
-        fp = PS_field(power_domain, power_spectrum, dtype)
+        fp = PS_field(power_domain, power_spectrum)
 
     return PowerDistributor(domain, power_domain)(fp)
 
 
-def create_power_operator(domain, power_spectrum, space=None, dtype=None):
+def create_power_operator(domain, power_spectrum, space=None):
     """ Creates a diagonal operator with the given power spectrum.
 
     Constructs a diagonal operator that lives over the specified domain.
@@ -220,10 +218,6 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
         An object that contains the power spectrum as a function of k.
     space : int
         the domain index on which the power operator will work
-    dtype : None or type, optional
-        dtype that the field holding the power spectrum shall use
-        (default : None).
-        if dtype is None: the dtype of `power_spectrum` will be used.
 
     Returns
     -------
@@ -233,7 +227,7 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
     return DiagonalOperator(
-        create_power_field(domain[space], power_spectrum, dtype),
+        create_power_field(domain[space], power_spectrum),
         domain=domain, spaces=space)
 
 

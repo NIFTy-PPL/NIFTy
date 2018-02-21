@@ -31,21 +31,21 @@ if __name__ == "__main__":
     p_space = ift.PowerSpace(h_space,
                              binbounds=ift.PowerSpace.useful_binbounds(
                                  h_space, logarithmic=True))
-    s_spec = ift.Field.full(p_space, 1e-5)
+
     # Choosing the prior correlation structure and defining
     # correlation operator
     p = ift.PS_field(p_space, p_spec)
     log_p = ift.log(p)
-    S = ift.create_power_operator(h_space, power_spectrum=s_spec)
+    S = ift.create_power_operator(h_space, power_spectrum=lambda k: 1e-5)
 
     # Drawing a sample sh from the prior distribution in harmonic space
-    sh = ift.power_synthesize(s_spec)
+    sh = S.draw_sample()
 
     # Choosing the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
     mask = np.ones(s_space.shape)
-    #mask[6000:8000] = 0.
-    mask[30:70,30:70] = 0.
+    # mask[6000:8000] = 0.
+    mask[30:70, 30:70] = 0.
     mask = ift.Field.from_global_data(s_space, mask)
 
     MaskOperator = ift.DiagonalOperator(mask)
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # Creating the mock data
     d = noiseless_data + n
 
-    m0 = ift.power_synthesize(ift.Field.full(p_space, 1e-7))
+    m0 = ift.Field.full(h_space, 1e-7)
     t0 = ift.Field.full(p_space, -4.)
     power0 = Distributor.times(ift.exp(0.5 * t0))
 
@@ -120,5 +120,5 @@ if __name__ == "__main__":
     ift.plot(nonlinearity(HT(power0*m0)), title="Reconstructed sky",
              name="reconstructed_sky.png", zmin=zmin, zmax=zmax, **plotdict)
     ymin = np.min(p.to_global_data())
-    ift.plot([ift.exp(t0),p], title="Power spectra",
+    ift.plot([ift.exp(t0), p], title="Power spectra",
              name="ps.png", ymin=ymin, **plotdict)

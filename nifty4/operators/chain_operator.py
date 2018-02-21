@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .linear_operator import LinearOperator
+import numpy as np
 
 
 class ChainOperator(LinearOperator):
@@ -119,3 +120,9 @@ class ChainOperator(LinearOperator):
         for op in t_ops:
             x = op.apply(x, mode)
         return x
+
+    def draw_sample(self, dtype=np.float64):
+        sample = self._ops[-1].draw_sample(dtype)
+        for op in reversed(self._ops[:-1]):
+            sample = op.process_sample(sample)
+        return sample

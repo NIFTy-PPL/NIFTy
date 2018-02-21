@@ -52,15 +52,13 @@ if __name__ == "__main__":
     signal_space = ift.RGSpace(shape, distances=L/N_pixels)
     harmonic_space = signal_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, target=signal_space)
-    power_space = ift.PowerSpace(harmonic_space)
 
     # Creating the mock data
     S = ift.create_power_operator(harmonic_space,
                                   power_spectrum=power_spectrum)
     np.random.seed(43)
 
-    mock_power = ift.PS_field(power_space, power_spectrum)
-    mock_signal = ift.power_synthesize(mock_power, real_signal=True)
+    mock_signal = S.draw_sample()
 
     sensitivity = (1./nu.m)**dimensionality/nu.K
     R = ift.GeometryRemover(signal_space)

@@ -10,7 +10,8 @@ from .operators import *
 
 from .field import Field, sqrt, exp, log
 
-from .probing.utils import probe_with_posterior_samples, probe_diagonal
+from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
+    StatCalculator
 
 from .minimization import *
 

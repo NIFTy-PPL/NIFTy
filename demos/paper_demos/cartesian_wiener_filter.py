@@ -20,43 +20,28 @@ if __name__ == "__main__":
         a = 4 * correlation_length_1 * field_variance_1**2
         return a / (1 + k * correlation_length_1) ** 4.
 
+    def power_spectrum_2(k):  # note: field_variance**2 = a*k_0/4.
+        a = 4 * correlation_length_2 * field_variance_2**2
+        return a / (1 + k * correlation_length_2) ** 2.5
+
     signal_space_1 = ift.RGSpace([N_pixels_1], distances=L_1/N_pixels_1)
     harmonic_space_1 = signal_space_1.get_default_codomain()
     signal_space_2 = ift.RGSpace([N_pixels_2], distances=L_2/N_pixels_2)
     harmonic_space_2 = signal_space_2.get_default_codomain()
 
     signal_domain = ift.DomainTuple.make((signal_space_1, signal_space_2))
-    mid_domain = ift.DomainTuple.make((signal_space_1, harmonic_space_2))
     harmonic_domain = ift.DomainTuple.make((harmonic_space_1,
                                             harmonic_space_2))
 
     ht_1 = ift.HarmonicTransformOperator(harmonic_domain, space=0)
-    power_space_1 = ift.PowerSpace(harmonic_space_1)
-
-    mock_power_1 = ift.PS_field(power_space_1, power_spectrum_1)
-
-    def power_spectrum_2(k):  # note: field_variance**2 = a*k_0/4.
-        a = 4 * correlation_length_2 * field_variance_2**2
-        return a / (1 + k * correlation_length_2) ** 2.5
-
-    ht_2 = ift.HarmonicTransformOperator(mid_domain, space=1)
-    power_space_2 = ift.PowerSpace(harmonic_space_2)
-
-    mock_power_2 = ift.PS_field(power_space_2, power_spectrum_2)
-
+    ht_2 = ift.HarmonicTransformOperator(ht_1.target, space=1)
     ht = ht_2*ht_1
 
-    mock_power = ift.Field.from_global_data(
-        (power_space_1, power_space_2),
-        np.outer(mock_power_1.to_global_data(),
-                 mock_power_2.to_global_data()))
-
-    diagonal = ift.power_synthesize_nonrandom(mock_power, spaces=(0, 1))**2
-
-    S = ift.DiagonalOperator(diagonal)
+    S = (ift.create_power_operator(harmonic_domain, power_spectrum_1, 0) *
+         ift.create_power_operator(harmonic_domain, power_spectrum_2, 1))
 
     np.random.seed(10)
-    mock_signal = ift.power_synthesize(mock_power, real_signal=True)
+    mock_signal = S.draw_sample()
 
     # Setting up a exemplary response
     N1_10 = int(N_pixels_1/10)

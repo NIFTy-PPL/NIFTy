@@ -58,66 +58,57 @@ class Test_Functionality(unittest.TestCase):
         np.random.seed(11)
 
         p1 = ift.PowerSpace(space1)
-        p1val = _spec1(p1.k_lengths)
-        fp1 = ift.Field.from_global_data(p1, p1val)
-
+        fp1 = ift.PS_field(p1, _spec1)
         p2 = ift.PowerSpace(space2)
-        p2val = _spec2(p2.k_lengths)
-        fp2 = ift.Field.from_global_data(p2, p2val)
-
-        outer = np.outer(p1val, p2val)
+        fp2 = ift.PS_field(p2, _spec2)
+        outer = np.outer(fp1.to_global_data(), fp2.to_global_data())
         fp = ift.Field.from_global_data((p1, p2), outer)
 
+        op1 = ift.create_power_operator((space1, space2), _spec1, 0)
+        op2 = ift.create_power_operator((space1, space2), _spec2, 1)
+        opfull = op2*op1
+
         samples = 500
-        ps1 = 0.
-        ps2 = 0.
+        sc1 = ift.StatCalculator()
+        sc2 = ift.StatCalculator()
         for ii in range(samples):
-            sk = ift.power_synthesize(fp, spaces=(0, 1), real_signal=True)
+            sk = opfull.draw_sample()
 
             sp = ift.power_analyze(sk, spaces=(0, 1),
                                    keep_phase_information=False)
-            ps1 += sp.sum(spaces=1)/fp2.sum()
-            ps2 += sp.sum(spaces=0)/fp1.sum()
+            sc1.add(sp.sum(spaces=1)/fp2.sum())
+            sc2.add(sp.sum(spaces=0)/fp1.sum())
 
-        assert_allclose((ps1/samples).local_data, fp1.local_data, rtol=0.2)
-        assert_allclose((ps2/samples).local_data, fp2.local_data, rtol=0.2)
+        assert_allclose(sc1.mean.local_data, fp1.local_data, rtol=0.2)
+        assert_allclose(sc2.mean.local_data, fp2.local_data, rtol=0.2)
 
     @expand(product([ift.RGSpace((8,), harmonic=True),
                      ift.RGSpace((8, 8), harmonic=True, distances=0.123)],
                     [ift.RGSpace((8,), harmonic=True),
                      ift.LMSpace(12)]))
-    def test_DiagonalOperator_power_analyze(self, space1, space2):
+    def test_DiagonalOperator_power_analyze2(self, space1, space2):
         np.random.seed(11)
 
-        fulldomain = ift.DomainTuple.make((space1, space2))
+        fp1 = ift.PS_field(ift.PowerSpace(space1), _spec1)
+        fp2 = ift.PS_field(ift.PowerSpace(space2), _spec2)
 
-        p1 = ift.PowerSpace(space1)
-        p1val = _spec1(p1.k_lengths)
-        fp1 = ift.Field.from_global_data(p1, p1val)
-
-        p2 = ift.PowerSpace(space2)
-        p2val = _spec2(p2.k_lengths)
-        fp2 = ift.Field.from_global_data(p2, p2val)
-
-        S_1 = ift.create_power_field(space1, lambda x: np.sqrt(_spec1(x)))
-        S_1 = ift.DiagonalOperator(S_1, domain=fulldomain, spaces=0)
-        S_2 = ift.create_power_field(space2, lambda x: np.sqrt(_spec2(x)))
-        S_2 = ift.DiagonalOperator(S_2, domain=fulldomain, spaces=1)
+        S_1 = ift.create_power_operator((space1, space2), _spec1, 0)
+        S_2 = ift.create_power_operator((space1, space2), _spec2, 1)
+        S_full = S_2*S_1
 
         samples = 500
-        ps1 = 0.
-        ps2 = 0.
+        sc1 = ift.StatCalculator()
+        sc2 = ift.StatCalculator()
 
         for ii in range(samples):
-            rand_k = ift.Field.from_random('normal', domain=fulldomain)
-            sk = S_1.times(S_2.times(rand_k))
+            sk = S_full.draw_sample()
             sp = ift.power_analyze(sk, spaces=(0, 1),
                                    keep_phase_information=False)
-            ps1 += sp.sum(spaces=1)/fp2.sum()
-            ps2 += sp.sum(spaces=0)/fp1.sum()
+            sc1.add(sp.sum(spaces=1)/fp2.sum())
+            sc2.add(sp.sum(spaces=0)/fp1.sum())
 
-        assert_allclose((ps1/samples).local_data, fp1.local_data, rtol=0.2)
-        assert_allclose((ps2/samples).local_data, fp2.local_data, rtol=0.2)
+        assert_allclose(sc1.mean.local_data, fp1.local_data, rtol=0.2)
+        assert_allclose(sc2.mean.local_data, fp2.local_data, rtol=0.2)
 
     def test_vdot(self):
         s = ift.RGSpace((10,))
