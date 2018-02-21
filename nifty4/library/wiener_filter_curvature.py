@@ -31,11 +31,11 @@ class WienerFilterCurvature(EndomorphicOperator):
 
     Parameters
     ----------
-    R: LinearOperator
+    R : LinearOperator
         The response operator of the Wiener filter measurement.
-    N: EndomorphicOperator
+    N : EndomorphicOperator
         The noise covariance.
-    S: EndomorphicOperator
+    S : DiagonalOperator
         The prior signal covariance
     inverter : Minimizer
         The minimizer to use during numerical inversion

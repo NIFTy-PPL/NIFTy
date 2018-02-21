@@ -44,8 +44,6 @@ class Field(object):
 
     dtype : type
         A numpy.type. Most common are float and complex.
-
-    copy : bool
     """
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False,
@@ -77,6 +75,20 @@ class Field(object):
 
     @staticmethod
     def full(domain, val, dtype=None):
+        """Creates a Field with a given domain, filled with a constant value.
+
+        Parameters
+        ----------
+        domain : Domain, tuple of Domain, or DomainTuple
+            domain of the new Field
+        val : float/complex/int scalar
+            fill value. Data type of the field is inferred from val.
+
+        Returns
+        -------
+        Field
+            the newly created field
+        """
         if not np.isscalar(val):
             raise TypeError("val must be a scalar")
         return Field(DomainTuple.make(domain), val, dtype)
@@ -95,6 +107,20 @@ class Field(object):
 
     @staticmethod
     def full_like(field, val, dtype=None):
+        """Creates a Field from a template, filled with a constant value.
+
+        Parameters
+        ----------
+        field : Field
+            the template field, from which the domain is inferred
+        val : float/complex/int scalar
+            fill value. Data type of the field is inferred from val.
+
+        Returns
+        -------
+        Field
+            the newly created field
+        """
         if not isinstance(field, Field):
             raise TypeError("field must be of Field type")
         return Field.full(field._domain, val, dtype)
