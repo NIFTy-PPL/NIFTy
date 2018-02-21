@@ -18,7 +18,6 @@
 
 from __future__ import division
 from .minimizer import Minimizer
-from ..field import Field
 from .. import dobj
 
 

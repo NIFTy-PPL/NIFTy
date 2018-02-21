@@ -35,7 +35,7 @@ class LaplaceOperatorTests(unittest.TestCase):
         assert_allclose(L(fp).vdot(L(fp)), L.adjoint_times(L(fp)).vdot(fp))
 
     @expand(product([10, 100, 1000]))
-    def test_Laplace(self, sz):
+    def test_Laplace2(self, sz):
         s = ift.RGSpace(sz, harmonic=True, distances=0.764)
         bb = ift.PowerSpace.useful_binbounds(s, logarithmic=False)
         p = ift.PowerSpace(s, binbounds=bb)

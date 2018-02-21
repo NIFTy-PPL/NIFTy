@@ -17,18 +17,15 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from .domains.structured_domain import StructuredDomain
 from .domains.power_space import PowerSpace
-from .field import Field, sqrt
+from .field import Field
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
-from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
 
 __all__ = ['PS_field',
            'power_analyze',
-           'create_power_field',
            'create_power_operator',
            'create_harmonic_smoothing_operator']
 
@@ -117,78 +114,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
 
 
-def _power_synthesize_nonrandom(field, spaces=None):
-    spaces = utilities.parse_spaces(spaces, len(field.domain))
-
-    result_domain = list(field.domain)
-    amplitude = sqrt(field)
-    for i in spaces:
-        result_domain[i] = field.domain[i].harmonic_partner
-        pd = PowerDistributor(result_domain, field.domain[i], i)
-        amplitude = pd(amplitude)
-
-    return amplitude
-
-
-def _power_synthesize(field, spaces=None, real_power=True, real_signal=True):
-    """Returns a sampled field with `field` as its power spectrum.
-
-    This method draws a Gaussian random field in the harmonic partner
-    domain of this field's domains, using this field as power spectrum.
-
-    Parameters
-    ----------
-    field : Field
-        The input field containing the power spectrum
-    spaces : None, int, or tuple of int, optional
-        Specifies the subdomains containing all the PowerSpaces which
-        should be converted (default : None).
-        if spaces is None : Tries to convert the whole domain.
-    real_power : bool, optional
-        Determines whether the power spectrum is treated as intrinsically
-        real or complex (default : True).
-    real_signal : bool, optional
-        True will result in a purely real signal-space field
-        (default : True).
-
-    Returns
-    -------
-    Field
-        The output object. A random field created with the power spectrum
-        stored in the `spaces` in `field`.
-
-    Notes
-    -----
-    For this the spaces specified by `spaces` must be of type PowerSpace.
-    This expects this field to be a power spectrum, i.e.
-    to have the unit of "field to be sampled"**2.
-
-    Raises
-    ------
-    ValueError : If a domain specified by `spaces` is not a PowerSpace.
-    """
-
-    spec = _power_synthesize_nonrandom(field, spaces)
-    self_real = not np.issubdtype(spec.dtype, np.complexfloating)
-    if (not real_power) and self_real:
-        raise ValueError("can't draw complex realizations from real spectrum")
-
-    # create random samples: one or two, depending on whether the
-    # power spectrum is real or complex
-    result = [field.from_random('normal', mean=0., std=1.,
-                                domain=spec.domain,
-                                dtype=np.float64 if real_signal
-                                else np.complex128)
-              for x in range(1 if real_power else 2)]
-
-    result[0] *= spec if self_real else spec.real
-    if not real_power:
-        result[1] *= spec.imag
-
-    return result[0] if real_power else result[0] + 1j*result[1]
-
-
-def create_power_field(domain, power_spectrum):
+def _create_power_field(domain, power_spectrum):
     if not callable(power_spectrum):  # we have a Field living on a PowerSpace
         if not isinstance(power_spectrum, Field):
             raise TypeError("Field object expected")
@@ -227,7 +153,7 @@ def create_power_operator(domain, power_spectrum, space=None):
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
     return DiagonalOperator(
-        create_power_field(domain[space], power_spectrum),
+        _create_power_field(domain[space], power_spectrum),
         domain=domain, spaces=space)
 
 

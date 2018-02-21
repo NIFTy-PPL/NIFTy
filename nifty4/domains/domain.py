@@ -18,7 +18,6 @@
 
 import abc
 from ..utilities import NiftyMetaBase
-import numpy as np
 
 
 class Domain(NiftyMetaBase()):

@@ -20,7 +20,6 @@ from __future__ import division
 import numpy as np
 from .structured_domain import StructuredDomain
 from ..field import Field, exp
-from .. import dobj
 
 
 class LMSpace(StructuredDomain):

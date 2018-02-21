@@ -18,7 +18,7 @@
 
 from __future__ import division
 import numpy as np
-from ..field import Field, sqrt
+from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
 from .. import utilities
