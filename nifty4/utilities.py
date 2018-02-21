@@ -76,16 +76,16 @@ def safe_cast(tfunc, val):
     return tmp
 
 
-def parse_spaces(spaces, maxidx):
-    maxidx = safe_cast(int, maxidx)
+def parse_spaces(spaces, nspc):
+    nspc = safe_cast(int, nspc)
     if spaces is None:
-        return tuple(range(maxidx))
+        return tuple(range(nspc))
     elif np.isscalar(spaces):
         spaces = (safe_cast(int, spaces),)
     else:
         spaces = tuple(safe_cast(int, item) for item in spaces)
     tmp = tuple(set(spaces))
-    if tmp[0] < 0 or tmp[-1] >= maxidx:
+    if tmp[0] < 0 or tmp[-1] >= nspc:
         raise ValueError("space index out of range")
     if len(tmp) != len(spaces):
         raise ValueError("multiply defined space indices")
