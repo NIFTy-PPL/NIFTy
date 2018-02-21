@@ -32,7 +32,6 @@ __all__ = ['PS_field',
            'power_synthesize_nonrandom',
            'create_power_field',
            'create_power_operator',
-           'create_composed_ht_operator',
            'create_harmonic_smoothing_operator']
 
 
@@ -236,20 +235,6 @@ def create_power_operator(domain, power_spectrum, space=None, dtype=None):
     return DiagonalOperator(
         create_power_field(domain[space], power_spectrum, dtype),
         domain=domain, spaces=space)
-
-
-def create_composed_ht_operator(domain, codomain=None):
-    if codomain is None:
-        codomain = [None]*len(domain)
-    res = None
-    for i, space in enumerate(domain):
-        if isinstance(space, StructuredDomain) and space.harmonic:
-            tdom = domain if res is None else res.target
-            op = HarmonicTransformOperator(tdom, codomain[i], i)
-            res = op if res is None else op*res
-    if res is None:
-        raise ValueError("empty operator")
-    return res
 
 
 def create_harmonic_smoothing_operator(domain, space, sigma):
