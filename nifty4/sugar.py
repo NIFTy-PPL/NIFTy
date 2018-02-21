@@ -45,13 +45,13 @@ def _single_power_analyze(field, idx, binbounds):
 
 def power_analyze(field, spaces=None, binbounds=None,
                   keep_phase_information=False):
-    """ Computes the square root power spectrum for a subspace of `field`.
+    """ Computes the power spectrum for a subspace of `field`.
 
     Creates a PowerSpace for the space addressed by `spaces` with the given
     binning and computes the power spectrum as a Field over this
     PowerSpace. This can only be done if the subspace to  be analyzed is a
-    harmonic space. The resulting field has the same units as the initial
-    field, corresponding to the square root of the power spectrum.
+    harmonic space. The resulting field has the same units as the square of the
+    initial field.
 
     Parameters
     ----------
@@ -106,9 +106,7 @@ def power_analyze(field, spaces=None, binbounds=None,
             parts = [field.real*field.real + field.imag*field.imag]
 
     for space_index in spaces:
-        parts = [_single_power_analyze(field=part,
-                                       idx=space_index,
-                                       binbounds=binbounds)
+        parts = [_single_power_analyze(part, space_index, binbounds)
                  for part in parts]
 
     return parts[0] + 1j*parts[1] if keep_phase_information else parts[0]
@@ -152,9 +150,8 @@ def create_power_operator(domain, power_spectrum, space=None):
     """
     domain = DomainTuple.make(domain)
     space = utilities.infer_space(domain, space)
-    return DiagonalOperator(
-        _create_power_field(domain[space], power_spectrum),
-        domain=domain, spaces=space)
+    field = _create_power_field(domain[space], power_spectrum)
+    return DiagonalOperator(field, domain, space)
 
 
 def create_harmonic_smoothing_operator(domain, space, sigma):
