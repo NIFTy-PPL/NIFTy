@@ -83,8 +83,10 @@ class ScalingOperator(EndomorphicOperator):
             return self.TIMES | self.ADJOINT_TIMES
         return self._all_ops
 
-    def draw_sample(self):
+    def draw_sample(self, dtype=np.float64):
+        if self._factor.imag != 0. or self._factor.real <= 0.:
+            raise ValueError("Operator not positive definite")
         return Field.from_random(random_type="normal",
                                  domain=self._domain,
                                  std=np.sqrt(self._factor),
-                                 dtype=np.result_type(self._factor))
+                                 dtype=dtype)

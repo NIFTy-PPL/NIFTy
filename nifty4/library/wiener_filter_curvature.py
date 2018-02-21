@@ -20,6 +20,7 @@ from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..field import Field, sqrt
 from ..sugar import power_analyze, power_synthesize
+import numpy as np
 
 
 class WienerFilterCurvature(EndomorphicOperator):
@@ -61,9 +62,9 @@ class WienerFilterCurvature(EndomorphicOperator):
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
-    def draw_sample(self):
-        n = self.N.draw_sample()
-        s = self.S.draw_sample()
+    def draw_sample(self, dtype=np.float64):
+        n = self.N.draw_sample(dtype)
+        s = self.S.draw_sample(dtype)
 
         d = self.R(s) + n
 
