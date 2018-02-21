@@ -30,15 +30,16 @@ class FFTOperator(LinearOperator):
 
     Parameters
     ----------
-    domain: Space, tuple of Spaces or DomainObject
+    domain: Domain, tuple of Domain o DomainTuple
         The domain of the data that is input by "times" and output by
         "adjoint_times".
-    target: Space
-        The target space of the transform operation.
-        If omitted, a space will be chosen automatically.
-    space: the index of the space on which the operator should act
-        If None, it is set to 0 if domain contains exactly one space.
-        domain[space] must be an RGSpace.
+    target: Domain, optional
+        The target (sub-)domain of the transform operation.
+        If omitted, a domain will be chosen automatically.
+    space: int, optional
+        The index of the subdomain on which the operator should act
+        If None, it is set to 0 if `domain` contains exactly one space.
+        `domain[space]` must be an RGSpace.
     """
 
     def __init__(self, domain, target=None, space=None):

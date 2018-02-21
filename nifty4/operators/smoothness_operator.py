@@ -35,11 +35,16 @@ def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
 
     Parameters
     ----------
+    domain : Domain, tuple of Domain, or DomainTuple
+       The total domain of the operator's input and output fields
     strength : nonnegative float
         Specifies the strength of the SmoothnessOperator
     logarithmic : bool, optional
         Whether smoothness is calculated on a logarithmic scale or linear scale
         default : True
+    space : int, optional
+       The index of the sub-domain on which the operator acts.
+       Can be omitted if `domain` only has one sub-domain.
     """
     if strength < 0:
         raise ValueError("ERROR: strength must be nonnegative.")

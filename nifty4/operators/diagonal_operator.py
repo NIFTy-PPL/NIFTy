@@ -35,18 +35,13 @@ class DiagonalOperator(EndomorphicOperator):
     Parameters
     ----------
     diagonal : Field
-        The diagonal entries of the operator
-        (already containing volume factors).
-    domain : tuple of DomainObjects
+        The diagonal entries of the operator.
+    domain : Domain, tuple of Domain or DomainTuple, optional
         The domain on which the Operator's input Field lives.
         If None, use the domain of "diagonal".
-    spaces : tuple of int
+    spaces : int or tuple of int, optional
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
-
-    NOTE: the fields given to __init__ and returned from .diagonal are
-    considered to be non-bare, i.e. during operator application, no additional
-    volume factors are applied!
     """
 
     def __init__(self, diagonal, domain=None, spaces=None):

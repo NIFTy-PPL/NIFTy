@@ -33,7 +33,7 @@ class ScalingOperator(EndomorphicOperator):
     ----------
     factor : scalar
         The multiplication factor
-    domain : tuple of DomainObjects
+    domain : Domain or tuple of Domain or DomainTuple
         The domain on which the Operator's input Field lives.
     """
 

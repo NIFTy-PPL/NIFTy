@@ -32,12 +32,10 @@ def FFTSmoothingOperator(domain, sigma, space=None):
     ----------
     domain : Domain, tuple of Domain, or DomainTuple
        The total domain of the operator's input and output fields
-
     sigma : float>=0
        The sigma of the Gaussian used for smoothing. It has the same units as
        the RGSpace the operator is working on.
        If `sigma==0`, an identity operator will be returned.
-
     space : int, optional
        The index of the sub-domain on which the smoothing is performed.
        Can be omitted if `domain` only has one sub-domain.

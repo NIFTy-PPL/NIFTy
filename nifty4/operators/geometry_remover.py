@@ -23,7 +23,19 @@ from .linear_operator import LinearOperator
 
 class GeometryRemover(LinearOperator):
     """Operator which transforms between a structured and an unstructured
-    domain."""
+    domain.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of Domain, or DomainTuple:
+        the full input domain of the operator.
+
+    Notes
+    -----
+    The operator will convert every sub-domain of its input domain to an
+    UnstructuredDomain with the same shape. No weighting by volume factors
+    is carried out.
+    """
 
     def __init__(self, domain):
         super(GeometryRemover, self).__init__()

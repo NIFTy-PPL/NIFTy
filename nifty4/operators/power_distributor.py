@@ -23,7 +23,20 @@ from ..domains.power_space import PowerSpace
 
 
 class PowerDistributor(DOFDistributor):
-    """Operator which transforms between a PowerSpace and a harmonic domain."""
+    """Operator which transforms between a PowerSpace and a harmonic domain.
+
+    Parameters
+    ----------
+    target: Domain, tuple of Domain, or DomainTuple
+        the total *target* domain of the operator.
+    power_space: PowerSpace, optional
+        the input sub-domain on which the operator acts.
+        If not supplied, a matching PowerSpace with natural binbounds will be
+        used.
+    space: int, optional:
+       The index of the sub-domain on which the operator acts.
+       Can be omitted if `target` only has one sub-domain.
+    """
 
     def __init__(self, target, power_space=None, space=None):
         # Initialize domain and target
