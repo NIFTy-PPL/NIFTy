@@ -110,7 +110,7 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](http://ift.pages.mpcdf.de/NIFTy/start.html) or
+introduction](http://ift.pages.mpcdf.de/NIFTy/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python demos/wiener_filter_via_curvature.py
