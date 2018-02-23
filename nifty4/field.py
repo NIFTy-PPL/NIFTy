@@ -558,9 +558,40 @@ class Field(object):
             return Field(domain=return_domain, val=data, copy=False)
 
     def sum(self, spaces=None):
+        """Sums up over the sub-domains given by `spaces`.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The summation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the summation. If it is carried out over the entire
+            domain, this is a scalar, otherwise a Field.
+        """
         return self._contraction_helper('sum', spaces)
 
     def integrate(self, spaces=None):
+        """Integrates over the sub-domains given by `spaces`.
+
+        Integration is performed by summing over `self` multiplied by its
+        volume factors.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The summation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the integration. If it is carried out over the
+            entire domain, this is a scalar, otherwise a Field.
+        """
         swgt = self.scalar_weight(spaces)
         if swgt is not None:
             res = self.sum(spaces)
@@ -570,6 +601,20 @@ class Field(object):
         return tmp.sum(spaces)
 
     def prod(self, spaces=None):
+        """Computes the product over the sub-domains given by `spaces`.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The operation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the product. If it is carried out over the entire
+            domain, this is a scalar, otherwise a Field.
+        """
         return self._contraction_helper('prod', spaces)
 
     def all(self, spaces=None):
@@ -579,12 +624,57 @@ class Field(object):
         return self._contraction_helper('any', spaces)
 
     def min(self, spaces=None):
+        """Determines the minimum over the sub-domains given by `spaces`.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The operation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the operation. If it is carried out over the entire
+            domain, this is a scalar, otherwise a Field.
+        """
         return self._contraction_helper('min', spaces)
 
     def max(self, spaces=None):
+        """Determines the maximum over the sub-domains given by `spaces`.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The operation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the operation. If it is carried out over the entire
+            domain, this is a scalar, otherwise a Field.
+        """
         return self._contraction_helper('max', spaces)
 
     def mean(self, spaces=None):
+        """Determines the mean over the sub-domains given by `spaces`.
+
+        ``x.mean(spaces)`` is equivalent to
+        ``x.integrate(spaces)/x.total_volume(spaces)``.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The operation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the operation. If it is carried out over the entire
+            domain, this is a scalar, otherwise a Field.
+        """
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('mean', spaces)
         # MR FIXME: not very efficient
@@ -592,6 +682,20 @@ class Field(object):
         return tmp.sum(spaces)*(1./tmp.total_volume(spaces))
 
     def var(self, spaces=None):
+        """Determines the variance over the sub-domains given by `spaces`.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The operation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the operation. If it is carried out over the entire
+            domain, this is a scalar, otherwise a Field.
+        """
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('var', spaces)
         # MR FIXME: not very efficient or accurate
@@ -605,6 +709,23 @@ class Field(object):
         return sq.mean(spaces) - m1
 
     def std(self, spaces=None):
+        """Determines the standard deviation over the sub-domains given by
+        `spaces`.
+
+        ``x.std(spaces)`` is equivalent to ``sqrt(x.var(spaces))``.
+
+        Parameters
+        ----------
+        spaces : None, int or tuple of int (default: None)
+            The operation is only carried out over the sub-domains in this
+            tuple. If None, it is carried out over all sub-domains.
+
+        Returns
+        -------
+        Field or scalar
+            The result of the operation. If it is carried out over the entire
+            domain, this is a scalar, otherwise a Field.
+        """
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
         return sqrt(self.var(spaces))
