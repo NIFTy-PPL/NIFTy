@@ -37,7 +37,7 @@ class NonlinearPowerEnergy(Energy):
     position : Field
         The current position of this energy.
     m : Field
-        The map whichs power spectrum has to be inferred
+        The map whose power spectrum has to be inferred
     D : EndomorphicOperator
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.
@@ -88,8 +88,9 @@ class NonlinearPowerEnergy(Energy):
 
             residual = self.d - \
                 self.Instrument(self.nonlinearity(map_s))
-            lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
-            grad = LinR.adjoint_times(self.N.inverse_times(residual))
+            tmp = self.N.inverse_times(residual)
+            lh = 0.5 * residual.vdot(tmp)
+            grad = LinR.adjoint_times(tmp)
 
             if self._gradient is None:
                 self._value = lh
