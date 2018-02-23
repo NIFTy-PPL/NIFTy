@@ -215,7 +215,7 @@ def plot(f, **kwargs):
             dist = dom.distances[0]
             xcoord = np.arange(npoints, dtype=np.float64)*dist
             for i, fld in enumerate(f):
-                ycoord = dobj.to_global_data(fld.val)
+                ycoord = fld.to_global_data()
                 plt.plot(xcoord, ycoord, label=label[i])
             _limit_xy(**kwargs)
             if label != ([None]*len(f)):
@@ -230,7 +230,7 @@ def plot(f, **kwargs):
             dy = dom.distances[1]
             xc = np.arange(nx, dtype=np.float64)*dx
             yc = np.arange(ny, dtype=np.float64)*dy
-            im = ax.imshow(dobj.to_global_data(f.val),
+            im = ax.imshow(fld.to_global_data(),
                            extent=[xc[0], xc[-1], yc[0], yc[-1]],
                            vmin=kwargs.get("zmin"),
                            vmax=kwargs.get("zmax"), cmap=cmap, origin="lower")
@@ -248,7 +248,7 @@ def plot(f, **kwargs):
         plt.title('power')
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
-            ycoord = dobj.to_global_data(fld.val)
+            ycoord = fld.to_global_data()
             plt.plot(xcoord, ycoord, label=label[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
@@ -264,8 +264,8 @@ def plot(f, **kwargs):
         ptg = np.empty((phi.size, 2), dtype=np.float64)
         ptg[:, 0] = theta
         ptg[:, 1] = phi
-        base = pyHealpix.Healpix_Base(int(np.sqrt(f.val.size//12)), "RING")
-        res[mask] = dobj.to_global_data(f.val)[base.ang2pix(ptg)]
+        base = pyHealpix.Healpix_Base(int(np.sqrt(f.size//12)), "RING")
+        res[mask] = f.to_global_data()[base.ang2pix(ptg)]
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
@@ -282,7 +282,7 @@ def plot(f, **kwargs):
         ilat = _find_closest(dec, theta)
         ilon = _find_closest(ra, phi)
         ilon = np.where(ilon == dom.nlon, 0, ilon)
-        res[mask] = dobj.to_global_data(f.val)[ilat*dom.nlon + ilon]
+        res[mask] = f.to_global_data()[ilat*dom.nlon + ilon]
 
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
