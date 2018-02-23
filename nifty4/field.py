@@ -44,6 +44,11 @@ class Field(object):
 
     dtype : type
         A numpy.type. Most common are float and complex.
+
+    Notes
+    -----
+    If possible, do not invoke the constructor directly, but use one of the
+    many convenience functions for Field conatruction!
     """
 
     def __init__(self, domain=None, val=None, dtype=None, copy=False,
@@ -150,17 +155,68 @@ class Field(object):
         return Field.empty(field._domain, dtype)
 
     @staticmethod
-    def from_global_data(domain, dobject):
-        return Field(domain, dobj.from_global_data(dobject))
+    def from_global_data(domain, arr):
+        """Returns a Field constructed from `domain` and `arr`.
+
+        Parameters
+        ----------
+        domain : DomainTuple, tuple of Domain, or Domain
+            the domain of the new Field
+        arr : numpy.ndarray
+            The data content to be used for the new Field.
+            Its shape must match the shape of `domain`.
+            If MPI is active, the contents of `arr` must be the same on all
+            MPI tasks.
+        """
+        return Field(domain, dobj.from_global_data(arr))
 
     def to_global_data(self):
+        """Returns an array containing the full data of the field.
+
+        Returns
+        -------
+        numpy.ndarray : array containing all field entries.
+            Its shape is identical to `self.shape`.
+
+        Notes
+        -----
+        Do not write to the returned array! Depending on whether MPI is
+        active or not, this may or may not change the field's data content.
+        """
         return dobj.to_global_data(self._val)
 
     @property
     def local_data(self):
+        """numpy.ndarray : locally residing field data
+
+        Returns a handle to the part of the array data residing on the local
+        task (or to the entore array if MPI is not active).
+
+        Notes
+        -----
+        If the field is not locked, the array data can be modified.
+        Use with care!
+        """
         return dobj.local_data(self._val)
 
     def cast_domain(self, new_domain):
+        """Returns a field with the same data, but a different domain
+
+        Parameters
+        ----------
+        new_domain : Domain, tuple of Domain, or DomainTuple
+            The domain for the returned field. Must be shape-compatible to
+            `self`.
+
+        Returns
+        -------
+        Field
+            Field living on `new_domain`, but with the same data as `self`.
+
+        Notes
+        -----
+        No copy is made. If needed, use an additional copy() invocation.
+        """
         return Field(new_domain, self._val)
 
     @staticmethod
@@ -189,20 +245,17 @@ class Field(object):
 
         Parameters
         ----------
-        random_type : str
-            'pm1', 'normal', 'uniform' are the supported arguments for this
-            method.
-
+        random_type : 'pm1', 'normal', or 'uniform'
+            The random distribution to use.
         domain : DomainTuple
             The domain of the output random field
-
         dtype : type
             The datatype of the output random field
 
         Returns
         -------
         Field
-            The output object.
+            The newly created Field.
         """
         domain = DomainTuple.make(domain)
         return Field(domain=domain,
@@ -210,65 +263,80 @@ class Field(object):
                                           shape=domain.shape, **kwargs))
 
     def fill(self, fill_value):
+        """Fill `self` uniformly with `fill_value`
+
+        Parameters
+        ----------
+        fill_value: float or complex or int
+            The value to fill the field with.
+        """
         self._val.fill(fill_value)
 
     def lock(self):
+        """Write-protect the data content of `self`.
+
+        After this call, it will no longer be possible to change the data
+        entries of `self`. This is convenient if, for example, a
+        DiagonalOperator wants to ensure that its diagonal cannot be modified
+        inadvertently, without making copies.
+
+        Notes
+        -----
+        This will not only prohibit modifications to the entries of `self`, but
+        also to the entries of any other Field or numpy array pointing to the
+        same data. If an unlocked instance is needed, use copy().
+
+        The fact that there is no `unlock()` method is deliberate.
+        """
         dobj.lock(self._val)
         return self
 
     @property
     def locked(self):
+        """bool : True iff the field's data content has been locked"""
         return dobj.locked(self._val)
 
     @property
     def val(self):
-        """ Returns the data object associated with this Field.
-        No copy is made.
+        """dobj.data_object : the data object storing the field's entries
+
+        Notes
+        -----
+        This property is intended for low-level, internal use only. Do not use
+        from outside of NIFTy's core; there should be better alternatives.
         """
         return self._val
 
     @property
     def dtype(self):
+        """type : the data type of the field's entries"""
         return self._val.dtype
 
     @property
     def domain(self):
+        """DomainTuple : the field's domain"""
         return self._domain
 
     @property
     def shape(self):
-        """ Returns the total shape of the Field's data array.
-
-        Returns
-        -------
-        tuple of int
-            the dimensions of the spaces in domain.
-        """
+        """tuple of int : the concatenated shapes of all sub-domains"""
         return self._domain.shape
 
     @property
     def size(self):
-        """ Returns the total number of pixel-dimensions the field has.
-
-        Effectively, all values from shape are multiplied.
-
-        Returns
-        -------
-        int
-            the dimension of the Field.
-        """
+        """int : total number of pixels in the field"""
         return self._domain.size
 
     @property
     def real(self):
-        """ The real part of the field (data is not copied)."""
+        """Field : The real part of the field"""
         if not np.issubdtype(self.dtype, np.complexfloating):
             return self
         return Field(self._domain, self.val.real)
 
     @property
     def imag(self):
-        """ The imaginary part of the field (data is not copied)."""
+        """Field : The imaginary part of the field"""
         if not np.issubdtype(self.dtype, np.complexfloating):
             raise ValueError(".imag called on a non-complex Field")
         return Field(self._domain, self.val.imag)
@@ -277,11 +345,12 @@ class Field(object):
         """ Returns a full copy of the Field.
 
         The returned object will be an identical copy of the original Field.
+        The copy will be writeable, even if `self` was locked.
 
         Returns
         -------
         Field
-            An identical copy of 'self'.
+            An identical, but unlocked copy of 'self'.
         """
         return Field(val=self, copy=True)
 
@@ -294,13 +363,25 @@ class Field(object):
         Returns
         -------
         Field
-            A read-only version of 'self'.
+            A read-only version of `self`.
         """
-        if self.locked:
-            return self
-        return Field(val=self, copy=True, locked=True)
+        return self if self.locked else Field(val=self, copy=True, locked=True)
 
     def scalar_weight(self, spaces=None):
+        """Returns the uniform volume element for a sub-domain of `self`.
+
+        Parameters
+        ----------
+        spaces : int, tuple of int or None
+            indices of the sub-domains of the field's domain to be considered.
+            If `None`, the entire domain is used.
+
+        Returns
+        -------
+        float or None
+            if the requested sub-domain has a uniform volume element, it is
+            returned. Otherwise, `None` is returned.
+        """
         if np.isscalar(spaces):
             return self._domain[spaces].scalar_dvol
 
@@ -315,6 +396,19 @@ class Field(object):
         return res
 
     def total_volume(self, spaces=None):
+        """Returns the total volume of a sub-domain of `self`.
+
+        Parameters
+        ----------
+        spaces : int, tuple of int or None
+            indices of the sub-domains of the field's domain to be considered.
+            If `None`, the entire domain is used.
+
+        Returns
+        -------
+        float
+            the total volume of the requested sub-domain.
+        """
         if np.isscalar(spaces):
             return self._domain[spaces].total_volume
 
@@ -333,8 +427,9 @@ class Field(object):
         power : number
             The pixels get weighted with the volume-factor**power.
 
-        spaces : int or tuple of int
-            Determines on which subspace the operation takes place.
+        spaces : None, int or tuple of int
+            Determines on which sub-domain the operation takes place.
+            If None, the entire domain is used.
 
         out : Field or None
             if not None, the result is returned in a new Field
@@ -375,7 +470,7 @@ class Field(object):
         return out
 
     def vdot(self, x=None, spaces=None):
-        """ Computes the volume-factor-aware dot product of 'self' with x.
+        """ Computes the dot product of 'self' with x.
 
         Parameters
         ----------
