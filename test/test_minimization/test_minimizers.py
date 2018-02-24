@@ -129,8 +129,7 @@ class Test_Minimizers(unittest.TestCase):
                         rtol=1e-3, atol=1e-3)
 
     @expand(product(minimizers3))
-    def DISABLED_test_nonlinear(self, minimizer_class):
-        print (minimizer_class)
+    def DISABLEDtest_nonlinear(self, minimizer_class):
         space = ift.UnstructuredDomain((1,))
         starting_point = ift.Field(space, val=5.)
 
