@@ -40,7 +40,10 @@ class NonlinearCG(Minimizer):
     2006, Springer-Verlag New York
     """
 
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
+    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(c2=0.1), beta_heuristics = 'Polak-Ribiere'):
+        if (beta_heuristics != 'Polak-Ribiere') and (beta_heuristics != 'Polak-Ribiere'):
+            raise ValueError("beta heuristics must be either 'Polak-Ribiere' or 'Hestenes-Stiefel'")
+        self._beta_heuristic = beta_heuristics
         self._controller = controller
         self._line_searcher = line_searcher
 
@@ -63,6 +66,8 @@ class NonlinearCG(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
             grad_new = energy.gradient
-            gnnew = energy.gradient_norm
-            beta = gnnew*gnnew/(grad_new-grad_old).vdot(p).real
+            if self._beta_heuristic == 'Hestenes-Stiefel':
+                beta = grad_new.vdot(grad_new-grad_old)/(grad_new-grad_old).vdot(p).real
+            else:
+                beta = grad_new.vdot(grad_new-grad_old)/(grad_old.vdot(grad_old)).real
             p = beta*p - grad_new
