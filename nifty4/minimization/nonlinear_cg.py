@@ -22,12 +22,11 @@ from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class NonlinearCG(Minimizer):
-    #RL FIXME: referenced equations in docstring seem broken for the version I found.
     """ Nonlinear Conjugate Gradient scheme according to Polak-Ribiere.
 
     Algorithm 5.4 from Nocedal & Wright.
-    Eq. (5.41a) has been replaced by eq. (5.49) 
-	
+    Eq. (5.41a) has been replaced by eq. (5.49)
+
     Parameters
     ----------
     controller : IterationController
@@ -41,11 +40,13 @@ class NonlinearCG(Minimizer):
     2006, Springer-Verlag New York
     """
 
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(c2=0.1), beta_heuristics = 'Polak-Ribiere'):
-        valid_beta_heuristics = ['Polak-Ribiere', 'Fletcher-Reeves', 'Polak-Ribiere']
+    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(c2=0.1),
+                 beta_heuristics='Polak-Ribiere'):
+        valid_beta_heuristics = ['Polak-Ribiere', 'Fletcher-Reeves',
+                                 'Hestenes-Stiefel']
         if not (beta_heuristics in valid_beta_heuristics):
-            raise ValueError("beta heuristics must be either 'Polak-Ribiere', "\
-                +"'Fletcher-Reeves', or 'Hestenes-Stiefel'")
+            raise ValueError("beta heuristics must be either 'Polak-Ribiere', "
+                             "'Fletcher-Reeves', or 'Hestenes-Stiefel'")
         self._beta_heuristic = beta_heuristics
         self._controller = controller
         self._line_searcher = line_searcher
@@ -69,14 +70,16 @@ class NonlinearCG(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
             grad_new = energy.gradient
-            #print(grad_old.val, grad_new.val, p.val, energy.position.val)
+
             if self._beta_heuristic == 'Hestenes-Stiefel':
-                #Eq. (5.45) in Nocedal & Wright.
-                beta = max(0.0,(grad_new.vdot(grad_new-grad_old)/(grad_new-grad_old).vdot(p)).real)
-            elif self._beta_heuristic == 'Polak Ribiere':
-                #Eq. (5.43) in Nocedal & Wright. (with (5.44) additionally)
-                beta = max(0.0,(grad_new.vdot(grad_new-grad_old)/(grad_old.vdot(grad_old))).real)
+                # Eq. (5.45) in Nocedal & Wright.
+                beta = max(0.0, (grad_new.vdot(grad_new-grad_old) /
+                                 (grad_new-grad_old).vdot(p)).real)
+            elif self._beta_heuristic == 'Polak-Ribiere':
+                # Eq. (5.43) in Nocedal & Wright. (with (5.44) additionally)
+                beta = max(0.0, (grad_new.vdot(grad_new-grad_old) /
+                                 (grad_old.vdot(grad_old))).real)
             else:
-                #Eq. (5.40a) in Nocedal & Wright.
+                # Eq. (5.40a) in Nocedal & Wright.
                 beta = (grad_new.vdot(grad_new)/(grad_old.vdot(grad_old))).real
             p = beta*p - grad_new
