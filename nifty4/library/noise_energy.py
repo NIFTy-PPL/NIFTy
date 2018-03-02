@@ -53,7 +53,8 @@ class NoiseEnergy(Energy):
         self._gradient += (alpha_field-0.5) - q_field*(exp(-self.position))
 
     def at(self, position):
-        return self.__class__(position, self.alpha, self.q, self.res_sample_list)
+        return self.__class__(position, self.alpha, self.q,
+                              self.res_sample_list)
 
     @property
     def value(self):
