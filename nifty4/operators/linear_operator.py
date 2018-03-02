@@ -138,11 +138,10 @@ class LinearOperator(NiftyMetaBase()):
         other = self._toOperator(other, self.domain)
         return SumOperator.make([self, other], [False, True])
 
-    # MR FIXME: this might be more complicated ...
     def __rsub__(self, other):
         from .sum_operator import SumOperator
         other = self._toOperator(other, self.domain)
-        return SumOperator.make(other, self, [False, True])
+        return SumOperator.make([other, self], [False, True])
 
     @abc.abstractproperty
     def capability(self):
