@@ -16,14 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .. import Field, exp
+from ..field import Field, exp
 from ..minimization.energy import Energy
 from ..operators.diagonal_operator import DiagonalOperator
 
 
 class NoiseEnergy(Energy):
     def __init__(self, position, alpha, q, res_sample_list):
-        super(NoiseEnergy, self).__init__(position=position)
+        super(NoiseEnergy, self).__init__(position)
 
         self.N = DiagonalOperator(diagonal=exp(self.position))
         self.alpha = alpha
@@ -44,16 +44,19 @@ class NoiseEnergy(Energy):
                 self._value += lh
                 self._gradient += grad
 
-        self._value /= len(self.res_sample_list)
+        expmpos = exp(-position)
+        self._value *= 1./len(self.res_sample_list)
         self._value += .5 * self.position.sum()
-        self._value += (alpha_field - 1.).vdot(self.position) + \
-            q_field.vdot(exp(-self.position))
+        self._value += (alpha_field-1.).vdot(self.position) + \
+            q_field.vdot(expmpos)
 
-        self._gradient /= len(self.res_sample_list)
-        self._gradient += (alpha_field-0.5) - q_field*(exp(-self.position))
+        self._gradient *= 1./len(self.res_sample_list)
+        self._gradient += (alpha_field-0.5) - q_field*expmpos
+        self._gradient.lock()
 
     def at(self, position):
-        return self.__class__(position, self.alpha, self.q, self.res_sample_list)
+        return self.__class__(position, self.alpha, self.q,
+                              self.res_sample_list)
 
     @property
     def value(self):
