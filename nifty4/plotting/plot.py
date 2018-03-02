@@ -228,7 +228,8 @@ def plot(f, **kwargs):
             xcoord = np.arange(npoints, dtype=np.float64)*dist
             for i, fld in enumerate(f):
                 ycoord = fld.to_global_data()
-                plt.plot(xcoord, ycoord, label=label[i], linewidth=linewidth[i], alpha=alpha[i])
+                plt.plot(xcoord, ycoord, label=label[i],
+                         linewidth=linewidth[i], alpha=alpha[i])
             _limit_xy(**kwargs)
             if label != ([None]*len(f)):
                 plt.legend()
@@ -261,7 +262,8 @@ def plot(f, **kwargs):
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
             ycoord = fld.to_global_data()
-            plt.plot(xcoord, ycoord, label=label[i], linewidth=linewidth[i], alpha=alpha[i])
+            plt.plot(xcoord, ycoord, label=label[i],
+                     linewidth=linewidth[i], alpha=alpha[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
