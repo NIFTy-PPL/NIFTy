@@ -73,7 +73,7 @@ class Noise_Energy_Tests(unittest.TestCase):
         inverter = ift.ConjugateGradient(IC)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
-        D = ift.library.NonlinearWienerFilterEnergy(
+        C = ift.library.NonlinearWienerFilterEnergy(
             position=xi,
             d=d,
             Instrument=R,
@@ -84,10 +84,10 @@ class Noise_Energy_Tests(unittest.TestCase):
             S=S,
             inverter=inverter).curvature
 
-        energy0 = ift.library.NoiseEnergy(
-            position=eta0, d=d, xi=xi, D=D, t=tau, Instrument=R,
-            alpha=alpha, q=q, Distributor=Dist, nonlinearity=f,
-            ht=ht, samples=10)
+        res_sample_list = [d - R(f(ht(C.draw_sample() + xi)))
+                           for _ in range(10)]
+
+        energy0 = ift.library.NoiseEnergy(eta0, alpha, q, res_sample_list)
         energy1 = energy0.at(eta1)
 
         a = (energy1.value - energy0.value) / eps
