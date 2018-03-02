@@ -200,7 +200,7 @@ def plot(f, **kwargs):
 
     linewidth = _get_kw("linewidth", None, **kwargs)
     if linewidth is None:
-        linewidth = [None] * len(f)
+        linewidth = [1.] * len(f)
     if not isinstance(linewidth, list):
         linewidth = [linewidth]
 
