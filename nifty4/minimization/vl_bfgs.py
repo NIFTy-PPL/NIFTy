@@ -49,6 +49,9 @@ class VL_BFGS(DescentMinimizer):
         self._information_store = None
         return super(VL_BFGS, self).__call__(energy)
 
+    def reset(self):
+        self._information_store = None
+
     def get_descent_direction(self, energy):
         x = energy.position
         gradient = energy.gradient

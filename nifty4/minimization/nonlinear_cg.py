@@ -63,8 +63,10 @@ class NonlinearCG(Minimizer):
         while True:
             grad_old = energy.gradient
             f_k = energy.value
-            energy = self._line_searcher.perform_line_search(energy, p,
-                                                             f_k_minus_1)
+            energy, success = self._line_searcher.perform_line_search(
+                energy, p, f_k_minus_1)
+            if not success:
+                return energy, controller.ERROR
             f_k_minus_1 = f_k
             status = self._controller.check(energy)
             if status != controller.CONTINUE:

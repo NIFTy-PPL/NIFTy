@@ -198,6 +198,18 @@ def plot(f, **kwargs):
     if not isinstance(label, list):
         label = [label]
 
+    linewidth = _get_kw("linewidth", None, **kwargs)
+    if linewidth is None:
+        linewidth = [1.] * len(f)
+    if not isinstance(linewidth, list):
+        linewidth = [linewidth]
+
+    alpha = _get_kw("alpha", None, **kwargs)
+    if alpha is None:
+        alpha = [None] * len(f)
+    if not isinstance(alpha, list):
+        alpha = [alpha]
+
     dom = dom[0]
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -216,7 +228,8 @@ def plot(f, **kwargs):
             xcoord = np.arange(npoints, dtype=np.float64)*dist
             for i, fld in enumerate(f):
                 ycoord = fld.to_global_data()
-                plt.plot(xcoord, ycoord, label=label[i])
+                plt.plot(xcoord, ycoord, label=label[i],
+                         linewidth=linewidth[i], alpha=alpha[i])
             _limit_xy(**kwargs)
             if label != ([None]*len(f)):
                 plt.legend()
@@ -249,7 +262,8 @@ def plot(f, **kwargs):
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
             ycoord = fld.to_global_data()
-            plt.plot(xcoord, ycoord, label=label[i])
+            plt.plot(xcoord, ycoord, label=label[i],
+                     linewidth=linewidth[i], alpha=alpha[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
