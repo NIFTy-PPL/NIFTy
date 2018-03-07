@@ -21,7 +21,7 @@ from setuptools import setup, find_packages
 
 def write_version():
     import subprocess
-    p = subprocess.Popen(["git", "describe", "--dirty"],
+    p = subprocess.Popen(["git", "describe", "--dirty", "--tags"],
                          stdout=subprocess.PIPE)
     res = p.communicate()[0].strip().decode('utf-8')
     with open("nifty4/git_version.py", "w") as file:
