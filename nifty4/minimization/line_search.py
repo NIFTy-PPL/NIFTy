@@ -54,5 +54,7 @@ class LineSearch(NiftyMetaBase()):
         -------
         Energy
             The new Energy object on the new position.
+        bool
+            whether the line search was considered successful or not
         """
         raise NotImplementedError

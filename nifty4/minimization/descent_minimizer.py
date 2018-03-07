@@ -81,11 +81,13 @@ class DescentMinimizer(Minimizer):
 
             # compute a step length that reduces energy.value sufficiently
             try:
-                new_energy = self.line_searcher.perform_line_search(
+                new_energy, success = self.line_searcher.perform_line_search(
                     energy=energy, pk=self.get_descent_direction(energy),
                     f_k_minus_1=f_k_minus_1)
             except ValueError:
                 return energy, controller.ERROR
+            if not success:
+                self.reset()
 
             f_k_minus_1 = energy.value
 
@@ -102,6 +104,9 @@ class DescentMinimizer(Minimizer):
             status = self._controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
+
+    def reset(self):
+        pass
 
     @abc.abstractmethod
     def get_descent_direction(self, energy):
