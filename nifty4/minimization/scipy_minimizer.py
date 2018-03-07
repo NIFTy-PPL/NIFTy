@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division, print_function
+from __future__ import division
 from .minimizer import Minimizer
 from ..field import Field
 from .. import dobj
@@ -97,9 +97,9 @@ class ScipyMinimizer(Minimizer):
             status = self._controller.check(hlp._energy)
             return hlp._energy, self._controller.check(hlp._energy)
         if not r.success:
-            print("Problem in Scipy minimization:", r.message)
+            dobj.mprint("Problem in Scipy minimization:", r.message)
         else:
-            print("Problem in Scipy minimization")
+            dobj.mprint("Problem in Scipy minimization")
         return hlp._energy, self._controller.ERROR
 
 
