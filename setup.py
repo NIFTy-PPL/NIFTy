@@ -18,18 +18,16 @@
 
 from setuptools import setup, find_packages
 
-exec(open('nifty4/version.py').read())
-
 def write_version():
     import subprocess
     p = subprocess.Popen(["git", "describe", "--dirty"],
                          stdout=subprocess.PIPE)
     res = p.communicate()[0].strip().decode('utf-8')
     with open("nifty4/git_version.py", "w") as file:
-        file.write("def get_gitversion():\n")
-        file.write('    return "{}"\n'.format(res))
+        file.write('gitversion = "{}"\n'.format(res))
 
 write_version()
+exec(open('nifty4/version.py').read())
 
 setup(name="nifty4",
       version=__version__,

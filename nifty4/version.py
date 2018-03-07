@@ -7,7 +7,7 @@ __version__ = '3.9.0'
 
 def gitversion():
     try:
-        from .git_version import get_gitversion
+        from .git_version import gitversion
     except ImportError:
         return "unknown"
-    return get_gitversion()
+    return gitversion
