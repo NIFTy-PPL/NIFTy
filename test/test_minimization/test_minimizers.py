@@ -24,22 +24,28 @@ from itertools import product
 from test.common import expand
 from nose.plugins.skip import SkipTest
 
+IC = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=1000)
+
 spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
-minimizers = [ift.SteepestDescent, ift.RelaxedNewton, ift.VL_BFGS,
-              ift.ConjugateGradient, ift.NonlinearCG,
-              ift.NewtonCG, ift.L_BFGS_B]
 
-minimizers2 = [ift.RelaxedNewton, ift.VL_BFGS, ift.NonlinearCG,
-               ift.NewtonCG, ift.L_BFGS_B]
+minimizers = ['ift.VL_BFGS(IC)',
+              'ift.NonlinearCG(IC, "Polak-Ribiere")',
+              # ift.NonlinearCG(IC, "Hestenes-Stiefel"),
+              'ift.NonlinearCG(IC, "Fletcher-Reeves")',
+              'ift.NonlinearCG(IC, "5.49")',
+              'ift.NewtonCG(IC)',
+              'ift.L_BFGS_B(IC)']
 
-minimizers3 = [ift.SteepestDescent, ift.RelaxedNewton, ift.VL_BFGS,
-               ift.NonlinearCG, ift.NewtonCG, ift.L_BFGS_B]
+newton_minimizers = ['ift.RelaxedNewton(IC)']
+quadratic_only_minimizers = ['ift.ConjugateGradient(IC)']
+slow_minimizers = ['ift.SteepestDescent(IC)']
 
 
 class Test_Minimizers(unittest.TestCase):
 
-    @expand(product(minimizers, spaces))
-    def test_quadratic_minimization(self, minimizer_class, space):
+    @expand(product(minimizers + newton_minimizers +
+                    quadratic_only_minimizers + slow_minimizers, spaces))
+    def test_quadratic_minimization(self, minimizer, space):
         np.random.seed(42)
         starting_point = ift.Field.from_random('normal', domain=space)*10
         covariance_diagonal = ift.Field.from_random(
@@ -47,10 +53,8 @@ class Test_Minimizers(unittest.TestCase):
         covariance = ift.DiagonalOperator(covariance_diagonal)
         required_result = ift.Field.ones(space, dtype=np.float64)
 
-        IC = ift.GradientNormController(tol_abs_gradnorm=1e-5,
-                                        iteration_limit=1000)
         try:
-            minimizer = minimizer_class(controller=IC)
+            minimizer = eval(minimizer)
             energy = ift.QuadraticEnergy(A=covariance, b=required_result,
                                          position=starting_point)
 
@@ -63,8 +67,8 @@ class Test_Minimizers(unittest.TestCase):
                         1./covariance_diagonal.to_global_data(),
                         rtol=1e-3, atol=1e-3)
 
-    @expand(product(minimizers2))
-    def test_rosenbrock(self, minimizer_class):
+    @expand(product(minimizers+newton_minimizers))
+    def test_rosenbrock(self, minimizer):
         try:
             from scipy.optimize import rosen, rosen_der, rosen_hess_prod
         except ImportError:
@@ -114,10 +118,8 @@ class Test_Minimizers(unittest.TestCase):
                 return ift.InversionEnabler(RBCurv(self._position),
                                             inverter=t2)
 
-        IC = ift.GradientNormController(tol_abs_gradnorm=1e-5,
-                                        iteration_limit=10000)
         try:
-            minimizer = minimizer_class(controller=IC)
+            minimizer = eval(minimizer)
             energy = RBEnergy(position=starting_point)
 
             (energy, convergence) = minimizer(energy)
@@ -128,10 +130,10 @@ class Test_Minimizers(unittest.TestCase):
         assert_allclose(energy.position.to_global_data(), 1.,
                         rtol=1e-3, atol=1e-3)
 
-    @expand(product(minimizers3))
-    def DISABLEDtest_nonlinear(self, minimizer_class):
+    @expand(product(minimizers+slow_minimizers))
+    def test_gauss(self, minimizer):
         space = ift.UnstructuredDomain((1,))
-        starting_point = ift.Field(space, val=5.)
+        starting_point = ift.Field(space, val=3.)
 
         class ExpEnergy(ift.Energy):
             def __init__(self, position):
@@ -154,11 +156,47 @@ class Test_Minimizers(unittest.TestCase):
                 return ift.DiagonalOperator(
                     ift.Field(self.position.domain, val=v))
 
-        IC = ift.GradientNormController(tol_abs_gradnorm=1e-10,
-                                        iteration_limit=10000)
         try:
-            minimizer = minimizer_class(controller=IC)
+            minimizer = eval(minimizer)
             energy = ExpEnergy(position=starting_point)
+
+            (energy, convergence) = minimizer(energy)
+        except NotImplementedError:
+            raise SkipTest
+
+        assert_equal(convergence, IC.CONVERGED)
+        assert_allclose(energy.position.to_global_data(), 0.,
+                        atol=1e-3)
+
+    @expand(product(minimizers+newton_minimizers+slow_minimizers))
+    def test_cosh(self, minimizer):
+        space = ift.UnstructuredDomain((1,))
+        starting_point = ift.Field(space, val=3.)
+
+        class CoshEnergy(ift.Energy):
+            def __init__(self, position):
+                super(CoshEnergy, self).__init__(position)
+
+            @property
+            def value(self):
+                x = self.position.to_global_data()[0]
+                return np.cosh(x)
+
+            @property
+            def gradient(self):
+                x = self.position.to_global_data()[0]
+                return ift.Field(self.position.domain, val=np.sinh(x))
+
+            @property
+            def curvature(self):
+                x = self.position.to_global_data()[0]
+                v = np.cosh(x)
+                return ift.DiagonalOperator(
+                    ift.Field(self.position.domain, val=v))
+
+        try:
+            minimizer = eval(minimizer)
+            energy = CoshEnergy(position=starting_point)
 
             (energy, convergence) = minimizer(energy)
         except NotImplementedError:
