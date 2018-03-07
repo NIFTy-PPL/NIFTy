@@ -20,6 +20,17 @@ from setuptools import setup, find_packages
 
 exec(open('nifty4/version.py').read())
 
+def write_version():
+    import subprocess
+    p = subprocess.Popen(["git", "describe", "--dirty"],
+                         stdout=subprocess.PIPE)
+    res = p.communicate()
+    with open("nifty4/git_version.py", "w") as file:
+        file.write("def get_gitversion():\n")
+        file.write("    return \""+res[0].rstrip()+"\"\n")
+
+write_version()
+
 setup(name="nifty4",
       version=__version__,
       author="Theo Steininger, Martin Reinecke",
