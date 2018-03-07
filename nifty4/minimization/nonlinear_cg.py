@@ -31,7 +31,11 @@ class NonlinearCG(Minimizer):
     controller : IterationController
         Object that decides when to terminate the minimization.
     beta_heuristics : str
-        One of 'Polak-Ribiere', 'Fletcher-Reeves', 'Hestenes-Stiefel'
+        One of 'Polak-Ribiere', 'Fletcher-Reeves', 'Hestenes-Stiefel' or '5.49'
+
+    Notes
+    -----
+    No restarting procedure has been implemented yet.
 
     References
     ----------
@@ -44,7 +48,7 @@ class NonlinearCG(Minimizer):
                                  'Hestenes-Stiefel', "5.49"]
         if not (beta_heuristics in valid_beta_heuristics):
             raise ValueError("beta heuristics must be either 'Polak-Ribiere', "
-                             "'Fletcher-Reeves', or 'Hestenes-Stiefel'")
+                             "'Fletcher-Reeves', 'Hestenes-Stiefel, or '5.49'")
         self._beta_heuristic = beta_heuristics
         self._controller = controller
         self._line_searcher = LineSearchStrongWolfe(c2=0.1)
