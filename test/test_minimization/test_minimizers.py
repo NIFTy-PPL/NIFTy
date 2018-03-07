@@ -28,17 +28,17 @@ IC = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=1000)
 
 spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
 
-minimizers = [ift.VL_BFGS(IC),
-              ift.NonlinearCG(IC, "Polak-Ribiere"),
+minimizers = ['ift.VL_BFGS(IC)',
+              'ift.NonlinearCG(IC, "Polak-Ribiere")',
               # ift.NonlinearCG(IC, "Hestenes-Stiefel"),
-              ift.NonlinearCG(IC, "Fletcher-Reeves"),
-              ift.NonlinearCG(IC, "5.49"),
-              ift.NewtonCG(IC),
-              ift.L_BFGS_B(IC)]
+              'ift.NonlinearCG(IC, "Fletcher-Reeves")',
+              'ift.NonlinearCG(IC, "5.49")',
+              'ift.NewtonCG(IC)',
+              'ift.L_BFGS_B(IC)']
 
-newton_minimizers = [ift.RelaxedNewton(IC)]
-quadratic_only_minimizers = [ift.ConjugateGradient(IC)]
-slow_minimizers = [ift.SteepestDescent(IC)]
+newton_minimizers = ['ift.RelaxedNewton(IC)']
+quadratic_only_minimizers = ['ift.ConjugateGradient(IC)']
+slow_minimizers = ['ift.SteepestDescent(IC)']
 
 
 class Test_Minimizers(unittest.TestCase):
@@ -54,6 +54,7 @@ class Test_Minimizers(unittest.TestCase):
         required_result = ift.Field.ones(space, dtype=np.float64)
 
         try:
+            minimizer = eval(minimizer)
             energy = ift.QuadraticEnergy(A=covariance, b=required_result,
                                          position=starting_point)
 
@@ -118,6 +119,7 @@ class Test_Minimizers(unittest.TestCase):
                                             inverter=t2)
 
         try:
+            minimizer = eval(minimizer)
             energy = RBEnergy(position=starting_point)
 
             (energy, convergence) = minimizer(energy)
@@ -155,6 +157,7 @@ class Test_Minimizers(unittest.TestCase):
                     ift.Field(self.position.domain, val=v))
 
         try:
+            minimizer = eval(minimizer)
             energy = ExpEnergy(position=starting_point)
 
             (energy, convergence) = minimizer(energy)
@@ -192,6 +195,7 @@ class Test_Minimizers(unittest.TestCase):
                     ift.Field(self.position.domain, val=v))
 
         try:
+            minimizer = eval(minimizer)
             energy = CoshEnergy(position=starting_point)
 
             (energy, convergence) = minimizer(energy)
