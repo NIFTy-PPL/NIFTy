@@ -109,3 +109,19 @@ class Energy(NiftyMetaBase()):
             curvature of the potential at the given `position`.
         """
         raise NotImplementedError
+
+    def longest_step(self, dir):
+        """Returns the longest allowed step size along `dir`
+
+        Parameters
+        ----------
+        dir : Field
+            the search direction
+
+        Returns
+        -------
+        float or None
+            the longest allowed step when starting from `self.position` along
+            `dir`. If None, the step size is not limited.
+        """
+        return None
