@@ -21,7 +21,7 @@ from builtins import range
 import numpy as np
 from .line_search import LineSearch
 from .line_energy import LineEnergy
-from .. import dobj
+from ..logger import logger
 
 
 class LineSearchStrongWolfe(LineSearch):
@@ -100,10 +100,10 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 == 0:
-            dobj.mprint("Directional derivative is zero; assuming convergence")
+            logger.warn("Directional derivative is zero; assuming convergence")
             return energy, False
         if phiprime_0 > 0:
-            dobj.mprint("Error: search direction is not a descent direction")
+            logger.error("Error: search direction is not a descent direction")
             return energy, False
 
         # set alphas
@@ -149,13 +149,13 @@ class LineSearchStrongWolfe(LineSearch):
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, maxstepsize)
             if alpha1 == maxstepsize:
-                dobj.mprint("max step size reached")
+                logger.warn("max step size reached")
                 return le_alpha1.energy, False
 
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
 
-        dobj.mprint("max iterations reached")
+        logger.warn("max iterations reached")
         return le_alpha1.energy, False
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
@@ -252,7 +252,7 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            dobj.mprint("The line search algorithm (zoom) did not converge.")
+            logger.warn("The line search algorithm (zoom) did not converge.")
             return le_alphaj.energy, False
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):

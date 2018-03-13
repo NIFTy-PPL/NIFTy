@@ -95,7 +95,7 @@ class LineEnergy(object):
         """
         res = self._energy.gradient.vdot(self._line_direction)
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
-            from ..dobj import mprint
-            mprint("directional derivative has non-negligible "
-                   "imaginary part:", res)
+            from ..logger import logger
+            logger.warn("directional derivative has non-negligible "
+                        "imaginary part:", res)
         return res.real

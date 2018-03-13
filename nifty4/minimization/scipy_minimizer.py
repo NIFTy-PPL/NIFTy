@@ -20,6 +20,7 @@ from __future__ import division
 from .minimizer import Minimizer
 from ..field import Field
 from .. import dobj
+from ..logger import logger
 
 
 class ScipyMinimizer(Minimizer):
@@ -97,9 +98,9 @@ class ScipyMinimizer(Minimizer):
             status = self._controller.check(hlp._energy)
             return hlp._energy, self._controller.check(hlp._energy)
         if not r.success:
-            dobj.mprint("Problem in Scipy minimization:", r.message)
+            logger.error("Problem in Scipy minimization:", r.message)
         else:
-            dobj.mprint("Problem in Scipy minimization")
+            logger.error("Problem in Scipy minimization")
         return hlp._energy, self._controller.ERROR
 
 

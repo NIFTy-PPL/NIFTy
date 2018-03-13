@@ -31,11 +31,6 @@ def is_numpy():
     return False
 
 
-def mprint(*args):
-    if master:
-        print(*args)
-
-
 def _shareSize(nwork, nshares, myshare):
     return (nwork//nshares) + int(myshare < nwork % nshares)
 

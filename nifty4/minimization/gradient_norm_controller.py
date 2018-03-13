@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .iteration_controller import IterationController
-from .. import dobj
+from ..logger import logger
 
 
 class GradientNormController(IterationController):
@@ -116,13 +116,13 @@ class GradientNormController(IterationController):
             msg += " energy={:.6E}".format(energy.value)
             msg += " gradnorm={:.2E}".format(energy.gradient_norm)
             msg += " clvl=" + str(self._ccount)
-            dobj.mprint(msg)
+            logger.info(msg)
             # self.logger.info(msg)
 
         # Are we done?
         if self._iteration_limit is not None:
             if self._itcount >= self._iteration_limit:
-                dobj.mprint(
+                logger.warning(
                     "Warning:Iteration limit reached. Assuming convergence")
                 return self.CONVERGED
         if self._ccount >= self._convergence_level:

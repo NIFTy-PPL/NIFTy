@@ -18,7 +18,8 @@
 
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
-from ..field import Field, dobj
+from ..field import Field
+from ..logger import logger
 from .linear_operator import LinearOperator
 
 
@@ -71,5 +72,5 @@ class InversionEnabler(LinearOperator):
         energy = QuadraticEnergy(A=func, b=x, position=x0)
         r, stat = self._inverter(energy, preconditioner=self._preconditioner)
         if stat != IterationController.CONVERGED:
-            dobj.mprint("Error detected during operator inversion")
+            logger.warning("Error detected during operator inversion")
         return r.position
