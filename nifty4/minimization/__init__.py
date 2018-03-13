@@ -8,14 +8,16 @@ from .nonlinear_cg import NonlinearCG
 from .descent_minimizer import DescentMinimizer
 from .steepest_descent import SteepestDescent
 from .vl_bfgs import VL_BFGS
+from .l_bfgs import L_BFGS
 from .relaxed_newton import RelaxedNewton
 from .scipy_minimizer import ScipyMinimizer, NewtonCG, L_BFGS_B
 from .energy import Energy
 from .quadratic_energy import QuadraticEnergy
 from .line_energy import LineEnergy
 
-__all__ = ["LineSearch", "LineSearchStrongWolfe", "IterationController",
-           "GradientNormController",
+__all__ = ["LineSearch", "LineSearchStrongWolfe",
+           "IterationController", "GradientNormController",
            "Minimizer", "ConjugateGradient", "NonlinearCG", "DescentMinimizer",
            "SteepestDescent", "VL_BFGS", "RelaxedNewton", "ScipyMinimizer",
-           "NewtonCG", "L_BFGS_B", "Energy", "QuadraticEnergy", "LineEnergy"]
+           "NewtonCG", "L_BFGS_B", "Energy", "QuadraticEnergy", "LineEnergy",
+           "L_BFGS"]
