@@ -40,9 +40,6 @@ class DomainTuple(object):
         shape_tuple = tuple(sp.shape for sp in self._dom)
         self._shape = reduce(lambda x, y: x + y, shape_tuple, ())
         self._size = reduce(lambda x, y: x * y, self._shape, 1)
-        prod = 1
-        for dom in self._dom:
-            prod *= dom.size
 
     def _get_axes_tuple(self):
         i = 0
