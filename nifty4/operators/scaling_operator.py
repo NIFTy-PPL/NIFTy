@@ -35,6 +35,16 @@ class ScalingOperator(EndomorphicOperator):
         The multiplication factor
     domain : Domain or tuple of Domain or DomainTuple
         The domain on which the Operator's input Field lives.
+
+    Notes
+    -----
+    Formally, this operator always supports all operation modes (times,
+    adjoint_times, inverse_times and inverse_adjoint_times), even if `factor`
+    is 0 or infinity. It is the user's responsibility to apply the operator
+    only in appropriate ways (e.g. call inverse_times only if `factor` is
+    nonzero).
+
+    This shortcoming will hopefully be fixed in the future.
     """
 
     def __init__(self, factor, domain):

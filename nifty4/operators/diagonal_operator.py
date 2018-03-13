@@ -42,6 +42,16 @@ class DiagonalOperator(EndomorphicOperator):
     spaces : int or tuple of int, optional
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
+
+    Notes
+    -----
+    Formally, this operator always supports all operation modes (times,
+    adjoint_times, inverse_times and inverse_adjoint_times), even if there
+    are diagonal elements with value 0 or infinity. It is the user's
+    responsibility to apply the operator only in appropriate ways (e.g. call
+    inverse_times only if there are no zeros on the diagonal).
+
+    This shortcoming will hopefully be fixed in the future.
     """
 
     def __init__(self, diagonal, domain=None, spaces=None):
