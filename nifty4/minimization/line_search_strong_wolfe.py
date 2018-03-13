@@ -100,7 +100,8 @@ class LineSearchStrongWolfe(LineSearch):
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 == 0:
-            logger.warn("Directional derivative is zero; assuming convergence")
+            logger.warning(
+                "Directional derivative is zero; assuming convergence")
             return energy, False
         if phiprime_0 > 0:
             logger.error("Error: search direction is not a descent direction")
@@ -149,13 +150,13 @@ class LineSearchStrongWolfe(LineSearch):
             # update alphas
             alpha0, alpha1 = alpha1, min(2*alpha1, maxstepsize)
             if alpha1 == maxstepsize:
-                logger.warn("max step size reached")
+                logger.warning("max step size reached")
                 return le_alpha1.energy, False
 
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
 
-        logger.warn("max iterations reached")
+        logger.warning("max iterations reached")
         return le_alpha1.energy, False
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
@@ -252,7 +253,8 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            logger.warn("The line search algorithm (zoom) did not converge.")
+            logger.warning(
+                "The line search algorithm (zoom) did not converge.")
             return le_alphaj.energy, False
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):

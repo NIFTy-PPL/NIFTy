@@ -86,8 +86,8 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     for sp in field.domain:
         if not sp.harmonic and not isinstance(sp, PowerSpace):
-            logger.warn("WARNING: Field has a space in `domain` which is "
-                        "neither harmonic nor a PowerSpace.")
+            logger.warning("WARNING: Field has a space in `domain` which is "
+                           "neither harmonic nor a PowerSpace.")
 
     spaces = utilities.parse_spaces(spaces, len(field.domain))
 
