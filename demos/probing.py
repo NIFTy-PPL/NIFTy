@@ -9,4 +9,4 @@ f = ift.Field.from_random(domain=x, random_type='normal')
 diagOp = ift.DiagonalOperator(f)
 
 diag = ift.probe_diagonal(diagOp, 1000)
-ift.dobj.mprint((f - diag).norm())
+ift.logger.info((f - diag).norm())

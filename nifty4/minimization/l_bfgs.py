@@ -21,7 +21,7 @@ from builtins import range
 import numpy as np
 from .descent_minimizer import DescentMinimizer
 from .line_search_strong_wolfe import LineSearchStrongWolfe
-from .. import dobj
+from ..logger import logger
 
 
 class L_BFGS(DescentMinimizer):
@@ -64,7 +64,7 @@ class L_BFGS(DescentMinimizer):
             idx = (k-1) % maxhist
             fact = s[idx].vdot(y[idx]) / y[idx].vdot(y[idx])
             if fact <= 0.:
-                dobj.mprint("L-BFGS curvature not positive definite!")
+                logger.error("L-BFGS curvature not positive definite!")
             p *= fact
             for i in range(k-nhist, k):
                 idx = i % maxhist

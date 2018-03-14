@@ -34,10 +34,6 @@ def is_numpy():
     return True
 
 
-def mprint(*args):
-    print(*args)
-
-
 def from_object(object, dtype, copy, set_locked):
     if dtype is None:
         dtype = object.dtype

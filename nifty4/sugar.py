@@ -23,6 +23,7 @@ from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
+from .logger import logger
 
 __all__ = ['PS_field',
            'power_analyze',
@@ -85,8 +86,8 @@ def power_analyze(field, spaces=None, binbounds=None,
 
     for sp in field.domain:
         if not sp.harmonic and not isinstance(sp, PowerSpace):
-            dobj.mprint("WARNING: Field has a space in `domain` which is "
-                        "neither harmonic nor a PowerSpace.")
+            logger.warning("WARNING: Field has a space in `domain` which is "
+                           "neither harmonic nor a PowerSpace.")
 
     spaces = utilities.parse_spaces(spaces, len(field.domain))
 

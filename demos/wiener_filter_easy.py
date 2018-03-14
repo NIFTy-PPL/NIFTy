@@ -1,7 +1,6 @@
 import numpy as np
 import nifty4 as ift
 
-
 if __name__ == "__main__":
     np.random.seed(43)
     # Set up physical constants

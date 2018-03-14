@@ -18,7 +18,7 @@
 
 from __future__ import division
 from .minimizer import Minimizer
-from .. import dobj
+from ..logger import logger
 
 
 class ConjugateGradient(Minimizer):
@@ -76,12 +76,12 @@ class ConjugateGradient(Minimizer):
             q = energy.curvature(d)
             ddotq = d.vdot(q).real
             if ddotq == 0.:
-                dobj.mprint("Error: ConjugateGradient: ddotq==0.")
+                logger.error("Error: ConjugateGradient: ddotq==0.")
                 return energy, controller.ERROR
             alpha = previous_gamma/ddotq
 
             if alpha < 0:
-                dobj.mprint("Error: ConjugateGradient: alpha<0.")
+                logger.error("Error: ConjugateGradient: alpha<0.")
                 return energy, controller.ERROR
 
             q *= -alpha
@@ -93,7 +93,7 @@ class ConjugateGradient(Minimizer):
 
             gamma = r.vdot(s).real
             if gamma < 0:
-                dobj.mprint(
+                logger.error(
                     "Positive definiteness of preconditioner violated!")
                 return energy, controller.ERROR
             if gamma == 0:

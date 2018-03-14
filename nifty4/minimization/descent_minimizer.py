@@ -20,7 +20,7 @@ from __future__ import division
 import abc
 from .minimizer import Minimizer
 from .line_search_strong_wolfe import LineSearchStrongWolfe
-from .. import dobj
+from ..logger import logger
 
 
 class DescentMinimizer(Minimizer):
@@ -92,11 +92,11 @@ class DescentMinimizer(Minimizer):
             f_k_minus_1 = energy.value
 
             if new_energy.value > energy.value:
-                dobj.mprint("Error: Energy has increased")
+                logger.error("Error: Energy has increased")
                 return energy, controller.ERROR
 
             if new_energy.value == energy.value:
-                dobj.mprint(
+                logger.warning(
                     "Warning: Energy has not changed. Assuming convergence...")
                 return new_energy, controller.CONVERGED
 
