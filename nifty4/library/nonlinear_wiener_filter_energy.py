@@ -31,7 +31,7 @@ class NonlinearWienerFilterEnergy(Energy):
         self.nonlinearity = nonlinearity
         self.ht = ht
         self.power = power
-        m = self.ht(self.power * self.position)
+        m = self.ht(self.power*self.position)
         self.LinearizedResponse = LinearizedSignalResponse(
             Instrument, nonlinearity, ht, power, m)
 
