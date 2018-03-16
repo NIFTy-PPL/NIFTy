@@ -18,7 +18,6 @@
 
 # Data object module for NIFTy that uses simple numpy ndarrays.
 
-from __future__ import print_function
 import numpy as np
 from numpy import ndarray as data_object
 from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, abs, \
