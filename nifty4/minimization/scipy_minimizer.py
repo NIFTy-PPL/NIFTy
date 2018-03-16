@@ -99,7 +99,7 @@ def NewtonCG(xtol, maxiter, disp=False):
     --------
     ScipyMinimizer
     """
-    options = {"xtol": xtol, "maxiter": maxiter, "disp": verbose}
+    options = {"xtol": xtol, "maxiter": maxiter, "disp": disp}
     return ScipyMinimizer("Newton-CG", options, True, None)
 
 
@@ -111,5 +111,5 @@ def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
     ScipyMinimizer
     """
     options = {"ftol": ftol, "gtol": gtol, "maxiter": maxiter,
-               "maxcor": maxcor, "disp": verbose}
+               "maxcor": maxcor, "disp": disp}
     return ScipyMinimizer("L-BFGS-B", options, False, bounds)
