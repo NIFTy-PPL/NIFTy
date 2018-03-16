@@ -30,11 +30,11 @@ spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
 
 minimizers = ['ift.VL_BFGS(IC)',
               'ift.NonlinearCG(IC, "Polak-Ribiere")',
-              # ift.NonlinearCG(IC, "Hestenes-Stiefel"),
+              #'ift.NonlinearCG(IC, "Hestenes-Stiefel"),
               'ift.NonlinearCG(IC, "Fletcher-Reeves")',
               'ift.NonlinearCG(IC, "5.49")',
-              'ift.NewtonCG(IC)',
-              'ift.L_BFGS_B(IC)',
+              'ift.NewtonCG(xtol=1e-5,maxiter=1000)',
+              'ift.L_BFGS_B(ftol=1e-10,gtol=1e-5,maxiter=1000)',
               'ift.L_BFGS(IC)']
 
 newton_minimizers = ['ift.RelaxedNewton(IC)']
