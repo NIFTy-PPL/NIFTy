@@ -11,14 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
 from ..field import Field
-from ..spaces.power_space import PowerSpace
+from ..domains.power_space import PowerSpace
 from .endomorphic_operator import EndomorphicOperator
 from ..utilities import infer_space
 from ..domain_tuple import DomainTuple
@@ -35,7 +35,7 @@ class LaplaceOperator(EndomorphicOperator):
 
     Parameters
     ----------
-    logarithmic : boolean,
+    logarithmic : bool, optional
         Whether smoothness is calculated on a logarithmic scale or linear scale
         default : True
     space : int
@@ -117,7 +117,7 @@ class LaplaceOperator(EndomorphicOperator):
         if axis == dobj.distaxis(yf):
             yf = dobj.redistribute(yf, nodist=(axis,))
         y = dobj.local_data(yf)
-        y /= dposc
+        y = y/dposc
         y[prefix + (slice(None, 2),)] = 0.
         y[prefix + (-1,)] = 0.
         deriv = (y[sl_r]-y[sl_l])/dpos  # defined between points

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -28,17 +28,19 @@ class WienerFilterEnergy(Energy):
 
     Parameters
     ----------
-    position: Field,
+    position : Field
         The current map in harmonic space.
-    d: Field,
-       the data
-    R: LinearOperator,
-       The response operator, description of the measurement process. It needs
-       to map from harmonic signal space to data space.
-    N: EndomorphicOperator,
-       The noise covariance in data space.
-    S: EndomorphicOperator,
-       The prior signal covariance in harmonic space.
+    d :  Field
+        the data
+    R : LinearOperator
+        The response operator, description of the measurement process. It needs
+        to map from harmonic signal space to data space.
+    N : EndomorphicOperator
+        The noise covariance in data space.
+    S : EndomorphicOperator
+        The prior signal covariance in harmonic space.
+    inverter : Minimizer
+        the minimization strategy to use for operator inversion
     """
 
     def __init__(self, position, d, R, N, S, inverter, _j=None):
@@ -54,6 +56,7 @@ class WienerFilterEnergy(Energy):
         Dx = self._curvature(self.position)
         self._value = 0.5*self.position.vdot(Dx) - self._j.vdot(self.position)
         self._gradient = Dx - self._j
+        self._gradient.lock()
 
     def at(self, position):
         return self.__class__(position=position, d=None, R=self.R, N=self.N,

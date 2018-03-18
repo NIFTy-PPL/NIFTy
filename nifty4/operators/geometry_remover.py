@@ -16,13 +16,27 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..field import Field
-from ..spaces.unstructured_domain import UnstructuredDomain
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
 
 
 class GeometryRemover(LinearOperator):
+    """Operator which transforms between a structured and an unstructured
+    domain.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of Domain, or DomainTuple:
+        the full input domain of the operator.
+
+    Notes
+    -----
+    The operator will convert every sub-domain of its input domain to an
+    UnstructuredDomain with the same shape. No weighting by volume factors
+    is carried out.
+    """
+
     def __init__(self, domain):
         super(GeometryRemover, self).__init__()
         self._domain = DomainTuple.make(domain)
@@ -44,5 +58,5 @@ class GeometryRemover(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return Field(self._target, val=x.weight(1).val)
-        return Field(self._domain, val=x.val).weight(1)
+            return x.cast_domain(self._target)
+        return x.cast_domain(self._domain)

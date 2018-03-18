@@ -1,4 +1,7 @@
-# custom 
+# never store the git version file
+git_version.py
+
+# custom
 setup.cfg
 .idea
 .DS_Store

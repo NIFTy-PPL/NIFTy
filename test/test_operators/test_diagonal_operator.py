@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -51,8 +51,7 @@ class DiagonalOperator_Tests(unittest.TestCase):
         diag = ift.Field.from_random('normal', domain=space)
         D = ift.DiagonalOperator(diag)
         tt1 = D.times(D.inverse_times(rand1))
-        assert_allclose(ift.dobj.to_global_data(rand1.val),
-                        ift.dobj.to_global_data(tt1.val))
+        assert_allclose(rand1.to_global_data(), tt1.to_global_data())
 
     @expand(product(spaces))
     def test_times(self, space):
@@ -90,6 +89,5 @@ class DiagonalOperator_Tests(unittest.TestCase):
     def test_diagonal(self, space):
         diag = ift.Field.from_random('normal', domain=space)
         D = ift.DiagonalOperator(diag)
-        diag_op = D.diagonal()
-        assert_allclose(ift.dobj.to_global_data(diag.val),
-                        ift.dobj.to_global_data(diag_op.val))
+        diag_op = D.diagonal
+        assert_allclose(diag.to_global_data(), diag_op.to_global_data())

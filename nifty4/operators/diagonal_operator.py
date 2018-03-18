@@ -18,7 +18,7 @@
 
 from __future__ import division
 import numpy as np
-from ..field import Field, sqrt
+from ..field import Field
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
 from .. import utilities
@@ -35,27 +35,23 @@ class DiagonalOperator(EndomorphicOperator):
     Parameters
     ----------
     diagonal : Field
-        The diagonal entries of the operator
-        (already containing volume factors).
-    domain : tuple of DomainObjects
+        The diagonal entries of the operator.
+    domain : Domain, tuple of Domain or DomainTuple, optional
         The domain on which the Operator's input Field lives.
         If None, use the domain of "diagonal".
-    spaces : tuple of int
+    spaces : int or tuple of int, optional
         The elements of "domain" on which the operator acts.
         If None, it acts on all elements.
 
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
+    Notes
+    -----
+    Formally, this operator always supports all operation modes (times,
+    adjoint_times, inverse_times and inverse_adjoint_times), even if there
+    are diagonal elements with value 0 or infinity. It is the user's
+    responsibility to apply the operator only in appropriate ways (e.g. call
+    inverse_times only if there are no zeros on the diagonal).
 
-    NOTE: the fields given to __init__ and returned from .diagonal() are
-    considered to be non-bare, i.e. during operator application, no additional
-    volume factors are applied!
-
-    See Also
-    --------
-    EndomorphicOperator
+    This shortcoming will hopefully be fixed in the future.
     """
 
     def __init__(self, diagonal, domain=None, spaces=None):
@@ -83,7 +79,7 @@ class DiagonalOperator(EndomorphicOperator):
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
-        self._diagonal = diagonal.copy()
+        self._diagonal = diagonal.lock()
 
         if self._spaces is not None:
             active_axes = []
@@ -91,16 +87,16 @@ class DiagonalOperator(EndomorphicOperator):
                 active_axes += self._domain.axes[space_index]
 
             if self._spaces[0] == 0:
-                self._ldiag = dobj.local_data(self._diagonal.val)
+                self._ldiag = self._diagonal.local_data
             else:
-                self._ldiag = dobj.to_global_data(self._diagonal.val)
+                self._ldiag = self._diagonal.to_global_data()
             locshape = dobj.local_shape(self._domain.shape, 0)
             self._reshaper = [shp if i in active_axes else 1
                               for i, shp in enumerate(locshape)]
             self._ldiag = self._ldiag.reshape(self._reshaper)
 
         else:
-            self._ldiag = dobj.local_data(self._diagonal.val)
+            self._ldiag = self._diagonal.local_data
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -120,9 +116,10 @@ class DiagonalOperator(EndomorphicOperator):
             else:
                 return Field(x.domain, val=x.val/self._ldiag.conj())
 
+    @property
     def diagonal(self):
         """ Returns the diagonal of the Operator."""
-        return self._diagonal.copy()
+        return self._diagonal
 
     @property
     def domain(self):
@@ -141,25 +138,19 @@ class DiagonalOperator(EndomorphicOperator):
         return DiagonalOperator(self._diagonal.conjugate(), self._domain,
                                 self._spaces)
 
-    def draw_sample(self):
-        """ Generates a sample from a Gaussian distribution with
-        covariance given by the operator.
+    def process_sample(self, sample):
+        if np.issubdtype(self._ldiag.dtype, np.complexfloating):
+            raise ValueError("cannot draw sample from complex-valued operator")
 
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation.
+        res = Field.empty_like(sample)
+        res.local_data[()] = sample.local_data * np.sqrt(self._ldiag)
+        return res
 
-        Returns
-        -------
-        sample : Field
-            Returns the a sample from the Gaussian of given covariance.
-        """
+    def draw_sample(self, dtype=np.float64):
+        if np.issubdtype(self._ldiag.dtype, np.complexfloating):
+            raise ValueError("cannot draw sample from complex-valued operator")
 
-        if self._spaces is not None:
-            raise ValueError("Cannot draw (yet) from this operator")
-
-        res = Field.from_random(random_type="normal",
-                                domain=self._domain,
-                                dtype=self._diagonal.dtype)
-        res *= sqrt(self._diagonal)
+        res = Field.from_random(random_type="normal", domain=self._domain,
+                                dtype=dtype)
+        res.local_data[()] *= np.sqrt(self._ldiag)
         return res

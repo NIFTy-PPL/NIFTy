@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -33,3 +33,17 @@ class LaplaceOperatorTests(unittest.TestCase):
         L = ift.LaplaceOperator(p, logarithmic=log2)
         fp = ift.Field.from_random("normal", domain=p, dtype=np.float64)
         assert_allclose(L(fp).vdot(L(fp)), L.adjoint_times(L(fp)).vdot(fp))
+
+    @expand(product([10, 100, 1000]))
+    def test_Laplace2(self, sz):
+        s = ift.RGSpace(sz, harmonic=True, distances=0.764)
+        bb = ift.PowerSpace.useful_binbounds(s, logarithmic=False)
+        p = ift.PowerSpace(s, binbounds=bb)
+
+        foo = ift.PS_field(p, lambda k: 2*k**2)
+        L = ift.LaplaceOperator(p, logarithmic=False)
+
+        result = np.full(p.shape, 2*2.)
+        result[0] = result[1] = result[-1] = 0.
+
+        assert_allclose(L(foo).to_global_data(), result)

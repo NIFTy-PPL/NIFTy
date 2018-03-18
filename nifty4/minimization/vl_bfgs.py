@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -25,6 +25,20 @@ from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class VL_BFGS(DescentMinimizer):
+    """Implementation of the Vector-free L-BFGS minimization scheme.
+
+    Find the descent direction by using the inverse Hessian.
+    Instead of storing the whole matrix, it stores only the last few
+    updates, which are used to do operations requiring the inverse
+    Hessian product. The updates are represented in a new basis to optimize
+    the algorithm.
+
+    References
+    ----------
+    W. Chen, Z. Wang, J. Zhou, "Large-scale L-BFGS using MapReduce", 2014,
+    Microsoft
+    """
+
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
                  max_history_length=5):
         super(VL_BFGS, self).__init__(controller=controller,
@@ -35,42 +49,18 @@ class VL_BFGS(DescentMinimizer):
         self._information_store = None
         return super(VL_BFGS, self).__call__(energy)
 
+    def reset(self):
+        self._information_store = None
+
     def get_descent_direction(self, energy):
-        """Implementation of the Vector-free L-BFGS minimization scheme.
-
-        Find the descent direction by using the inverse Hessian.
-        Instead of storing the whole matrix, it stores only the last few
-        updates, which are used to do operations requiring the inverse
-        Hessian product. The updates are represented in a new basis to optimize
-        the algorithm.
-
-        Parameters
-        ----------
-        energy : Energy
-            An instance of the Energy class which shall be minized. The
-            position of `energy` is used as the starting point of minization.
-
-        Returns
-        -------
-        descent_direction : Field
-            Returns the descent direction.
-
-        References
-        ----------
-        W. Chen, Z. Wang, J. Zhou, "Large-scale L-BFGS using MapReduce", 2014,
-        Microsoft
-
-        """
-
         x = energy.position
         gradient = energy.gradient
         # initialize the information store if it doesn't already exist
         try:
             self._information_store.add_new_point(x, gradient)
         except AttributeError:
-            self._information_store = InformationStore(self.max_history_length,
-                                                       x0=x,
-                                                       gradient=gradient)
+            self._information_store = _InformationStore(
+                self.max_history_length, x0=x, gradient=gradient)
 
         b = self._information_store.b
         delta = self._information_store.delta
@@ -82,12 +72,12 @@ class VL_BFGS(DescentMinimizer):
         return descent_direction
 
 
-class InformationStore(object):
+class _InformationStore(object):
     """Class for storing a list of past updates.
 
     Parameters
     ----------
-    max_history_length : integer
+    max_history_length : int
         Maximum number of stored past updates.
     x0 : Field
         Initial position in variable space.
@@ -96,7 +86,7 @@ class InformationStore(object):
 
     Attributes
     ----------
-    max_history_length : integer
+    max_history_length : int
         Maximum number of stored past updates.
     s : List
         Circular buffer of past position differences, which are Fields.
@@ -106,7 +96,7 @@ class InformationStore(object):
         Latest position in variable space.
     last_gradient : Field
         Gradient at latest position.
-    k : integer
+    k : int
         Number of updates that have taken place
     ss : numpy.ndarray
         2D circular buffer of scalar products between different elements of s.
@@ -139,7 +129,7 @@ class InformationStore(object):
 
         Returns
         -------
-        result : List
+        List
             List of new basis vectors.
         """
         result = []
@@ -165,7 +155,7 @@ class InformationStore(object):
 
         Returns
         -------
-        result : numpy.ndarray
+        numpy.ndarray
             Scalar matrix.
         """
         m = self.history_length
@@ -207,7 +197,7 @@ class InformationStore(object):
 
         Returns
         -------
-        delta : List
+        List
             List of the new scalar coefficients (deltas).
         """
         m = self.history_length

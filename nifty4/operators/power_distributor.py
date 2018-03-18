@@ -11,25 +11,40 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .dof_projection_operator import DOFProjectionOperator
+from .dof_distributor import DOFDistributor
 from ..domain_tuple import DomainTuple
 from ..utilities import infer_space
-from ..spaces.power_space import PowerSpace
+from ..domains.power_space import PowerSpace
 
 
-class PowerProjectionOperator(DOFProjectionOperator):
-    def __init__(self, domain, power_space=None, space=None):
+class PowerDistributor(DOFDistributor):
+    """Operator which transforms between a PowerSpace and a harmonic domain.
+
+    Parameters
+    ----------
+    target: Domain, tuple of Domain, or DomainTuple
+        the total *target* domain of the operator.
+    power_space: PowerSpace, optional
+        the input sub-domain on which the operator acts.
+        If not supplied, a matching PowerSpace with natural binbounds will be
+        used.
+    space: int, optional:
+       The index of the sub-domain on which the operator acts.
+       Can be omitted if `target` only has one sub-domain.
+    """
+
+    def __init__(self, target, power_space=None, space=None):
         # Initialize domain and target
-        self._domain = DomainTuple.make(domain)
-        self._space = infer_space(self._domain, space)
-        hspace = self._domain[self._space]
+        self._target = DomainTuple.make(target)
+        self._space = infer_space(self._target, space)
+        hspace = self._target[self._space]
         if not hspace.harmonic:
-            raise ValueError("Operator acts on harmonic spaces only")
+            raise ValueError("Operator requires harmonic target space")
         if power_space is None:
             power_space = PowerSpace(hspace)
         else:

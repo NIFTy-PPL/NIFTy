@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -20,7 +20,7 @@ from __future__ import division
 import abc
 from .minimizer import Minimizer
 from .line_search_strong_wolfe import LineSearchStrongWolfe
-from .. import dobj
+from ..logger import logger
 
 
 class DescentMinimizer(Minimizer):
@@ -50,15 +50,15 @@ class DescentMinimizer(Minimizer):
 
         Parameters
         ----------
-        energy : Energy object
+        energy : Energy
            Energy object which provides value, gradient and curvature at a
            specific position in parameter space.
 
         Returns
         -------
-        energy : Energy object
+        Energy
             Latest `energy` of the minimization.
-        status : integer
+        int
             Can be controller.CONVERGED or controller.ERROR
 
         Notes
@@ -81,20 +81,22 @@ class DescentMinimizer(Minimizer):
 
             # compute a step length that reduces energy.value sufficiently
             try:
-                new_energy = self.line_searcher.perform_line_search(
+                new_energy, success = self.line_searcher.perform_line_search(
                     energy=energy, pk=self.get_descent_direction(energy),
                     f_k_minus_1=f_k_minus_1)
             except ValueError:
                 return energy, controller.ERROR
+            if not success:
+                self.reset()
 
             f_k_minus_1 = energy.value
 
             if new_energy.value > energy.value:
-                dobj.mprint("Error: Energy has increased")
+                logger.error("Error: Energy has increased")
                 return energy, controller.ERROR
 
             if new_energy.value == energy.value:
-                dobj.mprint(
+                logger.warning(
                     "Warning: Energy has not changed. Assuming convergence...")
                 return new_energy, controller.CONVERGED
 
@@ -103,6 +105,22 @@ class DescentMinimizer(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
 
+    def reset(self):
+        pass
+
     @abc.abstractmethod
     def get_descent_direction(self, energy):
+        """ Calculates the next descent direction.
+
+        Parameters
+        ----------
+        energy : Energy
+            An instance of the Energy class which shall be minimized. The
+            position of `energy` is used as the starting point of minimization.
+
+        Returns
+        -------
+        Field
+           The descent direction.
+        """
         raise NotImplementedError

@@ -11,16 +11,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..utilities import memo, NiftyMeta
-from future.utils import with_metaclass
+from ..utilities import memo, NiftyMetaBase
 
 
-class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
+class Energy(NiftyMetaBase()):
     """ Provides the functional used by minimization schemes.
 
    The Energy object is an implementation of a scalar function including its
@@ -30,19 +29,6 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     ----------
     position : Field
         The input parameter of the scalar function.
-
-    Attributes
-    ----------
-    position : Field
-        The Field location in parameter space where value, gradient and
-        curvature are evaluated.
-    value : np.float
-        The value of the energy functional at given `position`.
-    gradient : Field
-        The gradient at given `position`.
-    curvature : LinearOperator, callable
-        A positive semi-definite operator or function describing the curvature
-        of the potential at the given `position`.
 
     Notes
     -----
@@ -64,19 +50,19 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
 
     def __init__(self, position):
         super(Energy, self).__init__()
-        self._position = position.copy()
+        self._position = position.lock()
 
     def at(self, position):
-        """ Initializes and returns a new Energy object at the new position.
+        """ Returns a new Energy object, initialized at `position`.
 
         Parameters
         ----------
         position : Field
-            Parameter for the new Energy object.
+            Location in parameter space for the new Energy object.
 
         Returns
         -------
-        out : Energy
+        Energy
             Energy object at new position.
         """
         return self.__class__(position)
@@ -84,6 +70,8 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     @property
     def position(self):
         """
+        Field : selected location in parameter space.
+
         The Field location in parameter space where value, gradient and
         curvature are evaluated.
         """
@@ -92,14 +80,16 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     @property
     def value(self):
         """
-        The value of the energy functional at given `position`.
+        float : value of the functional.
+
+            The value of the energy functional at given `position`.
         """
         raise NotImplementedError
 
     @property
     def gradient(self):
         """
-        The gradient at given `position`.
+        Field : The gradient at given `position`.
         """
         raise NotImplementedError
 
@@ -107,14 +97,31 @@ class Energy(with_metaclass(NiftyMeta, type('NewBase', (object,), {}))):
     @memo
     def gradient_norm(self):
         """
-        The length of the gradient at given `position`.
+        float : L2-norm of the gradient at given `position`.
         """
         return self.gradient.norm()
 
     @property
     def curvature(self):
         """
-        A positive semi-definite operator or function describing the curvature
-        of the potential at the given `position`.
+        LinearOperator : implicitly defined curvature.
+            A positive semi-definite operator or function describing the
+            curvature of the potential at the given `position`.
         """
         raise NotImplementedError
+
+    def longest_step(self, dir):
+        """Returns the longest allowed step size along `dir`
+
+        Parameters
+        ----------
+        dir : Field
+            the search direction
+
+        Returns
+        -------
+        float or None
+            the longest allowed step when starting from `self.position` along
+            `dir`. If None, the step size is not limited.
+        """
+        return None

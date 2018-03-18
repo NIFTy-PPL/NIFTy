@@ -16,10 +16,38 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..operators.inversion_enabler import InversionEnabler
-from ..operators.diagonal_operator import DiagonalOperator
+import numpy as np
+from .structured_domain import StructuredDomain
 
 
-def CriticalPowerCurvature(theta, T, inverter):
-    theta = DiagonalOperator(theta)
-    return InversionEnabler(T+theta, inverter, theta.inverse_times)
+class DOFSpace(StructuredDomain):
+    """Generic degree-of-freedom space."""
+
+    _needed_for_hash = ["_dvol"]
+
+    def __init__(self, dof_weights):
+        super(DOFSpace, self).__init__()
+        self._dvol = tuple(dof_weights)
+
+    @property
+    def harmonic(self):
+        return False
+
+    @property
+    def shape(self):
+        return (len(self._dvol),)
+
+    @property
+    def size(self):
+        return len(self._dvol)
+
+    @property
+    def scalar_dvol(self):
+        return None
+
+    @property
+    def dvol(self):
+        return np.array(self._dvol)
+
+    def __repr__(self):
+        return 'this is a dof space'

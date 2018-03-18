@@ -18,8 +18,7 @@
 
 from ..operators.endomorphic_operator import EndomorphicOperator
 from ..operators.inversion_enabler import InversionEnabler
-from ..field import Field, sqrt
-from ..sugar import power_analyze, power_synthesize
+import numpy as np
 
 
 class WienerFilterCurvature(EndomorphicOperator):
@@ -32,12 +31,14 @@ class WienerFilterCurvature(EndomorphicOperator):
 
     Parameters
     ----------
-    R: LinearOperator,
-       The response operator of the Wiener filter measurement.
-    N: EndomorphicOperator
-       The noise covariance.
-    S: DiagonalOperator,
-       The prior signal covariance
+    R : LinearOperator
+        The response operator of the Wiener filter measurement.
+    N : EndomorphicOperator
+        The noise covariance.
+    S : DiagonalOperator
+        The prior signal covariance
+    inverter : Minimizer
+        The minimizer to use during numerical inversion
     """
 
     def __init__(self, R, N, S, inverter):
@@ -59,25 +60,12 @@ class WienerFilterCurvature(EndomorphicOperator):
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
-    def draw_sample(self):
-        """ Generates a sample from a Gaussian distribution with
-        covariance given by the operator.
+    def draw_sample(self, dtype=np.float64):
+        n = self.N.draw_sample(dtype)
+        s = self.S.draw_sample(dtype)
 
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation.
+        d = self.R(s) + n
 
-        Returns
-        -------
-        sample : Field
-            Returns the a sample from the Gaussian of given covariance.
-        """
-
-        mock_signal = self.S.draw_sample()
-        mock_noise = self.N.draw_sample()
-
-        mock_data = self.R(mock_signal) + mock_noise
-
-        mock_j = self.R.adjoint_times(self.N.inverse_times(mock_data))
-        mock_m = self.inverse_times(mock_j)
-        return mock_signal - mock_m
+        j = self.R.adjoint_times(self.N.inverse_times(d))
+        m = self.inverse_times(j)
+        return s - m

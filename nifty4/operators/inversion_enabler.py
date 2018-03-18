@@ -18,11 +18,30 @@
 
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
-from ..field import Field, dobj
+from ..field import Field
+from ..logger import logger
 from .linear_operator import LinearOperator
 
 
 class InversionEnabler(LinearOperator):
+    """Class which augments the capability of another operator object via
+    numerical inversion.
+
+    Parameters
+    ----------
+    op : :class:`EndomorphicOperator`
+        The operator to be enhanced.
+        The InversionEnabler object will support the same operation modes as
+        `op`, and additionally the inverse set. The newly-added modes will
+        be computed by iterative inversion.
+    inverter : :class:`Minimizer`
+        The minimizer to use for the iterative numerical inversion.
+        Typically, this is a :class:`ConjugateGradient` object.
+    preconditioner : :class:`LinearOperator`, optional
+        if not None, this operator is used as a preconditioner during the
+        iterative inversion, to accelerate convergence.
+    """
+
     def __init__(self, op, inverter, preconditioner=None):
         super(InversionEnabler, self).__init__()
         self._op = op
@@ -46,14 +65,12 @@ class InversionEnabler(LinearOperator):
         if self._op.capability & mode:
             return self._op.apply(x, mode)
 
-        tdom = self._tgt(mode)
-        x0 = Field.zeros(tdom, dtype=x.dtype)
-
         def func(x):
             return self._op.apply(x, self._inverseMode[mode])
 
+        x0 = Field.zeros(self._tgt(mode), dtype=x.dtype)
         energy = QuadraticEnergy(A=func, b=x, position=x0)
         r, stat = self._inverter(energy, preconditioner=self._preconditioner)
         if stat != IterationController.CONVERGED:
-            dobj.mprint("Error detected during operator inversion")
+            logger.warning("Error detected during operator inversion")
         return r.position

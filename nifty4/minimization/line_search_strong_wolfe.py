@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -21,7 +21,7 @@ from builtins import range
 import numpy as np
 from .line_search import LineSearch
 from .line_energy import LineEnergy
-from .. import dobj
+from ..logger import logger
 
 
 class LineSearchStrongWolfe(LineSearch):
@@ -41,33 +41,21 @@ class LineSearchStrongWolfe(LineSearch):
         Parameter for curvature condition rule. (Default: 0.9)
     max_step_size : float
         Maximum step allowed in to be made in the descent direction.
-        (Default: 50)
-    max_iterations : integer
+        (Default: 1e30)
+    max_iterations : int, optional
         Maximum number of iterations performed by the line search algorithm.
-        (Default: 10)
-    max_zoom_iterations : integer
+        (Default: 100)
+    max_zoom_iterations : int, optional
         Maximum number of iterations performed by the zoom algorithm.
-        (Default: 10)
-
-    Attributes
-    ----------
-    c1 : float
-        Parameter for Armijo condition rule.
-    c2 : float
-        Parameter for curvature condition rule.
-    max_step_size : float
-        Maximum step allowed in to be made in the descent direction.
-    max_iterations : integer
-        Maximum number of iterations performed by the line search algorithm.
-    max_zoom_iterations : integer
-        Maximum number of iterations performed by the zoom algorithm.
+        (Default: 100)
     """
 
-    def __init__(self, c1=1e-4, c2=0.9,
-                 max_step_size=1000000000, max_iterations=100,
+    def __init__(self, preferred_initial_step_size=None, c1=1e-4, c2=0.9,
+                 max_step_size=1e30, max_iterations=100,
                  max_zoom_iterations=100):
 
-        super(LineSearchStrongWolfe, self).__init__()
+        super(LineSearchStrongWolfe, self).__init__(
+            preferred_initial_step_size)
 
         self.c1 = np.float(c1)
         self.c2 = np.float(c2)
@@ -84,32 +72,40 @@ class LineSearchStrongWolfe(LineSearch):
 
         Parameters
         ----------
-        energy : Energy object
+        energy : Energy
             Energy object from which we will calculate the energy and the
             gradient at a specific point.
         pk : Field
             Vector pointing into the search direction.
-        f_k_minus_1 : float
+        f_k_minus_1 : float, optional
             Value of the fuction (which is being minimized) at the k-1
             iteration of the line search procedure. (Default: None)
 
         Returns
         -------
-        energy_star : Energy object
+        Energy
             The new Energy object on the new position.
+        bool
+            whether the line search was considered successful or not
         """
         le_0 = LineEnergy(0., energy, pk, 0.)
+
+        maxstepsize = energy.longest_step(pk)
+        if maxstepsize is None:
+            maxstepsize = self.max_step_size
+        maxstepsize = min(maxstepsize, self.max_step_size)
 
         # initialize the zero phis
         old_phi_0 = f_k_minus_1
         phi_0 = le_0.value
         phiprime_0 = le_0.directional_derivative
         if phiprime_0 == 0:
-            dobj.mprint("Directional derivative is zero; assuming convergence")
-            return energy
+            logger.warning(
+                "Directional derivative is zero; assuming convergence")
+            return energy, False
         if phiprime_0 > 0:
-            dobj.mprint("Error: search direction is not a descent direction")
-            raise ValueError("search direction must be a descent direction")
+            logger.error("Error: search direction is not a descent direction")
+            return energy, False
 
         # set alphas
         alpha0 = 0.
@@ -124,49 +120,44 @@ class LineSearchStrongWolfe(LineSearch):
                 alpha1 = 1.0
         else:
             alpha1 = 1.0/pk.norm()
+        alpha1 = min(alpha1, 0.99*maxstepsize)
 
         # start the minimization loop
         iteration_number = 0
         while iteration_number < self.max_iterations:
             iteration_number += 1
             if alpha1 == 0:
-                result_energy = le_0.energy
-                break
+                return le_0.energy, False
 
             le_alpha1 = le_0.at(alpha1)
             phi_alpha1 = le_alpha1.value
 
             if (phi_alpha1 > phi_0 + self.c1*alpha1*phiprime_0) or \
                ((phi_alpha1 >= phi_alpha0) and (iteration_number > 1)):
-                le_star = self._zoom(alpha0, alpha1, phi_0, phiprime_0,
-                                     phi_alpha0, phiprime_alpha0, phi_alpha1,
-                                     le_0)
-                result_energy = le_star.energy
-                break
+                return self._zoom(alpha0, alpha1, phi_0, phiprime_0,
+                                  phi_alpha0, phiprime_alpha0, phi_alpha1,
+                                  le_0)
 
             phiprime_alpha1 = le_alpha1.directional_derivative
             if abs(phiprime_alpha1) <= -self.c2*phiprime_0:
-                result_energy = le_alpha1.energy
-                break
+                return le_alpha1.energy, True
 
             if phiprime_alpha1 >= 0:
-                le_star = self._zoom(alpha1, alpha0, phi_0, phiprime_0,
-                                     phi_alpha1, phiprime_alpha1, phi_alpha0,
-                                     le_0)
-                result_energy = le_star.energy
-                break
+                return self._zoom(alpha1, alpha0, phi_0, phiprime_0,
+                                  phi_alpha1, phiprime_alpha1, phi_alpha0,
+                                  le_0)
 
             # update alphas
-            alpha0, alpha1 = alpha1, min(2*alpha1, self.max_step_size)
-            if alpha1 == self.max_step_size:
-                return le_alpha1.energy
+            alpha0, alpha1 = alpha1, min(2*alpha1, maxstepsize)
+            if alpha1 == maxstepsize:
+                logger.warning("max step size reached")
+                return le_alpha1.energy, False
 
             phi_alpha0 = phi_alpha1
             phiprime_alpha0 = phiprime_alpha1
-        else:
-            dobj.mprint("max iterations reached")
-            return le_alpha1.energy
-        return result_energy
+
+        logger.warning("max iterations reached")
+        return le_alpha1.energy, False
 
     def _zoom(self, alpha_lo, alpha_hi, phi_0, phiprime_0,
               phi_lo, phiprime_lo, phi_hi, le_0):
@@ -201,7 +192,7 @@ class LineSearchStrongWolfe(LineSearch):
 
         Returns
         -------
-        energy_star : Energy object
+        Energy
             The new Energy object on the new position.
         """
         cubic_delta = 0.2  # cubic interpolant checks
@@ -250,7 +241,7 @@ class LineSearchStrongWolfe(LineSearch):
                 phiprime_alphaj = le_alphaj.directional_derivative
                 # If the second Wolfe condition is met, return the result
                 if abs(phiprime_alphaj) <= -self.c2*phiprime_0:
-                    return le_alphaj
+                    return le_alphaj.energy, True
                 # If not, check the sign of the slope
                 if phiprime_alphaj*delta_alpha >= 0:
                     alpha_recent, phi_recent = alpha_hi, phi_hi
@@ -262,8 +253,9 @@ class LineSearchStrongWolfe(LineSearch):
                                                    phiprime_alphaj)
 
         else:
-            dobj.mprint("The line search algorithm (zoom) did not converge.")
-            return le_alphaj
+            logger.warning(
+                "The line search algorithm (zoom) did not converge.")
+            return le_alphaj.energy, False
 
     def _cubicmin(self, a, fa, fpa, b, fb, c, fc):
         """Estimating the minimum with cubic interpolation.

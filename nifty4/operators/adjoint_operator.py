@@ -20,6 +20,8 @@ from .linear_operator import LinearOperator
 
 
 class AdjointOperator(LinearOperator):
+    """Adapter class representing the adjoint of a given operator."""
+
     def __init__(self, op):
         super(AdjointOperator, self).__init__()
         self._op = op

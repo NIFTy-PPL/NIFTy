@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -22,36 +22,22 @@ from .structured_domain import StructuredDomain
 
 
 class HPSpace(StructuredDomain):
-    """NIFTy subclass for HEALPix discretizations of the two-sphere [#]_.
+    """NIFTy subclass for HEALPix discretizations of the two-sphere.
+
+    Its harmonic partner domain is the
+    :class:`~nifty4.domains.lm_space.LMSpace`.
 
     Parameters
     ----------
     nside : int
         The corresponding HEALPix Nside parameter. Must be a positive integer
         and typically is a power of 2.
-
-    Raises
-    ------
-    ValueError
-        If given `nside` < 1.
-
-    See Also
-    --------
-    GLSpace, LMSpace
-
-    References
-    ----------
-    .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-           High-Resolution Discretization and Fast Analysis of Data
-           Distributed on the Sphere", *ApJ* 622..759G.
-    .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-           harmonic transforms revisited";
-           `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
     """
+
+    _needed_for_hash = ["_nside"]
 
     def __init__(self, nside):
         super(HPSpace, self).__init__()
-        self._needed_for_hash += ["_nside"]
         self._nside = int(nside)
         if self._nside < 1:
             raise ValueError("nside must be >=1.")
@@ -71,19 +57,41 @@ class HPSpace(StructuredDomain):
     def size(self):
         return np.int(12 * self.nside * self.nside)
 
+    @property
     def scalar_dvol(self):
         return np.pi / (3*self._nside*self._nside)
 
     @property
     def nside(self):
-        """Returns the nside of the corresponding HEALPix pixelization."""
+        """int : HEALPix Nside parameter of this domain"""
         return self._nside
 
     def get_default_codomain(self):
+        """Returns a :class:`LMSpace` object, which is capable of storing a
+        fairly accurate representation of data residing on `self`
+
+        Returns
+        -------
+        LMSpace
+            The partner domain
+
+        Notes
+        -----
+        The `lmax` and `mmax` parameters of the returned :class:`LMSpace` are
+        set to `2*self.nside`.
+        """
         from .. import LMSpace
         return LMSpace(lmax=2*self.nside)
 
     def check_codomain(self, codomain):
+        """Raises `TypeError` if `codomain` is not a matching partner domain
+        for `self`.
+
+        Notes
+        -----
+        This function only checks whether `codomain` is of type
+        :class:`LMSpace`.
+        """
         from .. import LMSpace
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")

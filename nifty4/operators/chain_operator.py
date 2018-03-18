@@ -17,9 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .linear_operator import LinearOperator
+import numpy as np
 
 
 class ChainOperator(LinearOperator):
+    """Class representing chains of operators."""
+
     def __init__(self, ops, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
@@ -58,7 +61,7 @@ class ChainOperator(LinearOperator):
             # try to absorb the factor into a DiagonalOperator
             for i in range(len(opsnew)):
                 if isinstance(opsnew[i], DiagonalOperator):
-                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal()*fct,
+                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal*fct,
                                                  domain=opsnew[i].domain,
                                                  spaces=opsnew[i]._spaces)
                     fct = 1.
@@ -74,8 +77,8 @@ class ChainOperator(LinearOperator):
                     isinstance(opsnew[-1], DiagonalOperator) and
                     isinstance(op, DiagonalOperator) and
                     op._spaces == opsnew[-1]._spaces):
-                opsnew[-1] = DiagonalOperator(opsnew[-1].diagonal() *
-                                              op.diagonal(),
+                opsnew[-1] = DiagonalOperator(opsnew[-1].diagonal *
+                                              op.diagonal,
                                               domain=opsnew[-1].domain,
                                               spaces=opsnew[-1]._spaces)
             else:
@@ -100,6 +103,14 @@ class ChainOperator(LinearOperator):
         return self._ops[0].target
 
     @property
+    def inverse(self):
+        return self.make([op.inverse for op in reversed(self._ops)])
+
+    @property
+    def adjoint(self):
+        return self.make([op.adjoint for op in reversed(self._ops)])
+
+    @property
     def capability(self):
         return self._capability
 
@@ -109,3 +120,9 @@ class ChainOperator(LinearOperator):
         for op in t_ops:
             x = op.apply(x, mode)
         return x
+
+    def draw_sample(self, dtype=np.float64):
+        sample = self._ops[-1].draw_sample(dtype)
+        for op in reversed(self._ops[:-1]):
+            sample = op.process_sample(sample)
+        return sample

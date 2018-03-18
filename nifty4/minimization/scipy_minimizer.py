@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -20,6 +20,33 @@ from __future__ import division
 from .minimizer import Minimizer
 from ..field import Field
 from .. import dobj
+from ..logger import logger
+from .iteration_controller import IterationController
+
+
+class _MinHelper(object):
+    def __init__(self, energy):
+        self._energy = energy
+        self._domain = energy.position.domain
+
+    def _update(self, x):
+        pos = Field(self._domain, x.reshape(self._domain.shape))
+        if (pos.val != self._energy.position.val).any():
+            self._energy = self._energy.at(pos.locked_copy())
+
+    def fun(self, x):
+        self._update(x)
+        return self._energy.value
+
+    def jac(self, x):
+        self._update(x)
+        return self._energy.gradient.val.flatten()
+
+    def hessp(self, x, p):
+        self._update(x)
+        vec = Field(self._domain, p.reshape(self._domain.shape))
+        res = self._energy.curvature(vec)
+        return res.val.flatten()
 
 
 class ScipyMinimizer(Minimizer):
@@ -27,83 +54,62 @@ class ScipyMinimizer(Minimizer):
 
     Parameters
     ----------
-    controller : IterationController
-        Object that decides when to terminate the minimization.
     method     : str
         The selected Scipy minimization method.
     options    : dictionary
         A set of custom options for the selected minimizer.
     """
 
-    def __init__(self, controller, method, options, need_hessp):
+    def __init__(self, method, options, need_hessp, bounds):
         super(ScipyMinimizer, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
-        self._controller = controller
         self._method = method
         self._options = options
         self._need_hessp = need_hessp
+        self._bounds = bounds
 
     def __call__(self, energy):
-        class _MinimizationDone(BaseException):
-            pass
-
-        class _MinHelper(object):
-            def __init__(self, controller, energy):
-                self._controller = controller
-                self._energy = energy
-                self._domain = energy.position.domain
-
-            def _update(self, x):
-                pos = Field(self._domain, x.reshape(self._domain.shape))
-                if (pos.val != self._energy.position.val).any():
-                    self._energy = self._energy.at(pos)
-                    status = self._controller.check(self._energy)
-                    if status != self._controller.CONTINUE:
-                        raise _MinimizationDone
-
-            def fun(self, x):
-                self._update(x)
-                return self._energy.value
-
-            def jac(self, x):
-                self._update(x)
-                return self._energy.gradient.val.reshape(-1)
-
-            def hessp(self, x, p):
-                self._update(x)
-                vec = Field(self._domain, p.reshape(self._domain.shape))
-                res = self._energy.curvature(vec)
-                return res.val.reshape(-1)
-
         import scipy.optimize as opt
-        hlp = _MinHelper(self._controller, energy)
-        energy = None
-        status = self._controller.start(hlp._energy)
-        if status != self._controller.CONTINUE:
-            return hlp._energy, status
-        try:
-            if self._need_hessp:
-                opt.minimize(hlp.fun, hlp._energy.position.val.reshape(-1),
-                             method=self._method, jac=hlp.jac,
-                             hessp=hlp.hessp,
-                             options=self._options)
+        hlp = _MinHelper(energy)
+        energy = None  # drop handle, since we don't need it any more
+        bounds = None
+        if self._bounds is not None:
+            if len(self._bounds) == 2:
+                lo = self._bounds[0]
+                hi = self._bounds[1]
+                bounds = [(lo, hi)]*hlp._energy.position.size
             else:
-                opt.minimize(hlp.fun, hlp._energy.position.val.reshape(-1),
-                             method=self._method, jac=hlp.jac,
-                             options=self._options)
-        except _MinimizationDone:
-            status = self._controller.check(hlp._energy)
-            return hlp._energy, self._controller.check(hlp._energy)
-        return hlp._energy, self._controller.ERROR
+                raise ValueError("unrecognized bounds")
+
+        x = hlp._energy.position.val.flatten()
+        hessp = hlp.hessp if self._need_hessp else None
+        r = opt.minimize(hlp.fun, x, method=self._method, jac=hlp.jac,
+                         hessp=hessp, options=self._options, bounds=bounds)
+        if not r.success:
+            logger.error("Problem in Scipy minimization:", r.message)
+            return hlp._energy, IterationController.ERROR
+        return hlp._energy, IterationController.CONVERGED
 
 
-def NewtonCG(controller):
-    return ScipyMinimizer(controller, "Newton-CG",
-                          {"xtol": 1e-20, "maxiter": None}, True)
+def NewtonCG(xtol, maxiter, disp=False):
+    """Returns a ScipyMinimizer object carrying out the Newton-CG algorithm.
+
+    See Also
+    --------
+    ScipyMinimizer
+    """
+    options = {"xtol": xtol, "maxiter": maxiter, "disp": disp}
+    return ScipyMinimizer("Newton-CG", options, True, None)
 
 
-def L_BFGS_B(controller, maxcor=10):
-    return ScipyMinimizer(controller, "L-BFGS-B",
-                          {"ftol": 1e-20, "gtol": 1e-20, "maxcor": maxcor},
-                          False)
+def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
+    """Returns a ScipyMinimizer object carrying out the L-BFGS-B algorithm.
+
+    See Also
+    --------
+    ScipyMinimizer
+    """
+    options = {"ftol": ftol, "gtol": gtol, "maxiter": maxiter,
+               "maxcor": maxcor, "disp": disp}
+    return ScipyMinimizer("L-BFGS-B", options, False, bounds)

@@ -11,14 +11,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
 from ..domain_tuple import DomainTuple
-from ..spaces.rg_space import RGSpace
+from ..domains.rg_space import RGSpace
 from .linear_operator import LinearOperator
 from .. import dobj
 from .. import utilities
@@ -30,15 +30,16 @@ class FFTOperator(LinearOperator):
 
     Parameters
     ----------
-    domain: Space, tuple of Spaces or DomainObject
+    domain: Domain, tuple of Domain o DomainTuple
         The domain of the data that is input by "times" and output by
         "adjoint_times".
-    target: Space
-        The target space of the transform operation.
-        If omitted, a space will be chosen automatically.
-    space: the index of the space on which the operator should act
-        If None, it is set to 0 if domain contains exactly one space.
-        domain[space] must be an RGSpace.
+    target: Domain, optional
+        The target (sub-)domain of the transform operation.
+        If omitted, a domain will be chosen automatically.
+    space: int, optional
+        The index of the subdomain on which the operator should act
+        If None, it is set to 0 if `domain` contains exactly one space.
+        `domain[space]` must be an RGSpace.
     """
 
     def __init__(self, domain, target=None, space=None):
@@ -77,7 +78,7 @@ class FFTOperator(LinearOperator):
         tdom = self._target if x.domain == self._domain else self._domain
         oldax = dobj.distaxis(x.val)
         if oldax not in axes:  # straightforward, no redistribution needed
-            ldat = dobj.local_data(x.val)
+            ldat = x.local_data
             ldat = utilities.hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=oldax)
         elif len(axes) < len(x.shape) or len(axes) == 1:
@@ -116,9 +117,9 @@ class FFTOperator(LinearOperator):
             tmp = dobj.from_local_data(x.val.shape, ldat2, distaxis=0)
         Tval = Field(tdom, tmp)
         if mode & (LinearOperator.TIMES | LinearOperator.ADJOINT_TIMES):
-            fct = self._domain[self._space].scalar_dvol()
+            fct = self._domain[self._space].scalar_dvol
         else:
-            fct = self._target[self._space].scalar_dvol()
+            fct = self._target[self._space].scalar_dvol
         if fct != 1:
             Tval *= fct
 

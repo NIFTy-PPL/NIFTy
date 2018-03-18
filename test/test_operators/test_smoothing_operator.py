@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -54,7 +54,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
         op = ift.FFTSmoothingOperator(space, sigma=sigma)
         fld = np.zeros(space.shape, dtype=np.float64)
         fld[0] = 1.
-        rand1 = ift.Field(space, ift.dobj.from_global_data(fld))
+        rand1 = ift.Field.from_global_data(space, fld)
         tt1 = op.times(rand1)
         assert_allclose(1, tt1.sum())
 
@@ -76,32 +76,6 @@ class SmoothingOperator_Tests(unittest.TestCase):
         sp = ift.RGSpace([sz1, sz2], distances=[d1, d2])
         smo = ift.FFTSmoothingOperator(sp, sigma=sigma)
         inp = ift.Field.from_random(domain=sp, random_type='normal', std=1,
-                                    mean=4, dtype=tp)
-        out = smo(inp)
-        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
-
-    @expand(product([100, 200], [False, True], [0., 1.,  3.7],
-                    [np.float64, np.complex128]))
-    def test_smooth_irregular1(self, sz, log, sigma, tp):
-        tol = _get_rtol(tp)
-        sp = ift.RGSpace(sz, harmonic=True)
-        bb = ift.PowerSpace.useful_binbounds(sp, logarithmic=log)
-        ps = ift.PowerSpace(sp, binbounds=bb)
-        smo = ift.DirectSmoothingOperator(ps, sigma=sigma)
-        inp = ift.Field.from_random(domain=ps, random_type='normal', std=1,
-                                    mean=4, dtype=tp)
-        out = smo(inp)
-        assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)
-
-    @expand(product([10, 15], [7, 10], [False, True], [0., 1.,  3.7],
-                    [np.float64, np.complex128]))
-    def test_smooth_irregular2(self, sz1, sz2, log, sigma, tp):
-        tol = _get_rtol(tp)
-        sp = ift.RGSpace([sz1, sz2], harmonic=True)
-        bb = ift.PowerSpace.useful_binbounds(sp, logarithmic=log)
-        ps = ift.PowerSpace(sp, binbounds=bb)
-        smo = ift.DirectSmoothingOperator(ps, sigma=sigma)
-        inp = ift.Field.from_random(domain=ps, random_type='normal', std=1,
                                     mean=4, dtype=tp)
         out = smo(inp)
         assert_allclose(inp.sum(), out.sum(), rtol=tol, atol=tol)

@@ -20,6 +20,10 @@ from builtins import next, range
 import numpy as np
 from itertools import product
 import abc
+from future.utils import with_metaclass
+
+__all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
+           "memo", "NiftyMetaBase", "hartley", "my_fftn_r2c"]
 
 
 def get_slice_list(shape, axes):
@@ -34,8 +38,8 @@ def get_slice_list(shape, axes):
     axes: tuple
         Axes which should not be iterated over.
 
-    Returns
-    -------
+    Yields
+    ------
     list
         The next list of indices and/or slice objects for each dimension.
 
@@ -72,16 +76,16 @@ def safe_cast(tfunc, val):
     return tmp
 
 
-def parse_spaces(spaces, maxidx):
-    maxidx = safe_cast(int, maxidx)
+def parse_spaces(spaces, nspc):
+    nspc = safe_cast(int, nspc)
     if spaces is None:
-        return tuple(range(maxidx))
+        return tuple(range(nspc))
     elif np.isscalar(spaces):
         spaces = (safe_cast(int, spaces),)
     else:
         spaces = tuple(safe_cast(int, item) for item in spaces)
     tmp = tuple(set(spaces))
-    if tmp[0] < 0 or tmp[-1] >= maxidx:
+    if tmp[0] < 0 or tmp[-1] >= nspc:
         raise ValueError("space index out of range")
     if len(tmp) != len(spaces):
         raise ValueError("multiply defined space indices")
@@ -148,6 +152,10 @@ class _DocStringInheritor(type):
 
 class NiftyMeta(_DocStringInheritor, abc.ABCMeta):
     pass
+
+
+def NiftyMetaBase():
+    return with_metaclass(NiftyMeta, type('NewBase', (object,), {}))
 
 
 def hartley(a, axes=None):
@@ -232,25 +240,3 @@ def my_fftn_r2c(a, axes=None):
         return res
 
     return _fill_complex_array(tmp, np.empty_like(a, dtype=tmp.dtype), axes)
-
-
-def general_axpy(a, x, y, out):
-    if x.domain != y.domain or x.domain != out.domain:
-        raise ValueError("Incompatible domains")
-
-    if out is x:
-        if a != 1.:
-            out *= a
-        out += y
-    elif out is y:
-        if a != 1.:
-            out += a*x
-        else:
-            out += x
-    else:
-        out.copy_content_from(y)
-        if a != 1.:
-            out += a*x
-        else:
-            out += x
-    return out

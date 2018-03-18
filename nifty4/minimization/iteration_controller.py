@@ -11,19 +11,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from builtins import range
 import abc
-from ..utilities import NiftyMeta
-from future.utils import with_metaclass
+from ..utilities import NiftyMetaBase
 
 
-class IterationController(with_metaclass(NiftyMeta, type('NewBase',
-                                         (object,), {}))):
+class IterationController(NiftyMetaBase()):
     """The abstract base class for all iteration controllers.
     An iteration controller is an object that monitors the progress of a
     minimization iteration. At the begin of the minimization, its start()
@@ -45,7 +43,8 @@ class IterationController(with_metaclass(NiftyMeta, type('NewBase',
 
     @abc.abstractmethod
     def start(self, energy):
-        """
+        """Starts the iteration.
+
         Parameters
         ----------
         energy : Energy object
@@ -59,7 +58,8 @@ class IterationController(with_metaclass(NiftyMeta, type('NewBase',
 
     @abc.abstractmethod
     def check(self, energy):
-        """
+        """Checks the state of the iteration. Called after every step.
+
         Parameters
         ----------
         energy : Energy object

@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -35,12 +35,31 @@ class QuadraticEnergy(Energy):
         else:
             Ax = self._A(self.position)
             self._grad = Ax - self._b
+        self._grad.lock()
         self._value = 0.5*self.position.vdot(Ax) - b.vdot(self.position)
 
     def at(self, position):
         return QuadraticEnergy(position=position, A=self._A, b=self._b)
 
     def at_with_grad(self, position, grad):
+        """ Specialized version of `at`, taking also a gradient.
+
+        This custom method is meant for use within :class:ConjugateGradient`
+        minimizers, which already have the gradient available. It saves time
+        by not recomputing it.
+
+        Parameters
+        ----------
+        position : Field
+            Location in parameter space for the new Energy object.
+        grad : Field
+            Energy gradient at the new position.
+
+        Returns
+        -------
+        Energy
+            Energy object at new position.
+        """
         return QuadraticEnergy(position=position, A=self._A, b=self._b,
                                _grad=grad)
 

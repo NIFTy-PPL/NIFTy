@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -37,47 +37,25 @@ class LineEnergy(object):
         energy.position = zero_point + offset*line_direction
         (default : 0.).
 
-    Attributes
-    ----------
-    line_position : float
-        The position along the given line direction relative to the zero point.
-    value : float
-        The value of the energy functional at the given position
-    directional_derivative : float
-        The directional derivative at the given position
-    line_direction : Field
-        Direction along which the movement is restricted. Does not have to be
-        normalized.
-    energy : Energy
-        The underlying Energy at the given position
-
-    Raises
-    ------
-    NotImplementedError
-        Raised if
-            * value, gradient or curvature of the attribute energy are not
-              implemented.
-
     Notes
     -----
     The LineEnergy is used in minimization schemes in order perform line
     searches. It describes an underlying Energy which is restricted along one
     direction, only requiring the step size parameter to determine a new
     position.
-
     """
 
     def __init__(self, line_position, energy, line_direction, offset=0.):
         super(LineEnergy, self).__init__()
         self._line_position = float(line_position)
-        self._line_direction = line_direction
+        self._line_direction = line_direction.lock()
 
         if self._line_position == float(offset):
-            self.energy = energy
+            self._energy = energy
         else:
             pos = energy.position \
                 + (self._line_position-float(offset))*self._line_direction
-            self.energy = energy.at(position=pos)
+            self._energy = energy.at(position=pos)
 
     def at(self, line_position):
         """ Returns LineEnergy at new position, memorizing the zero point.
@@ -93,26 +71,31 @@ class LineEnergy(object):
 
         """
 
-        return LineEnergy(line_position, self.energy, self.line_direction,
-                          offset=self.line_position)
+        return LineEnergy(line_position, self._energy, self._line_direction,
+                          offset=self._line_position)
+
+    @property
+    def energy(self):
+        """
+        Energy : The underlying Energy object
+        """
+        return self._energy
 
     @property
     def value(self):
-        return self.energy.value
-
-    @property
-    def line_position(self):
-        return self._line_position
-
-    @property
-    def line_direction(self):
-        return self._line_direction
+        """
+        float : The value of the energy functional at given `position`.
+        """
+        return self._energy.value
 
     @property
     def directional_derivative(self):
-        res = self.energy.gradient.vdot(self.line_direction)
+        """
+        float : The directional derivative at the given `position`.
+        """
+        res = self._energy.gradient.vdot(self._line_direction)
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
-            from ..dobj import mprint
-            mprint("directional derivative has non-negligible "
-                   "imaginary part:", res)
+            from ..logger import logger
+            logger.warning("directional derivative has non-negligible "
+                           "imaginary part:", res)
         return res.real

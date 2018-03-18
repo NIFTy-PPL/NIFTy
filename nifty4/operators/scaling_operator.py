@@ -24,7 +24,7 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class ScalingOperator(EndomorphicOperator):
-    """ NIFTy class for an operator which multiplies a Field with a scalar.
+    """Operator which multiplies a Field with a scalar.
 
     The NIFTy ScalingOperator class is a subclass derived from the
     EndomorphicOperator. It multiplies an input field with a given factor.
@@ -33,13 +33,18 @@ class ScalingOperator(EndomorphicOperator):
     ----------
     factor : scalar
         The multiplication factor
-    domain : tuple of DomainObjects
+    domain : Domain or tuple of Domain or DomainTuple
         The domain on which the Operator's input Field lives.
 
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
+    Notes
+    -----
+    Formally, this operator always supports all operation modes (times,
+    adjoint_times, inverse_times and inverse_adjoint_times), even if `factor`
+    is 0 or infinity. It is the user's responsibility to apply the operator
+    only in appropriate ways (e.g. call inverse_times only if `factor` is
+    nonzero).
+
+    This shortcoming will hopefully be fixed in the future.
     """
 
     def __init__(self, factor, domain):
@@ -86,24 +91,17 @@ class ScalingOperator(EndomorphicOperator):
     def capability(self):
         if self._factor == 0.:
             return self.TIMES | self.ADJOINT_TIMES
-        return (self.TIMES | self.ADJOINT_TIMES |
-                self.INVERSE_TIMES | self.ADJOINT_INVERSE_TIMES)
+        return self._all_ops
 
-    def draw_sample(self):
-        """ Generates a sample from a Gaussian distribution with
-        covariance given by the operator.
+    def process_sample(self, sample):
+        if self._factor.imag != 0. or self._factor.real <= 0.:
+            raise ValueError("Operator not positive definite")
+        return sample * np.sqrt(self._factor)
 
-        This method generates samples by setting up the observation and
-        reconstruction of a mock signal in order to obtain residuals of the
-        right correlation.
-
-        Returns
-        -------
-        sample : Field
-            Returns the a sample from the Gaussian of given covariance.
-        """
-
+    def draw_sample(self, dtype=np.float64):
+        if self._factor.imag != 0. or self._factor.real <= 0.:
+            raise ValueError("Operator not positive definite")
         return Field.from_random(random_type="normal",
                                  domain=self._domain,
                                  std=np.sqrt(self._factor),
-                                 dtype=np.result_type(self._factor))
+                                 dtype=dtype)

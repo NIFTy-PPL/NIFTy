@@ -1,7 +1,6 @@
 import numpy as np
 import nifty4 as ift
 
-
 if __name__ == "__main__":
     np.random.seed(43)
     # Set up physical constants
@@ -9,7 +8,7 @@ if __name__ == "__main__":
     L = 2.
     # Typical distance over which the field is correlated (in same unit as L)
     correlation_length = 0.1
-    # Variance of field in position space sqrt(<|s_x|^2>) (in unit of s)
+    # Variance of field in position space sqrt(<|s_x|^2>) (in same unit as s)
     field_variance = 2.
     # Smoothing length of response (in same unit as L)
     response_sigma = 0.01
@@ -28,26 +27,21 @@ if __name__ == "__main__":
     # Set up the geometry
     s_space = ift.RGSpace([N_pixels, N_pixels], distances=pixel_width)
     h_space = s_space.get_default_codomain()
-    ht = ift.HarmonicTransformOperator(h_space, s_space)
-    p_space = ift.PowerSpace(h_space)
+    HT = ift.HarmonicTransformOperator(h_space, s_space)
 
     # Create mock data
 
     Sh = ift.create_power_operator(h_space, power_spectrum=pow_spec)
+    sh = Sh.draw_sample()
 
-    sp = ift.PS_field(p_space, pow_spec)
-    sh = ift.power_synthesize(sp, real_signal=True)
-
-    R = ht*ift.create_harmonic_smoothing_operator((h_space,),0,response_sigma)
+    R = HT*ift.create_harmonic_smoothing_operator((h_space,), 0,
+                                                  response_sigma)
 
     noiseless_data = R(sh)
     signal_to_noise = 1.
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
-    N = ift.DiagonalOperator(ift.Field.full(s_space, noise_amplitude**2))
-    n = ift.Field.from_random(domain=s_space,
-                              random_type='normal',
-                              std=noise_amplitude,
-                              mean=0)
+    N = ift.ScalingOperator(noise_amplitude**2, s_space)
+    n = N.draw_sample()
 
     d = noiseless_data + n
 
@@ -63,11 +57,10 @@ if __name__ == "__main__":
     m = D(j)
 
     # Plotting
-    d_field = ift.Field(s_space, val=d.val)
-    zmax = max(ht(sh).max(), d_field.max(), ht(m).max())
-    zmin = min(ht(sh).min(), d_field.min(), ht(m).min())
-    plotdict = {"xlabel": "Pixel index", "ylabel": "Pixel index",
-                "colormap": "Planck-like", "zmax": zmax, "zmin": zmin}
-    ift.plot(ht(sh), name="mock_signal.png", **plotdict)
+    d_field = d.cast_domain(s_space)
+    zmax = max(HT(sh).max(), d_field.max(), HT(m).max())
+    zmin = min(HT(sh).min(), d_field.min(), HT(m).min())
+    plotdict = {"colormap": "Planck-like", "zmax": zmax, "zmin": zmin}
+    ift.plot(HT(sh), name="mock_signal.png", **plotdict)
     ift.plot(d_field, name="data.png", **plotdict)
-    ift.plot(ht(m), name="reconstruction.png", **plotdict)
+    ift.plot(HT(m), name="reconstruction.png", **plotdict)

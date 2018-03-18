@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -87,10 +87,9 @@ class LMSpaceFunctionalityTests(unittest.TestCase):
                 assert_equal(getattr(l, key), value)
 
     def test_dvol(self):
-        assert_allclose(ift.LMSpace(5).dvol(), 1.)
+        assert_allclose(ift.LMSpace(5).dvol, 1.)
 
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, lmax, expected):
         l = ift.LMSpace(lmax)
-        assert_allclose(ift.dobj.to_global_data(l.get_k_length_array().val),
-                        expected)
+        assert_allclose(l.get_k_length_array().to_global_data(), expected)

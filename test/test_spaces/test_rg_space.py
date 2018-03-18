@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -110,10 +110,9 @@ class RGSpaceFunctionalityTests(unittest.TestCase):
     @expand(get_k_length_array_configs())
     def test_k_length_array(self, shape, distances, expected):
         r = ift.RGSpace(shape=shape, distances=distances, harmonic=True)
-        assert_allclose(ift.dobj.to_global_data(r.get_k_length_array().val),
-                        expected)
+        assert_allclose(r.get_k_length_array().to_global_data(), expected)
 
     @expand(get_dvol_configs())
     def test_dvol(self, shape, distances, harmonic, power):
         r = ift.RGSpace(shape=shape, distances=distances, harmonic=harmonic)
-        assert_allclose(r.dvol(), np.prod(r.distances)**power)
+        assert_allclose(r.dvol, np.prod(r.distances)**power)

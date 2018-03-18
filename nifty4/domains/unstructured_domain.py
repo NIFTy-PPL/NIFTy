@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -21,9 +21,22 @@ from functools import reduce
 
 
 class UnstructuredDomain(Domain):
+    """A :class:`~nifty4.domains.domain.Domain` subclass for spaces with no
+    associated geometry.
+
+    Typically used for data spaces.
+
+    Parameters
+    ----------
+    shape : tuple of int
+        The required shape for an array which can hold the unstructured
+        domain's data.
+    """
+
+    _needed_for_hash = ["_shape"]
+
     def __init__(self, shape):
         super(UnstructuredDomain, self).__init__()
-        self._needed_for_hash += ["_shape"]
         try:
             self._shape = tuple([int(i) for i in shape])
         except TypeError:

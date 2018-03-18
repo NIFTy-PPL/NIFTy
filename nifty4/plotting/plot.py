@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -97,7 +97,7 @@ def _limit_xy(**kwargs):
     x1 = _get_kw("xmin", x1, **kwargs)
     x2 = _get_kw("xmax", x2, **kwargs)
     y1 = _get_kw("ymin", y1, **kwargs)
-    y2 = _get_kw("xmax", y2, **kwargs)
+    y2 = _get_kw("ymax", y2, **kwargs)
     plt.axis((x1, x2, y1, y2))
 
 
@@ -198,6 +198,18 @@ def plot(f, **kwargs):
     if not isinstance(label, list):
         label = [label]
 
+    linewidth = _get_kw("linewidth", None, **kwargs)
+    if linewidth is None:
+        linewidth = [1.] * len(f)
+    if not isinstance(linewidth, list):
+        linewidth = [linewidth]
+
+    alpha = _get_kw("alpha", None, **kwargs)
+    if alpha is None:
+        alpha = [None] * len(f)
+    if not isinstance(alpha, list):
+        alpha = [alpha]
+
     dom = dom[0]
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -215,8 +227,9 @@ def plot(f, **kwargs):
             dist = dom.distances[0]
             xcoord = np.arange(npoints, dtype=np.float64)*dist
             for i, fld in enumerate(f):
-                ycoord = dobj.to_global_data(fld.val)
-                plt.plot(xcoord, ycoord, label=label[i])
+                ycoord = fld.to_global_data()
+                plt.plot(xcoord, ycoord, label=label[i],
+                         linewidth=linewidth[i], alpha=alpha[i])
             _limit_xy(**kwargs)
             if label != ([None]*len(f)):
                 plt.legend()
@@ -230,7 +243,7 @@ def plot(f, **kwargs):
             dy = dom.distances[1]
             xc = np.arange(nx, dtype=np.float64)*dx
             yc = np.arange(ny, dtype=np.float64)*dy
-            im = ax.imshow(dobj.to_global_data(f.val),
+            im = ax.imshow(fld.to_global_data(),
                            extent=[xc[0], xc[-1], yc[0], yc[-1]],
                            vmin=kwargs.get("zmin"),
                            vmax=kwargs.get("zmax"), cmap=cmap, origin="lower")
@@ -248,8 +261,9 @@ def plot(f, **kwargs):
         plt.title('power')
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
-            ycoord = dobj.to_global_data(fld.val)
-            plt.plot(xcoord, ycoord, label=label[i])
+            ycoord = fld.to_global_data()
+            plt.plot(xcoord, ycoord, label=label[i],
+                     linewidth=linewidth[i], alpha=alpha[i])
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
@@ -264,8 +278,8 @@ def plot(f, **kwargs):
         ptg = np.empty((phi.size, 2), dtype=np.float64)
         ptg[:, 0] = theta
         ptg[:, 1] = phi
-        base = pyHealpix.Healpix_Base(int(np.sqrt(f.val.size//12)), "RING")
-        res[mask] = dobj.to_global_data(f.val)[base.ang2pix(ptg)]
+        base = pyHealpix.Healpix_Base(int(np.sqrt(f.size//12)), "RING")
+        res[mask] = f.to_global_data()[base.ang2pix(ptg)]
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
@@ -282,7 +296,7 @@ def plot(f, **kwargs):
         ilat = _find_closest(dec, theta)
         ilon = _find_closest(ra, phi)
         ilon = np.where(ilon == dom.nlon, 0, ilon)
-        res[mask] = dobj.to_global_data(f.val)[ilat*dom.nlon + ilon]
+        res[mask] = f.to_global_data()[ilat*dom.nlon + ilon]
 
         plt.axis('off')
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),

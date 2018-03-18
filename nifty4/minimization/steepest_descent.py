@@ -12,7 +12,7 @@ from __future__ import division
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -22,21 +22,10 @@ from .descent_minimizer import DescentMinimizer
 
 
 class SteepestDescent(DescentMinimizer):
+    """ Implementation of the steepest descent minimization scheme.
+
+    Also known as 'gradient descent'. This algorithm simply follows the
+    functional's gradient for minimization.
+    """
     def get_descent_direction(self, energy):
-        """ Implementation of the steepest descent minimization scheme.
-
-        Also known as 'gradient descent'. This algorithm simply follows the
-        functional's gradient for minization.
-
-        Parameters
-        ----------
-        energy : Energy
-            An instance of the Energy class which shall be minized. The
-            position of `energy` is used as the starting point of minization.
-
-        Returns
-        -------
-        descent_direction : Field
-            the descent direction.
-        """
         return -energy.gradient

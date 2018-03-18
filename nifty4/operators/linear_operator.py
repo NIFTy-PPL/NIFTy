@@ -17,14 +17,36 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-from ..utilities import NiftyMeta
+from ..utilities import NiftyMetaBase
 from ..field import Field
-from future.utils import with_metaclass
 import numpy as np
 
 
-class LinearOperator(with_metaclass(
-        NiftyMeta, type('NewBase', (object,), {}))):
+class LinearOperator(NiftyMetaBase()):
+    """NIFTY base class for linear operators.
+
+    The base NIFTY operator class is an abstract class from which
+    other specific operator subclasses are derived.
+
+    Attributes
+    ----------
+    TIMES : int
+        Symbolic constant representing normal operator application
+    ADJOINT_TIMES : int
+        Symbolic constant representing adjoint operator application
+    INVERSE_TIMES : int
+        Symbolic constant representing inverse operator application
+    ADJOINT_INVERSE_TIMES : int
+        Symbolic constant representing adjoint inverse operator application
+    INVERSE_ADJOINT_TIMES : int
+        same as ADJOINT_INVERSE_TIMES
+
+    Notes
+    -----
+    The symbolic constants for the operation modes can be combined by the
+    "bitwise-or" operator "|", for expressing the capability of the operator
+    by means of a single integer number.
+    """
 
     _validMode = (False, True, True, False, True, False, False, False, True)
     _inverseMode = (0, 4, 8, 0, 1, 0, 0, 0, 2)
@@ -51,31 +73,33 @@ class LinearOperator(with_metaclass(
 
     @abc.abstractproperty
     def domain(self):
-        """
-        domain : DomainTuple
-            The domain on which the Operator's input Field lives.
-            Every Operator which inherits from the abstract LinearOperator
-            base class must have this attribute.
-        """
+        """DomainTuple : the operator's input domain
+
+            The domain on which the Operator's input Field lives."""
         raise NotImplementedError
 
     @abc.abstractproperty
     def target(self):
-        """
-        target : DomainTuple
-            The domain on which the Operator's output Field lives.
-            Every Operator which inherits from the abstract LinearOperator
-            base class must have this attribute.
-        """
+        """DomainTuple : the operator's output domain
+
+            The domain on which the Operator's output Field lives."""
         raise NotImplementedError
 
     @property
     def inverse(self):
+        """LinearOperator : the inverse of `self`
+
+        Returns a LinearOperator object which behaves as if it were
+        the inverse of this operator."""
         from .inverse_operator import InverseOperator
         return InverseOperator(self)
 
     @property
     def adjoint(self):
+        """LinearOperator : the adjoint of `self`
+
+        Returns a LinearOperator object which behaves as if it were
+        the adjoint of this operator."""
         from .adjoint_operator import AdjointOperator
         return AdjointOperator(self)
 
@@ -114,39 +138,117 @@ class LinearOperator(with_metaclass(
         other = self._toOperator(other, self.domain)
         return SumOperator.make([self, other], [False, True])
 
-    # MR FIXME: this might be more complicated ...
     def __rsub__(self, other):
         from .sum_operator import SumOperator
         other = self._toOperator(other, self.domain)
-        return SumOperator.make(other, self, [False, True])
-
-    def supports(self, ops):
-        return False
+        return SumOperator.make([other, self], [False, True])
 
     @abc.abstractproperty
     def capability(self):
+        """int : the supported operation modes
+
+        Returns the supported subset of :attr:`TIMES`, :attr:`ADJOINT_TIMES`,
+        :attr:`INVERSE_TIMES`, and :attr:`ADJOINT_INVERSE_TIMES`,
+        joined together by the "|" operator.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
     def apply(self, x, mode):
+        """ Applies the Operator to a given `x`, in a specified `mode`.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's domain or target,
+            depending on mode.
+
+        mode : int
+            - :attr:`TIMES`: normal application
+            - :attr:`ADJOINT_TIMES`: adjoint application
+            - :attr:`INVERSE_TIMES`: inverse application
+            - :attr:`ADJOINT_INVERSE_TIMES` or
+              :attr:`INVERSE_ADJOINT_TIMES`: adjoint inverse application
+
+        Returns
+        -------
+        Field
+            The processed Field living on the Operator's target or domain,
+            depending on mode.
+        """
         raise NotImplementedError
 
     def __call__(self, x):
+        """Same as :meth:`times`"""
         return self.apply(x, self.TIMES)
 
     def times(self, x):
+        """ Applies the Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's domain.
+
+        Returns
+        -------
+        Field
+            The processed Field living on the Operator's target domain.
+        """
         return self.apply(x, self.TIMES)
 
     def inverse_times(self, x):
+        """Applies the inverse Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's target domain
+
+        Returns
+        -------
+        Field
+            The processed Field living on the Operator's domain.
+        """
         return self.apply(x, self.INVERSE_TIMES)
 
     def adjoint_times(self, x):
+        """Applies the adjoint-Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's target domain
+
+        Returns
+        -------
+        Field
+            The processed Field living on the Operator's domain.
+        """
         return self.apply(x, self.ADJOINT_TIMES)
 
     def adjoint_inverse_times(self, x):
+        """ Applies the adjoint-inverse Operator to a given Field.
+
+        Parameters
+        ----------
+        x : Field
+            The input Field, living on the Operator's domain.
+
+        Returns
+        -------
+        Field
+            The processed Field living on the Operator's target domain.
+
+        Notes
+        -----
+        If the operator has an `inverse` then the inverse adjoint is identical
+        to the adjoint inverse. We provide both names for convenience.
+        """
         return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
     def inverse_adjoint_times(self, x):
+        """Same as :meth:`adjoint_inverse_times`"""
         return self.apply(x, self.ADJOINT_INVERSE_TIMES)
 
     def _check_mode(self, mode):
@@ -162,3 +264,16 @@ class LinearOperator(with_metaclass(
         self._check_mode(mode)
         if x.domain != self._dom(mode):
             raise ValueError("The operator's and field's domains don't match.")
+
+    def draw_sample(self):
+        """Generate a zero-mean sample
+
+        Generates a sample from a Gaussian distribution with zero mean and
+        covariance given by the operator.
+
+        Returns
+        -------
+        Field
+            A sample from the Gaussian of given covariance.
+        """
+        raise NotImplementedError

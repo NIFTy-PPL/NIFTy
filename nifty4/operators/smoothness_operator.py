@@ -26,8 +26,7 @@ def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
 
     This operator applies the irregular LaplaceOperator and its adjoint to some
     Field over a PowerSpace which corresponds to its smoothness and weights the
-    result with a scale parameter sigma. It is used in the smoothness prior
-    terms of the CriticalPowerEnergy. For this purpose we use free boundary
+    result with a scale parameter sigma. For this purpose we use free boundary
     conditions in the LaplaceOperator, having no curvature at both ends. In
     addition the first entry is ignored as well, corresponding to the overall
     mean of the map. The mean is therefore not considered in the smoothness
@@ -36,11 +35,16 @@ def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
 
     Parameters
     ----------
-    strength: nonnegative float
+    domain : Domain, tuple of Domain, or DomainTuple
+       The total domain of the operator's input and output fields
+    strength : nonnegative float
         Specifies the strength of the SmoothnessOperator
-    logarithmic : boolean
+    logarithmic : bool, optional
         Whether smoothness is calculated on a logarithmic scale or linear scale
         default : True
+    space : int, optional
+       The index of the sub-domain on which the operator acts.
+       Can be omitted if `domain` only has one sub-domain.
     """
     if strength < 0:
         raise ValueError("ERROR: strength must be nonnegative.")

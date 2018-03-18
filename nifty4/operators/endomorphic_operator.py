@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -25,16 +25,12 @@ class EndomorphicOperator(LinearOperator):
     The  NIFTy EndomorphicOperator class is a class derived from the
     LinearOperator. By definition, domain and target are the same in
     EndomorphicOperator.
-
-    Attributes
-    ----------
-    domain : DomainTuple
-        The domain on which the Operator's input Field lives.
-    target : DomainTuple
-        The domain in which the outcome of the operator lives. As the Operator
-        is endomorphic this is the same as its domain.
     """
 
     @property
     def target(self):
+        """DomainTuple : returns :attr:`domain`
+
+        Returns `self.domain`, because this is also the target domain
+        for endomorphic operators."""
         return self.domain

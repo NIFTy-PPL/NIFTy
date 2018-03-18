@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -30,23 +30,27 @@ class RGSpace(StructuredDomain):
 
     Parameters
     ----------
-    shape : {int, numpy.ndarray}
+    shape : int or tuple of int
         Number of grid points or numbers of gridpoints along each axis.
-    distances : {float, numpy.ndarray}, *optional*
+    distances : None or float or tuple of float, optional
         Distance between two grid points along each axis
         (default: None).
-        If distances==None:
-        if harmonic==True, all distances will be set to 1
-        if harmonic==False, the distance along each axis will be
-        set to the inverse of the number of points along that axis.
-    harmonic : bool, *optional*
+
+        If distances is None:
+
+          - if harmonic==True, all distances will be set to 1
+
+          - if harmonic==False, the distance along each axis will be
+            set to the inverse of the number of points along that axis.
+
+    harmonic : bool, optional
         Whether the space represents a grid in position or harmonic space.
         (default: False).
     """
+    _needed_for_hash = ["_distances", "_shape", "_harmonic"]
 
     def __init__(self, shape, distances=None, harmonic=False):
         super(RGSpace, self).__init__()
-        self._needed_for_hash += ["_distances", "_shape", "_harmonic"]
 
         self._harmonic = bool(harmonic)
         if np.isscalar(shape):
@@ -84,14 +88,15 @@ class RGSpace(StructuredDomain):
     def size(self):
         return self._size
 
+    @property
     def scalar_dvol(self):
         return self._dvol
 
     def get_k_length_array(self):
         if (not self.harmonic):
             raise NotImplementedError
-        out = Field((self,), dtype=np.float64)
-        oloc = dobj.local_data(out.val)
+        out = Field(self, dtype=np.float64)
+        oloc = out.local_data
         ibegin = dobj.ibegin(out.val)
         res = np.arange(oloc.shape[0], dtype=np.float64) + ibegin[0]
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
@@ -128,7 +133,7 @@ class RGSpace(StructuredDomain):
             return np.sqrt(np.nonzero(tmp)[0])*self.distances[0]
         else:  # do it the hard way
             # FIXME: this needs to improve for MPI. Maybe unique()/gather()?
-            tmp = dobj.to_global_data(self.get_k_length_array().val)
+            tmp = self.get_k_length_array().to_global_data()
             tmp = np.unique(tmp)
             tol = 1e-12*tmp[-1]
             # remove all points that are closer than tol to their right
@@ -150,10 +155,21 @@ class RGSpace(StructuredDomain):
         return lambda x: self._kernel(x, sigma)
 
     def get_default_codomain(self):
+        """Returns a :class:`RGSpace` object representing the (position or
+        harmonic) partner domain of `self`, depending on `self.harmonic`.
+
+        Returns
+        -------
+        RGSpace
+            The parter domain
+        """
         distances = 1. / (np.array(self.shape)*np.array(self.distances))
         return RGSpace(self.shape, distances, not self.harmonic)
 
     def check_codomain(self, codomain):
+        """Raises `TypeError` if `codomain` is not a matching partner domain
+        for `self`.
+        """
         if not isinstance(codomain, RGSpace):
             raise TypeError("domain is not a RGSpace")
 
@@ -175,8 +191,8 @@ class RGSpace(StructuredDomain):
 
     @property
     def distances(self):
-        """Distance between grid points along each axis. It is a tuple
-        of positive floating point numbers with the n-th entry giving the
-        distance between neighboring grid points along the n-th dimension.
+        """tuple of float : Distance between grid points along each axis.
+        The n-th entry of the tuple is the distance between neighboring
+        grid points along the n-th dimension.
         """
         return self._distances

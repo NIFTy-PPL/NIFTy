@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -20,43 +20,32 @@ from __future__ import division
 import numpy as np
 from .structured_domain import StructuredDomain
 from ..field import Field, exp
-from .. import dobj
 
 
 class LMSpace(StructuredDomain):
-    """NIFTy subclass for spherical harmonics components, for representations
-    of fields on the two-sphere.
+    """NIFTy subclass for sets of spherical harmonic coefficients.
+
+    Its harmonic partner spaces are :class:`~nifty4.domains.hp_space.HPSpace`
+    and :class:`~nifty4.domains.gl_space.GLSpace`.
 
     Parameters
     ----------
     lmax : int
-        The maximum :math:`l` value of any spherical harmonics
-        :math:`Y_{lm}` that is represented in this Space.
-        Must be >=0.
+        The maximum :math:`l` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        Must be :math:`\ge 0`.
 
-    mmax : int *optional*
-        The maximum :math:`m` value of any spherical harmonics
-        :math:`Y_{lm}` that is represented in this Space.
-        If not supplied, it is set to lmax.
-        Must be >=0 and <=lmax.
-
-    See Also
-    --------
-    HPSpace, GLSpace
-
-    References
-    ----------
-    .. [#] K.M. Gorski et al., 2005, "HEALPix: A Framework for
-           High-Resolution Discretization and Fast Analysis of Data
-           Distributed on the Sphere", *ApJ* 622..759G.
-    .. [#] M. Reinecke and D. Sverre Seljebotn, 2013, "Libsharp - spherical
-           harmonic transforms revisited";
-           `arXiv:1303.4945 <http://www.arxiv.org/abs/1303.4945>`_
+    mmax : int, optional
+        The maximum :math:`m` value of any spherical harmonic coefficient
+        :math:`a_{lm}` that is represented by this object.
+        If not supplied, it is set to `lmax`.
+        Must be :math:`\ge 0` and :math:`\le` `lmax`.
     """
+
+    _needed_for_hash = ["_lmax", "_mmax"]
 
     def __init__(self, lmax, mmax=None):
         super(LMSpace, self).__init__()
-        self._needed_for_hash += ["_lmax", "_mmax"]
         self._lmax = np.int(lmax)
         if self._lmax < 0:
             raise ValueError("lmax must be >=0.")
@@ -85,6 +74,7 @@ class LMSpace(StructuredDomain):
         # minus two little triangles if mmax < lmax
         return (l+1)**2 - (l-m)*(l-m+1)
 
+    @property
     def scalar_dvol(self):
         return 1.
 
@@ -100,7 +90,7 @@ class LMSpace(StructuredDomain):
         for m in range(1, mmax+1):
             ldist[idx:idx+2*(lmax+1-m)] = tmp[2*m:]
             idx += 2*(lmax+1-m)
-        return Field((self,), dobj.from_global_data(ldist))
+        return Field.from_global_data(self, ldist)
 
     def get_unique_k_lengths(self):
         return np.arange(self.lmax+1, dtype=np.float64)
@@ -121,23 +111,44 @@ class LMSpace(StructuredDomain):
 
     @property
     def lmax(self):
-        """ Returns the maximum :math:`l` value of any spherical harmonic
-        :math:`Y_{lm}` that is represented in this Space.
+        """int : maximum allowed :math:`l`
+
+        The maximum :math:`l` value of any spherical harmonic
+        coefficient :math:`a_{lm}` that is represented in this domain.
         """
         return self._lmax
 
     @property
     def mmax(self):
-        """ Returns the maximum :math:`m` value of any spherical harmonic
-        :math:`Y_{lm}` that is represented in this Space.
+        """int : maximum allowed :math:`m`
+
+        The maximum :math:`m` value of any spherical harmonic
+        coefficient :math:`a_{lm}` that is represented in this domain.
         """
         return self._mmax
 
     def get_default_codomain(self):
+        """Returns a :class:`~nifty4.domains.gl_space.GLSpace` object, which is
+        capable of storing an accurate representation of data residing on
+        `self`.
+
+        Returns
+        -------
+        GLSpace
+            The partner domain
+        """
         from .. import GLSpace
         return GLSpace(self.lmax+1, self.mmax*2+1)
 
     def check_codomain(self, codomain):
+        """Raises `TypeError` if `codomain` is not a matching partner domain
+        for `self`.
+
+        Notes
+        -----
+        This function only checks whether `codomain` is of type
+        :class:`GLSpace` or :class:`HPSpace`.
+        """
         from .. import GLSpace, HPSpace
         if not isinstance(codomain, (GLSpace, HPSpace)):
             raise TypeError("codomain must be a GLSpace or HPSpace.")

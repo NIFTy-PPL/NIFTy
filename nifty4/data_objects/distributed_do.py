@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import print_function
 import numpy as np
 from .random import Random
 from mpi4py import MPI
@@ -29,11 +28,6 @@ master = (rank == 0)
 
 def is_numpy():
     return False
-
-
-def mprint(*args):
-    if master:
-        print(*args)
 
 
 def _shareSize(nwork, nshares, myshare):
@@ -323,10 +317,20 @@ def sqrt(a, out=None):
     return _math_helper(a, np.sqrt, out)
 
 
-def from_object(object, dtype=None, copy=True):
-    return data_object(object._shape, np.array(object._data, dtype=dtype,
-                                               copy=copy),
-                       distaxis=object._distaxis)
+def from_object(object, dtype, copy, set_locked):
+    if dtype is None:
+        dtype = object.dtype
+    dtypes_equal = dtype == object.dtype
+    if set_locked and dtypes_equal and locked(object):
+        return object
+    if not dtypes_equal and not copy:
+        raise ValueError("cannot change data type without copying")
+    if set_locked and not copy:
+        raise ValueError("cannot lock object without copying")
+    data = np.array(object._data, dtype=dtype, copy=copy)
+    if set_locked:
+        data.flags.writeable = False
+    return data_object(object._shape, data, distaxis=object._distaxis)
 
 
 # This function draws all random numbers on all tasks, to produce the same
@@ -373,7 +377,7 @@ def distaxis(arr):
     return arr._distaxis
 
 
-def from_local_data(shape, arr, distaxis):
+def from_local_data(shape, arr, distaxis=0):
     return data_object(shape, arr, distaxis)
 
 
@@ -517,3 +521,11 @@ def transpose(arr):
 
 def default_distaxis():
     return 0
+
+
+def lock(arr):
+    arr._data.flags.writeable = False
+
+
+def locked(arr):
+    return not arr._data.flags.writeable

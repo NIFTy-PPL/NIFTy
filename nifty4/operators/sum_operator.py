@@ -20,6 +20,8 @@ from .linear_operator import LinearOperator
 
 
 class SumOperator(LinearOperator):
+    """Class representing sums of operators."""
+
     def __init__(self, ops, neg, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
@@ -69,7 +71,7 @@ class SumOperator(LinearOperator):
             for i in range(len(opsnew)):
                 if isinstance(opsnew[i], DiagonalOperator):
                     sum *= (-1 if negnew[i] else 1)
-                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal()+sum,
+                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal+sum,
                                                  domain=opsnew[i].domain,
                                                  spaces=opsnew[i]._spaces)
                     sum = 0.
@@ -87,11 +89,11 @@ class SumOperator(LinearOperator):
         for i in range(len(ops)):
             if not processed[i]:
                 if isinstance(ops[i], DiagonalOperator):
-                    diag = ops[i].diagonal()*(-1 if neg[i] else 1)
+                    diag = ops[i].diagonal*(-1 if neg[i] else 1)
                     for j in range(i+1, len(ops)):
                         if (isinstance(ops[j], DiagonalOperator) and
                                 ops[i]._spaces == ops[j]._spaces):
-                            diag += ops[j].diagonal()*(-1 if neg[j] else 1)
+                            diag += ops[j].diagonal*(-1 if neg[j] else 1)
                             processed[j] = True
                     opsnew.append(DiagonalOperator(diag, ops[i].domain,
                                                    ops[i]._spaces))
@@ -121,6 +123,10 @@ class SumOperator(LinearOperator):
     @property
     def target(self):
         return self._ops[0].target
+
+    @property
+    def adjoint(self):
+        return self.make([op.adjoint for op in self._ops], self._neg)
 
     @property
     def capability(self):

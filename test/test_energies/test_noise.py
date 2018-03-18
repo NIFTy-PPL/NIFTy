@@ -11,7 +11,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
@@ -41,26 +41,26 @@ class Noise_Energy_Tests(unittest.TestCase):
         ht = ift.HarmonicTransformOperator(hspace, target=space)
         binbounds = ift.PowerSpace.useful_binbounds(hspace, logarithmic=False)
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
-        P = ift.PowerProjectionOperator(domain=hspace, power_space=pspace)
+        Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi = ift.Field.from_random(domain=hspace, random_type='normal')
 
         def pspec(k): return 1 / (1 + k**2)**dim
         tau = ift.PS_field(pspace, pspec)
-        A = P.adjoint_times(ift.sqrt(tau))
+        A = Dist(ift.sqrt(tau))
         var = 1.
         n = ift.Field.from_random(
             domain=space,
             random_type='normal',
             std=np.sqrt(var))
-        var = ift.Field(n.domain, val=var)
+        var = ift.Field.full(n.domain, var)
         N = ift.DiagonalOperator(var)
         eta0 = ift.log(var)
         s = ht(xi * A)
         R = ift.ScalingOperator(10., space)
         d = R(f(s)) + n
 
-        alpha = ift.Field(d.domain, val=2.)
-        q = ift.Field(d.domain, val=1e-5)
+        alpha = ift.Field.full(d.domain, 2.)
+        q = ift.Field.full(d.domain, 1e-5)
 
         direction = ift.Field.from_random('normal', d.domain)
         direction /= np.sqrt(direction.var())
@@ -73,7 +73,7 @@ class Noise_Energy_Tests(unittest.TestCase):
         inverter = ift.ConjugateGradient(IC)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
-        D = ift.library.NonlinearWienerFilterEnergy(
+        C = ift.library.NonlinearWienerFilterEnergy(
             position=xi,
             d=d,
             Instrument=R,
@@ -84,10 +84,10 @@ class Noise_Energy_Tests(unittest.TestCase):
             S=S,
             inverter=inverter).curvature
 
-        energy0 = ift.library.NoiseEnergy(
-            position=eta0, d=d, xi=xi, D=D, t=tau, Instrument=R,
-            alpha=alpha, q=q, Projection=P, nonlinearity=f,
-            ht=ht, samples=10)
+        res_sample_list = [d - R(f(ht(C.draw_sample() + xi)))
+                           for _ in range(10)]
+
+        energy0 = ift.library.NoiseEnergy(eta0, alpha, q, res_sample_list)
         energy1 = energy0.at(eta1)
 
         a = (energy1.value - energy0.value) / eps

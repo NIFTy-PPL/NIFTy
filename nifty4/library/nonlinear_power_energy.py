@@ -34,25 +34,25 @@ class NonlinearPowerEnergy(Energy):
 
     Parameters
     ----------
-    position : Field,
+    position : Field
         The current position of this energy.
-    m : Field,
-        The map whichs power spectrum has to be inferred
-    D : EndomorphicOperator,
+    m : Field
+        The map whose power spectrum has to be inferred
+    D : EndomorphicOperator
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.
         default : None
     sigma : float
         The parameter of the smoothness prior.
         default : ??? None? ???????
-    samples : integer
+    samples : int
         Number of samples used for the estimation of the uncertainty
         corrections.
         default : 3
     """
-
+    # MR FIXME: docstring incomplete and outdated
     def __init__(self, position, d, N, xi, D, ht, Instrument, nonlinearity,
-                 Projection, sigma=0., samples=3, xi_sample_list=None,
+                 Distributor, sigma=0., samples=3, xi_sample_list=None,
                  inverter=None):
         super(NonlinearPowerEnergy, self).__init__(position)
         self.xi = xi
@@ -64,7 +64,7 @@ class NonlinearPowerEnergy(Energy):
         self.ht = ht
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
-        self.Projection = Projection
+        self.Distributor = Distributor
         self.sigma = sigma
         if xi_sample_list is None:
             if samples is None or samples == 0:
@@ -75,7 +75,7 @@ class NonlinearPowerEnergy(Energy):
         self.xi_sample_list = xi_sample_list
         self.inverter = inverter
 
-        A = Projection.adjoint_times(exp(.5 * position))
+        A = Distributor(exp(.5 * position))
         map_s = self.ht(A * xi)
         Tpos = self.T(position)
 
@@ -83,13 +83,14 @@ class NonlinearPowerEnergy(Energy):
         for xi_sample in self.xi_sample_list:
             map_s = self.ht(A * xi_sample)
             LinR = LinearizedPowerResponse(
-                self.Instrument, self.nonlinearity, self.ht, self.Projection,
+                self.Instrument, self.nonlinearity, self.ht, self.Distributor,
                 self.position, xi_sample)
 
             residual = self.d - \
                 self.Instrument(self.nonlinearity(map_s))
-            lh = 0.5 * residual.vdot(self.N.inverse_times(residual))
-            grad = LinR.adjoint_times(self.N.inverse_times(residual))
+            tmp = self.N.inverse_times(residual)
+            lh = 0.5 * residual.vdot(tmp)
+            grad = LinR.adjoint_times(tmp)
 
             if self._gradient is None:
                 self._value = lh
@@ -102,11 +103,12 @@ class NonlinearPowerEnergy(Energy):
         self._value += 0.5 * self.position.vdot(Tpos)
         self._gradient *= -1. / len(self.xi_sample_list)
         self._gradient += Tpos
+        self._gradient.lock()
 
     def at(self, position):
         return self.__class__(position, self.d, self.N, self.xi, self.D,
                               self.ht, self.Instrument, self.nonlinearity,
-                              self.Projection, sigma=self.sigma,
+                              self.Distributor, sigma=self.sigma,
                               samples=len(self.xi_sample_list),
                               xi_sample_list=self.xi_sample_list,
                               inverter=self.inverter)
@@ -124,5 +126,5 @@ class NonlinearPowerEnergy(Energy):
     def curvature(self):
         return NonlinearPowerCurvature(
             self.position, self.ht, self.Instrument, self.nonlinearity,
-            self.Projection, self.N, self.T, self.xi_sample_list,
+            self.Distributor, self.N, self.T, self.xi_sample_list,
             self.inverter)

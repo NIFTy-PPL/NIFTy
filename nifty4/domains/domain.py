@@ -11,46 +11,56 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Copyright(C) 2013-2017 Max-Planck-Society
+# Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-from ..utilities import NiftyMeta
-from future.utils import with_metaclass
-import numpy as np
+from ..utilities import NiftyMetaBase
 
 
-class Domain(with_metaclass(
-        NiftyMeta, type('NewBase', (object,), {}))):
+class Domain(NiftyMetaBase()):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
-
-    def __init__(self):
-        self._needed_for_hash = []
 
     @abc.abstractmethod
     def __repr__(self):
         raise NotImplementedError
 
     def __hash__(self):
+        """Returns a hash value for the object.
+
+        Notes
+        -----
+        Only members that are explicitly added to
+        :attr:`._needed_for_hash` will be used for hashing.
+        """
         result_hash = 0
         for key in self._needed_for_hash:
             result_hash ^= hash(vars(self)[key])
         return result_hash
 
     def __eq__(self, x):
-        """Checks if two domains are equal.
+        """Checks whether two domains are equal.
 
         Parameters
         ----------
-        x: Domain
+        x : Domain
             The domain `self` is compared to.
 
         Returns
         -------
-        bool: True iff `self` and x describe the same domain.
+        bool : True iff `self` and x describe the same domain.
+
+        Notes
+        -----
+        Only members that are explicitly added to
+        :attr:`._needed_for_hash` will be used for comparison.
+
+        Subclasses of Domain should not re-define :meth:`__eq__`,
+        :meth:`__ne__`, or :meth:`__hash__`; they should instead add their
+        relevant attributes' names to :attr:`._needed_for_hash`.
         """
         if self is x:  # shortcut for simple case
             return True
@@ -62,26 +72,22 @@ class Domain(with_metaclass(
         return True
 
     def __ne__(self, x):
+        """Returns the opposite of :meth:`.__eq__()`"""
         return not self.__eq__(x)
 
     @abc.abstractproperty
     def shape(self):
-        """The shape of the array-like object required to store information
-        living on the domain.
+        """tuple of int: number of pixels along each axis
 
-        Returns
-        -------
-        tuple of ints: shape of the required array-like object
+        The shape of the array-like object required to store information
+        living on the domain.
         """
         raise NotImplementedError
 
     @abc.abstractproperty
     def size(self):
-        """Number of data elements associated with this domain.
-        Equivalent to the products over all entries in the domain's shape.
+        """int: total number of pixels.
 
-        Returns
-        -------
-        int: number of data elements
+        Equivalent to the products over all entries in the domain's shape.
         """
         raise NotImplementedError

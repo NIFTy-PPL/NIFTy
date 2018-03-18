@@ -1,94 +1,124 @@
-import numpy as np
 import nifty4 as ift
-
+from nifty4.library.nonlinearities import Linear, Tanh, Exponential
+import numpy as np
 np.random.seed(42)
-# np.seterr(all="raise",under="ignore")
 
+
+def adjust_zero_mode(m0, t0):
+    mtmp = m0.to_global_data().copy()
+    zero_position = len(m0.shape)*(0,)
+    zero_mode = mtmp[zero_position]
+    mtmp[zero_position] = zero_mode / abs(zero_mode)
+    ttmp = t0.to_global_data().copy()
+    ttmp[0] += 2 * np.log(abs(zero_mode))
+    return (ift.Field.from_global_data(m0.domain, mtmp),
+            ift.Field.from_global_data(t0.domain, ttmp))
 
 if __name__ == "__main__":
+
+    noise_level = 1.
+    p_spec = (lambda k: (.5 / (k + 1) ** 3))
+
+    nonlinearity = Linear()
     # Set up position space
-    s_space = ift.RGSpace([128, 128])
-    # s_space = ift.HPSpace(32)
+    s_space = ift.RGSpace((128, 128))
+    h_space = s_space.get_default_codomain()
 
     # Define harmonic transformation and associated harmonic space
-    h_space = s_space.get_default_codomain()
-    fft = ift.HarmonicTransformOperator(h_space, s_space)
+    HT = ift.HarmonicTransformOperator(h_space, target=s_space)
 
-    # Set up power space
+    # Setting up power space
     p_space = ift.PowerSpace(h_space,
                              binbounds=ift.PowerSpace.useful_binbounds(
                                  h_space, logarithmic=True))
 
-    # Choose the prior correlation structure and defining correlation operator
-    p_spec = (lambda k: (.5 / (k + 1) ** 3))
-    S = ift.create_power_operator(h_space, power_spectrum=p_spec)
+    # Choosing the prior correlation structure and defining
+    # correlation operator
+    p = ift.PS_field(p_space, p_spec)
+    log_p = ift.log(p)
+    S = ift.create_power_operator(h_space, power_spectrum=lambda k: 1e-5)
 
-    # Draw a sample sh from the prior distribution in harmonic space
-    sp = ift.PS_field(p_space, p_spec)
-    sh = ift.power_synthesize(sp, real_signal=True)
+    # Drawing a sample sh from the prior distribution in harmonic space
+    sh = S.draw_sample()
 
-    # Choose the measurement instrument
+    # Choosing the measurement instrument
     # Instrument = SmoothingOperator(s_space, sigma=0.01)
-    Instrument = ift.DiagonalOperator(ift.Field(s_space, 1.))
-    # Instrument._diagonal.val[200:400, 200:400] = 0
-    # Instrument._diagonal.val[64:512-64, 64:512-64] = 0
+    mask = np.ones(s_space.shape)
+    # mask[6000:8000] = 0.
+    mask[30:70, 30:70] = 0.
+    mask = ift.Field.from_global_data(s_space, mask)
 
-    # Add a harmonic transformation to the instrument
-    R = Instrument*fft
+    MaskOperator = ift.DiagonalOperator(mask)
+    R = ift.GeometryRemover(s_space)
+    R = R*MaskOperator
+    # R = R*HT
+    # R = R * ift.create_harmonic_smoothing_operator((harmonic_space,), 0,
+    #                                                response_sigma)
+    MeasurementOperator = R
 
-    noise = 1.
-    N = ift.DiagonalOperator(ift.Field.full(s_space, noise).weight(1))
-    n = ift.Field.from_random(domain=s_space, random_type='normal',
-                              std=np.sqrt(noise), mean=0)
+    d_space = MeasurementOperator.target
 
-    # Create mock data
-    d = R(sh) + n
+    Distributor = ift.PowerDistributor(target=h_space, power_space=p_space)
+    power = Distributor(ift.exp(0.5*log_p))
+    # Creating the mock data
+    true_sky = nonlinearity(HT(power*sh))
+    noiseless_data = MeasurementOperator(true_sky)
+    noise_amplitude = noiseless_data.val.std()*noise_level
+    N = ift.ScalingOperator(noise_amplitude**2, d_space)
+    n = N.draw_sample()
+    # Creating the mock data
+    d = noiseless_data + n
 
-    # The information source
-    j = R.adjoint_times(N.inverse_times(d))
-    realized_power = ift.log(ift.power_analyze(sh,
-                                               binbounds=p_space.binbounds))
-    data_power = ift.log(ift.power_analyze(fft.adjoint_times(d),
-                                           binbounds=p_space.binbounds))
-    d_data = d.val
-    ift.plot(d, name="data.png")
+    m0 = ift.Field.full(h_space, 1e-7)
+    t0 = ift.Field.full(p_space, -4.)
+    power0 = Distributor.times(ift.exp(0.5 * t0))
+
+    plotdict = {"colormap": "Planck-like"}
+    zmin = true_sky.min()
+    zmax = true_sky.max()
+    ift.plot(true_sky, title="True sky", name="true_sky.png", **plotdict)
+    ift.plot(MeasurementOperator.adjoint_times(d), title="Data",
+             name="data.png", **plotdict)
 
     IC1 = ift.GradientNormController(name="IC1", iteration_limit=100,
-                                     tol_abs_gradnorm=0.1)
-    minimizer = ift.RelaxedNewton(IC1)
+                                     tol_abs_gradnorm=1e-3)
+    LS = ift.LineSearchStrongWolfe(c2=0.02)
+    minimizer = ift.RelaxedNewton(IC1, line_searcher=LS)
 
-    ICI = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=0.1)
-    map_inverter = ift.ConjugateGradient(controller=ICI)
+    ICI = ift.GradientNormController(iteration_limit=500,
+                                     tol_abs_gradnorm=1e-3)
+    inverter = ift.ConjugateGradient(controller=ICI)
 
-    ICI2 = ift.GradientNormController(iteration_limit=200,
-                                      tol_abs_gradnorm=1e-5)
-    power_inverter = ift.ConjugateGradient(controller=ICI2)
+    for i in range(20):
+        power0 = Distributor(ift.exp(0.5*t0))
+        map0_energy = ift.library.NonlinearWienerFilterEnergy(
+            m0, d, MeasurementOperator, nonlinearity, HT, power0, N, S,
+            inverter=inverter)
 
-    # Set starting position
-    flat_power = ift.Field.full(p_space, 1e-8)
-    m0 = ift.power_synthesize(flat_power, real_signal=True)
-    t0 = ift.Field(p_space, val=-7.)
+        # Minimization with chosen minimizer
+        map0_energy, convergence = minimizer(map0_energy)
+        m0 = map0_energy.position
 
-    for i in range(500):
-        S0 = ift.create_power_operator(h_space, power_spectrum=ift.exp(t0))
+        # Updating parameters for correlation structure reconstruction
+        D0 = map0_energy.curvature
 
-        # Initialize non-linear Wiener Filter energy
-        map_energy = ift.library.WienerFilterEnergy(
-            position=m0, d=d, R=R, N=N, S=S0, inverter=map_inverter)
-        # Solve the Wiener Filter analytically
-        D0 = map_energy.curvature
-        m0 = D0.inverse_times(j)
-        # Initialize power energy with updated parameters
-        power_energy = ift.library.CriticalPowerEnergy(
-            position=t0, m=m0, D=D0, smoothness_prior=10., samples=3,
-            inverter=power_inverter)
+        # Initializing the power energy with updated parameters
+        power0_energy = ift.library.NonlinearPowerEnergy(
+            position=t0, d=d, N=N, xi=m0, D=D0, ht=HT,
+            Instrument=MeasurementOperator, nonlinearity=nonlinearity,
+            Distributor=Distributor, sigma=1., samples=2, inverter=inverter)
 
-        power_energy = minimizer(power_energy)[0]
+        power0_energy = minimizer(power0_energy)[0]
 
-        # Set new power spectrum
-        t0 = power_energy.position
+        # Setting new power spectrum
+        t0 = power0_energy.position
 
-        # Plot current estimate
-        ift.dobj.mprint(i)
-        if i % 50 == 0:
-            ift.plot(fft(m0), name='map.png')
+        # break degeneracy between amplitude and excitation by setting
+        # excitation monopole to 1
+        m0, t0 = adjust_zero_mode(m0, t0)
+
+    ift.plot(nonlinearity(HT(power0*m0)), title="Reconstructed sky",
+             name="reconstructed_sky.png", zmin=zmin, zmax=zmax, **plotdict)
+    ymin = np.min(p.to_global_data())
+    ift.plot([ift.exp(t0), p], title="Power spectra",
+             name="ps.png", ymin=ymin, **plotdict)

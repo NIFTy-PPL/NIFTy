@@ -13,17 +13,13 @@ if __name__ == "__main__":
     h_space = s_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(h_space, s_space)
 
-    # Set up power space
-    p_space = ift.PowerSpace(h_space)
-
     # Choose prior correlation structure and define correlation operator
     p_spec = (lambda k: (42/(k+1)**3))
 
     S = ift.create_power_operator(h_space, power_spectrum=p_spec)
 
     # Draw sample sh from the prior distribution in harmonic space
-    sp = ift.PS_field(p_space, p_spec)
-    sh = ift.power_synthesize(sp, real_signal=True)
+    sh = S.draw_sample()
 
     # Choose measurement instrument
     diag = np.ones(s_space.shape)
@@ -34,7 +30,7 @@ if __name__ == "__main__":
     else:
         raise NotImplementedError
 
-    diag = ift.Field(s_space, ift.dobj.from_global_data(diag))
+    diag = ift.Field.from_global_data(s_space, diag)
     Instrument = ift.DiagonalOperator(diag)
 
     # Add harmonic transformation to the instrument
@@ -42,11 +38,8 @@ if __name__ == "__main__":
     noiseless_data = R(sh)
     signal_to_noise = 1.
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
-    N = ift.DiagonalOperator(ift.Field.full(s_space, noise_amplitude**2))
-    n = ift.Field.from_random(domain=s_space,
-                              random_type='normal',
-                              std=noise_amplitude,
-                              mean=0)
+    N = ift.ScalingOperator(noise_amplitude**2, s_space)
+    n = N.draw_sample()
 
     # Create mock data
     d = noiseless_data + n
@@ -65,19 +58,22 @@ if __name__ == "__main__":
 
     energy, convergence = minimizer(energy)
     m = energy.position
-    D = energy.curvature
+    curv = energy.curvature
 
     # Generate plots
     zmax = max(ht(sh).max(), ht(m).max())
     zmin = min(ht(sh).min(), ht(m).min())
     plotdict = {"zmax": zmax, "zmin": zmin, "colormap": "Planck-like"}
+    plotdict2 = {"colormap": "Planck-like"}
     ift.plot(ht(sh), name="mock_signal.png", **plotdict)
     ift.plot(ht(m), name="reconstruction.png", **plotdict)
 
     # Sample uncertainty map
-    sample_variance = ift.Field.zeros(s_space)
-    sample_mean = ift.Field.zeros(s_space)
+    mean, variance = ift.probe_with_posterior_samples(curv, ht, 50)
+    ift.plot(variance, name="posterior_variance.png", **plotdict2)
+    ift.plot(mean+ht(m), name="posterior_mean.png", **plotdict)
 
-    mean, variance = ift.probe_with_posterior_samples(D, sh, ht, 50)
-    ift.plot(variance, name="posterior_variance.png", colormap="Planck-like")
-    ift.plot(mean, name="posterior_mean.png", **plotdict)
+    # try to do the same with diagonal probing
+    variance = ift.probe_diagonal(ht*curv.inverse*ht.adjoint, 100)
+    # sm = ift.FFTSmoothingOperator(s_space, sigma=0.015)
+    ift.plot(variance, name="posterior_variance2.png", **plotdict)

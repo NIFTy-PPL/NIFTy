@@ -26,12 +26,12 @@ class NonlinearWienerFilterEnergy(Energy):
     def __init__(self, position, d, Instrument, nonlinearity, ht, power, N, S,
                  inverter=None):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
-        self.d = d
+        self.d = d.lock()
         self.Instrument = Instrument
         self.nonlinearity = nonlinearity
         self.ht = ht
         self.power = power
-        m = self.ht(self.power * self.position)
+        m = self.ht(self.power*self.position)
         self.LinearizedResponse = LinearizedSignalResponse(
             Instrument, nonlinearity, ht, power, m)
 
@@ -44,6 +44,7 @@ class NonlinearWienerFilterEnergy(Energy):
         tmp = self.position.vdot(t1) + residual.vdot(t2)
         self._value = 0.5 * tmp.real
         self._gradient = t1 - self.LinearizedResponse.adjoint_times(t2)
+        self._gradient.lock()
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,

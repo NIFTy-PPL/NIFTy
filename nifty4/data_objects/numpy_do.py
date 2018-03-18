@@ -18,7 +18,6 @@
 
 # Data object module for NIFTy that uses simple numpy ndarrays.
 
-from __future__ import print_function
 import numpy as np
 from numpy import ndarray as data_object
 from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, abs, \
@@ -34,12 +33,20 @@ def is_numpy():
     return True
 
 
-def mprint(*args):
-    print(*args)
-
-
-def from_object(object, dtype=None, copy=True):
-    return np.array(object, dtype=dtype, copy=copy)
+def from_object(object, dtype, copy, set_locked):
+    if dtype is None:
+        dtype = object.dtype
+    dtypes_equal = dtype == object.dtype
+    if set_locked and dtypes_equal and locked(object):
+        return object
+    if not dtypes_equal and not copy:
+        raise ValueError("cannot change data type without copying")
+    if set_locked and not copy:
+        raise ValueError("cannot lock object without copying")
+    res = np.array(object, dtype=dtype, copy=copy)
+    if set_locked:
+        lock(res)
+    return res
 
 
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
@@ -67,7 +74,7 @@ def distaxis(arr):
     return -1
 
 
-def from_local_data(shape, arr, distaxis):
+def from_local_data(shape, arr, distaxis=-1):
     if shape != arr.shape:
         raise ValueError
     return arr
@@ -91,3 +98,11 @@ def default_distaxis():
 
 def local_shape(glob_shape, distaxis=-1):
     return glob_shape
+
+
+def lock(arr):
+    arr.flags.writeable = False
+
+
+def locked(arr):
+    return not arr.flags.writeable
