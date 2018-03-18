@@ -25,6 +25,7 @@ Contents
    Gallery <http://wwwmpa.mpa-garching.mpg.de/ift/nifty/gallery/>
    installation
    code
+   citations
 
 Indices and tables
 ..................
