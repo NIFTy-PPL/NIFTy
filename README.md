@@ -4,7 +4,7 @@ NIFTy - Numerical Information Field Theory
 [![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_4/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_4)
 
 **NIFTy** project homepage:
-[https://ift.pages.mpcdf.de/NIFTy](https://ift.pages.mpcdf.de/NIFTy)
+[http://ift.pages.mpcdf.de/NIFTy](http://ift.pages.mpcdf.de/NIFTy)
 
 Summary
 -------
@@ -110,7 +110,7 @@ following command in the repository root:
 ### First Steps
 
 For a quick start, you can browse through the [informal
-introduction](https://ift.pages.mpcdf.de/NIFTy/code.html) or
+introduction](http://ift.pages.mpcdf.de/NIFTy/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
     python demos/wiener_filter_via_curvature.py
@@ -124,7 +124,7 @@ phrase such as the following:
 > *"Some of the results in this publication have been derived using the
 > NIFTy package [(https://gitlab.mpcdf.mpg.de/ift/NIFTy)](https://gitlab.mpcdf.mpg.de/ift/NIFTy)"
 
-and a citation to one of the [publications](https://ift.pages.mpcdf.de/NIFTy/citations.html)
+and a citation to one of the [publications](http://ift.pages.mpcdf.de/NIFTy/citations.html).
 
 
 ### Release Notes
