@@ -121,7 +121,7 @@ dive into NIFTy by running one of the demonstrations, e.g.:
 Please acknowledge the use of NIFTy in your publication(s) by using a
 phrase such as the following:
 
-> *"Some of the results in this publication have been derived using the
+> "Some of the results in this publication have been derived using the
 > NIFTy package [(https://gitlab.mpcdf.mpg.de/ift/NIFTy)](https://gitlab.mpcdf.mpg.de/ift/NIFTy)"
 
 and a citation to one of the [publications](http://ift.pages.mpcdf.de/NIFTy/citations.html).
@@ -132,8 +132,3 @@ and a citation to one of the [publications](http://ift.pages.mpcdf.de/NIFTy/cita
 The NIFTy package is licensed under the terms of the
 [GPLv3](https://www.gnu.org/licenses/gpl.html) and is distributed
 *without any warranty*.
-
-* * * * *
-
-[1] Steininger et al., "NIFTy 3 - Numerical Information Field Theory - A Python framework for multicomponent signal inference on HPC clusters", 2017, submitted to PLOS One;
-[arXiv:1708.01073](https://arxiv.org/abs/1708.01073)
