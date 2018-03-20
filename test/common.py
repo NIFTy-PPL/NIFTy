@@ -18,13 +18,12 @@
 
 from builtins import str
 from parameterized import parameterized
-import nifty4 as ift
 import numpy as np
 
 np.seterr(all='raise', under='ignore')
 
 
-def custom_name_func(testcase_func, param_num, param):
+def _custom_name_func(testcase_func, param_num, param):
     return "%s_%s" % (
         testcase_func.__name__,
         parameterized.to_safe_name("_".join(str(x) for x in param.args)),
@@ -32,17 +31,5 @@ def custom_name_func(testcase_func, param_num, param):
 
 
 def expand(*args, **kwargs):
-    return parameterized.expand(*args, testcase_func_name=custom_name_func,
+    return parameterized.expand(*args, testcase_func_name=_custom_name_func,
                                 **kwargs)
-
-
-def generate_spaces():
-    spaces = [ift.RGSpace(4),
-              ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
-              ift.LMSpace(5), ift.HPSpace(4), ift.GLSpace(4)]
-    return spaces
-
-
-def generate_harmonic_spaces():
-    spaces = [ift.RGSpace(4, harmonic=True), ift.LMSpace(5)]
-    return spaces

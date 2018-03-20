@@ -18,7 +18,6 @@ before_script:
 test_min:
   stage: test
   script:
-    - nosetests -q
     - nosetests3 -q
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests -q 2>/dev/null
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 4 nosetests3 -q 2>/dev/null

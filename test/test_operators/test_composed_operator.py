@@ -19,13 +19,14 @@
 import unittest
 from numpy.testing import assert_allclose, assert_equal
 import nifty4 as ift
-from test.common import generate_spaces
 from itertools import product
 from test.common import expand
 
 
 class ComposedOperator_Tests(unittest.TestCase):
-    spaces = generate_spaces()
+    spaces = [ift.RGSpace(4),
+              ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
+              ift.LMSpace(5), ift.HPSpace(4), ift.GLSpace(4)]
 
     @expand(product(spaces, spaces))
     def test_times_adjoint_times(self, space1, space2):

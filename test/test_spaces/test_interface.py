@@ -20,12 +20,16 @@ import unittest
 from numpy.testing import assert_
 from itertools import product
 from types import LambdaType
-from test.common import expand, generate_spaces, generate_harmonic_spaces
+from test.common import expand
 import nifty4 as ift
+
+spaces = [ift.RGSpace(4),
+          ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),
+          ift.LMSpace(5), ift.HPSpace(4), ift.GLSpace(4)]
 
 
 class SpaceInterfaceTests(unittest.TestCase):
-    @expand(product(generate_spaces(), [
+    @expand(product(spaces, [
                     ['harmonic', bool],
                     ['shape', tuple],
                     ['size', int]]))
@@ -33,7 +37,7 @@ class SpaceInterfaceTests(unittest.TestCase):
         assert_(isinstance(getattr(space, attr_expected_type[0]),
                            attr_expected_type[1]))
 
-    @expand(product(generate_harmonic_spaces(), [
+    @expand(product([ift.RGSpace(4, harmonic=True), ift.LMSpace(5)], [
         ['get_k_length_array', ift.Field],
         ['get_fft_smoothing_kernel_function', 2.0, LambdaType],
         ]))
