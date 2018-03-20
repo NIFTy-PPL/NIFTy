@@ -71,9 +71,7 @@ class SumOperator(LinearOperator):
             for i in range(len(opsnew)):
                 if isinstance(opsnew[i], DiagonalOperator):
                     sum *= (-1 if negnew[i] else 1)
-                    opsnew[i] = DiagonalOperator(None, opsnew[i].domain,
-                                                 opsnew[i]._spaces,
-                                                 opsnew[i]._ldiag+sum)
+                    opsnew[i] = opsnew[i]._add(sum)
                     sum = 0.
                     break
         if sum != 0:
@@ -89,15 +87,15 @@ class SumOperator(LinearOperator):
         for i in range(len(ops)):
             if not processed[i]:
                 if isinstance(ops[i], DiagonalOperator):
-                    ldiag = ops[i]._ldiag*(-1 if neg[i] else 1)
+                    op = ops[i]
+                    opneg = neg[i]
                     for j in range(i+1, len(ops)):
-                        if (isinstance(ops[j], DiagonalOperator) and
-                                ops[i]._spaces == ops[j]._spaces):
-                            ldiag += ops[j]._ldiag*(-1 if neg[j] else 1)
+                        if isinstance(ops[j], DiagonalOperator):
+                            op = op._combine_sum(ops[j], opneg, neg[j])
+                            opneg = False
                             processed[j] = True
-                    opsnew.append(DiagonalOperator(None, ops[i].domain,
-                                                   ops[i]._spaces, ldiag))
-                    negnew.append(False)
+                    opsnew.append(op)
+                    negnew.append(opneg)
                 else:
                     opsnew.append(ops[i])
                     negnew.append(neg[i])

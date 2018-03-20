@@ -54,14 +54,8 @@ class DiagonalOperator(EndomorphicOperator):
     This shortcoming will hopefully be fixed in the future.
     """
 
-    def __init__(self, diagonal, domain=None, spaces=None, _ldiag=None):
+    def __init__(self, diagonal, domain=None, spaces=None):
         super(DiagonalOperator, self).__init__()
-
-        if _ldiag is not None:  # very special hack
-            self._ldiag = _ldiag
-            self._domain = domain
-            self._spaces = spaces
-            return
 
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
@@ -85,24 +79,60 @@ class DiagonalOperator(EndomorphicOperator):
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
 
-        self._diagonal = diagonal.lock()
-
         if self._spaces is not None:
             active_axes = []
             for space_index in self._spaces:
                 active_axes += self._domain.axes[space_index]
 
             if self._spaces[0] == 0:
-                self._ldiag = self._diagonal.local_data
+                self._ldiag = diagonal.local_data
             else:
-                self._ldiag = self._diagonal.to_global_data()
+                self._ldiag = diagonal.to_global_data()
             locshape = dobj.local_shape(self._domain.shape, 0)
             self._reshaper = [shp if i in active_axes else 1
                               for i, shp in enumerate(locshape)]
             self._ldiag = self._ldiag.reshape(self._reshaper)
-
         else:
-            self._ldiag = self._diagonal.local_data
+            self._ldiag = diagonal.local_data
+        self._ldiag.flags.writeable = False
+
+    def _skeleton(self, spc):
+        res = DiagonalOperator.__new__(DiagonalOperator)
+        res._domain = self._domain
+        if self._spaces is None or spc is None:
+            res._spaces = None
+        else:
+            res._spaces = tuple(set(self._spaces) | set(spc))
+        return res
+
+    def _scale(self, fct):
+        if not np.isscalar(fct):
+            raise TypeError("scalar value required")
+        res = self._skeleton(())
+        res._ldiag = self._ldiag*fct
+        return res
+
+    def _add(self, sum):
+        if not np.isscalar(sum):
+            raise TypeError("scalar value required")
+        res = self._skeleton(())
+        res._ldiag = self._ldiag + sum
+        return res
+
+    def _combine_prod(self, op):
+        if not isinstance(op, DiagonalOperator):
+            raise TypeError("DiagonalOperator required")
+        res = self._skeleton(op._spaces)
+        res._ldiag = self._ldiag*op._ldiag
+        return res
+
+    def _combine_sum(self, op, selfneg, opneg):
+        if not isinstance(op, DiagonalOperator):
+            raise TypeError("DiagonalOperator required")
+        res = self._skeleton(op._spaces)
+        res._ldiag = (self._ldiag * (-1 if selfneg else 1) +
+                      op._ldiag * (-1 if opneg else 1))
+        return res
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -132,13 +162,15 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def inverse(self):
-        return DiagonalOperator(None, self._domain, self._spaces,
-                                1./self._ldiag)
+        res = self._skeleton(())
+        res._ldiag = 1./self._ldiag
+        return res
 
     @property
     def adjoint(self):
-        return DiagonalOperator(None, self._domain,
-                                self._spaces, self._ldiag.conjugate())
+        res = self._skeleton(())
+        res._ldiag = self._ldiag.conjugate()
+        return res
 
     def process_sample(self, sample):
         if np.issubdtype(self._ldiag.dtype, np.complexfloating):
