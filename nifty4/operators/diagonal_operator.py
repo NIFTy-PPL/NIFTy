@@ -54,8 +54,14 @@ class DiagonalOperator(EndomorphicOperator):
     This shortcoming will hopefully be fixed in the future.
     """
 
-    def __init__(self, diagonal, domain=None, spaces=None):
+    def __init__(self, diagonal, domain=None, spaces=None, _ldiag=None):
         super(DiagonalOperator, self).__init__()
+
+        if _ldiag is not None:  # very special hack
+            self._ldiag = _ldiag
+            self._domain = domain
+            self._spaces = spaces
+            return
 
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
@@ -117,11 +123,6 @@ class DiagonalOperator(EndomorphicOperator):
                 return Field(x.domain, val=x.val/self._ldiag.conj())
 
     @property
-    def diagonal(self):
-        """ Returns the diagonal of the Operator."""
-        return self._diagonal
-
-    @property
     def domain(self):
         return self._domain
 
@@ -131,12 +132,13 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def inverse(self):
-        return DiagonalOperator(1./self._diagonal, self._domain, self._spaces)
+        return DiagonalOperator(None, self._domain, self._spaces,
+                                1./self._ldiag)
 
     @property
     def adjoint(self):
-        return DiagonalOperator(self._diagonal.conjugate(), self._domain,
-                                self._spaces)
+        return DiagonalOperator(None, self._domain,
+                                self._spaces, self._ldiag.conjugate())
 
     def process_sample(self, sample):
         if np.issubdtype(self._ldiag.dtype, np.complexfloating):

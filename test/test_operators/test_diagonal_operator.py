@@ -90,5 +90,5 @@ class DiagonalOperator_Tests(unittest.TestCase):
     def test_diagonal(self, space):
         diag = ift.Field.from_random('normal', domain=space)
         D = ift.DiagonalOperator(diag)
-        diag_op = D.diagonal
+        diag_op = D(ift.Field.full(space, 1.))
         assert_allclose(diag.to_global_data(), diag_op.to_global_data())

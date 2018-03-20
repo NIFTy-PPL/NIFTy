@@ -61,9 +61,9 @@ class ChainOperator(LinearOperator):
             # try to absorb the factor into a DiagonalOperator
             for i in range(len(opsnew)):
                 if isinstance(opsnew[i], DiagonalOperator):
-                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal*fct,
-                                                 domain=opsnew[i].domain,
-                                                 spaces=opsnew[i]._spaces)
+                    opsnew[i] = DiagonalOperator(None, opsnew[i].domain,
+                                                 opsnew[i]._spaces,
+                                                 opsnew[i]._ldiag*fct)
                     fct = 1.
                     break
         if fct != 1:
@@ -75,12 +75,13 @@ class ChainOperator(LinearOperator):
         for op in ops:
             if (len(opsnew) > 0 and
                     isinstance(opsnew[-1], DiagonalOperator) and
-                    isinstance(op, DiagonalOperator) and
-                    op._spaces == opsnew[-1]._spaces):
-                opsnew[-1] = DiagonalOperator(opsnew[-1].diagonal *
-                                              op.diagonal,
-                                              domain=opsnew[-1].domain,
-                                              spaces=opsnew[-1]._spaces)
+                    isinstance(op, DiagonalOperator)):
+                if opsnew[-1]._spaces is None or op._spaces is None:
+                    spc = None
+                else:
+                    spc = tuple(set(opsnew[-1]._spaces) | set(op._spaces))
+                ldiag = opsnew[-1]._ldiag * op._ldiag
+                opsnew[-1] = DiagonalOperator(None, op.domain, spc, ldiag)
             else:
                 opsnew.append(op)
         ops = opsnew
