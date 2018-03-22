@@ -31,12 +31,14 @@ class QuadraticEnergy(Energy):
         self._b = b
         if _grad is not None:
             self._grad = _grad
-            Ax = _grad + self._b
+            Ax = _grad if b is None else _grad + b
         else:
             Ax = self._A(self.position)
-            self._grad = Ax - self._b
+            self._grad = Ax if b is None else Ax - b
         self._grad.lock()
-        self._value = 0.5*self.position.vdot(Ax) - b.vdot(self.position)
+        self._value = 0.5*self.position.vdot(Ax)
+        if b is not None:
+            self._value -= b.vdot(self.position)
 
     def at(self, position):
         return QuadraticEnergy(position=position, A=self._A, b=self._b)
