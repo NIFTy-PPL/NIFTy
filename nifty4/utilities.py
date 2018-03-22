@@ -84,6 +84,8 @@ def parse_spaces(spaces, nspc):
         spaces = (safe_cast(int, spaces),)
     else:
         spaces = tuple(safe_cast(int, item) for item in spaces)
+    if len(spaces) == 0:
+        return spaces
     tmp = tuple(set(spaces))
     if tmp[0] < 0 or tmp[-1] >= nspc:
         raise ValueError("space index out of range")
