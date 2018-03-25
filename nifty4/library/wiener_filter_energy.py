@@ -51,12 +51,11 @@ class WienerFilterEnergy(Energy):
         self._curvature = WienerFilterCurvature(R, N, S, inverter)
         self._inverter = inverter
         if _j is None:
-            _j = self.R.adjoint_times(self.N.inverse_times(d))
+            _j = R.adjoint_times(N.inverse_times(d))
         self._j = _j
         Dx = self._curvature(self.position)
-        self._value = 0.5*self.position.vdot(Dx) - self._j.vdot(self.position)
-        self._gradient = Dx - self._j
-        self._gradient.lock()
+        self._value = 0.5*position.vdot(Dx) - self._j.vdot(position)
+        self._gradient = (Dx - self._j).lock()
 
     def at(self, position):
         return self.__class__(position=position, d=None, R=self.R, N=self.N,

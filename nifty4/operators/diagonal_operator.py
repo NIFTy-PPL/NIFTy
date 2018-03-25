@@ -71,8 +71,6 @@ class DiagonalOperator(EndomorphicOperator):
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))
             if len(self._spaces) != len(diagonal.domain):
                 raise ValueError("spaces and domain must have the same length")
-            # if nspc==len(self.diagonal.domain),
-            # we could do some optimization
             for i, j in enumerate(self._spaces):
                 if diagonal.domain[i] != self._domain[j]:
                     raise ValueError("domain mismatch")
@@ -168,6 +166,8 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def adjoint(self):
+        if np.issubdtype(self._ldiag.dtype, np.floating):
+            return self
         res = self._skeleton(())
         res._ldiag = self._ldiag.conjugate()
         return res

@@ -61,7 +61,7 @@ class ScalingOperator(EndomorphicOperator):
         if self._factor == 1.:
             return x.copy()
         if self._factor == 0.:
-            return Field.zeros_like(x, dtype=x.dtype)
+            return Field.zeros_like(x)
 
         if mode == self.TIMES:
             return x*self._factor
@@ -81,6 +81,8 @@ class ScalingOperator(EndomorphicOperator):
 
     @property
     def adjoint(self):
+        if np.issubdtype(type(self._factor), np.floating):
+            return self
         return ScalingOperator(np.conj(self._factor), self._domain)
 
     @property

@@ -59,7 +59,7 @@ class NonlinearPowerEnergy(Energy):
         self.D = D
         self.d = d
         self.N = N
-        self.T = SmoothnessOperator(domain=self.position.domain[0],
+        self.T = SmoothnessOperator(domain=position.domain[0],
                                     strength=sigma, logarithmic=True)
         self.ht = ht
         self.Instrument = Instrument
@@ -76,19 +76,15 @@ class NonlinearPowerEnergy(Energy):
         self.inverter = inverter
 
         A = Distributor(exp(.5 * position))
-        map_s = self.ht(A * xi)
-        Tpos = self.T(position)
 
         self._gradient = None
         for xi_sample in self.xi_sample_list:
-            map_s = self.ht(A * xi_sample)
-            LinR = LinearizedPowerResponse(
-                self.Instrument, self.nonlinearity, self.ht, self.Distributor,
-                self.position, xi_sample)
+            map_s = ht(A*xi_sample)
+            LinR = LinearizedPowerResponse(Instrument, nonlinearity, ht,
+                                           Distributor, position, xi_sample)
 
-            residual = self.d - \
-                self.Instrument(self.nonlinearity(map_s))
-            tmp = self.N.inverse_times(residual)
+            residual = self.d - Instrument(nonlinearity(map_s))
+            tmp = N.inverse_times(residual)
             lh = 0.5 * residual.vdot(tmp)
             grad = LinR.adjoint_times(tmp)
 
@@ -100,7 +96,8 @@ class NonlinearPowerEnergy(Energy):
                 self._gradient += grad
 
         self._value *= 1. / len(self.xi_sample_list)
-        self._value += 0.5 * self.position.vdot(Tpos)
+        Tpos = self.T(position)
+        self._value += 0.5 * position.vdot(Tpos)
         self._gradient *= -1. / len(self.xi_sample_list)
         self._gradient += Tpos
         self._gradient.lock()
