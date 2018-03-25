@@ -36,17 +36,12 @@ if __name__ == "__main__":
     ht_1 = ift.HarmonicTransformOperator(harmonic_domain, space=0)
     ht_2 = ift.HarmonicTransformOperator(ht_1.target, space=1)
     ht = ht_2*ht_1
-    del ht_1, ht_2
 
     S = (ift.create_power_operator(harmonic_domain, power_spectrum_1, 0) *
          ift.create_power_operator(harmonic_domain, power_spectrum_2, 1))
 
     np.random.seed(10)
     mock_signal = S.draw_sample()
-    plotdict = {"colormap": "Planck-like"}
-    plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
-    #ift.plot(ht(mock_signal).cast_domain(plot_space),
-    #         name='mock_signal.png', **plotdict)
 
     # Setting up a exemplary response
     N1_10 = int(N_pixels_1/10)
@@ -59,10 +54,9 @@ if __name__ == "__main__":
     mask_2[N2_10*7:N2_10*9] = 0.
     mask_2 = ift.Field.from_global_data(signal_space_2, mask_2)
 
-    #R = ift.GeometryRemover(signal_domain)
-    R = ift.DiagonalOperator(mask_1, signal_domain, spaces=0)
+    R = ift.GeometryRemover(signal_domain)
+    R = R*ift.DiagonalOperator(mask_1, signal_domain, spaces=0)
     R = R*ift.DiagonalOperator(mask_2, signal_domain, spaces=1)
-    del mask_1, mask_2
     R = R*ht
     R = R * ift.create_harmonic_smoothing_operator(harmonic_domain, 0,
                                                    response_sigma_1)
@@ -71,31 +65,32 @@ if __name__ == "__main__":
     data_domain = R.target
 
     noiseless_data = R(mock_signal)
-    del mock_signal
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
+
     # Setting up the noise covariance and drawing a random noise realization
     N = ift.ScalingOperator(noise_amplitude**2, data_domain)
     noise = N.draw_sample()
     data = noiseless_data + noise
-    #ift.plot(data.cast_domain(plot_space), name='data.png', **plotdict)
-    del noiseless_data, noise
 
     # Wiener filter
     j = R.adjoint_times(N.inverse_times(data))
-    del data
     ctrl = ift.GradientNormController(name="inverter", tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(
         S=S, N=N, R=R, inverter=inverter)
-    del S, N, R, inverter
 
     m_k = wiener_curvature.inverse_times(j)
-    del j
+    m = ht(m_k)
 
-    #ift.plot(ht(m_k).cast_domain(plot_space), name='map.png', **plotdict)
+    plotdict = {"colormap": "Planck-like"}
+    plot_space = ift.RGSpace((N_pixels_1, N_pixels_2))
+    ift.plot(ht(mock_signal).cast_domain(plot_space),
+             name='mock_signal.png', **plotdict)
+    ift.plot(data.cast_domain(plot_space), name='data.png', **plotdict)
+    ift.plot(m.cast_domain(plot_space), name='map.png', **plotdict)
     # sampling the uncertainty map
     mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 10)
     ift.plot(ift.sqrt(variance).cast_domain(plot_space),
              name="uncertainty.png", **plotdict)
-    ift.plot((mean+ht(m_k)).cast_domain(plot_space),
+    ift.plot((mean+m).cast_domain(plot_space),
              name="posterior_mean.png", **plotdict)
