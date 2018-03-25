@@ -50,10 +50,8 @@ class LaplaceOperator(EndomorphicOperator):
         if not isinstance(self._domain[self._space], PowerSpace):
             raise ValueError("Operator must act on a PowerSpace.")
 
-        self._logarithmic = bool(logarithmic)
-
         pos = self.domain[self._space].k_lengths.copy()
-        if self.logarithmic:
+        if logarithmic:
             pos[1:] = np.log(pos[1:])
             pos[0] = pos[1]-1.
 
@@ -73,10 +71,6 @@ class LaplaceOperator(EndomorphicOperator):
     @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
-
-    @property
-    def logarithmic(self):
-        return self._logarithmic
 
     def _times(self, x):
         axes = x.domain.axes[self._space]
