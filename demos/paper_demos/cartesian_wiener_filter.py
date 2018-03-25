@@ -66,7 +66,6 @@ if __name__ == "__main__":
 
     noiseless_data = R(mock_signal)
     noise_amplitude = noiseless_data.val.std()/signal_to_noise
-
     # Setting up the noise covariance and drawing a random noise realization
     N = ift.ScalingOperator(noise_amplitude**2, data_domain)
     noise = N.draw_sample()
