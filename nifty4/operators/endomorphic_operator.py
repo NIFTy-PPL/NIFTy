@@ -34,3 +34,16 @@ class EndomorphicOperator(LinearOperator):
         Returns `self.domain`, because this is also the target domain
         for endomorphic operators."""
         return self.domain
+
+    def draw_sample(self):
+        """Generate a zero-mean sample
+
+        Generates a sample from a Gaussian distribution with zero mean and
+        covariance given by the operator.
+
+        Returns
+        -------
+        Field
+            A sample from the Gaussian of given covariance.
+        """
+        raise NotImplementedError
