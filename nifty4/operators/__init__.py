@@ -10,9 +10,10 @@ from .laplace_operator import LaplaceOperator
 from .smoothness_operator import SmoothnessOperator
 from .power_distributor import PowerDistributor
 from .inversion_enabler import InversionEnabler
+from .sandwich_operator import SandwichOperator
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
-           "InversionEnabler"]
+           "InversionEnabler", "SandwichOperator"]
