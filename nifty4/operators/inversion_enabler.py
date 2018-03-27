@@ -21,6 +21,7 @@ from ..minimization.iteration_controller import IterationController
 from ..field import Field
 from ..logger import logger
 from .linear_operator import LinearOperator
+import numpy as np
 
 
 class InversionEnabler(LinearOperator):
@@ -74,3 +75,15 @@ class InversionEnabler(LinearOperator):
         if stat != IterationController.CONVERGED:
             logger.warning("Error detected during operator inversion")
         return r.position
+
+    def draw_sample(self, dtype=np.float64):
+        try:
+            return self._op.draw_sample(dtype)
+        except:
+            return self(self._op.inverse_draw_sample(dtype))
+
+    def inverse_draw_sample(self, dtype=np.float64):
+        try:
+            return self._op.inverse_draw_sample(dtype)
+        except:
+            return self.inverse_times(self._op.draw_sample(dtype))
