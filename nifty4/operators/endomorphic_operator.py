@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .linear_operator import LinearOperator
+import numpy as np
 
 
 class EndomorphicOperator(LinearOperator):
@@ -34,3 +35,32 @@ class EndomorphicOperator(LinearOperator):
         Returns `self.domain`, because this is also the target domain
         for endomorphic operators."""
         return self.domain
+
+    def draw_sample(self, dtype=np.float64):
+        """Generate a zero-mean sample
+
+        Generates a sample from a Gaussian distribution with zero mean and
+        covariance given by the operator.
+
+        Returns
+        -------
+        Field
+            A sample from the Gaussian of given covariance.
+        """
+        raise NotImplementedError
+
+    def inverse_draw_sample(self, dtype=np.float64):
+        """Generates a zero-mean sample
+
+        Generates a sample from a Gaussian distribution with zero mean and
+        covariance given by the inverse of the operator.
+
+        Returns
+        -------
+            A sample from the Gaussian of given covariance
+        """
+        if self.capability & self.INVERSE_TIMES:
+            x = self.draw_sample(dtype=dtype)
+            return self.inverse_times(x)
+        else:
+            raise NotImplementedError

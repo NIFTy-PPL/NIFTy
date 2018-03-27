@@ -60,12 +60,8 @@ class WienerFilterCurvature(EndomorphicOperator):
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
-    def draw_inverse_sample(self, dtype=np.float64):
-        n = self.N.draw_sample(dtype)
-        s = self.S.draw_sample(dtype)
+    def draw_sample(self, dtype=np.float64):
+        n = self.N.inverse_draw_sample(dtype)
+        s = self.S.inverse_draw_sample(dtype)
 
-        d = self.R(s) + n
-
-        j = self.R.adjoint_times(self.N.inverse_times(d))
-        m = self.inverse_times(j)
-        return s - m
+        return s - self.R.adjoint_times(n)
