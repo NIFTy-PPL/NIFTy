@@ -20,7 +20,7 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class SandwichOperator(EndomorphicOperator):
-    """Operator which is equivalent to the expression `bun*cheese*bun.adjoint`.
+    """Operator which is equivalent to the expression `bun.adjoint*cheese*bun`.
 
     Parameters
     ----------
@@ -34,7 +34,7 @@ class SandwichOperator(EndomorphicOperator):
         super(SandwichOperator, self).__init__()
         self._bun = bun
         self._cheese = cheese
-        self._op = bun*cheese*bun.adjoint
+        self._op = bun.adjoint*cheese*bun
 
     @property
     def domain(self):
@@ -48,5 +48,4 @@ class SandwichOperator(EndomorphicOperator):
         return self._op.apply(x, mode)
 
     def draw_sample(self):
-        # TBW
-        raise NotImplementedError
+        return self._bun.adjoint_times(self._cheese.draw_sample())
