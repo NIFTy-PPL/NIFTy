@@ -95,11 +95,6 @@ class ScalingOperator(EndomorphicOperator):
             return self.TIMES | self.ADJOINT_TIMES
         return self._all_ops
 
-    def process_sample(self, sample):
-        if self._factor.imag != 0. or self._factor.real <= 0.:
-            raise ValueError("Operator not positive definite")
-        return sample * np.sqrt(self._factor)
-
     def _sample_helper(self, fct, dtype):
         if fct.imag != 0. or fct.real <= 0.:
             raise ValueError("operator not positive definite")
