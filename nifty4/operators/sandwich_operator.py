@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .endomorphic_operator import EndomorphicOperator
+import numpy as np
 
 
 class SandwichOperator(EndomorphicOperator):
@@ -47,5 +48,5 @@ class SandwichOperator(EndomorphicOperator):
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
-    def draw_sample(self):
-        return self._bun.adjoint_times(self._cheese.draw_sample())
+    def draw_sample(self, dtype=np.float64):
+        return self._bun.adjoint_times(self._cheese.draw_sample(dtype))

@@ -16,12 +16,12 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..operators.endomorphic_operator import EndomorphicOperator
+from ..operators.sandwich_operator import SandwichOperator
 from ..operators.inversion_enabler import InversionEnabler
 import numpy as np
 
 
-class WienerFilterCurvature(EndomorphicOperator):
+def WienerFilterCurvature(R, N, S, inverter):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -40,28 +40,5 @@ class WienerFilterCurvature(EndomorphicOperator):
     inverter : Minimizer
         The minimizer to use during numerical inversion
     """
-
-    def __init__(self, R, N, S, inverter):
-        super(WienerFilterCurvature, self).__init__()
-        self.R = R
-        self.N = N
-        self.S = S
-        op = R.adjoint*N.inverse*R + S.inverse
-        self._op = InversionEnabler(op, inverter, S.times)
-
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def capability(self):
-        return self._op.capability
-
-    def apply(self, x, mode):
-        return self._op.apply(x, mode)
-
-    def draw_sample(self, dtype=np.float64):
-        n = self.N.inverse_draw_sample(dtype)
-        s = self.S.inverse_draw_sample(dtype)
-
-        return s - self.R.adjoint_times(n)
+    op = SandwichOperator(R, N.inverse) + S.inverse
+    return InversionEnabler(op, inverter, S.times)

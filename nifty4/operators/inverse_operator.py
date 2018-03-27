@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .linear_operator import LinearOperator
+import numpy as np
 
 
 class InverseOperator(LinearOperator):
@@ -44,3 +45,9 @@ class InverseOperator(LinearOperator):
 
     def apply(self, x, mode):
         return self._op.apply(x, self._inverseMode[mode])
+
+    def draw_sample(self, dtype=np.float64):
+        return self._op.inverse_draw_sample(dtype)
+
+    def inverse_draw_sample(self, dtype=np.float64):
+        return self._op.draw_sample(dtype)

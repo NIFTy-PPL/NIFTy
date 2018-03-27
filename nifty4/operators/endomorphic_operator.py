@@ -60,7 +60,7 @@ class EndomorphicOperator(LinearOperator):
             A sample from the Gaussian of given covariance
         """
         if self.capability & self.INVERSE_TIMES:
-            x = self.draw_sample(dtype=dtype)
+            x = self.draw_sample(dtype)
             return self.inverse_times(x)
         else:
             raise NotImplementedError

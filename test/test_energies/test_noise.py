@@ -84,7 +84,7 @@ class Noise_Energy_Tests(unittest.TestCase):
             S=S,
             inverter=inverter).curvature
 
-        res_sample_list = [d - R(f(ht(C.draw_inverse_sample() + xi)))
+        res_sample_list = [d - R(f(ht(C.inverse_draw_sample() + xi)))
                            for _ in range(10)]
 
         energy0 = ift.library.NoiseEnergy(eta0, alpha, q, res_sample_list)
