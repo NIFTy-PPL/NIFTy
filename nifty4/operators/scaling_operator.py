@@ -100,8 +100,17 @@ class ScalingOperator(EndomorphicOperator):
 
     def draw_sample(self, dtype=np.float64):
         if self._factor.imag != 0. or self._factor.real <= 0.:
-            raise ValueError("Operator not positive definite")
+            raise ValueError("operator not positive definite")
         return Field.from_random(random_type="normal",
                                  domain=self._domain,
                                  std=np.sqrt(self._factor),
+                                 dtype=dtype)
+
+    def inverse_draw_sample(self, dtype=np.float64):
+        if self._factor.imag != 0. or self._factor.real <= 0.:
+            raise ValueError("operator not positive definite")
+
+        return Field.from_random(random_type="normal",
+                                 domain=self._domain,
+                                 std=1./np.sqrt(self._factor),
                                  dtype=dtype)
