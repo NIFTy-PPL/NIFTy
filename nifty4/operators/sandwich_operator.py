@@ -16,38 +16,37 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .linear_operator import LinearOperator
+from .endomorphic_operator import EndomorphicOperator
 import numpy as np
 
 
-class InverseOperator(LinearOperator):
-    """Adapter class representing the inverse of a given operator."""
+class SandwichOperator(EndomorphicOperator):
+    """Operator which is equivalent to the expression `bun.adjoint*cheese*bun`.
 
-    def __init__(self, op):
-        super(InverseOperator, self).__init__()
-        self._op = op
+    Parameters
+    ----------
+    bun: LinearOperator
+        the bun part
+    cheese: EndomorphicOperator
+        the cheese part
+    """
+
+    def __init__(self, bun, cheese):
+        super(SandwichOperator, self).__init__()
+        self._bun = bun
+        self._cheese = cheese
+        self._op = bun.adjoint*cheese*bun
 
     @property
     def domain(self):
-        return self._op.target
-
-    @property
-    def target(self):
         return self._op.domain
 
     @property
     def capability(self):
-        return self._inverseCapability[self._op.capability]
-
-    @property
-    def inverse(self):
-        return self._op
+        return self._op.capability
 
     def apply(self, x, mode):
-        return self._op.apply(x, self._inverseMode[mode])
+        return self._op.apply(x, mode)
 
     def draw_sample(self, dtype=np.float64):
-        return self._op.inverse_draw_sample(dtype)
-
-    def inverse_draw_sample(self, dtype=np.float64):
-        return self._op.draw_sample(dtype)
+        return self._bun.adjoint_times(self._cheese.draw_sample(dtype))

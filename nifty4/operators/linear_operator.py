@@ -264,16 +264,3 @@ class LinearOperator(NiftyMetaBase()):
         self._check_mode(mode)
         if x.domain != self._dom(mode):
             raise ValueError("The operator's and field's domains don't match.")
-
-    def draw_sample(self):
-        """Generate a zero-mean sample
-
-        Generates a sample from a Gaussian distribution with zero mean and
-        covariance given by the operator.
-
-        Returns
-        -------
-        Field
-            A sample from the Gaussian of given covariance.
-        """
-        raise NotImplementedError

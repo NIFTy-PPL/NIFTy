@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .linear_operator import LinearOperator
+import numpy as np
 
 
 class SumOperator(LinearOperator):
@@ -142,4 +143,10 @@ class SumOperator(LinearOperator):
                     res -= op.apply(x, mode)
                 else:
                     res += op.apply(x, mode)
+        return res
+
+    def draw_sample(self, dtype=np.float64):
+        res = self._ops[0].draw_sample(dtype)
+        for op in self._ops[1:]:
+            res += op.draw_sample(dtype)
         return res
