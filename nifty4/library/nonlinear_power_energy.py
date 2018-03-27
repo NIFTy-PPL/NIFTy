@@ -83,7 +83,7 @@ class NonlinearPowerEnergy(Energy):
             LinR = LinearizedPowerResponse(Instrument, nonlinearity, ht,
                                            Distributor, position, xi_sample)
 
-            residual = self.d - Instrument(nonlinearity(map_s))
+            residual = d - Instrument(nonlinearity(map_s))
             tmp = N.inverse_times(residual)
             lh = 0.5 * residual.vdot(tmp)
             grad = LinR.adjoint_times(tmp)
