@@ -35,7 +35,8 @@ if __name__ == "__main__":
 
     d_space = R.target
 
-    power = ift.sqrt(ift.create_power_operator(h_space, p_spec).diagonal)
+    p_op = ift.create_power_operator(h_space, p_spec)
+    power = ift.sqrt(p_op(ift.Field.full(h_space, 1.)))
 
     # Creating the mock data
     true_sky = nonlinearity(HT(power*sh))

@@ -61,9 +61,7 @@ class ChainOperator(LinearOperator):
             # try to absorb the factor into a DiagonalOperator
             for i in range(len(opsnew)):
                 if isinstance(opsnew[i], DiagonalOperator):
-                    opsnew[i] = DiagonalOperator(opsnew[i].diagonal*fct,
-                                                 domain=opsnew[i].domain,
-                                                 spaces=opsnew[i]._spaces)
+                    opsnew[i] = opsnew[i]._scale(fct)
                     fct = 1.
                     break
         if fct != 1:
@@ -75,12 +73,8 @@ class ChainOperator(LinearOperator):
         for op in ops:
             if (len(opsnew) > 0 and
                     isinstance(opsnew[-1], DiagonalOperator) and
-                    isinstance(op, DiagonalOperator) and
-                    op._spaces == opsnew[-1]._spaces):
-                opsnew[-1] = DiagonalOperator(opsnew[-1].diagonal *
-                                              op.diagonal,
-                                              domain=opsnew[-1].domain,
-                                              spaces=opsnew[-1]._spaces)
+                    isinstance(op, DiagonalOperator)):
+                opsnew[-1] = opsnew[-1]._combine_prod(op)
             else:
                 opsnew.append(op)
         ops = opsnew
@@ -120,9 +114,3 @@ class ChainOperator(LinearOperator):
         for op in t_ops:
             x = op.apply(x, mode)
         return x
-
-    def draw_sample(self, dtype=np.float64):
-        sample = self._ops[-1].draw_sample(dtype)
-        for op in reversed(self._ops[:-1]):
-            sample = op.process_sample(sample)
-        return sample

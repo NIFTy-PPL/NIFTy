@@ -71,15 +71,11 @@ class DiagonalOperator(EndomorphicOperator):
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))
             if len(self._spaces) != len(diagonal.domain):
                 raise ValueError("spaces and domain must have the same length")
-            # if nspc==len(self.diagonal.domain),
-            # we could do some optimization
             for i, j in enumerate(self._spaces):
                 if diagonal.domain[i] != self._domain[j]:
                     raise ValueError("domain mismatch")
             if self._spaces == tuple(range(len(self._domain))):
                 self._spaces = None  # shortcut
-
-        self._diagonal = diagonal.lock()
 
         if self._spaces is not None:
             active_axes = []
@@ -87,16 +83,54 @@ class DiagonalOperator(EndomorphicOperator):
                 active_axes += self._domain.axes[space_index]
 
             if self._spaces[0] == 0:
-                self._ldiag = self._diagonal.local_data
+                self._ldiag = diagonal.local_data
             else:
-                self._ldiag = self._diagonal.to_global_data()
+                self._ldiag = diagonal.to_global_data()
             locshape = dobj.local_shape(self._domain.shape, 0)
             self._reshaper = [shp if i in active_axes else 1
                               for i, shp in enumerate(locshape)]
             self._ldiag = self._ldiag.reshape(self._reshaper)
-
         else:
-            self._ldiag = self._diagonal.local_data
+            self._ldiag = diagonal.local_data
+        self._ldiag.flags.writeable = False
+
+    def _skeleton(self, spc):
+        res = DiagonalOperator.__new__(DiagonalOperator)
+        res._domain = self._domain
+        if self._spaces is None or spc is None:
+            res._spaces = None
+        else:
+            res._spaces = tuple(set(self._spaces) | set(spc))
+        return res
+
+    def _scale(self, fct):
+        if not np.isscalar(fct):
+            raise TypeError("scalar value required")
+        res = self._skeleton(())
+        res._ldiag = self._ldiag*fct
+        return res
+
+    def _add(self, sum):
+        if not np.isscalar(sum):
+            raise TypeError("scalar value required")
+        res = self._skeleton(())
+        res._ldiag = self._ldiag + sum
+        return res
+
+    def _combine_prod(self, op):
+        if not isinstance(op, DiagonalOperator):
+            raise TypeError("DiagonalOperator required")
+        res = self._skeleton(op._spaces)
+        res._ldiag = self._ldiag*op._ldiag
+        return res
+
+    def _combine_sum(self, op, selfneg, opneg):
+        if not isinstance(op, DiagonalOperator):
+            raise TypeError("DiagonalOperator required")
+        res = self._skeleton(op._spaces)
+        res._ldiag = (self._ldiag * (-1 if selfneg else 1) +
+                      op._ldiag * (-1 if opneg else 1))
+        return res
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -117,11 +151,6 @@ class DiagonalOperator(EndomorphicOperator):
                 return Field(x.domain, val=x.val/self._ldiag.conj())
 
     @property
-    def diagonal(self):
-        """ Returns the diagonal of the Operator."""
-        return self._diagonal
-
-    @property
     def domain(self):
         return self._domain
 
@@ -131,19 +160,16 @@ class DiagonalOperator(EndomorphicOperator):
 
     @property
     def inverse(self):
-        return DiagonalOperator(1./self._diagonal, self._domain, self._spaces)
+        res = self._skeleton(())
+        res._ldiag = 1./self._ldiag
+        return res
 
     @property
     def adjoint(self):
-        return DiagonalOperator(self._diagonal.conjugate(), self._domain,
-                                self._spaces)
-
-    def process_sample(self, sample):
-        if np.issubdtype(self._ldiag.dtype, np.complexfloating):
-            raise ValueError("cannot draw sample from complex-valued operator")
-
-        res = Field.empty_like(sample)
-        res.local_data[()] = sample.local_data * np.sqrt(self._ldiag)
+        if np.issubdtype(self._ldiag.dtype, np.floating):
+            return self
+        res = self._skeleton(())
+        res._ldiag = self._ldiag.conjugate()
         return res
 
     def draw_sample(self, dtype=np.float64):
