@@ -18,7 +18,6 @@
 
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.inversion_enabler import InversionEnabler
-import numpy as np
 
 
 def WienerFilterCurvature(R, N, S, inverter):

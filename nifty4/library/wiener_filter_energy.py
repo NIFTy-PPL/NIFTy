@@ -16,11 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..minimization.energy import Energy
+from ..minimization.quadratic_energy import QuadraticEnergy
 from .wiener_filter_curvature import WienerFilterCurvature
 
 
-class WienerFilterEnergy(Energy):
+def WienerFilterEnergy(position, d, R, N, S, inverter):
     """The Energy for the Wiener filter.
 
     It covers the case of linear measurement with
@@ -42,33 +42,6 @@ class WienerFilterEnergy(Energy):
     inverter : Minimizer
         the minimization strategy to use for operator inversion
     """
-
-    def __init__(self, position, d, R, N, S, inverter, _j=None):
-        super(WienerFilterEnergy, self).__init__(position=position)
-        self.R = R
-        self.N = N
-        self.S = S
-        self._curvature = WienerFilterCurvature(R, N, S, inverter)
-        self._inverter = inverter
-        if _j is None:
-            _j = R.adjoint_times(N.inverse_times(d))
-        self._j = _j
-        Dx = self._curvature(self.position)
-        self._value = 0.5*position.vdot(Dx) - self._j.vdot(position)
-        self._gradient = (Dx - self._j).lock()
-
-    def at(self, position):
-        return self.__class__(position=position, d=None, R=self.R, N=self.N,
-                              S=self.S, inverter=self._inverter, _j=self._j)
-
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def gradient(self):
-        return self._gradient
-
-    @property
-    def curvature(self):
-        return self._curvature
+    op = WienerFilterCurvature(R, N, S, inverter)
+    vec = R.adjoint_times(N.inverse_times(d))
+    return QuadraticEnergy(position, op, vec)
