@@ -26,7 +26,7 @@ class NoiseEnergy(Energy):
     def __init__(self, position, alpha, q, res_sample_list):
         super(NoiseEnergy, self).__init__(position)
 
-        self.N = DiagonalOperator(exp(self.position))
+        self.N = DiagonalOperator(exp(position))
         self.alpha = alpha
         self.q = q
         self.res_sample_list = res_sample_list
@@ -38,7 +38,7 @@ class NoiseEnergy(Energy):
             grad = -.5 * self.N.inverse_times(s.conjugate()*s)
             if self._gradient is None:
                 self._value = lh
-                self._gradient = grad
+                self._gradient = grad.copy()
             else:
                 self._value += lh
                 self._gradient += grad
