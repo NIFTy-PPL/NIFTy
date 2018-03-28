@@ -44,15 +44,23 @@ class NoiseEnergy(Energy):
                 self._gradient += grad
 
         expmpos = exp(-position)
-        self._value *= 1./len(self.res_sample_list)
-        possum = position.sum()
-        s1 = (alpha-1.)*possum if np.isscalar(alpha) \
-            else (alpha-1.).vdot(position)
-        s2 = q*expmpos.sum() if np.isscalar(q) else q.vdot(expmpos)
-        self._value += .5*possum + s1 + s2
+        self._value *= 1./len(res_sample_list)
+#        possum = position.sum()
+#        s1 = (alpha-1.)*possum if np.isscalar(alpha) \
+#            else (alpha-1.).vdot(position)
+#        s2 = q*expmpos.sum() if np.isscalar(q) else q.vdot(expmpos)
+#        self._value += .5*possum + s1 + s2
 
-        self._gradient *= 1./len(res_sample_list)
-        self._gradient += (alpha-0.5) - q*expmpos
+#        self._gradient *= 1./len(res_sample_list)
+#        self._gradient += (alpha-0.5) - q*expmpos
+        alpha_field = Field(position.domain, val=alpha)
+        q_field = Field(position.domain, val=q)
+        self._value += .5 * self.position.sum()
+        self._value += (alpha_field-1.).vdot(self.position) + \
+            q_field.vdot(expmpos)
+
+        self._gradient *= 1./len(self.res_sample_list)
+        self._gradient += (alpha_field-0.5) - q_field*expmpos
         self._gradient.lock()
 
     def at(self, position):
