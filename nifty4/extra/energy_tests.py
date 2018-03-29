@@ -49,6 +49,5 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
             dirder *= 0.5
             E2 = E2.at(E.position+dir)
         else:
-            print i, Ediff, dirder, eps, E.value
             raise ValueError("gradient and value seem inconsistent")
         E = Enext
