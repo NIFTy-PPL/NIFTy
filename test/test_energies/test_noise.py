@@ -87,10 +87,5 @@ class Noise_Energy_Tests(unittest.TestCase):
         res_sample_list = [d - R(f(ht(C.inverse_draw_sample() + xi)))
                            for _ in range(10)]
 
-        energy0 = ift.library.NoiseEnergy(eta0, alpha, q, res_sample_list)
-        energy1 = energy0.at(eta1)
-
-        a = (energy1.value - energy0.value) / eps
-        b = energy0.gradient.vdot(direction)
-        tol = 1e-5
-        assert_allclose(a, b, rtol=tol, atol=tol)
+        energy = ift.library.NoiseEnergy(eta0, alpha, q, res_sample_list)
+        ift.extra.check_value_gradient_consistency(energy, tol=1e-8, ntries=10)

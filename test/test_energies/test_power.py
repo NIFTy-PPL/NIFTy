@@ -76,7 +76,7 @@ class Energy_Tests(unittest.TestCase):
             ht=ht,
             inverter=inverter).curvature
 
-        energy0 = ift.library.NonlinearPowerEnergy(
+        energy = ift.library.NonlinearPowerEnergy(
             position=tau0,
             d=d,
             xi=xi,
@@ -87,9 +87,4 @@ class Energy_Tests(unittest.TestCase):
             ht=ht,
             N=N,
             samples=10)
-        energy1 = energy0.at(tau1)
-
-        a = (energy1.value - energy0.value) / eps
-        b = energy0.gradient.vdot(direction)
-        tol = 1e-4
-        assert_allclose(a, b, rtol=tol, atol=tol)
+        ift.extra.check_value_gradient_consistency(energy, tol=1e-8, ntries=10)

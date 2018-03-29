@@ -63,14 +63,9 @@ class Energy_Tests(unittest.TestCase):
         inverter = ift.ConjugateGradient(IC)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
-        energy0 = ift.library.WienerFilterEnergy(
+        energy = ift.library.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
-        energy1 = energy0.at(s1)
-
-        a = (energy1.value - energy0.value) / eps
-        b = energy0.gradient.vdot(direction)
-        tol = 1e-5
-        assert_allclose(a, b, rtol=tol, atol=tol)
+        ift.extra.check_value_gradient_consistency(energy, tol=1e-8, ntries=10)
 
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
@@ -103,15 +98,10 @@ class Energy_Tests(unittest.TestCase):
         xi1 = xi0 + eps * direction
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
-        energy0 = ift.library.NonlinearWienerFilterEnergy(
+        energy = ift.library.NonlinearWienerFilterEnergy(
             position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A,
             N=N, S=S)
-        energy1 = energy0.at(xi1)
-
-        a = (energy1.value - energy0.value) / eps
-        b = energy0.gradient.vdot(direction)
-        tol = 1e-5
-        assert_allclose(a, b, rtol=tol, atol=tol)
+        ift.extra.check_value_gradient_consistency(energy, tol=1e-8, ntries=10)
 
 
 class Curvature_Tests(unittest.TestCase):

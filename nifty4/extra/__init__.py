@@ -1,1 +1,2 @@
 from .operator_tests import consistency_check
+from .energy_tests import check_value_gradient_consistency
