@@ -30,7 +30,7 @@ def WienerFilterEnergy(position, d, R, N, S, inverter):
     ----------
     position : Field
         The current map in harmonic space.
-    d :  Field
+    d : Field
         the data
     R : LinearOperator
         The response operator, description of the measurement process. It needs

@@ -44,6 +44,8 @@ def _single_power_analyze(field, idx, binbounds):
     return pd.adjoint_times(field.weight(1)).weight(-1)  # divides by bin size
 
 
+# MR FIXME: this function is not well suited for analyzing more than one
+# subdomain at once, because it allows only one set of binbounds.
 def power_analyze(field, spaces=None, binbounds=None,
                   keep_phase_information=False):
     """ Computes the power spectrum for a subspace of `field`.
