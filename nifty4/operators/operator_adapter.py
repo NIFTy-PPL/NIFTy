@@ -1,0 +1,70 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2018 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
+
+from .linear_operator import LinearOperator
+import numpy as np
+
+
+class OperatorAdapter(LinearOperator):
+    """Class representing the inverse and/or adjoint of another operator."""
+
+    def __init__(self, op, mode):
+        super(OperatorAdapter, self).__init__()
+        self._op = op
+        self._mode = int(mode)
+        if self._mode not in (2, 4, 8):
+            raise ValueError("invalid mode")
+
+    @property
+    def domain(self):
+        return self._op._dom(self._mode)
+
+    @property
+    def target(self):
+        return self._op._tgt(self._mode)
+
+    @property
+    def capability(self):
+        return self._capTable[self._mode][self._op.capability]
+
+    @property
+    def inverse(self):
+        md = 6 if self._mode == 8 else self._mode
+        newmode = md ^ self.INVERSE_TIMES
+        newmode = 8 if md == 6 else md
+        return self._op if newmode == 0 else OperatorAdapter(self._op, newmode)
+
+    @property
+    def adjoint(self):
+        md = 6 if self._mode == 8 else self._mode
+        newmode = md ^ self.ADJOINT_TIMES
+        newmode = 8 if md == 6 else md
+        return self._op if newmode == 0 else OperatorAdapter(self._op, newmode)
+
+    def apply(self, x, mode):
+        return self._op.apply(x, self._modeTable[self._mode][mode])
+
+    def draw_sample(self, dtype=np.float64):
+        if self._mode & self.INVERSE_TIMES:
+            return self._op.inverse_draw_sample(dtype)
+        return self._op.draw_sample(dtype)
+
+    def inverse_draw_sample(self, dtype=np.float64):
+        if self._mode & self.INVERSE_TIMES:
+            return self._op.draw_sample(dtype)
+        return self._op.inverse_draw_sample(dtype)
