@@ -170,11 +170,6 @@ class Field(object):
         """
         return Field(domain, dobj.from_global_data(arr))
 
-    @staticmethod
-    def from_local_data(domain, arr):
-        domain = DomainTuple.make(domain)
-        return Field(domain, dobj.from_local_data(domain.shape, arr))
-
     def to_global_data(self):
         """Returns an array containing the full data of the field.
 
@@ -806,24 +801,6 @@ class Field(object):
 
     def __ipow__(self, other):
         return self._binary_helper(other, op='__ipow__')
-
-    def __lt__(self, other):
-        return self._binary_helper(other, op='__lt__')
-
-    def __le__(self, other):
-        return self._binary_helper(other, op='__le__')
-
-    def __ne__(self, other):
-        return self._binary_helper(other, op='__ne__')
-
-    def __eq__(self, other):
-        return self._binary_helper(other, op='__eq__')
-
-    def __ge__(self, other):
-        return self._binary_helper(other, op='__ge__')
-
-    def __gt__(self, other):
-        return self._binary_helper(other, op='__gt__')
 
     def __repr__(self):
         return "<nifty4.Field>"
