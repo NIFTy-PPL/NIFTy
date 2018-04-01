@@ -72,18 +72,18 @@ class ScalingOperator(EndomorphicOperator):
         else:
             return x*(1./np.conj(self._factor))
 
-    @property
-    def inverse(self):
-        if self._factor != 0.:
-            return ScalingOperator(1./self._factor, self._domain)
-        from .inverse_operator import InverseOperator
-        return InverseOperator(self)
-
-    @property
-    def adjoint(self):
-        if np.issubdtype(type(self._factor), np.floating):
+    def _flip_modes(self, mode):
+        if mode == 0:
             return self
-        return ScalingOperator(np.conj(self._factor), self._domain)
+        if mode == 1 and np.issubdtype(type(self._factor), np.floating):
+            return self
+        if mode == 1:
+            return ScalingOperator(np.conj(self._factor), self._domain)
+        elif mode == 2:
+            return ScalingOperator(1./self._factor, self._domain)
+        elif mode == 3:
+            return ScalingOperator(1./np.conj(self._factor), self._domain)
+        raise ValueError("bad operator flipping mode")
 
     @property
     def domain(self):
@@ -91,8 +91,6 @@ class ScalingOperator(EndomorphicOperator):
 
     @property
     def capability(self):
-        if self._factor == 0.:
-            return self.TIMES | self.ADJOINT_TIMES
         return self._all_ops
 
     def _sample_helper(self, fct, dtype):

@@ -40,4 +40,4 @@ def WienerFilterCurvature(R, N, S, inverter):
         The minimizer to use during numerical inversion
     """
     op = SandwichOperator(R, N.inverse) + S.inverse
-    return InversionEnabler(op, inverter, S)
+    return InversionEnabler(op, inverter, S.inverse)

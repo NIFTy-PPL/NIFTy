@@ -66,12 +66,14 @@ class InversionEnabler(LinearOperator):
         if self._op.capability & mode:
             return self._op.apply(x, mode)
 
-        def func(x):
-            return self._op.apply(x, self._inverseMode[mode])
-
         x0 = Field.zeros(self._tgt(mode), dtype=x.dtype)
-        energy = QuadraticEnergy(A=func, b=x, position=x0)
-        r, stat = self._inverter(energy, preconditioner=self._preconditioner)
+        invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
+        invop = self._op._flip_modes(self._ilog[invmode])
+        prec = self._preconditioner
+        if prec is not None:
+            prec = prec._flip_modes(self._ilog[mode])
+        energy = QuadraticEnergy(A=invop, b=x, position=x0)
+        r, stat = self._inverter(energy, preconditioner=prec)
         if stat != IterationController.CONVERGED:
             logger.warning("Error detected during operator inversion")
         return r.position
