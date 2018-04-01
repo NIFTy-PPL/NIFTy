@@ -38,16 +38,18 @@ class InversionEnabler(LinearOperator):
     inverter : :class:`Minimizer`
         The minimizer to use for the iterative numerical inversion.
         Typically, this is a :class:`ConjugateGradient` object.
-    preconditioner : :class:`LinearOperator`, optional
-        if not None, this operator is used as a preconditioner during the
-        iterative inversion, to accelerate convergence.
+    approximation : :class:`LinearOperator`, optional
+        if not None, this operator should be an approximation to `op`, which
+        supports the operation modes that `op` doesn't have. It is used as a
+        preconditioner during the iterative inversion, to accelerate
+        convergence.
     """
 
-    def __init__(self, op, inverter, preconditioner=None):
+    def __init__(self, op, inverter, approximation=None):
         super(InversionEnabler, self).__init__()
         self._op = op
         self._inverter = inverter
-        self._preconditioner = preconditioner
+        self._approximation = approximation
 
     @property
     def domain(self):
@@ -69,7 +71,7 @@ class InversionEnabler(LinearOperator):
         x0 = Field.zeros(self._tgt(mode), dtype=x.dtype)
         invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
         invop = self._op._flip_modes(self._ilog[invmode])
-        prec = self._preconditioner
+        prec = self._approximation
         if prec is not None:
             prec = prec._flip_modes(self._ilog[mode])
         energy = QuadraticEnergy(A=invop, b=x, position=x0)
