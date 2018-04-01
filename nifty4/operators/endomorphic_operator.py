@@ -55,15 +55,3 @@ class EndomorphicOperator(LinearOperator):
             A sample from the Gaussian of given covariance.
         """
         raise NotImplementedError
-
-    def inverse_draw_sample(self, dtype=np.float64):
-        """Generates a zero-mean sample
-
-        Generates a sample from a Gaussian distribution with zero mean and
-        covariance given by the inverse of the operator.
-
-        Returns
-        -------
-            A sample from the Gaussian of given covariance
-        """
-        return self.draw_sample(True, dtype)
