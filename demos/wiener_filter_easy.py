@@ -52,8 +52,7 @@ if __name__ == "__main__":
                                     tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
     D = (ift.SandwichOperator(R, N.inverse) + Sh.inverse).inverse
-    # MR FIXME: we can/should provide a preconditioner here as well!
-    D = ift.InversionEnabler(D, inverter)
+    D = ift.InversionEnabler(D, inverter, approximation=Sh)
     m = D(j)
 
     # Plotting
