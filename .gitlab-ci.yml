@@ -31,11 +31,10 @@ test_python3:
     - OMP_NUM_THREADS=1 mpiexec --allow-run-as-root -n 2 nosetests3 -q 2>/dev/null
 
 pages:
-  stage: release
+  stage: test
   script:
     - apt-get update
-    - apt-get install -y git libfftw3-dev python python-pip python-dev python-numpy python-future
-    - pip install --user sphinx sphinx_rtd_theme numpydoc
+    - apt-get install -y git libfftw3-dev python python-pip python-dev python-numpy python-future python-sphinx python-sphinx-rtd-theme python-numpydoc
     - pip install --user .
     - sh docs/generate.sh
     - mv docs/build/ public/
