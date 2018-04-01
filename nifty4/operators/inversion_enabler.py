@@ -20,11 +20,11 @@ from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
 from ..field import Field
 from ..logger import logger
-from .linear_operator import LinearOperator
+from .endomorphic_operator import EndomorphicOperator
 import numpy as np
 
 
-class InversionEnabler(LinearOperator):
+class InversionEnabler(EndomorphicOperator):
     """Class which augments the capability of another operator object via
     numerical inversion.
 
@@ -80,14 +80,9 @@ class InversionEnabler(LinearOperator):
             logger.warning("Error detected during operator inversion")
         return r.position
 
-    def draw_sample(self, dtype=np.float64):
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
-            return self._op.draw_sample(dtype)
+            return self._op.draw_sample(from_inverse, dtype)
         except:
-            return self(self._op.inverse_draw_sample(dtype))
-
-    def inverse_draw_sample(self, dtype=np.float64):
-        try:
-            return self._op.inverse_draw_sample(dtype)
-        except:
-            return self.inverse_times(self._op.draw_sample(dtype))
+            samp = self._op.draw_sample(not from_inverse, dtype)
+            return self.inverse_times(samp) if from_inverse else self(samp)

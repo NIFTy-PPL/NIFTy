@@ -143,8 +143,10 @@ class SumOperator(LinearOperator):
                     res += op.apply(x, mode)
         return res
 
-    def draw_sample(self, dtype=np.float64):
-        res = self._ops[0].draw_sample(dtype)
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
+        if from_inverse:
+            raise ValueError("cannot draw from inverse of this operator")
+        res = self._ops[0].draw_sample(from_inverse, dtype)
         for op in self._ops[1:]:
-            res += op.draw_sample(dtype)
+            res += op.draw_sample(from_inverse, dtype)
         return res

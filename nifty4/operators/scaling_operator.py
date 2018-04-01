@@ -93,14 +93,10 @@ class ScalingOperator(EndomorphicOperator):
     def capability(self):
         return self._all_ops
 
-    def _sample_helper(self, fct, dtype):
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
+        fct = self._factor
         if fct.imag != 0. or fct.real <= 0.:
             raise ValueError("operator not positive definite")
+        fct = 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
         return Field.from_random(
            random_type="normal", domain=self._domain, std=fct, dtype=dtype)
-
-    def draw_sample(self, dtype=np.float64):
-        return self._sample_helper(np.sqrt(self._factor), dtype)
-
-    def inverse_draw_sample(self, dtype=np.float64):
-        return self._sample_helper(1./np.sqrt(self._factor), dtype)

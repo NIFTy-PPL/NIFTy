@@ -36,11 +36,18 @@ class EndomorphicOperator(LinearOperator):
         for endomorphic operators."""
         return self.domain
 
-    def draw_sample(self, dtype=np.float64):
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
         """Generate a zero-mean sample
 
         Generates a sample from a Gaussian distribution with zero mean and
         covariance given by the operator.
+
+        Parameters
+        ----------
+        from_inverse : bool (default : False)
+            if True, the sample is drawn from the inverse of the operator
+        dtype : numpy datatype (default : numpy.float64)
+            the data type to be used for the sample
 
         Returns
         -------
@@ -59,8 +66,4 @@ class EndomorphicOperator(LinearOperator):
         -------
             A sample from the Gaussian of given covariance
         """
-        if self.capability & self.INVERSE_TIMES:
-            x = self.draw_sample(dtype)
-            return self.inverse_times(x)
-        else:
-            raise NotImplementedError
+        return self.draw_sample(True, dtype)

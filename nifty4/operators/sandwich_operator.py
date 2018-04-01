@@ -48,5 +48,8 @@ class SandwichOperator(EndomorphicOperator):
     def apply(self, x, mode):
         return self._op.apply(x, mode)
 
-    def draw_sample(self, dtype=np.float64):
-        return self._bun.adjoint_times(self._cheese.draw_sample(dtype))
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
+        if from_inverse:
+            raise ValueError("cannot draw from inverse of this operator")
+        return self._bun.adjoint_times(
+            self._cheese.draw_sample(from_inverse, dtype))
