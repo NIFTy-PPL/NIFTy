@@ -54,11 +54,6 @@ class Energy_Tests(unittest.TestCase):
         N = ift.DiagonalOperator(diag)
         d = R(f(s)) + n
 
-        direction = ift.Field.from_random('normal', pspace)
-        direction /= np.sqrt(direction.var())
-        eps = 1e-7
-        tau1 = tau0 + eps * direction
-
         IC = ift.GradientNormController(
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
@@ -87,4 +82,4 @@ class Energy_Tests(unittest.TestCase):
             ht=ht,
             N=N,
             samples=10)
-        ift.extra.check_value_gradient_consistency(energy, tol=1e-8, ntries=10)
+        ift.extra.check_value_gradient_consistency(energy, tol=1e-5, ntries=10)
