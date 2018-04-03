@@ -236,11 +236,23 @@ class data_object(object):
     def __ipow__(self, other):
         return self._binary_helper(other, op='__ipow__')
 
-    def __eq__(self, other):
-        return self._binary_helper(other, op='__eq__')
+    def __lt__(self, other):
+        return self._binary_helper(other, op='__lt__')
+
+    def __le__(self, other):
+        return self._binary_helper(other, op='__le__')
 
     def __ne__(self, other):
         return self._binary_helper(other, op='__ne__')
+
+    def __eq__(self, other):
+        return self._binary_helper(other, op='__eq__')
+
+    def __ge__(self, other):
+        return self._binary_helper(other, op='__ge__')
+
+    def __gt__(self, other):
+        return self._binary_helper(other, op='__gt__')
 
     def __neg__(self):
         return data_object(self._shape, -self._data, self._distaxis)

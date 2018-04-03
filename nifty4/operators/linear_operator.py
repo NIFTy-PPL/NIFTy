@@ -48,11 +48,16 @@ class LinearOperator(NiftyMetaBase()):
     by means of a single integer number.
     """
 
+    _ilog = (-1, 0, 1, -1, 2, -1, -1, -1, 3)
     _validMode = (False, True, True, False, True, False, False, False, True)
-    _inverseMode = (0, 4, 8, 0, 1, 0, 0, 0, 2)
-    _inverseCapability = (0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15)
-    _adjointMode = (0, 2, 1, 0, 8, 0, 0, 0, 4)
-    _adjointCapability = (0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15)
+    _modeTable = ((1, 2, 4, 8),
+                  (2, 1, 8, 4),
+                  (4, 8, 1, 2),
+                  (8, 4, 2, 1))
+    _capTable = ((0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15),
+                 (0, 2, 1, 3, 8, 10, 9, 11, 4, 6, 5, 7, 12, 14, 13, 15),
+                 (0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15),
+                 (0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15))
     _addInverse = (0, 5, 10, 15, 5, 5, 15, 15, 10, 15, 10, 15, 15, 15, 15, 15)
     _backwards = 6
     _all_ops = 15
@@ -61,6 +66,8 @@ class LinearOperator(NiftyMetaBase()):
     INVERSE_TIMES = 4
     ADJOINT_INVERSE_TIMES = 8
     INVERSE_ADJOINT_TIMES = 8
+    ADJOINT_BIT = 1
+    INVERSE_BIT = 2
 
     def _dom(self, mode):
         return self.domain if (mode & 9) else self.target
@@ -85,14 +92,17 @@ class LinearOperator(NiftyMetaBase()):
             The domain on which the Operator's output Field lives."""
         raise NotImplementedError
 
+    def _flip_modes(self, mode):
+        from .operator_adapter import OperatorAdapter
+        return self if mode == 0 else OperatorAdapter(self, mode)
+
     @property
     def inverse(self):
         """LinearOperator : the inverse of `self`
 
         Returns a LinearOperator object which behaves as if it were
         the inverse of this operator."""
-        from .inverse_operator import InverseOperator
-        return InverseOperator(self)
+        return self._flip_modes(self.INVERSE_BIT)
 
     @property
     def adjoint(self):
@@ -100,8 +110,7 @@ class LinearOperator(NiftyMetaBase()):
 
         Returns a LinearOperator object which behaves as if it were
         the adjoint of this operator."""
-        from .adjoint_operator import AdjointOperator
-        return AdjointOperator(self)
+        return self._flip_modes(self.ADJOINT_BIT)
 
     @staticmethod
     def _toOperator(thing, dom):

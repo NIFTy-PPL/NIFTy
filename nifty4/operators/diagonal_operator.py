@@ -158,35 +158,30 @@ class DiagonalOperator(EndomorphicOperator):
     def capability(self):
         return self._all_ops
 
-    @property
-    def inverse(self):
-        res = self._skeleton(())
-        res._ldiag = 1./self._ldiag
-        return res
-
-    @property
-    def adjoint(self):
-        if np.issubdtype(self._ldiag.dtype, np.floating):
+    def _flip_modes(self, mode):
+        if mode == 0:
+            return self
+        if mode == 1 and np.issubdtype(self._ldiag.dtype, np.floating):
             return self
         res = self._skeleton(())
-        res._ldiag = self._ldiag.conjugate()
+        if mode == 1:
+            res._ldiag = self._ldiag.conjugate()
+        elif mode == 2:
+            res._ldiag = 1./self._ldiag
+        elif mode == 3:
+            res._ldiag = 1./self._ldiag.conjugate()
+        else:
+            raise ValueError("bad operator flipping mode")
         return res
 
-    def draw_sample(self, dtype=np.float64):
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
         if (np.issubdtype(self._ldiag.dtype, np.complexfloating) or
                 (self._ldiag <= 0.).any()):
             raise ValueError("operator not positive definite")
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
-        res.local_data[()] *= np.sqrt(self._ldiag)
-        return res
-
-    def inverse_draw_sample(self, dtype=np.float64):
-        if (np.issubdtype(self._ldiag.dtype, np.complexfloating) or
-                (self._ldiag <= 0.).any()):
-            raise ValueError("operator not positive definite")
-
-        res = Field.from_random(random_type="normal", domain=self._domain,
-                                dtype=dtype)
-        res.local_data[()] /= np.sqrt(self._ldiag)
+        if from_inverse:
+            res.local_data[()] /= np.sqrt(self._ldiag)
+        else:
+            res.local_data[()] *= np.sqrt(self._ldiag)
         return res

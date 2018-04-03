@@ -62,11 +62,6 @@ class Noise_Energy_Tests(unittest.TestCase):
         alpha = ift.Field.full(d.domain, 2.)
         q = ift.Field.full(d.domain, 1e-5)
 
-        direction = ift.Field.from_random('normal', d.domain)
-        direction /= np.sqrt(direction.var())
-        eps = 1e-8
-        eta1 = eta0 + eps * direction
-
         IC = ift.GradientNormController(
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
@@ -84,8 +79,8 @@ class Noise_Energy_Tests(unittest.TestCase):
             S=S,
             inverter=inverter).curvature
 
-        res_sample_list = [d - R(f(ht(C.inverse_draw_sample() + xi)))
+        res_sample_list = [d - R(f(ht(C.draw_sample(from_inverse=True) + xi)))
                            for _ in range(10)]
 
         energy = ift.library.NoiseEnergy(eta0, alpha, q, res_sample_list)
-        ift.extra.check_value_gradient_consistency(energy, tol=1e-8, ntries=10)
+        ift.extra.check_value_gradient_consistency(energy, tol=1e-6, ntries=10)

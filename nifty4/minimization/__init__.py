@@ -10,7 +10,7 @@ from .steepest_descent import SteepestDescent
 from .vl_bfgs import VL_BFGS
 from .l_bfgs import L_BFGS
 from .relaxed_newton import RelaxedNewton
-from .scipy_minimizer import ScipyMinimizer, NewtonCG, L_BFGS_B
+from .scipy_minimizer import ScipyMinimizer, NewtonCG, L_BFGS_B, ScipyCG
 from .energy import Energy
 from .quadratic_energy import QuadraticEnergy
 from .line_energy import LineEnergy
@@ -19,5 +19,5 @@ __all__ = ["LineSearch", "LineSearchStrongWolfe",
            "IterationController", "GradientNormController",
            "Minimizer", "ConjugateGradient", "NonlinearCG", "DescentMinimizer",
            "SteepestDescent", "VL_BFGS", "RelaxedNewton", "ScipyMinimizer",
-           "NewtonCG", "L_BFGS_B", "Energy", "QuadraticEnergy", "LineEnergy",
-           "L_BFGS"]
+           "NewtonCG", "L_BFGS_B", "ScipyCG", "Energy", "QuadraticEnergy",
+           "LineEnergy", "L_BFGS"]

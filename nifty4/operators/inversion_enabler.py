@@ -20,11 +20,11 @@ from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
 from ..field import Field
 from ..logger import logger
-from .linear_operator import LinearOperator
+from .endomorphic_operator import EndomorphicOperator
 import numpy as np
 
 
-class InversionEnabler(LinearOperator):
+class InversionEnabler(EndomorphicOperator):
     """Class which augments the capability of another operator object via
     numerical inversion.
 
@@ -38,16 +38,18 @@ class InversionEnabler(LinearOperator):
     inverter : :class:`Minimizer`
         The minimizer to use for the iterative numerical inversion.
         Typically, this is a :class:`ConjugateGradient` object.
-    preconditioner : :class:`LinearOperator`, optional
-        if not None, this operator is used as a preconditioner during the
-        iterative inversion, to accelerate convergence.
+    approximation : :class:`LinearOperator`, optional
+        if not None, this operator should be an approximation to `op`, which
+        supports the operation modes that `op` doesn't have. It is used as a
+        preconditioner during the iterative inversion, to accelerate
+        convergence.
     """
 
-    def __init__(self, op, inverter, preconditioner=None):
+    def __init__(self, op, inverter, approximation=None):
         super(InversionEnabler, self).__init__()
         self._op = op
         self._inverter = inverter
-        self._preconditioner = preconditioner
+        self._approximation = approximation
 
     @property
     def domain(self):
@@ -66,24 +68,21 @@ class InversionEnabler(LinearOperator):
         if self._op.capability & mode:
             return self._op.apply(x, mode)
 
-        def func(x):
-            return self._op.apply(x, self._inverseMode[mode])
-
         x0 = Field.zeros(self._tgt(mode), dtype=x.dtype)
-        energy = QuadraticEnergy(A=func, b=x, position=x0)
-        r, stat = self._inverter(energy, preconditioner=self._preconditioner)
+        invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
+        invop = self._op._flip_modes(self._ilog[invmode])
+        prec = self._approximation
+        if prec is not None:
+            prec = prec._flip_modes(self._ilog[mode])
+        energy = QuadraticEnergy(A=invop, b=x, position=x0)
+        r, stat = self._inverter(energy, preconditioner=prec)
         if stat != IterationController.CONVERGED:
             logger.warning("Error detected during operator inversion")
         return r.position
 
-    def draw_sample(self, dtype=np.float64):
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
-            return self._op.draw_sample(dtype)
+            return self._op.draw_sample(from_inverse, dtype)
         except:
-            return self(self._op.inverse_draw_sample(dtype))
-
-    def inverse_draw_sample(self, dtype=np.float64):
-        try:
-            return self._op.inverse_draw_sample(dtype)
-        except:
-            return self.inverse_times(self._op.draw_sample(dtype))
+            samp = self._op.draw_sample(not from_inverse, dtype)
+            return self.inverse_times(samp) if from_inverse else self(samp)

@@ -70,7 +70,7 @@ class NonlinearPowerEnergy(Energy):
             if samples is None or samples == 0:
                 xi_sample_list = [xi]
             else:
-                xi_sample_list = [D.inverse_draw_sample() + xi
+                xi_sample_list = [D.draw_sample(from_inverse=True) + xi
                                   for _ in range(samples)]
         self.xi_sample_list = xi_sample_list
         self.inverter = inverter

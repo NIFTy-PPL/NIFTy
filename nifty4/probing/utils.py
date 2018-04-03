@@ -51,7 +51,7 @@ class StatCalculator(object):
 def probe_with_posterior_samples(op, post_op, nprobes):
     sc = StatCalculator()
     for i in range(nprobes):
-        sample = post_op(op.inverse_draw_sample())
+        sample = post_op(op.draw_sample(from_inverse=True))
         sc.add(sample)
 
     if nprobes == 1:
