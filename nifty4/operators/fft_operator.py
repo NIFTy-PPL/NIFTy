@@ -30,7 +30,7 @@ class FFTOperator(LinearOperator):
 
     Parameters
     ----------
-    domain: Domain, tuple of Domain o DomainTuple
+    domain: Domain, tuple of Domain or DomainTuple
         The domain of the data that is input by "times" and output by
         "adjoint_times".
     target: Domain, optional
