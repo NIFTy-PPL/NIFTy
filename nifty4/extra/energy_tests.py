@@ -49,7 +49,6 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
         dirnorm = dir.norm()
         dirder = E.gradient.vdot(dir)/dirnorm
         for i in range(50):
-            print(abs((E2.value-E.value)/dirnorm-dirder))
             if abs((E2.value-E.value)/dirnorm-dirder) < tol:
                 break
             dir *= 0.5
