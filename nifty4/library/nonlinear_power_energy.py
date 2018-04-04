@@ -37,21 +37,23 @@ class NonlinearPowerEnergy(Energy):
     It describes the energy of the logarithmic amplitudes of the power spectrum
     of a Gaussian random field under reconstruction uncertainty with smoothness
     and inverse gamma prior. It is used to infer the correlation structure of a
-    correlated signal.
+    correlated signal. The smoothness prior operates on logarithmic scale, i.e.
+    it prefers power-law-like power spectra.
 
     Parameters
     ----------
     position : Field
         The current position of this energy.
-    m : Field
-        The map whose power spectrum has to be inferred
+    xi : Field
+        The excitation field.
     D : EndomorphicOperator
         The curvature of the Gaussian encoding the posterior covariance.
         If not specified, the map is assumed to be no reconstruction.
         default : None
     sigma : float
-        The parameter of the smoothness prior.
-        default : ??? None? ???????
+        The parameter of the smoothness prior. Needs to be positive. A bigger
+        number means a stronger smoothness prior.
+        default : 0
     samples : int
         Number of samples used for the estimation of the uncertainty
         corrections.
