@@ -19,9 +19,16 @@
 from .. import exp
 from ..minimization.energy import Energy
 from ..operators.smoothness_operator import SmoothnessOperator
+from ..operators.inversion_enabler import InversionEnabler
 from ..utilities import memo
-from .nonlinear_power_curvature import NonlinearPowerCurvature
-from .response_operators import LinearizedPowerResponse
+
+
+def _LinearizedPowerResponse(Instrument, nonlinearity, ht, Distributor, tau,
+                            xi):
+     power = exp(0.5*tau)
+     position = ht(Distributor(power)*xi)
+     linearization = nonlinearity.derivative(position)
+     return 0.5*Instrument*linearization*ht*xi*Distributor*power
 
 
 class NonlinearPowerEnergy(Energy):
@@ -80,8 +87,8 @@ class NonlinearPowerEnergy(Energy):
         self._gradient = None
         for xi_sample in self.xi_sample_list:
             map_s = ht(A*xi_sample)
-            LinR = LinearizedPowerResponse(Instrument, nonlinearity, ht,
-                                           Distributor, position, xi_sample)
+            LinR = _LinearizedPowerResponse(Instrument, nonlinearity, ht,
+                                            Distributor, position, xi_sample)
 
             residual = d - Instrument(nonlinearity(map_s))
             tmp = N.inverse_times(residual)
@@ -121,7 +128,12 @@ class NonlinearPowerEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return NonlinearPowerCurvature(
-            self.position, self.ht, self.Instrument, self.nonlinearity,
-            self.Distributor, self.N, self.T, self.xi_sample_list,
-            self.inverter)
+        result = None
+        for xi_sample in self.xi_sample_list:
+            LinearizedResponse = _LinearizedPowerResponse(
+                self.Instrument, self.nonlinearity, self.ht, self.Distributor,
+                self.position, xi_sample)
+            op = LinearizedResponse.adjoint*self.N.inverse*LinearizedResponse
+            result = op if result is None else result + op
+        result = result*(1./len(self.xi_sample_list)) + self.T
+        return InversionEnabler(result, self.inverter)

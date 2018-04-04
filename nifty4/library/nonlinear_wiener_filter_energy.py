@@ -19,7 +19,6 @@
 from .wiener_filter_curvature import WienerFilterCurvature
 from ..utilities import memo
 from ..minimization.energy import Energy
-from .response_operators import LinearizedSignalResponse
 
 
 class NonlinearWienerFilterEnergy(Energy):
@@ -40,8 +39,7 @@ class NonlinearWienerFilterEnergy(Energy):
         t1 = S.inverse_times(position)
         t2 = N.inverse_times(residual)
         self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
-        self.R = LinearizedSignalResponse(Instrument, nonlinearity, ht, power,
-                                          m)
+        self.R = Instrument * nonlinearity.derivative(m) * ht * power
         self._gradient = (t1 - self.R.adjoint_times(t2)).lock()
 
     def at(self, position):
