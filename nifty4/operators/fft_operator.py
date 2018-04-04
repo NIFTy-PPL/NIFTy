@@ -39,7 +39,7 @@ class FFTOperator(LinearOperator):
     space: int, optional
         The index of the subdomain on which the operator should act
         If None, it is set to 0 if `domain` contains exactly one space.
-        `domain[space]` must be a RGSpace.
+        `domain[space]` must be an RGSpace.
     """
 
     def __init__(self, domain, target=None, space=None):
