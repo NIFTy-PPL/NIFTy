@@ -7,27 +7,32 @@ stages:
 variables:
   DOCKER_DRIVER: overlay
 
-test_python2:
+test_scalar:
   stage: test
   script:
     - pip install --user .
-    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2>/dev/null
+    - pip3 install --user .
+    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q
+    - nosetests3 -q
     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
-test_python3:
+test_mpi:
   stage: test
   script:
+    - pip install --user .
     - pip3 install --user .
-    - nosetests3 -q
-    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2>/dev/null
+    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q
+    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q
+  only:
+  - NIFTy_4
 
 pages:
   stage: release
   script:
     - pip install --user .
-    - sh docs/generate.sh > /dev/null
+    - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
     paths:
