@@ -10,8 +10,6 @@ variables:
 test_scalar:
   stage: test
   script:
-    - pwd
-    - whoami
     - pip install --user .
     - pip3 install --user .
     - nosetests3 -q
@@ -26,8 +24,6 @@ test_mpi:
     - pip3 install --user .
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q
-  only:
-  - NIFTy_4
 
 pages:
   stage: release
