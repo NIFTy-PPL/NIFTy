@@ -10,6 +10,8 @@ variables:
 test_scalar:
   stage: test
   script:
+    - pwd
+    - whoami
     - pip install --user .
     - pip3 install --user .
     - nosetests3 -q
