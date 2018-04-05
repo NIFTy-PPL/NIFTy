@@ -12,7 +12,6 @@ test_scalar:
   script:
     - pip install --user .
     - pip3 install --user .
-    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q
     - nosetests3 -q
     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
     - >
