@@ -50,7 +50,9 @@ if __name__ == "__main__":
     Phi_h = ift.create_power_operator(h_domain, power_spectrum=pow_spec)
     phi_h = Phi_h.draw_sample()
     # remove zero mode
-    phi_h.val[0] = 0
+    glob = phi_h.to_global_data()
+    glob[0] = 0.
+    phi_h = ift.Field.from_global_data(phi_h.domain, glob)
     phi = HT(phi_h)
 
     # Setting up an exemplary response
@@ -60,19 +62,19 @@ if __name__ == "__main__":
     mask = np.ones(d_domain.shape)
     mask[N1a:N1b] = 0.
     mask[N2a:N2b] = 0.
-    mask = ift.Field.from_global_data(d_domain, mask)
-    Mask = ift.DiagonalOperator(mask)
+    fmask = ift.Field.from_global_data(d_domain, mask)
+    Mask = ift.DiagonalOperator(fmask)
     R0 = Mask*GeoRem
     R = R0*HT
     IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=1e-3)
     inverter = ift.ConjugateGradient(controller=IC)
-    x_mod = x*mask.val+2*(1-mask.val)
+    x_mod = np.where(mask>0, x, None)
 
     nonlin = Exp3()
     lam = R0(nonlin(HT(phi_h)))
-    data = ift.Field(d_domain, val=np.random.poisson(lam.val),
-                     dtype=np.float64, copy=True)
+    data = ift.Field.from_local_data(
+        d_domain, np.random.poisson(lam.local_data).astype(np.float64))
     psi0 = ift.Field.full(h_domain, 1e-7)
     energy = ift.library.PoissonEnergy(psi0, data, R0, nonlin, HT, Phi_h,
                                        inverter)
@@ -92,7 +94,8 @@ if __name__ == "__main__":
     plt.fill_between(x, c1, c2, color='pink', alpha=None)
     plt.plot(x, nonlin(phi).to_global_data(), label=r"NL($\varphi$)",
              color='black')
-    plt.scatter(x_mod, data.val, label=r'$d$', s=1, color='blue', alpha=0.5)
+    plt.scatter(x_mod, data.to_global_data(), label=r'$d$', s=1, color='blue',
+                alpha=0.5)
     plt.plot(x, nonlin(m).to_global_data(), label=r'NL(m)$', color='red')
     plt.xlim([0, L])
     plt.ylim([-0.1, None])
