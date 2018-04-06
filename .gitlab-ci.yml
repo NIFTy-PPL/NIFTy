@@ -22,8 +22,8 @@ test_mpi:
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
-    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q
-    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q
+    - OMP_NUM_THREADS=1 mpiexec -n 4 nosetests -q 2> /dev/null
+    - OMP_NUM_THREADS=1 mpiexec -n 4 nosetests3 -q 2> /dev/null
 
 pages:
   stage: release
