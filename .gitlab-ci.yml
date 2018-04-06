@@ -10,8 +10,8 @@ variables:
 test_scalar:
   stage: test
   script:
-    - pip install --user .
-    - pip3 install --user .
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
     - nosetests3 -q
     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
     - >
@@ -20,15 +20,15 @@ test_scalar:
 test_mpi:
   stage: test
   script:
-    - pip install --user .
-    - pip3 install --user .
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q
 
 pages:
   stage: release
   script:
-    - pip install --user .
+    - python setup.py install --user -f
     - sh docs/generate.sh
     - mv docs/build/ public/
   artifacts:
