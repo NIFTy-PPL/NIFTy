@@ -1,3 +1,7 @@
+# Program to generate figures of article "Information theory for fields"
+# by Torsten Ensslin, Annalen der Physik, submitted to special edition
+# "Physics of Information" in April 2018
+
 import numpy as np
 import nifty4 as ift
 import matplotlib.pyplot as plt
@@ -15,12 +19,12 @@ if __name__ == "__main__":
     np.random.seed(20)
 
     # Set up physical constants
-    nu = 1.        # excitation field level
-    kappa = 10.    # diffusion constant
-    eps = 1e-8     # small number to tame zero mode
-    sigma_n = 0.2  # noise level
+    nu = 1.         # excitation field level
+    kappa = 10.     # diffusion constant
+    eps = 1e-8      # small number to tame zero mode
+    sigma_n = 0.2   # noise level
     sigma_n2 = sigma_n**2
-    L = 1.         # Total length of interval or volume the field lives on
+    L = 1.          # Total length of interval or volume the field lives on
     nprobes = 100  # Number of probes for uncertainty quantification
 
     # Define resolution (pixels per dimension)
@@ -57,7 +61,6 @@ if __name__ == "__main__":
 
     # Setting up an exemplary response
     GeoRem = ift.GeometryRemover(s_domain)
-    GeoAdd = GeoRem.adjoint
     d_domain = GeoRem.target[0]
     mask = np.ones(d_domain.shape)
     mask[N1a:N1b] = 0.
@@ -66,15 +69,49 @@ if __name__ == "__main__":
     Mask = ift.DiagonalOperator(fmask)
     R0 = Mask*GeoRem
     R = R0*HT
+
+    # Linear measurement scenario
+    N = ift.ScalingOperator(sigma_n2, d_domain)  # Noise covariance
+    n = Mask(N.draw_sample())  # seting the noise to zero in masked region
+    d = R(phi_h) + n
+
+    # Wiener filter
+    j = R.adjoint_times(N.inverse_times(d))
     IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=1e-3)
     inverter = ift.ConjugateGradient(controller=IC)
-    x_mod = np.where(mask>0, x, None)
+    D = (ift.SandwichOperator(R, N.inverse) + Phi_h.inverse).inverse
+    D = ift.InversionEnabler(D, inverter, approximation=Phi_h)
+    m = HT(D(j))
+
+    # Uncertainty
+    D = ift.SandwichOperator(aHT, D)  # real space propagator
+    Dhat = ift.probe_with_posterior_samples(D.inverse, None,
+                                            nprobes=nprobes)[1]
+    sig = ift.sqrt(Dhat)
+
+    # Plotting
+    x_mod = np.where(mask > 0, x, None)
+    plt.rcParams["text.usetex"] = True
+    plt.fill_between(x, m.val-sig.val, m.val+sig.val, color='pink',
+                     alpha=None)
+    plt.plot(x, phi.to_global_data(), label=r"$\varphi$", color='black')
+    plt.scatter(x_mod, d.to_global_data(), label=r'$d$', s=1, color='blue',
+                alpha=0.5)
+    plt.plot(x, m.to_global_data(), label=r'$m$', color='red')
+    plt.xlim([0, L])
+    plt.ylim([-1, 1])
+    plt.title('Wiener filter reconstruction')
+    plt.legend()
+    plt.savefig('Wiener_filter.pdf')
+    plt.close()
 
     nonlin = Exp3()
     lam = R0(nonlin(HT(phi_h)))
     data = ift.Field.from_local_data(
         d_domain, np.random.poisson(lam.local_data).astype(np.float64))
+
+    # initial guess
     psi0 = ift.Field.full(h_domain, 1e-7)
     energy = ift.library.PoissonEnergy(psi0, data, R0, nonlin, HT, Phi_h,
                                        inverter)
@@ -92,13 +129,14 @@ if __name__ == "__main__":
     c1 = nonlin(m-sig).to_global_data()
     c2 = nonlin(m+sig).to_global_data()
     plt.fill_between(x, c1, c2, color='pink', alpha=None)
-    plt.plot(x, nonlin(phi).to_global_data(), label=r"NL($\varphi$)",
+    plt.plot(x, nonlin(phi).to_global_data(), label=r"$e^{3\varphi}$",
              color='black')
     plt.scatter(x_mod, data.to_global_data(), label=r'$d$', s=1, color='blue',
                 alpha=0.5)
-    plt.plot(x, nonlin(m).to_global_data(), label=r'NL(m)$', color='red')
+    plt.plot(x, nonlin(m).to_global_data(),
+             label=r'$e^{3\varphi_\mathrm{cl}}$', color='red')
     plt.xlim([0, L])
-    plt.ylim([-0.1, None])
+    plt.ylim([-0.1, 7.5])
     plt.title('Poisson log-normal reconstruction')
     plt.legend()
-    plt.savefig('Poisson.png')
+    plt.savefig('Poisson.pdf')
