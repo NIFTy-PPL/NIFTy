@@ -25,7 +25,7 @@ if __name__ == "__main__":
     sigma_n = 0.2   # noise level
     sigma_n2 = sigma_n**2
     L = 1.          # Total length of interval or volume the field lives on
-    nprobes = 100  # Number of probes for uncertainty quantification
+    nprobes = 1000  # Number of probes for uncertainty quantification
 
     # Define resolution (pixels per dimension)
     N_pixels = 1024
