@@ -93,8 +93,9 @@ if __name__ == "__main__":
     # Plotting
     x_mod = np.where(mask > 0, x, None)
     plt.rcParams["text.usetex"] = True
-    plt.fill_between(x, m.val-sig.val, m.val+sig.val, color='pink',
-                     alpha=None)
+    c1 = (m-sig).to_global_data()
+    c2 = (m+sig).to_global_data()
+    plt.fill_between(x, c1, c2, color='pink', alpha=None)
     plt.plot(x, phi.to_global_data(), label=r"$\varphi$", color='black')
     plt.scatter(x_mod, d.to_global_data(), label=r'$d$', s=1, color='blue',
                 alpha=0.5)
