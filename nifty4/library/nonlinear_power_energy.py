@@ -24,11 +24,11 @@ from ..utilities import memo
 
 
 def _LinearizedPowerResponse(Instrument, nonlinearity, ht, Distributor, tau,
-                            xi):
-     power = exp(0.5*tau)
-     position = ht(Distributor(power)*xi)
-     linearization = nonlinearity.derivative(position)
-     return 0.5*Instrument*linearization*ht*xi*Distributor*power
+                             xi):
+    power = exp(0.5*tau)
+    position = ht(Distributor(power)*xi)
+    linearization = nonlinearity.derivative(position)
+    return 0.5*Instrument*linearization*ht*xi*Distributor*power
 
 
 class NonlinearPowerEnergy(Energy):

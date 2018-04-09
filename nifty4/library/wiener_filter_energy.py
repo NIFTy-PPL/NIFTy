@@ -20,7 +20,7 @@ from ..minimization.quadratic_energy import QuadraticEnergy
 from .wiener_filter_curvature import WienerFilterCurvature
 
 
-def WienerFilterEnergy(position, d, R, N, S, inverter):
+def WienerFilterEnergy(position, d, R, N, S, inverter=None):
     """The Energy for the Wiener filter.
 
     It covers the case of linear measurement with
@@ -39,8 +39,9 @@ def WienerFilterEnergy(position, d, R, N, S, inverter):
         The noise covariance in data space.
     S : EndomorphicOperator
         The prior signal covariance in harmonic space.
-    inverter : Minimizer
+    inverter : Minimizer, optional
         the minimization strategy to use for operator inversion
+        If None, the energy object will not support curvature computation.
     """
     op = WienerFilterCurvature(R, N, S, inverter)
     vec = R.adjoint_times(N.inverse_times(d))
