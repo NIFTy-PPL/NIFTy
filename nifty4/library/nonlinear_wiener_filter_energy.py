@@ -19,6 +19,7 @@
 from .wiener_filter_curvature import WienerFilterCurvature
 from ..utilities import memo
 from ..minimization.energy import Energy
+from ..nonlinear.nonlinear_operator import *
 
 
 class NonlinearWienerFilterEnergy(Energy):
@@ -30,17 +31,22 @@ class NonlinearWienerFilterEnergy(Energy):
         self.nonlinearity = nonlinearity
         self.ht = ht
         self.power = power
+
+        pos = NLOp_var()
+        m = NLOp_Linop(ht, power*pos)
+        residual = d - NLOp_Linop(Instrument, NLOp_Tanh(m))
+        t1 = NLOp_Linop(S.inverse, pos)
+        t2 = NLOp_Linop(N.inverse, residual)
+        ene = 0.5 * (NLOp_vdot(pos, t1) + NLOp_vdot(residual, t2))
+        self._value = ene.value(self.position)
+        self._gradient = ene.derivative(self.position)
+
         m = ht(power*position)
 
-        residual = d - Instrument(nonlinearity(m))
         self.N = N
         self.S = S
         self.inverter = inverter
-        t1 = S.inverse_times(position)
-        t2 = N.inverse_times(residual)
-        self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
         self.R = Instrument * nonlinearity.derivative(m) * ht * power
-        self._gradient = (t1 - self.R.adjoint_times(t2)).lock()
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
@@ -53,7 +59,7 @@ class NonlinearWienerFilterEnergy(Energy):
 
     @property
     def gradient(self):
-        return self._gradient
+        return self._gradient.adjoint(ift.Field((),1.))
 
     @property
     @memo

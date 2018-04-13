@@ -27,6 +27,8 @@ class ChainOperator(LinearOperator):
         if not _callingfrommake:
             raise NotImplementedError
         super(ChainOperator, self).__init__()
+        if len(ops) == 0:
+            raise ValueError("ops is empty")
         self._ops = ops
         self._capability = self._all_ops
         for op in ops:
@@ -64,7 +66,7 @@ class ChainOperator(LinearOperator):
                     opsnew[i] = opsnew[i]._scale(fct)
                     fct = 1.
                     break
-        if fct != 1:
+        if fct != 1 or len(opsnew) == 0:
             # have to add the scaling operator at the end
             opsnew.append(ScalingOperator(fct, lastdom))
         ops = opsnew
