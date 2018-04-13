@@ -97,5 +97,5 @@ class LineEnergy(object):
         if abs(res.imag) / max(abs(res.real), 1.) > 1e-12:
             from ..logger import logger
             logger.warning("directional derivative has non-negligible "
-                           "imaginary part:", res)
+                           "imaginary part: {}".format(res))
         return res.real
