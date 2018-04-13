@@ -124,14 +124,3 @@ class NLOp_neg(NLOp):
 
     def derivative(self, x):
         return -self._var.derivative(x)
-
-import nifty4 as ift
-
-if __name__ == '__main__':
-    s =ift.RGSpace(10)
-    op = ift.FFTOperator(s)
-    a = NLOp_var()
-
-    x=ift.Field.full(op.domain, 1.)
-    A = NLOp_vdot(a,a)
-    print A.derivative(x)(x)
