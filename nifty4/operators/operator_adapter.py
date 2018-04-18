@@ -47,7 +47,8 @@ class OperatorAdapter(LinearOperator):
         return self._op if newmode == 0 else OperatorAdapter(self._op, newmode)
 
     def apply(self, x, mode):
-        return self._op.apply(x, self._modeTable[self._trafo][self._ilog[mode]])
+        return self._op.apply(x,
+                              self._modeTable[self._trafo][self._ilog[mode]])
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         if self._trafo & self.INVERSE_BIT:

@@ -98,7 +98,8 @@ class LinearOperator(NiftyMetaBase()):
 
     def _flip_modes(self, op_transform):
         from .operator_adapter import OperatorAdapter
-        return self if op_transform == 0 else OperatorAdapter(self, op_transform)
+        return self if op_transform == 0 \
+            else OperatorAdapter(self, op_transform)
 
     @property
     def inverse(self):
