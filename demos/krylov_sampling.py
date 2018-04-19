@@ -83,8 +83,8 @@ plt.close()
 pltdict = {'alpha': .3, 'linewidth': .2}
 for i in range(N_samps):
     if i == 0:
-        plt.plot(sky(samps_old[i]).val, color='b', **pltdict, label='Traditional samples')
-        plt.plot(sky(samps[i]).val, color='r', **pltdict, label='Krylov samples')
+        plt.plot(sky(samps_old[i]).val, color='b', **pltdict, label='Traditional samples (residuals)')
+        plt.plot(sky(samps[i]).val, color='r', **pltdict, label='Krylov samples (residuals)')
     else:
         plt.plot(sky(samps_old[i]).val, color='b', **pltdict)
         plt.plot(sky(samps[i]).val, color='r', **pltdict)
