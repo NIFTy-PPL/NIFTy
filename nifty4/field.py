@@ -155,7 +155,7 @@ class Field(object):
         return Field.empty(field._domain, dtype)
 
     @staticmethod
-    def from_global_data(domain, arr):
+    def from_global_data(domain, arr, sum_up=False):
         """Returns a Field constructed from `domain` and `arr`.
 
         Parameters
@@ -165,10 +165,13 @@ class Field(object):
         arr : numpy.ndarray
             The data content to be used for the new Field.
             Its shape must match the shape of `domain`.
-            If MPI is active, the contents of `arr` must be the same on all
-            MPI tasks.
+        sum_up : bool, optional
+            If True, the contents of `arr` are summed up over all MPI tasks
+            (if any), and the sum is used as data content.
+            If False, the contens of `arr` are used directly, and must be
+            identical on all MPI tasks.
         """
-        return Field(domain, dobj.from_global_data(arr))
+        return Field(domain, dobj.from_global_data(arr, sum_up))
 
     @staticmethod
     def from_local_data(domain, arr):
