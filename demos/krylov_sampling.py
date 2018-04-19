@@ -73,7 +73,7 @@ samps_old = []
 for i in range(N_samps):
     samps_old += [curv.draw_sample(from_inverse=True)]
 
-plt.plot(d.val, 'o', label="data")
+plt.plot(d.val, '+', label="data", alpha=.5)
 plt.plot(s_x.val, label="original")
 plt.plot(m_x.val, label="reconstruction")
 plt.legend()
