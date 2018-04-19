@@ -38,7 +38,7 @@ class NonlinearWienerFilterEnergy(Energy):
         ene = 0.5 * (NLOp_vdot(pos, NLOp_Linop(S.inverse, pos)) +
                      NLOp_vdot(residual, NLOp_Linop(N.inverse, residual)))
         self._value = ene.value(self.position)
-        self._gradient = ene.derivative(self.position).adjoint(ift.Field((),1.))
+        self._gradient = ene.derivative(self.position)(ift.Field((),1.))
 
         m = ht(power*position)
 
