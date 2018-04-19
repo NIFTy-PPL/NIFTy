@@ -23,7 +23,11 @@ from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 class Yango(Minimizer):
     """ Nonlinear conjugate gradient using curvature
-
+    The YANGO (Yet Another Nonlinear conjugate Gradient Optimizer)
+    uses the curvature to make estimates about suitable descent
+    directions. It takes the step that lets it go directly to
+    the second order minimum in the subspace spanned by the last
+    descent direction and the new gradient.
 
     Parameters
     ----------
@@ -51,24 +55,29 @@ class Yango(Minimizer):
 
         p = -energy.gradient
         A_k = energy.curvature
-        
+        energy = energy.at(energy.position + p.vdot(p)/(p.vdot(A_k(p)))*p)
         while True:
-            grad_old = -energy.gradient
+            r = -energy.gradient
             f_k = energy.value
-            gamma = p.vdot(grad_old)/p.vdot(A_k(p))
-            if gamma < 0:
+            rAr = r.vdot(A_k(r))
+            pAp = p.vdot(A_k(p))
+            rAp = r.vdot(A_k(p))
+            rp = r.vdot(p)
+            rr = r.vdot(r)
+            det = pAp*rAr-(rAp)**2
+            if det <= 0:
+                print("negative determinant",det)
+                return energy, status
+            a = (rAr*rp - rAp*rr)/det
+            b = (pAp*rr - rAp*rp)/det
+            p = a/b*p+r
+            if b < 0:
                 raise ValueError("Not a descent direction?!")
-            energy, success = self._line_searcher.perform_line_search(
-                energy, p*gamma, f_k_minus_1)
-            if not success:
-                return energy, controller.ERROR
-            f_k_minus_1 = f_k
+            energy = energy.at(energy.position + p*b)
             status = self._controller.check(energy)
+            if energy.value > f_k:
+                return energy, status
+            f_k_minus_1 = f_k
             if status != controller.CONTINUE:
                 return energy, status
-            grad_new = -energy.gradient
             A_k = energy.curvature
-
-            beta = (grad_new.vdot(A_k(p)) /
-                                 p.vdot(A_k(p)))
-            p = grad_new + beta*p 
