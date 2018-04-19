@@ -55,7 +55,11 @@ class Yango(Minimizer):
 
         p = -energy.gradient
         A_k = energy.curvature
-        energy = energy.at(energy.position + p.vdot(p)/(p.vdot(A_k(p)))*p)
+        energy, success = self._line_searcher.perform_line_search(     
+                energy, p.vdot(p)/(p.vdot(A_k(p)))*p, f_k_minus_1)
+        if not success:
+            return energy, controller.ERROR
+        A_k = energy.curvature
         while True:
             r = -energy.gradient
             f_k = energy.value
@@ -73,11 +77,12 @@ class Yango(Minimizer):
             p = a/b*p+r
             if b < 0:
                 raise ValueError("Not a descent direction?!")
-            energy = energy.at(energy.position + p*b)
-            status = self._controller.check(energy)
-            if energy.value > f_k:
-                return energy, status
+            energy, success = self._line_searcher.perform_line_search(     
+                energy, p*b, f_k_minus_1)
+            if not success:
+                return energy, controller.ERROR
             f_k_minus_1 = f_k
+            status = self._controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
             A_k = energy.curvature
