@@ -35,10 +35,9 @@ minimizers = ['ift.VL_BFGS(IC)',
               'ift.NonlinearCG(IC, "5.49")',
               'ift.NewtonCG(xtol=1e-5, maxiter=1000)',
               'ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=1000)',
-              'ift.L_BFGS(IC)',
-              'ift.Yango(IC)']
+              'ift.L_BFGS(IC)']
 
-newton_minimizers = ['ift.RelaxedNewton(IC)']
+newton_minimizers = ['ift.RelaxedNewton(IC)', 'ift.Yango(IC)']
 quadratic_only_minimizers = ['ift.ConjugateGradient(IC)',
                              'ift.ScipyCG(tol=1e-5, maxiter=300)']
 slow_minimizers = ['ift.SteepestDescent(IC)']
@@ -70,7 +69,7 @@ class Test_Minimizers(unittest.TestCase):
                         1./covariance_diagonal.to_global_data(),
                         rtol=1e-3, atol=1e-3)
 
-    @expand(product(minimizers+newton_minimizers))
+    @expand(product(minimizers))
     def test_rosenbrock(self, minimizer):
         try:
             from scipy.optimize import rosen, rosen_der, rosen_hess_prod
@@ -132,6 +131,80 @@ class Test_Minimizers(unittest.TestCase):
         assert_equal(convergence, IC.CONVERGED)
         assert_allclose(energy.position.to_global_data(), 1.,
                         rtol=1e-3, atol=1e-3)
+
+    @expand(product(minimizers+newton_minimizers))
+    def test_rosenbrock_convex(self, minimizer):
+        np.random.seed(42)
+        space = ift.UnstructuredDomain((2,))
+        starting_point = ift.Field.from_random('normal', domain=space)*10
+        class RBEnergy(ift.Energy):
+            def __init__(self, position, a = 1., b= 100.):
+                super(RBEnergy, self).__init__(position)
+                self.a=a
+                self.b=b
+
+            @property
+            def value(self):
+                x = self.position.val[0]
+                y = self.position.val[1]
+                return (self.a-x)*(self.a-x)+self.b*(y-x*x)*(y-x*x)
+
+            @property
+            def gradient(self):
+                x = self.position.val[0]
+                y = self.position.val[1]
+                res = ift.Field.zeros(space)
+                res.val[0] = -2*(self.a-x)-4*self.b*x*(y-x*x)
+                res.val[1] = 2*self.b*(y-x*x)
+                return res
+
+            @property
+            def curvature(self):
+                class RBCurv(ift.EndomorphicOperator):
+                    def __init__(self, loc, a, b):
+                        self._x = loc.val[0]
+                        self._y = loc.val[1]
+                        self.a = a
+                        self.b = b
+
+                    @property
+                    def domain(self):
+                        return space
+
+                    @property
+                    def capability(self):
+                        return self.TIMES
+
+                    def apply(self, x, mode):
+                        x = x.val
+                        res = ift.Field.zeros(space)
+                        res.val[0] = (2+self.b*8*self._x**2)*x[0]
+                        res.val[0] -= self.b*4*self._x*x[1]
+                        res.val[1] = -self.b*4*self._x*x[0]
+                        res.val[1] += 2*self.b*x[1]
+                        return res
+                t1 = ift.GradientNormController(tol_abs_gradnorm=1e-5,
+                                                iteration_limit=1000)
+                t2 = ift.ConjugateGradient(controller=t1)
+                return ift.InversionEnabler(RBCurv(self._position, self.a, self.b),
+                                            inverter=t2)
+
+        energy = RBEnergy(position=starting_point)
+        try:
+            minimizer = eval(minimizer)
+            energy = RBEnergy(position=starting_point)
+
+            (energy, convergence) = minimizer(energy)
+        except NotImplementedError:
+            raise SkipTest
+
+        assert_equal(convergence, IC.CONVERGED)
+        assert_allclose(energy.position.to_global_data(), 1.,
+                        rtol=1e-3, atol=1e-3)
+
+
+
+
 
     @expand(product(minimizers+slow_minimizers))
     def test_gauss(self, minimizer):

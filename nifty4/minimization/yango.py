@@ -68,15 +68,23 @@ class Yango(Minimizer):
             rAp = r.vdot(A_k(p))
             rp = r.vdot(p)
             rr = r.vdot(r)
+            if rr == 0 or rAr == 0:
+                print("gradient norm 0, assuming convergence!")
+                return energy, controller.CONVERGED
             det = pAp*rAr-(rAp)**2
-            if det <= 0:
+            if det < 0:
                 print("negative determinant",det)
                 return energy, status
-            a = (rAr*rp - rAp*rr)/det
-            b = (pAp*rr - rAp*rp)/det
-            p = a/b*p+r
-            energy, success = self._line_searcher.perform_line_search(     
-                energy, p*b, f_k_minus_1)
+            if det == 0:
+                #Try 1D Newton Step
+                energy, success = self._line_searcher.perform_line_search(     
+                    energy, rr/rAr*r, f_k_minus_1)
+            else:
+                a = (rAr*rp - rAp*rr)/det
+                b = (pAp*rr - rAp*rp)/det
+                p = a/b*p+r
+                energy, success = self._line_searcher.perform_line_search(     
+                    energy, p*b, f_k_minus_1)
             if not success:
                 return energy, controller.ERROR
             f_k_minus_1 = f_k
