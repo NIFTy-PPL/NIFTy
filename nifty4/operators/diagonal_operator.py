@@ -158,20 +158,23 @@ class DiagonalOperator(EndomorphicOperator):
     def capability(self):
         return self._all_ops
 
-    def _flip_modes(self, mode):
-        if mode == 0:
+    def _flip_modes(self, trafo):
+        ADJ = self.ADJOINT_BIT
+        INV = self.INVERSE_BIT
+
+        if trafo == 0:
             return self
-        if mode == 1 and np.issubdtype(self._ldiag.dtype, np.floating):
+        if trafo == ADJ and np.issubdtype(self._ldiag.dtype, np.floating):
             return self
         res = self._skeleton(())
-        if mode == 1:
+        if trafo == ADJ:
             res._ldiag = self._ldiag.conjugate()
-        elif mode == 2:
+        elif trafo == INV:
             res._ldiag = 1./self._ldiag
-        elif mode == 3:
+        elif trafo == ADJ | INV:
             res._ldiag = 1./self._ldiag.conjugate()
         else:
-            raise ValueError("bad operator flipping mode")
+            raise ValueError("invalid operator transformation")
         return res
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):

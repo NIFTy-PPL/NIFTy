@@ -96,10 +96,9 @@ class LinearOperator(NiftyMetaBase()):
             The domain on which the Operator's output Field lives."""
         raise NotImplementedError
 
-    def _flip_modes(self, op_transform):
+    def _flip_modes(self, trafo):
         from .operator_adapter import OperatorAdapter
-        return self if op_transform == 0 \
-            else OperatorAdapter(self, op_transform)
+        return self if trafo == 0 else OperatorAdapter(self, trafo)
 
     @property
     def inverse(self):

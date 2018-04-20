@@ -96,15 +96,18 @@ class ChainOperator(LinearOperator):
     def target(self):
         return self._ops[0].target
 
-    def _flip_modes(self, mode):
-        if mode == 0:
+    def _flip_modes(self, trafo):
+        ADJ = self.ADJOINT_BIT
+        INV = self.INVERSE_BIT
+
+        if trafo == 0:
             return self
-        if mode == 1 or mode == 2:
-            return self.make([op._flip_modes(mode)
+        if trafo == ADJ or trafo == INV:
+            return self.make([op._flip_modes(trafo)
                               for op in reversed(self._ops)])
-        if mode == 3:
-            return self.make([op._flip_modes(mode) for op in self._ops])
-        raise ValueError("bad operator flipping mode")
+        if trafo == ADJ | INV:
+            return self.make([op._flip_modes(trafo) for op in self._ops])
+        raise ValueError("invalid operator transformation")
 
     @property
     def capability(self):

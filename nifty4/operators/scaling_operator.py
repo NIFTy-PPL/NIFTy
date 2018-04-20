@@ -72,18 +72,21 @@ class ScalingOperator(EndomorphicOperator):
         else:
             return x*(1./np.conj(self._factor))
 
-    def _flip_modes(self, mode):
-        if mode == 0:
+    def _flip_modes(self, trafo):
+        ADJ = self.ADJOINT_BIT
+        INV = self.INVERSE_BIT
+
+        if trafo == 0:
             return self
-        if mode == 1 and np.issubdtype(type(self._factor), np.floating):
+        if trafo == ADJ and np.issubdtype(type(self._factor), np.floating):
             return self
-        if mode == 1:
+        if trafo == ADJ:
             return ScalingOperator(np.conj(self._factor), self._domain)
-        elif mode == 2:
+        elif trafo == INV:
             return ScalingOperator(1./self._factor, self._domain)
-        elif mode == 3:
+        elif trafo == ADJ | INV:
             return ScalingOperator(1./np.conj(self._factor), self._domain)
-        raise ValueError("bad operator flipping mode")
+        raise ValueError("invalid operator transformation")
 
     @property
     def domain(self):
