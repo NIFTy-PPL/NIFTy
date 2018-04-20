@@ -16,12 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from  numpy.random import randn
 from numpy import sqrt
-from ..field import Field
+from numpy.random import randn
 
 
-def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10):
+def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10, name=None):
     """
     Generates inverse samples from a curvature D
     This algorithm iteratively generates samples from
@@ -40,7 +39,7 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10):
         A Field to which the inverse of D_inv is applied. The solution
         of this matrix inversion problem is a side product of generating
         the samples.
-        If not supplied, it is sampled from the prior.
+        If not supplied, it is sampled from the inverse prior.
     N_samps : Int, optional
         How many samples to generate. Default: 1
     N_iter : Int, optional
@@ -50,13 +49,12 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10):
     -------
     (solution, samples) : A tuple of a field 'solution' and a list of fields
         'samples'. The first entry of the tuple is the solution x to
-            D_inv(x) = j 
+            D_inv(x) = j
         and the second entry are a list of samples from D_inv.inverse
     """
-    if j == None:
-        j = S.draw_sample()
-    space = D_inv.domain
-    x = Field.zeros(space)
+    if j is None:
+        j = S.draw_sample(from_inverse=True)
+    x = S.draw_sample()
     r = j.copy()
     p = r.copy()
     d = p.vdot(D_inv(p))
@@ -78,5 +76,6 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10):
         d = p.vdot(D_inv(p))
         if d == 0.:
             break
+        if name is not None:
+            print('{}: Iteration #{}'.format(name, k))
     return x, y
-
