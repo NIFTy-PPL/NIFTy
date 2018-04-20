@@ -75,8 +75,6 @@ class Yango(Minimizer):
             a = (rAr*rp - rAp*rr)/det
             b = (pAp*rr - rAp*rp)/det
             p = a/b*p+r
-            if b < 0:
-                raise ValueError("Not a descent direction?!")
             energy, success = self._line_searcher.perform_line_search(     
                 energy, p*b, f_k_minus_1)
             if not success:
