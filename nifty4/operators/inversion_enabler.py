@@ -74,7 +74,7 @@ class InversionEnabler(EndomorphicOperator):
         prec = self._approximation
         if prec is not None:
             prec = prec._flip_modes(self._ilog[mode])
-        energy = QuadraticEnergy(A=invop, b=x, position=x0)
+        energy = QuadraticEnergy(x0, invop, x)
         r, stat = self._inverter(energy, preconditioner=prec)
         if stat != IterationController.CONVERGED:
             logger.warning("Error detected during operator inversion")

@@ -16,12 +16,12 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from numpy import sqrt
-from numpy.random import randn
+import numpy as np
+from ..field import Field
+from ..minimization.quadratic_energy import QuadraticEnergy
 
 
-def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
-                            name=None):
+def generate_krylov_samples(D_inv, S, j, N_samps, controller):
     """
     Generates inverse samples from a curvature D.
     This algorithm iteratively generates samples from
@@ -41,10 +41,10 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
         of this matrix inversion problem is a side product of generating
         the samples.
         If not supplied, it is sampled from the inverse prior.
-    N_samps : Int, optional
-        How many samples to generate. Default: 1
-    N_iter : Int, optional
-        How many iterations of the conjugate gradient to run. Default: 10
+    N_samps : Int
+        How many samples to generate.
+    controller : IterationController
+        convergence controller for the conjugate gradient iteration
 
     Returns
     -------
@@ -54,19 +54,30 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
         and the second entry are a list of samples from D_inv.inverse
     """
     j = S.draw_sample(from_inverse=True) if j is None else j
-    x = j*0
+    x = Field.full(D_inv.domain, 0.)
+    energy = QuadraticEnergy(x, D_inv, j)
+    y = [S.draw_sample() for _ in range(N_samps)]
+
+    status = controller.start(energy)
+    if status != controller.CONTINUE:
+        return x, y
+
     r = j.copy()
     p = r.copy()
     d = p.vdot(D_inv(p))
     y = [S.draw_sample() for _ in range(N_samps)]
-    for k in range(1, 1+N_iter):
+    while True:
         gamma = r.vdot(r)/d
         if gamma == 0.:
             break
-        x += gamma*p
-        for i in range(N_samps):
-            y[i] -= p.vdot(D_inv(y[i])) * p / d
-            y[i] += randn() / sqrt(d) * p
+        x = x + gamma*p
+        for samp in y:
+            samp -= p.vdot(D_inv(samp)) * p / d
+            samp += np.random.randn() / np.sqrt(d) * p
+        energy = energy.at(x)
+        status = controller.check(energy)
+        if status != controller.CONTINUE:
+            return x, y
         r_new = r - gamma * D_inv(p)
         beta = r_new.vdot(r_new) / r.vdot(r)
         r = r_new
@@ -74,6 +85,4 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
         d = p.vdot(D_inv(p))
         if d == 0.:
             break
-        if name is not None:
-            print('{}: Iteration #{}'.format(name, k))
     return x, y
