@@ -101,8 +101,7 @@ class FFTOperator(LinearOperator):
             rem_axes = tuple(i for i in axes if i != oldax)
             tmp = x.val
             ldat = dobj.local_data(tmp)
-            ldat = utilities.my_fftn_r2c(ldat, axes=rem_axes,
-                                         threads=utilities.nthreads())
+            ldat = utilities.my_fftn_r2c(ldat, axes=rem_axes)
             if oldax != 0:
                 raise ValueError("bad distribution")
             ldat2 = ldat.reshape((ldat.shape[0],
