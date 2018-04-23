@@ -30,46 +30,12 @@ d = R(s_x) + n
 
 R_p = R * FFT * A
 j = R_p.adjoint(N.inverse(d))
-D_inv = R_p.adjoint * N.inverse * R_p + S.inverse
-
-history = []
-
-
-def sample(D_inv, S, j,  N_samps, N_iter):
-    global history
-    space = D_inv.domain
-    x = ift.Field.zeros(space)
-    r = j.copy()
-    p = r.copy()
-    d = p.vdot(D_inv(p))
-    y = []
-    for i in range(N_samps):
-        y += [S.draw_sample()]
-    for k in range(1, 1 + N_iter):
-        history += [y[0].copy()]
-        gamma = r.vdot(r) / d
-        if gamma == 0.:
-            break
-        x += gamma * p
-        #print(p.vdot(D_inv(j)))
-        for i in range(N_samps):
-            y[i] -= p.vdot(D_inv(y[i])) * p / d
-            y[i] += np.random.randn() / np.sqrt(d) * p
-        print("variance iteration "+str(k)+":", np.sqrt(p.vdot(p)/d))
-        #r_new = j - D_inv(x)
-        r_new = r - gamma * D_inv(p)
-        beta = r_new.vdot(r_new) / (r.vdot(r))
-        r = r_new
-        p = r + beta * p
-        d = p.vdot(D_inv(p))
-        if d == 0.:
-            break
-    return x, y
+D_inv = ift.SandwichOperator(R_p, N.inverse) + S.inverse
 
 
 N_samps = 200
 N_iter = 10
-m, samps = sample(D_inv, S, j, N_samps, N_iter)
+m, samps = ift.library.generate_krylov_samples(D_inv, S, j, N_samps, N_iter)
 m_x = sky(m)
 IC = ift.GradientNormController(iteration_limit=N_iter)
 inverter = ift.ConjugateGradient(IC)
@@ -117,9 +83,3 @@ plt.legend()
 plt.savefig('Krylov_uncertainty.png')
 plt.close()
 
-for i in range(min(6, len(history))):
-    plt.plot(sky(history[i]).val, label="step " + str(i+1))
-plt.plot(s_x.val-m_x.val, 'k-', label="residual")
-plt.legend()
-plt.savefig('iterations.png')
-plt.close()
