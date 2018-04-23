@@ -63,6 +63,7 @@ class FFTOperator(LinearOperator):
 
         import pyfftw
         pyfftw.interfaces.cache.enable()
+        pyfftw.interfaces.cache.set_keepalive_time(1000.)
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -100,7 +101,8 @@ class FFTOperator(LinearOperator):
             rem_axes = tuple(i for i in axes if i != oldax)
             tmp = x.val
             ldat = dobj.local_data(tmp)
-            ldat = utilities.my_fftn_r2c(ldat, axes=rem_axes)
+            ldat = utilities.my_fftn_r2c(ldat, axes=rem_axes,
+                                         threads=utilities.nthreads())
             if oldax != 0:
                 raise ValueError("bad distribution")
             ldat2 = ldat.reshape((ldat.shape[0],
