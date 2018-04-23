@@ -32,7 +32,7 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
     ----------
     D_inv : EndomorphicOperator
         The curvature which will be the inverse of the covarianc
-        of the generated samples 
+        of the generated samples
     S : EndomorphicOperator (from which one can sample)
         A prior covariance operator which is used to generate prior
         samples that are then iteratively updated

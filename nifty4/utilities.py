@@ -164,9 +164,8 @@ def nthreads():
     if nthreads._val is None:
         import os
         nthreads._val = int(os.getenv("OMP_NUM_THREADS", "1"))
-        print("value=",nthreads._val)
     return nthreads._val
-nthreads._val=None
+nthreads._val = None
 
 
 def hartley(a, axes=None):
