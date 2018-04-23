@@ -20,9 +20,10 @@ from numpy import sqrt
 from numpy.random import randn
 
 
-def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10, name=None):
+def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
+                            name=None):
     """
-    Generates inverse samples from a curvature D
+    Generates inverse samples from a curvature D.
     This algorithm iteratively generates samples from
     a curvature D by applying conjugate gradient steps
     and resampling the curvature in search direction.
@@ -52,25 +53,22 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10, name=None):
             D_inv(x) = j
         and the second entry are a list of samples from D_inv.inverse
     """
-    if j is None:
-        j = S.draw_sample(from_inverse=True)
+    j = S.draw_sample(from_inverse=True) if j is None else j
     x = S.draw_sample()
     r = j.copy()
     p = r.copy()
     d = p.vdot(D_inv(p))
-    y = []
-    for i in range(N_samps):
-        y += [S.draw_sample()]
-    for k in range(1, 1 + N_iter):
-        gamma = r.vdot(r) / d
+    y = [S.draw_sample() for _ in range(N_samps)]
+    for k in range(1, 1+N_iter):
+        gamma = r.vdot(r)/d
         if gamma == 0.:
             break
-        x += gamma * p
+        x += gamma*p
         for i in range(N_samps):
             y[i] -= p.vdot(D_inv(y[i])) * p / d
             y[i] += randn() / sqrt(d) * p
         r_new = r - gamma * D_inv(p)
-        beta = r_new.vdot(r_new) / (r.vdot(r))
+        beta = r_new.vdot(r_new) / r.vdot(r)
         r = r_new
         p = r + beta * p
         d = p.vdot(D_inv(p))

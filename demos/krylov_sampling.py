@@ -34,6 +34,7 @@ D_inv = R_p.adjoint * N.inverse * R_p + S.inverse
 
 history = []
 
+
 def sample(D_inv, S, j,  N_samps, N_iter):
     global history
     space = D_inv.domain
@@ -87,8 +88,12 @@ plt.close()
 pltdict = {'alpha': .3, 'linewidth': .2}
 for i in range(N_samps):
     if i == 0:
-        plt.plot(sky(samps_old[i]).val, color='b', **pltdict, label='Traditional samples (residuals)')
-        plt.plot(sky(samps[i]).val, color='r', **pltdict, label='Krylov samples (residuals)')
+        plt.plot(sky(samps_old[i]).val, color='b',
+                 label='Traditional samples (residuals)',
+                 **pltdict)
+        plt.plot(sky(samps[i]).val, color='r',
+                 label='Krylov samples (residuals)',
+                 **pltdict)
     else:
         plt.plot(sky(samps_old[i]).val, color='b', **pltdict)
         plt.plot(sky(samps[i]).val, color='r', **pltdict)
@@ -105,7 +110,8 @@ for i in range(N_samps):
 plt.plot(np.sqrt(D_hat_old / N_samps), 'r--', label='Traditional uncertainty')
 plt.plot(-np.sqrt(D_hat_old / N_samps), 'r--')
 plt.fill_between(range(len(D_hat_new)), -np.sqrt(D_hat_new / N_samps), np.sqrt(
-    D_hat_new / N_samps), facecolor='0.5', alpha=0.5, label='Krylov unvertainty')
+    D_hat_new / N_samps), facecolor='0.5', alpha=0.5,
+    label='Krylov uncertainty')
 plt.plot((s_x - m_x).val, color='k', label='signal - mean')
 plt.legend()
 plt.savefig('Krylov_uncertainty.png')
