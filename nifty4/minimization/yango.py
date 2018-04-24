@@ -18,6 +18,7 @@
 
 from __future__ import division
 from .minimizer import Minimizer
+from ..logger import logger
 from .line_search_strong_wolfe import LineSearchStrongWolfe
 import numpy as np
 
@@ -43,7 +44,8 @@ class Yango(Minimizer):
     ----------
     """
 
-    def __init__(self, controller, line_searcher = LineSearchStrongWolfe(c2=0.1)):
+    def __init__(self, controller,
+                 line_searcher=LineSearchStrongWolfe(c2=0.1)):
         self._controller = controller
         self._line_searcher = line_searcher
 
@@ -56,8 +58,8 @@ class Yango(Minimizer):
 
         p = -energy.gradient
         A_k = energy.curvature
-        energy, success = self._line_searcher.perform_line_search(     
-                energy, p.vdot(p)/(p.vdot(A_k(p)))*p, f_k_minus_1)
+        energy, success = self._line_searcher.perform_line_search(
+            energy, p.vdot(p)/(p.vdot(A_k(p)))*p, f_k_minus_1)
         if not success:
             return energy, controller.ERROR
         A_k = energy.curvature
@@ -73,21 +75,23 @@ class Yango(Minimizer):
             rp = r.vdot(p)
             rr = r.vdot(r)
             if rr == 0 or rAr == 0:
-                print("gradient norm 0, assuming convergence!")
+                logger.warning(
+                    "Warning: gradient norm 0, assuming convergence!")
                 return energy, controller.CONVERGED
             det = pAp*rAr-np.abs((rAp)*(pAr))
             if det < 0:
-                print("negative determinant",det)
-                return energy, status
+                logger.error(
+                    "Error: negative determinant ({})".format(det))
+                return energy, controller.ERROR
             if det == 0:
-                #Try 1D Newton Step
-                energy, success = self._line_searcher.perform_line_search(     
+                # Try 1D Newton Step
+                energy, success = self._line_searcher.perform_line_search(
                     energy, rr/rAr*r, f_k_minus_1)
             else:
                 a = (rAr*rp - rAp*rr)/det
                 b = (pAp*rr - pAr*rp)/det
                 p = a/b*p+r
-                energy, success = self._line_searcher.perform_line_search(     
+                energy, success = self._line_searcher.perform_line_search(
                     energy, p*b, f_k_minus_1)
             if not success:
                 return energy, controller.ERROR
