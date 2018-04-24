@@ -53,6 +53,7 @@ def generate_krylov_samples(D_inv, S, j, N_samps, controller):
         and the second entry are a list of samples from D_inv.inverse
     """
     # MR FIXME: this should be synchronized with the "official" Nifty CG
+    # RL FIXME: make consistent with complex numbers
     j = S.draw_sample(from_inverse=True) if j is None else j
     x = j*0.
     energy = QuadraticEnergy(x, D_inv, j)
@@ -66,13 +67,13 @@ def generate_krylov_samples(D_inv, S, j, N_samps, controller):
     p = r.copy()
     d = p.vdot(D_inv(p))
     while True:
-        gamma = r.vdot(r)/d
+        gamma = r.vdot(r) / d
         if gamma == 0.:
             break
         x = x + gamma*p
         Dip = D_inv(p)
         for samp in y:
-            samp += (randn() * sqrt(d) - samp.vdot(Dip)) / d * p
+            samp += (np.random.randn() * np.sqrt(d) - samp.vdot(Dip)) / d * p
         energy = energy.at(x)
         status = controller.check(energy)
         if status != controller.CONTINUE:
