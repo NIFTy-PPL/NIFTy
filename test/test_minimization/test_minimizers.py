@@ -137,33 +137,30 @@ class Test_Minimizers(unittest.TestCase):
         np.random.seed(42)
         space = ift.UnstructuredDomain((2,))
         starting_point = ift.Field.from_random('normal', domain=space)*10
+
         class RBEnergy(ift.Energy):
-            def __init__(self, position, a = 1., b= 100.):
+            def __init__(self, position, a=1., b=100.):
                 super(RBEnergy, self).__init__(position)
-                self.a=a
-                self.b=b
+                self.a = a
+                self.b = b
 
             @property
             def value(self):
-                x = self.position.val[0]
-                y = self.position.val[1]
+                x, y = self.position.to_global_data()
                 return (self.a-x)*(self.a-x)+self.b*(y-x*x)*(y-x*x)
 
             @property
             def gradient(self):
-                x = self.position.val[0]
-                y = self.position.val[1]
-                res = ift.Field.zeros(space)
-                res.val[0] = -2*(self.a-x)-4*self.b*x*(y-x*x)
-                res.val[1] = 2*self.b*(y-x*x)
-                return res
+                x, y = self.position.to_global_data()
+                r0 = -2*(self.a-x)-4*self.b*x*(y-x*x)
+                r1 = 2*self.b*(y-x*x)
+                return ift.Field.from_global_data(space, np.array([r0, r1]))
 
             @property
             def curvature(self):
                 class RBCurv(ift.EndomorphicOperator):
                     def __init__(self, loc, a, b):
-                        self._x = loc.val[0]
-                        self._y = loc.val[1]
+                        self._x, self._y = loc.to_global_data()
                         self.a = a
                         self.b = b
 
@@ -176,18 +173,18 @@ class Test_Minimizers(unittest.TestCase):
                         return self.TIMES
 
                     def apply(self, x, mode):
-                        x = x.val
-                        res = ift.Field.zeros(space)
-                        res.val[0] = (2+self.b*8*self._x**2)*x[0]
-                        res.val[0] -= self.b*4*self._x*x[1]
-                        res.val[1] = -self.b*4*self._x*x[0]
-                        res.val[1] += 2*self.b*x[1]
-                        return res
+                        x = x.to_global_data()
+                        r0 = (2+self.b*8*self._x**2)*x[0]
+                        r0 -= self.b*4*self._x*x[1]
+                        r1 = -self.b*4*self._x*x[0]
+                        r1 += 2*self.b*x[1]
+                        return ift.Field.from_global_data(space,
+                                                          np.array([r0, r1]))
                 t1 = ift.GradientNormController(tol_abs_gradnorm=1e-5,
                                                 iteration_limit=1000)
                 t2 = ift.ConjugateGradient(controller=t1)
-                return ift.InversionEnabler(RBCurv(self._position, self.a, self.b),
-                                            inverter=t2)
+                return ift.InversionEnabler(
+                    RBCurv(self._position, self.a, self.b), inverter=t2)
 
         energy = RBEnergy(position=starting_point)
         try:
@@ -201,10 +198,6 @@ class Test_Minimizers(unittest.TestCase):
         assert_equal(convergence, IC.CONVERGED)
         assert_allclose(energy.position.to_global_data(), 1.,
                         rtol=1e-3, atol=1e-3)
-
-
-
-
 
     @expand(product(minimizers+slow_minimizers))
     def test_gauss(self, minimizer):
