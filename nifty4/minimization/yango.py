@@ -19,6 +19,7 @@
 from __future__ import division
 from .minimizer import Minimizer
 from .line_search_strong_wolfe import LineSearchStrongWolfe
+import numpy as np
 
 
 class Yango(Minimizer):
@@ -63,15 +64,18 @@ class Yango(Minimizer):
         while True:
             r = -energy.gradient
             f_k = energy.value
-            rAr = r.vdot(A_k(r))
-            pAp = p.vdot(A_k(p))
-            rAp = r.vdot(A_k(p))
+            Ar = A_k(r)
+            Ap = A_k(p)
+            rAr = r.vdot(Ar)
+            pAp = p.vdot(Ap)
+            pAr = p.vdot(Ar)
+            rAp = r.vdot(Ap)
             rp = r.vdot(p)
             rr = r.vdot(r)
             if rr == 0 or rAr == 0:
                 print("gradient norm 0, assuming convergence!")
                 return energy, controller.CONVERGED
-            det = pAp*rAr-(rAp)**2
+            det = pAp*rAr-np.abs((rAp)*(pAr))
             if det < 0:
                 print("negative determinant",det)
                 return energy, status
@@ -81,7 +85,7 @@ class Yango(Minimizer):
                     energy, rr/rAr*r, f_k_minus_1)
             else:
                 a = (rAr*rp - rAp*rr)/det
-                b = (pAp*rr - rAp*rp)/det
+                b = (pAp*rr - pAr*rp)/det
                 p = a/b*p+r
                 energy, success = self._line_searcher.perform_line_search(     
                     energy, p*b, f_k_minus_1)
