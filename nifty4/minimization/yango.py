@@ -78,7 +78,7 @@ class Yango(Minimizer):
                 logger.warning(
                     "Warning: gradient norm 0, assuming convergence!")
                 return energy, controller.CONVERGED
-            det = pAp*rAr-np.abs((rAp)*(pAr))
+            det = pAp*rAr-np.abs(rAp*pAr)
             if det < 0:
                 logger.error(
                     "Error: negative determinant ({})".format(det))
