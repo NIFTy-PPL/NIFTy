@@ -393,7 +393,9 @@ def from_local_data(shape, arr, distaxis=0):
     return data_object(shape, arr, distaxis)
 
 
-def from_global_data(arr, distaxis=0):
+def from_global_data(arr, sum_up=False, distaxis=0):
+    if sum_up:
+        arr = np_allreduce_sum(arr)
     if distaxis == -1:
         return data_object(arr.shape, arr, distaxis)
     lo, hi = _shareRange(arr.shape[distaxis], ntask, rank)
@@ -427,7 +429,7 @@ def redistribute(arr, dist=None, nodist=None):
                 break
 
     if arr._distaxis == -1:  # all data available, just pick the proper subset
-        return from_global_data(arr._data, dist)
+        return from_global_data(arr._data, distaxis=dist)
     if dist == -1:  # gather all data on all tasks
         tmp = np.moveaxis(arr._data, arr._distaxis, 0)
         slabsize = np.prod(tmp.shape[1:])*tmp.itemsize

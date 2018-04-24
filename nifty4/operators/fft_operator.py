@@ -63,6 +63,7 @@ class FFTOperator(LinearOperator):
 
         import pyfftw
         pyfftw.interfaces.cache.enable()
+        pyfftw.interfaces.cache.set_keepalive_time(1000.)
 
     def apply(self, x, mode):
         self._check_input(x, mode)

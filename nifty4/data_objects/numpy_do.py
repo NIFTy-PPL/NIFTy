@@ -80,7 +80,7 @@ def from_local_data(shape, arr, distaxis=-1):
     return arr
 
 
-def from_global_data(arr, distaxis=-1):
+def from_global_data(arr, sum_up=False, distaxis=-1):
     return arr
 
 

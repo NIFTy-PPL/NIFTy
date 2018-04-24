@@ -160,6 +160,14 @@ def NiftyMetaBase():
     return with_metaclass(NiftyMeta, type('NewBase', (object,), {}))
 
 
+def nthreads():
+    if nthreads._val is None:
+        import os
+        nthreads._val = int(os.getenv("OMP_NUM_THREADS", "1"))
+    return nthreads._val
+nthreads._val = None
+
+
 def hartley(a, axes=None):
     # Check if the axes provided are valid given the shape
     if axes is not None and \
@@ -169,7 +177,7 @@ def hartley(a, axes=None):
         raise TypeError("Hartley transform requires real-valued arrays.")
 
     from pyfftw.interfaces.numpy_fft import rfftn
-    tmp = rfftn(a, axes=axes)
+    tmp = rfftn(a, axes=axes, threads=nthreads())
 
     def _fill_array(tmp, res, axes):
         if axes is None:
@@ -211,7 +219,7 @@ def my_fftn_r2c(a, axes=None):
         raise TypeError("Transform requires real-valued input arrays.")
 
     from pyfftw.interfaces.numpy_fft import rfftn
-    tmp = rfftn(a, axes=axes)
+    tmp = rfftn(a, axes=axes, threads=nthreads())
 
     def _fill_complex_array(tmp, res, axes):
         if axes is None:
