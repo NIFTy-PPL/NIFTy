@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from ..field import Field
 from ..minimization.quadratic_energy import QuadraticEnergy
 
 
