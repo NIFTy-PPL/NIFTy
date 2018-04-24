@@ -16,12 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from numpy import sqrt
-from numpy.random import randn
+import numpy as np
+from ..minimization.quadratic_energy import QuadraticEnergy
 
 
-def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
-                            name=None):
+def generate_krylov_samples(D_inv, S, j, N_samps, controller):
     """
     Generates inverse samples from a curvature D.
     This algorithm iteratively generates samples from
@@ -32,7 +31,7 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
     ----------
     D_inv : EndomorphicOperator
         The curvature which will be the inverse of the covarianc
-        of the generated samples 
+        of the generated samples
     S : EndomorphicOperator (from which one can sample)
         A prior covariance operator which is used to generate prior
         samples that are then iteratively updated
@@ -41,10 +40,10 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
         of this matrix inversion problem is a side product of generating
         the samples.
         If not supplied, it is sampled from the inverse prior.
-    N_samps : Int, optional
-        How many samples to generate. Default: 1
-    N_iter : Int, optional
-        How many iterations of the conjugate gradient to run. Default: 10
+    N_samps : Int
+        How many samples to generate.
+    controller : IterationController
+        convergence controller for the conjugate gradient iteration
 
     Returns
     -------
@@ -53,26 +52,36 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
             D_inv(x) = j
         and the second entry are a list of samples from D_inv.inverse
     """
+    # MR FIXME: this should be synchronized with the "official" Nifty CG
     j = S.draw_sample(from_inverse=True) if j is None else j
-    x = j*0
+    x = j*0.
+    energy = QuadraticEnergy(x, D_inv, j)
+    y = [S.draw_sample() for _ in range(N_samps)]
+
+    status = controller.start(energy)
+    if status != controller.CONTINUE:
+        return x, y
+
     r = j.copy()
     p = r.copy()
     d = p.vdot(D_inv(p))
-    y = [S.draw_sample() for _ in range(N_samps)]
-    for k in range(1, 1+N_iter):
+    while True:
         gamma = r.vdot(r)/d
         if gamma == 0.:
             break
-        x += gamma*p
-        for i in range(N_samps):
-            y[i] += (randn() * sqrt(d) - p.vdot(D_inv(y[i]))) / d * p
-        r_new = r - gamma * D_inv(p)
+        x = x + gamma*p
+        Dip = D_inv(p)
+        for samp in y:
+            samp += (randn() * sqrt(d) - samp.vdot(Dip)) / d * p
+        energy = energy.at(x)
+        status = controller.check(energy)
+        if status != controller.CONTINUE:
+            return x, y
+        r_new = r - gamma * Dip
         beta = r_new.vdot(r_new) / r.vdot(r)
         r = r_new
         p = r + beta * p
-        d = p.vdot(D_inv(p))
+        d = p.vdot(Dip)
         if d == 0.:
             break
-        if name is not None:
-            print('{}: Iteration #{}'.format(name, k))
     return x, y
