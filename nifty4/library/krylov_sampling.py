@@ -55,7 +55,7 @@ def generate_krylov_samples(D_inv, S, j, N_samps, controller):
     """
     # MR FIXME: this should be synchronized with the "official" Nifty CG
     j = S.draw_sample(from_inverse=True) if j is None else j
-    x = Field.full(D_inv.domain, 0.)
+    x = j*0.
     energy = QuadraticEnergy(x, D_inv, j)
     y = [S.draw_sample() for _ in range(N_samps)]
 
