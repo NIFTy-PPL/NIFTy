@@ -65,13 +65,13 @@ def generate_krylov_samples(D_inv, S, j, N_samps, controller):
 
     r = j.copy()
     p = r.copy()
-    d = p.vdot(D_inv(p))
+    Dip = D_inv(p)
+    d = p.vdot(Dip)
     while True:
         gamma = r.vdot(r) / d
         if gamma == 0.:
             break
         x = x + gamma*p
-        Dip = D_inv(p)
         for samp in y:
             samp += (np.random.randn() * np.sqrt(d) - samp.vdot(Dip)) / d * p
         energy = energy.at(x)
@@ -82,6 +82,7 @@ def generate_krylov_samples(D_inv, S, j, N_samps, controller):
         beta = r_new.vdot(r_new) / r.vdot(r)
         r = r_new
         p = r + beta * p
+        Dip = D_inv(p)
         d = p.vdot(Dip)
         if d == 0.:
             break
