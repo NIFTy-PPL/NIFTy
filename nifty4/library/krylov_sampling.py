@@ -65,8 +65,7 @@ def generate_krylov_samples(D_inv, S, j=None,  N_samps=1, N_iter=10,
             break
         x += gamma*p
         for i in range(N_samps):
-            y[i] -= p.vdot(D_inv(y[i])) * p / d
-            y[i] += randn() / sqrt(d) * p
+            y[i] += (randn() * sqrt(d) - p.vdot(D_inv(y[i]))) / d * p
         r_new = r - gamma * D_inv(p)
         beta = r_new.vdot(r_new) / r.vdot(r)
         r = r_new
