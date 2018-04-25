@@ -80,8 +80,8 @@ def generate_krylov_samples(D_inv, S, j, N_samps, controller):
             logger.error("Error: ConjugateGradient: alpha<0.")
             return energy.position, y
 
-        for samp in y:
-            samp += (np.random.randn()*np.sqrt(ddotq) - samp.vdot(q))/ddotq * d
+        for i in range(len(y)):
+            y[i] += (np.random.randn()*np.sqrt(ddotq) - y[i].vdot(q))/ddotq * d
 
         q *= -alpha
         r = r + q
