@@ -28,7 +28,7 @@ class OperatorAdapter(LinearOperator):
         self._op = op
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
-            raise ValueError("invalid mode")
+            raise ValueError("invalid operator transformation")
 
     @property
     def domain(self):
@@ -42,9 +42,10 @@ class OperatorAdapter(LinearOperator):
     def capability(self):
         return self._capTable[self._trafo][self._op.capability]
 
-    def _flip_modes(self, op_transform):
-        newmode = op_transform ^ self._trafo
-        return self._op if newmode == 0 else OperatorAdapter(self._op, newmode)
+    def _flip_modes(self, trafo):
+        newtrafo = trafo ^ self._trafo
+        return self._op if newtrafo == 0 \
+            else OperatorAdapter(self._op, newtrafo)
 
     def apply(self, x, mode):
         return self._op.apply(x,
