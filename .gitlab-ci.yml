@@ -26,16 +26,12 @@ test_python2_mpi:
   script:
     - python setup.py install --user -f
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2> /dev/null
-  only:
-  - NIFTy_4
 
 test_python3_mpi:
   stage: test
   script:
     - python3 setup.py install --user -f
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2> /dev/null
-  only:
-  - NIFTy_4
 
 pages:
   stage: release
