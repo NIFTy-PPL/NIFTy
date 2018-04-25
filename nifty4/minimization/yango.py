@@ -23,6 +23,9 @@ from .line_search_strong_wolfe import LineSearchStrongWolfe
 import numpy as np
 
 
+_default_LS = LineSearchStrongWolfe(c2=0.1, preferred_initial_step_size=1.)
+
+
 class Yango(Minimizer):
     """ Nonlinear conjugate gradient using curvature
     The YANGO (Yet Another Nonlinear conjugate Gradient Optimizer)
@@ -44,8 +47,7 @@ class Yango(Minimizer):
     ----------
     """
 
-    def __init__(self, controller,
-                 line_searcher=LineSearchStrongWolfe(c2=0.1)):
+    def __init__(self, controller, line_searcher=_default_LS):
         self._controller = controller
         self._line_searcher = line_searcher
 
