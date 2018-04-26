@@ -16,23 +16,27 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import print_function
 import numpy as np
 import nifty4 as ift
 
-IC = ift.GradientNormController(#name = 'min', 
+
+IC = ift.GradientNormController(
         tol_abs_gradnorm=1e-6, iteration_limit=1000)
 calls = 0
+
 
 def test_rosenbrock_convex(minimizer):
     np.random.seed(42)
     space = ift.UnstructuredDomain((2,))
     starting_point = ift.Field.from_random('normal', domain=space)*10
+
     class RBEnergy(ift.Energy):
-        def __init__(self, position, a = 1., b= 100.):
+        def __init__(self, position, a=1., b=100.):
             super(RBEnergy, self).__init__(position)
-            self.a=a
-            self.b=b
-            global calls 
+            self.a = a
+            self.b = b
+            global calls
             calls += 1
 
         @property
@@ -74,7 +78,7 @@ def test_rosenbrock_convex(minimizer):
                     res.val[0] -= self.b*4*self._x*x[1]
                     res.val[1] = -self.b*4*self._x*x[0]
                     res.val[1] += 2*self.b*x[1]
-                    global calls 
+                    global calls
                     calls += 1
                     return res
             t1 = ift.GradientNormController(tol_abs_gradnorm=1e-6,
@@ -89,16 +93,18 @@ def test_rosenbrock_convex(minimizer):
     energy, convergence = minimizer(energy)
     return energy
 
+
 def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
     np.random.seed(42)
     space = ift.UnstructuredDomain((Ndim,))
     starting_point = ift.Field.from_random('normal', domain=space)*10
+
     class RBLikeEnergy(ift.Energy):
-        def __init__(self, position, a = 1., b= 100.):
+        def __init__(self, position, a=1., b=100.):
             super(RBLikeEnergy, self).__init__(position)
-            self.a=a
-            self.b=b
-            global calls 
+            self.a = a
+            self.b = b
+            global calls
             calls += 1
 
         @property
@@ -106,7 +112,7 @@ def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
             x = self.position.val
             t1 = self.a-x[0]
             t2 = x[1:]-x[:-1]**3
-            return 0.5*t1**2+0.5*self.b*np.dot(t2,t2)
+            return 0.5*t1**2+0.5*self.b*np.dot(t2, t2)
 
         @property
         def gradient(self):
@@ -143,7 +149,7 @@ def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
                     dt2 = y[1:] - 3*x[:-1]**2*y[:-1]
                     res.val[1:] += self.b*dt2
                     res.val[:-1] += -self.b*3*x[:-1]**2*dt2
-                    global calls 
+                    global calls
                     calls += 1
                     return res
             t1 = ift.GradientNormController(tol_abs_gradnorm=1e-6,
@@ -153,8 +159,6 @@ def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
                                         inverter=t2)
 
     energy = RBLikeEnergy(position=starting_point)
-    #ift.extra.check_value_gradient_consistency(energy, tol=1.)
-    #return
     minimizer = minimizer(controller=IC)
 
     energy, convergence = minimizer(energy)
@@ -166,14 +170,17 @@ def verbose_test(func, minimizer):
     global calls
     calls = 0
     E = func(minimizer)
-    print("Used",calls,"calls.")
-    print("Final energy:",E.value)
+    print("Used", calls, "calls.")
+    print("Final energy:", E.value)
 
 if __name__ == "__main__":
+    print("Standard Rosenbrock function\n")
     verbose_test(test_rosenbrock_convex, ift.Yango)
     verbose_test(test_rosenbrock_convex, ift.RelaxedNewton)
     verbose_test(test_rosenbrock_convex, ift.NonlinearCG)
     verbose_test(test_rosenbrock_convex, ift.L_BFGS)
+
+    print("\nHigher-dimensional Rosenbrock function\n")
     verbose_test(test_Ndim_rosenbrocklike_convex, ift.Yango)
     verbose_test(test_Ndim_rosenbrocklike_convex, ift.RelaxedNewton)
     verbose_test(test_Ndim_rosenbrocklike_convex, ift.NonlinearCG)
