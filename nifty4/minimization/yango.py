@@ -42,9 +42,6 @@ class Yango(Minimizer):
     Notes
     -----
     No restarting procedure has been implemented yet.
-
-    References
-    ----------
     """
 
     def __init__(self, controller, line_searcher=_default_LS):
