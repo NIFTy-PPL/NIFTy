@@ -73,7 +73,7 @@ class Yango(Minimizer):
             rAr = r.vdot(Ar)
             pAp = p.vdot(Ap)
             pAr = p.vdot(Ar)
-            rAp = r.vdot(Ap)
+            rAp = np.conj(pAr)
             rp = r.vdot(p)
             rr = r.vdot(r)
             if rr == 0 or rAr == 0:
@@ -82,19 +82,19 @@ class Yango(Minimizer):
                 return energy, controller.CONVERGED
             det = pAp*rAr-np.abs(rAp*pAr)
             if det < 0:
-                logger.error(
-                    "Error: negative determinant ({})".format(det))
-                return energy, controller.ERROR
-            if det == 0:
+                if rAr < 0:
+                    logger.error(
+                        "Error: negative curvature ({})".format(rAr))
+                    return energy, controller.ERROR
                 # Try 1D Newton Step
                 energy, success = self._line_searcher.perform_line_search(
-                    energy, rr/rAr*r, f_k_minus_1)
+                    energy, (rr/rAr)*r, f_k_minus_1)
             else:
                 a = (rAr*rp - rAp*rr)/det
                 b = (pAp*rr - pAr*rp)/det
-                p = a/b*p+r
                 energy, success = self._line_searcher.perform_line_search(
-                    energy, p*b, f_k_minus_1)
+                    energy, p*a + r*b, f_k_minus_1)
+                p = r - p*(pAr/pAp)
             if not success:
                 return energy, controller.ERROR
             f_k_minus_1 = f_k
