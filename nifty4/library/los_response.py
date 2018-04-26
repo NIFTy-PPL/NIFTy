@@ -86,6 +86,24 @@ def apply_erf(wgt, dist, lo, mid, hi, erf):
 
 
 class LOSResponse(LinearOperator):
+    """Line-of-sight response operator
+
+    This operator transforms from a single RGSpace to an unstructured domain
+    with as many entries as there were lines of sight passed to the
+    constructor. Adjoint application is also provided.
+
+    Parameters
+    ----------
+    domain : RGSpace or DomainTuple
+        The operator's input domain. This must be a single RGSpace.
+    starts, ends : numpy.ndarray(float) with two dimensions
+        Arrays containing the start and end points of the individual lines
+        of sight. The first dimension must have as many entries as `domain`
+        has dimensions. The second dimensions must be identical for both arrays
+        and indicated the total number of lines of sight.
+    sigmas_low, sigmas_up : numpy.ndarray(float) (optional)
+        For expert use. If unsure, leave blank.
+    """
     def __init__(self, domain, starts, ends, sigmas_low=None, sigmas_up=None):
 
         super(LOSResponse, self).__init__()
