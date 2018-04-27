@@ -17,8 +17,8 @@ RUN apt-get install -y openmpi-bin libopenmpi-dev python-mpi4py python3-mpi4py
 RUN apt-get install -y python-sphinx python-sphinx-rtd-theme python-numpydoc
 
 # Testing dependencies
-RUN apt-get install -y python-nose python-parameterized
-RUN apt-get install -y python3-nose python3-parameterized
+RUN apt-get install -y python-nose 
+RUN apt-get install -y python3-nose 
 
 # Python module installations
 RUN apt-get install -y python-pip python3-pip
