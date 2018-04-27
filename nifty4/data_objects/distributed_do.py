@@ -190,7 +190,7 @@ class data_object(object):
         return data_object(self._shape, -self._data, self._distaxis)
 
     def __abs__(self):
-        return data_object(self._shape, np.abs(self._data), self._distaxis)
+        return data_object(self._shape, abs(self._data), self._distaxis)
 
     def all(self):
         return self.sum() == self.size
@@ -258,7 +258,7 @@ def _math_helper(x, function, out):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "conjugate", "abs"]:
+for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
     def func(f):
         def func2(x, out=None):
             return _math_helper(x, f, out)
