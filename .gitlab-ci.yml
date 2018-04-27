@@ -5,11 +5,12 @@ stages:
   # - test
   # - release
 
-variables:
-  DOCKER_DRIVER: overlay2
-
 before_script:
+  - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
   - docker info
+
+variables:
+  CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty:$CI_BUILD_REF_NAME
 
 # test_python2_scalar:
 #   stage: test
@@ -56,4 +57,5 @@ build_docker_container:
   image: docker:stable
   stage: build_docker
   script:
-    - docker build -t nifty .
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
