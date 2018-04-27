@@ -13,8 +13,12 @@ stages:
 
 before_script:
   - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
-  - docker build -t $CONTAINER_TEST_IMAGE .
-  - docker push $CONTAINER_TEST_IMAGE
+
+build_docker:
+  stage: build_docker
+  script:
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
 
 
 # test_python2_scalar:
