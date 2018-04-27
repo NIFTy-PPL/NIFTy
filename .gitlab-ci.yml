@@ -7,18 +7,18 @@ variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty:$CI_BUILD_REF_NAME
 
 stages:
-  - build_docker
+  # - build_docker
   - test
   # - release
 
-before_script:
-  - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+# before_script:
+#   - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
 
-build_docker:
-  stage: build_docker
-  script:
-    - docker build -t $CONTAINER_TEST_IMAGE .
-    - docker push $CONTAINER_TEST_IMAGE
+# build_docker:
+#   stage: build_docker
+#   script:
+#     - docker build -t $CONTAINER_TEST_IMAGE .
+#     - docker push $CONTAINER_TEST_IMAGE
 
 
 # test_python2_scalar:
@@ -33,8 +33,8 @@ test_python3_scalar:
   image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
-    - docker run $CONTAINER_TEST_IMAGE python3 setup.py install --user -f
-    - docker run $CONTAINER_TEST_IMAGE nosetests3 -q
+    - python3 setup.py install --user -f
+    - nosetests3 -q
 
 # test_python2_mpi:
 #   stage: test
