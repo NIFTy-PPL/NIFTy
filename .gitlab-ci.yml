@@ -7,27 +7,24 @@ variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty:$CI_BUILD_REF_NAME
 
 stages:
-  # - build_docker
+  - build_docker
   - test
-  # - release
+  - release
 
-# before_script:
-#   - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+build_docker:
+  stage: build_docker
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
 
-# build_docker:
-#   stage: build_docker
-#   script:
-#     - docker build -t $CONTAINER_TEST_IMAGE .
-#     - docker push $CONTAINER_TEST_IMAGE
-
-
-# test_python2_scalar:
-#   stage: test
-#   script:
-#     - python setup.py install --user -f
-#     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
-#     - >
-#       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
+test_python2_scalar:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
+    - >
+      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
 test_python3_scalar:
   image: $CONTAINER_TEST_IMAGE
@@ -36,27 +33,27 @@ test_python3_scalar:
     - python3 setup.py install --user -f
     - nosetests3 -q
 
-# test_python2_mpi:
-#   stage: test
-#   script:
-#     - python setup.py install --user -f
-#     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2> /dev/null
+test_python2_mpi:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2> /dev/null
 
-# test_python3_mpi:
-#   stage: test
-#   script:
-#     - python3 setup.py install --user -f
-#     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2> /dev/null
+test_python3_mpi:
+  stage: test
+  script:
+    - python3 setup.py install --user -f
+    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2> /dev/null
 
-# pages:
-#   stage: release
-#   script:
-#     - python setup.py install --user -f
-#     - sh docs/generate.sh
-#     - mv docs/build/ public/
-#   artifacts:
-#     paths:
-#     - public
-#   only:
-#   - NIFTy_4
+pages:
+  stage: release
+  script:
+    - python setup.py install --user -f
+    - sh docs/generate.sh
+    - mv docs/build/ public/
+  artifacts:
+    paths:
+    - public
+  only:
+  - NIFTy_4
 
