@@ -16,46 +16,51 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import print_function
 import numpy as np
 import nifty4 as ift
 
-IC = ift.GradientNormController(#name = 'min', 
+
+IC = ift.GradientNormController(
         tol_abs_gradnorm=1e-6, iteration_limit=1000)
 calls = 0
+
+
+def mprint(*args):
+    if ift.dobj.rank == 0:
+        print(*args)
+
 
 def test_rosenbrock_convex(minimizer):
     np.random.seed(42)
     space = ift.UnstructuredDomain((2,))
     starting_point = ift.Field.from_random('normal', domain=space)*10
+
     class RBEnergy(ift.Energy):
-        def __init__(self, position, a = 1., b= 100.):
+        def __init__(self, position, a=1., b=100.):
             super(RBEnergy, self).__init__(position)
-            self.a=a
-            self.b=b
-            global calls 
+            self.a = a
+            self.b = b
+            global calls
             calls += 1
 
         @property
         def value(self):
-            x = self.position.val[0]
-            y = self.position.val[1]
+            x, y = self.position.to_global_data()
             return (self.a-x)*(self.a-x)+self.b*(y-x*x)*(y-x*x)
 
         @property
         def gradient(self):
-            x = self.position.val[0]
-            y = self.position.val[1]
-            res = ift.Field.zeros(space)
-            res.val[0] = -2*(self.a-x)-4*self.b*x*(y-x*x)
-            res.val[1] = 2*self.b*(y-x*x)
-            return res
+            x, y = self.position.to_global_data()
+            v0 = -2*(self.a-x)-4*self.b*x*(y-x*x)
+            v1 = 2*self.b*(y-x*x)
+            return ift.Field.from_global_data(space, np.array([v0, v1]))
 
         @property
         def curvature(self):
             class RBCurv(ift.EndomorphicOperator):
                 def __init__(self, loc, a, b):
-                    self._x = loc.val[0]
-                    self._y = loc.val[1]
+                    self._x, self._y = loc.to_global_data()
                     self.a = a
                     self.b = b
 
@@ -68,15 +73,15 @@ def test_rosenbrock_convex(minimizer):
                     return self.TIMES
 
                 def apply(self, x, mode):
-                    x = x.val
-                    res = ift.Field.zeros(space)
-                    res.val[0] = (2+self.b*8*self._x**2)*x[0]
-                    res.val[0] -= self.b*4*self._x*x[1]
-                    res.val[1] = -self.b*4*self._x*x[0]
-                    res.val[1] += 2*self.b*x[1]
-                    global calls 
+                    x = x.to_global_data()
+                    v0 = (2+self.b*8*self._x**2)*x[0]
+                    v0 -= self.b*4*self._x*x[1]
+                    v1 = -self.b*4*self._x*x[0]
+                    v1 += 2*self.b*x[1]
+                    global calls
                     calls += 1
-                    return res
+                    return ift.Field.from_global_data(space,
+                                                      np.array([v0, v1]))
             t1 = ift.GradientNormController(tol_abs_gradnorm=1e-6,
                                             iteration_limit=1000)
             t2 = ift.ConjugateGradient(controller=t1)
@@ -89,41 +94,43 @@ def test_rosenbrock_convex(minimizer):
     energy, convergence = minimizer(energy)
     return energy
 
+
 def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
     np.random.seed(42)
     space = ift.UnstructuredDomain((Ndim,))
     starting_point = ift.Field.from_random('normal', domain=space)*10
+
     class RBLikeEnergy(ift.Energy):
-        def __init__(self, position, a = 1., b= 100.):
+        def __init__(self, position, a=1., b=100.):
             super(RBLikeEnergy, self).__init__(position)
-            self.a=a
-            self.b=b
-            global calls 
+            self.a = a
+            self.b = b
+            global calls
             calls += 1
 
         @property
         def value(self):
-            x = self.position.val
+            x = self.position.to_global_data()
             t1 = self.a-x[0]
             t2 = x[1:]-x[:-1]**3
-            return 0.5*t1**2+0.5*self.b*np.dot(t2,t2)
+            return 0.5*t1**2+0.5*self.b*np.dot(t2, t2)
 
         @property
         def gradient(self):
-            res = ift.Field.zeros(space)
-            x = self.position.val
+            res = np.zeros(space.shape)
+            x = self.position.to_global_data()
             t1 = self.a-x[0]
             t2 = x[1:]-x[:-1]**3
-            res.val[0] = -t1
-            res.val[1:] += self.b*t2
-            res.val[:-1] += -3*self.b*x[:-1]**2*t2
-            return res
+            res[0] = -t1
+            res[1:] += self.b*t2
+            res[:-1] += -3*self.b*x[:-1]**2*t2
+            return ift.Field.from_global_data(space, res)
 
         @property
         def curvature(self):
             class RBCurv(ift.EndomorphicOperator):
                 def __init__(self, loc, a, b):
-                    self._x = loc.val
+                    self._x = loc.to_global_data()
                     self.a = a
                     self.b = b
 
@@ -136,16 +143,16 @@ def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
                     return self.TIMES
 
                 def apply(self, z, mode):
-                    y = z.val
-                    res = ift.Field.zeros_like(z)
+                    y = z.to_global_data()
+                    res = np.zeros(space.shape)
                     x = self._x
-                    res.val[0] = y[0]
+                    res[0] = y[0]
                     dt2 = y[1:] - 3*x[:-1]**2*y[:-1]
-                    res.val[1:] += self.b*dt2
-                    res.val[:-1] += -self.b*3*x[:-1]**2*dt2
-                    global calls 
+                    res[1:] += self.b*dt2
+                    res[:-1] += -self.b*3*x[:-1]**2*dt2
+                    global calls
                     calls += 1
-                    return res
+                    return ift.Field.from_global_data(space, res)
             t1 = ift.GradientNormController(tol_abs_gradnorm=1e-6,
                                             iteration_limit=1000)
             t2 = ift.ConjugateGradient(controller=t1)
@@ -153,8 +160,6 @@ def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
                                         inverter=t2)
 
     energy = RBLikeEnergy(position=starting_point)
-    #ift.extra.check_value_gradient_consistency(energy, tol=1.)
-    #return
     minimizer = minimizer(controller=IC)
 
     energy, convergence = minimizer(energy)
@@ -162,18 +167,21 @@ def test_Ndim_rosenbrocklike_convex(minimizer, Ndim=3):
 
 
 def verbose_test(func, minimizer):
-    print("Testing", minimizer)
+    mprint("Testing", minimizer)
     global calls
     calls = 0
     E = func(minimizer)
-    print("Used",calls,"calls.")
-    print("Final energy:",E.value)
+    mprint("Used", calls, "calls.")
+    mprint("Final energy:", E.value)
 
 if __name__ == "__main__":
+    mprint("Standard Rosenbrock function\n")
     verbose_test(test_rosenbrock_convex, ift.Yango)
     verbose_test(test_rosenbrock_convex, ift.RelaxedNewton)
     verbose_test(test_rosenbrock_convex, ift.NonlinearCG)
     verbose_test(test_rosenbrock_convex, ift.L_BFGS)
+
+    mprint("\nHigher-dimensional Rosenbrock function\n")
     verbose_test(test_Ndim_rosenbrocklike_convex, ift.Yango)
     verbose_test(test_Ndim_rosenbrocklike_convex, ift.RelaxedNewton)
     verbose_test(test_Ndim_rosenbrocklike_convex, ift.NonlinearCG)
