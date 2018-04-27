@@ -1,6 +1,7 @@
 image: parras/nifty:latest
 
 stages:
+  - build_docker
   - test
   - release
 
@@ -44,3 +45,13 @@ pages:
     - public
   only:
   - NIFTy_4
+
+services:
+  - docker:dind
+
+build_docker_container:
+  image: docker:latest
+  stage: build_docker
+  script:
+    - docker info
+    - docker build -t nifty .
