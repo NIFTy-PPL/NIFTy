@@ -1,13 +1,12 @@
-image: parras/nifty:latest
+image: docker:stable
 
 stages:
   - build_docker
-  # - test
+  - test
   # - release
 
 before_script:
   - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
-  - docker info
 
 variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty:$CI_BUILD_REF_NAME
@@ -20,11 +19,11 @@ variables:
 #     - >
 #       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
-# test_python3_scalar:
-#   stage: test
-#   script:
-#     - python3 setup.py install --user -f
-#     - nosetests3 -q
+test_python3_scalar:
+  stage: test
+  script:
+    - docker run $CONTAINER_TEST_IMAGE python3 setup.py install --user -f
+    - docker run $CONTAINER_TEST_IMAGE nosetests3 -q
 
 # test_python2_mpi:
 #   stage: test
@@ -54,7 +53,6 @@ services:
   - docker:dind
 
 build_docker_container:
-  image: docker:stable
   stage: build_docker
   script:
     - docker build -t $CONTAINER_TEST_IMAGE .
