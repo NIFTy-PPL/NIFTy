@@ -22,7 +22,7 @@ RUN apt-get install -y python3-nose
 
 # Python module installations
 RUN apt-get install -y python-pip python3-pip
-RUN pip install pyfftw git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
+RUN pip install pyfftw coverage git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 RUN pip3 install pyfftw git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 
 # Create user (openmpi does not like to be run as root)
