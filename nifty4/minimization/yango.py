@@ -69,6 +69,7 @@ class Yango(Minimizer):
             r = -energy.gradient
             f_k = energy.value
             Ar = A_k(r)
+            Ap = A_k(p)
             rAr = r.vdot(Ar)
             pAp = p.vdot(Ap)
             pAr = p.vdot(Ar)
@@ -88,15 +89,12 @@ class Yango(Minimizer):
                 # Try 1D Newton Step
                 energy, success = self._line_searcher.perform_line_search(
                     energy, (rr/rAr)*r, f_k_minus_1) 
-                p = r
-                Ap = Ar
             else:
                 a = (rAr*rp - rAp*rr)/det
                 b = (pAp*rr - pAr*rp)/det
                 energy, success = self._line_searcher.perform_line_search(
                     energy, p*a + r*b, f_k_minus_1)
                 p = r - p*(pAr/pAp)
-                Ap = Ar - Ap*(pAr/pAp)
             if not success:
                 return energy, controller.ERROR
             f_k_minus_1 = f_k
