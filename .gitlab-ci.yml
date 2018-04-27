@@ -21,6 +21,8 @@ test_python2_scalar:
   script:
     - python setup.py install --user -f
     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
+    - >
+      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
 test_python3_scalar:
   image: $CONTAINER_TEST_IMAGE
