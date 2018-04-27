@@ -16,6 +16,7 @@ build_docker:
     - docker push $CONTAINER_TEST_IMAGE
 
 test_python2_scalar:
+  image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
     - python setup.py install --user -f
@@ -31,18 +32,21 @@ test_python3_scalar:
     - nosetests3 -q
 
 test_python2_mpi:
+  image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
     - python setup.py install --user -f
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2> /dev/null
 
 test_python3_mpi:
+  image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
     - python3 setup.py install --user -f
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2> /dev/null
 
 pages:
+  image: $CONTAINER_TEST_IMAGE
   stage: release
   script:
     - python setup.py install --user -f
