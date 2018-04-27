@@ -519,7 +519,7 @@ class Field(object):
         float
             The L2-norm of the field values.
         """
-        return np.sqrt(np.abs(self.vdot(x=self)))
+        return np.sqrt(abs(self.vdot(x=self)))
 
     def conjugate(self):
         """ Returns the complex conjugate of the field.
@@ -540,7 +540,7 @@ class Field(object):
         return Field(self._domain, -self.val)
 
     def __abs__(self):
-        return Field(self._domain, dobj.abs(self.val))
+        return Field(self._domain, abs(self.val))
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:

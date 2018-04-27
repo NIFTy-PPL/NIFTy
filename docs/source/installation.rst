@@ -28,10 +28,6 @@ MPI support is added via::
     sudo apt-get install openmpi-bin libopenmpi-dev
     pip install --user mpi4py
 
-Scipy-based minimizers are enabled via::
-
-    pip install --user scipy
-
 Installation for Python 3
 -------------------------
 
@@ -40,4 +36,3 @@ to the instructions above:
 
 - in all `apt-get` commands, replace `python-*` by `python3-*`
 - in all `pip` commands, replace `pip` by `pip3`
-

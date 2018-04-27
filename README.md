@@ -38,7 +38,7 @@ Installation
 ### Requirements
 
 - [Python](https://www.python.org/) (v2.7.x or 3.5.x)
-- [NumPy](https://www.numpy.org/)
+- [SciPy](https://www.scipy.org/)
 - [pyFFTW](https://pypi.python.org/pypi/pyFFTW)
 
 Optional dependencies:
@@ -46,7 +46,6 @@ Optional dependencies:
     transforms involving domains on the sphere)
 - [mpi4py](https://mpi4py.scipy.org) (for MPI-parallel execution)
 - [matplotlib](https://matplotlib.org/) (for field plotting)
-- [SciPy](https://www.scipy.org/) (for additional minimization algorithms)
 
 ### Sources
 
@@ -82,10 +81,6 @@ MPI support is added via:
 
     sudo apt-get install openmpi-bin libopenmpi-dev
     pip install --user mpi4py
-
-Scipy-based minimizers are enabled via:
-
-    pip install --user scipy
 
 ### Installation for Python 3
 
