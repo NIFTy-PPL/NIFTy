@@ -1,8 +1,5 @@
 image: docker:stable
 
-services:
-  - docker:dind
-
 variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty:$CI_BUILD_REF_NAME
 
