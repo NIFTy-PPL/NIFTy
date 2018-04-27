@@ -14,6 +14,8 @@ RUN apt-get install -y python3-parameterized python3-coverage
 RUN pip install pyfftw git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 RUN pip3 install pyfftw git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git
 
+RUN apt-get install -y python-nose-parameterized
+
 # Create user (openmpi does not like to be run as root)
 RUN useradd -ms /bin/bash testinguser
 USER testinguser
