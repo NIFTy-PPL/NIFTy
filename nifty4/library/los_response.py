@@ -55,7 +55,7 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
             if dir[j] != 0:
                 step = inc[j] if dir[j] > 0 else -inc[j]
                 tmp = np.arange(start=c_first[j], stop=dmax,
-                                step=np.abs(1./dir[j]))
+                                step=abs(1./dir[j]))
                 cdist = np.append(cdist, tmp)
                 add = np.append(add, np.full(len(tmp), step))
         idx = np.argsort(cdist)
@@ -103,6 +103,12 @@ class LOSResponse(LinearOperator):
         and indicated the total number of lines of sight.
     sigmas_low, sigmas_up : numpy.ndarray(float) (optional)
         For expert use. If unsure, leave blank.
+
+    Notes
+    -----
+    `starts, `ends`, `sigmas_low`, and `sigmas_up` have to be identical on
+    every calling MPI task (i.e. the full LOS information has to be provided on
+    every task).
     """
     def __init__(self, domain, starts, ends, sigmas_low=None, sigmas_up=None):
 
