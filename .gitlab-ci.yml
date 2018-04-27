@@ -2,56 +2,58 @@ image: parras/nifty:latest
 
 stages:
   - build_docker
-  - test
-  - release
+  # - test
+  # - release
 
 variables:
-  DOCKER_DRIVER: overlay
+  DOCKER_DRIVER: overlay2
 
-test_python2_scalar:
-  stage: test
-  script:
-    - python setup.py install --user -f
-    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
-    - >
-      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
+before_script:
+  - docker info
 
-test_python3_scalar:
-  stage: test
-  script:
-    - python3 setup.py install --user -f
-    - nosetests3 -q
+# test_python2_scalar:
+#   stage: test
+#   script:
+#     - python setup.py install --user -f
+#     - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
+#     - >
+#       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
-test_python2_mpi:
-  stage: test
-  script:
-    - python setup.py install --user -f
-    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2> /dev/null
+# test_python3_scalar:
+#   stage: test
+#   script:
+#     - python3 setup.py install --user -f
+#     - nosetests3 -q
 
-test_python3_mpi:
-  stage: test
-  script:
-    - python3 setup.py install --user -f
-    - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2> /dev/null
+# test_python2_mpi:
+#   stage: test
+#   script:
+#     - python setup.py install --user -f
+#     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2> /dev/null
 
-pages:
-  stage: release
-  script:
-    - python setup.py install --user -f
-    - sh docs/generate.sh
-    - mv docs/build/ public/
-  artifacts:
-    paths:
-    - public
-  only:
-  - NIFTy_4
+# test_python3_mpi:
+#   stage: test
+#   script:
+#     - python3 setup.py install --user -f
+#     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2> /dev/null
+
+# pages:
+#   stage: release
+#   script:
+#     - python setup.py install --user -f
+#     - sh docs/generate.sh
+#     - mv docs/build/ public/
+#   artifacts:
+#     paths:
+#     - public
+#   only:
+#   - NIFTy_4
 
 services:
   - docker:dind
 
 build_docker_container:
-  image: docker:latest
+  image: docker:stable
   stage: build_docker
   script:
-    - docker info
     - docker build -t nifty .
