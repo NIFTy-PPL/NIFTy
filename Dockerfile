@@ -23,6 +23,7 @@ RUN apt-get install -y python-sphinx python-sphinx-rtd-theme python-numpydoc
 # Testing dependencies
 RUN apt-get install -y python-nose python-parameterized
 RUN apt-get install -y python3-nose python3-parameterized
+RUN pip install coverage
 
 # Create user (openmpi does not like to be run as root)
 RUN useradd -ms /bin/bash testinguser
