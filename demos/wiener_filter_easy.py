@@ -1,6 +1,7 @@
 import numpy as np
 import nifty4 as ift
 
+
 if __name__ == "__main__":
     np.random.seed(43)
     # Set up physical constants
@@ -12,21 +13,25 @@ if __name__ == "__main__":
     field_variance = 2.
     # Smoothing length of response (in same unit as L)
     response_sigma = 0.01
+    # typical noise amplitude of the measurement
+    noise_level = 1.
 
     # Define resolution (pixels per dimension)
     N_pixels = 256
 
     # Set up derived constants
     k_0 = 1./correlation_length
-    # Note that field_variance**2 = a*k_0/4. for this analytic form of power
-    # spectrum
-    a = field_variance**2/k_0*4.
-    pow_spec = (lambda k: a / (1 + k/k_0) ** 4)
+    #defining a power spectrum with the right correlation length
+    #we later set the field variance to the desired value
+    unscaled_pow_spec = (lambda k: 1. / (1 + k/k_0) ** 4)
     pixel_width = L/N_pixels
 
     # Set up the geometry
     s_space = ift.RGSpace([N_pixels, N_pixels], distances=pixel_width)
     h_space = s_space.get_default_codomain()
+    s_var = ift.get_signal_variance(unscaled_pow_spec, h_space)
+    pow_spec = (lambda k: unscaled_pow_spec(k)/s_var*field_variance**2)
+    
     HT = ift.HarmonicTransformOperator(h_space, s_space)
 
     # Create mock data
@@ -36,11 +41,8 @@ if __name__ == "__main__":
 
     R = HT*ift.create_harmonic_smoothing_operator((h_space,), 0,
                                                   response_sigma)
-
     noiseless_data = R(sh)
-    signal_to_noise = 1.
-    noise_amplitude = noiseless_data.val.std()/signal_to_noise
-    N = ift.ScalingOperator(noise_amplitude**2, s_space)
+    N = ift.ScalingOperator(noise_level**2, s_space)
     n = N.draw_sample()
 
     d = noiseless_data + n

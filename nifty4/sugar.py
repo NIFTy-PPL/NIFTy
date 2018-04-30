@@ -28,7 +28,9 @@ from .logger import logger
 __all__ = ['PS_field',
            'power_analyze',
            'create_power_operator',
-           'create_harmonic_smoothing_operator']
+           'create_harmonic_smoothing_operator',
+           'get_signal_variance']
+
 
 
 def PS_field(pspace, func):
@@ -37,6 +39,33 @@ def PS_field(pspace, func):
     data = dobj.from_global_data(func(pspace.k_lengths))
     return Field(pspace, val=data)
 
+
+def get_signal_variance(spec, space):
+    """
+    Computes how much a field with a given power spectrum will vary in space
+
+    This is a small helper function that computes how the expected variance
+    of a harmonically transformed sample of this power spectrum.
+
+    Parameters
+    ---------
+    spec: method
+        a method that takes one k-value and returns the power spectrum at that
+        location
+    space: PowerSpace or any harmonic Domain
+        If this function is given a harmonic domain, it creates the naturally binned
+        PowerSpace to that domain.
+        The field, for which the signal variance is then computed, is assumed to have
+        this PowerSpace as naturally binned PowerSpace
+    """
+    if space.harmonic:
+        space = PowerSpace(space)
+    if not isinstance(space, PowerSpace):
+        raise ValueError("space must be either a harmonic space or Power space.")
+    field = PS_field(space, spec)
+    dist = PowerDistributor(space.harmonic_partner, space)
+    k_field = dist(field)
+    return k_field.weight(2).sum()
 
 def _single_power_analyze(field, idx, binbounds):
     power_domain = PowerSpace(field.domain[idx], binbounds)
