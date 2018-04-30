@@ -1,0 +1,2 @@
+class MultiDomain(dict):
+    pass
