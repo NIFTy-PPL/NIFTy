@@ -50,17 +50,17 @@ class MultiField(object):
     @staticmethod
     def zeros(domain, dtype=None):
         return MultiField({key: Field.zeros(dom, dtype=dtype)
-                                   for key, dom in domain.items()})
+                           for key, dom in domain.items()})
 
     @staticmethod
     def ones(domain, dtype=None):
         return MultiField({key: Field.ones(dom, dtype=dtype)
-                                   for key, dom in domain.items()})
+                           for key, dom in domain.items()})
 
     @staticmethod
     def empty(domain, dtype=None):
         return MultiField({key: Field.empty(dom, dtype=dtype)
-                                   for key, dom in domain.items()})
+                           for key, dom in domain.items()})
 
     def norm(self):
         """ Computes the L2-norm of the field values.
@@ -70,23 +70,14 @@ class MultiField(object):
         norm : float
             The L2-norm of the field values.
         """
-
         return np.sqrt(np.abs(self.vdot(x=self)))
-
-    def _binary_helper(self, other, op):
-        if isinstance(other, MultiField):
-            self._check_domain(other)
-            result_val = {key: getattr(sub_field,op)(other[key])
-                          for key, sub_field in self.items()}
-        else:
-            result_val = {key: getattr(val,op)(other) for key, val in self.items()}
-        return MultiField(result_val)
 
     def __neg__(self):
         return MultiField({key: -val for key, val in self.items()})
 
     def conjugate(self):
-        return MultiField({key: sub_field.conjugate() for key, sub_field in self.items()})
+        return MultiField({key: sub_field.conjugate()
+                           for key, sub_field in self.items()})
 
 
 for op in ["__add__", "__radd__", "__iadd__",
@@ -99,6 +90,13 @@ for op in ["__add__", "__radd__", "__iadd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            return self._binary_helper(other, op=op)
+            if isinstance(other, MultiField):
+                self._check_domain(other)
+                result_val = {key: getattr(sub_field, op)(other[key])
+                              for key, sub_field in self.items()}
+            else:
+                result_val = {key: getattr(val, op)(other)
+                              for key, val in self.items()}
+            return MultiField(result_val)
         return func2
     setattr(MultiField, op, func(op))

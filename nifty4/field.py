@@ -746,20 +746,6 @@ class Field(object):
             raise ValueError("domains are incompatible.")
         self.local_data[()] = other.local_data[()]
 
-    def _binary_helper(self, other, op):
-        # if other is a field, make sure that the domains match
-        if isinstance(other, Field):
-            if other._domain != self._domain:
-                raise ValueError("domains are incompatible.")
-            tval = getattr(self.val, op)(other.val)
-            return self if tval is self.val else Field(self._domain, tval)
-
-        if np.isscalar(other) or isinstance(other, dobj.data_object):
-            tval = getattr(self.val, op)(other)
-            return self if tval is self.val else Field(self._domain, tval)
-
-        return NotImplemented
-
     def __repr__(self):
         return "<nifty4.Field>"
 
@@ -778,30 +764,38 @@ for op in ["__add__", "__radd__", "__iadd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            return self._binary_helper(other, op=op)
+            # if other is a field, make sure that the domains match
+            if isinstance(other, Field):
+                if other._domain != self._domain:
+                    raise ValueError("domains are incompatible.")
+                tval = getattr(self.val, op)(other.val)
+                return self if tval is self.val else Field(self._domain, tval)
+
+            if np.isscalar(other) or isinstance(other, dobj.data_object):
+                tval = getattr(self.val, op)(other)
+                return self if tval is self.val else Field(self._domain, tval)
+
+            return NotImplemented
         return func2
     setattr(Field, op, func(op))
 
 
 # Arithmetic functions working on Fields
 
-def _math_helper(x, function, out):
-    function = getattr(dobj, function)
-    if not isinstance(x, Field):
-        raise TypeError("This function only accepts Field objects.")
-    if out is not None:
-        if not isinstance(out, Field) or x._domain != out._domain:
-            raise ValueError("Bad 'out' argument")
-        function(x.val, out=out.val)
-        return out
-    else:
-        return Field(domain=x._domain, val=function(x.val))
-
 _current_module = sys.modules[__name__]
 
 for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
     def func(f):
         def func2(x, out=None):
-            return _math_helper(x, f, out)
+            fu = getattr(dobj, f)
+            if not isinstance(x, Field):
+                raise TypeError("This function only accepts Field objects.")
+            if out is not None:
+                if not isinstance(out, Field) or x._domain != out._domain:
+                    raise ValueError("Bad 'out' argument")
+                fu(x.val, out=out.val)
+                return out
+            else:
+                return Field(domain=x._domain, val=fu(x.val))
         return func2
     setattr(_current_module, f, func(f))
