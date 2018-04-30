@@ -23,7 +23,6 @@ class MultiChainOperator(MultiLinearOperator):
     """Class representing chains of multi-operators."""
 
     def __init__(self, ops, _callingfrommake=False):
-        print "CHAINOP"
         if not _callingfrommake:
             raise NotImplementedError
         super(MultiChainOperator, self).__init__()
