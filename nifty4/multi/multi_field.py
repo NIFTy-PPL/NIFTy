@@ -28,6 +28,10 @@ class MultiField(object):
     def domain(self):
         return MultiDomain({key: val.domain for key, val in self._val.items()})
 
+    @property
+    def dtype(self):
+        return {key: val.dtype for key, val in self._val.items()}
+
     def _check_domain(self, other):
         if other.domain != self.domain:
             raise ValueError("domains are incompatible.")
@@ -57,19 +61,19 @@ class MultiField(object):
 
     @staticmethod
     def zeros(domain, dtype=None):
-        dtype = self.build_dtype(dtype, domain)
+        dtype = MultiField.build_dtype(dtype, domain)
         return MultiField({key: Field.zeros(dom, dtype=dtype[key])
                            for key, dom in domain.items()})
 
     @staticmethod
     def ones(domain, dtype=None):
-        dtype = self.build_dtype(dtype, domain)
+        dtype = MultiField.build_dtype(dtype, domain)
         return MultiField({key: Field.ones(dom, dtype=dtype[key])
                            for key, dom in domain.items()})
 
     @staticmethod
     def empty(domain, dtype=None):
-        dtype = self.build_dtype(dtype, domain)
+        dtype = MultiField.build_dtype(dtype, domain)
         return MultiField({key: Field.empty(dom, dtype=dtype[key])
                            for key, dom in domain.items()})
 

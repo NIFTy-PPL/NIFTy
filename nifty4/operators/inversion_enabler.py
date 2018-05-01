@@ -18,7 +18,6 @@
 
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
-from ..field import Field
 from ..logger import logger
 from .endomorphic_operator import EndomorphicOperator
 import numpy as np
@@ -68,7 +67,7 @@ class InversionEnabler(EndomorphicOperator):
         if self._op.capability & mode:
             return self._op.apply(x, mode)
 
-        x0 = Field.zeros(self._tgt(mode), dtype=x.dtype)
+        x0 = x.zeros(self._tgt(mode), dtype=x.dtype)
         invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
         invop = self._op._flip_modes(self._ilog[invmode])
         prec = self._approximation
