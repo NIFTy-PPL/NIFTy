@@ -61,7 +61,7 @@ class MultiSumOperator(MultiLinearOperator):
         return self._capability
 
     def apply(self, x, mode):
-        self._check_mode(mode)
+        self._check_input(x, mode)
         for i, op in enumerate(self._ops):
             if i == 0:
                 res = -op.apply(x, mode) if self._neg[i] else op.apply(x, mode)

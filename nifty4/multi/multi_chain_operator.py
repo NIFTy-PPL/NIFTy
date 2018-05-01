@@ -64,7 +64,7 @@ class MultiChainOperator(MultiLinearOperator):
         return self._capability
 
     def apply(self, x, mode):
-        self._check_mode(mode)
+        self._check_input(x, mode)
         t_ops = self._ops if mode & self._backwards else reversed(self._ops)
         for op in t_ops:
             x = op.apply(x, mode)

@@ -1,4 +1,5 @@
 from ..operators.linear_operator import LinearOperator
+from .multi_field import MultiField
 
 
 class MultiLinearOperator(LinearOperator):
@@ -38,3 +39,11 @@ class MultiLinearOperator(LinearOperator):
         from .multi_sum_operator import MultiSumOperator
         other = self._toOperator(other, self.domain)
         return MultiSumOperator.make([other, self], [False, True])
+
+    def _check_input(self, x, mode):
+        if not isinstance(x, MultiField):
+            raise ValueError("supplied object is not a `MultiField`.")
+
+        self._check_mode(mode)
+        if x.domain != self._dom(mode):
+            raise ValueError("The operator's and field's domains don't match.")
