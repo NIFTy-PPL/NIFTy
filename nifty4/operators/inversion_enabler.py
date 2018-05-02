@@ -83,6 +83,6 @@ class InversionEnabler(EndomorphicOperator):
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
             return self._op.draw_sample(from_inverse, dtype)
-        except:
+        except NotImplementedError:
             samp = self._op.draw_sample(not from_inverse, dtype)
             return self.inverse_times(samp) if from_inverse else self(samp)
