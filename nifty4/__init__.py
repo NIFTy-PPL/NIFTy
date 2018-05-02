@@ -24,6 +24,9 @@ from .utilities import memo
 
 from .logger import logger
 
+from .multi import *
+
 __all__ = ["__version__", "dobj", "DomainTuple"] + \
           domains.__all__ + operators.__all__ + minimization.__all__ + \
-          ["DomainTuple", "Field", "sqrt", "exp", "log"]
+          ["DomainTuple", "Field", "sqrt", "exp", "log"] + \
+          multi.__all__

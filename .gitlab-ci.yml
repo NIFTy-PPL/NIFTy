@@ -1,4 +1,4 @@
-image: docker:stable
+image: $CONTAINER_TEST_IMAGE
 
 variables:
   CONTAINER_TEST_IMAGE: gitlab-registry.mpcdf.mpg.de/ift/nifty:$CI_BUILD_REF_NAME
@@ -8,7 +8,20 @@ stages:
   - test
   - release
 
-build_docker:
+build_docker_from_scratch:
+  only:
+    - schedules
+  image: docker:stable
+  stage: build_docker
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
+    - docker push $CONTAINER_TEST_IMAGE
+
+build_docker_from_cache:
+  except:
+    - schedules
+  image: docker:stable
   stage: build_docker
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
@@ -16,7 +29,6 @@ build_docker:
     - docker push $CONTAINER_TEST_IMAGE
 
 test_python2_scalar:
-  image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
     - python setup.py install --user -f
@@ -25,28 +37,24 @@ test_python2_scalar:
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
 test_python3_scalar:
-  image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
     - python3 setup.py install --user -f
     - nosetests3 -q
 
 test_python2_mpi:
-  image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
     - python setup.py install --user -f
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests -q 2> /dev/null
 
 test_python3_mpi:
-  image: $CONTAINER_TEST_IMAGE
   stage: test
   script:
     - python3 setup.py install --user -f
     - OMP_NUM_THREADS=1 mpiexec -n 2 nosetests3 -q 2> /dev/null
 
 pages:
-  image: $CONTAINER_TEST_IMAGE
   stage: release
   script:
     - python setup.py install --user -f
