@@ -182,10 +182,9 @@ class RGSpace(StructuredDomain):
                                  "not be the same.")
 
         # Check if the distances match, i.e. dist' = 1 / (num * dist)
-        if not np.all(
-            np.absolute(np.array(self.shape) *
-                        np.array(self.distances) *
-                        np.array(codomain.distances)-1) < 1e-7):
+        if not np.all(abs(np.array(self.shape) *
+                          np.array(self.distances) *
+                          np.array(codomain.distances)-1) < 1e-7):
             raise AttributeError("The grid-distances of domain and codomain "
                                  "do not match.")
 

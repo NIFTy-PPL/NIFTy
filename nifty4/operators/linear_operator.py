@@ -96,10 +96,9 @@ class LinearOperator(NiftyMetaBase()):
             The domain on which the Operator's output Field lives."""
         raise NotImplementedError
 
-    def _flip_modes(self, op_transform):
+    def _flip_modes(self, trafo):
         from .operator_adapter import OperatorAdapter
-        return self if op_transform == 0 \
-            else OperatorAdapter(self, op_transform)
+        return self if trafo == 0 else OperatorAdapter(self, trafo)
 
     @property
     def inverse(self):
@@ -272,8 +271,9 @@ class LinearOperator(NiftyMetaBase()):
             raise ValueError("requested operator mode is not supported")
 
     def _check_input(self, x, mode):
-        if not isinstance(x, Field):
-            raise ValueError("supplied object is not a `Field`.")
+        # MR FIXME: temporary fix for working with MultiFields
+        #if not isinstance(x, Field):
+        #    raise ValueError("supplied object is not a `Field`.")
 
         self._check_mode(mode)
         if x.domain != self._dom(mode):
