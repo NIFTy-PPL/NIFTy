@@ -23,6 +23,7 @@ from . import utilities
 from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
+import sys
 
 __all__ = ["Field", "sqrt", "exp", "log", "conjugate"]
 
@@ -155,7 +156,7 @@ class Field(object):
         return Field.empty(field._domain, dtype)
 
     @staticmethod
-    def from_global_data(domain, arr):
+    def from_global_data(domain, arr, sum_up=False):
         """Returns a Field constructed from `domain` and `arr`.
 
         Parameters
@@ -165,10 +166,13 @@ class Field(object):
         arr : numpy.ndarray
             The data content to be used for the new Field.
             Its shape must match the shape of `domain`.
-            If MPI is active, the contents of `arr` must be the same on all
-            MPI tasks.
+        sum_up : bool, optional
+            If True, the contents of `arr` are summed up over all MPI tasks
+            (if any), and the sum is used as data content.
+            If False, the contens of `arr` are used directly, and must be
+            identical on all MPI tasks.
         """
-        return Field(domain, dobj.from_global_data(arr))
+        return Field(domain, dobj.from_global_data(arr, sum_up))
 
     @staticmethod
     def from_local_data(domain, arr):
@@ -515,7 +519,7 @@ class Field(object):
         float
             The L2-norm of the field values.
         """
-        return np.sqrt(np.abs(self.vdot(x=self)))
+        return np.sqrt(abs(self.vdot(x=self)))
 
     def conjugate(self):
         """ Returns the complex conjugate of the field.
@@ -536,7 +540,7 @@ class Field(object):
         return Field(self._domain, -self.val)
 
     def __abs__(self):
-        return Field(self._domain, dobj.abs(self.val))
+        return Field(self._domain, abs(self.val))
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
@@ -742,89 +746,6 @@ class Field(object):
             raise ValueError("domains are incompatible.")
         self.local_data[()] = other.local_data[()]
 
-    def _binary_helper(self, other, op):
-        # if other is a field, make sure that the domains match
-        if isinstance(other, Field):
-            if other._domain != self._domain:
-                raise ValueError("domains are incompatible.")
-            tval = getattr(self.val, op)(other.val)
-            return self if tval is self.val else Field(self._domain, tval)
-
-        if np.isscalar(other) or isinstance(other, dobj.data_object):
-            tval = getattr(self.val, op)(other)
-            return self if tval is self.val else Field(self._domain, tval)
-
-        return NotImplemented
-
-    def __add__(self, other):
-        return self._binary_helper(other, op='__add__')
-
-    def __radd__(self, other):
-        return self._binary_helper(other, op='__radd__')
-
-    def __iadd__(self, other):
-        return self._binary_helper(other, op='__iadd__')
-
-    def __sub__(self, other):
-        return self._binary_helper(other, op='__sub__')
-
-    def __rsub__(self, other):
-        return self._binary_helper(other, op='__rsub__')
-
-    def __isub__(self, other):
-        return self._binary_helper(other, op='__isub__')
-
-    def __mul__(self, other):
-        return self._binary_helper(other, op='__mul__')
-
-    def __rmul__(self, other):
-        return self._binary_helper(other, op='__rmul__')
-
-    def __imul__(self, other):
-        return self._binary_helper(other, op='__imul__')
-
-    def __div__(self, other):
-        return self._binary_helper(other, op='__div__')
-
-    def __truediv__(self, other):
-        return self._binary_helper(other, op='__truediv__')
-
-    def __rdiv__(self, other):
-        return self._binary_helper(other, op='__rdiv__')
-
-    def __rtruediv__(self, other):
-        return self._binary_helper(other, op='__rtruediv__')
-
-    def __idiv__(self, other):
-        return self._binary_helper(other, op='__idiv__')
-
-    def __pow__(self, other):
-        return self._binary_helper(other, op='__pow__')
-
-    def __rpow__(self, other):
-        return self._binary_helper(other, op='__rpow__')
-
-    def __ipow__(self, other):
-        return self._binary_helper(other, op='__ipow__')
-
-    def __lt__(self, other):
-        return self._binary_helper(other, op='__lt__')
-
-    def __le__(self, other):
-        return self._binary_helper(other, op='__le__')
-
-    def __ne__(self, other):
-        return self._binary_helper(other, op='__ne__')
-
-    def __eq__(self, other):
-        return self._binary_helper(other, op='__eq__')
-
-    def __ge__(self, other):
-        return self._binary_helper(other, op='__ge__')
-
-    def __gt__(self, other):
-        return self._binary_helper(other, op='__gt__')
-
     def __repr__(self):
         return "<nifty4.Field>"
 
@@ -833,36 +754,48 @@ class Field(object):
                self._domain.__str__() + \
                "\n- val         = " + repr(self.val)
 
+for op in ["__add__", "__radd__", "__iadd__",
+           "__sub__", "__rsub__", "__isub__",
+           "__mul__", "__rmul__", "__imul__",
+           "__div__", "__rdiv__", "__idiv__",
+           "__truediv__", "__rtruediv__", "__itruediv__",
+           "__floordiv__", "__rfloordiv__", "__ifloordiv__",
+           "__pow__", "__rpow__", "__ipow__",
+           "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
+    def func(op):
+        def func2(self, other):
+            # if other is a field, make sure that the domains match
+            if isinstance(other, Field):
+                if other._domain != self._domain:
+                    raise ValueError("domains are incompatible.")
+                tval = getattr(self.val, op)(other.val)
+                return self if tval is self.val else Field(self._domain, tval)
+
+            if np.isscalar(other) or isinstance(other, dobj.data_object):
+                tval = getattr(self.val, op)(other)
+                return self if tval is self.val else Field(self._domain, tval)
+
+            return NotImplemented
+        return func2
+    setattr(Field, op, func(op))
+
 
 # Arithmetic functions working on Fields
 
-def _math_helper(x, function, out):
-    if not isinstance(x, Field):
-        raise TypeError("This function only accepts Field objects.")
-    if out is not None:
-        if not isinstance(out, Field) or x._domain != out._domain:
-            raise ValueError("Bad 'out' argument")
-        function(x.val, out=out.val)
-        return out
-    else:
-        return Field(domain=x._domain, val=function(x.val))
+_current_module = sys.modules[__name__]
 
-
-def sqrt(x, out=None):
-    return _math_helper(x, dobj.sqrt, out)
-
-
-def exp(x, out=None):
-    return _math_helper(x, dobj.exp, out)
-
-
-def log(x, out=None):
-    return _math_helper(x, dobj.log, out)
-
-
-def tanh(x, out=None):
-    return _math_helper(x, dobj.tanh, out)
-
-
-def conjugate(x, out=None):
-    return _math_helper(x, dobj.conjugate, out)
+for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+    def func(f):
+        def func2(x, out=None):
+            fu = getattr(dobj, f)
+            if not isinstance(x, Field):
+                raise TypeError("This function only accepts Field objects.")
+            if out is not None:
+                if not isinstance(out, Field) or x._domain != out._domain:
+                    raise ValueError("Bad 'out' argument")
+                fu(x.val, out=out.val)
+                return out
+            else:
+                return Field(domain=x._domain, val=fu(x.val))
+        return func2
+    setattr(_current_module, f, func(f))

@@ -19,6 +19,7 @@
 import numpy as np
 from .random import Random
 from mpi4py import MPI
+import sys
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -185,80 +186,11 @@ class data_object(object):
         else:
             return data_object(self._shape, tval, self._distaxis)
 
-    def __add__(self, other):
-        return self._binary_helper(other, op='__add__')
-
-    def __radd__(self, other):
-        return self._binary_helper(other, op='__radd__')
-
-    def __iadd__(self, other):
-        return self._binary_helper(other, op='__iadd__')
-
-    def __sub__(self, other):
-        return self._binary_helper(other, op='__sub__')
-
-    def __rsub__(self, other):
-        return self._binary_helper(other, op='__rsub__')
-
-    def __isub__(self, other):
-        return self._binary_helper(other, op='__isub__')
-
-    def __mul__(self, other):
-        return self._binary_helper(other, op='__mul__')
-
-    def __rmul__(self, other):
-        return self._binary_helper(other, op='__rmul__')
-
-    def __imul__(self, other):
-        return self._binary_helper(other, op='__imul__')
-
-    def __div__(self, other):
-        return self._binary_helper(other, op='__div__')
-
-    def __rdiv__(self, other):
-        return self._binary_helper(other, op='__rdiv__')
-
-    def __idiv__(self, other):
-        return self._binary_helper(other, op='__idiv__')
-
-    def __truediv__(self, other):
-        return self._binary_helper(other, op='__truediv__')
-
-    def __rtruediv__(self, other):
-        return self._binary_helper(other, op='__rtruediv__')
-
-    def __pow__(self, other):
-        return self._binary_helper(other, op='__pow__')
-
-    def __rpow__(self, other):
-        return self._binary_helper(other, op='__rpow__')
-
-    def __ipow__(self, other):
-        return self._binary_helper(other, op='__ipow__')
-
-    def __lt__(self, other):
-        return self._binary_helper(other, op='__lt__')
-
-    def __le__(self, other):
-        return self._binary_helper(other, op='__le__')
-
-    def __ne__(self, other):
-        return self._binary_helper(other, op='__ne__')
-
-    def __eq__(self, other):
-        return self._binary_helper(other, op='__eq__')
-
-    def __ge__(self, other):
-        return self._binary_helper(other, op='__ge__')
-
-    def __gt__(self, other):
-        return self._binary_helper(other, op='__gt__')
-
     def __neg__(self):
         return data_object(self._shape, -self._data, self._distaxis)
 
     def __abs__(self):
-        return data_object(self._shape, np.abs(self._data), self._distaxis)
+        return data_object(self._shape, abs(self._data), self._distaxis)
 
     def all(self):
         return self.sum() == self.size
@@ -268,6 +200,20 @@ class data_object(object):
 
     def fill(self, value):
         self._data.fill(value)
+
+for op in ["__add__", "__radd__", "__iadd__",
+           "__sub__", "__rsub__", "__isub__",
+           "__mul__", "__rmul__", "__imul__",
+           "__div__", "__rdiv__", "__idiv__",
+           "__truediv__", "__rtruediv__", "__itruediv__",
+           "__floordiv__", "__rfloordiv__", "__ifloordiv__",
+           "__pow__", "__rpow__", "__ipow__",
+           "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
+    def func(op):
+        def func2(self, other):
+            return self._binary_helper(other, op=op)
+        return func2
+    setattr(data_object, op, func(op))
 
 
 def full(shape, fill_value, dtype=None, distaxis=0):
@@ -302,6 +248,7 @@ def vdot(a, b):
 
 
 def _math_helper(x, function, out):
+    function = getattr(np, function)
     if out is not None:
         function(x._data, out=out._data)
         return out
@@ -309,24 +256,14 @@ def _math_helper(x, function, out):
         return data_object(x.shape, function(x._data), x._distaxis)
 
 
-def abs(a, out=None):
-    return _math_helper(a, np.abs, out)
+_current_module = sys.modules[__name__]
 
-
-def exp(a, out=None):
-    return _math_helper(a, np.exp, out)
-
-
-def log(a, out=None):
-    return _math_helper(a, np.log, out)
-
-
-def tanh(a, out=None):
-    return _math_helper(a, np.tanh, out)
-
-
-def sqrt(a, out=None):
-    return _math_helper(a, np.sqrt, out)
+for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+    def func(f):
+        def func2(x, out=None):
+            return _math_helper(x, f, out)
+        return func2
+    setattr(_current_module, f, func(f))
 
 
 def from_object(object, dtype, copy, set_locked):
@@ -393,7 +330,9 @@ def from_local_data(shape, arr, distaxis=0):
     return data_object(shape, arr, distaxis)
 
 
-def from_global_data(arr, distaxis=0):
+def from_global_data(arr, sum_up=False, distaxis=0):
+    if sum_up:
+        arr = np_allreduce_sum(arr)
     if distaxis == -1:
         return data_object(arr.shape, arr, distaxis)
     lo, hi = _shareRange(arr.shape[distaxis], ntask, rank)
@@ -427,7 +366,7 @@ def redistribute(arr, dist=None, nodist=None):
                 break
 
     if arr._distaxis == -1:  # all data available, just pick the proper subset
-        return from_global_data(arr._data, dist)
+        return from_global_data(arr._data, distaxis=dist)
     if dist == -1:  # gather all data on all tasks
         tmp = np.moveaxis(arr._data, arr._distaxis, 0)
         slabsize = np.prod(tmp.shape[1:])*tmp.itemsize

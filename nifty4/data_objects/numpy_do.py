@@ -20,7 +20,7 @@
 
 import numpy as np
 from numpy import ndarray as data_object
-from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, abs, \
+from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, \
                   exp, log, tanh
 from .random import Random
 
@@ -80,7 +80,7 @@ def from_local_data(shape, arr, distaxis=-1):
     return arr
 
 
-def from_global_data(arr, distaxis=-1):
+def from_global_data(arr, sum_up=False, distaxis=-1):
     return arr
 
 

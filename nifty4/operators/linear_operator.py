@@ -48,6 +48,17 @@ class LinearOperator(NiftyMetaBase()):
     by means of a single integer number.
     """
 
+    # Field Operator Modes
+    TIMES = 1
+    ADJOINT_TIMES = 2
+    INVERSE_TIMES = 4
+    ADJOINT_INVERSE_TIMES = 8
+    INVERSE_ADJOINT_TIMES = 8
+
+    # Operator Transform Flags
+    ADJOINT_BIT = 1
+    INVERSE_BIT = 2
+
     _ilog = (-1, 0, 1, -1, 2, -1, -1, -1, 3)
     _validMode = (False, True, True, False, True, False, False, False, True)
     _modeTable = ((1, 2, 4, 8),
@@ -61,13 +72,6 @@ class LinearOperator(NiftyMetaBase()):
     _addInverse = (0, 5, 10, 15, 5, 5, 15, 15, 10, 15, 10, 15, 15, 15, 15, 15)
     _backwards = 6
     _all_ops = 15
-    TIMES = 1
-    ADJOINT_TIMES = 2
-    INVERSE_TIMES = 4
-    ADJOINT_INVERSE_TIMES = 8
-    INVERSE_ADJOINT_TIMES = 8
-    ADJOINT_BIT = 1
-    INVERSE_BIT = 2
 
     def _dom(self, mode):
         return self.domain if (mode & 9) else self.target
@@ -92,9 +96,9 @@ class LinearOperator(NiftyMetaBase()):
             The domain on which the Operator's output Field lives."""
         raise NotImplementedError
 
-    def _flip_modes(self, mode):
+    def _flip_modes(self, trafo):
         from .operator_adapter import OperatorAdapter
-        return self if mode == 0 else OperatorAdapter(self, mode)
+        return self if trafo == 0 else OperatorAdapter(self, trafo)
 
     @property
     def inverse(self):
@@ -277,8 +281,9 @@ class LinearOperator(NiftyMetaBase()):
             raise ValueError("requested operator mode is not supported")
 
     def _check_input(self, x, mode):
-        if not isinstance(x, Field):
-            raise ValueError("supplied object is not a `Field`.")
+        # MR FIXME: temporary fix for working with MultiFields
+        #if not isinstance(x, Field):
+        #    raise ValueError("supplied object is not a `Field`.")
 
         self._check_mode(mode)
         if x.domain != self._dom(mode):

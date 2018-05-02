@@ -68,7 +68,7 @@ class ConjugateGradient(Minimizer):
         r = energy.gradient
         d = r.copy() if preconditioner is None else preconditioner(r)
 
-        previous_gamma = (r.vdot(d)).real
+        previous_gamma = r.vdot(d).real
         if previous_gamma == 0:
             return energy, controller.CONVERGED
 
@@ -99,7 +99,7 @@ class ConjugateGradient(Minimizer):
             if gamma == 0:
                 return energy, controller.CONVERGED
 
-            status = self._controller.check(energy)
+            status = controller.check(energy)
             if status != controller.CONTINUE:
                 return energy, status
 

@@ -23,33 +23,35 @@ import numpy as np
 class OperatorAdapter(LinearOperator):
     """Class representing the inverse and/or adjoint of another operator."""
 
-    def __init__(self, op, mode):
+    def __init__(self, op, op_transform):
         super(OperatorAdapter, self).__init__()
         self._op = op
-        self._mode = int(mode)
-        if self._mode < 1 or self._mode > 3:
-            raise ValueError("invalid mode")
+        self._trafo = int(op_transform)
+        if self._trafo < 1 or self._trafo > 3:
+            raise ValueError("invalid operator transformation")
 
     @property
     def domain(self):
-        return self._op._dom(1 << self._mode)
+        return self._op._dom(1 << self._trafo)
 
     @property
     def target(self):
-        return self._op._tgt(1 << self._mode)
+        return self._op._tgt(1 << self._trafo)
 
     @property
     def capability(self):
-        return self._capTable[self._mode][self._op.capability]
+        return self._capTable[self._trafo][self._op.capability]
 
-    def _flip_modes(self, mode):
-        newmode = mode ^ self._mode
-        return self._op if newmode == 0 else OperatorAdapter(self._op, newmode)
+    def _flip_modes(self, trafo):
+        newtrafo = trafo ^ self._trafo
+        return self._op if newtrafo == 0 \
+            else OperatorAdapter(self._op, newtrafo)
 
     def apply(self, x, mode):
-        return self._op.apply(x, self._modeTable[self._mode][self._ilog[mode]])
+        return self._op.apply(x,
+                              self._modeTable[self._trafo][self._ilog[mode]])
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        if self._mode & self.INVERSE_BIT:
+        if self._trafo & self.INVERSE_BIT:
             return self._op.draw_sample(not from_inverse, dtype)
         return self._op.draw_sample(from_inverse, dtype)
