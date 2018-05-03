@@ -47,13 +47,13 @@ test_python2_mpi:
   stage: test
   script:
     - python setup.py install --user -f
-    - mpiexec -n 2 nosetests -q 2> /dev/null
+    - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
 
 test_python3_mpi:
   stage: test
   script:
     - python3 setup.py install --user -f
-    - mpiexec -n 2 nosetests3 -q 2> /dev/null
+    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
 
 pages:
   stage: release
