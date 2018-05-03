@@ -26,7 +26,7 @@ x = ift.Field(space, val=np.array([2, 5]))
 takeOp(a, x, np.array([[1, 0], [0, 1]]))
 takeOp(2*a, x, np.array([[2, 0], [0, 2]]))
 takeOp(a*a, x, np.diagflat(2*x.val))
-# takeOp(nl.NLOp_const(4), x, np.zeros((2, 2)))
+takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
 
 
 def takeOp2D1D(op, at, out):
