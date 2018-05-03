@@ -39,7 +39,8 @@ class NLOp_const(NLOp):
     def value(self, x):
         return self._val
 
-    def derivative(self, x):
+    @property
+    def derivative(self):
         return 0.
 
 class NLOp_var(NLOp):
@@ -49,7 +50,8 @@ class NLOp_var(NLOp):
     def value(self, x):
         return x
 
-    def derivative(self, x):
+    @property
+    def derivative(self):
         return 1.
 
 class NLOp_Linop(NLOp):
@@ -70,8 +72,9 @@ class NLOp_add(NLOp):
     def value(self,x):
         return self._a.value(x) + self._b.value(x)
 
-    def derivative(self, x):
-        return self._a.derivative(x) + self._b.derivative(x)
+    @property
+    def derivative(self):
+        return self._a.derivative + self._b.derivative
 
 class NLOp_mul(NLOp):
     def __init__(self, a, b):
@@ -80,8 +83,10 @@ class NLOp_mul(NLOp):
     def value(self,x):
         return self._a.value(x) * self._b.value(x)
 
-    def derivative(self, x):
-        return self._b.value(x)*self._a.derivative(x) + self._b.derivative(x)*self._a.value(x)
+    @property
+    def derivative(self):
+        return self._b*self._a.derivative + self._b.derivative*self._a
+
 import nifty4 as ift
 
 class NLOp_vdot(NLOp):
