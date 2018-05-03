@@ -6,25 +6,32 @@ import nifty4.nonlinear.nonlinear_operator as nl
 space = ift.RGSpace(2)
 a = nl.NLOp_var(space)
 
-# ##############################################################
-# # Temporary
-# alpha = nl.NLOp_vdot(a, a)
-# field = a
-# f = alpha * field
+##############################################################
+# Temporary
+alpha = nl.NLOp_vdot(a, a)
+field = a
+f = alpha * field
 
-# x = ift.Field(space, val=np.array([1, 2]))
+x = ift.Field(space, val=np.array([1, 2]))
 
-# deriv1 = field * alpha.derivative
-# # deriv1 should be a linear operator with off-diagonal terms.
-# # Contrarily, it is a diagonal operator:
-# print(deriv1.value(x))
-# # The off-diagonal terms are not computed in this way.
+deriv1 = field * alpha.derivative
+# deriv1 should be a linear operator with off-diagonal terms.
+# Contrarily, it is a diagonal operator:
+print(deriv1.value(x))
+# The off-diagonal terms are not computed in this way.
 
-# # Try to fix that:
+# Try to fix that:
 
-# exit()
-# # End temporary
-# ##############################################################
+# First problem: alpha.derivative is a diagonal operator.
+# I would expect a single vector here since alpha: R^n -> R
+
+# Second problem: field*alpha.derivative should compute the outer
+# product since field is a (column) vector and alpha.derivative is
+# a row vector.
+
+exit()
+# End temporary
+##############################################################
 
 
 # space -> space
