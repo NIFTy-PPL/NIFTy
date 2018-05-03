@@ -6,6 +6,7 @@ space = ift.RGSpace(2)
 a = nl.NLOp_var(space)
 
 
+# space -> space
 def takeOp(op, at, out):
     print('E(x) = ', op.value(at))
     print('dE/dx = ', op.derivative)
@@ -21,14 +22,22 @@ def takeOp(op, at, out):
     np.testing.assert_allclose(grad, out)
 
 
-# space -> space
 x = ift.Field(space, val=np.array([2, 5]))
 takeOp(a, x, np.array([[1, 0], [0, 1]]))
 takeOp(2*a, x, np.array([[2, 0], [0, 2]]))
 takeOp(a*a, x, np.diagflat(2*x.val))
 takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
 
+a1, a2 = x.val
+grad = np.zeros((2, 2))
+grad[0, 0] = 3*a1**2+a2**2
+grad[0, 1] = 2*a1*a2
+grad[1, 0] = 2*a1*a2
+grad[1, 1] = a1**2+3*a2**2
+takeOp(a*nl.NLOp_vdot(a, a), x, grad)
 
+
+# space -> float
 def takeOp2D1D(op, at, out):
     print('E(x) = ', op.value(at))
     print('dE/dx = ', op.derivative)
@@ -41,6 +50,5 @@ def takeOp2D1D(op, at, out):
     np.testing.assert_allclose(grad, out)
 
 
-# space -> float
 takeOp2D1D(nl.NLOp_vdot(a, a), x, 2*x.val)
 takeOp2D1D(nl.NLOp_vdot(a, a) * nl.NLOp_vdot(a, a), x, 4*(x.vdot(x))*x.val)
