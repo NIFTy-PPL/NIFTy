@@ -16,10 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .wiener_filter_curvature import WienerFilterCurvature
-from ..utilities import memo
+from .. import Field
 from ..minimization.energy import Energy
 from ..nonlinear.nonlinear_operator import *
+from ..utilities import memo
+from .wiener_filter_curvature import WienerFilterCurvature
 
 
 class NonlinearWienerFilterEnergy(Energy):
@@ -38,7 +39,7 @@ class NonlinearWienerFilterEnergy(Energy):
         ene = 0.5 * (NLOp_vdot(pos, NLOp_Linop(S.inverse, pos)) +
                      NLOp_vdot(residual, NLOp_Linop(N.inverse, residual)))
         self._value = ene.value(self.position)
-        self._gradient = ene.derivative(self.position)(ift.Field((),1.))
+        self._gradient = ene.derivative(self.position)(Field((), 1.))
 
         m = ht(power*position)
 
