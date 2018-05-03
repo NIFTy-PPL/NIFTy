@@ -115,6 +115,16 @@ class NLOp_Tanh(NLOp):
     def derivative(self, x):
         return self._var.derivative(x)*(1.-ift.tanh(self._var.value(x))**2)
 
+class NLOp_PositiveTanh(NLOp):
+    def __init__(self, var):
+        self._var = var
+
+    def value(self, x):
+        return 0.5*ift.tanh(0.5*self._var.value(x))
+
+    def derivative(self, x):
+        return 0.5*self._var.derivative(x)*(1.-ift.tanh(self._var.value(x))**2)
+
 class NLOp_neg(NLOp):
     def __init__(self, var):
         self._var = var
