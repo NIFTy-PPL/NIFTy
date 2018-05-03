@@ -2,8 +2,29 @@ import numpy as np
 import nifty4 as ift
 import nifty4.nonlinear.nonlinear_operator as nl
 
+
 space = ift.RGSpace(2)
 a = nl.NLOp_var(space)
+
+# ##############################################################
+# # Temporary
+# alpha = nl.NLOp_vdot(a, a)
+# field = a
+# f = alpha * field
+
+# x = ift.Field(space, val=np.array([1, 2]))
+
+# deriv1 = field * alpha.derivative
+# # deriv1 should be a linear operator with off-diagonal terms.
+# # Contrarily, it is a diagonal operator:
+# print(deriv1.value(x))
+# # The off-diagonal terms are not computed in this way.
+
+# # Try to fix that:
+
+# exit()
+# # End temporary
+# ##############################################################
 
 
 # space -> space
