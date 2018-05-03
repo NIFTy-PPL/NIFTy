@@ -25,6 +25,9 @@ class ScalarDistributor(LinearOperator):
     def __init__(self, weight):
         super(ScalarDistributor, self).__init__()
 
+        if not isinstance(weight, Field):
+            raise TypeError("Field object required")
+
         self._weight = weight
         self._domain = DomainTuple.make(())
 
