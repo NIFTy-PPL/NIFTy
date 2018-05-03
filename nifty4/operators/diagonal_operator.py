@@ -178,8 +178,7 @@ class DiagonalOperator(EndomorphicOperator):
         return res
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        if (np.issubdtype(self._ldiag.dtype, np.complexfloating) or
-                (self._ldiag <= 0.).any()):
+        if np.issubdtype(self._ldiag.dtype, np.complexfloating):
             raise ValueError("operator not positive definite")
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
