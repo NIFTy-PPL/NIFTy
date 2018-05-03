@@ -12,9 +12,11 @@ from .power_distributor import PowerDistributor
 from .inversion_enabler import InversionEnabler
 from .sandwich_operator import SandwichOperator
 from .scalar_distributor import ScalarDistributor
+from .outer import OuterOperator
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
-           "InversionEnabler", "SandwichOperator", "ScalarDistributor"]
+           "InversionEnabler", "SandwichOperator", "ScalarDistributor",
+           "OuterOperator"]
