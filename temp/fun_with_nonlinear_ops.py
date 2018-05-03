@@ -16,7 +16,7 @@ def takeOp(op, at, out):
     grad1 = gradient(ift.Field(dom, np.array([1, 0]))).val
     grad2 = gradient(ift.Field(dom, np.array([0, 1]))).val
     grad = np.array([grad1, grad2])
-    print('dE/dx|(2,5) (1,0) = ', grad[0])
+    print('dE/dx|(2,5) (1, 0) = ', grad[0])
     print('dE/dx|(2,5) (0, 1) = ', grad[1])
     print()
     np.testing.assert_allclose(grad, out)
