@@ -48,15 +48,15 @@ class NLOp_const(NLOp):
 
 
 class NLOp_var(NLOp):
-    def __init__(self):
-        pass
+    def __init__(self, domain):
+        self._domain = domain
 
     def value(self, x):
         return x
 
     @property
     def derivative(self):
-        return 1.
+        return NLOp_const(ift.ScalingOperator(1., self._domain))
 
 
 class NLOp_Linop(NLOp):
@@ -92,7 +92,9 @@ class NLOp_mul(NLOp):
 
     @property
     def derivative(self):
-        return self._b * self._a.derivative + self._b.derivative * self._a
+        A = self._b * self._a.derivative
+        B = self._b.derivative * self._a # Cross terms are missing here
+        return A + B
 
 
 class NLOp_vdot(NLOp):
@@ -102,9 +104,9 @@ class NLOp_vdot(NLOp):
     def value(self, x):
         return self._a.value(x).vdot(self._b.value(x))
 
-    def derivative(self, x):
-        return (self._a.derivative(x) * ift.ScalarDistributor(self._b.value(x)) +
-                self._b.derivative(x) * ift.ScalarDistributor(self._a.value(x)))
+    @property
+    def derivative(self):
+        return self._a.derivative * self._b + self._b.derivative * self._a
 
 
 class NLOp_Exp(NLOp):
