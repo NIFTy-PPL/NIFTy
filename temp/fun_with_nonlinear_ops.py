@@ -35,7 +35,7 @@ def takeOp2D1D(op, at, out):
     gradient = op.derivative.value(at)
     print('dE/dx|(2,5) = ', gradient)
     dom = gradient.domain
-    grad = op.derivative.value(x)(ift.Field.full(dom, 1.))
+    grad = op.derivative.value(x)(ift.Field.full(dom, 1.)).val
     print('dE/dx|(2,5) (1,1) = ', grad)
     print()
     np.testing.assert_allclose(grad, out)
@@ -43,4 +43,4 @@ def takeOp2D1D(op, at, out):
 
 # space -> float
 takeOp2D1D(nl.NLOp_vdot(a, a), x, 2*x.val)
-# takeOp2D1D(nl.NLOp_vdot(a, a) * nl.NLOp_vdot(a, a), x, )
+takeOp2D1D(nl.NLOp_vdot(a, a) * nl.NLOp_vdot(a, a), x, 4*(x.vdot(x))*x.val)
