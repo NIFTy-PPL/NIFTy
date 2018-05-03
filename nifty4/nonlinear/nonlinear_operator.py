@@ -1,4 +1,6 @@
 import numpy as np
+import nifty4 as ift
+
 
 class NLOp(object):
     def value(self, x):
@@ -32,6 +34,7 @@ class NLOp(object):
     def __rmul__(self, other):
         return NLOp_mul(self._makeOp(other), self)
 
+
 class NLOp_const(NLOp):
     def __init__(self, val):
         self._val = val
@@ -42,6 +45,7 @@ class NLOp_const(NLOp):
     @property
     def derivative(self):
         return 0.
+
 
 class NLOp_var(NLOp):
     def __init__(self):
@@ -54,6 +58,7 @@ class NLOp_var(NLOp):
     def derivative(self):
         return 1.
 
+
 class NLOp_Linop(NLOp):
     def __init__(self, lop, arg):
         self._lop = lop
@@ -63,42 +68,44 @@ class NLOp_Linop(NLOp):
         return self._lop(self._arg.value(x))
 
     def derivative(self, x):
-        return self._arg.derivative(x)*self._lop.adjoint
+        return self._arg.derivative(x) * self._lop.adjoint
+
 
 class NLOp_add(NLOp):
     def __init__(self, a, b):
         self._a, self._b = a, b
 
-    def value(self,x):
+    def value(self, x):
         return self._a.value(x) + self._b.value(x)
 
     @property
     def derivative(self):
         return self._a.derivative + self._b.derivative
 
+
 class NLOp_mul(NLOp):
     def __init__(self, a, b):
         self._a, self._b = a, b
 
-    def value(self,x):
+    def value(self, x):
         return self._a.value(x) * self._b.value(x)
 
     @property
     def derivative(self):
-        return self._b*self._a.derivative + self._b.derivative*self._a
+        return self._b * self._a.derivative + self._b.derivative * self._a
 
-import nifty4 as ift
 
 class NLOp_vdot(NLOp):
     def __init__(self, a, b):
         self._a, self._b = a, b
 
-    def value(self,x):
+    def value(self, x):
         return self._a.value(x).vdot(self._b.value(x))
 
     def derivative(self, x):
-        return (self._a.derivative(x)*ift.ScalarDistributor(self._b.value(x)) +
-                self._b.derivative(x)*ift.ScalarDistributor(self._a.value(x)))
+        return (self._a.derivative(x) * ift.ScalarDistributor(self._b.value(x)) +
+                self._b.derivative(x) * ift.ScalarDistributor(self._a.value(x)))
+
 
 class NLOp_Exp(NLOp):
     def __init__(self, var):
@@ -110,6 +117,7 @@ class NLOp_Exp(NLOp):
     def derivative(self, x):
         return self._var.derivative(x) * ift.exp(self._var.value(x))
 
+
 class NLOp_Tanh(NLOp):
     def __init__(self, var):
         self._var = var
@@ -118,17 +126,20 @@ class NLOp_Tanh(NLOp):
         return ift.tanh(self._var.value(x))
 
     def derivative(self, x):
-        return self._var.derivative(x)*(1.-ift.tanh(self._var.value(x))**2)
+        return self._var.derivative(x) * (1. - ift.tanh(self._var.value(x))**2)
+
 
 class NLOp_PositiveTanh(NLOp):
     def __init__(self, var):
         self._var = var
 
     def value(self, x):
-        return 0.5*ift.tanh(0.5*self._var.value(x))
+        return 0.5 * ift.tanh(0.5 * self._var.value(x))
 
     def derivative(self, x):
-        return 0.5*self._var.derivative(x)*(1.-ift.tanh(self._var.value(x))**2)
+        return 0.5 * self._var.derivative(x) * \
+            (1. - ift.tanh(self._var.value(x))**2)
+
 
 class NLOp_neg(NLOp):
     def __init__(self, var):
