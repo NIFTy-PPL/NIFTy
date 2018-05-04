@@ -101,9 +101,11 @@ grad[0,1,0,1] = 1.
 grad[1,0,1,0] = 1.
 grad[1,1,1,1] = 1.
 takeOp(a, x, grad)
+grad *= 2
+takeOp(2*a, x, grad)
+grad *= x.val
+takeOp(a*a, x, grad)
 exit()
-takeOp(2*a, x, np.array([[2., 0.], [0., 2.]]))
-takeOp(a*a, x, np.diagflat(2*x.val))
 takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
 takeOp(nl.NLOp_Exp(a), x, np.diagflat(np.exp(x.val)))
 takeOp(nl.NLOp_Exp(a*a), x, np.diagflat(2*x.val*np.exp((x**2).val)))
