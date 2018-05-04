@@ -27,7 +27,6 @@ deriv = f.derivative.value(x)
 print(deriv(ift.Field(space, np.array([1, 0]))))
 print(deriv(ift.Field(space, np.array([0, 1]))))
 
-exit()
 # End temporary
 ##############################################################
 
@@ -60,7 +59,7 @@ grad[0, 0] = 3*a1**2+a2**2
 grad[0, 1] = 2*a1*a2
 grad[1, 0] = 2*a1*a2
 grad[1, 1] = a1**2+3*a2**2
-takeOp(a*nl.NLOp_vdot(a, a), x, grad)
+takeOp(nl.NLOp_mul(a, nl.NLOp_vdot(a, a), False, True), x, grad)
 
 
 # space -> float
