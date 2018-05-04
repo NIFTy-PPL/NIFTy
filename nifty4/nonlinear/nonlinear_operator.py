@@ -90,6 +90,7 @@ class NLOp_add(NLOp):
 
 class NLOp_mul(NLOp):
     def __init__(self, a, b, a_number=False, b_number=False):
+        # TODO Remove a_number and b_number again.
         self._a, self._b = a, b
         self._a_number = a_number
         self._b_number = b_number
@@ -169,8 +170,9 @@ class NLOp_Tanh(NLOp):
     def value(self, x):
         return ift.tanh(self._var.value(x))
 
-    def derivative(self, x):
-        return self._var.derivative(x) * (1. - ift.tanh(self._var.value(x))**2)
+    @property
+    def derivative(self):
+        return self._var.derivative * (1. - (NLOp_Tanh(self._var))*(NLOp_Tanh(self._var)))
 
 
 class NLOp_PositiveTanh(NLOp):
