@@ -18,6 +18,8 @@ class RowOperator(LinearOperator):
         if mode == self.TIMES:
             return Field(self.target, self._field.vdot(x))
         else:
+            if len(x.domain) == 0:
+                x = x.val[()]
             return self._field * x
 
     @property
