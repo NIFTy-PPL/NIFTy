@@ -69,7 +69,9 @@ class NLOp_Linop(NLOp):
         self._arg = arg
 
     def value(self, x):
-        return self._lop(self._arg.value(x))
+        if isinstance(self._lop, ift.LinearOperator):
+            return self._lop(self._arg.value(x))
+        return self._lop.value(x)(self._arg.value(x))
 
     @property
     def derivative(self):
@@ -148,7 +150,7 @@ class NLOp_vdot(NLOp):
 
     @property
     def derivative(self):
-        return NLOp_row(self._a.derivative_field * self._b + self._b.derivative_field * self._a)
+        return NLOp_row(NLOp_Linop(self._a.derivative, self._b) + NLOp_Linop(self._b.derivative, self._a))
 
 
 class NLOp_Exp(NLOp):

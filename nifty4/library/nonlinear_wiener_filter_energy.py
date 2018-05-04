@@ -21,6 +21,7 @@ from ..minimization.energy import Energy
 from ..nonlinear.nonlinear_operator import *
 from ..utilities import memo
 from .wiener_filter_curvature import WienerFilterCurvature
+from .nonlinearities import Exponential
 
 
 class NonlinearWienerFilterEnergy(Energy):
@@ -33,19 +34,25 @@ class NonlinearWienerFilterEnergy(Energy):
         self.ht = ht
         self.power = power
 
-        pos = NLOp_var()
+        nonlinearity = NLOp_Exp
+
+        pos = NLOp_var(self.ht.domain)
         m = NLOp_Linop(ht, power*pos)
-        residual = d - NLOp_Linop(Instrument, NLOp_Tanh(m))
+        residual = d - NLOp_Linop(Instrument, nonlinearity(m))
         ene = 0.5 * (NLOp_vdot(pos, NLOp_Linop(S.inverse, pos)) +
                      NLOp_vdot(residual, NLOp_Linop(N.inverse, residual)))
         self._value = ene.value(self.position)
-        self._gradient = ene.derivative(self.position)(Field((), 1.))
+        self._gradient = ene.derivative.value(self.position)
+        print(self._gradient.domain)
+        print(self._gradient.target)
+        exit()
 
         m = ht(power*position)
 
         self.N = N
         self.S = S
         self.inverter = inverter
+        nonlinearity = Exponential()
         self.R = Instrument * nonlinearity.derivative(m) * ht * power
 
     def at(self, position):
