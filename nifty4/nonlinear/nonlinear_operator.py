@@ -60,7 +60,7 @@ class NLOp_var(NLOp):
 
     @property
     def derivative_field(self):
-        return ift.Field.ones(self._domain)
+        return NLOp_const(ift.Field.ones(self._domain))
 
 
 class NLOp_Linop(NLOp):
