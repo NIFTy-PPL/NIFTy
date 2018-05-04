@@ -322,6 +322,12 @@ def np_allreduce_sum(arr):
     return res
 
 
+def np_allreduce_min(arr):
+    res = np.empty_like(arr)
+    _comm.Allreduce(arr, res, MPI.MIN)
+    return res
+
+
 def distaxis(arr):
     return arr._distaxis
 
