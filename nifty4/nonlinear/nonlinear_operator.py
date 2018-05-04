@@ -58,6 +58,10 @@ class NLOp_var(NLOp):
     def derivative(self):
         return NLOp_const(ift.ScalingOperator(1., self._domain))
 
+    @property
+    def derivative_field(self):
+        return ift.Field.ones(self._domain)
+
 
 class NLOp_Linop(NLOp):
     def __init__(self, lop, arg):
@@ -93,11 +97,21 @@ class NLOp_mul(NLOp):
     @property
     def derivative(self):
         A = self._b * self._a.derivative
-        B = self._b.derivative * self._a # Cross terms are missing here
+        B = self._b.derivative * self._a  # Cross terms are missing here
         return A + B
 
 
+class NLOp_outer(NLOp):
+    def __init__(self, a, b):
+        self._a, self._b = a, b
+
+    def value(self, x):
+        return ift.OuterOperator(self._a.value(x), self._b.value(x))
+
+
 class NLOp_vdot(NLOp):
+    """ Supports only variables as inputs so far.
+    """
     def __init__(self, a, b):
         self._a, self._b = a, b
 
@@ -106,7 +120,7 @@ class NLOp_vdot(NLOp):
 
     @property
     def derivative(self):
-        return self._a.derivative * self._b + self._b.derivative * self._a
+        return self._a.derivative_field * self._b + self._b.derivative_field * self._a
 
 
 class NLOp_Exp(NLOp):

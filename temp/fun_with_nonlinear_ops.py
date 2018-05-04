@@ -14,6 +14,16 @@ f = alpha * field
 
 x = ift.Field(space, val=np.array([1, 2]))
 
+# print(alpha.derivative.value(x)(ift.Field.ones(space)))
+# print(field.value(x))
+deriv10 = nl.NLOp_outer(field, alpha.derivative)
+grad = deriv10.value(x)
+print(grad)
+print(grad(ift.Field(space, np.array([1,0]))))
+print(grad(ift.Field(space, np.array([0,1]))))
+print(deriv10)
+
+exit()
 deriv1 = field * alpha.derivative
 # deriv1 should be a linear operator with off-diagonal terms.
 # Contrarily, it is a diagonal operator:
