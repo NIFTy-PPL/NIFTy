@@ -80,7 +80,7 @@ def takeOp2D1D(op, at, out):
     gradient = op.derivative.value(at)
     print('dE/dx|(2,5) = ', gradient)
     dom = gradient.domain
-    grad = op.derivative.value(x)(ift.Field.full(dom, 1.)).val
+    grad = gradient(ift.Field.full(dom, 1.)).val
     print('dE/dx|(2,5) (1,1) = ', grad)
     print()
     np.testing.assert_allclose(grad, out)
