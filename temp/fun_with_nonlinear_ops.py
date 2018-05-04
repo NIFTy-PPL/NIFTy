@@ -14,8 +14,8 @@ def takeOp(op, at, out):
     gradient = op.derivative.value(at)
     print('dE/dx|(2,5) = ', gradient)
     dom = gradient.domain
-    grad1 = gradient(ift.Field(dom, np.array([1, 0]))).val
-    grad2 = gradient(ift.Field(dom, np.array([0, 1]))).val
+    grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
+    grad2 = gradient(ift.Field(dom, np.array([0., 1.]))).val
     grad = np.array([grad1, grad2])
     print('dE/dx|(2,5) (1, 0) = ', grad[0])
     print('dE/dx|(2,5) (0, 1) = ', grad[1])
@@ -23,9 +23,9 @@ def takeOp(op, at, out):
     np.testing.assert_allclose(grad, out)
 
 
-x = ift.Field(space, val=np.array([2, 5]))
-takeOp(a, x, np.array([[1, 0], [0, 1]]))
-takeOp(2*a, x, np.array([[2, 0], [0, 2]]))
+x = ift.Field(space, val=np.array([2., 5.]))
+takeOp(a, x, np.array([[1., 0.], [0., 1.]]))
+takeOp(2*a, x, np.array([[2., 0.], [0., 2.]]))
 takeOp(a*a, x, np.diagflat(2*x.val))
 takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
 
@@ -51,8 +51,8 @@ def takeOp2D1D(op, at, out):
     gradient = op.derivative.value(at)
     print('dE/dx|(2,5) = ', gradient)
     dom = gradient.domain
-    grad1 = gradient(ift.Field(dom, np.array([1, 0]))).val
-    grad2 = gradient(ift.Field(dom, np.array([0, 1]))).val
+    grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
+    grad2 = gradient(ift.Field(dom, np.array([0., 1.]))).val
     grad = np.array([grad1, grad2])
     print('dE/dx|(2,5) (1, 0) = ', grad[0])
     print('dE/dx|(2,5) (0, 1) = ', grad[1])

@@ -71,8 +71,9 @@ class NLOp_Linop(NLOp):
     def value(self, x):
         return self._lop(self._arg.value(x))
 
-    def derivative(self, x):
-        return self._arg.derivative(x) * self._lop.adjoint
+    @property
+    def derivative(self):
+        return self._arg.derivative * self._lop.adjoint
 
 
 class NLOp_add(NLOp):
@@ -96,14 +97,10 @@ class NLOp_mul(NLOp):
     def value(self, x):
         a = self._a.value(x)
         b = self._b.value(x)
-        print('a:\n', a)
-        print('b:\n', b)
         if isinstance(a, ift.Field) and len(a.domain) == 0:
             a = a.to_global_data()[()]
         if isinstance(b, ift.Field) and len(b.domain) == 0:
             b = b.to_global_data()[()]
-        print('a:\n', a)
-        print('b:\n', b)
         return a * b
 
     @property
