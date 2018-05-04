@@ -90,4 +90,4 @@ def takeOp2D1D(op, at, out):
 
 
 takeOp2D1D(nl.NLOp_vdot(a, a), x, 2*x.val)
-takeOp2D1D(nl.NLOp_vdot(a, a) * nl.NLOp_vdot(a, a), x, 4*(x.vdot(x))*x.val)
+# takeOp2D1D(nl.NLOp_vdot(a, a) * nl.NLOp_vdot(a, a), x, 4*(x.vdot(x))*x.val)

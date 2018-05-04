@@ -102,6 +102,8 @@ class NLOp_mul(NLOp):
         if isinstance(b, ift.Field) and len(b.domain) == 0:
             b = b.to_global_data()
             b = ift.Field.full(a.domain, float(b))
+        # print('a:\n', a)
+        # print('b:\n', b)
         return a * b
 
     @property
@@ -122,6 +124,7 @@ class NLOp_mul(NLOp):
 class NLOp_outer(NLOp):
     def __init__(self, a, b):
         self._a, self._b = a, b
+        assert isinstance(self._b, NLOp_row)
 
     def value(self, x):
         return ift.OuterOperator(self._a.value(x), self._b.value(x))
