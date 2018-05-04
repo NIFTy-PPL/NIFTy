@@ -127,6 +127,14 @@ class NLOp_outer(NLOp):
         return ift.OuterOperator(self._a.value(x), self._b.value(x))
 
 
+class NLOp_row(NLOp):
+    def __init__(self, row):
+        self._row = row
+
+    def value(self, x):
+        return ift.RowOperator(self._row.value(x))
+
+
 class NLOp_vdot(NLOp):
     """ Supports only variables as inputs so far.
     """
@@ -139,7 +147,7 @@ class NLOp_vdot(NLOp):
 
     @property
     def derivative(self):
-        return self._a.derivative_field * self._b + self._b.derivative_field * self._a
+        return NLOp_row(self._a.derivative_field * self._b + self._b.derivative_field * self._a)
 
 
 class NLOp_Exp(NLOp):
