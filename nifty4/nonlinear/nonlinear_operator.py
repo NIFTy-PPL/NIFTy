@@ -96,6 +96,12 @@ class NLOp_mul(NLOp):
     def value(self, x):
         a = self._a.value(x)
         b = self._b.value(x)
+        if isinstance(a, ift.Field) and len(a.domain) == 0:
+            a = a.to_global_data()
+            a = ift.Field.full(b.domain, float(a))
+        if isinstance(b, ift.Field) and len(b.domain) == 0:
+            b = b.to_global_data()
+            b = ift.Field.full(a.domain, float(b))
         return a * b
 
     @property
