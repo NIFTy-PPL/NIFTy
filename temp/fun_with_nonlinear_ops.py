@@ -6,29 +6,35 @@ import nifty4.nonlinear.nonlinear_operator as nl
 space = ift.RGSpace(2)
 a = nl.NLOp_var(space)
 
-##############################################################
-# Temporary
-alpha = nl.NLOp_vdot(a, a)
-field = a
-x = ift.Field(space, val=np.array([1, 2]))
+# ##############################################################
+# # Temporary
+# alpha = nl.NLOp_vdot(a, a)
+# field = a
+# x = ift.Field(space, val=np.array([1, 2]))
 
-f = a * a
-deriv = f.derivative.value(x)
-print(deriv(ift.Field(space, np.array([1, 0]))))
-print(deriv(ift.Field(space, np.array([0, 1]))))
+# f = a * a
+# deriv = f.derivative.value(x)
+# print("f = a*a")
+# print(deriv(ift.Field(space, np.array([1, 0]))))
+# print(deriv(ift.Field(space, np.array([0, 1]))))
+# print()
 
-f = nl.NLOp_mul(alpha, field, True, False)
-deriv = f.derivative.value(x)
-print(deriv(ift.Field(space, np.array([1, 0]))))
-print(deriv(ift.Field(space, np.array([0, 1]))))
+# f = nl.NLOp_mul(alpha, field, True, False)
+# deriv = f.derivative.value(x)
+# print("f = vdot(a,a) * a")
+# print(deriv(ift.Field(space, np.array([1, 0]))))
+# print(deriv(ift.Field(space, np.array([0, 1]))))
+# print()
 
-f = nl.NLOp_mul(field, alpha, False, True)
-deriv = f.derivative.value(x)
-print(deriv(ift.Field(space, np.array([1, 0]))))
-print(deriv(ift.Field(space, np.array([0, 1]))))
+# f = nl.NLOp_mul(field, alpha, False, True)
+# deriv = f.derivative.value(x)
+# print("f = a * vdot(a,a)")
+# print(deriv(ift.Field(space, np.array([1, 0]))))
+# print(deriv(ift.Field(space, np.array([0, 1]))))
+# print()
 
-# End temporary
-##############################################################
+# # End temporary
+# ##############################################################
 
 
 # space -> space
@@ -61,6 +67,11 @@ grad[1, 0] = 2*a1*a2
 grad[1, 1] = a1**2+3*a2**2
 takeOp(nl.NLOp_mul(a, nl.NLOp_vdot(a, a), False, True), x, grad)
 
+print()
+print()
+print('Start testing energy functionals.')
+print()
+print()
 
 # space -> float
 def takeOp2D1D(op, at, out):
