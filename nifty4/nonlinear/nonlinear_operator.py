@@ -157,8 +157,9 @@ class NLOp_Exp(NLOp):
     def value(self, x):
         return ift.exp(self._var.value(x))
 
-    def derivative(self, x):
-        return self._var.derivative(x) * ift.exp(self._var.value(x))
+    @property
+    def derivative(self):
+        return self._var.derivative * NLOp_Exp(self._var)
 
 
 class NLOp_Tanh(NLOp):
