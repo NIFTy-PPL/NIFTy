@@ -30,6 +30,7 @@ takeOp(a*a, x, np.diagflat(2*x.val))
 takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
 takeOp(nl.NLOp_Exp(a), x, np.diagflat(np.exp(x.val)))
 takeOp(nl.NLOp_Exp(a*a), x, np.diagflat(2*x.val*np.exp((x**2).val)))
+takeOp(nl.NLOp_neg(a), x, np.diagflat(-np.ones_like(x.val)))
 
 a1, a2 = x.val
 grad = np.zeros((2, 2))

@@ -192,5 +192,6 @@ class NLOp_neg(NLOp):
     def value(self, x):
         return -self._var.value(x)
 
-    def derivative(self, x):
-        return -self._var.derivative(x)
+    @property
+    def derivative(self):
+        return (-1)*self._var.derivative
