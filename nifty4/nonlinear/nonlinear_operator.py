@@ -88,16 +88,26 @@ class NLOp_add(NLOp):
 
 
 class NLOp_mul(NLOp):
-    def __init__(self, a, b):
+    def __init__(self, a, b, a_number=False, b_number=False):
         self._a, self._b = a, b
+        self._a_number = a_number
+        self._b_number = b_number
 
     def value(self, x):
         return self._a.value(x) * self._b.value(x)
 
     @property
     def derivative(self):
-        A = self._b * self._a.derivative
-        B = self._b.derivative * self._a  # Cross terms are missing here
+        if self._a_number:
+            A = NLOp_outer(self._b, self._a.derivative)
+        else:
+            A = self._b * self._a.derivative
+
+        if self._b_number:
+            B = NLOp_outer(self._a, self._b.derivative)
+        else:
+            B = self._b.derivative * self._a
+
         return A + B
 
 

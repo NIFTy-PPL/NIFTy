@@ -10,34 +10,22 @@ a = nl.NLOp_var(space)
 # Temporary
 alpha = nl.NLOp_vdot(a, a)
 field = a
-f = alpha * field
-
 x = ift.Field(space, val=np.array([1, 2]))
 
-# print(alpha.derivative.value(x)(ift.Field.ones(space)))
-# print(field.value(x))
-deriv10 = nl.NLOp_outer(field, alpha.derivative)
-grad = deriv10.value(x)
-print(grad)
-print(grad(ift.Field(space, np.array([1,0]))))
-print(grad(ift.Field(space, np.array([0,1]))))
-print(deriv10)
+f = a * a
+deriv = f.derivative.value(x)
+print(deriv(ift.Field(space, np.array([1, 0]))))
+print(deriv(ift.Field(space, np.array([0, 1]))))
 
-exit()
-deriv1 = field * alpha.derivative
-# deriv1 should be a linear operator with off-diagonal terms.
-# Contrarily, it is a diagonal operator:
-print(deriv1.value(x))
-# The off-diagonal terms are not computed in this way.
+f = nl.NLOp_mul(alpha, field, True, False)
+deriv = f.derivative.value(x)
+print(deriv(ift.Field(space, np.array([1, 0]))))
+print(deriv(ift.Field(space, np.array([0, 1]))))
 
-# Try to fix that:
-
-# First problem: alpha.derivative is a diagonal operator.
-# I would expect a single vector here since alpha: R^n -> R
-
-# Second problem: field*alpha.derivative should compute the outer
-# product since field is a (column) vector and alpha.derivative is
-# a row vector.
+f = nl.NLOp_mul(field, alpha, False, True)
+deriv = f.derivative.value(x)
+print(deriv(ift.Field(space, np.array([1, 0]))))
+print(deriv(ift.Field(space, np.array([0, 1]))))
 
 exit()
 # End temporary
