@@ -130,6 +130,11 @@ class NLOp_outer(NLOp):
     def value(self, x):
         return ift.OuterOperator(self._a.value(x), self._b.value(x))
 
+    # FIXME
+    # @property
+    # def derivative(self):
+    #     pass
+
 
 class NLOp_row(NLOp):
     def __init__(self, row):
@@ -138,14 +143,13 @@ class NLOp_row(NLOp):
     def value(self, x):
         return ift.RowOperator(self._row.value(x))
 
+    # FIXME
     # @property
     # def derivative(self):
     #     pass
 
 
 class NLOp_vdot(NLOp):
-    """ Supports only variables as inputs so far.
-    """
     def __init__(self, a, b):
         self._a, self._b = a, b
 
