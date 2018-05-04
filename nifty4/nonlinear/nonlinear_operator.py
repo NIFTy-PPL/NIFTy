@@ -138,6 +138,10 @@ class NLOp_row(NLOp):
     def value(self, x):
         return ift.RowOperator(self._row.value(x))
 
+    # @property
+    # def derivative(self):
+    #     pass
+
 
 class NLOp_vdot(NLOp):
     """ Supports only variables as inputs so far.
@@ -185,9 +189,10 @@ class NLOp_PositiveTanh(NLOp):
     def value(self, x):
         return 0.5 * ift.tanh(0.5 * self._var.value(x))
 
-    def derivative(self, x):
-        return 0.5 * self._var.derivative(x) * \
-            (1. - ift.tanh(self._var.value(x))**2)
+    # FIXME Needs to be converted to new convention
+    # def derivative(self, x):
+    #     return 0.5 * self._var.derivative(x) * \
+    #         (1. - ift.tanh(self._var.value(x))**2)
 
 
 class NLOp_neg(NLOp):
