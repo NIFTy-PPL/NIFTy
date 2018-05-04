@@ -126,7 +126,8 @@ class NLOp_vdot(NLOp):
         self._a, self._b = a, b
 
     def value(self, x):
-        return self._a.value(x).vdot(self._b.value(x))
+        dom = ift.DomainTuple.make(())
+        return ift.Field.from_global_data(dom, self._a.value(x).vdot(self._b.value(x)))
 
     @property
     def derivative(self):
