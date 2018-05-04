@@ -6,7 +6,8 @@ class NLOp(object):
     def value(self, x):
         raise NotImplementedError
 
-    def derivative(self, x):
+    @property
+    def derivative(self):
         raise NotImplementedError
 
     @staticmethod
