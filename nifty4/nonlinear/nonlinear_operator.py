@@ -94,7 +94,9 @@ class NLOp_mul(NLOp):
         self._b_number = b_number
 
     def value(self, x):
-        return self._a.value(x) * self._b.value(x)
+        a = self._a.value(x)
+        b = self._b.value(x)
+        return a * b
 
     @property
     def derivative(self):
