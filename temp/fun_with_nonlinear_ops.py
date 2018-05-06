@@ -27,7 +27,7 @@ x = ift.Field(space, val=np.array([2., 5.]))
 takeOp(a, x, np.array([[1., 0.], [0., 1.]]))
 takeOp(2*a, x, np.array([[2., 0.], [0., 2.]]))
 takeOp(a*a, x, np.diagflat(2*x.val))
-takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
+# takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
 takeOp(nl.NLOp_Exp(a), x, np.diagflat(np.exp(x.val)))
 takeOp(nl.NLOp_Exp(a*a), x, np.diagflat(2*x.val*np.exp((x**2).val)))
 takeOp(nl.NLOp_neg(a), x, np.diagflat(-np.ones_like(x.val)))
@@ -106,13 +106,11 @@ grad *= 2
 takeOp(2*a, x, grad)
 grad *= x.val
 takeOp(a*a, x, grad)
-exit()
-takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
-takeOp(nl.NLOp_Exp(a), x, np.diagflat(np.exp(x.val)))
-takeOp(nl.NLOp_Exp(a*a), x, np.diagflat(2*x.val*np.exp((x**2).val)))
-takeOp(nl.NLOp_neg(a), x, np.diagflat(-np.ones_like(x.val)))
+# takeOp(nl.NLOp_const(4) + 0*a, x, np.zeros((2, 2)))
+# takeOp(nl.NLOp_Exp(a), x, np.diagflat(np.exp(x.val)))
+# takeOp(nl.NLOp_Exp(a*a), x, np.diagflat(2*x.val*np.exp((x**2).val)))
+# takeOp(nl.NLOp_neg(a), x, np.diagflat(-np.ones_like(x.val)))
 # takeOp(nl.NLOp_Tanh(a), x, np.diagflat(1. - np.tanh(x.val))**2)
-exit()
 
 a11, a12, a21, a22 = x.val.flatten()
 grad = np.zeros((2, 2))
@@ -120,4 +118,4 @@ grad[0, 0] = 3*a1**2+a2**2
 grad[0, 1] = 2*a1*a2
 grad[1, 0] = 2*a1*a2
 grad[1, 1] = a1**2+3*a2**2
-takeOp(nl.NLOp_mul(a, nl.NLOp_vdot(a, a), False, True), x, grad)
+# takeOp(nl.NLOp_mul(a, nl.NLOp_vdot(a, a), False, True), x, grad)
