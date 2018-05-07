@@ -162,6 +162,6 @@ class TwoDToTwoDTests(unittest.TestCase):
         print(a1)
         a11, a12, a21, a22 = self.x.val.flatten()
         grad = np.zeros((2, 2, 2, 2))
-        # TODO Compute gradient automatically
+        # TODO Compute gradient automatically. The following values are taken such that the test passes and are not checked yet.
         grad = np.array([[[[47., 20.], [4., 12.]], [[20., 89.], [10., 30.]]], [[[4., 10.], [41.,  6.]], [[12., 30.], [6., 57.]]]])
         self.takeOp(nl.NLOp_mul(self.a, nl.NLOp_vdot(self.a, self.a), False, True), self.x, grad)

@@ -1,4 +1,3 @@
-import numpy as np
 import nifty4 as ift
 
 
