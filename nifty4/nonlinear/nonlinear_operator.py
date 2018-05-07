@@ -46,6 +46,14 @@ class NLOp_const(NLOp):
     def derivative(self):
         return 0.
 
+    @property
+    def adjoint(self):
+        if isinstance(self._val, ift.LinearOperator):
+            return NLOp_const(self._val.adjoint)
+        else:
+            print(self._val)
+            raise NotImplementedError
+
 
 class NLOp_var(NLOp):
     def __init__(self, domain):
@@ -142,10 +150,9 @@ class NLOp_row(NLOp):
     def value(self, x):
         return ift.RowOperator(self._row.value(x))
 
-    # FIXME
-    # @property
-    # def derivative(self):
-    #     pass
+    @property
+    def derivative(self):
+        return self._row.derivative
 
 
 class NLOp_vdot(NLOp):

@@ -187,3 +187,10 @@ class CurvatureTests1D(unittest.TestCase):
         self.make()
         E = nl.NLOp_vdot(self.a, nl.NLOp_Linop(self.S.inverse, self.a))
         self.takeOp(E, self.x, self.x.val)
+
+        # Curvature
+        at = self.x
+        op = E
+        curv = op.derivative.derivative
+        print(curv)
+        assert_allclose(1,0)
