@@ -9,17 +9,17 @@ a = nl.NLOp_var(space)
 
 # space -> space
 def takeOp(op, at, out):
-    print('E(x) = ', op.value(at))
-    print('dE/dx = ', op.derivative)
+    # print('E(x) = ', op.value(at))
+    # print('dE/dx = ', op.derivative)
     gradient = op.derivative.value(at)
-    print('dE/dx|(2,5) = ', gradient)
+    # print('dE/dx|(2,5) = ', gradient)
     dom = gradient.domain
     grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
     grad2 = gradient(ift.Field(dom, np.array([0., 1.]))).val
     grad = np.array([grad1, grad2])
-    print('dE/dx|(2,5) (1, 0) = ', grad[0])
-    print('dE/dx|(2,5) (0, 1) = ', grad[1])
-    print()
+    # print('dE/dx|(2,5) (1, 0) = ', grad[0])
+    # print('dE/dx|(2,5) (0, 1) = ', grad[1])
+    # print()
     np.testing.assert_allclose(grad, out)
 
 
@@ -41,26 +41,22 @@ grad[1, 0] = 2*a1*a2
 grad[1, 1] = a1**2+3*a2**2
 takeOp(nl.NLOp_mul(a, nl.NLOp_vdot(a, a), False, True), x, grad)
 
-print()
-print()
 print('Start testing energy functionals.')
-print()
-print()
 
 
 # space -> float
 def takeOp2D1D(op, at, out):
-    print('E(x) = ', op.value(at))
-    print('dE/dx = ', op.derivative)
+    # print('E(x) = ', op.value(at))
+    # print('dE/dx = ', op.derivative)
     gradient = op.derivative.value(at)
-    print('dE/dx|(2,5) = ', gradient)
+    # print('dE/dx|(2,5) = ', gradient)
     dom = gradient.domain
     grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
     grad2 = gradient(ift.Field(dom, np.array([0., 1.]))).val
     grad = np.array([grad1, grad2])
-    print('dE/dx|(2,5) (1, 0) = ', grad[0])
-    print('dE/dx|(2,5) (0, 1) = ', grad[1])
-    print()
+    # print('dE/dx|(2,5) (1, 0) = ', grad[0])
+    # print('dE/dx|(2,5) (0, 1) = ', grad[1])
+    # print()
     np.testing.assert_allclose(grad, out)
 
 
@@ -68,11 +64,7 @@ takeOp2D1D(nl.NLOp_vdot(a, a), x, 2*x.val)
 takeOp2D1D(nl.NLOp_vdot(2*a, a), x, 4*x.val)
 takeOp2D1D(nl.NLOp_vdot(a, a) * nl.NLOp_vdot(a, a), x, 4*(x.vdot(x))*x.val)
 
-print()
-print()
 print('Start testing 2D examples.')
-print()
-print()
 
 space = ift.RGSpace((2, 2))
 a = nl.NLOp_var(space)
@@ -80,18 +72,18 @@ a = nl.NLOp_var(space)
 
 # space -> space
 def takeOp(op, at, out):
-    print('E(x) = ', op.value(at))
-    print('dE/dx = ', op.derivative)
+    # print('E(x) = ', op.value(at))
+    # print('dE/dx = ', op.derivative)
     gradient = op.derivative.value(at)
-    print('dE/dx|(2,5) = ', gradient)
+    # print('dE/dx|(2,5) = ', gradient)
     dom = gradient.domain
     grad11 = gradient(ift.Field(dom, np.array([[1., 0.], [0., 0.]]))).val
     grad12 = gradient(ift.Field(dom, np.array([[0., 1.], [0., 0.]]))).val
     grad21 = gradient(ift.Field(dom, np.array([[0., 0.], [1., 0.]]))).val
     grad22 = gradient(ift.Field(dom, np.array([[0., 0.], [0., 1.]]))).val
     grad = np.array([[grad11, grad12], [grad21, grad22]])
-    print('dE/dx|((2,5),(1,3)) ((2,5),(1,3)) = \n', grad)
-    print()
+    # print('dE/dx|((2,5),(1,3)) ((2,5),(1,3)) = \n', grad)
+    # print()
     np.testing.assert_allclose(grad, out)
 
 
