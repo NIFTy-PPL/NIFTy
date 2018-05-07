@@ -156,15 +156,12 @@ class TwoDToTwoDTests(unittest.TestCase):
         self.make()
         self.takeOp(nl.NLOp_Tanh(self.a), self.x, np.diagflat(1. - np.tanh(self.x.val))**2)
 
-    def DISABLEDtest_nonlinear(self):
+    def test_nonlinear(self):
         self.make()
         a1, a2 = self.x.val
         print(a1)
         a11, a12, a21, a22 = self.x.val.flatten()
-        grad = np.zeros((2, 2))
-        # TODO Compute gradient correctly
-        grad[0, 0] = 3*a1**2+a2**2
-        grad[0, 1] = 2*a1*a2
-        grad[1, 0] = 2*a1*a2
-        grad[1, 1] = a1**2+3*a2**2
+        grad = np.zeros((2, 2, 2, 2))
+        # TODO Compute gradient automatically
+        grad = np.array([[[[47., 20.], [4., 12.]], [[20., 89.], [10., 30.]]], [[[4., 10.], [41.,  6.]], [[12., 30.], [6., 57.]]]])
         self.takeOp(nl.NLOp_mul(self.a, nl.NLOp_vdot(self.a, self.a), False, True), self.x, grad)
