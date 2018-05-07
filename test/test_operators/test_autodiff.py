@@ -165,3 +165,25 @@ class TwoDToTwoDTests(unittest.TestCase):
         # TODO Compute gradient automatically. The following values are taken such that the test passes and are not checked yet.
         grad = np.array([[[[47., 20.], [4., 12.]], [[20., 89.], [10., 30.]]], [[[4., 10.], [41.,  6.]], [[12., 30.], [6., 57.]]]])
         self.takeOp(nl.NLOp_mul(self.a, nl.NLOp_vdot(self.a, self.a), False, True), self.x, grad)
+
+
+class CurvatureTests1D(unittest.TestCase):
+    def make(self):
+        space = ift.RGSpace(2)
+        self.x = ift.Field(space, val=np.array([2., 5.]))
+        self.a = nl.NLOp_var(space)
+        self.S = ift.DiagonalOperator(ift.Field(space, 2.))
+
+    @staticmethod
+    def takeOp(op, at, out):
+        gradient = op.derivative.value(at)
+        dom = gradient.domain
+        grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
+        grad2 = gradient(ift.Field(dom, np.array([0., 1.]))).val
+        grad = np.array([grad1, grad2])
+        assert_allclose(grad, out)
+
+    def test_priorEnergy(self):
+        self.make()
+        E = nl.NLOp_vdot(self.a, nl.NLOp_Linop(self.S.inverse, self.a))
+        self.takeOp(E, self.x, self.x.val)
