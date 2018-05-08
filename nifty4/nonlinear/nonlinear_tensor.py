@@ -53,3 +53,18 @@ class NLChain(NLTensor):
     @property
     def derivative(self):
         return self.__class__(self._outer, self._inner.derivative)
+
+
+class NLContract(NLTensor):
+    def __init__(self, nltensor1, nltensor2, index1, index2):
+        self._t1 = nltensor1
+        self._t2 = nltensor2
+        self._i1 = index1
+        assert index2 == 0, 'Not Implemented Error'
+        self._i2 = index2
+
+    def __str__(self):
+        return '{}^{} {}'.format(self._t1, self._i1, self._t2)
+
+    def eval(self, x):
+        return self._t1.eval(x).contract(self._t2.eval(x), index=self._i1)

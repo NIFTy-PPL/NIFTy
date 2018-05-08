@@ -40,3 +40,12 @@ class NonlinearTests(unittest.TestCase):
         assert_allclose(res, true_res)
         # Test gradient
         self.takeOp1D1D(E, self.x, np.diagflat(Sdiag.val))
+
+    def test_priorEnergy(self):
+        self.make()
+        A = ift.NLConstant(ift.Tensor((-1, -1), self.S), index=1)
+        E = ift.NLContract(A, ift.NLConstant(ift.Tensor((1), self.a)), 1, 0)
+        res = E.eval(self.x).output
+        print(E)
+        print(res)
+        assert_allclose(1, 0)
