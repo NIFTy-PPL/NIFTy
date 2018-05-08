@@ -14,6 +14,8 @@ class NLConstant(NLTensor):
         return self
 
     def __str__(self):
+        if self._index is not None:
+            return '{}^{}'.format(self._tensor, self._index)
         return '{}'.format(self._tensor)
 
     def eval(self, x):

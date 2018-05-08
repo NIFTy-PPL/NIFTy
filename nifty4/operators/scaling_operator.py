@@ -55,6 +55,9 @@ class ScalingOperator(EndomorphicOperator):
         self._factor = factor
         self._domain = DomainTuple.make(domain)
 
+    def __str__(self):
+        return 'Scale({})'.format(self._factor)
+
     def apply(self, x, mode):
         self._check_input(x, mode)
 

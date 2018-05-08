@@ -32,25 +32,29 @@ class Tensor(object):
         return self._thing
 
     def contract(self, op, index=0):
-        # op needs to be a vector
-        assert op.rank == 1
         assert op.indices[0] == -self._indices[index]
         assert index in (0, 1)
 
         s = op._thing
 
-        if isinstance(self._thing, LinearOperator):
-            lop = self._thing
-            if index == 1:
-                # Ordinary linear operator application
-                return self.__class__(self.indices[0:1], lop(s))
-            # Linear operator application from the left
-            return self.__class__(self.indices[1:2], lop.adjoint(s))
+        if op.rank == 1:
+            if isinstance(self._thing, LinearOperator):
+                lop = self._thing
+                if index == 1:
+                    # Ordinary linear operator application
+                    return self.__class__(self.indices[0:1], lop(s))
+                # Linear operator application from the left
+                return self.__class__(self.indices[1:2], lop.adjoint(s))
 
-        if isinstance(self._thing, Field):
-            # Scalar multiplication
-            indices = ()
-            return self.__class__(indices, self._thing.vdot(op._thing))
+            if isinstance(self._thing, Field):
+                # Scalar multiplication
+                indices = ()
+                return self.__class__(indices, self._thing.vdot(op._thing))
+        if op.rank == 2:
+            if isinstance(self._thing, LinearOperator):
+                lop = self._thing
+                # FIXME This is only a hack and does not fit all cases
+                return self.__class__(self.indices[0] + op.indices[1], lop * op._thing)
 
 
 class ZeroTensor(Tensor):

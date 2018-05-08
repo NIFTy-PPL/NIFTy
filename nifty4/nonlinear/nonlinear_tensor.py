@@ -52,4 +52,4 @@ class NLChain(NLTensor):
 
     @property
     def derivative(self):
-        raise NotImplementedError
+        return self.__class__(self._outer, self._inner.derivative)

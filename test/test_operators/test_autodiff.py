@@ -14,6 +14,7 @@ class NonlinearTests(unittest.TestCase):
 
     @staticmethod
     def takeOp1D1D(op, at, out):
+        print(op.derivative)
         gradient = op.derivative.eval(at).output
         dom = gradient.domain
         grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
@@ -33,6 +34,9 @@ class NonlinearTests(unittest.TestCase):
         A = ift.NLConstant(ift.Tensor((-1, -1), self.S), index=1)
         E = ift.NLChain(A, self.a)
         res = E.eval(self.x).output.val
-        true_res = (self.S(ift.Field.ones(self.S.domain)) * self.x).val
+        Sdiag = self.S(ift.Field.ones(self.S.domain))
+        true_res = (Sdiag * self.x).val
+        # Test function evaluation
         assert_allclose(res, true_res)
-        # self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
+        # Test gradient
+        self.takeOp1D1D(E, self.x, np.diagflat(Sdiag.val))
