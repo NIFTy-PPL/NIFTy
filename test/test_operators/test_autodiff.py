@@ -30,10 +30,9 @@ class NonlinearTests(unittest.TestCase):
 
     def test_const2(self):
         self.make()
-        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
+        A = ift.NLConstant(ift.Tensor((-1, -1), self.S), index=1)
         E = ift.NLChain(A, self.a)
-        res = E.eval(self.x).output
-        print(E)
-        print(res)
-        assert_allclose(res, self.x.val)
-        self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
+        res = E.eval(self.x).output.val
+        true_res = (self.S(ift.Field.ones(self.S.domain)) * self.x).val
+        assert_allclose(res, true_res)
+        # self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))

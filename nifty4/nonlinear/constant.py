@@ -4,9 +4,11 @@ from ..operators import Tensor
 
 
 class NLConstant(NLTensor):
-    def __init__(self, tensor):
+    def __init__(self, tensor, index=None):
         assert isinstance(tensor, Tensor)
+        assert index in (None, 0, 1)
         self._tensor = tensor
+        self._index = index
 
     def __call__(self, x):
         return self
@@ -15,6 +17,8 @@ class NLConstant(NLTensor):
         return '{}'.format(self._tensor)
 
     def eval(self, x):
+        if self._index is not None:
+            return self._tensor.contract(x, index=self._index)
         return self._tensor
 
     @property
