@@ -1,6 +1,3 @@
-from . import Chain
-
-
 class NLTensor(object):
     def value(self, x):
         raise NotImplementedError
@@ -8,9 +5,6 @@ class NLTensor(object):
     @property
     def derivative(self):
         raise NotImplementedError
-
-    def __call__(self, x):
-        return Chain(self, x)
 
     @staticmethod
     def _makeOp(thing):

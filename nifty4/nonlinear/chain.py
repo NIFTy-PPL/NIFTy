@@ -1,4 +1,4 @@
-from . import NLTensor
+from .nonlinear_tensor import NLTensor
 
 
 class Chain(NLTensor):
@@ -6,6 +6,9 @@ class Chain(NLTensor):
         # FIXME Check indices
         self._outer = outer
         self._inner = inner
+
+    def __call__(self, x):
+        return Chain(self, x)
 
     def eval(self, x):
         return self._outer.eval(self._inner.eval(x))
