@@ -2,7 +2,7 @@ from .linear_operator import LinearOperator
 from ..field import Field
 
 
-class TensorOperator(object):
+class Tensor(object):
     """
     Supports only tensors of rank <= 2.
     """
@@ -25,6 +25,7 @@ class TensorOperator(object):
         return self._indices
 
     def contract(self, op, index=0):
+        # op needs to be a vector
         assert op.rank == 1
         assert op.indices[0] == -self._indices[index]
         assert index in (0, 1)
@@ -45,4 +46,18 @@ class TensorOperator(object):
             return self.__class__(indices, self._thing.vdot(op._thing))
 
 
+class ZeroTensor(Tensor):
+    def __init__(self, indices):
+        assert len(indices) <= 3
 
+    def contract(self, op, index=0):
+        assert op.rank == 1
+        assert op.indices[0] == -self._indices[index]
+        assert index in (0, 1, 2)
+
+        if self.rank == 1:
+            return Tensor((), 0.)
+        slc1 = slice(0, index)
+        slc2 = slice(index, None)
+        indices = self.indices[slc1] + self.indices[slc2]
+        return self.__class__(indices)

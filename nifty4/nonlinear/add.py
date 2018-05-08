@@ -3,7 +3,7 @@ from . import NLTensor
 
 class TensorAdd(NLTensor):
     def __init__(self, fst, snd):
-        # TODO Check indices
+        assert fst.indices == snd.indices
         self._fst = fst
         self._snd = snd
 
