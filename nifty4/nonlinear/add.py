@@ -1,7 +1,7 @@
 from . import NLTensor
 
 
-class TensorAdd(NLTensor):
+class NLTensorAdd(NLTensor):
     def __init__(self, fst, snd):
         assert fst.indices == snd.indices
         self._fst = fst

@@ -94,6 +94,9 @@ class DiagonalOperator(EndomorphicOperator):
             self._ldiag = diagonal.local_data
         self._update_diagmin()
 
+    def __str__(self):
+        return 'Diag({})'.format(self(Field.ones(self.domain)).val)
+
     def _update_diagmin(self):
         self._ldiag.flags.writeable = False
         if not np.issubdtype(self._ldiag.dtype, np.complexfloating):

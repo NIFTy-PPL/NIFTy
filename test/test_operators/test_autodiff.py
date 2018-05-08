@@ -9,7 +9,7 @@ class NonlinearTests(unittest.TestCase):
     def make(self):
         space = ift.RGSpace(2)
         self.x = ift.Field(space, val=np.array([2., 5.]))
-        self.a = ift.Variable(space)
+        self.a = ift.NLVariable(space)
         self.S = ift.DiagonalOperator(ift.Field(space, 2.))
 
     @staticmethod
@@ -25,5 +25,15 @@ class NonlinearTests(unittest.TestCase):
         self.make()
         E = self.a
         res = E.eval(self.x).output.val
+        assert_allclose(res, self.x.val)
+        self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
+
+    def test_const2(self):
+        self.make()
+        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
+        E = ift.NLChain(A, self.a)
+        res = E.eval(self.x).output
+        print(E)
+        print(res)
         assert_allclose(res, self.x.val)
         self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))

@@ -1,4 +1,7 @@
 class NLTensor(object):
+    def __call__(self, x):
+        return NLChain(self, x)
+
     def eval(self, x):
         raise NotImplementedError
 
@@ -30,3 +33,23 @@ class NLTensor(object):
     def __rsub__(self, other):
         raise NotImplementedError
         # return NLOp_add(NLOp_neg(self._makeOp(other)), self)
+
+
+class NLChain(NLTensor):
+    def __init__(self, outer, inner):
+        # FIXME Check indices
+        self._outer = outer
+        self._inner = inner
+
+    def __str__(self):
+        return '{}({})'.format(self._outer, self._inner)
+
+    def __call__(self, x):
+        return self.__class__(self, x)
+
+    def eval(self, x):
+        return self._outer.eval(self._inner.eval(x))
+
+    @property
+    def derivative(self):
+        raise NotImplementedError

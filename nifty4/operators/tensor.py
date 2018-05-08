@@ -16,6 +16,9 @@ class Tensor(object):
         self._indices = indices
         self._thing = thing
 
+    def __str__(self):
+        return '({})_{}'.format(self._thing, self._indices)
+
     @property
     def rank(self):
         return len(self._indices)
