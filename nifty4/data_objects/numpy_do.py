@@ -70,6 +70,10 @@ def np_allreduce_sum(arr):
     return arr
 
 
+def np_allreduce_min(arr):
+    return arr
+
+
 def distaxis(arr):
     return -1
 

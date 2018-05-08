@@ -26,12 +26,18 @@ class Linear(object):
     def derivative(self, x):
         return Field.ones_like(x)
 
+    def hessian(self, x):
+        return Field.zeros_like(x)
+
 
 class Exponential(object):
     def __call__(self, x):
         return exp(x)
 
     def derivative(self, x):
+        return exp(x)
+
+    def hessian(self, x):
         return exp(x)
 
 
@@ -42,6 +48,8 @@ class Tanh(object):
     def derivative(self, x):
         return (1. - tanh(x)**2)
 
+    def hessian(self, x):
+        return - 2. * tanh(x) * (1. - tanh(x)**2)
 
 class PositiveTanh(object):
     def __call__(self, x):
@@ -49,3 +57,6 @@ class PositiveTanh(object):
 
     def derivative(self, x):
         return 0.5 * (1. - tanh(x)**2)
+
+    def hessian(self, x):
+        return - tanh(x) * (1. - tanh(x)**2)
