@@ -21,31 +21,31 @@ class OneDToOneDTests(unittest.TestCase):
         grad = np.array([grad1, grad2])
         assert_allclose(grad, out)
 
-    def test_neg(self):
+    def DISABLEDtest_neg(self):
         self.make()
         self.takeOp(nl.NLOp_neg(self.a), self.x, np.diagflat(-np.ones_like(self.x.val)))
 
-    def test_linear(self):
+    def DISABLEDtest_linear(self):
         self.make()
         self.takeOp(self.a, self.x, np.array([[1., 0.], [0., 1.]]))
 
-    def test_linear2(self):
+    def DISABLEDtest_linear2(self):
         self.make()
         self.takeOp(2*self.a, self.x, np.array([[2., 0.], [0., 2.]]))
 
-    def test_quadratic(self):
+    def DISABLEDtest_quadratic(self):
         self.make()
         self.takeOp(self.a*self.a, self.x, np.diagflat(2*self.x.val))
 
-    def test_const(self):
+    def DISABLEDtest_const(self):
         self.make()
         self.takeOp(nl.NLOp_const(4) + 0*self.a, self.x, np.zeros((2, 2)))
 
-    def test_exp(self):
+    def DISABLEDtest_exp(self):
         self.make()
         self.takeOp(nl.NLOp_Exp(self.a), self.x, np.diagflat(np.exp(self.x.val)))
 
-    def test_exp_quadratic(self):
+    def DISABLEDtest_exp_quadratic(self):
         self.make()
         self.takeOp(nl.NLOp_Exp(self.a*self.a), self.x, np.diagflat(2*self.x.val*np.exp((self.x**2).val)))
 
@@ -53,7 +53,7 @@ class OneDToOneDTests(unittest.TestCase):
         self.make()
         self.takeOp(nl.NLOp_Tanh(self.a), self.x, np.diagflat(1. - np.tanh(self.x.val))**2)
 
-    def test_mul(self):
+    def DISABLEDtest_mul(self):
         self.make()
         a1, a2 = self.x.val
         grad = np.zeros((2, 2))
@@ -79,15 +79,15 @@ class OneDToZeroDTests(unittest.TestCase):
         grad = np.array([grad1, grad2])
         assert_allclose(grad, out)
 
-    def test_vdot(self):
+    def DISABLEDtest_vdot(self):
         self.make()
         self.takeOp2D1D(nl.NLOp_vdot(self.a, self.a), self.x, 2*self.x.val)
 
-    def test_vdot_linear(self):
+    def DISABLEDtest_vdot_linear(self):
         self.make()
         self.takeOp2D1D(nl.NLOp_vdot(2*self.a, self.a), self.x, 4*self.x.val)
 
-    def test_vdot_mul(self):
+    def DISABLEDtest_vdot_mul(self):
         self.make()
         self.takeOp2D1D(nl.NLOp_vdot(self.a, self.a) * nl.NLOp_vdot(self.a, self.a), self.x, 4*(self.x.vdot(self.x))*self.x.val)
 
@@ -124,31 +124,31 @@ class TwoDToTwoDTests(unittest.TestCase):
             identity[1,1,1,1] = diag[1, 1]
         return identity
 
-    def test_neg(self):
+    def DISABLEDtest_neg(self):
         self.make()
         self.takeOp(nl.NLOp_neg(self.a), self.x, -self.identity())
 
-    def test_linear(self):
+    def DISABLEDtest_linear(self):
         self.make()
         self.takeOp(self.a, self.x, self.identity())
 
-    def test_linear2(self):
+    def DISABLEDtest_linear2(self):
         self.make()
         self.takeOp(2*self.a, self.x, 2*self.identity())
 
-    def test_mul(self):
+    def DISABLEDtest_mul(self):
         self.make()
         self.takeOp(self.a*self.a, self.x, 2*self.identity()*self.x.val)
 
-    def test_const(self):
+    def DISABLEDtest_const(self):
         self.make()
         self.takeOp(nl.NLOp_const(4) + 0*self.a, self.x, np.zeros((2, 2, 2, 2)))
 
-    def test_exp(self):
+    def DISABLEDtest_exp(self):
         self.make()
         self.takeOp(nl.NLOp_Exp(self.a), self.x, self.identity(np.exp(self.x.val)))
 
-    def test_exp_squared(self):
+    def DISABLEDtest_exp_squared(self):
         self.make()
         self.takeOp(nl.NLOp_Exp(self.a*self.a), self.x, self.identity(2*self.x.val*np.exp((self.x**2).val)))
 
@@ -156,7 +156,7 @@ class TwoDToTwoDTests(unittest.TestCase):
         self.make()
         self.takeOp(nl.NLOp_Tanh(self.a), self.x, np.diagflat(1. - np.tanh(self.x.val))**2)
 
-    def test_nonlinear(self):
+    def DISABLEDtest_nonlinear(self):
         self.make()
         a1, a2 = self.x.val
         print(a1)
@@ -183,7 +183,7 @@ class CurvatureTests1D(unittest.TestCase):
         grad = np.array([grad1, grad2])
         assert_allclose(grad, out)
 
-    def test_priorEnergy(self):
+    def DISABLEDtest_priorEnergy(self):
         self.make()
         E = nl.NLOp_vdot(self.a, nl.NLOp_Linop(self.S.inverse, self.a))
         self.takeOp(E, self.x, self.x.val)
