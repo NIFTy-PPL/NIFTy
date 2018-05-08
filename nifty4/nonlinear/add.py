@@ -1,7 +1,7 @@
 from . import NLTensor
 
 
-class Tensor_Add(NLTensor):
+class TensorAdd(NLTensor):
     def __init__(self, fst, snd):
         # TODO Check indices
         self._fst = fst
