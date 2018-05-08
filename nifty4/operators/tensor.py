@@ -24,6 +24,10 @@ class Tensor(object):
     def indices(self):
         return self._indices
 
+    @property
+    def output(self):
+        return self._thing
+
     def contract(self, op, index=0):
         # op needs to be a vector
         assert op.rank == 1

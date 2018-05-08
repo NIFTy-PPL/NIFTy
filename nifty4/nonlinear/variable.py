@@ -1,4 +1,5 @@
 from . import NLTensor
+from ..operators import Tensor
 
 
 class Variable(NLTensor):
@@ -9,8 +10,8 @@ class Variable(NLTensor):
         raise ValueError
 
     def eval(self, x):
-        pass
+        return Tensor((1,), x)
 
     @property
     def derivative(self):
-        pass
+        raise NotImplementedError

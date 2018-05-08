@@ -15,4 +15,4 @@ class Chain(NLTensor):
 
     @property
     def derivative(self):
-        pass
+        raise NotImplementedError

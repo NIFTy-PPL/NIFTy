@@ -21,7 +21,9 @@ class NonlinearTests(unittest.TestCase):
         grad = np.array([grad1, grad2])
         assert_allclose(grad, out)
 
-    def DISABLEDtest_const(self):
+    def test_const(self):
         self.make()
         E = self.a
-        self.takeOp(E, self.x, self.x.val)
+        res = E.eval(self.x).output.val
+        assert_allclose(res, self.x.val)
+        # self.takeOp(E, self.x, self.x.val)
