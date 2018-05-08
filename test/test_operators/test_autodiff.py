@@ -1,7 +1,7 @@
 import unittest
 
 import nifty4 as ift
-import nifty4.nonlinear.nonlinear_operator as nl
+# import nifty4.nonlinear.nonlinear_operator as nl
 import numpy as np
 from numpy.testing import assert_allclose
 
