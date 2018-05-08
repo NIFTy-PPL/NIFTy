@@ -13,8 +13,8 @@ class NonlinearTests(unittest.TestCase):
         self.S = ift.DiagonalOperator(ift.Field(space, 2.))
 
     @staticmethod
-    def takeOp(op, at, out):
-        gradient = op.derivative.value(at)
+    def takeOp1D1D(op, at, out):
+        gradient = op.derivative.eval(at).output
         dom = gradient.domain
         grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
         grad2 = gradient(ift.Field(dom, np.array([0., 1.]))).val
@@ -26,4 +26,4 @@ class NonlinearTests(unittest.TestCase):
         E = self.a
         res = E.eval(self.x).output.val
         assert_allclose(res, self.x.val)
-        # self.takeOp(E, self.x, self.x.val)
+        self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))

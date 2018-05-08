@@ -1,5 +1,6 @@
 from . import NLTensor
-from ..operators import Tensor
+from ..operators import Tensor, ScalingOperator
+from .constant import Constant
 
 
 class Variable(NLTensor):
@@ -14,4 +15,5 @@ class Variable(NLTensor):
 
     @property
     def derivative(self):
-        raise NotImplementedError
+        return Constant(Tensor((1, -1), ScalingOperator(1., self._domain)))
+

@@ -1,5 +1,5 @@
 class NLTensor(object):
-    def value(self, x):
+    def eval(self, x):
         raise NotImplementedError
 
     @property
