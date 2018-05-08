@@ -16,12 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .. import Field
-from ..minimization.energy import Energy
-from ..nonlinear.nonlinear_operator import *
-from ..utilities import memo
 from .wiener_filter_curvature import WienerFilterCurvature
-from .nonlinearities import Exponential
+from ..utilities import memo
+from ..minimization.energy import Energy
 
 
 class NonlinearWienerFilterEnergy(Energy):
@@ -33,24 +30,17 @@ class NonlinearWienerFilterEnergy(Energy):
         self.nonlinearity = nonlinearity
         self.ht = ht
         self.power = power
-
-        nonlinearity = NLOp_Exp
-
-        pos = NLOp_var(self.ht.domain)
-        m = NLOp_Linop(ht, power*pos)
-        residual = d - NLOp_Linop(Instrument, nonlinearity(m))
-        ene = 0.5 * (NLOp_vdot(pos, NLOp_Linop(S.inverse, pos)) +
-                     NLOp_vdot(residual, NLOp_Linop(N.inverse, residual)))
-        self._value = ene.value(self.position)
-        self._gradient = ene.derivative.value(self.position).adjoint(ift.Field((), 1.))
-
         m = ht(power*position)
 
+        residual = d - Instrument(nonlinearity(m))
         self.N = N
         self.S = S
         self.inverter = inverter
-        nonlinearity = Exponential()
+        t1 = S.inverse_times(position)
+        t2 = N.inverse_times(residual)
+        self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
         self.R = Instrument * nonlinearity.derivative(m) * ht * power
+        self._gradient = (t1 - self.R.adjoint_times(t2)).lock()
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
