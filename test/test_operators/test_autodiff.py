@@ -31,8 +31,8 @@ class NonlinearTests(unittest.TestCase):
 
     def test_const2(self):
         self.make()
-        A = ift.NLConstant(ift.Tensor((-1, -1), self.S), index=1)
-        E = ift.NLChain(A, self.a)
+        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
+        E = ift.NLContract(A, self.a, 1)
         res = E.eval(self.x).output.val
         Sdiag = self.S(ift.Field.ones(self.S.domain))
         true_res = (Sdiag * self.x).val
@@ -41,11 +41,11 @@ class NonlinearTests(unittest.TestCase):
         # Test gradient
         self.takeOp1D1D(E, self.x, np.diagflat(Sdiag.val))
 
-    def test_priorEnergy(self):
+    def DISABLEDtest_priorEnergy(self):
         self.make()
-        A = ift.NLConstant(ift.Tensor((-1, -1), self.S), index=1)
-        E = ift.NLContract(A, ift.NLConstant(ift.Tensor((1), self.a)), 1, 0)
-        res = E.eval(self.x).output
+        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
+        E = ift.NLContract(A, ift.NLConstant(ift.Tensor((1,), self.a)), 1)
         print(E)
+        res = E.eval(self.x).output
         print(res)
         assert_allclose(1, 0)

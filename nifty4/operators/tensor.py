@@ -32,6 +32,11 @@ class Tensor(object):
         return self._thing
 
     def contract(self, op, index=0):
+        """
+        `op` needs to be a tensor of rank 1 or 2.
+        `index` refers to the contracted index of `self`.
+        """
+
         assert op.indices[0] == -self._indices[index]
         assert index in (0, 1)
 
@@ -42,7 +47,8 @@ class Tensor(object):
                 lop = self._thing
                 if index == 1:
                     # Ordinary linear operator application
-                    return self.__class__(self.indices[0:1], lop(s))
+                    t = lop(s)
+                    return self.__class__(self.indices[0:1], t)
                 # Linear operator application from the left
                 return self.__class__(self.indices[1:2], lop.adjoint(s))
 
