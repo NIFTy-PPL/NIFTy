@@ -47,3 +47,5 @@ class NonlinearTests(unittest.TestCase):
         E = ift.NLContract(ift.NLContract(A, self.a, 1), self.a, 0)
         res = E.eval(self.x).output
         assert_allclose(res, 58)
+        gradient = E.derivative.eval(self.x).output
+        assert_allclose(gradient.val, 2 * self.x.val)

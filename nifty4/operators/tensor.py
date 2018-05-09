@@ -61,6 +61,10 @@ class Tensor(object):
                 lop = self._thing
                 # FIXME This is only a hack and does not fit all cases
                 return self.__class__(self.indices[0] + op.indices[1], lop * op._thing)
+            if isinstance(self._thing, Field):
+                return self.__class__(op.indices[1], op._thing.adjoint(self._thing))
+
+        raise NotImplementedError
 
 
 class ZeroTensor(Tensor):

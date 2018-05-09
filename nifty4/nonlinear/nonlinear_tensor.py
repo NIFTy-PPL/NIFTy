@@ -68,7 +68,7 @@ class NLContract(NLTensor):
         self._i1 = index1
 
     def __str__(self):
-        return '{}^{} {}'.format(self._t1, self._i1, self._t2)
+        return '[{}]^{} {}'.format(self._t1, self._i1, self._t2)
 
     def eval(self, x):
         return self._t1.eval(x).contract(self._t2.eval(x), index=self._i1)
