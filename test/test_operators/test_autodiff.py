@@ -66,3 +66,11 @@ class NonlinearTests(unittest.TestCase):
         curv = curv.eval(self.x).output
         curv_true = 2 * self.S
         assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
+
+    def test_nonlinearity(self):
+        # E = exp(a)
+        self.make()
+        E = ift.NLExp(self.a)
+        res = E.eval(self.x).output.val
+        assert_allclose(res, np.exp(self.x.val))
+        self.takeOp1D1D(E, self.x, np.diagflat(res))

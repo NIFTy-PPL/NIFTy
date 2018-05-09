@@ -1,4 +1,5 @@
 from .linear_operator import LinearOperator
+from .diagonal_operator import DiagonalOperator
 from ..field import Field
 
 
@@ -16,7 +17,10 @@ class Tensor(object):
         assert isinstance(thing, LinearOperator) or isinstance(thing, Field) or thing == 0
         assert isinstance(indices, (list, tuple))
         self._indices = indices
-        self._thing = thing
+        if self.rank == 2 and isinstance(thing, Field):
+            self._thing = DiagonalOperator(thing)
+        else:
+            self._thing = thing
 
     def __str__(self):
         return 'Tensor({})_{}'.format(self._thing, self._indices)
