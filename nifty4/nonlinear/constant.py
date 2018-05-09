@@ -15,7 +15,7 @@ class NLConstant(NLTensor):
         return self
 
     def __str__(self):
-        return '{}'.format(self._tensor)
+        return 'NLConst{}'.format(self._tensor)
 
     def eval(self, x):
         return self._tensor
@@ -23,4 +23,4 @@ class NLConstant(NLTensor):
     @property
     def derivative(self):
         indices = self._tensor.indices + (-1,)
-        self.__class__(ZeroTensor(indices))
+        return self.__class__(ZeroTensor(indices))

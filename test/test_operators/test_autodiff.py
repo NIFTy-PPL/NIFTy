@@ -14,7 +14,6 @@ class NonlinearTests(unittest.TestCase):
 
     @staticmethod
     def takeOp1D1D(op, at, out):
-        print(op.derivative)
         gradient = op.derivative.eval(at).output
         dom = gradient.domain
         grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
@@ -23,6 +22,7 @@ class NonlinearTests(unittest.TestCase):
         assert_allclose(grad, out)
 
     def test_const(self):
+        # E = a
         self.make()
         E = self.a
         res = E.eval(self.x).output.val
@@ -30,6 +30,7 @@ class NonlinearTests(unittest.TestCase):
         self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
 
     def test_const2(self):
+        # E = (2*Id)(a)
         self.make()
         A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
         E = ift.NLContract(A, self.a, 1)
@@ -42,10 +43,26 @@ class NonlinearTests(unittest.TestCase):
         self.takeOp1D1D(E, self.x, np.diagflat(Sdiag.val))
 
     def test_priorEnergy(self):
+        # E = a^dagger (2*Id)(a)
         self.make()
         A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
         E = ift.NLContract(ift.NLContract(A, self.a, 1), self.a, 0)
-        res = E.eval(self.x).output
+        # print()
+        # print('Energy: ')
+        # print(E)
+        res = E.eval(self.x).output.val
         assert_allclose(res, 58)
+        # print()
+        # print('Derivative: ')
+        # print(E.derivative)
         gradient = E.derivative.eval(self.x).output
-        assert_allclose(gradient.val, 2 * self.x.val)
+        assert_allclose(gradient.val, 4 * self.x.val)
+        curv = E.derivative.derivative
+        # print()
+        # print('Curvature: ')
+        # print(curv)
+        # print()
+
+        curv = curv.eval(self.x).output
+        curv_true = 2 * self.S
+        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)

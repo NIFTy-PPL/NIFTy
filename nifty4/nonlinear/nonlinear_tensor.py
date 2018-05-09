@@ -42,7 +42,7 @@ class NLChain(NLTensor):
         self._inner = inner
 
     def __str__(self):
-        return '{}({})'.format(self._outer, self._inner)
+        return 'NLChain[{}({})]'.format(self._outer, self._inner)
 
     def __call__(self, x):
         return self.__class__(self, x)
@@ -68,14 +68,14 @@ class NLContract(NLTensor):
         self._i1 = index1
 
     def __str__(self):
-        return '[{}]^{} {}'.format(self._t1, self._i1, self._t2)
+        return 'Contract(\n[{}]^{}\n{})'.format(self._t1, self._i1, self._t2)
 
     def eval(self, x):
         return self._t1.eval(x).contract(self._t2.eval(x), index=self._i1)
 
     @property
     def derivative(self):
-        # FIXME
-        # fst = self.__class__(self._t1.derivative, self._t2, self._i1)
+        fst = self.__class__(self._t1.derivative, self._t2, self._i1)
         snd = self.__class__(self._t1, self._t2.derivative, self._i1)
-        return snd
+        from .add import NLTensorAdd
+        return NLTensorAdd(fst, snd)

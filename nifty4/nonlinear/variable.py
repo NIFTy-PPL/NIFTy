@@ -6,12 +6,13 @@ from .constant import NLConstant
 class NLVariable(NLTensor):
     def __init__(self, domain):
         self._domain = domain
+        self._indices = (1,)
 
     def __call__(self, x):
         raise ValueError
 
     def __str__(self):
-        return 'var'
+        return 'var_{}'.format(self._indices)
 
     def eval(self, x):
         return Tensor((1,), x)
