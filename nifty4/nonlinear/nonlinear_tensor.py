@@ -71,7 +71,9 @@ class NLContract(NLTensor):
         return 'Contract(\n[{}]^{}\n{})'.format(self._t1, self._i1, self._t2)
 
     def eval(self, x):
-        return self._t1.eval(x).contract(self._t2.eval(x), index=self._i1)
+        fst = self._t1.eval(x)
+        snd = self._t2.eval(x)
+        return fst.contract(snd, index=self._i1)
 
     @property
     def derivative(self):

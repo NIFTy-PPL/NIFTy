@@ -36,8 +36,9 @@ class NLDiag(NLTensor):
 
     def eval(self, x):
         newIndex = self._diag.eval(x).indices + self._additional_index
-        return Tensor(newIndex, self._diag.eval(x).output)
+        out = Tensor(newIndex, self._diag.eval(x).output, domain=x.domain)
+        return out
 
     @property
     def derivative(self):
-        raise NotImplementedError
+        return self.__class__(self._diag.derivative, -1)

@@ -5,10 +5,11 @@ from ..field import Field
 
 class Tensor(object):
     """
-    Supports only tensors of rank <= 2.
+    Supports only tensors of rank <= 2. And contains some hacks for higher
+    order tensors...
     """
 
-    def __init__(self, indices, thing):
+    def __init__(self, indices, thing, domain=None):
         """
         thing:   Can be a LinearOperator, Field or a Scalar.
         indices: Tuple of indices. -1 means covariant and +1 means
@@ -17,10 +18,15 @@ class Tensor(object):
         assert isinstance(thing, LinearOperator) or isinstance(thing, Field) or thing == 0
         assert isinstance(indices, (list, tuple))
         self._indices = indices
+        if self.rank == 1 and domain is not None and len(thing.domain) == 0:
+            thing = Field(domain, thing.val[()])
         if self.rank == 2 and isinstance(thing, Field):
             self._thing = DiagonalOperator(thing)
         else:
             self._thing = thing
+
+        # FIXME Enable this test eventually
+        # assert len(self._thing.domain) == len(self.indices)
 
     def __str__(self):
         return 'Tensor({})_{}'.format(self._thing, self._indices)
@@ -57,6 +63,12 @@ class Tensor(object):
 
         s = op._thing
 
+        if isinstance(op, ZeroTensor):
+            slc1 = slice(0, index)
+            slc2 = slice(index + 1, None)
+            indices = self.indices[slc1] + self.indices[slc2] + op.indices[1:]
+            return ZeroTensor(indices)
+
         if op.rank == 1:
             if isinstance(self._thing, LinearOperator):
                 lop = self._thing
@@ -78,10 +90,6 @@ class Tensor(object):
                 return self.__class__(self.indices[0:1] + op.indices[1:2], lop * op._thing)
             if isinstance(self._thing, Field):
                 return self.__class__(op.indices[1:2], op._thing.adjoint(self._thing))
-
-        if op.rank == 3 and isinstance(op, ZeroTensor):
-            indices = self.indices[0:index] + self.indices[index:] + op.indices[1:]
-            return ZeroTensor(indices)
 
         print(self)
         print(op)
