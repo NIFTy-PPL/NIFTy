@@ -74,3 +74,31 @@ class NonlinearTests(unittest.TestCase):
         res = E.eval(self.x).output.val
         assert_allclose(res, np.exp(self.x.val))
         self.takeOp1D1D(E, self.x, np.diagflat(res))
+
+    def test_nonlinearpriorEnergy(self):
+        # E = a^dagger (2*Id)(a)
+        self.make()
+        exp_a = ift.NLExp(self.a)
+        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
+        E = ift.NLContract(ift.NLContract(A, exp_a, 1), exp_a, 0)
+        # print()
+        # print('Energy: ')
+        # print(E)
+        res = E.eval(self.x).output.val
+        res_true = ift.exp(self.x).vdot(self.S(ift.exp(self.x)))
+        assert_allclose(res, res_true)
+        # # print()
+        # # print('Derivative: ')
+        # # print(E.derivative)
+        # gradient = E.derivative.eval(self.x).output
+        # gradient_true = (2 * ift.DiagonalOperator(ift.exp(self.x)) * self.S)(ift.exp(self.x)).val
+        # assert_allclose(gradient.val, gradient_true)
+        # curv = E.derivative.derivative
+        # # print()
+        # # print('Curvature: ')
+        # # print(curv)
+        # # print()
+
+        # curv = curv.eval(self.x).output
+        # curv_true = 2 * self.S
+        # assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
