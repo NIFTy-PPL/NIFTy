@@ -42,6 +42,19 @@ class NonlinearTests(unittest.TestCase):
         # Test gradient
         self.takeOp1D1D(E, self.x, np.diagflat(Sdiag.val))
 
+    def test_with_crossterms(self):
+        # E = a * |a|**2
+        self.make()
+        identity = ift.ScalingOperator(1., self.x.domain)
+        identity = ift.NLConstant(ift.Tensor((-1, -1), identity))
+        vdot = ift.NLContract(ift.NLContract(identity, self.a, 1), self.a, 0)
+        vdot_Op = ift.NLDiag(ift.NLDiag(vdot, 1), -1)
+        E = ift.NLContract(vdot_Op, self.a, 1)
+        res = E.eval(self.x).output.val
+        res_true = (self.x * self.x.vdot(self.x)).val
+        assert_allclose(res, res_true)
+        self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
+
     def test_priorEnergy(self):
         # E = a^dagger (2*Id)(a)
         self.make()
