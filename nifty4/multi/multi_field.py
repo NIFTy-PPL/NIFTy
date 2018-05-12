@@ -34,10 +34,10 @@ class MultiField(object):
 
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
-        dtype = MultiField.build_dtype(dtype)
+        dtype = MultiField.build_dtype(dtype, domain)
         return MultiField({key: Field.from_random(random_type, domain[key],
                                                   dtype[key], **kwargs)
-                           for key in domain.keys})
+                           for key in domain.keys()})
 
     def _check_domain(self, other):
         if other.domain != self.domain:
