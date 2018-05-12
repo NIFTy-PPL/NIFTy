@@ -34,7 +34,7 @@ class MultiField(object):
 
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
-        dtype = self.build_dtype(dtype)
+        dtype = MultiField.build_dtype(dtype)
         return MultiField({key: Field.from_random(random_type, domain[key],
                                                   dtype[key], **kwargs)
                            for key in domain.keys})
