@@ -19,6 +19,7 @@
 from __future__ import division
 import numpy as np
 from ..field import Field
+from ..multi.multi_field import MultiField
 from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
 
@@ -61,7 +62,7 @@ class ScalingOperator(EndomorphicOperator):
         if self._factor == 1.:
             return x.copy()
         if self._factor == 0.:
-            return Field.zeros_like(x)
+            return x.zeros_like(x)
 
         if mode == self.TIMES:
             return x*self._factor
@@ -103,5 +104,6 @@ class ScalingOperator(EndomorphicOperator):
         if fct.real == 0. and from_inverse:
             raise ValueError("operator not positive definite")
         fct = 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
-        return Field.from_random(
+        cls = Field if isinstance(self._domain, DomainTuple) else MultiField
+        return cls.from_random(
            random_type="normal", domain=self._domain, std=fct, dtype=dtype)

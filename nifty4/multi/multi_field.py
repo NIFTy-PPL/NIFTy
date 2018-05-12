@@ -32,6 +32,13 @@ class MultiField(object):
     def dtype(self):
         return {key: val.dtype for key, val in self._val.items()}
 
+    @staticmethod
+    def from_random(random_type, domain, dtype=np.float64, **kwargs):
+        dtype = self.build_dtype(dtype)
+        return MultiField({key: Field.from_random(random_type, domain[key],
+                                                  dtype[key], **kwargs)
+                           for key in domain.keys})
+
     def _check_domain(self, other):
         if other.domain != self.domain:
             raise ValueError("domains are incompatible.")
