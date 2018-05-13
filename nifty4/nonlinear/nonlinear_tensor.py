@@ -17,6 +17,14 @@ class NLTensor(object):
     def derivative(self):
         raise NotImplementedError
 
+    @property
+    def adjoint(self):
+        if self.rank in [1, 2]:
+            return NLAdjoint(self)
+        else:
+            print(self.rank)
+            raise NotImplementedError
+
     @staticmethod
     def _makeOp(thing):
         raise NotImplementedError
@@ -130,6 +138,9 @@ class NLCABF(NLTensor):
 
     @property
     def derivative(self):
+        # FIXME
+        # f = self._lop.value(x)(self._arg.value(x))
+        # df = self._arg.derivative * self._lop.adjoint
         from .constant import NLZero
         if isinstance(self._nltensor.derivative, NLZero) and len(self._args) == 1:
             return NLChainLinOps(self._nltensor, self._args[0].derivative)
@@ -258,18 +269,25 @@ class NLApplyForm(NLTensor):
         return NLTensorAdd(A, B)
 
 
-# class NLLinOpAdj(NLTensor):
-#     def __init__(self, nl_linop):
-#         assert nl_linop.rank == 2
-#         self._indices = nl_linop[::-1]
-#         self._nl_linop
+class NLAdjoint(NLTensor):
+    def __init__(self, thing):
+        assert thing.rank in [1, 2]
+        from operator import neg
+        self._indices = tuple(map(neg, thing.indices))
+        self._thing = thing
 
-#     def __str__(self):
-#         return '{}^dagger'.format(self._nl_linop)
+    def __str__(self):
+        return '{}^dagger'.format(self._thing)
 
-#     def eval(self, x):
-#         return self._nl_linop.adjoint(x)
+    def eval(self, x):
+        if self.rank == 2:
+            return self._thing.eval(x).adjoint(x)
+        elif self.rank == 1:
+            from ..operators import RowOperator
+            return RowOperator(self._thing.eval(x))
+        else:
+            raise NotImplementedError
 
-#     @property
-#     def derivative(self):
-#         raise NotImplementedError
+    @property
+    def derivative(self):
+        raise NotImplementedError
