@@ -29,38 +29,23 @@ build_docker_from_cache:
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
-test_python2_scalar:
-  stage: test
-  script:
-    - python setup.py install --user -f
-    - nosetests -q
-
-test_python3_scalar:
-  stage: test
-  script:
-    - python3 setup.py install --user -f
-    - nosetests3 -q
-
-test_python2_mpi:
-  stage: test
-  script:
-    - python setup.py install --user -f
-    - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
-
-test_python3_mpi:
-  stage: test
-  script:
-    - python3 setup.py install --user -f
-    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
-
-test_coverage:
+test_python2_with_coverage:
   stage: test
   script:
     - python setup.py install --user -f
     - mpiexec -n 2 --bind-to none nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase 2> /dev/null
-    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches
+    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches 2> /dev/null
     - >
-      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
+      coverage report --omit "*plotting*"
+    - >
+      coverage report --omit "*plotting*" | grep TOTAL | awk '{ print "TOTAL: "$6; }'
+
+test_python3:
+  stage: test
+  script:
+    - python3 setup.py install --user -f
+    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
+    - nosetests3 -q
 
 pages:
   stage: release
