@@ -166,6 +166,7 @@ class NLCABL(NLTensor):
     @property
     def derivative(self):
         # FIXME This is not the general case!!!
+        assert len(self._args) == 1
         return NLChainLinOps11(self._nltensor, self._args[0].derivative)
 
 
@@ -185,7 +186,10 @@ class NLVdot(NLTensor):
 
     @property
     def derivative(self):
-        return NLCABL(self._vector1.derivative, self._vector2.adjoint) + NLCABL(self._vector2.derivative, self._vector1.adjoint)
+        from .add import NLTensorAdd
+        A = NLCABL(self._vector1.derivative, self._vector2.adjoint)
+        B = NLCABL(self._vector2.derivative, self._vector1.adjoint)
+        return NLTensorAdd(A, B)
 
 
 class NLScalarMul(NLTensor):
@@ -195,12 +199,37 @@ class NLScalarMul(NLTensor):
         assert nlscalar.rank == 0
         self._nltensor = nltensor
         self._nlscalar = nlscalar
+        self._indices = self._nltensor.indices
 
     def __str__(self):
         return '{} x {}'.format(self._nlscalar, self._nltensor)
 
     def eval(self, x):
         return self._nlscalar.eval(x) * self._nltensor.eval(x)
+
+    @property
+    def derivative(self):
+        A = NLScalarMul(self._nltensor.derivative, self._nlscalar)
+        B = NLOuterProd(self._nlscalar.derivative, self._nltensor)
+        from .add import NLTensorAdd
+        return NLTensorAdd(A, B)
+
+
+class NLOuterProd(NLTensor):
+    def __init__(self, form, vector):
+        assert form.indices == (-1,)
+        assert vector.indices == (1,)
+        self._form = form
+        self._vector = vector
+        self._indices = (1, -1)
+
+    def __str__(self):
+        return '{} outer {}'.format(self._form, self._vector)
+
+    def eval(self, x):
+        from ..operators import RowOperator
+        from ..operators import DiagonalOperator
+        return DiagonalOperator(self._vector.eval(x)) * RowOperator(self._form.eval(x))
 
     @property
     def derivative(self):

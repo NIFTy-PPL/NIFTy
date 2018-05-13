@@ -49,7 +49,8 @@ class NonlinearTests(unittest.TestCase):
         res = E.eval(self.x).val
         res_true = (self.x * self.x.vdot(self.x)).val
         assert_allclose(res, res_true)
-        self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
+        x1, x2 = self.x.val
+        self.takeOp1D1D(E, self.x, np.array([[3*x1**2+x2**2, 2*x1*x2], [2*x1*x2, 3*x2**2+x1**2]]))
 
     def test_priorEnergy(self):
         # E = a^dagger (2*Id)(a)
