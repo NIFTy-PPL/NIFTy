@@ -1,5 +1,6 @@
 from . import NLTensor
-from ..operators import Tensor
+from ..operators import Tensor, ScalingOperator
+from ..field import Field
 
 
 class NLConstant(NLTensor):
@@ -23,12 +24,13 @@ class NLConstant(NLTensor):
 
     @property
     def derivative(self):
-        return NLZero(self.indices + (-1,))
+        return NLZero(self.indices + (-1,), self._tensor.domain)
 
 
 class NLZero(NLTensor):
-    def __init__(self, indices):
+    def __init__(self, indices, domain=None):
         self._indices = indices
+        self._domain = domain
 
     def __call__(self, x):
         return self
@@ -37,7 +39,15 @@ class NLZero(NLTensor):
         return 'Zero'
 
     def eval(self, x):
-        return 0
+        if self.rank == 2:
+            return ScalingOperator(0, self._domain)
+        elif self.rank == 1:
+            return Field.zeros(self._domain)
+        elif self.rank == 0:
+            return Field.zeros(())
+        else:
+            # FIXME This situation here is suboptimal
+            return 0
 
     @property
     def derivative(self):

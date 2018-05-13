@@ -61,6 +61,25 @@ class NLChain(NLTensor):
         return self.__class__(self._outer, self._inner.derivative)
 
 
+class NLChainLinOps(NLTensor):
+    def __init__(self, op1, op2):
+        assert op1.rank == 2 and op2.rank == 2
+        assert op1.indices[-1] == - op2.indices[0]
+        self._indices = (op1.indices[0], op2.indices[-1])
+        self._op1 = op1
+        self._op2 = op2
+
+    def __str__(self):
+        return '{} {}'.format(self._op1, self._op2)
+
+    def eval(self, x):
+        return self._op1.eval(x) * self._op2.eval(x)
+
+    @property
+    def derivative(self):
+        raise NotImplementedError
+
+
 class NLCABF(NLTensor):
     # CABF = Contract All But First
     def __init__(self, nltensor, *nlvectors):
@@ -88,7 +107,12 @@ class NLCABF(NLTensor):
 
     @property
     def derivative(self):
-        raise NotImplementedError
+        from .constant import NLZero
+        if isinstance(self._nltensor.derivative, NLZero) and len(self._args) == 1:
+            return NLChainLinOps(self._nltensor, self._args[0].derivative)
+        else:
+            # TODO Implement more general case
+            raise NotImplementedError
 
 
 class NLCABL(NLTensor):

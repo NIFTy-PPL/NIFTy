@@ -45,6 +45,10 @@ class Tensor(object):
         else:
             raise NotImplementedError
 
+    @property
+    def domain(self):
+        return self._thing.domain
+
     def __str__(self):
         return str(self._thing)
 
