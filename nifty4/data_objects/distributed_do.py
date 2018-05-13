@@ -59,32 +59,32 @@ class data_object(object):
         self._distaxis = distaxis
         self._data = data
 
-    def _sanity_checks(self):
-        # check whether the distaxis is consistent
-        if self._distaxis < -1 or self._distaxis >= len(self._shape):
-            raise ValueError
-        itmp = np.array(self._distaxis)
-        otmp = np.empty(ntask, dtype=np.int)
-        _comm.Allgather(itmp, otmp)
-        if np.any(otmp != self._distaxis):
-            raise ValueError
-        # check whether the global shape is consistent
-        itmp = np.array(self._shape)
-        otmp = np.empty((ntask, len(self._shape)), dtype=np.int)
-        _comm.Allgather(itmp, otmp)
-        for i in range(ntask):
-            if np.any(otmp[i, :] != self._shape):
-                raise ValueError
-        # check shape of local data
-        if self._distaxis < 0:
-            if self._data.shape != self._shape:
-                raise ValueError
-        else:
-            itmp = np.array(self._shape)
-            itmp[self._distaxis] = _shareSize(self._shape[self._distaxis],
-                                              ntask, rank)
-            if np.any(self._data.shape != itmp):
-                raise ValueError
+#     def _sanity_checks(self):
+#         # check whether the distaxis is consistent
+#         if self._distaxis < -1 or self._distaxis >= len(self._shape):
+#             raise ValueError
+#         itmp = np.array(self._distaxis)
+#         otmp = np.empty(ntask, dtype=np.int)
+#         _comm.Allgather(itmp, otmp)
+#         if np.any(otmp != self._distaxis):
+#             raise ValueError
+#         # check whether the global shape is consistent
+#         itmp = np.array(self._shape)
+#         otmp = np.empty((ntask, len(self._shape)), dtype=np.int)
+#         _comm.Allgather(itmp, otmp)
+#         for i in range(ntask):
+#             if np.any(otmp[i, :] != self._shape):
+#                 raise ValueError
+#         # check shape of local data
+#         if self._distaxis < 0:
+#             if self._data.shape != self._shape:
+#                 raise ValueError
+#         else:
+#             itmp = np.array(self._shape)
+#             itmp[self._distaxis] = _shareSize(self._shape[self._distaxis],
+#                                               ntask, rank)
+#             if np.any(self._data.shape != itmp):
+#                 raise ValueError
 
     @property
     def dtype(self):
