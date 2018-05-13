@@ -58,7 +58,7 @@ test_coverage:
   script:
     - python setup.py install --user -f
     - mpiexec -n 2 --bind-to none nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase 2> /dev/null
-    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
+    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches
     - >
       coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
