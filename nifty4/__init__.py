@@ -11,7 +11,7 @@ from .nonlinear import *
 
 from .field import Field, sqrt, exp, log, tanh
 
-from .operators.tensor import Tensor, ZeroTensor
+from .operators.tensor import Tensor
 
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator

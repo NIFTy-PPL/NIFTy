@@ -2,6 +2,14 @@ class NLTensor(object):
     def __call__(self, x):
         return NLChain(self, x)
 
+    @property
+    def indices(self):
+        return self._indices
+
+    @property
+    def rank(self):
+        return len(self._indices)
+
     def eval(self, x):
         raise NotImplementedError
 
@@ -37,15 +45,13 @@ class NLTensor(object):
 
 class NLChain(NLTensor):
     def __init__(self, outer, inner):
-        # FIXME Check indices
+        assert outer.rank == 1 and inner.rank == 1
         self._outer = outer
         self._inner = inner
+        self._indices = outer.indices
 
     def __str__(self):
-        return 'NLChain[{}({})]'.format(self._outer, self._inner)
-
-    def __call__(self, x):
-        return self.__class__(self, x)
+        return '{}({})'.format(self._outer, self._inner)
 
     def eval(self, x):
         return self._outer.eval(self._inner.eval(x))
@@ -55,29 +61,120 @@ class NLChain(NLTensor):
         return self.__class__(self._outer, self._inner.derivative)
 
 
-class NLContract(NLTensor):
-    def __init__(self, nltensor1, nltensor2, index1):
-        """
-        Contracts two Nonlinear Tensors. The second is assumed to be vector.
-        """
-        assert isinstance(nltensor1, NLTensor)
-        assert isinstance(nltensor2, NLTensor)
-
-        self._t1 = nltensor1
-        self._t2 = nltensor2
-        self._i1 = index1
+class NLCABF(NLTensor):
+    # CABF = Contract All But First
+    def __init__(self, nltensor, *nlvectors):
+        self._indices = nltensor.indices[0:1]
+        self._args = nlvectors
+        self._nltensor = nltensor
+        assert len(self._nltensor.indices) == len(self._args) + 1
+        for ii in range(len(self._args)):
+            assert self._args[ii].indices[0] == - self._nltensor.indices[ii + 1]
 
     def __str__(self):
-        return 'Contract(\n[{}]^{}\n{})'.format(self._t1, self._i1, self._t2)
+        s = '{}F('.format(self._nltensor)
+        for vv in self._args:
+            s += '{}, '.format(vv)
+        s = s[:-2]
+        s += ')'
+        return s
 
     def eval(self, x):
-        fst = self._t1.eval(x)
-        snd = self._t2.eval(x)
-        return fst.contract(snd, index=self._i1)
+        if len(self._args) == 1:
+            vector = self._args[0].eval(x)
+            operator = self._nltensor.eval(x)
+            return operator(vector)
+        raise NotImplementedError
 
     @property
     def derivative(self):
-        fst = self.__class__(self._t1.derivative, self._t2, self._i1)
-        snd = self.__class__(self._t1, self._t2.derivative, self._i1)
-        from .add import NLTensorAdd
-        return NLTensorAdd(fst, snd)
+        raise NotImplementedError
+
+
+class NLCABL(NLTensor):
+    # CABL = Contract All But Last
+    def __init__(self, nltensor, *nlvectors):
+        self._indices = nltensor.indices[-1:]
+        self._args = nlvectors
+        self._nltensor = nltensor
+        assert len(self._nltensor.indices) == len(self._args) + 1
+        for ii in range(len(self._args)):
+            assert self._args[ii].indices[0] == - self._nltensor.indices[ii]
+
+    def __str__(self):
+        s = '{}L('.format(self._nltensor)
+        for vv in self._args:
+            s += '{}, '.format(vv)
+        s = s[:-2]
+        s += ')'
+        return s
+
+    def eval(self, x):
+        if len(self._args) == 1:
+            vector = self._args[0].eval(x)
+            operator = self._nltensor.eval(x)
+            return operator(vector)
+        raise NotImplementedError
+
+    @property
+    def derivative(self):
+        raise NotImplementedError
+
+
+class NLVdot(NLTensor):
+    def __init__(self, vector1, vector2):
+        assert vector1.indices == (1,)
+        assert vector2.indices == (1,)
+        self._vector1 = vector1
+        self._vector2 = vector2
+        self._indices = ()
+
+    def __str__(self):
+        return '{}.vdot({})'.format(self._vector1, self._vector2)
+
+    def eval(self, x):
+        return self._vector1.eval(x).vdot(self._vector2.eval(x))
+
+    @property
+    def derivative(self):
+        return NLCABL(self._vector1.derivative, self._vector2.adjoint) + NLCABL(self._vector2.derivative, self._vector1.adjoint)
+
+
+class NLScalarMul(NLTensor):
+    def __init__(self, nltensor, nlscalar):
+        assert isinstance(nltensor, NLTensor)
+        assert isinstance(nlscalar, NLTensor)
+        assert nlscalar.rank == 0
+        self._nltensor = nltensor
+        self._nlscalar = nlscalar
+
+    def __str__(self):
+        return '{} x {}'.format(self._nlscalar, self._nltensor)
+
+    def eval(self, x):
+        return self._nlscalar.eval(x) * self._nltensor.eval(x)
+
+    @property
+    def derivative(self):
+        raise NotImplementedError
+
+
+class NLApplyForm(NLTensor):
+    def __init__(self, form, vector):
+        assert vector.indices == (1,)
+        assert form.indices == (-1,)
+        self._vector = vector
+        self._form = form
+        self._indices = ()
+
+    def __str__(self):
+        return '{}.applyForm({})'.format(self._form, self._vector)
+
+    def eval(self, x):
+        return self._form.eval(x).vdot(self._vector.eval(x))
+
+    @property
+    def derivative(self):
+        raise NotImplementedError
+        return NLCABL(self._vector1.derivative, self._vector2.adjoint) + NLCABL(self._vector2.derivative, self._vector1.adjoint)
+

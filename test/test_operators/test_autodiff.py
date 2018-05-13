@@ -14,7 +14,7 @@ class NonlinearTests(unittest.TestCase):
 
     @staticmethod
     def takeOp1D1D(op, at, out):
-        gradient = op.derivative.eval(at).output
+        gradient = op.derivative.eval(at)
         dom = gradient.domain
         grad1 = gradient(ift.Field(dom, np.array([1., 0.]))).val
         grad2 = gradient(ift.Field(dom, np.array([0., 1.]))).val
@@ -25,16 +25,16 @@ class NonlinearTests(unittest.TestCase):
         # E = a
         self.make()
         E = self.a
-        res = E.eval(self.x).output.val
+        res = E.eval(self.x).val
         assert_allclose(res, self.x.val)
         self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
 
     def test_const2(self):
         # E = (2*Id)(a)
         self.make()
-        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
-        E = ift.NLContract(A, self.a, 1)
-        res = E.eval(self.x).output.val
+        A = ift.NLConstant(ift.Tensor(self.S, 2), (-1, -1))
+        E = ift.NLCABF(A, self.a)
+        res = E.eval(self.x).val
         Sdiag = self.S(ift.Field.ones(self.S.domain))
         true_res = (Sdiag * self.x).val
         # Test function evaluation
@@ -42,15 +42,11 @@ class NonlinearTests(unittest.TestCase):
         # Test gradient
         self.takeOp1D1D(E, self.x, np.diagflat(Sdiag.val))
 
-    def DISABLEDtest_with_crossterms(self):
+    def test_with_crossterms(self):
         # E = a * |a|**2
         self.make()
-        identity = ift.ScalingOperator(1., self.x.domain)
-        identity = ift.NLConstant(ift.Tensor((-1, -1), identity))
-        vdot = ift.NLContract(ift.NLContract(identity, self.a, 1), self.a, 0)
-        vdot_Op = ift.NLDiag(ift.NLDiag(vdot, 1), -1)
-        E = ift.NLContract(vdot_Op, self.a, 1)
-        res = E.eval(self.x).output.val
+        E = ift.NLScalarMul(self.a, ift.NLVdot(self.a, self.a))
+        res = E.eval(self.x).val
         res_true = (self.x * self.x.vdot(self.x)).val
         assert_allclose(res, res_true)
         self.takeOp1D1D(E, self.x, np.diagflat(np.ones(2)))
@@ -58,25 +54,15 @@ class NonlinearTests(unittest.TestCase):
     def test_priorEnergy(self):
         # E = a^dagger (2*Id)(a)
         self.make()
-        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
-        E = ift.NLContract(ift.NLContract(A, self.a, 1), self.a, 0)
-        # print()
-        # print('Energy: ')
-        # print(E)
-        res = E.eval(self.x).output.val
+        A = ift.NLConstant(ift.Tensor(self.S, 2), (-1, -1))
+        E = ift.NLApplyForm(ift.NLCABF(A, self.a), self.a)
+        res = E.eval(self.x)
         assert_allclose(res, 58)
-        # print()
-        # print('Derivative: ')
-        # print(E.derivative)
-        gradient = E.derivative.eval(self.x).output
+        gradient = E.derivative.eval(self.x)
         assert_allclose(gradient.val, 4 * self.x.val)
         curv = E.derivative.derivative
-        # print()
-        # print('Curvature: ')
-        # print(curv)
-        # print()
 
-        curv = curv.eval(self.x).output
+        curv = curv.eval(self.x)
         curv_true = 2 * self.S
         assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
 
@@ -84,7 +70,7 @@ class NonlinearTests(unittest.TestCase):
         # E = exp(a)
         self.make()
         E = ift.NLExp(self.a)
-        res = E.eval(self.x).output.val
+        res = E.eval(self.x).val
         assert_allclose(res, np.exp(self.x.val))
         self.takeOp1D1D(E, self.x, np.diagflat(res))
 
@@ -92,18 +78,18 @@ class NonlinearTests(unittest.TestCase):
         # E = a^dagger (2*Id)(a)
         self.make()
         exp_a = ift.NLExp(self.a)
-        A = ift.NLConstant(ift.Tensor((-1, -1), self.S))
-        E = ift.NLContract(ift.NLContract(A, exp_a, 1), exp_a, 0)
+        A = ift.NLConstant(ift.Tensor(self.S, 2), (-1, -1))
+        E = ift.NLApplyForm(ift.NLCABF(A, exp_a), exp_a)
         # print()
         # print('Energy: ')
         # print(E)
-        res = E.eval(self.x).output.val
+        res = E.eval(self.x)
         res_true = ift.exp(self.x).vdot(self.S(ift.exp(self.x)))
         assert_allclose(res, res_true)
         # # print()
         # # print('Derivative: ')
         # # print(E.derivative)
-        # gradient = E.derivative.eval(self.x).output
+        # gradient = E.derivative.eval(self.x)
         # gradient_true = (2 * ift.DiagonalOperator(ift.exp(self.x)) * self.S)(ift.exp(self.x)).val
         # assert_allclose(gradient.val, gradient_true)
         # curv = E.derivative.derivative
@@ -112,6 +98,6 @@ class NonlinearTests(unittest.TestCase):
         # # print(curv)
         # # print()
 
-        # curv = curv.eval(self.x).output
+        # curv = curv.eval(self.x)
         # curv_true = 2 * self.S
         # assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)

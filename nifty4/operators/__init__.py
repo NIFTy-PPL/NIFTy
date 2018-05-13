@@ -14,11 +14,11 @@ from .sandwich_operator import SandwichOperator
 from .scalar_distributor import ScalarDistributor
 from .outer import OuterOperator
 from .row_operator import RowOperator
-from .tensor import Tensor, ZeroTensor
+from .tensor import Tensor
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
            "InversionEnabler", "SandwichOperator", "ScalarDistributor",
-           "OuterOperator", "RowOperator", "Tensor", "ZeroTensor"]
+           "OuterOperator", "RowOperator", "Tensor"]

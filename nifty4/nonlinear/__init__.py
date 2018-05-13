@@ -1,7 +1,7 @@
-from .nonlinear_tensor import NLTensor, NLChain, NLContract
+from .nonlinear_tensor import NLTensor, NLChain, NLCABF, NLVdot, NLScalarMul, NLApplyForm
 from .add import NLTensorAdd
 from .variable import NLVariable
-from .constant import NLConstant
-from .pointwise_nonlinearity import NLExp, NLDiag
+from .constant import NLConstant, NLZero
+from .pointwise_nonlinearity import NLExp
 
-__all__ = ['NLTensor', 'NLTensorAdd', 'NLVariable', 'NLChain', 'NLConstant', 'NLContract', 'NLExp', 'NLDiag']
+__all__ = ['NLTensor', 'NLTensorAdd', 'NLVariable', 'NLChain', 'NLConstant', 'NLCABF', 'NLExp', 'NLZero', 'NLVdot', 'NLScalarMul', 'NLApplyForm']

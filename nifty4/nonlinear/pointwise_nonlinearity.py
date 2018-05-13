@@ -1,44 +1,23 @@
-from . import NLTensor, NLContract
-from ..field import Field, exp
-from ..operators import Tensor
+from . import NLTensor, NLCABF
+from ..field import exp
 
 
 class NLExp(NLTensor):
     def __init__(self, inner):
+        assert inner.rank == 1
         self._inner = inner
+        self._indices = inner.indices
 
     def __call__(self, x):
         raise NotImplementedError
 
     def __str__(self):
-        return 'EXP({})'.format(self._inner)
+        return 'exp({})'.format(self._inner)
 
     def eval(self, x):
-        field = self._inner.eval(x)._thing
-        assert isinstance(field, Field)
-        return Tensor(self._inner.eval(x).indices, exp(field))
+        return exp(self._inner.eval(x))
 
     @property
     def derivative(self):
-        return NLContract(NLDiag(NLExp(self._inner), -1), self._inner.derivative, 1)
-
-
-class NLDiag(NLTensor):
-    def __init__(self, diag, additional_index):
-        self._diag = diag
-        self._additional_index = (additional_index,)
-
-    def __call__(self, x):
         raise NotImplementedError
-
-    def __str__(self):
-        return 'DIAG({})_{}'.format(self._diag, self._additional_index)
-
-    def eval(self, x):
-        newIndex = self._diag.eval(x).indices + self._additional_index
-        out = Tensor(newIndex, self._diag.eval(x).output, domain=x.domain)
-        return out
-
-    @property
-    def derivative(self):
-        return self.__class__(self._diag.derivative, -1)
+        # return NLCABF(NLDiag(NLExp(self._inner), -1), self._inner.derivative)

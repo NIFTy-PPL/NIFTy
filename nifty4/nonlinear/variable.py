@@ -1,5 +1,5 @@
 from . import NLTensor
-from ..operators import Tensor, ScalingOperator
+from ..operators import Tensor, RowOperator
 from .constant import NLConstant
 
 
@@ -15,9 +15,35 @@ class NLVariable(NLTensor):
         return 'var_{}'.format(self._indices)
 
     def eval(self, x):
-        return Tensor((1,), x)
+        return x
+
+    @property
+    def adjoint(self):
+        return NLAdjointVariable(self._domain)
 
     @property
     def derivative(self):
-        return NLConstant(Tensor((1, -1), ScalingOperator(1., self._domain)))
+        return NLConstant(Tensor(1., 2, self._domain), self._indices + (-1, ))
 
+
+class NLAdjointVariable(NLTensor):
+    def __init__(self, domain):
+        self._domain = domain
+        self._indices = (-1,)
+
+    def __call__(self, x):
+        raise ValueError
+
+    def __str__(self):
+        return 'var^dagger_{}'.format(self._indices)
+
+    def eval(self, x):
+        return RowOperator(x)
+
+    @property
+    def adjoint(self):
+        return NLVariable(self._domain)
+
+    @property
+    def derivative(self):
+        return NLConstant(Tensor(1., 2, self._domain), self._indices + (-1, ))
