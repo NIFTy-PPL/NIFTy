@@ -17,7 +17,7 @@ class NLConstant(NLTensor):
         return self
 
     def __str__(self):
-        return self._tensor
+        return str(self._tensor)
 
     def eval(self, x):
         return self._tensor._thing
