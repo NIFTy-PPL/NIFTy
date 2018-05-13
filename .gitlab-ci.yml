@@ -33,9 +33,7 @@ test_python2_scalar:
   stage: test
   script:
     - python setup.py install --user -f
-    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
-    - >
-      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
+    - nosetests -q
 
 test_python3_scalar:
   stage: test
@@ -54,6 +52,15 @@ test_python3_mpi:
   script:
     - python3 setup.py install --user -f
     - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
+
+test_coverage:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - mpiexec -n 2 --bind-to none nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase 2> /dev/null
+    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
+    - >
+      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
 
 pages:
   stage: release
