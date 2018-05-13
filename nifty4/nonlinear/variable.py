@@ -12,7 +12,7 @@ class NLVariable(NLTensor):
         raise ValueError
 
     def __str__(self):
-        return 'var_{}'.format(self._indices)
+        return 'var'
 
     def eval(self, x):
         return x

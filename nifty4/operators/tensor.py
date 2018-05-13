@@ -5,12 +5,13 @@ from ..field import Field
 
 
 class Tensor(object):
-    def __init__(self, thing, rank, domain=None):
+    def __init__(self, thing, rank, domain=None, name=None):
         """
         thing:   Can be a LinearOperator, Field or a Scalar.
         """
         assert isinstance(thing, LinearOperator) or isinstance(thing, Field) or isinstance(thing, (int, float))
         self.rank = rank
+        self._name = name
 
         # Rank 2
         if self.rank == 2:
@@ -52,7 +53,10 @@ class Tensor(object):
         return self._thing.domain
 
     def __str__(self):
-        return str(self._thing)
+        if self._name is None:
+            return str(self._thing)
+        else:
+            return self._name
 
     def __add__(self, other):
         assert self.rank == other.rank

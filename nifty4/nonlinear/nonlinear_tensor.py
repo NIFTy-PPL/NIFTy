@@ -122,11 +122,11 @@ class NLCABF(NLTensor):
             assert self._args[ii].indices[0] == - self._nltensor.indices[ii + 1]
 
     def __str__(self):
-        s = '{}F('.format(self._nltensor)
+        s = '{} '.format(self._nltensor)
         for vv in self._args:
             s += '{}, '.format(vv)
         s = s[:-2]
-        s += ')'
+        # s += ')'
         return s
 
     def eval(self, x):
@@ -160,7 +160,7 @@ class NLCABL(NLTensor):
             assert self._args[ii].indices[0] == - self._nltensor.indices[ii]
 
     def __str__(self):
-        s = '{}L('.format(self._nltensor)
+        s = '{}CABL('.format(self._nltensor)
         for vv in self._args:
             s += '{}, '.format(vv)
         s = s[:-2]
@@ -190,7 +190,7 @@ class NLVdot(NLTensor):
         self._indices = ()
 
     def __str__(self):
-        return '{}.vdot({})'.format(self._vector1, self._vector2)
+        return '({}).vdot({})'.format(self._vector1, self._vector2)
 
     def eval(self, x):
         return self._vector1.eval(x).vdot(self._vector2.eval(x))
@@ -213,7 +213,7 @@ class NLScalarMul(NLTensor):
         self._indices = self._nltensor.indices
 
     def __str__(self):
-        return '{} x {}'.format(self._nlscalar, self._nltensor)
+        return '({}) x ({})'.format(self._nlscalar, self._nltensor)
 
     def eval(self, x):
         return self._nlscalar.eval(x) * self._nltensor.eval(x)
