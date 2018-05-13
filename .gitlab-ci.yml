@@ -33,8 +33,8 @@ test_python2_with_coverage:
   stage: test
   script:
     - python setup.py install --user -f
-    - mpiexec -n 2 --bind-to none nosetests -q --with-coverage --cover-package=nifty4 --cover-erase 2> /dev/null
-    - nosetests -q --with-coverage --cover-package=nifty4 2> /dev/null
+    - mpiexec -n 2 --bind-to none nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase 2> /dev/null
+    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches 2> /dev/null
     - >
       coverage report --omit "*plotting*"
     - >
