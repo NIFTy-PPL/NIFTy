@@ -39,6 +39,8 @@ class Tensor(object):
         elif self.rank == 0:
             if isinstance(thing, Field) and len(thing.domain) == 0:
                 self._thing = thing
+            elif isinstance(thing, (float, int)):
+                self._thing = Field((), thing)
             else:
                 raise ValueError
 

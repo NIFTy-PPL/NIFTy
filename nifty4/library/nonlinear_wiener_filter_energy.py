@@ -18,6 +18,7 @@
 
 from .wiener_filter_curvature import WienerFilterCurvature
 from ..utilities import memo
+from ..operators import DiagonalOperator
 from ..minimization.energy import Energy
 
 
@@ -42,6 +43,26 @@ class NonlinearWienerFilterEnergy(Energy):
         self.R = Instrument * nonlinearity.derivative(m) * ht * power
         self._gradient = (t1 - self.R.adjoint_times(t2)).lock()
 
+        # A = ift.NLConstant(ift.Tensor(0.5 * self.S, 2), (-1, -1))
+
+        # Nonlinear implementation
+        from ..nonlinear import NLTensorAdd, NLConstant, NLExp, NLCABF, NLVariable, NLVdot, NLScalarMul
+        from ..operators.tensor import Tensor
+
+        pos_nl = NLVariable(position.domain)
+        mh_nl = NLCABF(NLConstant(Tensor(DiagonalOperator(power), 2), (1, -1)), pos_nl)
+        m_nl = NLCABF(NLConstant(Tensor(ht, 2), (1, -1)), mh_nl)
+        sky_nl = NLExp(m_nl)
+        d_nl = NLConstant(Tensor(d, 1), (1,))
+        rec_nl = NLCABF(NLConstant(Tensor((-1) * Instrument, 2), (1, -1)), sky_nl)
+        residual_nl = NLTensorAdd(d_nl, rec_nl)
+        likelihood_nl = NLVdot(residual_nl, residual_nl)
+        prior_nl = NLVdot(pos_nl, pos_nl)
+        energy_nl = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0), ()))
+        self._value = energy_nl.eval(position)
+        self._gradient = energy_nl.derivative.eval(position)
+        self._curvature = energy_nl.derivative.derivative.eval(position)
+
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
                               self.nonlinearity, self.ht, self.power, self.N,
@@ -58,4 +79,5 @@ class NonlinearWienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
+        # return self._curvature
         return WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
