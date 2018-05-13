@@ -87,18 +87,18 @@ class NonlinearTests(unittest.TestCase):
         res = E.eval(self.x)
         res_true = ift.exp(self.x).vdot(self.S(ift.exp(self.x)))
         assert_allclose(res, res_true)
-        # # print()
-        # # print('Derivative: ')
-        # # print(E.derivative)
-        # gradient = E.derivative.eval(self.x)
-        # gradient_true = (2 * ift.DiagonalOperator(ift.exp(self.x)) * self.S)(ift.exp(self.x)).val
-        # assert_allclose(gradient.val, gradient_true)
-        # curv = E.derivative.derivative
-        # # print()
-        # # print('Curvature: ')
-        # # print(curv)
-        # # print()
+        # print()
+        # print('Derivative: ')
+        # print(E.derivative)
+        gradient = E.derivative.eval(self.x)
+        gradient_true = (2 * ift.DiagonalOperator(ift.exp(self.x)) * self.S)(ift.exp(self.x)).val
+        assert_allclose(gradient.val, gradient_true)
+        curv = E.derivative.derivative
+        # print()
+        # print('Curvature: ')
+        # print(curv)
+        # print()
 
-        # curv = curv.eval(self.x)
-        # curv_true = 2 * self.S
-        # assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
+        curv = curv.eval(self.x)
+        curv_true = 2 * self.S
+        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
