@@ -282,10 +282,10 @@ class NLApplyForm(NLTensor):
 class NLAdjoint(NLTensor):
     def __init__(self, thing):
         assert thing.rank in [1, 2]
-        # FIXME What to do about these indices?
-        from operator import neg
-        self._indices = tuple(map(neg, thing.indices))
-        # self._indices = thing.indices
+        if thing.rank == 1:
+            self._indices = (-1 * thing.indices[0],)
+        else:
+            self._indices = thing.indices
         self._thing = thing
 
     def __str__(self):
