@@ -228,8 +228,8 @@ class NLOuterProd(NLTensor):
 
     def eval(self, x):
         from ..operators import RowOperator
-        from ..operators import DiagonalOperator
-        return DiagonalOperator(self._vector.eval(x)) * RowOperator(self._form.eval(x))
+        from ..operators import OuterOperator
+        return OuterOperator(self._vector.eval(x), RowOperator(self._form.eval(x)))
 
     @property
     def derivative(self):
