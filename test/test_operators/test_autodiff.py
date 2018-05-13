@@ -76,18 +76,18 @@ class NonlinearTests(unittest.TestCase):
         self.takeOp1D1D(E, self.x, np.diagflat(res))
 
     def test_nonlinearpriorEnergy(self):
-        # E = a^dagger (2*Id)(a)
+        # E = 0.5 * exp(a)^dagger S exp(a)
         self.make()
         exp_a = ift.NLExp(self.a)
-        A = ift.NLConstant(ift.Tensor(self.S, 2), (-1, -1))
+        A = ift.NLConstant(ift.Tensor(0.5 * self.S, 2), (-1, -1))
         E = ift.NLApplyForm(ift.NLCABF(A, exp_a), exp_a)
         res = E.eval(self.x)
-        res_true = ift.exp(self.x).vdot(self.S(ift.exp(self.x)))
+        res_true = 0.5 * ift.exp(self.x).vdot(self.S(ift.exp(self.x)))
         assert_allclose(res, res_true)
         gradient = E.derivative.eval(self.x)
-        gradient_true = (2 * ift.DiagonalOperator(ift.exp(self.x)) * self.S)(ift.exp(self.x)).val
+        gradient_true = (ift.DiagonalOperator(ift.exp(self.x)) * self.S)(ift.exp(self.x)).val
         assert_allclose(gradient.val, gradient_true)
         curv = E.derivative.derivative
         curv = curv.eval(self.x)
-        curv_true = 2 * ift.DiagonalOperator(ift.exp(self.x)) * self.S * ift.DiagonalOperator(ift.exp(self.x))
+        curv_true = ift.DiagonalOperator(ift.exp(self.x)) * self.S * ift.DiagonalOperator(ift.exp(self.x))
         assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
