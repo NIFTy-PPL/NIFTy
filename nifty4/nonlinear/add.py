@@ -15,7 +15,9 @@ class NLTensorAdd(NLTensor):
         return self._fst(x) + self._snd(x)
 
     def eval(self, x):
-        return self._fst.eval(x) + self._snd.eval(x)
+        A = self._fst.eval(x)
+        B = self._snd.eval(x)
+        return A + B
 
     @property
     def derivative(self):

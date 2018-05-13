@@ -59,7 +59,16 @@ class NonlinearWienerFilterEnergy(Energy):
         likelihood_nl = NLVdot(residual_nl, residual_nl)
         prior_nl = NLVdot(pos_nl, pos_nl)
         energy_nl = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
-        print(energy_nl)
+
+        # TEMPORARY
+        temp = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
+        temp = rec_nl
+        print(temp.derivative.eval(position))
+        from ..domains import UnstructuredDomain
+        assert isinstance(temp.derivative.eval(position).domain, UnstructuredDomain)
+        exit()
+        # END TEMPORARY
+
         self._value = energy_nl.eval(position)
         self._gradient = energy_nl.derivative.eval(position)
         self._curvature = energy_nl.derivative.derivative.eval(position)

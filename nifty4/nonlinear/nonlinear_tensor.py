@@ -81,7 +81,17 @@ class NLChainLinOps(NLTensor):
         return '{} {}'.format(self._op1, self._op2)
 
     def eval(self, x):
-        return self._op1.eval(x) * self._op2.eval(x)
+        # print()
+        # print('start')
+        # # print(self._op1)
+        # print(self._op1.eval(x).domain)
+        # # print(self._op2)
+        # print(self._op2.eval(x).target)
+        # print('end')
+        # print()
+        A = self._op1.eval(x)
+        B = self._op2.eval(x)
+        return A * B
 
     @property
     def derivative(self):
@@ -143,7 +153,7 @@ class NLCABF(NLTensor):
         # df = self._arg.derivative * self._lop.adjoint
         from .constant import NLZero
         if isinstance(self._nltensor.derivative, NLZero) and len(self._args) == 1:
-            return NLChainLinOps(self._nltensor, self._args[0].derivative)
+            return NLChainLinOps(self._args[0].derivative, self._nltensor.adjoint)
         else:
             # TODO Implement more general case
             raise NotImplementedError
@@ -272,8 +282,10 @@ class NLApplyForm(NLTensor):
 class NLAdjoint(NLTensor):
     def __init__(self, thing):
         assert thing.rank in [1, 2]
+        # FIXME What to do about these indices?
         from operator import neg
         self._indices = tuple(map(neg, thing.indices))
+        # self._indices = thing.indices
         self._thing = thing
 
     def __str__(self):
@@ -281,7 +293,7 @@ class NLAdjoint(NLTensor):
 
     def eval(self, x):
         if self.rank == 2:
-            return self._thing.eval(x).adjoint(x)
+            return self._thing.eval(x).adjoint
         elif self.rank == 1:
             from ..operators import RowOperator
             return RowOperator(self._thing.eval(x))
