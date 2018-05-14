@@ -23,7 +23,6 @@ from ..nonlinear import (NLCABF, NLApplyForm, NLConstant, NLExp, NLScalarMul,
                          NLTensorAdd, NLVariable)
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.sandwich_operator import SandwichOperator
 from ..operators.tensor import Tensor
 from ..utilities import memo
 from .wiener_filter_curvature import WienerFilterCurvature
@@ -52,6 +51,8 @@ class NonlinearWienerFilterEnergy(Energy):
         self._curvature = WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
 
         # Nonlinear implementation
+        # TODO Use SandwichOperator
+        # TODO Implement other nonlinearities
         pos_nl = NLVariable(position.domain)
         Sinv_nl = NLConstant(Tensor(self.S.inverse, 2, name='Sinv'), (-1, -1))
         Ninv_nl = NLConstant(Tensor(self.N.inverse, 2, name='Ninv'), (-1, -1))
