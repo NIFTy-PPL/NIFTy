@@ -15,11 +15,13 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
+from numpy.testing import assert_allclose
 
-from .wiener_filter_curvature import WienerFilterCurvature
-from ..utilities import memo
-from ..operators import DiagonalOperator
+from ..field import Field
 from ..minimization.energy import Energy
+from ..operators import DiagonalOperator
+from ..utilities import memo
+from .wiener_filter_curvature import WienerFilterCurvature
 
 
 class NonlinearWienerFilterEnergy(Energy):
@@ -42,8 +44,7 @@ class NonlinearWienerFilterEnergy(Energy):
         self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
         self.R = Instrument * nonlinearity.derivative(m) * ht * power
         self._gradient = (t1 - self.R.adjoint_times(t2)).lock()
-
-        # A = ift.NLConstant(ift.Tensor(0.5 * self.S, 2), (-1, -1))
+        self._curvature = WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
 
         # Nonlinear implementation
         from ..nonlinear import NLTensorAdd, NLConstant, NLExp, NLCABF, NLVariable, NLVdot, NLScalarMul
@@ -60,19 +61,18 @@ class NonlinearWienerFilterEnergy(Energy):
         prior_nl = NLVdot(pos_nl, pos_nl)
         energy_nl = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
 
-        # TEMPORARY
-        temp = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
-        temp = NLTensorAdd(d_nl, rec_nl)
+        new_energy = energy_nl.eval(position)
+        new_gradient = energy_nl.derivative.eval(position)
+        new_curvature = energy_nl.derivative.derivative.eval(position)
 
-        d_space = d.domain
-        s_space = position.domain
-        assert temp.derivative.eval(position).target == d_space
-        assert temp.derivative.eval(position).domain == s_space
-        # END TEMPORARY
+        assert_allclose(self._value, new_energy)
+        assert_allclose(self._gradient.val, new_gradient.val)
+        rand_field = Field.from_random('normal', new_curvature.domain)
+        assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
 
-        self._value = energy_nl.eval(position)
-        self._gradient = energy_nl.derivative.eval(position)
-        self._curvature = energy_nl.derivative.derivative.eval(position)
+        self._value = new_energy
+        self._gradient = new_gradient
+        self._curvature = new_curvature
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
@@ -90,5 +90,4 @@ class NonlinearWienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        # return self._curvature
-        return WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
+        return self._curvature

@@ -117,7 +117,7 @@ class NLChainLinOps11(NLTensor):
         return '{} _11_ {}'.format(self._op1, self._op2)
 
     def eval(self, x):
-        return self._op1.eval(x).adjoint * self._op2.eval(x)
+        return self._op2.eval(x) * self._op1.eval(x)
 
     @property
     def derivative(self):
@@ -269,6 +269,9 @@ class NLOuterProd(NLTensor):
     def eval(self, x):
         from ..operators import RowOperator
         from ..operators import OuterOperator
+        from .constant import NLZero
+        if isinstance(self._snd, NLZero) or isinstance(self._fst, NLZero):
+            return 0.
         op = OuterOperator(self._fst.eval(x), RowOperator(self._snd.eval(x)))
         from ..extra.operator_tests import consistency_check
         consistency_check(op)
