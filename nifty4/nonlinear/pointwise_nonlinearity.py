@@ -35,8 +35,23 @@ class NLExp(PointwiseNonlinearity):
 
     @property
     def derivative(self):
-        return NLChainLinOps(NLDiag(NLExp(self._inner)),
+        return NLChainLinOps(NLDiag(NLExpPrime(self._inner)),
                              self._inner.derivative)
+
+
+class NLExpPrime(PointwiseNonlinearity):
+    def __str__(self):
+        return "exp'({})".format(self._inner)
+
+    def eval(self, x):
+        return exp(self._inner.eval(x))
+
+    @property
+    def derivative(self):
+        # FIXME This function should be triggered in the dome but it isn't.
+        # As soon as it is replace the error with a zero in order to implement
+        # Jakob's curvature
+        raise NotImplementedError
 
 
 class NLTanh(PointwiseNonlinearity):
@@ -61,4 +76,7 @@ class NLTanhPrime(PointwiseNonlinearity):
 
     @property
     def derivative(self):
+        # FIXME This function should be triggered in the dome but it isn't.
+        # As soon as it is replace the error with a zero in order to implement
+        # Jakob's curvature
         raise NotImplementedError
