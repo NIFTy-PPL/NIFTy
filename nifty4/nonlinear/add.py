@@ -9,7 +9,7 @@ class NLTensorAdd(NLTensor):
         self._snd = snd
 
     def __str__(self):
-        return '{} + {})'.format(self._fst, self._snd)
+        return '{} + {}'.format(self._fst, self._snd)
 
     def __call__(self, x):
         return self._fst(x) + self._snd(x)

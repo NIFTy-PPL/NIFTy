@@ -179,9 +179,15 @@ class NLCABL(NLTensor):
 
     def eval(self, x):
         if len(self._args) == 1:
-            vector = self._args[0].eval(x)
+            nlvector = self._args[0]
+            vector = nlvector.eval(x)
             operator = self._nltensor.eval(x)
-            return operator(vector)
+            if nlvector.indices == (1,):
+                return operator(vector)
+            elif nlvector.indices == (-1,):
+                return operator.adjoint(vector).conjugate()
+            else:
+                raise NotImplementedError
         raise NotImplementedError
 
     @property
@@ -250,7 +256,10 @@ class NLOuterProd(NLTensor):
     def eval(self, x):
         from ..operators import RowOperator
         from ..operators import OuterOperator
-        return OuterOperator(self._vector.eval(x), RowOperator(self._form.eval(x)))
+        op = OuterOperator(self._vector.eval(x), RowOperator(self._form.eval(x)))
+        from ..extra.operator_tests import consistency_check
+        consistency_check(op)
+        return op
 
     @property
     def derivative(self):
@@ -295,8 +304,8 @@ class NLAdjoint(NLTensor):
         if self.rank == 2:
             return self._thing.eval(x).adjoint
         elif self.rank == 1:
-            from ..operators import RowOperator
-            return RowOperator(self._thing.eval(x))
+            # FIXME Compute complex conjugate of field
+            return self._thing.eval(x)
         else:
             raise NotImplementedError
 
