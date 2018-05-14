@@ -22,6 +22,8 @@ from ..minimization.energy import Energy
 from ..nonlinear import (NLCABF, NLApplyForm, NLConstant, NLExp, NLScalarMul,
                          NLTensorAdd, NLVariable)
 from ..operators import DiagonalOperator
+from ..operators.inversion_enabler import InversionEnabler
+from ..operators.sandwich_operator import SandwichOperator
 from ..operators.tensor import Tensor
 from ..utilities import memo
 from .wiener_filter_curvature import WienerFilterCurvature
@@ -68,6 +70,13 @@ class NonlinearWienerFilterEnergy(Energy):
         new_curvature = energy_nl.derivative.derivative.eval(position)
         # End Nonlinear implementation
 
+        # print(energy_nl)
+        # print()
+        # print(energy_nl.derivative)
+        # print()
+        # print(energy_nl.derivative.derivative)
+        # print()
+
         # Compare old and new implementation
         assert_allclose(self._value, new_energy)
         assert_allclose(self._gradient.val, new_gradient.val)
@@ -75,11 +84,9 @@ class NonlinearWienerFilterEnergy(Energy):
         assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
         # End Compare old and new implementation
 
-        exit()
-
         self._value = new_energy
         self._gradient = new_gradient
-        self._curvature = new_curvature
+        self._curvature = InversionEnabler(new_curvature, inverter, S.inverse)
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
