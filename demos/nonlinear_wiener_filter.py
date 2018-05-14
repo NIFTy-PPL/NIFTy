@@ -10,7 +10,7 @@ if __name__ == "__main__":
     p_spec = lambda k: (1. / (k*correlation_length + 1) ** 4)
 
     # nonlinearity = Tanh()
-    #nonlinearity = Linear()
+    # nonlinearity = Linear()
     nonlinearity = Exponential()
 
     # Set up position space

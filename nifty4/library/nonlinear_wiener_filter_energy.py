@@ -19,12 +19,13 @@ from numpy.testing import assert_allclose
 
 from ..field import Field
 from ..minimization.energy import Energy
-from ..nonlinear import (NLCABF, NLApplyForm, NLConstant, NLExp, NLScalarMul,
-                         NLAdd, NLVariable)
+from ..nonlinear import (NLCABF, NLAdd, NLApplyForm, NLConstant, NLExp,
+                         NLLinear, NLScalarMul, NLTanh, NLVariable)
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.tensor import Tensor
 from ..utilities import memo
+from .nonlinearities import Exponential, Linear, Tanh
 from .wiener_filter_curvature import WienerFilterCurvature
 
 
@@ -51,14 +52,22 @@ class NonlinearWienerFilterEnergy(Energy):
         self._curvature = WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
 
         # Nonlinear implementation
-        # TODO Use SandwichOperator
-        # TODO Implement other nonlinearities
+        # TODO Implement SandwichOperator
+        if isinstance(nonlinearity, Exponential):
+            NLNonlinearity = NLExp
+        elif isinstance(nonlinearity, Linear):
+            NLNonlinearity = NLLinear
+        elif isinstance(nonlinearity, Tanh):
+            NLNonlinearity = NLTanh
+        else:
+            raise NotImplementedError
+
         pos_nl = NLVariable(position.domain)
         Sinv_nl = NLConstant(Tensor(self.S.inverse, 2, name='Sinv'), (-1, -1))
         Ninv_nl = NLConstant(Tensor(self.N.inverse, 2, name='Ninv'), (-1, -1))
         mh_nl = NLCABF(NLConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
         m_nl = NLCABF(NLConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
-        sky_nl = NLExp(m_nl)
+        sky_nl = NLNonlinearity(m_nl)
         d_nl = NLConstant(Tensor(d, 1, name='d'), (1,))
         rec_nl = NLCABF(NLConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1)), sky_nl)
         residual_nl = NLAdd(d_nl, rec_nl)
@@ -71,23 +80,16 @@ class NonlinearWienerFilterEnergy(Energy):
         new_curvature = energy_nl.derivative.derivative.eval(position)
         # End Nonlinear implementation
 
-        # print(energy_nl)
-        # print()
-        # print(energy_nl.derivative)
-        # print()
-        # print(energy_nl.derivative.derivative)
-        # print()
+        # Compare old and new implementation
+        assert_allclose(self._value, new_energy)
+        assert_allclose(self._gradient.val, new_gradient.val)
+        rand_field = Field.from_random('normal', new_curvature.domain)
+        assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
+        # End Compare old and new implementation
 
-        # # Compare old and new implementation
-        # assert_allclose(self._value, new_energy)
-        # assert_allclose(self._gradient.val, new_gradient.val)
-        # rand_field = Field.from_random('normal', new_curvature.domain)
-        # assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
-        # # End Compare old and new implementation
-
-        # self._value = new_energy
-        # self._gradient = new_gradient
-        # self._curvature = InversionEnabler(new_curvature, inverter, S.inverse)
+        self._value = new_energy
+        self._gradient = new_gradient
+        self._curvature = InversionEnabler(new_curvature, inverter, S.inverse)
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
