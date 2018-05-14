@@ -78,16 +78,16 @@ class NonlinearWienerFilterEnergy(Energy):
         # print(energy_nl.derivative.derivative)
         # print()
 
-        # Compare old and new implementation
-        assert_allclose(self._value, new_energy)
-        assert_allclose(self._gradient.val, new_gradient.val)
-        rand_field = Field.from_random('normal', new_curvature.domain)
-        assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
-        # End Compare old and new implementation
+        # # Compare old and new implementation
+        # assert_allclose(self._value, new_energy)
+        # assert_allclose(self._gradient.val, new_gradient.val)
+        # rand_field = Field.from_random('normal', new_curvature.domain)
+        # assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
+        # # End Compare old and new implementation
 
-        self._value = new_energy
-        self._gradient = new_gradient
-        self._curvature = InversionEnabler(new_curvature, inverter, S.inverse)
+        # self._value = new_energy
+        # self._gradient = new_gradient
+        # self._curvature = InversionEnabler(new_curvature, inverter, S.inverse)
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
