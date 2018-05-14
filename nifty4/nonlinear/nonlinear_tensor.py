@@ -109,7 +109,7 @@ class NLChainLinOps11(NLTensor):
         return '{} _11_ {}'.format(self._op1, self._op2)
 
     def eval(self, x):
-        return self._op2.eval(x) * self._op1.eval(x)
+        return self._op2.eval(x).adjoint * self._op1.eval(x)
 
     @property
     def derivative(self):
@@ -177,12 +177,7 @@ class NLCABL(NLTensor):
             nlvector = self._args[0]
             vector = nlvector.eval(x)
             operator = self._nltensor.eval(x)
-            if nlvector.indices == (1,):
-                return operator(vector)
-            elif nlvector.indices == (-1,):
-                return operator.adjoint(vector).conjugate()
-            else:
-                raise NotImplementedError
+            return operator.adjoint(vector).conjugate()
         raise NotImplementedError
 
     @property

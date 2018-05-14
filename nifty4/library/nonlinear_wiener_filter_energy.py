@@ -19,7 +19,10 @@ from numpy.testing import assert_allclose
 
 from ..field import Field
 from ..minimization.energy import Energy
+from ..nonlinear import (NLCABF, NLApplyForm, NLConstant, NLExp, NLScalarMul,
+                         NLTensorAdd, NLVariable)
 from ..operators import DiagonalOperator
+from ..operators.tensor import Tensor
 from ..utilities import memo
 from .wiener_filter_curvature import WienerFilterCurvature
 
@@ -47,9 +50,6 @@ class NonlinearWienerFilterEnergy(Energy):
         self._curvature = WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
 
         # Nonlinear implementation
-        from ..nonlinear import NLTensorAdd, NLConstant, NLExp, NLCABF, NLVariable, NLVdot, NLScalarMul, NLApplyForm
-        from ..operators.tensor import Tensor
-
         pos_nl = NLVariable(position.domain)
         Sinv_nl = NLConstant(Tensor(self.S.inverse, 2, name='Sinv'), (-1, -1))
         Ninv_nl = NLConstant(Tensor(self.N.inverse, 2, name='Ninv'), (-1, -1))
