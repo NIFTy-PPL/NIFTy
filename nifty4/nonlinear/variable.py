@@ -1,6 +1,6 @@
-from . import NLTensor
 from ..operators import Tensor
 from .constant import NLConstant
+from .tensor import NLTensor
 
 
 class NLVariable(NLTensor):

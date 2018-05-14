@@ -1,6 +1,7 @@
-from . import NLTensor, NLChainLinOps
 from ..field import exp
+from .contractions import NLChainLinOps
 from .diag import NLDiag
+from .tensor import NLTensor
 
 
 class NLExp(NLTensor):

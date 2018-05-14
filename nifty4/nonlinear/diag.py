@@ -1,7 +1,5 @@
-
-
-from . import NLTensor
 from ..operators import DiagonalOperator
+from .tensor import NLTensor
 
 
 class NLDiag(NLTensor):

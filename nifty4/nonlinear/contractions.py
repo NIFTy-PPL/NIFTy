@@ -1,3 +1,7 @@
+from ..extra.operator_tests import consistency_check
+from ..operators import OuterOperator, RowOperator
+from .add import NLAdd
+from .constant import NLZero
 from .tensor import NLTensor
 
 
@@ -17,8 +21,6 @@ class NLChain(NLTensor):
     @property
     def derivative(self):
         return self.__class__(self._outer, self._inner.derivative)
-
-
 
 
 class NLChainLinOps(NLTensor):
@@ -95,7 +97,6 @@ class NLCABF(NLTensor):
         # FIXME
         # f = self._lop.value(x)(self._arg.value(x))
         # df = self._arg.derivative * self._lop.adjoint
-        from .constant import NLZero
         if isinstance(self._nltensor.derivative, NLZero) and len(self._args) == 1:
             return NLChainLinOps(self._nltensor, self._args[0].derivative)
         else:
@@ -152,11 +153,9 @@ class NLVdot(NLTensor):
 
     @property
     def derivative(self):
-        from .add import NLAdd
         A = NLCABL(self._vector1.derivative, self._vector2.adjoint)
         B = NLCABL(self._vector2.derivative, self._vector1.adjoint)
         return NLAdd(A, B)
-
 
 
 class NLOuterProd(NLTensor):
@@ -172,13 +171,9 @@ class NLOuterProd(NLTensor):
         return '{} outer {}'.format(self._snd, self._fst)
 
     def eval(self, x):
-        from ..operators import RowOperator
-        from ..operators import OuterOperator
-        from .constant import NLZero
         if isinstance(self._snd, NLZero) or isinstance(self._fst, NLZero):
             return 0.
         op = OuterOperator(self._fst.eval(x), RowOperator(self._snd.eval(x)))
-        from ..extra.operator_tests import consistency_check
         consistency_check(op)
         return op
 
@@ -205,5 +200,4 @@ class NLApplyForm(NLTensor):
     def derivative(self):
         A = NLCABL(self._form.derivative, self._vector)
         B = NLCABL(self._vector.derivative, self._form)
-        from .add import NLAdd
         return NLAdd(A, B)

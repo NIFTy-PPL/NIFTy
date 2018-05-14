@@ -1,4 +1,4 @@
-from . import NLTensor
+from .tensor import NLTensor
 
 
 class NLAdd(NLTensor):

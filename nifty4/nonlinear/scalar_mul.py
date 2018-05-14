@@ -1,6 +1,7 @@
-from .tensor import NLTensor
 from ..field import Field
+from .add import NLAdd
 from .contractions import NLOuterProd
+from .tensor import NLTensor
 
 
 class NLScalarMul(NLTensor):
@@ -31,5 +32,4 @@ class NLScalarMul(NLTensor):
             B = NLOuterProd(self._nlscalar.derivative, self._nltensor)
         else:
             raise NotImplementedError
-        from .add import NLAdd
         return NLAdd(A, B)

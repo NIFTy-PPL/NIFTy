@@ -1,5 +1,5 @@
-from . import NLTensor
 from ..operators import Tensor
+from .tensor import NLTensor
 from .zero import NLZero
 
 
