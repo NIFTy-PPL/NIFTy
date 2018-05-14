@@ -20,7 +20,7 @@ from numpy.testing import assert_allclose
 from ..field import Field
 from ..minimization.energy import Energy
 from ..nonlinear import (NLCABF, NLAdd, NLApplyForm, NLConstant, NLExp,
-                         NLLinear, NLScalarMul, NLTanh, NLVariable)
+                         NLLinear, NLSandwich, NLScalarMul, NLTanh, NLVariable)
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.tensor import Tensor
@@ -52,7 +52,6 @@ class NonlinearWienerFilterEnergy(Energy):
         self._curvature = WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
 
         # Nonlinear implementation
-        # TODO Implement SandwichOperator
         if isinstance(nonlinearity, Exponential):
             NLNonlinearity = NLExp
         elif isinstance(nonlinearity, Linear):
@@ -69,11 +68,19 @@ class NonlinearWienerFilterEnergy(Energy):
         m_nl = NLCABF(NLConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
         sky_nl = NLNonlinearity(m_nl)
         d_nl = NLConstant(Tensor(d, 1, name='d'), (1,))
-        rec_nl = NLCABF(NLConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1)), sky_nl)
+        R_nl = NLConstant(Tensor(Instrument, 2, name='R'), (1, -1))
+        MinusR_nl = NLConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1))
+        rec_nl = NLCABF(MinusR_nl, sky_nl)
         residual_nl = NLAdd(d_nl, rec_nl)
-        likelihood_nl = NLApplyForm(NLCABF(Ninv_nl, residual_nl), residual_nl)
+
+        likelihood_nl_1 = NLApplyForm(NLCABF(Ninv_nl, d_nl), d_nl)
+        likelihood_nl_2 = NLApplyForm(NLCABF(NLSandwich(R_nl, Ninv_nl), sky_nl), sky_nl)
+        likelihood_nl_3 = NLApplyForm(NLCABF(Ninv_nl, residual_nl), rec_nl)
+        likelihood_nl = likelihood_nl_1 + likelihood_nl_2 + likelihood_nl_3
+
         prior_nl = NLApplyForm(NLCABF(Sinv_nl, pos_nl), pos_nl)
-        energy_nl = NLScalarMul(NLAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
+        energy_nl = NLScalarMul(NLAdd(likelihood_nl, prior_nl),
+                                NLConstant(Tensor(0.5, 0, name='0.5'), ()))
 
         new_energy = energy_nl.eval(position)
         new_gradient = energy_nl.derivative.eval(position)

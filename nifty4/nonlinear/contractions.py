@@ -97,9 +97,6 @@ class NLCABF(NLTensor):
 
     @property
     def derivative(self):
-        # FIXME
-        # f = self._lop.value(x)(self._arg.value(x))
-        # df = self._arg.derivative * self._lop.adjoint
         if isinstance(self._nltensor.derivative, NLZero) and len(self._args) == 1:
             return NLChainLinOps(self._nltensor, self._args[0].derivative)
         else:
