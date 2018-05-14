@@ -64,11 +64,16 @@ class NonlinearWienerFilterEnergy(Energy):
         new_energy = energy_nl.eval(position)
         new_gradient = energy_nl.derivative.eval(position)
         new_curvature = energy_nl.derivative.derivative.eval(position)
+        # End Nonlinear implementation
 
+        # Compare old and new implementation
         assert_allclose(self._value, new_energy)
         assert_allclose(self._gradient.val, new_gradient.val)
         rand_field = Field.from_random('normal', new_curvature.domain)
         assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
+        # End Compare old and new implementation
+
+        exit()
 
         self._value = new_energy
         self._gradient = new_gradient
