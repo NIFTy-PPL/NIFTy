@@ -153,7 +153,7 @@ class NLCABF(NLTensor):
         # df = self._arg.derivative * self._lop.adjoint
         from .constant import NLZero
         if isinstance(self._nltensor.derivative, NLZero) and len(self._args) == 1:
-            return NLChainLinOps(self._args[0].derivative, self._nltensor.adjoint)
+            return NLChainLinOps(self._nltensor, self._args[0].derivative)
         else:
             # TODO Implement more general case
             raise NotImplementedError
