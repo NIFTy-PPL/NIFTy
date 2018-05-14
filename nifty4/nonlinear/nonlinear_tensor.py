@@ -84,14 +84,6 @@ class NLChainLinOps(NLTensor):
         return '{} {}'.format(self._op1, self._op2)
 
     def eval(self, x):
-        # print()
-        # print('start')
-        # # print(self._op1)
-        # print(self._op1.eval(x).domain)
-        # # print(self._op2)
-        # print(self._op2.eval(x).target)
-        # print('end')
-        # print()
         A = self._op1.eval(x)
         B = self._op2.eval(x)
         return A * B
@@ -186,8 +178,6 @@ class NLCABL(NLTensor):
             vector = nlvector.eval(x)
             operator = self._nltensor.eval(x)
             if nlvector.indices == (1,):
-                print(operator)
-                print(vector)
                 return operator(vector)
             elif nlvector.indices == (-1,):
                 return operator.adjoint(vector).conjugate()
