@@ -186,6 +186,8 @@ class NLCABL(NLTensor):
             vector = nlvector.eval(x)
             operator = self._nltensor.eval(x)
             if nlvector.indices == (1,):
+                print(operator)
+                print(vector)
                 return operator(vector)
             elif nlvector.indices == (-1,):
                 return operator.adjoint(vector).conjugate()

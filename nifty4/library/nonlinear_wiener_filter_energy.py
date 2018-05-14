@@ -47,18 +47,20 @@ class NonlinearWienerFilterEnergy(Energy):
         self._curvature = WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
 
         # Nonlinear implementation
-        from ..nonlinear import NLTensorAdd, NLConstant, NLExp, NLCABF, NLVariable, NLVdot, NLScalarMul
+        from ..nonlinear import NLTensorAdd, NLConstant, NLExp, NLCABF, NLVariable, NLVdot, NLScalarMul, NLApplyForm
         from ..operators.tensor import Tensor
 
         pos_nl = NLVariable(position.domain)
+        Sinv_nl = NLConstant(Tensor(self.S.inverse, 2, name='Sinv'), (-1, -1))
+        Ninv_nl = NLConstant(Tensor(self.N.inverse, 2, name='Ninv'), (-1, -1))
         mh_nl = NLCABF(NLConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
         m_nl = NLCABF(NLConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
         sky_nl = NLExp(m_nl)
         d_nl = NLConstant(Tensor(d, 1, name='d'), (1,))
         rec_nl = NLCABF(NLConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1)), sky_nl)
         residual_nl = NLTensorAdd(d_nl, rec_nl)
-        likelihood_nl = NLVdot(residual_nl, residual_nl)
-        prior_nl = NLVdot(pos_nl, pos_nl)
+        likelihood_nl = NLApplyForm(NLCABF(Ninv_nl, residual_nl), residual_nl)
+        prior_nl = NLApplyForm(NLCABF(Sinv_nl, pos_nl), pos_nl)
         energy_nl = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
 
         new_energy = energy_nl.eval(position)
