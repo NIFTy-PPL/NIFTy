@@ -20,7 +20,7 @@ from numpy.testing import assert_allclose
 from ..field import Field
 from ..minimization.energy import Energy
 from ..nonlinear import (NLCABF, NLApplyForm, NLConstant, NLExp, NLScalarMul,
-                         NLTensorAdd, NLVariable)
+                         NLAdd, NLVariable)
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.tensor import Tensor
@@ -61,10 +61,10 @@ class NonlinearWienerFilterEnergy(Energy):
         sky_nl = NLExp(m_nl)
         d_nl = NLConstant(Tensor(d, 1, name='d'), (1,))
         rec_nl = NLCABF(NLConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1)), sky_nl)
-        residual_nl = NLTensorAdd(d_nl, rec_nl)
+        residual_nl = NLAdd(d_nl, rec_nl)
         likelihood_nl = NLApplyForm(NLCABF(Ninv_nl, residual_nl), residual_nl)
         prior_nl = NLApplyForm(NLCABF(Sinv_nl, pos_nl), pos_nl)
-        energy_nl = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
+        energy_nl = NLScalarMul(NLAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
 
         new_energy = energy_nl.eval(position)
         new_gradient = energy_nl.derivative.eval(position)

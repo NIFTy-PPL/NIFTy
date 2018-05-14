@@ -1,57 +1,4 @@
-from ..field import Field
-
-
-class NLTensor(object):
-    def __call__(self, x):
-        return NLChain(self, x)
-
-    @property
-    def indices(self):
-        return self._indices
-
-    @property
-    def rank(self):
-        return len(self._indices)
-
-    def eval(self, x):
-        raise NotImplementedError
-
-    @property
-    def derivative(self):
-        raise NotImplementedError
-
-    @property
-    def adjoint(self):
-        if self.rank in [1, 2]:
-            return NLAdjoint(self)
-        else:
-            print(self.rank)
-            raise NotImplementedError
-
-    @staticmethod
-    def _makeOp(thing):
-        raise NotImplementedError
-        # return thing if isinstance(thing, NLTensor) else NLOp_const(thing)
-
-    def __neg__(self):
-        raise NotImplementedError
-        # return NLOp_neg(self)
-
-    def __add__(self, other):
-        raise NotImplementedError
-        # return NLOp_add(self, self._makeOp(other))
-
-    def __radd__(self, other):
-        raise NotImplementedError
-        # return NLOp_add(self._makeOp(other), self)
-
-    def __sub__(self, other):
-        raise NotImplementedError
-        # return NLOp_add(self, NLOp_neg(self._makeOp(other)))
-
-    def __rsub__(self, other):
-        raise NotImplementedError
-        # return NLOp_add(NLOp_neg(self._makeOp(other)), self)
+from .tensor import NLTensor
 
 
 class NLChain(NLTensor):
@@ -70,6 +17,8 @@ class NLChain(NLTensor):
     @property
     def derivative(self):
         return self.__class__(self._outer, self._inner.derivative)
+
+
 
 
 class NLChainLinOps(NLTensor):
@@ -203,42 +152,11 @@ class NLVdot(NLTensor):
 
     @property
     def derivative(self):
-        from .add import NLTensorAdd
+        from .add import NLAdd
         A = NLCABL(self._vector1.derivative, self._vector2.adjoint)
         B = NLCABL(self._vector2.derivative, self._vector1.adjoint)
-        return NLTensorAdd(A, B)
+        return NLAdd(A, B)
 
-
-class NLScalarMul(NLTensor):
-    def __init__(self, nltensor, nlscalar):
-        assert isinstance(nltensor, NLTensor)
-        assert isinstance(nlscalar, NLTensor)
-        assert nlscalar.rank == 0
-        self._nltensor = nltensor
-        self._nlscalar = nlscalar
-        self._indices = self._nltensor.indices
-
-    def __str__(self):
-        return '({}) x ({})'.format(self._nlscalar, self._nltensor)
-
-    def eval(self, x):
-        scalar = self._nlscalar.eval(x)
-        if isinstance(scalar, Field) and len(scalar.domain) == 0:
-            scalar = scalar.to_global_data()[()]
-        return scalar * self._nltensor.eval(x)
-
-    @property
-    def derivative(self):
-        from .add import NLTensorAdd
-        if self._nltensor.rank == 0 and self._nlscalar.rank == 0:
-            A = NLScalarMul(self._nltensor.derivative, self._nlscalar)
-            B = NLScalarMul(self._nlscalar.derivative, self._nltensor)
-        elif self._nltensor.rank == 1:
-            A = NLScalarMul(self._nltensor.derivative, self._nlscalar)
-            B = NLOuterProd(self._nlscalar.derivative, self._nltensor)
-        else:
-            raise NotImplementedError
-        return NLTensorAdd(A, B)
 
 
 class NLOuterProd(NLTensor):
@@ -287,35 +205,5 @@ class NLApplyForm(NLTensor):
     def derivative(self):
         A = NLCABL(self._form.derivative, self._vector)
         B = NLCABL(self._vector.derivative, self._form)
-        from .add import NLTensorAdd
-        return NLTensorAdd(A, B)
-
-
-class NLAdjoint(NLTensor):
-    def __init__(self, thing, indices=None):
-        assert thing.rank in [1, 2]
-        if indices is None:
-            if thing.rank == 1:
-                self._indices = (-1 * thing.indices[0],)
-            else:
-                self._indices = thing.indices[::-1]
-        else:
-            self._indices = indices
-        self._thing = thing
-
-    def __str__(self):
-        return '{}^dagger'.format(self._thing)
-
-    def eval(self, x):
-        if self.rank == 2:
-            return self._thing.eval(x).adjoint
-        elif self.rank == 1:
-            return self._thing.eval(x).conjugate()
-        else:
-            raise NotImplementedError
-
-    @property
-    def derivative(self):
-        if self.rank == 1:
-            return self.__class__(self._thing.derivative, self._indices + (-1,))
-        raise NotImplementedError
+        from .add import NLAdd
+        return NLAdd(A, B)
