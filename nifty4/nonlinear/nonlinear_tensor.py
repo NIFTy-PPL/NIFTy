@@ -255,20 +255,21 @@ class NLScalarMul(NLTensor):
 
 
 class NLOuterProd(NLTensor):
-    def __init__(self, form, vector):
-        assert form.indices == (-1,)
-        assert vector.indices == (1,)
-        self._form = form
-        self._vector = vector
-        self._indices = (1, -1)
+    def __init__(self, snd, fst):
+        """ Computes A = fst*snd """
+        assert snd.indices == (-1,)
+        assert fst.indices in [(1,), (-1,)]
+        self._snd = snd
+        self._fst = fst
+        self._indices = self._fst.indices + self._snd.indices
 
     def __str__(self):
-        return '{} outer {}'.format(self._form, self._vector)
+        return '{} outer {}'.format(self._snd, self._fst)
 
     def eval(self, x):
         from ..operators import RowOperator
         from ..operators import OuterOperator
-        op = OuterOperator(self._vector.eval(x), RowOperator(self._form.eval(x)))
+        op = OuterOperator(self._fst.eval(x), RowOperator(self._snd.eval(x)))
         from ..extra.operator_tests import consistency_check
         consistency_check(op)
         return op
@@ -301,12 +302,15 @@ class NLApplyForm(NLTensor):
 
 
 class NLAdjoint(NLTensor):
-    def __init__(self, thing):
+    def __init__(self, thing, indices=None):
         assert thing.rank in [1, 2]
-        if thing.rank == 1:
-            self._indices = (-1 * thing.indices[0],)
+        if indices is None:
+            if thing.rank == 1:
+                self._indices = (-1 * thing.indices[0],)
+            else:
+                self._indices = thing.indices[::-1]
         else:
-            self._indices = thing.indices
+            self._indices = indices
         self._thing = thing
 
     def __str__(self):
@@ -316,11 +320,12 @@ class NLAdjoint(NLTensor):
         if self.rank == 2:
             return self._thing.eval(x).adjoint
         elif self.rank == 1:
-            # FIXME Compute complex conjugate of field
-            return self._thing.eval(x)
+            return self._thing.eval(x).conjugate()
         else:
             raise NotImplementedError
 
     @property
     def derivative(self):
+        if self.rank == 1:
+            return self.__class__(self._thing.derivative, self._indices + (-1,))
         raise NotImplementedError
