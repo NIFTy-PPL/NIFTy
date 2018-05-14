@@ -1,3 +1,6 @@
+from ..field import Field
+
+
 class NLTensor(object):
     def __call__(self, x):
         return NLChain(self, x)
@@ -232,13 +235,22 @@ class NLScalarMul(NLTensor):
         return '({}) x ({})'.format(self._nlscalar, self._nltensor)
 
     def eval(self, x):
-        return self._nlscalar.eval(x) * self._nltensor.eval(x)
+        scalar = self._nlscalar.eval(x)
+        if isinstance(scalar, Field) and len(scalar.domain) == 0:
+            scalar = scalar.to_global_data()[()]
+        return scalar * self._nltensor.eval(x)
 
     @property
     def derivative(self):
-        A = NLScalarMul(self._nltensor.derivative, self._nlscalar)
-        B = NLOuterProd(self._nlscalar.derivative, self._nltensor)
         from .add import NLTensorAdd
+        if self._nltensor.rank == 0 and self._nlscalar.rank == 0:
+            A = NLScalarMul(self._nltensor.derivative, self._nlscalar)
+            B = NLScalarMul(self._nlscalar.derivative, self._nltensor)
+        elif self._nltensor.rank == 1:
+            A = NLScalarMul(self._nltensor.derivative, self._nlscalar)
+            B = NLOuterProd(self._nlscalar.derivative, self._nltensor)
+        else:
+            raise NotImplementedError
         return NLTensorAdd(A, B)
 
 

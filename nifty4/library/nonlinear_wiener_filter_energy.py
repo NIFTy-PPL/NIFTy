@@ -62,11 +62,12 @@ class NonlinearWienerFilterEnergy(Energy):
 
         # TEMPORARY
         temp = NLScalarMul(NLTensorAdd(likelihood_nl, prior_nl), NLConstant(Tensor(0.5, 0, name='0.5'), ()))
-        temp = rec_nl
-        print(temp.derivative.eval(position))
-        from ..domains import UnstructuredDomain
-        assert isinstance(temp.derivative.eval(position).domain, UnstructuredDomain)
-        exit()
+        temp = NLTensorAdd(d_nl, rec_nl)
+
+        d_space = d.domain
+        s_space = position.domain
+        assert temp.derivative.eval(position).target == d_space
+        assert temp.derivative.eval(position).domain == s_space
         # END TEMPORARY
 
         self._value = energy_nl.eval(position)

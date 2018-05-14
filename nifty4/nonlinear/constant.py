@@ -39,15 +39,16 @@ class NLZero(NLTensor):
         return 'Zero'
 
     def eval(self, x):
-        if self.rank == 2:
-            return ScalingOperator(0, self._domain)
-        elif self.rank == 1:
-            return Field.zeros(self._domain)
-        elif self.rank == 0:
-            return Field.zeros(())
-        else:
-            # FIXME This situation here is suboptimal
-            return 0
+        return 0.
+        # FIXME This situation here is suboptimal
+        # if self.rank == 2:
+        #     return ScalingOperator(0, self._domain)
+        # elif self.rank == 1:
+        #     return Field.zeros(self._domain)
+        # elif self.rank == 0:
+        #     return Field.zeros(())
+        # else:
+        #     return 0
 
     @property
     def derivative(self):
