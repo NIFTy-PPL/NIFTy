@@ -1,43 +1,46 @@
 from ..extra.operator_tests import consistency_check
-from ..operators import OuterOperator, RowOperator
+from ..operators import OuterOperator, RowOperator, SandwichOperator
 from .add import NLAdd
 from .constant import NLZero
 from .tensor import NLTensor
 
 
-class NLChain(NLTensor):
-    def __init__(self, outer, inner):
-        assert outer.rank == 1 and inner.rank == 1
-        self._outer = outer
-        self._inner = inner
-        self._indices = outer.indices
-
-    def __str__(self):
-        return '{}({})'.format(self._outer, self._inner)
-
-    def eval(self, x):
-        return self._outer.eval(self._inner.eval(x))
-
-    @property
-    def derivative(self):
-        return self.__class__(self._outer, self._inner.derivative)
-
-
 class NLChainLinOps(NLTensor):
     def __init__(self, op1, op2):
         assert op1.rank == 2 and op2.rank == 2
-        assert op1.indices[-1] == - op2.indices[0]
-        self._indices = (op1.indices[0], op2.indices[-1])
+        assert op1.indices[1] == - op2.indices[0]
+        self._indices = (op1.indices[0], op2.indices[1])
         self._op1 = op1
         self._op2 = op2
 
     def __str__(self):
-        return '{} {}'.format(self._op1, self._op2)
+        return '({} {})'.format(self._op1, self._op2)
 
     def eval(self, x):
         A = self._op1.eval(x)
         B = self._op2.eval(x)
         return A * B
+
+    @property
+    def derivative(self):
+        raise NotImplementedError
+
+
+class NLSandwich(NLTensor):
+    def __init__(self, bun, cheese):
+        assert bun.rank == 2 and cheese.rank == 2
+        assert cheese.indices[1] == -bun.indices[0]
+        assert cheese.indices[0] == -bun.indices[0]
+
+        self._indices = 2 * (bun.indices[1],)
+        self._cheese = cheese
+        self._bun = bun
+
+    def __str__(self):
+        return 'Sandwich({}, {})'.format(self._bun, self._cheese)
+
+    def eval(self, x):
+        return SandwichOperator(self._bun.eval(x), self._cheese.eval(x))
 
     @property
     def derivative(self):
