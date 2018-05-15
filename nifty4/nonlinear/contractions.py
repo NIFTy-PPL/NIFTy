@@ -31,25 +31,20 @@ class NLChainLinOps(NLTensor):
 
 
 class NLSandwich(NLTensor):
-    def __init__(self, bun, cheese):
-        assert bun.rank == 2 and cheese.rank == 2
-        assert cheese.indices[1] == -bun.indices[0]
-        assert cheese.indices[0] == -bun.indices[0]
-
+    def __init__(self, bun):
+        assert bun.rank == 2
         self._indices = 2 * (bun.indices[1],)
-        self._cheese = cheese
         self._bun = bun
 
     def __str__(self):
-        return 'Sandwich({}, {})'.format(self._bun, self._cheese)
+        return 'Sandwich({})'.format(self._bun)
 
     def eval(self, x):
-        return SandwichOperator(self._bun.eval(x), self._cheese.eval(x))
+        return SandwichOperator(self._bun.eval(x))
 
     @property
     def derivative(self):
-        # FIXME Support also non-constant sandwiches.
-        return NLZero(self._indices + (-1,))
+        raise NotImplementedError
 
 
 class NLChainLinOps11(NLTensor):
@@ -167,6 +162,29 @@ class NLVdot(NLTensor):
         A = NLCABL(self._vector1.derivative, self._vector2.adjoint)
         B = NLCABL(self._vector2.derivative, self._vector1.adjoint)
         return NLAdd(A, B)
+
+
+class NLQuad(NLTensor):
+    def __init__(self, thing):
+        assert thing.rank == 1
+        self._thing = thing
+        self._indices = ()
+
+    def __str__(self):
+        return '0.5 * |{}|**2'.format(self._thing)
+
+    def eval(self, x):
+        a = self._thing.eval(x)
+        return 0.5 * a.vdot(a)
+
+    @property
+    def derivative(self):
+        return NLCABL(self._thing.derivative, self._thing.adjoint)
+
+    @property
+    def curvature(self):
+        # This is Jakob's curvature
+        return NLSandwich(self._thing.derivative)
 
 
 class NLOuterProd(NLTensor):

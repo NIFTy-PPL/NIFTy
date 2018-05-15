@@ -26,3 +26,7 @@ class NLAdd(NLTensor):
     @property
     def derivative(self):
         return self.__class__(self._fst.derivative,  self._snd.derivative)
+
+    @property
+    def curvature(self):
+        return self.__class__(self._fst.curvature,  self._snd.curvature)

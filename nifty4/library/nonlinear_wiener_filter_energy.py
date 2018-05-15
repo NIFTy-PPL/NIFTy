@@ -20,8 +20,8 @@ from numpy.testing import assert_allclose
 from ..field import Field, sqrt
 from ..minimization.energy import Energy
 from ..nonlinear import (NLCABF, NLAdd, NLApplyForm, NLConstant, NLExp,
-                         NLLinear, NLSandwich, NLScalarMul, NLTanh, NLVariable,
-                         NLVdot)
+                         NLLinear, NLQuad, NLSandwich, NLScalarMul, NLTanh,
+                         NLVariable, NLVdot)
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.tensor import Tensor
@@ -62,35 +62,29 @@ class NonlinearWienerFilterEnergy(Energy):
         else:
             raise NotImplementedError
 
-
         pos_nl = NLVariable(position.domain)
         Sinv_nl = NLConstant(Tensor(self.S.inverse, 2, name='Sinv'), (-1, -1))
-        Ninv_nl = NLConstant(Tensor(self.N.inverse, 2, name='Ninv'), (-1, -1))
         Ninv_nextgen = DiagonalOperator(sqrt(self.N.inverse(Field.ones(self.N.target))))
         Ninv_nextgen_nl = NLConstant(Tensor(Ninv_nextgen, 2, name='Ninv_nextgen'), (-1, -1))
+        Sinv_nextgen = DiagonalOperator(sqrt(self.S.inverse(Field.ones(self.S.target))))
+        Sinv_nextgen_nl = NLConstant(Tensor(Sinv_nextgen, 2, name='Sinv_nextgen'), (-1, -1))
         mh_nl = NLCABF(NLConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
         m_nl = NLCABF(NLConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
         sky_nl = NLNonlinearity(m_nl)
         d_nl = NLConstant(Tensor(d, 1, name='d'), (1,))
-        d_nextgen_nl = NLCABF(Ninv_nextgen_nl, d_nl)
-        R_nl = NLConstant(Tensor(Instrument, 2, name='R'), (1, -1))
         MinusR_nl = NLConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1))
         rec_nl = NLCABF(MinusR_nl, sky_nl)
         residual_nl = NLAdd(d_nl, rec_nl)
+        residual_nextgen_nl = NLCABF(Ninv_nextgen_nl, residual_nl)
+        pos_nextgen_nl = NLCABF(Sinv_nextgen_nl, pos_nl)
 
-        likelihood_nl_1 = NLVdot(d_nextgen_nl, d_nextgen_nl)
-        likelihood_nl_2 = NLApplyForm(NLCABF(NLSandwich(R_nl, Ninv_nl), sky_nl), sky_nl)
-        likelihood_nl_3 = NLScalarMul(NLApplyForm(NLCABF(Ninv_nl, d_nl), rec_nl),
-                                      NLConstant(Tensor(2, 0., name='2'), ()))
-        likelihood_nl = NLAdd(NLAdd(likelihood_nl_1, likelihood_nl_2), likelihood_nl_3)
-
-        prior_nl = NLApplyForm(NLCABF(Sinv_nl, pos_nl), pos_nl)
-        energy_nl = NLScalarMul(NLAdd(likelihood_nl, prior_nl),
-                                NLConstant(Tensor(0.5, 0, name='0.5'), ()))
+        likelihood_nl = NLQuad(residual_nextgen_nl)
+        prior_nl = NLQuad(pos_nextgen_nl)
+        energy_nl = NLAdd(likelihood_nl, prior_nl)
 
         new_energy = energy_nl.eval(position)
         new_gradient = energy_nl.derivative.eval(position)
-        new_curvature = energy_nl.derivative.derivative.eval(position)
+        new_curvature = energy_nl.curvature.eval(position)
         # End Nonlinear implementation
 
         # Compare old and new implementation
