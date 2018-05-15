@@ -150,8 +150,8 @@ class NLCABL(NLTensor):
 
 class NLVdot(NLTensor):
     def __init__(self, vector1, vector2):
-        assert vector1.indices == (1,)
-        assert vector2.indices == (1,)
+        assert vector1.indices == vector2.indices
+        assert vector1.indices in [(1,), (-1,)]
         self._vector1 = vector1
         self._vector2 = vector2
         self._indices = ()

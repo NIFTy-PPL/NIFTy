@@ -17,6 +17,8 @@ class NLAdjoint(NLTensor):
         return '{}^dagger'.format(self._thing)
 
     def eval(self, x):
+        if isinstance(self._thing.eval(x), float) and self._thing.eval(x) == 0.:
+            return 0.
         if self.rank == 2:
             return self._thing.eval(x).adjoint
         elif self.rank == 1:
