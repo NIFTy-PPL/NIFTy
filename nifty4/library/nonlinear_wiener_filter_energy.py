@@ -75,8 +75,9 @@ class NonlinearWienerFilterEnergy(Energy):
 
         likelihood_nl_1 = NLApplyForm(NLCABF(Ninv_nl, d_nl), d_nl)
         likelihood_nl_2 = NLApplyForm(NLCABF(NLSandwich(R_nl, Ninv_nl), sky_nl), sky_nl)
-        likelihood_nl_3 = NLApplyForm(NLCABF(Ninv_nl, residual_nl), rec_nl)
-        likelihood_nl = likelihood_nl_1 + likelihood_nl_2 + likelihood_nl_3
+        likelihood_nl_3 = NLScalarMul(NLApplyForm(NLCABF(Ninv_nl, d_nl), rec_nl),
+                                      NLConstant(Tensor(2, 0., name='2'), ()))
+        likelihood_nl = NLAdd(NLAdd(likelihood_nl_1, likelihood_nl_2), likelihood_nl_3)
 
         prior_nl = NLApplyForm(NLCABF(Sinv_nl, pos_nl), pos_nl)
         energy_nl = NLScalarMul(NLAdd(likelihood_nl, prior_nl),
