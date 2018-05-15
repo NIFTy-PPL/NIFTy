@@ -9,9 +9,9 @@ if __name__ == "__main__":
     correlation_length = 0.1
     p_spec = lambda k: (1. / (k*correlation_length + 1) ** 4)
 
-    # nonlinearity = Tanh()
+    nonlinearity = Tanh()
     # nonlinearity = Linear()
-    nonlinearity = Exponential()
+    # nonlinearity = Exponential()
 
     # Set up position space
     s_space = ift.RGSpace(1024)
