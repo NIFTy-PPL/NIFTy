@@ -92,17 +92,15 @@ class NonlinearTests(unittest.TestCase):
         curv_true = ift.DiagonalOperator(ift.exp(self.x)) * self.S * ift.DiagonalOperator(ift.exp(self.x))
         assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
 
-    def test_sandwich(self):
+    def test_quad(self):
         self.make()
-        cheese = ift.NLConstant(ift.Tensor(self.S, 2), (-1, -1))
-        bun = ift.NLConstant(ift.Tensor(3 * self.S, 2), (1, -1))
-        A = ift.NLSandwich(bun, cheese)
-        E = ift.NLApplyForm(ift.NLCABF(A, self.a), self.a)
+        S = ift.NLConstant(ift.Tensor(self.S, 2), (1, -1))
+        E = ift.NLQuad(ift.NLCABF(S, self.a))
         res = E.eval(self.x)
-        assert_allclose(res, self.x.vdot((3*self.S.adjoint*self.S*3*self.S)(self.x)))
+        assert_allclose(res, 0.5 * self.x.vdot((self.S.adjoint*self.S)(self.x)))
         gradient = E.derivative.eval(self.x)
-        assert_allclose(gradient.val, 2*(3*self.S.adjoint*self.S*3*self.S)(self.x).val)
-        curv = E.derivative.derivative
+        assert_allclose(gradient.val, (self.S.adjoint*self.S)(self.x).val)
+        curv = E.curvature
         curv = curv.eval(self.x)
-        curv_true = 2 * 3*self.S.adjoint*self.S*3*self.S
+        curv_true = self.S.adjoint*self.S
         assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
