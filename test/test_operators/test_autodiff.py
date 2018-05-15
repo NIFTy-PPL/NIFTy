@@ -9,7 +9,7 @@ class NonlinearTests(unittest.TestCase):
     def make(self):
         space = ift.RGSpace(2)
         self.x = ift.Field(space, val=np.array([2., 5.]))
-        self.a = ift.NLVariable(space)
+        self.a = ift.SymbolicVariable(space)
         self.S = ift.DiagonalOperator(ift.Field(space, 2.))
 
     @staticmethod
@@ -32,8 +32,8 @@ class NonlinearTests(unittest.TestCase):
     def test_const2(self):
         # E = (2*Id)(a)
         self.make()
-        A = ift.NLConstant(ift.Tensor(self.S, 2), (-1, -1))
-        E = ift.NLCABF(A, self.a)
+        A = ift.SymbolicConstant(ift.Tensor(self.S, 2), (-1, -1))
+        E = ift.SymbolicCABF(A, self.a)
         res = E.eval(self.x).val
         Sdiag = self.S(ift.Field.ones(self.S.domain))
         true_res = (Sdiag * self.x).val
@@ -45,7 +45,7 @@ class NonlinearTests(unittest.TestCase):
     def test_with_crossterms(self):
         # E = a * |a|**2
         self.make()
-        E = ift.NLScalarMul(self.a, ift.NLVdot(self.a, self.a))
+        E = ift.SymbolicScalarMul(self.a, ift.SymbolicVdot(self.a, self.a))
         res = E.eval(self.x).val
         res_true = (self.x * self.x.vdot(self.x)).val
         assert_allclose(res, res_true)
@@ -55,8 +55,8 @@ class NonlinearTests(unittest.TestCase):
     def test_priorEnergy(self):
         # E = a^dagger (2*Id)(a)
         self.make()
-        A = ift.NLConstant(ift.Tensor(self.S, 2), (-1, -1))
-        E = ift.NLApplyForm(ift.NLCABF(A, self.a), self.a)
+        A = ift.SymbolicConstant(ift.Tensor(self.S, 2), (-1, -1))
+        E = ift.SymbolicApplyForm(ift.SymbolicCABF(A, self.a), self.a)
         res = E.eval(self.x)
         assert_allclose(res, 58)
         gradient = E.derivative.eval(self.x)
@@ -70,7 +70,7 @@ class NonlinearTests(unittest.TestCase):
     def test_nonlinearity(self):
         # E = exp(a)
         self.make()
-        E = ift.NLExp(self.a)
+        E = ift.SymbolicExp(self.a)
         res = E.eval(self.x).val
         assert_allclose(res, np.exp(self.x.val))
         self.takeOp1D1D(E, self.x, np.diagflat(res))
@@ -78,9 +78,9 @@ class NonlinearTests(unittest.TestCase):
     def test_nonlinearpriorEnergy(self):
         # E = 0.5 * exp(a)^dagger S exp(a)
         self.make()
-        exp_a = ift.NLExp(self.a)
-        A = ift.NLConstant(ift.Tensor(0.5 * self.S, 2), (-1, -1))
-        E = ift.NLApplyForm(ift.NLCABF(A, exp_a), exp_a)
+        exp_a = ift.SymbolicExp(self.a)
+        A = ift.SymbolicConstant(ift.Tensor(0.5 * self.S, 2), (-1, -1))
+        E = ift.SymbolicApplyForm(ift.SymbolicCABF(A, exp_a), exp_a)
         res = E.eval(self.x)
         res_true = 0.5 * ift.exp(self.x).vdot(self.S(ift.exp(self.x)))
         assert_allclose(res, res_true)
@@ -94,8 +94,8 @@ class NonlinearTests(unittest.TestCase):
 
     def test_quad(self):
         self.make()
-        S = ift.NLConstant(ift.Tensor(self.S, 2), (1, -1))
-        E = ift.NLQuad(ift.NLCABF(S, self.a))
+        S = ift.SymbolicConstant(ift.Tensor(self.S, 2), (1, -1))
+        E = ift.SymbolicQuad(ift.SymbolicCABF(S, self.a))
         res = E.eval(self.x)
         assert_allclose(res, 0.5 * self.x.vdot((self.S.adjoint*self.S)(self.x)))
         gradient = E.derivative.eval(self.x)

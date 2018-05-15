@@ -22,8 +22,8 @@ from ..minimization.energy import Energy
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.tensor import Tensor
-from ..symbolic import (NLCABF, NLAdd, NLConstant, NLExp, NLLinear, NLQuad,
-                        NLTanh, NLVariable)
+from ..symbolic import (SymbolicCABF, SymbolicAdd, SymbolicConstant, SymbolicExp, SymbolicLinear, SymbolicQuad,
+                        SymbolicTanh, SymbolicVariable)
 from ..utilities import memo
 from .nonlinearities import Exponential, Linear, Tanh
 from .wiener_filter_curvature import WienerFilterCurvature
@@ -53,32 +53,32 @@ class NonlinearWienerFilterEnergy(Energy):
 
         # Nonlinear implementation
         if isinstance(nonlinearity, Exponential):
-            NLNonlinearity = NLExp
+            SymbolicNonlinearity = SymbolicExp
         elif isinstance(nonlinearity, Linear):
-            NLNonlinearity = NLLinear
+            SymbolicNonlinearity = SymbolicLinear
         elif isinstance(nonlinearity, Tanh):
-            NLNonlinearity = NLTanh
+            SymbolicNonlinearity = SymbolicTanh
         else:
             raise NotImplementedError
 
-        pos_nl = NLVariable(position.domain)
+        pos_nl = SymbolicVariable(position.domain)
         Ninv_nextgen = DiagonalOperator(sqrt(self.N.inverse(Field.ones(self.N.target))))
-        Ninv_nextgen_nl = NLConstant(Tensor(Ninv_nextgen, 2, name='Ninv_nextgen'), (-1, -1))
+        Ninv_nextgen_nl = SymbolicConstant(Tensor(Ninv_nextgen, 2, name='Ninv_nextgen'), (-1, -1))
         Sinv_nextgen = DiagonalOperator(sqrt(self.S.inverse(Field.ones(self.S.target))))
-        Sinv_nextgen_nl = NLConstant(Tensor(Sinv_nextgen, 2, name='Sinv_nextgen'), (-1, -1))
-        mh_nl = NLCABF(NLConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
-        m_nl = NLCABF(NLConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
-        sky_nl = NLNonlinearity(m_nl)
-        d_nl = NLConstant(Tensor(d, 1, name='d'), (1,))
-        MinusR_nl = NLConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1))
-        rec_nl = NLCABF(MinusR_nl, sky_nl)
-        residual_nl = NLAdd(d_nl, rec_nl)
-        residual_nextgen_nl = NLCABF(Ninv_nextgen_nl, residual_nl)
-        pos_nextgen_nl = NLCABF(Sinv_nextgen_nl, pos_nl)
+        Sinv_nextgen_nl = SymbolicConstant(Tensor(Sinv_nextgen, 2, name='Sinv_nextgen'), (-1, -1))
+        mh_nl = SymbolicCABF(SymbolicConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
+        m_nl = SymbolicCABF(SymbolicConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
+        sky_nl = SymbolicNonlinearity(m_nl)
+        d_nl = SymbolicConstant(Tensor(d, 1, name='d'), (1,))
+        MinusR_nl = SymbolicConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1))
+        rec_nl = SymbolicCABF(MinusR_nl, sky_nl)
+        residual_nl = SymbolicAdd(d_nl, rec_nl)
+        residual_nextgen_nl = SymbolicCABF(Ninv_nextgen_nl, residual_nl)
+        pos_nextgen_nl = SymbolicCABF(Sinv_nextgen_nl, pos_nl)
 
-        likelihood_nl = NLQuad(residual_nextgen_nl)
-        prior_nl = NLQuad(pos_nextgen_nl)
-        energy_nl = NLAdd(likelihood_nl, prior_nl)
+        likelihood_nl = SymbolicQuad(residual_nextgen_nl)
+        prior_nl = SymbolicQuad(pos_nextgen_nl)
+        energy_nl = SymbolicAdd(likelihood_nl, prior_nl)
 
         new_energy = energy_nl.eval(position)
         new_gradient = energy_nl.derivative.eval(position)

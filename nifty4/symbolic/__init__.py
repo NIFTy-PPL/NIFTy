@@ -1,18 +1,18 @@
-from .add import NLAdd
-from .adjoint import NLAdjoint
-from .chain import NLChain
-from .constant import NLConstant
-from .contractions import (NLCABF, NLCABL, NLApplyForm, NLChainLinOps,
-                           NLChainLinOps11, NLOuterProd, NLQuad, NLSandwich,
-                           NLVdot)
-from .diag import NLDiag
-from .pointwise_nonlinearity import NLExp, NLLinear, NLTanh
-from .scalar_mul import NLScalarMul
-from .tensor import NLTensor
-from .variable import NLVariable
-from .zero import NLZero
+from .add import SymbolicAdd
+from .adjoint import SymbolicAdjoint
+from .chain import SymbolicChain
+from .constant import SymbolicConstant
+from .contractions import (SymbolicCABF, SymbolicCABL, SymbolicApplyForm, SymbolicChainLinOps,
+                           SymbolicChainLinOps11, SymbolicOuterProd, SymbolicQuad, SymbolicSandwich,
+                           SymbolicVdot)
+from .diag import SymbolicDiag
+from .pointwise_nonlinearity import SymbolicExp, SymbolicLinear, SymbolicTanh
+from .scalar_mul import SymbolicScalarMul
+from .tensor import SymbolicTensor
+from .variable import SymbolicVariable
+from .zero import SymbolicZero
 
-__all__ = ['NLTensor', 'NLAdd', 'NLAdjoint', 'NLConstant', 'NLChain',
-           'NLChainLinOps', 'NLChainLinOps11', 'NLCABF', 'NLCABL', 'NLVdot',
-           'NLOuterProd', 'NLApplyForm', 'NLDiag', 'NLExp', 'NLScalarMul',
-           'NLVariable', 'NLZero', 'NLLinear', 'NLTanh', 'NLSandwich', 'NLQuad']
+__all__ = ['SymbolicTensor', 'SymbolicAdd', 'SymbolicAdjoint', 'SymbolicConstant', 'SymbolicChain',
+           'SymbolicChainLinOps', 'SymbolicChainLinOps11', 'SymbolicCABF', 'SymbolicCABL', 'SymbolicVdot',
+           'SymbolicOuterProd', 'SymbolicApplyForm', 'SymbolicDiag', 'SymbolicExp', 'SymbolicScalarMul',
+           'SymbolicVariable', 'SymbolicZero', 'SymbolicLinear', 'SymbolicTanh', 'SymbolicSandwich', 'SymbolicQuad']

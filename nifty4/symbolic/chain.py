@@ -1,7 +1,7 @@
-from .tensor import NLTensor
+from .tensor import SymbolicTensor
 
 
-class NLChain(NLTensor):
+class SymbolicChain(SymbolicTensor):
     def __init__(self, outer, inner):
         assert outer.rank == 1 and inner.rank == 1
         self._outer = outer

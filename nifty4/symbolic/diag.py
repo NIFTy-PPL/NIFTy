@@ -1,8 +1,8 @@
 from ..operators import DiagonalOperator
-from .tensor import NLTensor
+from .tensor import SymbolicTensor
 
 
-class NLDiag(NLTensor):
+class SymbolicDiag(SymbolicTensor):
     def __init__(self, diag):
         assert diag.rank == 1
         self._diag = diag

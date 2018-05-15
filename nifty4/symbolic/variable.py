@@ -1,9 +1,9 @@
 from ..operators import Tensor
-from .constant import NLConstant
-from .tensor import NLTensor
+from .constant import SymbolicConstant
+from .tensor import SymbolicTensor
 
 
-class NLVariable(NLTensor):
+class SymbolicVariable(SymbolicTensor):
     def __init__(self, domain):
         self._domain = domain
         self._indices = (1,)
@@ -19,4 +19,4 @@ class NLVariable(NLTensor):
 
     @property
     def derivative(self):
-        return NLConstant(Tensor(1., 2, self._domain), self._indices + (-1, ))
+        return SymbolicConstant(Tensor(1., 2, self._domain), self._indices + (-1, ))

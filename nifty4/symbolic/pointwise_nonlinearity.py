@@ -1,10 +1,10 @@
 from ..field import exp, tanh
-from .contractions import NLChainLinOps
-from .diag import NLDiag
-from .tensor import NLTensor
+from .contractions import SymbolicChainLinOps
+from .diag import SymbolicDiag
+from .tensor import SymbolicTensor
 
 
-class PointwiseNonlinearity(NLTensor):
+class PointwiseNonlinearity(SymbolicTensor):
     def __init__(self, inner):
         assert inner.rank == 1
         self._inner = inner
@@ -14,7 +14,7 @@ class PointwiseNonlinearity(NLTensor):
         raise NotImplementedError
 
 
-class NLLinear(PointwiseNonlinearity):
+class SymbolicLinear(PointwiseNonlinearity):
     def __str__(self):
         return 'linear({})'.format(self._inner)
 
@@ -26,7 +26,7 @@ class NLLinear(PointwiseNonlinearity):
         return self._inner.derivative
 
 
-class NLExp(PointwiseNonlinearity):
+class SymbolicExp(PointwiseNonlinearity):
     def __str__(self):
         return 'exp({})'.format(self._inner)
 
@@ -35,11 +35,11 @@ class NLExp(PointwiseNonlinearity):
 
     @property
     def derivative(self):
-        return NLChainLinOps(NLDiag(NLExpPrime(self._inner)),
+        return SymbolicChainLinOps(SymbolicDiag(SymbolicExpPrime(self._inner)),
                              self._inner.derivative)
 
 
-class NLExpPrime(PointwiseNonlinearity):
+class SymbolicExpPrime(PointwiseNonlinearity):
     def __str__(self):
         return "exp'({})".format(self._inner)
 
@@ -54,7 +54,7 @@ class NLExpPrime(PointwiseNonlinearity):
         raise NotImplementedError
 
 
-class NLTanh(PointwiseNonlinearity):
+class SymbolicTanh(PointwiseNonlinearity):
     def __str__(self):
         return 'tanh({})'.format(self._inner)
 
@@ -63,11 +63,11 @@ class NLTanh(PointwiseNonlinearity):
 
     @property
     def derivative(self):
-        return NLChainLinOps(NLDiag(NLTanhPrime(self._inner)),
+        return SymbolicChainLinOps(SymbolicDiag(SymbolicTanhPrime(self._inner)),
                              self._inner.derivative)
 
 
-class NLTanhPrime(PointwiseNonlinearity):
+class SymbolicTanhPrime(PointwiseNonlinearity):
     def __str__(self):
         return "tanh'({})".format(self._inner)
 

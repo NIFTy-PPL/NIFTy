@@ -1,13 +1,13 @@
 from ..field import Field
-from .add import NLAdd
-from .contractions import NLOuterProd
-from .tensor import NLTensor
+from .add import SymbolicAdd
+from .contractions import SymbolicOuterProd
+from .tensor import SymbolicTensor
 
 
-class NLScalarMul(NLTensor):
+class SymbolicScalarMul(SymbolicTensor):
     def __init__(self, nltensor, nlscalar):
-        assert isinstance(nltensor, NLTensor)
-        assert isinstance(nlscalar, NLTensor)
+        assert isinstance(nltensor, SymbolicTensor)
+        assert isinstance(nlscalar, SymbolicTensor)
         assert nlscalar.rank == 0
         self._nltensor = nltensor
         self._nlscalar = nlscalar
@@ -29,7 +29,7 @@ class NLScalarMul(NLTensor):
             B = self.__class__(self._nlscalar.derivative, self._nltensor)
         elif self._nltensor.rank == 1:
             A = self.__class__(self._nltensor.derivative, self._nlscalar)
-            B = NLOuterProd(self._nlscalar.derivative, self._nltensor)
+            B = SymbolicOuterProd(self._nlscalar.derivative, self._nltensor)
         else:
             raise NotImplementedError
-        return NLAdd(A, B)
+        return SymbolicAdd(A, B)

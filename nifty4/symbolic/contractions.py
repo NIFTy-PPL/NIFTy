@@ -1,11 +1,11 @@
 from ..extra.operator_tests import consistency_check
 from ..operators import OuterOperator, RowOperator, SandwichOperator
-from .add import NLAdd
-from .constant import NLZero
-from .tensor import NLTensor
+from .add import SymbolicAdd
+from .constant import SymbolicZero
+from .tensor import SymbolicTensor
 
 
-class NLChainLinOps(NLTensor):
+class SymbolicChainLinOps(SymbolicTensor):
     def __init__(self, op1, op2):
         assert op1.rank == 2 and op2.rank == 2
         assert op1.indices[1] == - op2.indices[0]
@@ -14,12 +14,12 @@ class NLChainLinOps(NLTensor):
         self._op2 = op2
 
     def __str__(self):
-        if isinstance(self._op1, NLZero) or isinstance(self._op2, NLZero):
+        if isinstance(self._op1, SymbolicZero) or isinstance(self._op2, SymbolicZero):
             return 'Zero'
         return '({} {})'.format(self._op1, self._op2)
 
     def eval(self, x):
-        if isinstance(self._op1, NLZero) or isinstance(self._op2, NLZero):
+        if isinstance(self._op1, SymbolicZero) or isinstance(self._op2, SymbolicZero):
             return 0.
         A = self._op1.eval(x)
         B = self._op2.eval(x)
@@ -30,7 +30,7 @@ class NLChainLinOps(NLTensor):
         raise NotImplementedError
 
 
-class NLSandwich(NLTensor):
+class SymbolicSandwich(SymbolicTensor):
     def __init__(self, bun):
         assert bun.rank == 2
         self._indices = 2 * (bun.indices[1],)
@@ -47,7 +47,7 @@ class NLSandwich(NLTensor):
         raise NotImplementedError
 
 
-class NLChainLinOps11(NLTensor):
+class SymbolicChainLinOps11(SymbolicTensor):
     # op1.indices = (-1, -1)
     # op2.indices = (1, -1)
     # contract first index of op1 with first index of op2
@@ -74,7 +74,7 @@ class NLChainLinOps11(NLTensor):
         raise NotImplementedError
 
 
-class NLCABF(NLTensor):
+class SymbolicCABF(SymbolicTensor):
     # CABF = Contract All But First
     def __init__(self, nltensor, *nlvectors):
         self._indices = nltensor.indices[0:1]
@@ -101,14 +101,14 @@ class NLCABF(NLTensor):
 
     @property
     def derivative(self):
-        if isinstance(self._nltensor.derivative, NLZero) and len(self._args) == 1:
-            return NLChainLinOps(self._nltensor, self._args[0].derivative)
+        if isinstance(self._nltensor.derivative, SymbolicZero) and len(self._args) == 1:
+            return SymbolicChainLinOps(self._nltensor, self._args[0].derivative)
         else:
             # TODO Implement more general case
             raise NotImplementedError
 
 
-class NLCABL(NLTensor):
+class SymbolicCABL(SymbolicTensor):
     # CABL = Contract All But Last
     def __init__(self, nltensor, *nlvectors):
         self._indices = nltensor.indices[-1:]
@@ -127,7 +127,7 @@ class NLCABL(NLTensor):
         return s
 
     def eval(self, x):
-        if isinstance(self._nltensor, NLZero) or self._nltensor.eval(x) == 0.:
+        if isinstance(self._nltensor, SymbolicZero) or self._nltensor.eval(x) == 0.:
             return 0.
         if len(self._args) == 1:
             nlvector = self._args[0]
@@ -140,10 +140,10 @@ class NLCABL(NLTensor):
     def derivative(self):
         # FIXME This is not the general case!!!
         assert len(self._args) == 1
-        return NLChainLinOps11(self._nltensor, self._args[0].derivative)
+        return SymbolicChainLinOps11(self._nltensor, self._args[0].derivative)
 
 
-class NLVdot(NLTensor):
+class SymbolicVdot(SymbolicTensor):
     def __init__(self, vector1, vector2):
         assert vector1.indices == vector2.indices
         assert vector1.indices in [(1,), (-1,)]
@@ -159,12 +159,12 @@ class NLVdot(NLTensor):
 
     @property
     def derivative(self):
-        A = NLCABL(self._vector1.derivative, self._vector2.adjoint)
-        B = NLCABL(self._vector2.derivative, self._vector1.adjoint)
-        return NLAdd(A, B)
+        A = SymbolicCABL(self._vector1.derivative, self._vector2.adjoint)
+        B = SymbolicCABL(self._vector2.derivative, self._vector1.adjoint)
+        return SymbolicAdd(A, B)
 
 
-class NLQuad(NLTensor):
+class SymbolicQuad(SymbolicTensor):
     def __init__(self, thing):
         assert thing.rank == 1
         self._thing = thing
@@ -179,15 +179,15 @@ class NLQuad(NLTensor):
 
     @property
     def derivative(self):
-        return NLCABL(self._thing.derivative, self._thing.adjoint)
+        return SymbolicCABL(self._thing.derivative, self._thing.adjoint)
 
     @property
     def curvature(self):
         # This is Jakob's curvature
-        return NLSandwich(self._thing.derivative)
+        return SymbolicSandwich(self._thing.derivative)
 
 
-class NLOuterProd(NLTensor):
+class SymbolicOuterProd(SymbolicTensor):
     def __init__(self, snd, fst):
         """ Computes A = fst*snd """
         assert snd.indices == (-1,)
@@ -200,7 +200,7 @@ class NLOuterProd(NLTensor):
         return '{} outer {}'.format(self._snd, self._fst)
 
     def eval(self, x):
-        if isinstance(self._snd, NLZero) or isinstance(self._fst, NLZero):
+        if isinstance(self._snd, SymbolicZero) or isinstance(self._fst, SymbolicZero):
             return 0.
         op = OuterOperator(self._fst.eval(x), RowOperator(self._snd.eval(x)))
         consistency_check(op)
@@ -211,7 +211,7 @@ class NLOuterProd(NLTensor):
         raise NotImplementedError
 
 
-class NLApplyForm(NLTensor):
+class SymbolicApplyForm(SymbolicTensor):
     def __init__(self, form, vector):
         assert vector.indices == (1,)
         assert form.indices == (-1,)
@@ -227,6 +227,6 @@ class NLApplyForm(NLTensor):
 
     @property
     def derivative(self):
-        A = NLCABL(self._form.derivative, self._vector)
-        B = NLCABL(self._vector.derivative, self._form)
-        return NLAdd(A, B)
+        A = SymbolicCABL(self._form.derivative, self._vector)
+        B = SymbolicCABL(self._vector.derivative, self._form)
+        return SymbolicAdd(A, B)

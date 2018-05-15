@@ -1,7 +1,7 @@
-from .tensor import NLTensor
+from .tensor import SymbolicTensor
 
 
-class NLAdd(NLTensor):
+class SymbolicAdd(SymbolicTensor):
     def __init__(self, fst, snd):
         assert fst.indices == snd.indices
         self._indices = fst.indices

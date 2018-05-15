@@ -1,7 +1,7 @@
-class NLTensor(object):
+class SymbolicTensor(object):
     def __call__(self, x):
-        from .contractions import NLChain
-        return NLChain(self, x)
+        from .contractions import SymbolicChain
+        return SymbolicChain(self, x)
 
     @property
     def indices(self):
@@ -21,7 +21,7 @@ class NLTensor(object):
     @property
     def adjoint(self):
         if self.rank in [1, 2]:
-            from .adjoint import NLAdjoint
-            return NLAdjoint(self)
+            from .adjoint import SymbolicAdjoint
+            return SymbolicAdjoint(self)
         else:
             raise NotImplementedError

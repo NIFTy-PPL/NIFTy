@@ -1,9 +1,9 @@
 from ..operators import Tensor
-from .tensor import NLTensor
-from .zero import NLZero
+from .tensor import SymbolicTensor
+from .zero import SymbolicZero
 
 
-class NLConstant(NLTensor):
+class SymbolicConstant(SymbolicTensor):
     def __init__(self, tensor, indices):
         """
         Takes a tensor object and wraps it into a Nonlinear Object.
@@ -24,4 +24,4 @@ class NLConstant(NLTensor):
 
     @property
     def derivative(self):
-        return NLZero(self.indices + (-1,), self._tensor.domain)
+        return SymbolicZero(self.indices + (-1,), self._tensor.domain)

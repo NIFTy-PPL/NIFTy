@@ -1,7 +1,7 @@
-from .tensor import NLTensor
+from .tensor import SymbolicTensor
 
 
-class NLZero(NLTensor):
+class SymbolicZero(SymbolicTensor):
     def __init__(self, indices, domain=None):
         self._indices = indices
         self._domain = domain

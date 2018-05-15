@@ -1,7 +1,7 @@
-from .tensor import NLTensor
+from .tensor import SymbolicTensor
 
 
-class NLAdjoint(NLTensor):
+class SymbolicAdjoint(SymbolicTensor):
     def __init__(self, thing, indices=None):
         assert thing.rank in [1, 2]
         if indices is None:
