@@ -94,10 +94,10 @@ def _makeplot(name):
 def _limit_xy(**kwargs):
     import matplotlib.pyplot as plt
     x1, x2, y1, y2 = plt.axis()
-    x1 = _get_kw("xmin", x1, **kwargs)
-    x2 = _get_kw("xmax", x2, **kwargs)
-    y1 = _get_kw("ymin", y1, **kwargs)
-    y2 = _get_kw("ymax", y2, **kwargs)
+    x1 = kwargs.pop("xmin", x1)
+    x2 = kwargs.pop("xmax", x2)
+    y1 = kwargs.pop("ymin", y1)
+    y2 = kwargs.pop("ymax", y2)
     plt.axis((x1, x2, y1, y2))
 
 
@@ -165,12 +165,6 @@ def _register_cmaps():
     plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
-def _get_kw(kwname, kwdefault=None, **kwargs):
-    if kwargs.get(kwname) is not None:
-        return kwargs.get(kwname)
-    return kwdefault
-
-
 def plot(f, **kwargs):
     import matplotlib.pyplot as plt
     _register_cmaps()
@@ -192,19 +186,19 @@ def plot(f, **kwargs):
                     (isinstance(dom[0], RGSpace) and len(dom[0].shape) == 1)):
                 raise ValueError("PowerSpace or 1D RGSpace required")
 
-    label = _get_kw("label", None, **kwargs)
+    label = kwargs.pop("label", None)
     if label is None:
         label = [None] * len(f)
     if not isinstance(label, list):
         label = [label]
 
-    linewidth = _get_kw("linewidth", None, **kwargs)
+    linewidth = kwargs.pop("linewidth", None)
     if linewidth is None:
         linewidth = [1.] * len(f)
     if not isinstance(linewidth, list):
         linewidth = [linewidth]
 
-    alpha = _get_kw("alpha", None, **kwargs)
+    alpha = kwargs.pop("alpha", None)
     if alpha is None:
         alpha = [None] * len(f)
     if not isinstance(alpha, list):
@@ -214,13 +208,13 @@ def plot(f, **kwargs):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
 
-    xsize = _get_kw("xsize", 6, **kwargs)
-    ysize = _get_kw("ysize", 6, **kwargs)
+    xsize = kwargs.pop("xsize", 6)
+    ysize = kwargs.pop("ysize", 6)
     fig.set_size_inches(xsize, ysize)
-    ax.set_title(_get_kw("title", "", **kwargs))
-    ax.set_xlabel(_get_kw("xlabel", "", **kwargs))
-    ax.set_ylabel(_get_kw("ylabel", "", **kwargs))
-    cmap = _get_kw("colormap", plt.rcParams['image.cmap'], **kwargs)
+    ax.set_title(kwargs.pop("title", ""))
+    ax.set_xlabel(kwargs.pop("xlabel", ""))
+    ax.set_ylabel(kwargs.pop("ylabel", ""))
+    cmap = kwargs.pop("colormap", plt.rcParams['image.cmap'])
     if isinstance(dom, RGSpace):
         if len(dom.shape) == 1:
             npoints = dom.shape[0]

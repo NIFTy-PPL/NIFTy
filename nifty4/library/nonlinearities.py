@@ -51,6 +51,7 @@ class Tanh(object):
     def hessian(self, x):
         return - 2. * tanh(x) * (1. - tanh(x)**2)
 
+
 class PositiveTanh(object):
     def __call__(self, x):
         return 0.5 * tanh(x) + 0.5

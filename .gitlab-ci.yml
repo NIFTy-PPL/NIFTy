@@ -29,31 +29,23 @@ build_docker_from_cache:
     - docker build -t $CONTAINER_TEST_IMAGE .
     - docker push $CONTAINER_TEST_IMAGE
 
-test_python2_scalar:
+test_python2_with_coverage:
   stage: test
   script:
     - python setup.py install --user -f
-    - nosetests -q --with-coverage --cover-package=nifty4 --cover-branches --cover-erase
+    - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
+    - nosetests -q --with-coverage --cover-package=nifty4 --cover-erase
     - >
-      coverage report | grep TOTAL | awk '{ print "TOTAL: "$6; }'
+      coverage report --omit "*plotting*,*distributed_do*"
+    - >
+      coverage report --omit "*plotting*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
 
-test_python3_scalar:
+test_python3:
   stage: test
   script:
     - python3 setup.py install --user -f
+    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
     - nosetests3 -q
-
-# test_python2_mpi:
-#   stage: test
-#   script:
-#     - python setup.py install --user -f
-#     - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
-
-# test_python3_mpi:
-#   stage: test
-#   script:
-#     - python3 setup.py install --user -f
-#     - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
 
 pages:
   stage: release
