@@ -102,7 +102,7 @@ class NonlinearTests(unittest.TestCase):
         assert_allclose(res, self.x.vdot((3*self.S.adjoint*self.S*3*self.S)(self.x)))
         gradient = E.derivative.eval(self.x)
         assert_allclose(gradient.val, 2*(3*self.S.adjoint*self.S*3*self.S)(self.x).val)
-        # curv = E.derivative.derivative
-        # curv = curv.eval(self.x)
-        # curv_true = 2 * self.S
-        # assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
+        curv = E.derivative.derivative
+        curv = curv.eval(self.x)
+        curv_true = 2 * 3*self.S.adjoint*self.S*3*self.S
+        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
