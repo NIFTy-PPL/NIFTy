@@ -100,8 +100,8 @@ class NonlinearTests(unittest.TestCase):
         E = ift.NLApplyForm(ift.NLCABF(A, self.a), self.a)
         res = E.eval(self.x)
         assert_allclose(res, self.x.vdot((3*self.S.adjoint*self.S*3*self.S)(self.x)))
-        # gradient = E.derivative.eval(self.x)
-        # assert_allclose(gradient.val, 4 * self.x.val)
+        gradient = E.derivative.eval(self.x)
+        assert_allclose(gradient.val, 2*(3*self.S.adjoint*self.S*3*self.S)(self.x).val)
         # curv = E.derivative.derivative
         # curv = curv.eval(self.x)
         # curv_true = 2 * self.S

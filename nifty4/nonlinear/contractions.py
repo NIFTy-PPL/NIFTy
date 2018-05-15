@@ -44,7 +44,8 @@ class NLSandwich(NLTensor):
 
     @property
     def derivative(self):
-        raise NotImplementedError
+        # FIXME Support also non-constant sandwiches.
+        return NLZero(self._indices + (-1,))
 
 
 class NLChainLinOps11(NLTensor):
