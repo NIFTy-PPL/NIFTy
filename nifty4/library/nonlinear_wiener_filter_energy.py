@@ -90,7 +90,7 @@ class NonlinearWienerFilterEnergy(Energy):
 
         # Compare old and new implementation
         assert_allclose(self._value, new_energy)
-        assert_allclose(self._gradient.val, new_gradient.val)
+        assert_allclose(self._gradient.val, new_gradient.val, rtol=1e-6)
         rand_field = Field.from_random('normal', new_curvature.domain)
         assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
         # End Compare old and new implementation

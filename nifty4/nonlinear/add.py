@@ -17,6 +17,10 @@ class NLAdd(NLTensor):
     def eval(self, x):
         A = self._fst.eval(x)
         B = self._snd.eval(x)
+        if isinstance(A, float) and A == 0.:
+            return B
+        if isinstance(B, float) and B == 0.:
+            return A
         return A + B
 
     @property

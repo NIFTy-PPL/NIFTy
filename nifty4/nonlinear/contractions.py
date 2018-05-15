@@ -14,9 +14,13 @@ class NLChainLinOps(NLTensor):
         self._op2 = op2
 
     def __str__(self):
+        if isinstance(self._op1, NLZero) or isinstance(self._op2, NLZero):
+            return 'Zero'
         return '({} {})'.format(self._op1, self._op2)
 
     def eval(self, x):
+        if isinstance(self._op1, NLZero) or isinstance(self._op2, NLZero):
+            return 0.
         A = self._op1.eval(x)
         B = self._op2.eval(x)
         return A * B
@@ -64,7 +68,11 @@ class NLChainLinOps11(NLTensor):
         return '{} _11_ {}'.format(self._op1, self._op2)
 
     def eval(self, x):
-        return self._op2.eval(x).adjoint * self._op1.eval(x)
+        A = self._op2.eval(x)
+        B = self._op1.eval(x)
+        if (isinstance(A, float) and A == 0.) or (isinstance(B, float) and B == 0.):
+            return 0.
+        return A.adjoint * B
 
     @property
     def derivative(self):
@@ -124,6 +132,8 @@ class NLCABL(NLTensor):
         return s
 
     def eval(self, x):
+        if isinstance(self._nltensor, NLZero) or self._nltensor.eval(x) == 0.:
+            return 0.
         if len(self._args) == 1:
             nlvector = self._args[0]
             vector = nlvector.eval(x)
