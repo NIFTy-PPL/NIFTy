@@ -7,7 +7,8 @@ from .domains import *
 from .domain_tuple import DomainTuple
 
 from .operators import *
-from .nonlinear import *
+
+from .symbolic import *
 
 from .field import Field, sqrt, exp, log, tanh
 

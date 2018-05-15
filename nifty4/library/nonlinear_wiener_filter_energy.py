@@ -19,12 +19,11 @@ from numpy.testing import assert_allclose
 
 from ..field import Field, sqrt
 from ..minimization.energy import Energy
-from ..nonlinear import (NLCABF, NLAdd, NLApplyForm, NLConstant, NLExp,
-                         NLLinear, NLQuad, NLSandwich, NLScalarMul, NLTanh,
-                         NLVariable, NLVdot)
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..operators.tensor import Tensor
+from ..symbolic import (NLCABF, NLAdd, NLConstant, NLExp, NLLinear, NLQuad,
+                        NLTanh, NLVariable)
 from ..utilities import memo
 from .nonlinearities import Exponential, Linear, Tanh
 from .wiener_filter_curvature import WienerFilterCurvature
