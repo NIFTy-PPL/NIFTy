@@ -63,7 +63,6 @@ class NonlinearWienerFilterEnergy(Energy):
             raise NotImplementedError
 
         pos_nl = NLVariable(position.domain)
-        Sinv_nl = NLConstant(Tensor(self.S.inverse, 2, name='Sinv'), (-1, -1))
         Ninv_nextgen = DiagonalOperator(sqrt(self.N.inverse(Field.ones(self.N.target))))
         Ninv_nextgen_nl = NLConstant(Tensor(Ninv_nextgen, 2, name='Ninv_nextgen'), (-1, -1))
         Sinv_nextgen = DiagonalOperator(sqrt(self.S.inverse(Field.ones(self.S.target))))
