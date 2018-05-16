@@ -79,6 +79,13 @@ class Field(object):
         if locked:
             dobj.lock(self._val)
 
+    # prevent implicit conversion to bool
+    def __nonzero__(self):
+        raise TypeError("Field does not support implicit conversion to bool")
+
+    def __bool__(self):
+        raise TypeError("Field does not support implicit conversion to bool")
+
     @staticmethod
     def full(domain, val, dtype=None):
         """Creates a Field with a given domain, filled with a constant value.

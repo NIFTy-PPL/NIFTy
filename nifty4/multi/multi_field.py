@@ -1,3 +1,21 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2018 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
+
 from ..field import Field
 import numpy as np
 from .multi_domain import MultiDomain
@@ -31,6 +49,13 @@ class MultiField(object):
     @property
     def dtype(self):
         return {key: val.dtype for key, val in self._val.items()}
+
+    @staticmethod
+    def from_random(random_type, domain, dtype=np.float64, **kwargs):
+        dtype = MultiField.build_dtype(dtype, domain)
+        return MultiField({key: Field.from_random(random_type, domain[key],
+                                                  dtype[key], **kwargs)
+                           for key in domain.keys()})
 
     def _check_domain(self, other):
         if other.domain != self.domain:
