@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .endomorphic_operator import EndomorphicOperator
+from .scaling_operator import ScalingOperator
 import numpy as np
 
 
@@ -31,11 +32,15 @@ class SandwichOperator(EndomorphicOperator):
         the cheese part
     """
 
-    def __init__(self, bun, cheese):
+    def __init__(self, bun, cheese=None):
         super(SandwichOperator, self).__init__()
         self._bun = bun
-        self._cheese = cheese
-        self._op = bun.adjoint*cheese*bun
+        if cheese is None:
+            self._cheese = ScalingOperator(1., bun.target)
+            self._op = bun.adjoint*bun
+        else:
+            self._cheese = cheese
+            self._op = bun.adjoint*cheese*bun
 
     @property
     def domain(self):
