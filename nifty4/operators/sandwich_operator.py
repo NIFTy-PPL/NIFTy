@@ -16,9 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+import numpy as np
+
+from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .scaling_operator import ScalingOperator
-import numpy as np
 
 
 class SandwichOperator(EndomorphicOperator):
@@ -54,8 +56,15 @@ class SandwichOperator(EndomorphicOperator):
         return self._op.apply(x, mode)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
+        # Drawing samples from diagonal operators is easy (inverse is possible)
+        if isinstance(self._op, (ScalingOperator, DiagonalOperator)):
+            return self._op.draw_sample(from_inverse, dtype)
+
+        # Inverse samples from general sandwiches is not possible
         if from_inverse:
             raise NotImplementedError(
                 "cannot draw from inverse of this operator")
+
+        # Samples from general sandwiches
         return self._bun.adjoint_times(
             self._cheese.draw_sample(from_inverse, dtype))
