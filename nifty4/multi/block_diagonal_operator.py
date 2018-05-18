@@ -1,0 +1,54 @@
+import numpy as np
+from ..operators.endomorphic_operator import EndomorphicOperator
+from .multi_domain import MultiDomain
+from .multi_field import MultiField
+
+
+class BlockDiagonalOperator(EndomorphicOperator):
+    def __init__(self, operators):
+        """
+        Parameters
+        ----------
+        operators : dict
+            dictionary with operators domain names as keys and
+            LinearOperators as items
+        """
+        super(BlockDiagonalOperator, self).__init__()
+        self._operators = operators
+        self._domain = MultiDomain(
+            {key: op.domain for key, op in self._operators.items()})
+        self._cap = self._all_ops
+        for op in self._operators.values():
+            self._cap &= op.capability
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def capability(self):
+        return self._cap
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return MultiField({key: op.apply(x[key], mode=mode)
+                           for key, op in self._operators.items()})
+
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
+        dtype = MultiField.build_dtype(dtype, self._domain)
+        return MultiField({key: op.draw_sample(from_inverse, dtype[key])
+                           for key, op in self._operators.items()})
+
+    def _combine_chain(self, op):
+        res = {}
+        for key in self._operators.keys():
+            res[key] = self._operators[key]*op._operators[key]
+        return res
+
+    def _combine_sum(self, op, selfneg, opneg):
+        res = {}
+        for key in self._operators.keys():
+            res[key] = SumOperator.make([self._operators[key],
+                                         op._operators[key]],
+                                        [selfneg, opneg])
+        return res
