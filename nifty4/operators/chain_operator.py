@@ -64,7 +64,7 @@ class ChainOperator(LinearOperator):
                     opsnew[i] = opsnew[i]._scale(fct)
                     fct = 1.
                     break
-        if fct != 1:
+        if fct != 1 or len(opsnew) == 0:
             # have to add the scaling operator at the end
             opsnew.append(ScalingOperator(fct, lastdom))
         ops = opsnew
@@ -83,6 +83,8 @@ class ChainOperator(LinearOperator):
     @staticmethod
     def make(ops):
         ops = tuple(ops)
+        if len(ops) == 0:
+            raise ValueError("ops is empty")
         ops = ChainOperator.simplify(ops)
         if len(ops) == 1:
             return ops[0]

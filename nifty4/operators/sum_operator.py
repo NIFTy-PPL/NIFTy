@@ -108,6 +108,8 @@ class SumOperator(LinearOperator):
     def make(ops, neg):
         ops = tuple(ops)
         neg = tuple(neg)
+        if len(ops) == 0:
+            raise ValueError("ops is empty")
         if len(ops) != len(neg):
             raise ValueError("length mismatch between ops and neg")
         ops, neg = SumOperator.simplify(ops, neg)
