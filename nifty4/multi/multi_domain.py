@@ -55,7 +55,6 @@ class MultiDomain(frozendict):
     def make(domain):
         if isinstance(domain, MultiDomain):
             return domain
-        print type(domain)
         if not isinstance(domain, dict):
             raise TypeError("dict expected")
         tmp = {}
@@ -64,7 +63,6 @@ class MultiDomain(frozendict):
                 raise TypeError("keys must be strings")
             tmp[key] = DomainTuple.make(value)
         domain = frozendict(tmp)
-        print tmp
         obj = MultiDomain._domainCache.get(domain)
         if obj is not None:
             return obj
