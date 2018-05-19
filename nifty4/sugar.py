@@ -19,16 +19,18 @@
 import numpy as np
 from .domains.power_space import PowerSpace
 from .field import Field
+from multi.multi_field import MultiField
+from multi.multi_domain import MultiDomain
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
 from .logger import logger
 
-__all__ = ['PS_field',
-           'power_analyze',
-           'create_power_operator',
-           'create_harmonic_smoothing_operator']
+__all__ = ['PS_field', 'power_analyze', 'create_power_operator',
+           'create_harmonic_smoothing_operator', 'from_random',
+           'full', 'empty', 'from_global_data', 'from_local_data',
+           'makeDomain']
 
 
 def PS_field(pspace, func):
@@ -161,3 +163,39 @@ def create_harmonic_smoothing_operator(domain, space, sigma):
     kfunc = domain[space].get_fft_smoothing_kernel_function(sigma)
     return DiagonalOperator(kfunc(domain[space].get_k_length_array()), domain,
                             space)
+
+
+def full(domain, val):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.full(domain, val)
+    return Field.full(domain, val)
+
+
+def empty(domain, dtype):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.empty(domain, dtype)
+    return Field.empty(domain, dtype)
+
+
+def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.from_random(random_type, domain, dtype, **kwargs)
+    return Field.from_random(random_type, domain, dtype, **kwargs)
+
+
+def from_global_data(domain, arr, sum_up=False):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.from_global_data(domain, arr, sum_up)
+    return Field.from_global_data(domain, arr, sum_up)
+
+
+def from_local_data(domain, arr):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.from_local_data(domain, arr)
+    return Field.from_local_data(domain, arr)
+
+
+def makeDomain(domain):
+    if isinstance(domain, dict):
+        return MultiDomain.make(domain)
+    return DomainTuple.make(domain)

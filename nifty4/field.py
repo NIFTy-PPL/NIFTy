@@ -107,60 +107,8 @@ class Field(object):
         return Field(DomainTuple.make(domain), val, dtype)
 
     @staticmethod
-    def ones(domain, dtype=None):
-        return Field(DomainTuple.make(domain), 1., dtype)
-
-    @staticmethod
-    def zeros(domain, dtype=None):
-        return Field(DomainTuple.make(domain), 0., dtype)
-
-    @staticmethod
     def empty(domain, dtype=None):
         return Field(DomainTuple.make(domain), None, dtype)
-
-    @staticmethod
-    def full_like(field, val, dtype=None):
-        """Creates a Field from a template, filled with a constant value.
-
-        Parameters
-        ----------
-        field : Field
-            the template field, from which the domain is inferred
-        val : float/complex/int scalar
-            fill value. Data type of the field is inferred from val.
-
-        Returns
-        -------
-        Field
-            the newly created field
-        """
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        return Field.full(field._domain, val, dtype)
-
-    @staticmethod
-    def zeros_like(field, dtype=None):
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        if dtype is None:
-            dtype = field.dtype
-        return Field.zeros(field._domain, dtype)
-
-    @staticmethod
-    def ones_like(field, dtype=None):
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        if dtype is None:
-            dtype = field.dtype
-        return Field.ones(field._domain, dtype)
-
-    @staticmethod
-    def empty_like(field, dtype=None):
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        if dtype is None:
-            dtype = field.dtype
-        return Field.empty(field._domain, dtype)
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):

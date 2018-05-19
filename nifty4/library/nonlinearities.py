@@ -16,7 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..field import Field, exp, tanh
+from ..field import exp, tanh
+from ..sugar import full
 
 
 class Linear(object):
@@ -24,10 +25,10 @@ class Linear(object):
         return x
 
     def derivative(self, x):
-        return Field.ones_like(x)
+        return full(x.domain, 1.)
 
     def hessian(self, x):
-        return Field.zeros_like(x)
+        return full(x.domain, 0.)
 
 
 class Exponential(object):

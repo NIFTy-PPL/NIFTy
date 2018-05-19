@@ -62,7 +62,7 @@ class ScalingOperator(EndomorphicOperator):
         if self._factor == 1.:
             return x.copy()
         if self._factor == 0.:
-            return x.zeros_like(x)
+            return x*0.
 
         if mode == self.TIMES:
             return x*self._factor

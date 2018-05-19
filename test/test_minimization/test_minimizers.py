@@ -53,7 +53,7 @@ class Test_Minimizers(unittest.TestCase):
         covariance_diagonal = ift.Field.from_random(
                                   'uniform', domain=space) + 0.5
         covariance = ift.DiagonalOperator(covariance_diagonal)
-        required_result = ift.Field.ones(space, dtype=np.float64)
+        required_result = ift.full(space, 1.)
 
         try:
             minimizer = eval(minimizer)

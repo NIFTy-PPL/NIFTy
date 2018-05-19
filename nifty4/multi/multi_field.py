@@ -85,21 +85,14 @@ class MultiField(object):
         return {key: dtype for key in domain.keys()}
 
     @staticmethod
-    def zeros(domain, dtype=None):
-        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField({key: Field.zeros(dom, dtype=dtype[key])
-                           for key, dom in domain.items()})
-
-    @staticmethod
-    def ones(domain, dtype=None):
-        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField({key: Field.ones(dom, dtype=dtype[key])
-                           for key, dom in domain.items()})
-
-    @staticmethod
     def empty(domain, dtype=None):
         dtype = MultiField.build_dtype(dtype, domain)
         return MultiField({key: Field.empty(dom, dtype=dtype[key])
+                           for key, dom in domain.items()})
+
+    @staticmethod
+    def full(domain, val):
+        return MultiField({key: Field.full(dom, val)
                            for key, dom in domain.items()})
 
     def norm(self):
