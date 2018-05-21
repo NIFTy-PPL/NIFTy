@@ -733,24 +733,3 @@ for op in ["__add__", "__radd__", "__iadd__",
             return NotImplemented
         return func2
     setattr(Field, op, func(op))
-
-
-# Arithmetic functions working on Fields
-
-_current_module = sys.modules[__name__]
-
-for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
-    def func(f):
-        def func2(x, out=None):
-            fu = getattr(dobj, f)
-            if not isinstance(x, Field):
-                raise TypeError("This function only accepts Field objects.")
-            if out is not None:
-                if not isinstance(out, Field) or x._domain != out._domain:
-                    raise ValueError("Bad 'out' argument")
-                fu(x.val, out=out.val)
-                return out
-            else:
-                return Field(domain=x._domain, val=fu(x.val))
-        return func2
-    setattr(_current_module, f, func(f))

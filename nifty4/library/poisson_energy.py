@@ -20,7 +20,7 @@ from ..minimization.energy import Energy
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.inversion_enabler import InversionEnabler
-from ..field import log
+from ..sugar import log
 
 
 class PoissonEnergy(Energy):

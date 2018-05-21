@@ -19,7 +19,7 @@
 from __future__ import division
 import numpy as np
 from .structured_domain import StructuredDomain
-from ..field import Field, exp
+from ..field import Field
 
 
 class LMSpace(StructuredDomain):
@@ -100,6 +100,8 @@ class LMSpace(StructuredDomain):
         # cf. "All-sky convolution for polarimetry experiments"
         # by Challinor et al.
         # http://arxiv.org/abs/astro-ph/0008228
+        from ..sugar import exp
+
         res = x+1.
         res *= x
         res *= -0.5*sigma*sigma

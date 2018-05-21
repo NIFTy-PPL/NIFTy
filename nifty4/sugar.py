@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+import sys
 import numpy as np
 from .domains.power_space import PowerSpace
 from .field import Field
@@ -30,7 +31,7 @@ from .logger import logger
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'empty', 'from_global_data', 'from_local_data',
-           'makeDomain']
+           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'conjugate']
 
 
 def PS_field(pspace, func):
@@ -199,3 +200,34 @@ def makeDomain(domain):
     if isinstance(domain, dict):
         return MultiDomain.make(domain)
     return DomainTuple.make(domain)
+
+
+# Arithmetic functions working on Fields
+
+_current_module = sys.modules[__name__]
+
+for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+    def func(f):
+        def func2(x, out=None):
+            if isinstance(x, MultiField):
+                if out is not None:
+                    if (not isinstance(out, MultiField) or
+                            x._domain != out._domain):
+                        raise ValueError("Bad 'out' argument")
+                    for key, value in x.items():
+                        func2(value, out=out[key])
+                    return out
+                return MultiField({key: func2(val) for key, val in x.items()})
+
+            if not isinstance(x, Field):
+                raise TypeError("This function only accepts Field objects.")
+            fu = getattr(dobj, f)
+            if out is not None:
+                if not isinstance(out, Field) or x._domain != out._domain:
+                    raise ValueError("Bad 'out' argument")
+                fu(x.val, out=out.val)
+                return out
+            else:
+                return Field(domain=x._domain, val=fu(x.val))
+        return func2
+    setattr(_current_module, f, func(f))
