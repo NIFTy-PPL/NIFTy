@@ -18,9 +18,17 @@
 
 import numpy as np
 from ..sugar import from_random
+from ..field import Field
 
 __all__ = ["consistency_check"]
 
+
+def _assert_allclose(f1, f2, atol, rtol):
+    if isinstance(f1, Field):
+        return np.testing.assert_allclose(f1.local_data, f2.local_data,
+                                          atol=atol, rtol=rtol)
+    for key, val in f1.items():
+        _assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 
 def adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
@@ -39,13 +47,11 @@ def inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
         return
     foo = from_random("normal", op.target, dtype=target_dtype).lock()
     res = op(op.inverse_times(foo).lock())
-    np.testing.assert_allclose(res.to_global_data(), res.to_global_data(),
-                               atol=atol, rtol=rtol)
+    _assert_allclose(res, foo, atol=atol, rtol=rtol)
 
     foo = from_random("normal", op.domain, dtype=domain_dtype).lock()
     res = op.inverse_times(op(foo).lock())
-    np.testing.assert_allclose(res.to_global_data(), foo.to_global_data(),
-                               atol=atol, rtol=rtol)
+    _assert_allclose(res, foo, atol=atol, rtol=rtol)
 
 
 def full_implementation(op, domain_dtype, target_dtype, atol, rtol):
