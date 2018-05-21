@@ -218,16 +218,16 @@ for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
                         func2(value, out=out[key])
                     return out
                 return MultiField({key: func2(val) for key, val in x.items()})
-
-            if not isinstance(x, Field):
-                raise TypeError("This function only accepts Field objects.")
-            fu = getattr(dobj, f)
-            if out is not None:
-                if not isinstance(out, Field) or x._domain != out._domain:
-                    raise ValueError("Bad 'out' argument")
-                fu(x.val, out=out.val)
-                return out
+            elif isinstance(x, Field):
+                fu = getattr(dobj, f)
+                if out is not None:
+                    if not isinstance(out, Field) or x._domain != out._domain:
+                        raise ValueError("Bad 'out' argument")
+                    fu(x.val, out=out.val)
+                    return out
+                else:
+                    return Field(domain=x._domain, val=fu(x.val))
             else:
-                return Field(domain=x._domain, val=fu(x.val))
+                return getattr(np, f)(x, out)
         return func2
     setattr(_current_module, f, func(f))

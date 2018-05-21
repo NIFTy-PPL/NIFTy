@@ -235,6 +235,7 @@ class Field(object):
             The value to fill the field with.
         """
         self._val.fill(fill_value)
+        return self
 
     def lock(self):
         """Write-protect the data content of `self`.
@@ -317,6 +318,17 @@ class Field(object):
             An identical, but unlocked copy of 'self'.
         """
         return Field(val=self, copy=True)
+
+    def empty_copy(self):
+        """ Returns a Field with identical domain and data type, but
+        uninitialized data.
+
+        Returns
+        -------
+        Field
+            A copy of 'self', with uninitialized data.
+        """
+        return Field(self._domain, dtype=self.dtype)
 
     def locked_copy(self):
         """ Returns a read-only version of the Field.
@@ -451,8 +463,8 @@ class Field(object):
                               or Field (for partial dot products)
         """
         if not isinstance(x, Field):
-            raise ValueError("The dot-partner must be an instance of " +
-                             "the NIFTy field class")
+            raise TypeError("The dot-partner must be an instance of " +
+                            "the NIFTy field class")
 
         if x._domain != self._domain:
             raise ValueError("Domain mismatch")
@@ -642,7 +654,8 @@ class Field(object):
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('mean', spaces)
         # MR FIXME: not very efficient
-        tmp = self.weight(1)
+        # MR FIXME: do we need "spaces" here?
+        tmp = self.weight(1, spaces)
         return tmp.sum(spaces)*(1./tmp.total_volume(spaces))
 
     def var(self, spaces=None):
@@ -665,12 +678,10 @@ class Field(object):
         # MR FIXME: not very efficient or accurate
         m1 = self.mean(spaces)
         if np.issubdtype(self.dtype, np.complexfloating):
-            sq = abs(self)**2
-            m1 = abs(m1)**2
+            sq = abs(self-m1)**2
         else:
-            sq = self**2
-            m1 **= 2
-        return sq.mean(spaces) - m1
+            sq = (self-m1)**2
+        return sq.mean(spaces)
 
     def std(self, spaces=None):
         """Determines the standard deviation over the sub-domains given by
@@ -690,8 +701,10 @@ class Field(object):
             The result of the operation. If it is carried out over the entire
             domain, this is a scalar, otherwise a Field.
         """
+        from .sugar import sqrt
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
+        print(self.var(spaces))
         return sqrt(self.var(spaces))
 
     def copy_content_from(self, other):

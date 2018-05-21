@@ -57,6 +57,18 @@ class MultiField(object):
                                                   dtype[key], **kwargs)
                            for key in domain.keys()})
 
+    def fill(self, fill_value):
+        """Fill `self` uniformly with `fill_value`
+
+        Parameters
+        ----------
+        fill_value: float or complex or int
+            The value to fill the field with.
+        """
+        for val in self._val.values():
+            val.fill(fill_value)
+        return self
+
     def _check_domain(self, other):
         if other.domain != self.domain:
             raise ValueError("domains are incompatible.")
@@ -75,6 +87,9 @@ class MultiField(object):
 
     def copy(self):
         return MultiField({key: val.copy() for key, val in self.items()})
+
+    def empty_copy(self):
+        return MultiField({key: val.empty_copy() for key, val in self.items()})
 
     @staticmethod
     def build_dtype(dtype, domain):
