@@ -44,7 +44,8 @@ class MultiField(object):
 
     @property
     def domain(self):
-        return MultiDomain({key: val.domain for key, val in self._val.items()})
+        return MultiDomain.make(
+            {key: val.domain for key, val in self._val.items()})
 
     @property
     def dtype(self):
@@ -85,8 +86,18 @@ class MultiField(object):
             v.lock()
         return self
 
+    @property
+    def locked(self):
+        return all(v.locked for v in self.values())
+
     def copy(self):
         return MultiField({key: val.copy() for key, val in self.items()})
+
+    def locked_copy(self):
+        if self.locked:
+            return self
+        return MultiField({key: val.locked_copy()
+                          for key, val in self.items()})
 
     def empty_copy(self):
         return MultiField({key: val.empty_copy() for key, val in self.items()})

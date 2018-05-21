@@ -47,7 +47,7 @@ class frozendict(collections.Mapping):
 class MultiDomain(frozendict):
     _domainCache = {}
 
-    def __init__(domain, _callingfrommake=False):
+    def __init__(self, domain, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
         super(MultiDomain, self).__init__(domain)
