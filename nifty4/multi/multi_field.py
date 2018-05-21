@@ -121,6 +121,15 @@ class MultiField(object):
         return MultiField({key: Field.full(dom, val)
                            for key, dom in domain.items()})
 
+    def to_global_data(self):
+        return {key: val.to_global_data() for key, val in self._val.items()}
+
+    @staticmethod
+    def from_global_data(domain, arr, sum_up=False):
+        return MultiField({key: Field.from_global_data(domain[key],
+                                                       val, sum_up)
+                           for key, val in arr.items()})
+
     def norm(self):
         """ Computes the L2-norm of the field values.
 

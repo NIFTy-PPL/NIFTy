@@ -15,7 +15,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         """
         super(BlockDiagonalOperator, self).__init__()
         self._operators = operators
-        self._domain = MultiDomain(
+        self._domain = MultiDomain.make(
             {key: op.domain for key, op in self._operators.items()})
         self._cap = self._all_ops
         for op in self._operators.values():
@@ -43,12 +43,13 @@ class BlockDiagonalOperator(EndomorphicOperator):
         res = {}
         for key in self._operators.keys():
             res[key] = self._operators[key]*op._operators[key]
-        return res
+        return BlockDiagonalOperator(res)
 
     def _combine_sum(self, op, selfneg, opneg):
+        from ..operators.sum_operator import SumOperator
         res = {}
         for key in self._operators.keys():
             res[key] = SumOperator.make([self._operators[key],
                                          op._operators[key]],
                                         [selfneg, opneg])
-        return res
+        return BlockDiagonalOperator(res)
