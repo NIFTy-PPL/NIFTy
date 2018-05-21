@@ -20,6 +20,7 @@ import numpy as np
 from .random import Random
 from mpi4py import MPI
 import sys
+from functools import reduce
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
