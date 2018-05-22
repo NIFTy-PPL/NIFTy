@@ -36,7 +36,7 @@ if __name__ == "__main__":
     d_space = R.target
 
     p_op = ift.create_power_operator(h_space, p_spec)
-    power = ift.sqrt(p_op(ift.Field.full(h_space, 1.)))
+    power = ift.sqrt(p_op(ift.full(h_space, 1.)))
 
     # Creating the mock data
     true_sky = nonlinearity(HT(power*sh))
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     inverter = ift.ConjugateGradient(controller=ICI)
 
     # initial guess
-    m = ift.Field.full(h_space, 1e-7)
+    m = ift.full(h_space, 1e-7)
     map_energy = ift.library.NonlinearWienerFilterEnergy(
         m, d, R, nonlinearity, HT, power, N, S, inverter=inverter)
 

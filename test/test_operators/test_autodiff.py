@@ -35,7 +35,7 @@ class NonlinearTests(unittest.TestCase):
         A = ift.SymbolicConstant(ift.Tensor(self.S, 2), (-1, -1))
         E = ift.SymbolicCABF(A, self.a)
         res = E.eval(self.x).val
-        Sdiag = self.S(ift.Field.ones(self.S.domain))
+        Sdiag = self.S(ift.Field.full(self.S.domain, 1.))
         true_res = (Sdiag * self.x).val
         # Test function evaluation
         assert_allclose(res, true_res)
@@ -65,7 +65,7 @@ class NonlinearTests(unittest.TestCase):
 
         curv = curv.eval(self.x)
         curv_true = 2 * self.S
-        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
+        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.full(curv.domain, 0.).val)
 
     def test_nonlinearity(self):
         # E = exp(a)
@@ -90,7 +90,7 @@ class NonlinearTests(unittest.TestCase):
         curv = E.derivative.derivative
         curv = curv.eval(self.x)
         curv_true = ift.DiagonalOperator(ift.exp(self.x)) * self.S * ift.DiagonalOperator(ift.exp(self.x))
-        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
+        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.full(curv.domain, 0.).val)
 
     def test_quad(self):
         self.make()
@@ -103,4 +103,4 @@ class NonlinearTests(unittest.TestCase):
         curv = E.curvature
         curv = curv.eval(self.x)
         curv_true = self.S.adjoint*self.S
-        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.zeros(curv.domain).val)
+        assert_allclose((curv-curv_true)(ift.Field.from_random('normal', curv.domain)).val, ift.Field.full(curv.domain, 0.).val)

@@ -40,7 +40,7 @@ class SymbolicSandwich(SymbolicTensor):
         return 'Sandwich({})'.format(self._bun)
 
     def eval(self, x):
-        return SandwichOperator(self._bun.eval(x))
+        return SandwichOperator.make(self._bun.eval(x))
 
     @property
     def derivative(self):

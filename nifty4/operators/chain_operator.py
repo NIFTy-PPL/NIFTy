@@ -80,11 +80,24 @@ class ChainOperator(LinearOperator):
             else:
                 opsnew.append(op)
         ops = opsnew
+        # Step 5: combine BlockDiagonalOperators where possible
+        from ..multi.block_diagonal_operator import BlockDiagonalOperator
+        opsnew = []
+        for op in ops:
+            if (len(opsnew) > 0 and
+                    isinstance(opsnew[-1], BlockDiagonalOperator) and
+                    isinstance(op, BlockDiagonalOperator)):
+                opsnew[-1] = opsnew[-1]._combine_chain(op)
+            else:
+                opsnew.append(op)
+        ops = opsnew
         return ops
 
     @staticmethod
     def make(ops):
         ops = tuple(ops)
+        if len(ops) == 0:
+            raise ValueError("ops is empty")
         ops = ChainOperator.simplify(ops)
         if len(ops) == 1:
             return ops[0]

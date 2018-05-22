@@ -17,17 +17,26 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
+from ..sugar import from_random
 from ..field import Field
 
 __all__ = ["consistency_check"]
+
+
+def _assert_allclose(f1, f2, atol, rtol):
+    if isinstance(f1, Field):
+        return np.testing.assert_allclose(f1.local_data, f2.local_data,
+                                          atol=atol, rtol=rtol)
+    for key, val in f1.items():
+        _assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 
 
 def adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    f1 = Field.from_random("normal", op.domain, dtype=domain_dtype).lock()
-    f2 = Field.from_random("normal", op.target, dtype=target_dtype).lock()
+    f1 = from_random("normal", op.domain, dtype=domain_dtype).lock()
+    f2 = from_random("normal", op.target, dtype=target_dtype).lock()
     res1 = f1.vdot(op.adjoint_times(f2).lock())
     res2 = op.times(f1).vdot(f2)
     np.testing.assert_allclose(res1, res2, atol=atol, rtol=rtol)
@@ -37,15 +46,13 @@ def inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
     needed_cap = op.TIMES | op.INVERSE_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    foo = Field.from_random("normal", op.target, dtype=target_dtype).lock()
+    foo = from_random("normal", op.target, dtype=target_dtype).lock()
     res = op(op.inverse_times(foo).lock())
-    np.testing.assert_allclose(res.to_global_data(), res.to_global_data(),
-                               atol=atol, rtol=rtol)
+    _assert_allclose(res, foo, atol=atol, rtol=rtol)
 
-    foo = Field.from_random("normal", op.domain, dtype=domain_dtype).lock()
+    foo = from_random("normal", op.domain, dtype=domain_dtype).lock()
     res = op.inverse_times(op(foo).lock())
-    np.testing.assert_allclose(res.to_global_data(), foo.to_global_data(),
-                               atol=atol, rtol=rtol)
+    _assert_allclose(res, foo, atol=atol, rtol=rtol)
 
 
 def full_implementation(op, domain_dtype, target_dtype, atol, rtol):

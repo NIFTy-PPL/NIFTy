@@ -61,9 +61,7 @@ class FFTOperator(LinearOperator):
         adom.check_codomain(target)
         target.check_codomain(adom)
 
-        import pyfftw
-        pyfftw.interfaces.cache.enable()
-        pyfftw.interfaces.cache.set_keepalive_time(1000.)
+        utilities.fft_prep()
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -74,7 +72,6 @@ class FFTOperator(LinearOperator):
             return self._apply_cartesian(x, mode)
 
     def _apply_cartesian(self, x, mode):
-        from pyfftw.interfaces.numpy_fft import fftn
         axes = x.domain.axes[self._space]
         tdom = self._target if x.domain == self._domain else self._domain
         oldax = dobj.distaxis(x.val)
@@ -110,7 +107,7 @@ class FFTOperator(LinearOperator):
             tmp = dobj.from_local_data(shp2d, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)
             ldat2 = dobj.local_data(tmp)
-            ldat2 = fftn(ldat2, axes=(1,))
+            ldat2 = utilities.my_fftn(ldat2, axes=(1,))
             ldat2 = ldat2.real+ldat2.imag
             tmp = dobj.from_local_data(tmp.shape, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)

@@ -17,7 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 from numpy.testing import assert_allclose
 
-from ..field import Field, sqrt
+from ..field import Field
+from ..sugar import sqrt
 from ..minimization.energy import Energy
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
@@ -62,9 +63,9 @@ class NonlinearWienerFilterEnergy(Energy):
             raise NotImplementedError
 
         pos_nl = SymbolicVariable(position.domain)
-        Ninv_nextgen = DiagonalOperator(sqrt(self.N.inverse(Field.ones(self.N.target))))
+        Ninv_nextgen = DiagonalOperator(sqrt(self.N.inverse(Field.full(self.N.target, 1.))))
         Ninv_nextgen_nl = SymbolicConstant(Tensor(Ninv_nextgen, 2, name='Ninv_nextgen'), (-1, -1))
-        Sinv_nextgen = DiagonalOperator(sqrt(self.S.inverse(Field.ones(self.S.target))))
+        Sinv_nextgen = DiagonalOperator(sqrt(self.S.inverse(Field.full(self.S.target, 1.))))
         Sinv_nextgen_nl = SymbolicConstant(Tensor(Sinv_nextgen, 2, name='Sinv_nextgen'), (-1, -1))
         mh_nl = SymbolicCABF(SymbolicConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
         m_nl = SymbolicCABF(SymbolicConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)

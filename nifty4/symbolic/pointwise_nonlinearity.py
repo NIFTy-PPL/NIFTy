@@ -1,4 +1,4 @@
-from ..field import exp, tanh
+from ..sugar import exp, tanh
 from .contractions import SymbolicChainLinOps
 from .diag import SymbolicDiag
 from .tensor import SymbolicTensor

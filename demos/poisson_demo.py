@@ -80,12 +80,12 @@ if __name__ == "__main__":
     IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=1e-3)
     inverter = ift.ConjugateGradient(controller=IC)
-    D = (ift.SandwichOperator(R, N.inverse) + Phi_h.inverse).inverse
+    D = (ift.SandwichOperator.make(R, N.inverse) + Phi_h.inverse).inverse
     D = ift.InversionEnabler(D, inverter, approximation=Phi_h)
     m = HT(D(j))
 
     # Uncertainty
-    D = ift.SandwichOperator(aHT, D)  # real space propagator
+    D = ift.SandwichOperator.make(aHT, D)  # real space propagator
     Dhat = ift.probe_with_posterior_samples(D.inverse, None,
                                             nprobes=nprobes)[1]
     sig = ift.sqrt(Dhat)
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         d_domain, np.random.poisson(lam.local_data).astype(np.float64))
 
     # initial guess
-    psi0 = ift.Field.full(h_domain, 1e-7)
+    psi0 = ift.full(h_domain, 1e-7)
     energy = ift.library.PoissonEnergy(psi0, data, R0, nonlin, HT, Phi_h,
                                        inverter)
     IC1 = ift.GradientNormController(name="IC1", iteration_limit=200,

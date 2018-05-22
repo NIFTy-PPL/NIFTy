@@ -50,7 +50,7 @@ class Energy_Tests(unittest.TestCase):
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(xi * A)
         R = ift.ScalingOperator(10., space)
-        diag = ift.Field.ones(space)
+        diag = ift.full(space, 1.)
         N = ift.DiagonalOperator(diag)
         d = R(f(s)) + n
 

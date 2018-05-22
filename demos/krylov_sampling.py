@@ -31,7 +31,7 @@ d = R(s_x) + n
 
 R_p = R * FFT * A
 j = R_p.adjoint(N.inverse(d))
-D_inv = ift.SandwichOperator(R_p, N.inverse) + S.inverse
+D_inv = ift.SandwichOperator.make(R_p, N.inverse) + S.inverse
 
 
 N_samps = 200
@@ -67,8 +67,8 @@ plt.legend()
 plt.savefig('Krylov_samples_residuals.png')
 plt.close()
 
-D_hat_old = ift.Field.zeros(x_space).to_global_data()
-D_hat_new = ift.Field.zeros(x_space).to_global_data()
+D_hat_old = ift.full(x_space, 0.).to_global_data()
+D_hat_new = ift.full(x_space, 0.).to_global_data()
 for i in range(N_samps):
     D_hat_old += sky(samps_old[i]).to_global_data()**2
     D_hat_new += sky(samps[i]).to_global_data()**2
