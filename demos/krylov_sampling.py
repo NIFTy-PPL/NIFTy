@@ -31,7 +31,7 @@ d = R(s_x) + n
 
 R_p = R * FFT * A
 j = R_p.adjoint(N.inverse(d))
-D_inv = ift.SandwichOperator(R_p, N.inverse) + S.inverse
+D_inv = ift.SandwichOperator.make(R_p, N.inverse) + S.inverse
 
 
 N_samps = 200

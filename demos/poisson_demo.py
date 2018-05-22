@@ -80,12 +80,12 @@ if __name__ == "__main__":
     IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=1e-3)
     inverter = ift.ConjugateGradient(controller=IC)
-    D = (ift.SandwichOperator(R, N.inverse) + Phi_h.inverse).inverse
+    D = (ift.SandwichOperator.make(R, N.inverse) + Phi_h.inverse).inverse
     D = ift.InversionEnabler(D, inverter, approximation=Phi_h)
     m = HT(D(j))
 
     # Uncertainty
-    D = ift.SandwichOperator(aHT, D)  # real space propagator
+    D = ift.SandwichOperator.make(aHT, D)  # real space propagator
     Dhat = ift.probe_with_posterior_samples(D.inverse, None,
                                             nprobes=nprobes)[1]
     sig = ift.sqrt(Dhat)
