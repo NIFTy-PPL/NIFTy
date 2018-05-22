@@ -34,7 +34,9 @@ class DomainTuple(object):
     """
     _tupleCache = {}
 
-    def __init__(self, domain):
+    def __init__(self, domain, _callingfrommake=False):
+        if not _callingfrommake:
+            raise NotImplementedError
         self._dom = self._parse_domain(domain)
         self._axtuple = self._get_axes_tuple()
         shape_tuple = tuple(sp.shape for sp in self._dom)
@@ -72,7 +74,7 @@ class DomainTuple(object):
         obj = DomainTuple._tupleCache.get(domain)
         if obj is not None:
             return obj
-        obj = DomainTuple(domain)
+        obj = DomainTuple(domain, _callingfrommake=True)
         DomainTuple._tupleCache[domain] = obj
         return obj
 

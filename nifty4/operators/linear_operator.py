@@ -271,10 +271,6 @@ class LinearOperator(NiftyMetaBase()):
             raise ValueError("requested operator mode is not supported")
 
     def _check_input(self, x, mode):
-        # MR FIXME: temporary fix for working with MultiFields
-        #if not isinstance(x, Field):
-        #    raise ValueError("supplied object is not a `Field`.")
-
         self._check_mode(mode)
         if x.domain != self._dom(mode):
             raise ValueError("The operator's and field's domains don't match.")

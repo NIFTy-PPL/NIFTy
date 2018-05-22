@@ -20,6 +20,7 @@ import numpy as np
 from .random import Random
 from mpi4py import MPI
 import sys
+from functools import reduce
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -145,20 +146,29 @@ class data_object(object):
     def sum(self, axis=None):
         return self._contraction_helper("sum", MPI.SUM, axis)
 
+    def prod(self, axis=None):
+        return self._contraction_helper("prod", MPI.PROD, axis)
+
     def min(self, axis=None):
         return self._contraction_helper("min", MPI.MIN, axis)
 
     def max(self, axis=None):
         return self._contraction_helper("max", MPI.MAX, axis)
 
-    def mean(self):
-        return self.sum()/self.size
+    def mean(self, axis=None):
+        if axis is None:
+            sz = self.size
+        else:
+            sz = reduce(lambda x, y: x*y, [self.shape[i] for i in axis])
+        return self.sum(axis)/sz
 
-    def std(self):
-        return np.sqrt(self.var())
+    def std(self, axis=None):
+        return np.sqrt(self.var(axis))
 
     # FIXME: to be improved!
-    def var(self):
+    def var(self, axis=None):
+        if axis is not None and len(axis) != len(self.shape):
+            raise ValueError("functionality not yet supported")
         return (abs(self-self.mean())**2).mean()
 
     def _binary_helper(self, other, op):

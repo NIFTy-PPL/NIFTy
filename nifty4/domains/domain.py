@@ -23,6 +23,8 @@ from ..utilities import NiftyMetaBase
 class Domain(NiftyMetaBase()):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
+    def __init__(self):
+        self._hash = None
 
     @abc.abstractmethod
     def __repr__(self):
@@ -36,10 +38,12 @@ class Domain(NiftyMetaBase()):
         Only members that are explicitly added to
         :attr:`._needed_for_hash` will be used for hashing.
         """
-        result_hash = 0
-        for key in self._needed_for_hash:
-            result_hash ^= hash(vars(self)[key])
-        return result_hash
+        if self._hash is None:
+            h = 0
+            for key in self._needed_for_hash:
+                h ^= hash(vars(self)[key])
+            self._hash = h
+        return self._hash
 
     def __eq__(self, x):
         """Checks whether two domains are equal.

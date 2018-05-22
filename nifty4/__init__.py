@@ -8,7 +8,7 @@ from .domain_tuple import DomainTuple
 
 from .operators import *
 
-from .field import Field, sqrt, exp, log
+from .field import Field
 
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator

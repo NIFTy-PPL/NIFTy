@@ -30,7 +30,7 @@ spaces = [ift.RGSpace([1024], distances=0.123), ift.HPSpace(32)]
 
 minimizers = ['ift.VL_BFGS(IC)',
               'ift.NonlinearCG(IC, "Polak-Ribiere")',
-              #'ift.NonlinearCG(IC, "Hestenes-Stiefel"),
+              # 'ift.NonlinearCG(IC, "Hestenes-Stiefel"),
               'ift.NonlinearCG(IC, "Fletcher-Reeves")',
               'ift.NonlinearCG(IC, "5.49")',
               'ift.NewtonCG(xtol=1e-5, maxiter=1000)',
@@ -53,7 +53,7 @@ class Test_Minimizers(unittest.TestCase):
         covariance_diagonal = ift.Field.from_random(
                                   'uniform', domain=space) + 0.5
         covariance = ift.DiagonalOperator(covariance_diagonal)
-        required_result = ift.Field.ones(space, dtype=np.float64)
+        required_result = ift.full(space, 1.)
 
         try:
             minimizer = eval(minimizer)
