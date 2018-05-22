@@ -25,24 +25,37 @@ from .scaling_operator import ScalingOperator
 
 class SandwichOperator(EndomorphicOperator):
     """Operator which is equivalent to the expression `bun.adjoint*cheese*bun`.
-
-    Parameters
-    ----------
-    bun: LinearOperator
-        the bun part
-    cheese: EndomorphicOperator
-        the cheese part
     """
 
-    def __init__(self, bun, cheese=None):
+    def __init__(self, bun, cheese, op, _callingfrommake=False):
+        if not _callingfrommake:
+            raise NotImplementedError
         super(SandwichOperator, self).__init__()
         self._bun = bun
+        self._cheese = cheese
+        self._op = op
+
+    @staticmethod
+    def make(bun, cheese=None):
+        """Build a SandwichOperator (or something simpler if possible)
+
+        Parameters
+        ----------
+        bun: LinearOperator
+            the bun part
+        cheese: EndomorphicOperator
+            the cheese part
+        """
         if cheese is None:
-            self._cheese = ScalingOperator(1., bun.target)
-            self._op = bun.adjoint*bun
+            cheese = ScalingOperator(1., bun.target)
+            op = bun.adjoint*bun
         else:
-            self._cheese = cheese
-            self._op = bun.adjoint*cheese*bun
+            op = bun.adjoint*cheese*bun
+
+        # if our sandwich is diagonal, we can return immediately
+        if isinstance(op, (ScalingOperator, DiagonalOperator)):
+            return op
+        return SandwichOperator(bun, cheese, op, _callingfrommake=True)
 
     @property
     def domain(self):
@@ -56,10 +69,6 @@ class SandwichOperator(EndomorphicOperator):
         return self._op.apply(x, mode)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        # Drawing samples from diagonal operators is easy (inverse is possible)
-        if isinstance(self._op, (ScalingOperator, DiagonalOperator)):
-            return self._op.draw_sample(from_inverse, dtype)
-
         # Inverse samples from general sandwiches is not possible
         if from_inverse:
             raise NotImplementedError(
