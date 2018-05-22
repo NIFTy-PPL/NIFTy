@@ -704,7 +704,6 @@ class Field(object):
         from .sugar import sqrt
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
-        print(self.var(spaces))
         return sqrt(self.var(spaces))
 
     def copy_content_from(self, other):
