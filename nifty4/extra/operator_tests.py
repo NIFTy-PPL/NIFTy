@@ -30,6 +30,7 @@ def _assert_allclose(f1, f2, atol, rtol):
     for key, val in f1.items():
         _assert_allclose(val, f2[key], atol=atol, rtol=rtol)
 
+
 def adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
     if (op.capability & needed_cap) != needed_cap:
