@@ -197,7 +197,7 @@ def from_local_data(domain, arr):
 
 
 def makeDomain(domain):
-    if isinstance(domain, dict):
+    if isinstance(domain, (MultiDomain, dict)):
         return MultiDomain.make(domain)
     return DomainTuple.make(domain)
 

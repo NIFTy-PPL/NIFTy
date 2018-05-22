@@ -21,6 +21,7 @@ import numpy as np
 from ..field import Field
 from ..multi.multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
+from ..domain_tuple import DomainTuple
 
 
 class ScalingOperator(EndomorphicOperator):
