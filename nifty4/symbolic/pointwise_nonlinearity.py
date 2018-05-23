@@ -48,7 +48,7 @@ class SymbolicExpPrime(PointwiseNonlinearity):
 
     @property
     def derivative(self):
-        # FIXME This function should be triggered in the dome but it isn't.
+        # FIXME This function should be triggered in the demo but it isn't.
         # As soon as it is replace the error with a zero in order to implement
         # Jakob's curvature
         raise NotImplementedError
@@ -76,7 +76,7 @@ class SymbolicTanhPrime(PointwiseNonlinearity):
 
     @property
     def derivative(self):
-        # FIXME This function should be triggered in the dome but it isn't.
+        # FIXME This function should be triggered in the demo but it isn't.
         # As soon as it is replace the error with a zero in order to implement
         # Jakob's curvature
         raise NotImplementedError
