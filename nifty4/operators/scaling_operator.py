@@ -20,8 +20,8 @@ from __future__ import division
 import numpy as np
 from ..field import Field
 from ..multi.multi_field import MultiField
-from ..domain_tuple import DomainTuple
 from .endomorphic_operator import EndomorphicOperator
+from ..domain_tuple import DomainTuple
 
 
 class ScalingOperator(EndomorphicOperator):
@@ -49,12 +49,13 @@ class ScalingOperator(EndomorphicOperator):
     """
 
     def __init__(self, factor, domain):
+        from ..sugar import makeDomain
         super(ScalingOperator, self).__init__()
 
         if not np.isscalar(factor):
             raise TypeError("Scalar required")
         self._factor = factor
-        self._domain = DomainTuple.make(domain)
+        self._domain = makeDomain(domain)
 
     def __str__(self):
         return 'Scale({})'.format(self._factor)
