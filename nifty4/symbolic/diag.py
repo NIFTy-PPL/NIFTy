@@ -1,5 +1,5 @@
 from ..operators import DiagonalOperator
-from .tensor import SymbolicTensor
+from .symbolic_tensor import SymbolicTensor
 
 
 class SymbolicDiag(SymbolicTensor):

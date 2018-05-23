@@ -1,7 +1,7 @@
 from ..field import Field
 from .add import SymbolicAdd
 from .contractions import SymbolicOuterProd
-from .tensor import SymbolicTensor
+from .symbolic_tensor import SymbolicTensor
 
 
 class SymbolicScalarMul(SymbolicTensor):

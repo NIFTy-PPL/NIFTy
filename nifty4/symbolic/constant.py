@@ -1,5 +1,5 @@
-from ..operators import Tensor
-from .tensor import SymbolicTensor
+from .tensor import Tensor
+from .symbolic_tensor import SymbolicTensor
 from .zero import SymbolicZero
 
 

@@ -2,7 +2,7 @@ from ..extra.operator_tests import consistency_check
 from ..operators import OuterOperator, RowOperator, SandwichOperator
 from .add import SymbolicAdd
 from .constant import SymbolicZero
-from .tensor import SymbolicTensor
+from .symbolic_tensor import SymbolicTensor
 
 
 class SymbolicChainLinOps(SymbolicTensor):

@@ -22,9 +22,8 @@ from ..sugar import sqrt
 from ..minimization.energy import Energy
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
-from ..operators.tensor import Tensor
 from ..symbolic import (SymbolicCABF, SymbolicAdd, SymbolicConstant, SymbolicExp, SymbolicLinear, SymbolicQuad,
-                        SymbolicTanh, SymbolicVariable)
+                        SymbolicTanh, SymbolicVariable, Tensor)
 from ..utilities import memo
 from .nonlinearities import Exponential, Linear, Tanh
 from .wiener_filter_curvature import WienerFilterCurvature

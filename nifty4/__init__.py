@@ -10,8 +10,6 @@ from .operators import *
 
 from .symbolic import *
 
-from .operators.tensor import Tensor
-
 from .field import Field
 
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \

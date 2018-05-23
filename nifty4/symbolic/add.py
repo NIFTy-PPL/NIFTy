@@ -1,4 +1,4 @@
-from .tensor import SymbolicTensor
+from .symbolic_tensor import SymbolicTensor
 
 
 class SymbolicAdd(SymbolicTensor):

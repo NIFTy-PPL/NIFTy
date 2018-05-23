@@ -1,7 +1,7 @@
 from ..sugar import exp, tanh
 from .contractions import SymbolicChainLinOps
 from .diag import SymbolicDiag
-from .tensor import SymbolicTensor
+from .symbolic_tensor import SymbolicTensor
 
 
 class PointwiseNonlinearity(SymbolicTensor):

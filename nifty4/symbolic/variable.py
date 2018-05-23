@@ -1,6 +1,6 @@
-from ..operators import Tensor
+from .tensor import Tensor
 from .constant import SymbolicConstant
-from .tensor import SymbolicTensor
+from .symbolic_tensor import SymbolicTensor
 
 
 class SymbolicVariable(SymbolicTensor):
