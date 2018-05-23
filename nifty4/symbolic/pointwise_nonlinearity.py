@@ -14,6 +14,26 @@ class PointwiseNonlinearity(SymbolicTensor):
         raise NotImplementedError
 
 
+class SymbolicNonlinear(PointwiseNonlinearity):
+    def __init__(self, name, func, inner, deriv=None):
+        super(SymbolicNonlinear, self).__init__(inner)
+        self._name = name
+        self._func = func
+        self._deriv = deriv
+
+    def __str__(self):
+        return '{}({})'.format(self._name, self._inner)
+
+    def eval(self, x):
+        return self._func(self._inner.eval(x))
+
+    @property
+    def derivative(self):
+        if self._deriv is None:
+            return NotImplementedError
+        tmp = SymbolicNonlinear(self._name+"'", self._deriv, self._inner)
+        return SymbolicChainLinOps(SymbolicDiag(tmp), self._inner.derivative)
+
 class SymbolicLinear(PointwiseNonlinearity):
     def __str__(self):
         return 'linear({})'.format(self._inner)
@@ -25,58 +45,7 @@ class SymbolicLinear(PointwiseNonlinearity):
     def derivative(self):
         return self._inner.derivative
 
-
-class SymbolicExp(PointwiseNonlinearity):
-    def __str__(self):
-        return 'exp({})'.format(self._inner)
-
-    def eval(self, x):
-        return exp(self._inner.eval(x))
-
-    @property
-    def derivative(self):
-        return SymbolicChainLinOps(SymbolicDiag(SymbolicExpPrime(self._inner)),
-                             self._inner.derivative)
-
-
-class SymbolicExpPrime(PointwiseNonlinearity):
-    def __str__(self):
-        return "exp'({})".format(self._inner)
-
-    def eval(self, x):
-        return exp(self._inner.eval(x))
-
-    @property
-    def derivative(self):
-        # FIXME This function should be triggered in the demo but it isn't.
-        # As soon as it is replace the error with a zero in order to implement
-        # Jakob's curvature
-        raise NotImplementedError
-
-
-class SymbolicTanh(PointwiseNonlinearity):
-    def __str__(self):
-        return 'tanh({})'.format(self._inner)
-
-    def eval(self, x):
-        return tanh(self._inner.eval(x))
-
-    @property
-    def derivative(self):
-        return SymbolicChainLinOps(SymbolicDiag(SymbolicTanhPrime(self._inner)),
-                             self._inner.derivative)
-
-
-class SymbolicTanhPrime(PointwiseNonlinearity):
-    def __str__(self):
-        return "tanh'({})".format(self._inner)
-
-    def eval(self, x):
-        return 1 - tanh(self._inner.eval(x))**2
-
-    @property
-    def derivative(self):
-        # FIXME This function should be triggered in the demo but it isn't.
-        # As soon as it is replace the error with a zero in order to implement
-        # Jakob's curvature
-        raise NotImplementedError
+def SymbolicExp(inner):
+    return SymbolicNonlinear("exp", exp, inner, exp)
+def SymbolicTanh(inner):
+    return SymbolicNonlinear("tanh", tanh, inner, lambda x: 1 - tanh(x)**2)
