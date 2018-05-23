@@ -7,8 +7,8 @@ from .symbolic_tensor import SymbolicTensor
 class PointwiseNonlinearity(SymbolicTensor):
     def __init__(self, inner):
         assert inner.rank == 1
+        super(PointwiseNonlinearity, self).__init__(inner.indices)
         self._inner = inner
-        self._indices = inner.indices
 
     def __call__(self, x):
         raise NotImplementedError

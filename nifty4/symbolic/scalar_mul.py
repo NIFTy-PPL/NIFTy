@@ -9,9 +9,9 @@ class SymbolicScalarMul(SymbolicTensor):
         assert isinstance(nltensor, SymbolicTensor)
         assert isinstance(nlscalar, SymbolicTensor)
         assert nlscalar.rank == 0
+        super(SymbolicScalarMul, self).__init__(nltensor._indices)
         self._nltensor = nltensor
         self._nlscalar = nlscalar
-        self._indices = self._nltensor.indices
 
     def __str__(self):
         return '({}) x ({})'.format(self._nlscalar, self._nltensor)

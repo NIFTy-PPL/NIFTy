@@ -4,9 +4,9 @@ from .symbolic_tensor import SymbolicTensor
 class SymbolicChain(SymbolicTensor):
     def __init__(self, outer, inner):
         assert outer.rank == 1 and inner.rank == 1
+        super(SymbolicChain, self).__init__(outer.indixes)
         self._outer = outer
         self._inner = inner
-        self._indices = outer.indices
 
     def __str__(self):
         return '{}({})'.format(self._outer, self._inner)

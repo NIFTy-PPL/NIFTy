@@ -6,11 +6,10 @@ class SymbolicAdjoint(SymbolicTensor):
         assert thing.rank in [1, 2]
         if indices is None:
             if thing.rank == 1:
-                self._indices = (-1 * thing.indices[0],)
+                indices = (-1 * thing.indices[0],)
             else:
-                self._indices = thing.indices[::-1]
-        else:
-            self._indices = indices
+                indices = thing.indices[::-1]
+        super(SymbolicAdjoint, self).__init__(indices)
         self._thing = thing
 
     def __str__(self):

@@ -5,8 +5,8 @@ from .symbolic_tensor import SymbolicTensor
 
 class SymbolicVariable(SymbolicTensor):
     def __init__(self, domain):
+        super(SymbolicVariable, self).__init__((1,))
         self._domain = domain
-        self._indices = (1,)
 
     def __call__(self, x):
         raise ValueError

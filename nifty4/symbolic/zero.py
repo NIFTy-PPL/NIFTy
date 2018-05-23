@@ -3,7 +3,7 @@ from .symbolic_tensor import SymbolicTensor
 
 class SymbolicZero(SymbolicTensor):
     def __init__(self, indices, domain=None):
-        self._indices = indices
+        super(SymbolicZero, self).__init__(indices)
         self._domain = domain
 
     def __call__(self, x):

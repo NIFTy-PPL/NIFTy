@@ -10,8 +10,8 @@ class SymbolicConstant(SymbolicTensor):
         """
         assert isinstance(tensor, Tensor)
         assert len(indices) == tensor.rank
+        super(SymbolicConstant, self).__init__(indices)
         self._tensor = tensor
-        self._indices = indices
 
     def __call__(self, x):
         return self

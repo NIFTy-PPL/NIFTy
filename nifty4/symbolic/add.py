@@ -4,7 +4,7 @@ from .symbolic_tensor import SymbolicTensor
 class SymbolicAdd(SymbolicTensor):
     def __init__(self, fst, snd):
         assert fst.indices == snd.indices
-        self._indices = fst.indices
+        super(SymbolicAdd, self).__init__(fst.indices)
         self._fst = fst
         self._snd = snd
 

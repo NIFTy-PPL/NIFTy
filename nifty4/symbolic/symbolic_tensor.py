@@ -1,4 +1,7 @@
 class SymbolicTensor(object):
+    def __init__(self, indices):
+        self._indices = indices
+
     def __call__(self, x):
         from .contractions import SymbolicChain
         return SymbolicChain(self, x)

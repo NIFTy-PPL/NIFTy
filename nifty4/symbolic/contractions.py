@@ -8,8 +8,8 @@ from .symbolic_tensor import SymbolicTensor
 class SymbolicChainLinOps(SymbolicTensor):
     def __init__(self, op1, op2):
         assert op1.rank == 2 and op2.rank == 2
-        assert op1.indices[1] == - op2.indices[0]
-        self._indices = (op1.indices[0], op2.indices[1])
+        assert op1.indices[1] == -op2.indices[0]
+        super(SymbolicChainLinOps, self).__init__((op1.indices[0], op2.indices[1]))
         self._op1 = op1
         self._op2 = op2
 
@@ -33,7 +33,7 @@ class SymbolicChainLinOps(SymbolicTensor):
 class SymbolicSandwich(SymbolicTensor):
     def __init__(self, bun):
         assert bun.rank == 2
-        self._indices = 2 * (bun.indices[1],)
+        super(SymbolicSandwich, self).__init__(2*(bun.indices[1],))
         self._bun = bun
 
     def __str__(self):
@@ -55,7 +55,7 @@ class SymbolicChainLinOps11(SymbolicTensor):
     def __init__(self, op1, op2):
         assert op1.rank == 2 and op2.rank == 2
         assert op1.indices[0] == - op2.indices[0]
-        self._indices = (op1.indices[1], op2.indices[1])
+        super(SymbolicChainLinOps11, self).__init__((op1.indices[1], op2.indices[1]))
         self._op1 = op1
         self._op2 = op2
 
@@ -77,7 +77,7 @@ class SymbolicChainLinOps11(SymbolicTensor):
 class SymbolicCABF(SymbolicTensor):
     # CABF = Contract All But First
     def __init__(self, nltensor, *nlvectors):
-        self._indices = nltensor.indices[0:1]
+        super(SymbolicCABF, self).__init__(nltensor.indices[0:1])
         self._args = nlvectors
         self._nltensor = nltensor
         assert len(self._nltensor.indices) == len(self._args) + 1
@@ -111,7 +111,7 @@ class SymbolicCABF(SymbolicTensor):
 class SymbolicCABL(SymbolicTensor):
     # CABL = Contract All But Last
     def __init__(self, nltensor, *nlvectors):
-        self._indices = nltensor.indices[-1:]
+        super(SymbolicCABL, self).__init__(nltensor.indices[-1:])
         self._args = nlvectors
         self._nltensor = nltensor
         assert len(self._nltensor.indices) == len(self._args) + 1
@@ -147,9 +147,9 @@ class SymbolicVdot(SymbolicTensor):
     def __init__(self, vector1, vector2):
         assert vector1.indices == vector2.indices
         assert vector1.indices in [(1,), (-1,)]
+        super(SymbolicVdot, self).__init__(())
         self._vector1 = vector1
         self._vector2 = vector2
-        self._indices = ()
 
     def __str__(self):
         return '({}).vdot({})'.format(self._vector1, self._vector2)
@@ -167,8 +167,8 @@ class SymbolicVdot(SymbolicTensor):
 class SymbolicQuad(SymbolicTensor):
     def __init__(self, thing):
         assert thing.rank == 1
+        super(SymbolicQuad, self).__init__(())
         self._thing = thing
-        self._indices = ()
 
     def __str__(self):
         return '0.5 * |{}|**2'.format(self._thing)
@@ -192,9 +192,9 @@ class SymbolicOuterProd(SymbolicTensor):
         """ Computes A = fst*snd """
         assert snd.indices == (-1,)
         assert fst.indices in [(1,), (-1,)]
+        super(SymbolicOuterProd, self).__init__(fst.indices + snd.indices)
         self._snd = snd
         self._fst = fst
-        self._indices = self._fst.indices + self._snd.indices
 
     def __str__(self):
         return '{} outer {}'.format(self._snd, self._fst)
@@ -215,6 +215,7 @@ class SymbolicApplyForm(SymbolicTensor):
     def __init__(self, form, vector):
         assert vector.indices == (1,)
         assert form.indices == (-1,)
+        super(SymbolicApplyForm, self).__init__(())
         self._vector = vector
         self._form = form
         self._indices = ()

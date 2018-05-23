@@ -5,8 +5,8 @@ from .symbolic_tensor import SymbolicTensor
 class SymbolicDiag(SymbolicTensor):
     def __init__(self, diag):
         assert diag.rank == 1
+        super(SymbolicDiag, self).__init__((diag.indices[0], -diag.indices[0]))
         self._diag = diag
-        self._indices = (diag.indices[0], -diag.indices[0])
 
     def __call__(self, x):
         raise NotImplementedError
