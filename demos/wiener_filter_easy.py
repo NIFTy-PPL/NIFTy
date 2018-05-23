@@ -31,7 +31,7 @@ if __name__ == "__main__":
     h_space = s_space.get_default_codomain()
     s_var = ift.get_signal_variance(unscaled_pow_spec, h_space)
     pow_spec = (lambda k: unscaled_pow_spec(k)/s_var*field_variance**2)
-    
+
     HT = ift.HarmonicTransformOperator(h_space, s_space)
 
     # Create mock data
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=0.1)
     inverter = ift.ConjugateGradient(controller=IC)
-    D = (ift.SandwichOperator(R, N.inverse) + Sh.inverse).inverse
+    D = (ift.SandwichOperator.make(R, N.inverse) + Sh.inverse).inverse
     D = ift.InversionEnabler(D, inverter, approximation=Sh)
     m = D(j)
 

@@ -102,12 +102,36 @@ class SumOperator(LinearOperator):
                     negnew.append(neg[i])
         ops = opsnew
         neg = negnew
+        # Step 5: combine BlockDiagonalOperators where possible
+        from ..multi.block_diagonal_operator import BlockDiagonalOperator
+        processed = [False] * len(ops)
+        opsnew = []
+        negnew = []
+        for i in range(len(ops)):
+            if not processed[i]:
+                if isinstance(ops[i], BlockDiagonalOperator):
+                    op = ops[i]
+                    opneg = neg[i]
+                    for j in range(i+1, len(ops)):
+                        if isinstance(ops[j], BlockDiagonalOperator):
+                            op = op._combine_sum(ops[j], opneg, neg[j])
+                            opneg = False
+                            processed[j] = True
+                    opsnew.append(op)
+                    negnew.append(opneg)
+                else:
+                    opsnew.append(ops[i])
+                    negnew.append(neg[i])
+        ops = opsnew
+        neg = negnew
         return ops, neg
 
     @staticmethod
     def make(ops, neg):
         ops = tuple(ops)
         neg = tuple(neg)
+        if len(ops) == 0:
+            raise ValueError("ops is empty")
         if len(ops) != len(neg):
             raise ValueError("length mismatch between ops and neg")
         ops, neg = SumOperator.simplify(ops, neg)

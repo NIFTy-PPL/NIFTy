@@ -69,8 +69,8 @@ if __name__ == "__main__":
     # Creating the mock data
     d = noiseless_data + n
 
-    m0 = ift.Field.full(h_space, 1e-7)
-    t0 = ift.Field.full(p_space, -4.)
+    m0 = ift.full(h_space, 1e-7)
+    t0 = ift.full(p_space, -4.)
     power0 = Distributor.times(ift.exp(0.5 * t0))
 
     IC1 = ift.GradientNormController(name="IC1", iteration_limit=100,

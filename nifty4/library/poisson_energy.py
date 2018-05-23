@@ -20,7 +20,7 @@ from ..minimization.energy import Energy
 from ..operators.diagonal_operator import DiagonalOperator
 from ..operators.sandwich_operator import SandwichOperator
 from ..operators.inversion_enabler import InversionEnabler
-from ..field import log
+from ..sugar import log
 
 
 class PoissonEnergy(Energy):
@@ -46,7 +46,7 @@ class PoissonEnergy(Energy):
 
         R1 = Instrument*Rho*ht
         self._grad = (phipos + R1.adjoint_times((lam-d)/(lam+eps))).lock()
-        self._curv = Phi_h.inverse + SandwichOperator(R1, W)
+        self._curv = Phi_h.inverse + SandwichOperator.make(R1, W)
 
     def at(self, position):
         return self.__class__(position, self._d, self._Instrument,

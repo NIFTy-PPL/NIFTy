@@ -107,60 +107,8 @@ class Field(object):
         return Field(DomainTuple.make(domain), val, dtype)
 
     @staticmethod
-    def ones(domain, dtype=None):
-        return Field(DomainTuple.make(domain), 1., dtype)
-
-    @staticmethod
-    def zeros(domain, dtype=None):
-        return Field(DomainTuple.make(domain), 0., dtype)
-
-    @staticmethod
     def empty(domain, dtype=None):
         return Field(DomainTuple.make(domain), None, dtype)
-
-    @staticmethod
-    def full_like(field, val, dtype=None):
-        """Creates a Field from a template, filled with a constant value.
-
-        Parameters
-        ----------
-        field : Field
-            the template field, from which the domain is inferred
-        val : float/complex/int scalar
-            fill value. Data type of the field is inferred from val.
-
-        Returns
-        -------
-        Field
-            the newly created field
-        """
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        return Field.full(field._domain, val, dtype)
-
-    @staticmethod
-    def zeros_like(field, dtype=None):
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        if dtype is None:
-            dtype = field.dtype
-        return Field.zeros(field._domain, dtype)
-
-    @staticmethod
-    def ones_like(field, dtype=None):
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        if dtype is None:
-            dtype = field.dtype
-        return Field.ones(field._domain, dtype)
-
-    @staticmethod
-    def empty_like(field, dtype=None):
-        if not isinstance(field, Field):
-            raise TypeError("field must be of Field type")
-        if dtype is None:
-            dtype = field.dtype
-        return Field.empty(field._domain, dtype)
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
@@ -287,6 +235,7 @@ class Field(object):
             The value to fill the field with.
         """
         self._val.fill(fill_value)
+        return self
 
     def lock(self):
         """Write-protect the data content of `self`.
@@ -369,6 +318,17 @@ class Field(object):
             An identical, but unlocked copy of 'self'.
         """
         return Field(val=self, copy=True)
+
+    def empty_copy(self):
+        """ Returns a Field with identical domain and data type, but
+        uninitialized data.
+
+        Returns
+        -------
+        Field
+            A copy of 'self', with uninitialized data.
+        """
+        return Field(self._domain, dtype=self.dtype)
 
     def locked_copy(self):
         """ Returns a read-only version of the Field.
@@ -503,8 +463,8 @@ class Field(object):
                               or Field (for partial dot products)
         """
         if not isinstance(x, Field):
-            raise ValueError("The dot-partner must be an instance of " +
-                             "the NIFTy field class")
+            raise TypeError("The dot-partner must be an instance of " +
+                            "the NIFTy field class")
 
         if x._domain != self._domain:
             raise ValueError("Domain mismatch")
@@ -694,7 +654,8 @@ class Field(object):
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('mean', spaces)
         # MR FIXME: not very efficient
-        tmp = self.weight(1)
+        # MR FIXME: do we need "spaces" here?
+        tmp = self.weight(1, spaces)
         return tmp.sum(spaces)*(1./tmp.total_volume(spaces))
 
     def var(self, spaces=None):
@@ -717,12 +678,10 @@ class Field(object):
         # MR FIXME: not very efficient or accurate
         m1 = self.mean(spaces)
         if np.issubdtype(self.dtype, np.complexfloating):
-            sq = abs(self)**2
-            m1 = abs(m1)**2
+            sq = abs(self-m1)**2
         else:
-            sq = self**2
-            m1 **= 2
-        return sq.mean(spaces) - m1
+            sq = (self-m1)**2
+        return sq.mean(spaces)
 
     def std(self, spaces=None):
         """Determines the standard deviation over the sub-domains given by
@@ -742,6 +701,7 @@ class Field(object):
             The result of the operation. If it is carried out over the entire
             domain, this is a scalar, otherwise a Field.
         """
+        from .sugar import sqrt
         if self.scalar_weight(spaces) is not None:
             return self._contraction_helper('std', spaces)
         return sqrt(self.var(spaces))
@@ -785,24 +745,3 @@ for op in ["__add__", "__radd__", "__iadd__",
             return NotImplemented
         return func2
     setattr(Field, op, func(op))
-
-
-# Arithmetic functions working on Fields
-
-_current_module = sys.modules[__name__]
-
-for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
-    def func(f):
-        def func2(x, out=None):
-            fu = getattr(dobj, f)
-            if not isinstance(x, Field):
-                raise TypeError("This function only accepts Field objects.")
-            if out is not None:
-                if not isinstance(out, Field) or x._domain != out._domain:
-                    raise ValueError("Bad 'out' argument")
-                fu(x.val, out=out.val)
-                return out
-            else:
-                return Field(domain=x._domain, val=fu(x.val))
-        return func2
-    setattr(_current_module, f, func(f))
