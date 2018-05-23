@@ -19,4 +19,5 @@ class SymbolicVariable(SymbolicTensor):
 
     @property
     def derivative(self):
-        return SymbolicConstant(Tensor(1., 2, self._domain), self._indices + (-1, ))
+        return SymbolicConstant(Tensor(1., 2, self._domain),
+                                self._indices + (-1, ))

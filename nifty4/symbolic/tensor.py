@@ -53,10 +53,7 @@ class Tensor(object):
         return self._thing.domain
 
     def __str__(self):
-        if self._name is None:
-            return str(self._thing)
-        else:
-            return self._name
+        return str(self._thing) if self._name is None else self._name
 
     def __add__(self, other):
         assert self.rank == other.rank

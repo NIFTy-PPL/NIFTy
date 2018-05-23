@@ -39,20 +39,10 @@ class NonlinearWienerFilterEnergy(Energy):
         self.nonlinearity = nonlinearity
         self.ht = ht
         self.power = power
-        m = ht(power*position)
-
-        residual = d - Instrument(nonlinearity(m))
         self.N = N
         self.S = S
         self.inverter = inverter
-        t1 = S.inverse_times(position)
-        t2 = N.inverse_times(residual)
-        self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
-        self.R = Instrument * nonlinearity.derivative(m) * ht * power
-        self._gradient = (t1 - self.R.adjoint_times(t2)).lock()
-        self._curvature = WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
 
-        # Nonlinear implementation
         if isinstance(nonlinearity, Exponential):
             SymbolicNonlinearity = SymbolicExp
         elif isinstance(nonlinearity, Linear):
@@ -63,9 +53,9 @@ class NonlinearWienerFilterEnergy(Energy):
             raise NotImplementedError
 
         pos_nl = SymbolicVariable(position.domain)
-        Ninv_nextgen = DiagonalOperator(sqrt(self.N.inverse(Field.full(self.N.target, 1.))))
+        Ninv_nextgen = DiagonalOperator(sqrt(N.inverse(Field.full(N.target, 1.))))
         Ninv_nextgen_nl = SymbolicConstant(Tensor(Ninv_nextgen, 2, name='Ninv_nextgen'), (-1, -1))
-        Sinv_nextgen = DiagonalOperator(sqrt(self.S.inverse(Field.full(self.S.target, 1.))))
+        Sinv_nextgen = DiagonalOperator(sqrt(S.inverse(Field.full(S.target, 1.))))
         Sinv_nextgen_nl = SymbolicConstant(Tensor(Sinv_nextgen, 2, name='Sinv_nextgen'), (-1, -1))
         mh_nl = SymbolicCABF(SymbolicConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
         m_nl = SymbolicCABF(SymbolicConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
@@ -81,21 +71,10 @@ class NonlinearWienerFilterEnergy(Energy):
         prior_nl = SymbolicQuad(pos_nextgen_nl)
         energy_nl = SymbolicAdd(likelihood_nl, prior_nl)
 
-        new_energy = energy_nl.eval(position)
-        new_gradient = energy_nl.derivative.eval(position)
-        new_curvature = energy_nl.curvature.eval(position)
-        # End Nonlinear implementation
-
-        # Compare old and new implementation
-        assert_allclose(self._value, new_energy)
-        assert_allclose(self._gradient.local_data, new_gradient.local_data, rtol=1e-5)
-        rand_field = Field.from_random('normal', new_curvature.domain)
-        assert_allclose(self._curvature(rand_field).local_data, new_curvature(rand_field).local_data)
-        # End Compare old and new implementation
-
-        self._value = new_energy
-        self._gradient = new_gradient
-        self._curvature = InversionEnabler(new_curvature, inverter, S.inverse)
+        self._value = energy_nl.eval(position)
+        self._gradient = energy_nl.derivative.eval(position)
+        self._curvature = InversionEnabler(energy_nl.curvature.eval(position),
+                                           inverter, S.inverse)
 
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,

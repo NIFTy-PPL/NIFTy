@@ -26,5 +26,4 @@ class SymbolicTensor(object):
         if self.rank in [1, 2]:
             from .adjoint import SymbolicAdjoint
             return SymbolicAdjoint(self)
-        else:
-            raise NotImplementedError
+        raise NotImplementedError
