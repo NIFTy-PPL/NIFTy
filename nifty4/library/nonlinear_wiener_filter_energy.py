@@ -22,7 +22,8 @@ from ..sugar import sqrt
 from ..minimization.energy import Energy
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
-from ..symbolic import (SymbolicCABF, SymbolicAdd, SymbolicConstant, SymbolicExp, SymbolicLinear, SymbolicQuad,
+from ..symbolic import (SymbolicCABF, SymbolicAdd, SymbolicConstant,
+                        SymbolicExp, SymbolicLinear, SymbolicQuad,
                         SymbolicTanh, SymbolicVariable, Tensor)
 from ..utilities import memo
 from .nonlinearities import Exponential, Linear, Tanh
@@ -87,9 +88,9 @@ class NonlinearWienerFilterEnergy(Energy):
 
         # Compare old and new implementation
         assert_allclose(self._value, new_energy)
-        assert_allclose(self._gradient.val, new_gradient.val, rtol=1e-5)
+        assert_allclose(self._gradient.local_data, new_gradient.local_data, rtol=1e-5)
         rand_field = Field.from_random('normal', new_curvature.domain)
-        assert_allclose(self._curvature(rand_field).val, new_curvature(rand_field).val)
+        assert_allclose(self._curvature(rand_field).local_data, new_curvature(rand_field).local_data)
         # End Compare old and new implementation
 
         self._value = new_energy

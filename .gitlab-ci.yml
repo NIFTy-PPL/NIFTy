@@ -33,7 +33,7 @@ test_python2_with_coverage:
   stage: test
   script:
     - python setup.py install --user -f
-#    - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
+    - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
     - nosetests -q --with-coverage --cover-package=nifty4 --cover-erase
     - >
       coverage report --omit "*plotting*,*distributed_do*"
@@ -44,7 +44,7 @@ test_python3:
   stage: test
   script:
     - python3 setup.py install --user -f
-#    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
+    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
     - nosetests3 -q
 
 pages:

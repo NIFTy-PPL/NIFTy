@@ -30,7 +30,7 @@ class Tensor(object):
         # Rank 1
         elif self.rank == 1:
             if domain is not None and thing.domain != domain and len(thing.domain) == 0:
-                thing = Field(domain, thing.val[()])
+                thing = Field(domain, thing.val)
             elif isinstance(thing, Field):
                 self._thing = thing
             else:
