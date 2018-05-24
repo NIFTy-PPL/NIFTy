@@ -48,6 +48,9 @@ class SymbolicSandwich(SymbolicTensor):
 
 
 class SymbolicChainLinOps11(SymbolicTensor):
+    # Contract first (only for rank 2)
+    # FIXME Also for rank 1 (unify with ApplyForm)
+
     # op1.indices = (-1, -1)
     # op2.indices = (1, -1)
     # contract first index of op1 with first index of op2

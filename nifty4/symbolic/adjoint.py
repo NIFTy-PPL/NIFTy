@@ -2,17 +2,14 @@ from .symbolic_tensor import SymbolicTensor
 
 
 class SymbolicAdjoint(SymbolicTensor):
-    def __init__(self, thing, indices=None):
-        # MR FIXME: do we actually use the "indices" argument?
+    def __init__(self, thing):
         assert thing.rank in [1, 2]
-        if indices is None:
-            if thing.rank == 1:
-                indices = (-1 * thing.indices[0],)
-            else:
-                indices = thing.indices[::-1]
+        if thing.rank == 1:
+            indices = (-1 * thing.indices[0],)
+        else:
+            indices = thing.indices[::-1]
         super(SymbolicAdjoint, self).__init__(indices)
         self._thing = thing
-
 
     @staticmethod
     def make(thing):
