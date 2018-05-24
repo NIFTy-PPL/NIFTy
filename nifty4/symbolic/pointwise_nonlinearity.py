@@ -34,18 +34,6 @@ class SymbolicNonlinear(PointwiseNonlinearity):
         tmp = SymbolicNonlinear(self._name+"'", self._deriv, self._inner)
         return SymbolicChainLinOps(SymbolicDiag(tmp), self._inner.derivative)
 
-class SymbolicLinear(PointwiseNonlinearity):
-    def __str__(self):
-        return 'linear({})'.format(self._inner)
 
-    def eval(self, x):
-        return self._inner.eval(x)
-
-    @property
-    def derivative(self):
-        return self._inner.derivative
-
-def SymbolicExp(inner):
-    return SymbolicNonlinear("exp", exp, inner, exp)
-def SymbolicTanh(inner):
-    return SymbolicNonlinear("tanh", tanh, inner, lambda x: 1 - tanh(x)**2)
+def fromNiftyNL(name, NL, inner):
+    return SymbolicNonlinear(name, NL.__call__, inner, NL.derivative)

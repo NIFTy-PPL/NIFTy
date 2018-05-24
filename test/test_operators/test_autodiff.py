@@ -70,7 +70,7 @@ class NonlinearTests(unittest.TestCase):
     def test_nonlinearity(self):
         # E = exp(a)
         self.make()
-        E = ift.SymbolicExp(self.a)
+        E = ift.SymbolicNonlinear("exp", ift.exp, self.a, ift.exp)
         res = E.eval(self.x).to_global_data()
         assert_allclose(res, np.exp(self.x.to_global_data()))
         self.takeOp1D1D(E, self.x, np.diagflat(res))
@@ -78,7 +78,7 @@ class NonlinearTests(unittest.TestCase):
     def test_nonlinearpriorEnergy(self):
         # E = 0.5 * exp(a)^dagger S exp(a)
         self.make()
-        exp_a = ift.SymbolicExp(self.a)
+        exp_a = ift.SymbolicNonlinear("exp", ift.exp, self.a, ift.exp)
         A = ift.SymbolicConstant(ift.Tensor(0.5 * self.S, 2), (-1, -1))
         E = ift.SymbolicApplyForm(ift.SymbolicCABF(A, exp_a), exp_a)
         res = E.eval(self.x)

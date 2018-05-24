@@ -6,7 +6,7 @@ from .contractions import (SymbolicCABF, SymbolicCABL, SymbolicApplyForm, Symbol
                            SymbolicChainLinOps11, SymbolicOuterProd, SymbolicQuad, SymbolicSandwich,
                            SymbolicVdot)
 from .diag import SymbolicDiag
-from .pointwise_nonlinearity import SymbolicExp, SymbolicLinear, SymbolicTanh
+from .pointwise_nonlinearity import SymbolicNonlinear, fromNiftyNL
 from .scalar_mul import SymbolicScalarMul
 from .symbolic_tensor import SymbolicTensor
 from .variable import SymbolicVariable
@@ -15,6 +15,6 @@ from .tensor import Tensor
 
 __all__ = ['SymbolicTensor', 'SymbolicAdd', 'SymbolicAdjoint', 'SymbolicConstant', 'SymbolicChain',
            'SymbolicChainLinOps', 'SymbolicChainLinOps11', 'SymbolicCABF', 'SymbolicCABL', 'SymbolicVdot',
-           'SymbolicOuterProd', 'SymbolicApplyForm', 'SymbolicDiag', 'SymbolicExp', 'SymbolicScalarMul',
-           'SymbolicVariable', 'SymbolicZero', 'SymbolicLinear', 'SymbolicTanh', 'SymbolicSandwich',
-           'SymbolicQuad', 'Tensor']
+           'SymbolicOuterProd', 'SymbolicApplyForm', 'SymbolicDiag', 'SymbolicScalarMul',
+           'SymbolicVariable', 'SymbolicZero', 'SymbolicSandwich',
+           'SymbolicQuad', 'Tensor', 'SymbolicNonlinear', 'fromNiftyNL']

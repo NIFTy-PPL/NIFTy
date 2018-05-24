@@ -8,6 +8,11 @@ class SymbolicAdd(SymbolicTensor):
         self._fst = fst
         self._snd = snd
 
+    @staticmethod
+    def make(fst, snd):
+        # FIXME: add special cases for two constants, for zeros etc.?
+        return SymbolicAdd(fst, snd)
+
     def __str__(self):
         return '{} + {}'.format(self._fst, self._snd)
 

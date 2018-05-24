@@ -25,5 +25,5 @@ class SymbolicTensor(object):
     def adjoint(self):
         if self.rank in [1, 2]:
             from .adjoint import SymbolicAdjoint
-            return SymbolicAdjoint(self)
+            return SymbolicAdjoint.make(self)
         raise NotImplementedError

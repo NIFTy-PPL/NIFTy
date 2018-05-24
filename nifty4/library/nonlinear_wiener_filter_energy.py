@@ -15,19 +15,14 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
-from numpy.testing import assert_allclose
-
 from ..field import Field
 from ..sugar import sqrt
 from ..minimization.energy import Energy
 from ..operators import DiagonalOperator
 from ..operators.inversion_enabler import InversionEnabler
 from ..symbolic import (SymbolicCABF, SymbolicAdd, SymbolicConstant,
-                        SymbolicExp, SymbolicLinear, SymbolicQuad,
-                        SymbolicTanh, SymbolicVariable, Tensor)
+                        SymbolicQuad, SymbolicVariable, Tensor, fromNiftyNL)
 from ..utilities import memo
-from .nonlinearities import Exponential, Linear, Tanh
-from .wiener_filter_curvature import WienerFilterCurvature
 
 
 class NonlinearWienerFilterEnergy(Energy):
@@ -43,15 +38,6 @@ class NonlinearWienerFilterEnergy(Energy):
         self.S = S
         self.inverter = inverter
 
-        if isinstance(nonlinearity, Exponential):
-            SymbolicNonlinearity = SymbolicExp
-        elif isinstance(nonlinearity, Linear):
-            SymbolicNonlinearity = SymbolicLinear
-        elif isinstance(nonlinearity, Tanh):
-            SymbolicNonlinearity = SymbolicTanh
-        else:
-            raise NotImplementedError
-
         pos_nl = SymbolicVariable(position.domain)
         Ninv_nextgen = DiagonalOperator(sqrt(N.inverse(Field.full(N.target, 1.))))
         Ninv_nextgen_nl = SymbolicConstant(Tensor(Ninv_nextgen, 2, name='Ninv_nextgen'), (-1, -1))
@@ -59,7 +45,7 @@ class NonlinearWienerFilterEnergy(Energy):
         Sinv_nextgen_nl = SymbolicConstant(Tensor(Sinv_nextgen, 2, name='Sinv_nextgen'), (-1, -1))
         mh_nl = SymbolicCABF(SymbolicConstant(Tensor(DiagonalOperator(power), 2, name='power'), (1, -1)), pos_nl)
         m_nl = SymbolicCABF(SymbolicConstant(Tensor(ht, 2, name='HT'), (1, -1)), mh_nl)
-        sky_nl = SymbolicNonlinearity(m_nl)
+        sky_nl = fromNiftyNL("nonlin", nonlinearity, m_nl)
         d_nl = SymbolicConstant(Tensor(d, 1, name='d'), (1,))
         MinusR_nl = SymbolicConstant(Tensor((-1) * Instrument, 2, name='-R'), (1, -1))
         rec_nl = SymbolicCABF(MinusR_nl, sky_nl)

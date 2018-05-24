@@ -95,7 +95,8 @@ class DiagonalOperator(EndomorphicOperator):
         self._update_diagmin()
 
     def __str__(self):
-        return 'Diag({})'.format(self(Field.ones(self.domain)).val)
+        return 'Diag({})'.format(self(ift.full(self._domain, 1.))
+                                 .to_global_data())
 
     def _update_diagmin(self):
         self._ldiag.flags.writeable = False
