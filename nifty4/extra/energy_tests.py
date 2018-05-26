@@ -18,6 +18,7 @@
 
 import numpy as np
 from ..field import Field
+from .. import from_random
 
 __all__ = ["check_value_gradient_consistency",
            "check_value_gradient_curvature_consistency"]
@@ -26,7 +27,7 @@ __all__ = ["check_value_gradient_consistency",
 def _get_acceptable_energy(E):
     if not np.isfinite(E.value):
         raise ValueError
-    dir = Field.from_random("normal", E.position.domain)
+    dir = from_random("normal", E.position.domain)
     # find a step length that leads to a "reasonable" energy
     for i in range(50):
         try:
