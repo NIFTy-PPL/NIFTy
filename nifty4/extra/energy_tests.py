@@ -18,7 +18,7 @@
 
 import numpy as np
 from ..field import Field
-from .. import from_random
+from ..sugar import from_random
 
 __all__ = ["check_value_gradient_consistency",
            "check_value_gradient_curvature_consistency"]
