@@ -18,6 +18,7 @@
 
 import numpy as np
 
+from .linear_operator import LinearOperator
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
 from .scaling_operator import ScalingOperator
@@ -46,6 +47,10 @@ class SandwichOperator(EndomorphicOperator):
         cheese: EndomorphicOperator
             the cheese part
         """
+        if not isinstance(bun, LinearOperator):
+            raise TypeError("bun must be a linear operator")
+        if cheese is not None and not isinstance(cheese, LinearOperator):
+            raise TypeError("cheese must be a linear operator")
         if cheese is None:
             cheese = ScalingOperator(1., bun.target)
             op = bun.adjoint*bun
