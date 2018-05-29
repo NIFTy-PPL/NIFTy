@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from ..field import Field
 from ..sugar import from_random
 
 __all__ = ["check_value_gradient_consistency",
@@ -50,7 +49,7 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
         E2 = _get_acceptable_energy(E)
         val = E.value
         dir = E2.position - E.position
-        Enext = E2
+        # Enext = E2
         dirnorm = dir.norm()
         dirder = E.gradient.vdot(dir)/dirnorm
         for i in range(50):
@@ -70,7 +69,7 @@ def check_value_gradient_curvature_consistency(E, tol=1e-6, ntries=100):
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
         dir = E2.position - E.position
-        Enext = E2
+        # Enext = E2
         dirnorm = dir.norm()
         dirder = E.gradient.vdot(dir)/dirnorm
         dgrad = E.curvature(dir)/dirnorm
