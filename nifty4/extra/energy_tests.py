@@ -54,11 +54,13 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
         dirnorm = dir.norm()
         dirder = E.gradient.vdot(dir)/dirnorm
         for i in range(50):
+            Emid = E.at(E.position + 0.5*dir)
+            dirder = Emid.gradient.vdot(dir)/dirnorm
             if abs((E2.value-val)/dirnorm-dirder) < tol:
                 break
             dir *= 0.5
             dirnorm *= 0.5
-            E2 = E2.at(E.position+dir)
+            E2 = Emid
         else:
             raise ValueError("gradient and value seem inconsistent")
         # E = Enext
