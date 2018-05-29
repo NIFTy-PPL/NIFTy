@@ -29,7 +29,8 @@ def _flat_PS(k):
 
 
 class Energy_Tests(unittest.TestCase):
-    @expand(product([ift.RGSpace(64, distances=.789),
+    @expand(product([ift.GLSpace(15),
+                     ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [4, 78, 23]))
     def testLinearMap(self, space, seed):
@@ -63,7 +64,8 @@ class Energy_Tests(unittest.TestCase):
         ift.extra.check_value_gradient_curvature_consistency(
             energy, tol=1e-4, ntries=10)
 
-    @expand(product([ift.RGSpace(64, distances=.789),
+    @expand(product([ift.GLSpace(15),
+                     ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [ift.library.Tanh, ift.library.Exponential,
                      ift.library.Linear],

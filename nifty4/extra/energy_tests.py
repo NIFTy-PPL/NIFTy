@@ -25,9 +25,12 @@ __all__ = ["check_value_gradient_consistency",
 
 
 def _get_acceptable_energy(E):
-    if not np.isfinite(E.value):
+    val = E.value
+    if not np.isfinite(val):
         raise ValueError
     dir = from_random("normal", E.position.domain)
+    dirder = E.gradient.vdot(dir)
+    dir *= np.abs(val)/np.abs(dirder)*1e-5
     # find a step length that leads to a "reasonable" energy
     for i in range(50):
         try:
@@ -45,12 +48,14 @@ def _get_acceptable_energy(E):
 def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
+        val = E.value
         dir = E2.position - E.position
         Enext = E2
         dirnorm = dir.norm()
         dirder = E.gradient.vdot(dir)/dirnorm
         for i in range(50):
-            if abs((E2.value-E.value)/dirnorm-dirder) < tol:
+            if abs((E2.value-val)/dirnorm-dirder) < tol:
+                print i, dirnorm, dirder, E2.value-val
                 break
             dir *= 0.5
             dirnorm *= 0.5
