@@ -70,6 +70,7 @@ def get_signal_variance(spec, space):
     k_field = dist(field)
     return k_field.weight(2).sum()
 
+
 def _single_power_analyze(field, idx, binbounds):
     power_domain = PowerSpace(field.domain[idx], binbounds)
     pd = PowerDistributor(field.domain, power_domain, idx)
