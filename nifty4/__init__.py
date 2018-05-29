@@ -28,5 +28,5 @@ from .multi import *
 
 __all__ = ["__version__", "dobj", "DomainTuple"] + \
           domains.__all__ + operators.__all__ + minimization.__all__ + \
-          ["DomainTuple", "Field", "sqrt", "exp", "log"] + \
+          ["DomainTuple", "Field", "sqrt", "exp", "log", "tanh"] + \
           multi.__all__
