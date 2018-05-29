@@ -1,8 +1,10 @@
 from ..extra.operator_tests import consistency_check
-from ..operators import OuterOperator, RowOperator, SandwichOperator
+from ..operators import EndomorphicOperator, DiagonalOperator, SandwichOperator
+from ..field import Field
 from .add import SymbolicAdd
 from .constant import SymbolicZero
 from .symbolic_tensor import SymbolicTensor
+from ..domain_tuple import DomainTuple
 
 
 class SymbolicChainLinOps(SymbolicTensor):
@@ -188,6 +190,35 @@ class SymbolicQuad(SymbolicTensor):
     def curvature(self):
         # This is Jakob's curvature
         return SymbolicSandwich(self._thing.derivative)
+
+
+class RowOperator(EndomorphicOperator):
+    def __init__(self, field):
+        super(RowOperator, self).__init__()
+        if not isinstance(field, Field):
+            raise TypeError("Field object required")
+
+        self._field = field
+        self._domain = DomainTuple.make(field.domain)
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            return Field.full(self.target, self._field.vdot(x))
+        else:
+            return self._field * x.sum()
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
+
+def OuterOperator(field, row_operator):
+    return DiagonalOperator(field) * row_operator
 
 
 class SymbolicOuterProd(SymbolicTensor):

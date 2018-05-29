@@ -11,12 +11,9 @@ from .smoothness_operator import SmoothnessOperator
 from .power_distributor import PowerDistributor
 from .inversion_enabler import InversionEnabler
 from .sandwich_operator import SandwichOperator
-from .outer_operator import OuterOperator
-from .row_operator import RowOperator
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
-           "InversionEnabler", "SandwichOperator",
-           "OuterOperator", "RowOperator"]
+           "InversionEnabler", "SandwichOperator"]
