@@ -44,7 +44,8 @@ class MultiField(object):
 
     @property
     def domain(self):
-        return MultiDomain({key: val.domain for key, val in self._val.items()})
+        return MultiDomain.make(
+            {key: val.domain for key, val in self._val.items()})
 
     @property
     def dtype(self):
@@ -56,6 +57,18 @@ class MultiField(object):
         return MultiField({key: Field.from_random(random_type, domain[key],
                                                   dtype[key], **kwargs)
                            for key in domain.keys()})
+
+    def fill(self, fill_value):
+        """Fill `self` uniformly with `fill_value`
+
+        Parameters
+        ----------
+        fill_value: float or complex or int
+            The value to fill the field with.
+        """
+        for val in self._val.values():
+            val.fill(fill_value)
+        return self
 
     def _check_domain(self, other):
         if other.domain != self.domain:
@@ -73,8 +86,21 @@ class MultiField(object):
             v.lock()
         return self
 
+    @property
+    def locked(self):
+        return all(v.locked for v in self.values())
+
     def copy(self):
         return MultiField({key: val.copy() for key, val in self.items()})
+
+    def locked_copy(self):
+        if self.locked:
+            return self
+        return MultiField({key: val.locked_copy()
+                          for key, val in self.items()})
+
+    def empty_copy(self):
+        return MultiField({key: val.empty_copy() for key, val in self.items()})
 
     @staticmethod
     def build_dtype(dtype, domain):
@@ -85,22 +111,24 @@ class MultiField(object):
         return {key: dtype for key in domain.keys()}
 
     @staticmethod
-    def zeros(domain, dtype=None):
-        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField({key: Field.zeros(dom, dtype=dtype[key])
-                           for key, dom in domain.items()})
-
-    @staticmethod
-    def ones(domain, dtype=None):
-        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField({key: Field.ones(dom, dtype=dtype[key])
-                           for key, dom in domain.items()})
-
-    @staticmethod
     def empty(domain, dtype=None):
         dtype = MultiField.build_dtype(dtype, domain)
         return MultiField({key: Field.empty(dom, dtype=dtype[key])
                            for key, dom in domain.items()})
+
+    @staticmethod
+    def full(domain, val):
+        return MultiField({key: Field.full(dom, val)
+                           for key, dom in domain.items()})
+
+    def to_global_data(self):
+        return {key: val.to_global_data() for key, val in self._val.items()}
+
+    @staticmethod
+    def from_global_data(domain, arr, sum_up=False):
+        return MultiField({key: Field.from_global_data(domain[key],
+                                                       val, sum_up)
+                           for key, val in arr.items()})
 
     def norm(self):
         """ Computes the L2-norm of the field values.

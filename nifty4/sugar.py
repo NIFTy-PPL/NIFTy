@@ -16,19 +16,23 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+import sys
 import numpy as np
 from .domains.power_space import PowerSpace
 from .field import Field
+from .multi.multi_field import MultiField
+from .multi.multi_domain import MultiDomain
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
 from .logger import logger
 
-__all__ = ['PS_field',
-           'power_analyze',
-           'create_power_operator',
-           'create_harmonic_smoothing_operator']
+__all__ = ['PS_field', 'power_analyze', 'create_power_operator',
+           'create_harmonic_smoothing_operator', 'from_random',
+           'full', 'empty', 'from_global_data', 'from_local_data',
+           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'conjugate',
+           'get_signal_variance']
 
 
 def PS_field(pspace, func):
@@ -37,6 +41,34 @@ def PS_field(pspace, func):
     data = dobj.from_global_data(func(pspace.k_lengths))
     return Field(pspace, val=data)
 
+
+def get_signal_variance(spec, space):
+    """
+    Computes how much a field with a given power spectrum will vary in space
+
+    This is a small helper function that computes how the expected variance
+    of a harmonically transformed sample of this power spectrum.
+
+    Parameters
+    ---------
+    spec: method
+        a method that takes one k-value and returns the power spectrum at that
+        location
+    space: PowerSpace or any harmonic Domain
+        If this function is given a harmonic domain, it creates the naturally
+        binned PowerSpace to that domain.
+        The field, for which the signal variance is then computed, is assumed
+        to have this PowerSpace as naturally binned PowerSpace
+    """
+    if space.harmonic:
+        space = PowerSpace(space)
+    if not isinstance(space, PowerSpace):
+        raise ValueError(
+            "space must be either a harmonic space or Power space.")
+    field = PS_field(space, spec)
+    dist = PowerDistributor(space.harmonic_partner, space)
+    k_field = dist(field)
+    return k_field.weight(2).sum()
 
 def _single_power_analyze(field, idx, binbounds):
     power_domain = PowerSpace(field.domain[idx], binbounds)
@@ -161,3 +193,70 @@ def create_harmonic_smoothing_operator(domain, space, sigma):
     kfunc = domain[space].get_fft_smoothing_kernel_function(sigma)
     return DiagonalOperator(kfunc(domain[space].get_k_length_array()), domain,
                             space)
+
+
+def full(domain, val):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.full(domain, val)
+    return Field.full(domain, val)
+
+
+def empty(domain, dtype):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.empty(domain, dtype)
+    return Field.empty(domain, dtype)
+
+
+def from_random(random_type, domain, dtype=np.float64, **kwargs):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.from_random(random_type, domain, dtype, **kwargs)
+    return Field.from_random(random_type, domain, dtype, **kwargs)
+
+
+def from_global_data(domain, arr, sum_up=False):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.from_global_data(domain, arr, sum_up)
+    return Field.from_global_data(domain, arr, sum_up)
+
+
+def from_local_data(domain, arr):
+    if isinstance(domain, (dict, MultiDomain)):
+        return MultiField.from_local_data(domain, arr)
+    return Field.from_local_data(domain, arr)
+
+
+def makeDomain(domain):
+    if isinstance(domain, (MultiDomain, dict)):
+        return MultiDomain.make(domain)
+    return DomainTuple.make(domain)
+
+
+# Arithmetic functions working on Fields
+
+_current_module = sys.modules[__name__]
+
+for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+    def func(f):
+        def func2(x, out=None):
+            if isinstance(x, MultiField):
+                if out is not None:
+                    if (not isinstance(out, MultiField) or
+                            x._domain != out._domain):
+                        raise ValueError("Bad 'out' argument")
+                    for key, value in x.items():
+                        func2(value, out=out[key])
+                    return out
+                return MultiField({key: func2(val) for key, val in x.items()})
+            elif isinstance(x, Field):
+                fu = getattr(dobj, f)
+                if out is not None:
+                    if not isinstance(out, Field) or x._domain != out._domain:
+                        raise ValueError("Bad 'out' argument")
+                    fu(x.val, out=out.val)
+                    return out
+                else:
+                    return Field(domain=x._domain, val=fu(x.val))
+            else:
+                return getattr(np, f)(x, out)
+        return func2
+    setattr(_current_module, f, func(f))

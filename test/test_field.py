@@ -18,7 +18,7 @@
 
 import unittest
 import numpy as np
-from numpy.testing import assert_equal, assert_allclose
+from numpy.testing import assert_equal, assert_allclose, assert_raises
 from itertools import product
 import nifty4 as ift
 from test.common import expand
@@ -124,24 +124,140 @@ class Test_Functionality(unittest.TestCase):
         res = m.vdot(m, spaces=1)
         assert_allclose(res.local_data, 37.5)
 
+    def test_lock(self):
+        s1 = ift.RGSpace((10,))
+        f1 = ift.Field(s1, 27)
+        assert_equal(f1.locked, False)
+        f1.lock()
+        assert_equal(f1.locked, True)
+        with assert_raises(ValueError):
+            f1 += f1
+        assert_equal(f1.locked_copy() is f1, True)
+
+    def test_fill(self):
+        s1 = ift.RGSpace((10,))
+        f1 = ift.Field(s1, 27)
+        assert_equal(f1.fill(10).local_data, 10)
+
+    def test_dataconv(self):
+        s1 = ift.RGSpace((10,))
+        ld = np.arange(ift.dobj.local_shape(s1.shape)[0])
+        gd = np.arange(s1.shape[0])
+        assert_equal(ld, ift.from_local_data(s1, ld).local_data)
+        assert_equal(gd, ift.from_global_data(s1, gd).to_global_data())
+
+    def test_cast_domain(self):
+        s1 = ift.RGSpace((10,))
+        s2 = ift.RGSpace((10,), distances=20.)
+        d = np.arange(s1.shape[0])
+        d2 = ift.from_global_data(s1, d).cast_domain(s2).to_global_data()
+        assert_equal(d, d2)
+
+    def test_empty_domain(self):
+        f = ift.Field((), 5)
+        assert_equal(f.to_global_data(), 5)
+        f = ift.Field(None, 5)
+        assert_equal(f.to_global_data(), 5)
+        assert_equal(f.empty_copy().domain, f.domain)
+        assert_equal(f.empty_copy().dtype, f.dtype)
+        assert_equal(f.copy().domain, f.domain)
+        assert_equal(f.copy().dtype, f.dtype)
+        assert_equal(f.copy().local_data, f.local_data)
+        assert_equal(f.copy() is f, False)
+
+    def test_trivialities(self):
+        s1 = ift.RGSpace((10,))
+        f1 = ift.Field(s1, 27)
+        assert_equal(f1.local_data, f1.real.local_data)
+        f1 = ift.Field(s1, 27.+3j)
+        assert_equal(f1.real.local_data, 27.)
+        assert_equal(f1.imag.local_data, 3.)
+        assert_equal(f1.local_data, +f1.local_data)
+        assert_equal(f1.sum(), f1.sum(0))
+        f1 = ift.from_global_data(s1, np.arange(10))
+        assert_equal(f1.min(), 0)
+        assert_equal(f1.max(), 9)
+        assert_equal(f1.prod(), 0)
+
+    def test_weight(self):
+        s1 = ift.RGSpace((10,))
+        f = ift.Field(s1, 10.)
+        f2 = f.copy()
+        f.weight(1, out=f2)
+        assert_equal(f.weight(1).local_data, f2.local_data)
+        assert_equal(f.total_volume(), 1)
+        assert_equal(f.total_volume(0), 1)
+        assert_equal(f.total_volume((0,)), 1)
+        assert_equal(f.scalar_weight(), 0.1)
+        assert_equal(f.scalar_weight(0), 0.1)
+        assert_equal(f.scalar_weight((0,)), 0.1)
+        s1 = ift.GLSpace(10)
+        f = ift.Field(s1, 10.)
+        assert_equal(f.scalar_weight(), None)
+        assert_equal(f.scalar_weight(0), None)
+        assert_equal(f.scalar_weight((0,)), None)
+
+    @expand(product([ift.RGSpace(10), ift.GLSpace(10)],
+                    [np.float64, np.complex128]))
+    def test_reduction(self, dom, dt):
+        s1 = ift.Field(dom, 1., dtype=dt)
+        assert_allclose(s1.mean(), 1.)
+        assert_allclose(s1.mean(0), 1.)
+        assert_allclose(s1.var(), 0., atol=1e-14)
+        assert_allclose(s1.var(0), 0., atol=1e-14)
+        assert_allclose(s1.std(), 0., atol=1e-14)
+        assert_allclose(s1.std(0), 0., atol=1e-14)
+
+    def test_err(self):
+        s1 = ift.RGSpace((10,))
+        s2 = ift.RGSpace((11,))
+        f1 = ift.Field(s1, 27)
+        with assert_raises(ValueError):
+            f2 = ift.Field(s2, f1)
+        with assert_raises(ValueError):
+            f2 = ift.Field(s2, f1.val)
+        with assert_raises(TypeError):
+            f2 = ift.Field(s2, "xyz")
+        with assert_raises(TypeError):
+            if f1:
+                pass
+        with assert_raises(TypeError):
+            f1.full((2, 4, 6))
+        with assert_raises(TypeError):
+            f2 = ift.Field(None, None)
+        with assert_raises(ValueError):
+            f2 = ift.Field(s1, None)
+        with assert_raises(ValueError):
+            f1.imag
+        with assert_raises(TypeError):
+            f1.vdot(42)
+        with assert_raises(ValueError):
+            f1.vdot(ift.Field(s2, 1.))
+        with assert_raises(TypeError):
+            f1.copy_content_from(1)
+        with assert_raises(ValueError):
+            f1.copy_content_from(ift.Field(s2, 1.))
+        with assert_raises(TypeError):
+            ift.full(s1, [2, 3])
+
     def test_stdfunc(self):
         s = ift.RGSpace((200,))
         f = ift.Field(s, 27)
         assert_equal(f.local_data, 27)
         assert_equal(f.shape, (200,))
         assert_equal(f.dtype, np.int)
-        fx = ift.Field.empty_like(f)
+        fx = ift.empty(f.domain, f.dtype)
         assert_equal(f.dtype, fx.dtype)
         assert_equal(f.shape, fx.shape)
-        fx = ift.Field.zeros_like(f)
+        fx = ift.full(f.domain, 0)
         assert_equal(f.dtype, fx.dtype)
         assert_equal(f.shape, fx.shape)
         assert_equal(fx.local_data, 0)
-        fx = ift.Field.ones_like(f)
+        fx = ift.full(f.domain, 1)
         assert_equal(f.dtype, fx.dtype)
         assert_equal(f.shape, fx.shape)
         assert_equal(fx.local_data, 1)
-        fx = ift.Field.full_like(f, 67.)
+        fx = ift.full(f.domain, 67.)
         assert_equal(f.shape, fx.shape)
         assert_equal(fx.local_data, 67.)
         f = ift.Field.from_random("normal", s)

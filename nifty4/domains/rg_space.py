@@ -21,7 +21,7 @@ from builtins import range
 from functools import reduce
 import numpy as np
 from .structured_domain import StructuredDomain
-from ..field import Field, exp
+from ..field import Field
 from .. import dobj
 
 
@@ -144,6 +144,7 @@ class RGSpace(StructuredDomain):
 
     @staticmethod
     def _kernel(x, sigma):
+        from ..sugar import exp
         tmp = x*x
         tmp *= -2.*np.pi*np.pi*sigma*sigma
         exp(tmp, out=tmp)

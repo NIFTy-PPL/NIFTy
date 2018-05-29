@@ -54,7 +54,7 @@ def generate_krylov_samples(D_inv, S, j, N_samps, controller):
     """
     # RL FIXME: make consistent with complex numbers
     j = S.draw_sample(from_inverse=True) if j is None else j
-    energy = QuadraticEnergy(j*0., D_inv, j)
+    energy = QuadraticEnergy(j.empty_copy().fill(0.), D_inv, j)
     y = [S.draw_sample() for _ in range(N_samps)]
 
     status = controller.start(energy)
