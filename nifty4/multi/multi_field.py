@@ -29,6 +29,8 @@ class MultiField(object):
         val : dict
         """
         self._val = val
+        self._domain = MultiDomain.make(
+            {key: val.domain for key, val in self._val.items()})
 
     def __getitem__(self, key):
         return self._val[key]
@@ -44,8 +46,7 @@ class MultiField(object):
 
     @property
     def domain(self):
-        return MultiDomain.make(
-            {key: val.domain for key, val in self._val.items()})
+        return self._domain
 
     @property
     def dtype(self):
@@ -71,7 +72,7 @@ class MultiField(object):
         return self
 
     def _check_domain(self, other):
-        if other.domain != self.domain:
+        if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
 
     def vdot(self, x):
@@ -147,6 +148,17 @@ class MultiField(object):
         return MultiField({key: sub_field.conjugate()
                            for key, sub_field in self.items()})
 
+    def equivalent(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, MultiField):
+            return False
+        if self._domain != other._domain:
+            return False
+        for key, val in self._val.items():
+            if not val.equivalent(other[key]):
+                return False
+        return True
 
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",
