@@ -721,6 +721,15 @@ class Field(object):
                self._domain.__str__() + \
                "\n- val         = " + repr(self.val)
 
+    def equivalent(self, other):
+        if self is other:
+            return True
+        if not isinstance(other, Field):
+            return False
+        if self._domain != other._domain:
+            return False
+        return (self._val == other._val).all()
+
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",
            "__mul__", "__rmul__", "__imul__",

@@ -14,10 +14,11 @@ from .scipy_minimizer import ScipyMinimizer, NewtonCG, L_BFGS_B, ScipyCG
 from .energy import Energy
 from .quadratic_energy import QuadraticEnergy
 from .line_energy import LineEnergy
+from .energy_sum import EnergySum
 
 __all__ = ["LineSearch", "LineSearchStrongWolfe",
            "IterationController", "GradientNormController",
            "Minimizer", "ConjugateGradient", "NonlinearCG", "DescentMinimizer",
            "SteepestDescent", "VL_BFGS", "RelaxedNewton", "ScipyMinimizer",
            "NewtonCG", "L_BFGS_B", "ScipyCG", "Energy", "QuadraticEnergy",
-           "LineEnergy", "L_BFGS"]
+           "LineEnergy", "L_BFGS", "EnergySum"]
