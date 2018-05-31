@@ -98,7 +98,7 @@ class ScipyMinimizer(Minimizer):
         r = opt.minimize(hlp.fun, x, method=self._method, jac=hlp.jac,
                          hessp=hessp, options=self._options, bounds=bounds)
         if not r.success:
-            logger.error("Problem in Scipy minimization:", r.message)
+            logger.error("Problem in Scipy minimization: {}".format(r.message))
             return hlp._energy, IterationController.ERROR
         return hlp._energy, IterationController.CONVERGED
 

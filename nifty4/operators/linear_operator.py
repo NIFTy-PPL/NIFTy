@@ -130,16 +130,22 @@ class LinearOperator(NiftyMetaBase()):
 
     def __mul__(self, other):
         from .chain_operator import ChainOperator
+        if np.isscalar(other) and other == 1.:
+            return self
         other = self._toOperator(other, self.domain)
         return ChainOperator.make([self, other])
 
     def __rmul__(self, other):
         from .chain_operator import ChainOperator
+        if np.isscalar(other) and other == 1.:
+            return self
         other = self._toOperator(other, self.target)
         return ChainOperator.make([other, self])
 
     def __add__(self, other):
         from .sum_operator import SumOperator
+        if np.isscalar(other) and other == 0.:
+            return self
         other = self._toOperator(other, self.domain)
         return SumOperator.make([self, other], [False, False])
 
@@ -148,6 +154,8 @@ class LinearOperator(NiftyMetaBase()):
 
     def __sub__(self, other):
         from .sum_operator import SumOperator
+        if np.isscalar(other) and other == 0.:
+            return self
         other = self._toOperator(other, self.domain)
         return SumOperator.make([self, other], [False, True])
 

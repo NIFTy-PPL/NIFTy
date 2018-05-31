@@ -88,7 +88,7 @@ class Yango(Minimizer):
                     return energy, controller.ERROR
                 # Try 1D Newton Step
                 energy, success = self._line_searcher.perform_line_search(
-                    energy, (rr/rAr)*r, f_k_minus_1) 
+                    energy, (rr/rAr)*r, f_k_minus_1)
             else:
                 a = (rAr*rp - rAp*rr)/det
                 b = (pAp*rr - pAr*rp)/det

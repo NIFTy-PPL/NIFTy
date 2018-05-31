@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-from ..field import Field
 from ..sugar import from_random
 
 __all__ = ["check_value_gradient_consistency",
@@ -50,15 +49,16 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
         E2 = _get_acceptable_energy(E)
         val = E.value
         dir = E2.position - E.position
-        Enext = E2
+        # Enext = E2
         dirnorm = dir.norm()
-        dirder = E.gradient.vdot(dir)/dirnorm
         for i in range(50):
+            Emid = E.at(E.position + 0.5*dir)
+            dirder = Emid.gradient.vdot(dir)/dirnorm
             if abs((E2.value-val)/dirnorm-dirder) < tol:
                 break
             dir *= 0.5
             dirnorm *= 0.5
-            E2 = E2.at(E.position+dir)
+            E2 = Emid
         else:
             raise ValueError("gradient and value seem inconsistent")
         # E = Enext
@@ -67,19 +67,20 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
 def check_value_gradient_curvature_consistency(E, tol=1e-6, ntries=100):
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
+        val = E.value
         dir = E2.position - E.position
-        Enext = E2
+        # Enext = E2
         dirnorm = dir.norm()
-        dirder = E.gradient.vdot(dir)/dirnorm
-        dgrad = E.curvature(dir)/dirnorm
         for i in range(50):
-            gdiff = E2.gradient - E.gradient
-            if abs((E2.value-E.value)/dirnorm-dirder) < tol and \
+            Emid = E.at(E.position + 0.5*dir)
+            dirder = Emid.gradient.vdot(dir)/dirnorm
+            dgrad = Emid.curvature(dir)/dirnorm
+            if abs((E2.value-val)/dirnorm-dirder) < tol and \
                (abs((E2.gradient-E.gradient)/dirnorm-dgrad) < tol).all():
                 break
             dir *= 0.5
             dirnorm *= 0.5
-            E2 = E2.at(E.position+dir)
+            E2 = Emid
         else:
             raise ValueError("gradient, value and curvature seem inconsistent")
         # E = Enext
