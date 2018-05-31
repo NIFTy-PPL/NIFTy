@@ -64,4 +64,3 @@ class EnergySum(Energy):
         from .conjugate_gradient import ConjugateGradient
         return InversionEnabler(
             res, ConjugateGradient(self._min_controller), precon)
-
