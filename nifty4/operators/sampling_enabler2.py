@@ -19,10 +19,12 @@
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
 from ..logger import logger
+from .endomorphic_operator import EndomorphicOperator
 from .inversion_enabler import InversionEnabler
 import numpy as np
 
-class SamplingEnabler2(InversionEnabler):
+
+class SamplingEnabler2(EndomorphicOperator):
     """Class which augments the capability of another operator object via
     numerical inversion.
 
@@ -43,13 +45,27 @@ class SamplingEnabler2(InversionEnabler):
         convergence.
     """
 
-    def __init__(self, op, application_inverter, sampling_inverter, approximation=None):
-        super(SamplingEnabler2, self).__init__(op, application_inverter, approximation=approximation)
-        self.sampling_op = InversionEnabler(op, sampling_inverter,approximation=approximation)
+    def __init__(self, op, sampling_inverter, approximation=None):
+        super(SamplingEnabler2, self).__init__()
+        self._op = op
+        self._sampling_op = InversionEnabler(op, sampling_inverter,
+                                             approximation=approximation)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
             return self._op.draw_sample(from_inverse, dtype)
         except NotImplementedError:
             samp = self._op.draw_sample(not from_inverse, dtype)
-            return self.sampling_op.inverse_times(samp) if from_inverse else self(samp)
+            return self._sampling_op.inverse_times(samp) \
+                if from_inverse else self(samp)
+
+    @property
+    def domain(self):
+        return self._op.domain
+
+    @property
+    def capability(self):
+        return self._op.capability
+
+    def apply(self, x, mode):
+        return self._op.apply(x, mode)

@@ -19,11 +19,11 @@
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
 from ..logger import logger
-from .inversion_enabler import InversionEnabler
+from .endomorphic_operator import EndomorphicOperator
 import numpy as np
 
 
-class SamplingEnabler(InversionEnabler):
+class SamplingEnabler(EndomorphicOperator):
     """Class which augments the capability of another operator object via
     numerical inversion.
 
@@ -44,20 +44,33 @@ class SamplingEnabler(InversionEnabler):
         convergence.
     """
 
-    def __init__(self, likelihood, prior, application_inverter, sampling_inverter, approximation=None):
+    def __init__(self, likelihood, prior, sampling_inverter,
+                 approximation=None):
         self._op = likelihood + prior
-        super(SamplingEnabler, self).__init__(self._op, application_inverter, approximation=approximation )
-        self.likelihood = likelihood
-        self.prior = prior
-        self.sampling_inverter = sampling_inverter
+        super(SamplingEnabler, self).__init__()
+        self._likelihood = likelihood
+        self._prior = prior
+        self._sampling_inverter = sampling_inverter
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
             return self._op.draw_sample(from_inverse, dtype)
         except NotImplementedError:
-            s = self.prior.draw_sample()
-            sp = self.prior.inverse_times(s)
-            nj = self.likelihood.draw_sample()
-            energy = QuadraticEnergy(s, self._op, sp + nj, _grad=self.likelihood(s) - nj)
-            energy, convergence = self.sampling_inverter(energy)
+            s = self._prior.draw_sample()
+            sp = self._prior.inverse_times(s)
+            nj = self._likelihood.draw_sample()
+            energy = QuadraticEnergy(s, self._op, sp + nj,
+                                     _grad=self._likelihood(s) - nj)
+            energy, convergence = self._sampling_inverter(energy)
             return energy.position
+
+    @property
+    def domain(self):
+        return self._op.domain
+
+    @property
+    def capability(self):
+        return self._op.capability
+
+    def apply(self, x, mode):
+        return self._op.apply(x, mode)

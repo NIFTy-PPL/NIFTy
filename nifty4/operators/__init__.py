@@ -18,4 +18,5 @@ __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
-           "InversionEnabler", "SandwichOperator",'SamplingEnabler', 'SamplingEnabler2']
+           "InversionEnabler", "SandwichOperator", "SamplingEnabler",
+           "SamplingEnabler2"]

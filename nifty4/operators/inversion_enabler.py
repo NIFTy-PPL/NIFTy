@@ -55,10 +55,6 @@ class InversionEnabler(EndomorphicOperator):
         return self._op.domain
 
     @property
-    def target(self):
-        return self._op.target
-
-    @property
     def capability(self):
         return self._addInverse[self._op.capability]
 

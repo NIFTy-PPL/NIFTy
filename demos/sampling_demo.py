@@ -38,14 +38,17 @@ N_iter = 300
 IC = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=N_iter)
 inverter = ift.ConjugateGradient(IC)
 sampling_inverter = ift.ConjugateGradient(IC)
-D_inv_1 = ift.SamplingEnabler(ift.SandwichOperator.make(R_p, N.inverse), S.inverse, inverter, sampling_inverter)
+D_inv_1 = ift.SamplingEnabler(ift.SandwichOperator.make(R_p, N.inverse),
+                              S.inverse, sampling_inverter)
+D_inv_1 = ift.InversionEnabler(D_inv_1, inverter)
 
 
-D_inv_2 = ift.SamplingEnabler2(D_inv, inverter, sampling_inverter)
+D_inv_2 = ift.SamplingEnabler2(D_inv, sampling_inverter)
 
-
-samps_1 = [D_inv_1.draw_sample(from_inverse=True) for i in range(N_samps)] #GOOD
-samps_2 = [D_inv_2.draw_sample(from_inverse=True) for i in range(N_samps)] #BAD
+# GOOD
+samps_1 = [D_inv_1.draw_sample(from_inverse=True) for i in range(N_samps)]
+# BAD
+samps_2 = [D_inv_2.draw_sample(from_inverse=True) for i in range(N_samps)]
 
 m = D_inv_1.inverse_times(j)
 m_x = sky(m)
@@ -63,7 +66,8 @@ for i in range(N_samps):
     else:
         plt.plot(sky(samps_2[i]).to_global_data()[290:360], color='b',
                  **pltdict)
-        plt.plot(sky(samps_1[i]).to_global_data()[290:360], color='r', **pltdict)
+        plt.plot(sky(samps_1[i]).to_global_data()[290:360], color='r',
+                 **pltdict)
 plt.plot((s_x - m_x).to_global_data()[290:360], color='k',
          label='signal - mean')
 plt.title('Comparison of conservative vs default samples near area of low noise')
