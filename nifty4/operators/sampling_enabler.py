@@ -19,11 +19,11 @@
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
 from ..logger import logger
-from .endomorphic_operator import EndomorphicOperator
+from .inversion_enabler import InversionEnabler
 import numpy as np
 
 
-class InversionEnabler(EndomorphicOperator):
+class SamplingEnabler(InversionEnabler):
     """Class which augments the capability of another operator object via
     numerical inversion.
 
@@ -44,40 +44,20 @@ class InversionEnabler(EndomorphicOperator):
         convergence.
     """
 
-    def __init__(self, op, inverter, approximation=None):
-        super(InversionEnabler, self).__init__()
-        self._op = op
-        self._inverter = inverter
-        self._approximation = approximation
-
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def target(self):
-        return self._op.target
-
-    @property
-    def capability(self):
-        return self._addInverse[self._op.capability]
-
-    def apply(self, x, mode):
-        self._check_mode(mode)
-        if self._op.capability & mode:
-            return self._op.apply(x, mode)
-
-        x0 = x.empty_copy().fill(0.)
-        invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
-        invop = self._op._flip_modes(self._ilog[invmode])
-        prec = self._approximation
-        if prec is not None:
-            prec = prec._flip_modes(self._ilog[mode])
-        energy = QuadraticEnergy(x0, invop, x)
-        r, stat = self._inverter(energy, preconditioner=prec)
-        if stat != IterationController.CONVERGED:
-            logger.warning("Error detected during operator inversion")
-        return r.position
+    def __init__(self, likelihood, prior, application_inverter, sampling_inverter, approximation=None):
+        self._op = likelihood + prior
+        super(SamplingEnabler, self).__init__(self._op, application_inverter, approximation=approximation )
+        self.likelihood = likelihood
+        self.prior = prior
+        self.sampling_inverter = sampling_inverter
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        return self._op.draw_sample(from_inverse, dtype)
+        try:
+            return self._op.draw_sample(from_inverse, dtype)
+        except NotImplementedError:
+            s = self.prior.draw_sample()
+            sp = self.prior.inverse_times(s)
+            nj = self.likelihood.draw_sample()
+            energy = QuadraticEnergy(s, self._op, sp + nj, _grad=self.likelihood(s) - nj)
+            energy, convergence = self.sampling_inverter(energy)
+            return energy.position

@@ -19,11 +19,10 @@
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..minimization.iteration_controller import IterationController
 from ..logger import logger
-from .endomorphic_operator import EndomorphicOperator
+from .inversion_enabler import InversionEnabler
 import numpy as np
 
-
-class InversionEnabler(EndomorphicOperator):
+class SamplingEnabler2(InversionEnabler):
     """Class which augments the capability of another operator object via
     numerical inversion.
 
@@ -44,40 +43,13 @@ class InversionEnabler(EndomorphicOperator):
         convergence.
     """
 
-    def __init__(self, op, inverter, approximation=None):
-        super(InversionEnabler, self).__init__()
-        self._op = op
-        self._inverter = inverter
-        self._approximation = approximation
-
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def target(self):
-        return self._op.target
-
-    @property
-    def capability(self):
-        return self._addInverse[self._op.capability]
-
-    def apply(self, x, mode):
-        self._check_mode(mode)
-        if self._op.capability & mode:
-            return self._op.apply(x, mode)
-
-        x0 = x.empty_copy().fill(0.)
-        invmode = self._modeTable[self.INVERSE_BIT][self._ilog[mode]]
-        invop = self._op._flip_modes(self._ilog[invmode])
-        prec = self._approximation
-        if prec is not None:
-            prec = prec._flip_modes(self._ilog[mode])
-        energy = QuadraticEnergy(x0, invop, x)
-        r, stat = self._inverter(energy, preconditioner=prec)
-        if stat != IterationController.CONVERGED:
-            logger.warning("Error detected during operator inversion")
-        return r.position
+    def __init__(self, op, application_inverter, sampling_inverter, approximation=None):
+        super(SamplingEnabler2, self).__init__(op, application_inverter, approximation=approximation)
+        self.sampling_op = InversionEnabler(op, sampling_inverter,approximation=approximation)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        return self._op.draw_sample(from_inverse, dtype)
+        try:
+            return self._op.draw_sample(from_inverse, dtype)
+        except NotImplementedError:
+            samp = self._op.draw_sample(not from_inverse, dtype)
+            return self.sampling_op.inverse_times(samp) if from_inverse else self(samp)
