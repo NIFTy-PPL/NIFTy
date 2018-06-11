@@ -21,6 +21,7 @@ import numpy as np
 from .domains.power_space import PowerSpace
 from .field import Field
 from .multi.multi_field import MultiField
+from .multi.block_diagonal_operator import BlockDiagonalOperator
 from .multi.multi_domain import MultiDomain
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.scaling_operator import ScalingOperator
