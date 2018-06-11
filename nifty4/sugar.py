@@ -23,6 +23,7 @@ from .field import Field
 from .multi.multi_field import MultiField
 from .multi.multi_domain import MultiDomain
 from .operators.diagonal_operator import DiagonalOperator
+from .operators.scaling_operator import ScalingOperator
 from .operators.power_distributor import PowerDistributor
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
@@ -32,7 +33,7 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'empty', 'from_global_data', 'from_local_data',
            'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'conjugate',
-           'get_signal_variance']
+           'get_signal_variance', 'makeOp']
 
 
 def PS_field(pspace, func):
@@ -231,6 +232,18 @@ def makeDomain(domain):
         return MultiDomain.make(domain)
     return DomainTuple.make(domain)
 
+
+def makeOp(input, domain=None):
+    if isinstance(input, Field):
+        return DiagonalOperator(input)
+    if isinstance(input, MultiField):
+        return BlockDiagonalOperator({key: makeOp(val)
+                                      for key, val in input.items()})
+    if np.isscalar(input):
+        if domain is None:
+            raise ValueError("domain needs to be set")
+        return ScalingOperator(input, domain)
+    raise NotImplementedError
 
 # Arithmetic functions working on Fields
 
