@@ -118,12 +118,9 @@ class LinearOperator(NiftyMetaBase()):
 
     @staticmethod
     def _toOperator(thing, dom):
-        from .diagonal_operator import DiagonalOperator
         from .scaling_operator import ScalingOperator
         if isinstance(thing, LinearOperator):
             return thing
-        if isinstance(thing, Field):
-            return DiagonalOperator(thing)
         if np.isscalar(thing):
             return ScalingOperator(thing, dom)
         return NotImplemented
