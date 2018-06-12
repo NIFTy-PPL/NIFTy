@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..sugar import exp
+from ..sugar import exp, makeOp
 from ..minimization.energy import Energy
 from ..operators.smoothness_operator import SmoothnessOperator
 from ..operators.inversion_enabler import InversionEnabler
@@ -27,8 +27,9 @@ def _LinearizedPowerResponse(Instrument, nonlinearity, ht, Distributor, tau,
                              xi):
     power = exp(0.5*tau)
     position = ht(Distributor(power)*xi)
-    linearization = nonlinearity.derivative(position)
-    return 0.5*Instrument*linearization*ht*xi*Distributor*power
+    linearization = makeOp(nonlinearity.derivative(position))
+    return (0.5 * Instrument * linearization * ht * makeOp(xi) * Distributor *
+            makeOp(power))
 
 
 class NonlinearPowerEnergy(Energy):
