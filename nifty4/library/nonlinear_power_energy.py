@@ -28,8 +28,8 @@ def _LinearizedPowerResponse(Instrument, nonlinearity, ht, Distributor, tau,
     power = exp(0.5*tau)
     position = ht(Distributor(power)*xi)
     linearization = makeOp(nonlinearity.derivative(position))
-    return (makeOp(0.5, Instrument.target) * Instrument * linearization * ht *
-            makeOp(xi) * Distributor * makeOp(power))
+    return (0.5 * Instrument * linearization * ht * makeOp(xi) * Distributor *
+            makeOp(power))
 
 
 class NonlinearPowerEnergy(Energy):
@@ -138,6 +138,5 @@ class NonlinearPowerEnergy(Energy):
                 self.position, xi_sample)
             op = LinearizedResponse.adjoint*self.N.inverse*LinearizedResponse
             result = op if result is None else result + op
-        result = (result*makeOp(1./len(self.xi_sample_list), result.domain) +
-                  self.T)
+        result = result*(1./len(self.xi_sample_list)) + self.T
         return InversionEnabler(result, self.inverter)

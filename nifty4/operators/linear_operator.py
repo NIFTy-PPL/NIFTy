@@ -116,17 +116,50 @@ class LinearOperator(NiftyMetaBase()):
         the adjoint of this operator."""
         return self._flip_modes(self.ADJOINT_BIT)
 
+    @staticmethod
+    def _toOperator(thing, dom):
+        from .scaling_operator import ScalingOperator
+        if isinstance(thing, LinearOperator):
+            return thing
+        if np.isscalar(thing):
+            return ScalingOperator(thing, dom)
+        return NotImplemented
+
     def __mul__(self, other):
         from .chain_operator import ChainOperator
+        if np.isscalar(other) and other == 1.:
+            return self
+        other = self._toOperator(other, self.domain)
         return ChainOperator.make([self, other])
+
+    def __rmul__(self, other):
+        from .chain_operator import ChainOperator
+        if np.isscalar(other) and other == 1.:
+            return self
+        other = self._toOperator(other, self.target)
+        return ChainOperator.make([other, self])
 
     def __add__(self, other):
         from .sum_operator import SumOperator
+        if np.isscalar(other) and other == 0.:
+            return self
+        other = self._toOperator(other, self.domain)
         return SumOperator.make([self, other], [False, False])
+
+    def __radd__(self, other):
+        return self.__add__(other)
 
     def __sub__(self, other):
         from .sum_operator import SumOperator
+        if np.isscalar(other) and other == 0.:
+            return self
+        other = self._toOperator(other, self.domain)
         return SumOperator.make([self, other], [False, True])
+
+    def __rsub__(self, other):
+        from .sum_operator import SumOperator
+        other = self._toOperator(other, self.domain)
+        return SumOperator.make([other, self], [False, True])
 
     @abc.abstractproperty
     def capability(self):

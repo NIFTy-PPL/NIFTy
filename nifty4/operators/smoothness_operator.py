@@ -18,7 +18,6 @@
 
 from .scaling_operator import ScalingOperator
 from .laplace_operator import LaplaceOperator
-from ..sugar import makeOp
 
 
 def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
@@ -52,4 +51,4 @@ def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
     if strength == 0.:
         return ScalingOperator(0., domain)
     laplace = LaplaceOperator(domain, logarithmic=logarithmic, space=space)
-    return makeOp(strength**2, laplace.domain)*laplace.adjoint*laplace
+    return (strength**2)*laplace.adjoint*laplace

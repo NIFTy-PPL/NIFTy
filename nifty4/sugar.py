@@ -24,7 +24,6 @@ from .multi.multi_field import MultiField
 from .multi.block_diagonal_operator import BlockDiagonalOperator
 from .multi.multi_domain import MultiDomain
 from .operators.diagonal_operator import DiagonalOperator
-from .operators.scaling_operator import ScalingOperator
 from .operators.power_distributor import PowerDistributor
 from .domain_tuple import DomainTuple
 from . import dobj, utilities
@@ -234,16 +233,12 @@ def makeDomain(domain):
     return DomainTuple.make(domain)
 
 
-def makeOp(input, domain=None):
+def makeOp(input):
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
         return BlockDiagonalOperator({key: makeOp(val)
                                       for key, val in input.items()})
-    if np.isscalar(input):
-        if domain is None:
-            raise ValueError("domain needs to be set")
-        return ScalingOperator(input, domain)
     raise NotImplementedError
 
 # Arithmetic functions working on Fields
