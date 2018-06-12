@@ -24,7 +24,8 @@ from ..sugar import makeOp
 
 class NonlinearWienerFilterEnergy(Energy):
     def __init__(self, position, d, Instrument, nonlinearity, ht, power, N, S,
-                 inverter=None):
+                 inverter=None,
+                 sampling_inverter=None):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
         self.d = d.lock()
         self.Instrument = Instrument
@@ -37,6 +38,9 @@ class NonlinearWienerFilterEnergy(Energy):
         self.N = N
         self.S = S
         self.inverter = inverter
+        if sampling_inverter==None:
+            sampling_inverter = inverter
+        self.sampling_inverter = sampling_inverter
         t1 = S.inverse_times(position)
         t2 = N.inverse_times(residual)
         self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
@@ -60,4 +64,4 @@ class NonlinearWienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return WienerFilterCurvature(self.R, self.N, self.S, self.inverter)
+        return WienerFilterCurvature(self.R, self.N, self.S, self.inverter, self.sampling_inverter)
