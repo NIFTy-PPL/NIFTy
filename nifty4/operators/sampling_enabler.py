@@ -56,8 +56,8 @@ class SamplingEnabler(EndomorphicOperator):
         try:
             return self._op.draw_sample(from_inverse, dtype)
         except NotImplementedError:
-            s = self._prior.draw_sample()
-            sp = self._prior.inverse_times(s)
+            s = self._prior.draw_sample(from_inverse=True)
+            sp = self._prior(s)
             nj = self._likelihood.draw_sample()
             energy = QuadraticEnergy(s, self._op, sp + nj,
                                      _grad=self._likelihood(s) - nj)
