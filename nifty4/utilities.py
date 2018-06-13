@@ -166,6 +166,8 @@ def nthreads():
         import os
         nthreads._val = int(os.getenv("OMP_NUM_THREADS", "1"))
     return nthreads._val
+
+
 nthreads._val = None
 
 # Optional extra arguments for the FFT calls

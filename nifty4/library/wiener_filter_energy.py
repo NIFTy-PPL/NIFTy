@@ -20,7 +20,8 @@ from ..minimization.quadratic_energy import QuadraticEnergy
 from .wiener_filter_curvature import WienerFilterCurvature
 
 
-def WienerFilterEnergy(position, d, R, N, S, inverter=None, sampling_inverter=None):
+def WienerFilterEnergy(position, d, R, N, S, inverter=None,
+                       sampling_inverter=None):
     """The Energy for the Wiener filter.
 
     It covers the case of linear measurement with

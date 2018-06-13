@@ -211,6 +211,7 @@ class data_object(object):
     def fill(self, value):
         self._data.fill(value)
 
+
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",
            "__mul__", "__rmul__", "__imul__",

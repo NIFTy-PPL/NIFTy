@@ -52,7 +52,7 @@ class DiagonalOperator_Tests(unittest.TestCase):
         diag = ift.Field.from_random('normal', domain=space)
         D = ift.DiagonalOperator(diag)
         tt1 = D.times(D.inverse_times(rand1))
-        assert_allclose(rand1.to_global_data(), tt1.to_global_data())
+        assert_allclose(rand1.local_data, tt1.local_data)
 
     @expand(product(spaces))
     def test_times(self, space):
@@ -91,4 +91,4 @@ class DiagonalOperator_Tests(unittest.TestCase):
         diag = ift.Field.from_random('normal', domain=space)
         D = ift.DiagonalOperator(diag)
         diag_op = D(ift.Field.full(space, 1.))
-        assert_allclose(diag.to_global_data(), diag_op.to_global_data())
+        assert_allclose(diag.local_data, diag_op.local_data)

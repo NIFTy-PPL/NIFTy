@@ -38,7 +38,7 @@ class NonlinearWienerFilterEnergy(Energy):
         self.N = N
         self.S = S
         self.inverter = inverter
-        if sampling_inverter==None:
+        if sampling_inverter is None:
             sampling_inverter = inverter
         self.sampling_inverter = sampling_inverter
         t1 = S.inverse_times(position)
@@ -64,4 +64,5 @@ class NonlinearWienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return WienerFilterCurvature(self.R, self.N, self.S, self.inverter, self.sampling_inverter)
+        return WienerFilterCurvature(self.R, self.N, self.S, self.inverter,
+                                     self.sampling_inverter)

@@ -155,9 +155,9 @@ class Test_Functionality(unittest.TestCase):
 
     def test_empty_domain(self):
         f = ift.Field((), 5)
-        assert_equal(f.to_global_data(), 5)
+        assert_equal(f.local_data, 5)
         f = ift.Field(None, 5)
-        assert_equal(f.to_global_data(), 5)
+        assert_equal(f.local_data, 5)
         assert_equal(f.empty_copy().domain, f.domain)
         assert_equal(f.empty_copy().dtype, f.dtype)
         assert_equal(f.copy().domain, f.domain)

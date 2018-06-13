@@ -65,8 +65,8 @@ class Test_Minimizers(unittest.TestCase):
             raise SkipTest
 
         assert_equal(convergence, IC.CONVERGED)
-        assert_allclose(energy.position.to_global_data(),
-                        1./covariance_diagonal.to_global_data(),
+        assert_allclose(energy.position.local_data,
+                        1./covariance_diagonal.local_data,
                         rtol=1e-3, atol=1e-3)
 
     @expand(product(minimizers+newton_minimizers))
@@ -129,7 +129,7 @@ class Test_Minimizers(unittest.TestCase):
             raise SkipTest
 
         assert_equal(convergence, IC.CONVERGED)
-        assert_allclose(energy.position.to_global_data(), 1.,
+        assert_allclose(energy.position.local_data, 1.,
                         rtol=1e-3, atol=1e-3)
 
     @expand(product(minimizers+slow_minimizers))
@@ -167,7 +167,7 @@ class Test_Minimizers(unittest.TestCase):
             raise SkipTest
 
         assert_equal(convergence, IC.CONVERGED)
-        assert_allclose(energy.position.to_global_data(), 0.,
+        assert_allclose(energy.position.local_data, 0.,
                         atol=1e-3)
 
     @expand(product(minimizers+newton_minimizers+slow_minimizers))
@@ -205,5 +205,4 @@ class Test_Minimizers(unittest.TestCase):
             raise SkipTest
 
         assert_equal(convergence, IC.CONVERGED)
-        assert_allclose(energy.position.to_global_data(), 0.,
-                        atol=1e-3)
+        assert_allclose(energy.position.local_data, 0., atol=1e-3)

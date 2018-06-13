@@ -30,4 +30,5 @@ def _logger_init():
         res.addHandler(logging.NullHandler())
     return res
 
+
 logger = _logger_init()

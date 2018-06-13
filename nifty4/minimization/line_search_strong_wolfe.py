@@ -25,7 +25,8 @@ from ..logger import logger
 
 
 class LineSearchStrongWolfe(LineSearch):
-    """Class for finding a step size that satisfies the strong Wolfe conditions.
+    """Class for finding a step size that satisfies the strong Wolfe
+    conditions.
 
     Algorithm contains two stages. It begins with a trial step length and
     keeps increasing it until it finds an acceptable step length or an

@@ -21,7 +21,8 @@ from ..utilities import NiftyMetaBase
 
 
 class LineSearch(NiftyMetaBase()):
-    """Class for determining the optimal step size along some descent direction.
+    """Class for determining the optimal step size along some descent
+       direction.
 
     Parameters
     ----------
