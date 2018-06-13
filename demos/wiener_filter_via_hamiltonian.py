@@ -54,7 +54,8 @@ if __name__ == "__main__":
 
     # Initialize Wiener filter energy
     energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S,
-                                            inverter=inverter)
+                                            inverter=inverter,
+                                            sampling_inverter=inverter)
 
     energy, convergence = minimizer(energy)
     m = energy.position
