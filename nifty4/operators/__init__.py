@@ -12,11 +12,9 @@ from .power_distributor import PowerDistributor
 from .inversion_enabler import InversionEnabler
 from .sandwich_operator import SandwichOperator
 from .sampling_enabler import SamplingEnabler
-from .sampling_enabler_greedy import GreedySamplingEnabler
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
-           "InversionEnabler", "SandwichOperator", "SamplingEnabler",
-           "GreedySamplingEnabler"]
+           "InversionEnabler", "SandwichOperator", "SamplingEnabler"]
