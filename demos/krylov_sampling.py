@@ -40,7 +40,8 @@ IC = ift.GradientNormController(tol_abs_gradnorm=1e-3, iteration_limit=N_iter)
 m, samps = ift.library.generate_krylov_samples(D_inv, S, j, N_samps, IC)
 m_x = sky(m)
 inverter = ift.ConjugateGradient(IC)
-curv = ift.library.WienerFilterCurvature(S=S, N=N, R=R_p, inverter=inverter)
+curv = ift.library.WienerFilterCurvature(S=S, N=N, R=R_p, inverter=inverter,
+                                         sampling_inverter=inverter)
 samps_old = [curv.draw_sample(from_inverse=True) for i in range(N_samps)]
 
 plt.plot(d.to_global_data(), '+', label="data", alpha=.5)
