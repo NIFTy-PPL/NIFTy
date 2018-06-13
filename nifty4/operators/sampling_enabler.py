@@ -16,11 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..minimization.quadratic_energy import QuadraticEnergy
-from ..minimization.iteration_controller import IterationController
-from ..logger import logger
-from .endomorphic_operator import EndomorphicOperator
 import numpy as np
+
+from ..minimization.quadratic_energy import QuadraticEnergy
+from .endomorphic_operator import EndomorphicOperator
 
 
 class SamplingEnabler(EndomorphicOperator):

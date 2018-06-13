@@ -16,15 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..minimization.quadratic_energy import QuadraticEnergy
-from ..minimization.iteration_controller import IterationController
-from ..logger import logger
-from .endomorphic_operator import EndomorphicOperator
-from .inversion_enabler import InversionEnabler
 import numpy as np
 
+from .endomorphic_operator import EndomorphicOperator
+from .inversion_enabler import InversionEnabler
 
-class SamplingEnabler2(EndomorphicOperator):
+
+class GreedySamplingEnabler(EndomorphicOperator):
     """Class which augments the capability of another operator object via
     numerical inversion.
 
@@ -46,7 +44,7 @@ class SamplingEnabler2(EndomorphicOperator):
     """
 
     def __init__(self, op, sampling_inverter, approximation=None):
-        super(SamplingEnabler2, self).__init__()
+        super(GreedySamplingEnabler, self).__init__()
         self._op = op
         self._sampling_op = InversionEnabler(op, sampling_inverter,
                                              approximation=approximation)

@@ -43,7 +43,7 @@ D_inv_1 = ift.SamplingEnabler(ift.SandwichOperator.make(R_p, N.inverse),
 D_inv_1 = ift.InversionEnabler(D_inv_1, inverter)
 
 
-D_inv_2 = ift.SamplingEnabler2(D_inv, sampling_inverter)
+D_inv_2 = ift.GreedySamplingEnabler(D_inv, sampling_inverter)
 
 # GOOD
 samps_1 = [D_inv_1.draw_sample(from_inverse=True) for i in range(N_samps)]
