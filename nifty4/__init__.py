@@ -4,8 +4,8 @@ from . import dobj
 from .domains import *
 from .domain_tuple import DomainTuple
 from .field import Field
-from .operators import *
 from .nonlinear_operators import *
+from .operators import *
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
 from .minimization import *

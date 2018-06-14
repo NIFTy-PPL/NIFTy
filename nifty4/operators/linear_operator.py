@@ -17,8 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-from ..utilities import NiftyMetaBase
+
 import numpy as np
+
+from ..utilities import NiftyMetaBase
 
 
 class LinearOperator(NiftyMetaBase()):
@@ -196,7 +198,10 @@ class LinearOperator(NiftyMetaBase()):
         raise NotImplementedError
 
     def __call__(self, x):
+        from ..nonlinear_operators import LinearModel, NonlinearOperator
         """Same as :meth:`times`"""
+        if isinstance(x, NonlinearOperator):
+            return LinearModel(x, self)
         return self.apply(x, self.TIMES)
 
     def times(self, x):

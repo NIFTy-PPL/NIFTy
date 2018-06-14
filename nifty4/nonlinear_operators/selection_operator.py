@@ -1,10 +1,10 @@
-from ..multi import MultiDomain, MultiField
 from ..operators import LinearOperator
 from ..sugar import full
 
 
 class SelectionOperator(LinearOperator):
     def __init__(self, domain, key):
+        from ..multi import MultiDomain
         if not isinstance(domain, MultiDomain):
             raise TypeError("Domain must be a MultiDomain")
         self._target = domain[key]
@@ -34,4 +34,5 @@ class SelectionOperator(LinearOperator):
                     result[key] = full(val, 0.)
                 else:
                     result[key] = x.copy()
+            from ..multi import MultiField
             return MultiField(result)

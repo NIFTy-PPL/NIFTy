@@ -1,6 +1,5 @@
 import nifty4 as ift
 
-from ..operators import LinearOperator
 from .selection_operator import SelectionOperator
 
 
@@ -25,7 +24,7 @@ class NonlinearOperator(object):
 
     def __getitem__(self, key):
         sel = SelectionOperator(self.value.domain, key)
-        return LinearModel(self.position, self, sel)
+        return sel(self)
 
     # TODO Support addition and multiplication with fields
     def __add__(self, other):
@@ -47,6 +46,7 @@ class NonlinearOperator(object):
         if isinstance(other, (float, int)):
             return self.__mul__(other)
         raise NotImplementedError
+
 
 
 def _joint_position(op1, op2):
@@ -123,17 +123,18 @@ class ScalarMul(NonlinearOperator):
 
 
 class LinearModel(NonlinearOperator):
-    def __init__(self, position, inp, lin_op):
+    def __init__(self, inp, lin_op):
         """
         Computes lin_op(inp) where lin_op is a Linear Operator
         """
-        super(LinearModel, self).__init__(position)
+        from ..operators import LinearOperator
+        super(LinearModel, self).__init__(inp.position)
 
         if not isinstance(lin_op, LinearOperator):
             raise TypeError("needs a LinearOperator as input")
 
-        self._inp = inp.at(position)
         self._lin_op = lin_op
+        self._inp = inp
         # FIXME This is a dirty hack!
         if isinstance(self._lin_op, SelectionOperator):
             self._lin_op = SelectionOperator(self._inp.value.domain,
@@ -143,4 +144,4 @@ class LinearModel(NonlinearOperator):
         self._gradient = self._lin_op*self._inp.gradient
 
     def at(self, position):
-        return self.__class__(position, self._inp, self._lin_op)
+        return self.__class__(self._inp.at(position), self._lin_op)
