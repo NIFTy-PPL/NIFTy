@@ -50,6 +50,7 @@ class SamplingEnabler(EndomorphicOperator):
         self._likelihood = likelihood
         self._prior = prior
         self._sampling_inverter = sampling_inverter
+        self._approximation = approximation
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
@@ -60,7 +61,7 @@ class SamplingEnabler(EndomorphicOperator):
             nj = self._likelihood.draw_sample()
             energy = QuadraticEnergy(s, self._op, sp + nj,
                                      _grad=self._likelihood(s) - nj)
-            energy, convergence = self._sampling_inverter(energy)
+            energy, convergence = self._sampling_inverter(energy, preconditioner=self._approximation.inverse)
             return energy.position
 
     @property
