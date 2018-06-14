@@ -48,9 +48,11 @@ if __name__ == "__main__":
     # Wiener filter
     j = R.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(name="inverter", tol_abs_gradnorm=1e-2)
+    sampling_ctrl = ift.GradientNormController(name="sampling",tol_abs_gradnorm=2e1)
     inverter = ift.ConjugateGradient(controller=ctrl)
+    sampling_inverter = ift.ConjugateGradient(controller=sampling_ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(
-        S=S, N=N, R=R, inverter=inverter, sampling_inverter=inverter)
+        S=S, N=N, R=R, inverter=inverter, sampling_inverter=sampling_inverter)
     m_k = wiener_curvature.inverse_times(j)
     m = ht(m_k)
 
@@ -60,6 +62,6 @@ if __name__ == "__main__":
     ift.plot(m, name="map.png", **plotdict)
 
     # sampling the uncertainty map
-    mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 5)
+    mean, variance = ift.probe_with_posterior_samples(wiener_curvature, ht, 50)
     ift.plot(ift.sqrt(variance), name="uncertainty.png", **plotdict)
     ift.plot(mean+m, name="posterior_mean.png", **plotdict)
