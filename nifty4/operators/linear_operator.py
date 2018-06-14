@@ -18,7 +18,6 @@
 
 import abc
 from ..utilities import NiftyMetaBase
-from ..field import Field
 import numpy as np
 
 
