@@ -61,7 +61,8 @@ class SamplingEnabler(EndomorphicOperator):
             nj = self._likelihood.draw_sample()
             energy = QuadraticEnergy(s, self._op, sp + nj,
                                      _grad=self._likelihood(s) - nj)
-            energy, convergence = self._sampling_inverter(energy, preconditioner=self._approximation.inverse)
+            energy, convergence = self._sampling_inverter(
+                energy, preconditioner=self._approximation.inverse)
             return energy.position
 
     @property

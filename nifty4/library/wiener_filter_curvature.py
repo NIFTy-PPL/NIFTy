@@ -46,7 +46,7 @@ def WienerFilterCurvature(R, N, S, inverter, sampling_inverter=None):
     """
     M = SandwichOperator.make(R, N.inverse)
     if sampling_inverter is not None:
-        op = SamplingEnabler(M, S.inverse, sampling_inverter, approximation=S.inverse)
+        op = SamplingEnabler(M, S.inverse, sampling_inverter, S.inverse)
     else:
         op = M + S.inverse
     return InversionEnabler(op, inverter, S.inverse)
