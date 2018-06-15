@@ -2,9 +2,9 @@ from ..operators import MultiSkyGradientOperator
 from .model import Model
 
 
-class ConstantModel(Model):
+class Constant(Model):
     def __init__(self, position, constant):
-        super(ConstantModel, self).__init__(position)
+        super(Constant, self).__init__(position)
         self._constant = constant
 
         self._value = self._constant

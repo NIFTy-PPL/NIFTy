@@ -1,7 +1,7 @@
-from .constant import ConstantModel
+from .constant import Constant
 from .local_nonlinearity import LocalModel
 from .model import LinearModel, Model
-from .position import PositionModel
+from .variable import Variable
 
-__all__ = ['Model', 'ConstantModel', 'LocalModel', 'PositionModel',
+__all__ = ['Model', 'Constant', 'LocalModel', 'Variable',
            'LinearModel']
