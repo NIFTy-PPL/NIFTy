@@ -26,7 +26,6 @@ class NonlinearOperator(object):
         sel = SelectionOperator(self.value.domain, key)
         return sel(self)
 
-    # TODO Support addition and multiplication with fields
     def __add__(self, other):
         assert isinstance(other, NonlinearOperator)
         return Add.make(self, other)
@@ -135,7 +134,6 @@ class LinearModel(NonlinearOperator):
 
         self._lin_op = lin_op
         self._inp = inp
-        # FIXME This is a dirty hack!
         if isinstance(self._lin_op, SelectionOperator):
             self._lin_op = SelectionOperator(self._inp.value.domain,
                                              self._lin_op._key)
