@@ -3,7 +3,7 @@ import nifty4 as ift
 from .selection_operator import SelectionOperator
 
 
-class NonlinearOperator(object):
+class Model(object):
     def __init__(self, position):
         self._position = position
 
@@ -27,17 +27,17 @@ class NonlinearOperator(object):
         return sel(self)
 
     def __add__(self, other):
-        assert isinstance(other, NonlinearOperator)
+        assert isinstance(other, Model)
         return Add.make(self, other)
 
     def __sub__(self, other):
-        assert isinstance(other, NonlinearOperator)
+        assert isinstance(other, Model)
         return Add.make(self, (-1) * other)
 
     def __mul__(self, other):
         if isinstance(other, (float, int)):
             return ScalarMul(self._position, other, self)
-        if isinstance(other, NonlinearOperator):
+        if isinstance(other, Model):
             return Mul.make(self, other)
         raise NotImplementedError
 
@@ -56,7 +56,7 @@ def _joint_position(op1, op2):
     return ift.MultiField(ab)
 
 
-class Mul(NonlinearOperator):
+class Mul(Model):
     """
     Please note: If you multiply two operators which share some keys in the
     position but have different values there, it is not guaranteed which value
@@ -81,7 +81,7 @@ class Mul(NonlinearOperator):
         return self.__class__(position, self._op1, self._op2)
 
 
-class Add(NonlinearOperator):
+class Add(Model):
     """
     Please note: If you add two operators which share some keys in the position
     but have different values there, it is not guaranteed which value will be
@@ -105,11 +105,11 @@ class Add(NonlinearOperator):
         return self.__class__(position, self._op1, self._op2)
 
 
-class ScalarMul(NonlinearOperator):
+class ScalarMul(Model):
     def __init__(self, position, factor, op):
         super(ScalarMul, self).__init__(position)
         assert isinstance(factor, (float, int))
-        assert isinstance(op, NonlinearOperator)
+        assert isinstance(op, Model)
 
         self._op = op.at(position)
         self._factor = factor
@@ -121,7 +121,7 @@ class ScalarMul(NonlinearOperator):
         return self.__class__(position, self._factor, self._op)
 
 
-class LinearModel(NonlinearOperator):
+class LinearModel(Model):
     def __init__(self, inp, lin_op):
         """
         Computes lin_op(inp) where lin_op is a Linear Operator

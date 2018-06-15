@@ -1,9 +1,9 @@
 from nifty4.sugar import makeOp
 
-from .nonlinear_operator import NonlinearOperator
+from .model import Model
 
 
-class LocalModel(NonlinearOperator):
+class LocalModel(Model):
     def __init__(self, position, inp, nonlinearity):
         """
         Computes nonlinearity(inp)

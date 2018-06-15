@@ -1,9 +1,9 @@
 import nifty4 as ift
 
-from .nonlinear_operator import NonlinearOperator
+from .model import Model
 
 
-class PositionModel(NonlinearOperator):
+class PositionModel(Model):
     """
     Returns the MultiField.
     """

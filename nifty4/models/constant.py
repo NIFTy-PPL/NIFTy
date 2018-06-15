@@ -1,8 +1,8 @@
 from ..operators import MultiSkyGradientOperator
-from .nonlinear_operator import NonlinearOperator
+from .model import Model
 
 
-class ConstantModel(NonlinearOperator):
+class ConstantModel(Model):
     def __init__(self, position, constant):
         super(ConstantModel, self).__init__(position)
         self._constant = constant
