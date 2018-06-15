@@ -1,3 +1,4 @@
+from nifty4.library.nonlinearities import Exponential, PositiveTanh, Tanh
 from nifty4.sugar import makeOp
 
 from .model import Model
@@ -18,3 +19,15 @@ class LocalModel(Model):
 
     def at(self, position):
         return self.__class__(self._inp.at(position), self._nonlinearity)
+
+
+def PointwiseExponential(inp):
+    return LocalModel(inp, Exponential())
+
+
+def PointwiseTanh(inp):
+    return LocalModel(inp, Tanh())
+
+
+def PointwisePositiveTanh(inp):
+    return LocalModel(inp, PositiveTanh())
