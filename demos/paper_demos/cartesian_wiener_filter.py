@@ -74,7 +74,8 @@ if __name__ == "__main__":
     # Wiener filter
     j = R.adjoint_times(N.inverse_times(data))
     ctrl = ift.GradientNormController(name="inverter", tol_abs_gradnorm=0.1)
-    sampling_ctrl = ift.GradientNormController(name="sampling",tol_abs_gradnorm=1e2)
+    sampling_ctrl = ift.GradientNormController(name="sampling",
+                                               tol_abs_gradnorm=1e2)
     inverter = ift.ConjugateGradient(controller=ctrl)
     sampling_inverter = ift.ConjugateGradient(controller=sampling_ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(

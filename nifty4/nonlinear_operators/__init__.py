@@ -3,4 +3,5 @@ from .constant import ConstantModel
 from .local_nonlinearity import LocalModel
 from .position import PositionModel
 
-__all__ = ['NonlinearOperator', 'ConstantModel', 'LocalModel', 'PositionModel', 'LinearModel']
+__all__ = ['NonlinearOperator', 'ConstantModel', 'LocalModel', 'PositionModel',
+           'LinearModel']

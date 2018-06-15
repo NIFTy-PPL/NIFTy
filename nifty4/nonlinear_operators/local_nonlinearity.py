@@ -16,7 +16,8 @@ class LocalModel(NonlinearOperator):
         self._value = nonlinearity(self._inp.value)
 
         # Gradient
-        self._gradient = makeOp(self._nonlinearity.derivative(self._inp.value))*self._inp.gradient
+        self._gradient = makeOp(
+            self._nonlinearity.derivative(self._inp.value))*self._inp.gradient
 
     def at(self, position):
         return self.__class__(position, self._inp, self._nonlinearity)

@@ -48,7 +48,6 @@ class NonlinearOperator(object):
         raise NotImplementedError
 
 
-
 def _joint_position(op1, op2):
     a = op1.position._val
     b = op2.position._val
@@ -60,9 +59,9 @@ def _joint_position(op1, op2):
 
 class Mul(NonlinearOperator):
     """
-    Please note: If you multiply two operators which share some keys in the position
-    but have different values there, it is not guaranteed which value will be
-    used for the sum. You shouldn't do that anyways.
+    Please note: If you multiply two operators which share some keys in the
+    position but have different values there, it is not guaranteed which value
+    will be used for the sum. You shouldn't do that anyways.
     """
     def __init__(self, position, op1, op2):
         super(Mul, self).__init__(position)
@@ -71,7 +70,8 @@ class Mul(NonlinearOperator):
         self._op2 = op2.at(position)
 
         self._value = self._op1.value * self._op2.value
-        self._gradient = ift.makeOp(self._op1.value) * self._op2.gradient + ift.makeOp(self._op2.value) * self._op1.gradient
+        self._gradient = (ift.makeOp(self._op1.value) * self._op2.gradient +
+                          ift.makeOp(self._op2.value) * self._op1.gradient)
 
     @staticmethod
     def make(op1, op2):
