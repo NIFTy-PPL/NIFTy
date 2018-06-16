@@ -1,6 +1,7 @@
 # Program to generate figures of article "Information theory for fields"
 # by Torsten Ensslin, Annalen der Physik, submitted to special edition
-# "Physics of Information" in April 2018
+# "Physics of Information" in April 2018, arXiv:1804.03350
+# to get exact figure of paper comment out lines marked by "COMMENT OUT" 
 
 import numpy as np
 import nifty4 as ift
@@ -25,8 +26,9 @@ if __name__ == "__main__":
     sigma_n = 0.2   # noise level
     sigma_n2 = sigma_n**2
     L = 1.          # Total length of interval or volume the field lives on
-    nprobes = 1000  # Number of probes for uncertainty quantification
-
+    nprobes = 1000  # Number of probes for uncertainty quantification used in paper
+    nprobes = 10    # COMMENT OUT TO REPRODUCE PAPER FIGURE EXACTLY
+    
     # Define resolution (pixels per dimension)
     N_pixels = 1024
 
