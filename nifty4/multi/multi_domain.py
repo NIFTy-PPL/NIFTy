@@ -49,7 +49,7 @@ class MultiDomain(frozendict):
 
     def __init__(self, domain, _callingfrommake=False):
         if not _callingfrommake:
-            raise NotImplementedError
+            raise NotImplementedError('To create a MultiDomain call `MultiDomain.make()`.')
         super(MultiDomain, self).__init__(domain)
 
     @staticmethod
