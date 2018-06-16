@@ -80,7 +80,7 @@ class SandwichOperator(EndomorphicOperator):
                 try:
                     s = self._cheese.draw_sample(from_inverse, dtype)
                     return self._bun.inverse_times(s)
-                except:
+                except NotImplementedError:
                     pass
             raise NotImplementedError(
                 "cannot draw from inverse of this operator")

@@ -43,6 +43,7 @@ class CustomResponse(ift.LinearOperator):
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
 
+
 if __name__ == "__main__":
     np.random.seed(43)
     # Set up physical constants

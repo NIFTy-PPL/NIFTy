@@ -11,6 +11,7 @@ def init_nu():
         data = comm.bcast(data, root=0)
         nu.reset_units(data[0])
 
+
 if __name__ == "__main__":
     # In MPI mode, the random seed for numericalunits must be set by hand
     init_nu()

@@ -14,8 +14,8 @@ def adjust_zero_mode(m0, t0):
     return (ift.Field.from_global_data(m0.domain, mtmp),
             ift.Field.from_global_data(t0.domain, ttmp))
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     noise_level = 1.
     p_spec = (lambda k: (.5 / (k + 1) ** 3))
 
