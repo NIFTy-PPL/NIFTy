@@ -147,10 +147,14 @@ class LOSResponse(LinearOperator):
             sigmas_up = np.zeros(nlos, dtype=np.float32)
         sigmas_low = np.array(sigmas_low)
         sigmas_up = np.array(sigmas_up)
-        assert starts.shape[0] == ndim, "dimension mismatch"
-        assert nlos == sigmas_low.shape[0], "dimension mismatch"
-        assert starts.shape == ends.shape, "dimension mismatch"
-        assert sigmas_low.shape == sigmas_up.shape, "dimension mismatch"
+        if starts.shape[0] != ndim:
+            raise TypeError("dimension mismatch")
+        if nlos != sigmas_low.shape[0]:
+            raise TypeError("dimension mismatch")
+        if starts.shape != ends.shape:
+            raise TypeError("dimension mismatch")
+        if sigmas_low.shape != sigmas_up.shape:
+            raise TypeError("dimension mismatch")
 
         self._local_shape = dobj.local_shape(self.domain[0].shape)
         local_zero_point = (np.array(
