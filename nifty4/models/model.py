@@ -60,7 +60,7 @@ class Mul(Model):
     """
     Please note: If you multiply two operators which share some keys in the
     position but have different values there, it is not guaranteed which value
-    will be used for the sum. You shouldn't do that anyways.
+    will be used for the product.
     """
     def __init__(self, position, op1, op2):
         super(Mul, self).__init__(position)
@@ -85,7 +85,7 @@ class Add(Model):
     """
     Please note: If you add two operators which share some keys in the position
     but have different values there, it is not guaranteed which value will be
-    used for the sum. You shouldn't do that anyways.
+    used for the sum.
     """
     def __init__(self, position, op1, op2):
         super(Add, self).__init__(position)
