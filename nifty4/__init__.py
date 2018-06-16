@@ -21,7 +21,5 @@ from .logger import logger
 
 from .multi import *
 
-__all__ = ["__version__", "dobj", "DomainTuple"] + \
-          domains.__all__ + operators.__all__ + minimization.__all__ + \
-          ["Field"] + sugar.__all__ + \
-          multi.__all__
+# We deliberately don't set __all__ here, because we don't want people to do a
+# "from nifty4 import *"; that would swamp the global namespace.
