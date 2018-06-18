@@ -41,6 +41,7 @@ tol = 1e-3
 IC = ift.GradientNormController(tol_abs_gradnorm=tol, iteration_limit=N_iter)
 inverter = ift.ConjugateGradient(IC)
 curv = ift.library.WienerFilterCurvature(S=S, N=N, R=R_p, inverter=inverter, sampling_inverter=inverter)
+m_xi = curv.inverse_times(j)
 samps_long = [curv.draw_sample(from_inverse=True) for i in range(N_samps)]
 
 tol = 1e2
@@ -53,7 +54,7 @@ samps_short = [curv.draw_sample(from_inverse=True) for i in range(N_samps)]
 sc = ift.StatCalculator()
 for samp in samps_long:
     sc.add(samp)
-m_x = sky(sc.mean)
+m_x = sky(sc.mean + m_xi)
 
 plt.plot(d.to_global_data(), '+', label="data", alpha=.5)
 plt.plot(s_x.to_global_data(), label="original")
