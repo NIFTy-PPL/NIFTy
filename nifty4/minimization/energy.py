@@ -16,7 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..utilities import memo, NiftyMetaBase
+from ..field import Field
+from ..multi import MultiField
+from ..utilities import NiftyMetaBase, memo
 
 
 class Energy(NiftyMetaBase()):
@@ -125,3 +127,27 @@ class Energy(NiftyMetaBase()):
             `dir`. If None, the step size is not limited.
         """
         return None
+
+    def __add__(self, other):
+        assert isinstance(other, Energy)
+        return Add(self, other)
+
+    def __sub__(self, other):
+        assert isinstance(other, Energy)
+        return Add(self, (-1) * other)
+
+
+def Add(energy1, energy2):
+    if isinstance(energy1.position, MultiField) and isinstance(energy2.position, MultiField):
+        a = energy1.position._val
+        b = energy2.position._val
+        # Note: In python >3.5 one could do {**a, **b}
+        ab = a.copy()
+        ab.update(b)
+        position = MultiField(ab)
+    elif isinstance(energy1.position, Field) and isinstance(energy2.position, Field):
+        position = energy1.position
+    else:
+        raise TypeError
+    from .energy_sum import EnergySum
+    return EnergySum(position, [energy1, energy2])
