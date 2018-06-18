@@ -3,7 +3,7 @@
 # 2) we can import it in setup.py for the same reason
 # 3) we can import it into your module module
 
-__version__ = '4.2.0'
+__version__ = '5.alpha0'
 
 
 def gitversion():
