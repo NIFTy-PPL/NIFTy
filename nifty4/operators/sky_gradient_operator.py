@@ -11,7 +11,8 @@ class MultiSkyGradientOperator(LinearOperator):
         self._domain = MultiDomain.make(domain)
 
         # Check compatibility
-        assert set(gradients_domain.items()) <= set(self.domain.items())
+        if not (set(gradients_domain.items()) <= set(self.domain.items())):
+            raise ValueError
 
         self._target = target
         for grad in gradients.values():

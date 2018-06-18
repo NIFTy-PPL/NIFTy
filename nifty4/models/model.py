@@ -1,9 +1,10 @@
-import nifty4 as ift
-
+from ..multi import MultiField
+from ..sugar import makeOp
+from ..utilities import NiftyMetaBase
 from .selection_operator import SelectionOperator
 
 
-class Model(object):
+class Model(NiftyMetaBase()):
     def __init__(self, position):
         self._position = position
 
@@ -27,11 +28,13 @@ class Model(object):
         return sel(self)
 
     def __add__(self, other):
-        assert isinstance(other, Model)
+        if not isinstance(other, Model):
+            raise TypeError
         return Add.make(self, other)
 
     def __sub__(self, other):
-        assert isinstance(other, Model)
+        if not isinstance(other, Model):
+            raise TypeError
         return Add.make(self, (-1) * other)
 
     def __mul__(self, other):
@@ -53,7 +56,7 @@ def _joint_position(op1, op2):
     # Note: In python >3.5 one could do {**a, **b}
     ab = a.copy()
     ab.update(b)
-    return ift.MultiField(ab)
+    return MultiField(ab)
 
 
 class Mul(Model):
@@ -69,8 +72,8 @@ class Mul(Model):
         self._op2 = op2.at(position)
 
         self._value = self._op1.value * self._op2.value
-        self._gradient = (ift.makeOp(self._op1.value) * self._op2.gradient +
-                          ift.makeOp(self._op2.value) * self._op1.gradient)
+        self._gradient = (makeOp(self._op1.value) * self._op2.gradient +
+                          makeOp(self._op2.value) * self._op1.gradient)
 
     @staticmethod
     def make(op1, op2):
@@ -108,8 +111,10 @@ class Add(Model):
 class ScalarMul(Model):
     def __init__(self, position, factor, op):
         super(ScalarMul, self).__init__(position)
-        assert isinstance(factor, (float, int))
-        assert isinstance(op, Model)
+        if not isinstance(factor, (float, int)):
+            raise TypeError
+        if not isinstance(op, Model):
+            raise TypeError
 
         self._op = op.at(position)
         self._factor = factor
