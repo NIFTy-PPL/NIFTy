@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import abc
-
 import numpy as np
 
 from ..utilities import NiftyMetaBase

@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .linear_operator import LinearOperator
-import numpy as np
 
 
 class ChainOperator(LinearOperator):

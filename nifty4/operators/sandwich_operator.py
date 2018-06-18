@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import numpy as np
-
 from .linear_operator import LinearOperator
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator

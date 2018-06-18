@@ -23,7 +23,6 @@ from . import utilities
 from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
-import sys
 
 __all__ = ["Field", "sqrt", "exp", "log", "conjugate"]
 

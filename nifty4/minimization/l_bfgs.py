@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+
 from builtins import range
-import numpy as np
+
+from ..logger import logger
 from .descent_minimizer import DescentMinimizer
 from .line_search_strong_wolfe import LineSearchStrongWolfe
-from ..logger import logger
 
 
 class L_BFGS(DescentMinimizer):
