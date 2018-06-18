@@ -49,8 +49,8 @@ Optional dependencies:
 
 ### Sources
 
-The current version of Nifty4 can be obtained by cloning the repository and
-switching to the NIFTy_4 branch:
+The current version of Nifty5 can be obtained by cloning the repository and
+switching to the NIFTy_5 branch:
 
     git clone https://gitlab.mpcdf.mpg.de/ift/NIFTy.git
 
@@ -59,7 +59,7 @@ switching to the NIFTy_4 branch:
 In the following, we assume a Debian-based distribution. For other
 distributions, the "apt" lines will need slight changes.
 
-NIFTy4 and its mandatory dependencies can be installed via:
+NIFTy5 and its mandatory dependencies can be installed via:
 
     sudo apt-get install git libfftw3-dev python python-pip python-dev
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4
@@ -99,7 +99,7 @@ In oder to run the tests one needs two additional packages:
 Afterwards the tests (including a coverage report) can be run using the
 following command in the repository root:
 
-    nosetests -x --with-coverage --cover-html --cover-package=nifty4
+    nosetests -x --with-coverage --cover-html --cover-package=nifty5
 
 
 ### First Steps

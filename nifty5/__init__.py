@@ -22,4 +22,4 @@ from .logger import logger
 from .multi import *
 
 # We deliberately don't set __all__ here, because we don't want people to do a
-# "from nifty4 import *"; that would swamp the global namespace.
+# "from nifty5 import *"; that would swamp the global namespace.

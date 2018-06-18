@@ -20,7 +20,7 @@
 def _logger_init():
     import logging
     from . import dobj
-    res = logging.getLogger('NIFTy4')
+    res = logging.getLogger('NIFTy5')
     res.setLevel(logging.DEBUG)
     if dobj.rank == 0:
         ch = logging.StreamHandler()

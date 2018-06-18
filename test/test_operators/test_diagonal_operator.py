@@ -19,7 +19,7 @@
 from __future__ import division
 import unittest
 from numpy.testing import assert_equal, assert_allclose
-import nifty4 as ift
+import nifty5 as ift
 from itertools import product
 from test.common import expand
 

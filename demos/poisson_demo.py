@@ -4,7 +4,7 @@
 # to get exact figure of paper comment out lines marked by "COMMENT OUT"
 
 import numpy as np
-import nifty4 as ift
+import nifty5 as ift
 import matplotlib.pyplot as plt
 
 

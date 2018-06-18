@@ -5,7 +5,7 @@ Installation
 In the following, we assume a Debian-based Linux distribution. For other
 distributions, the "apt" lines will need slight changes.
 
-NIFTy4 and its mandatory dependencies can be installed via::
+NIFTy5 and its mandatory dependencies can be installed via::
 
     sudo apt-get install git libfftw3-dev python python-pip python-dev
     pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4

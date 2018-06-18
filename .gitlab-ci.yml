@@ -34,7 +34,7 @@ test_python2_with_coverage:
   script:
     - python setup.py install --user -f
     - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
-    - nosetests -q --with-coverage --cover-package=nifty4 --cover-erase
+    - nosetests -q --with-coverage --cover-package=nifty5 --cover-erase
     - >
       coverage report --omit "*plotting*,*distributed_do*"
     - >

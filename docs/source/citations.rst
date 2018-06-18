@@ -7,7 +7,7 @@ NIFTy-related publications
       author = {{Martin Reinecke, Theo Steininger, Marco Selig}},
       title = {NIFTy -- Numerical Information Field TheorY},
       url = {https://gitlab.mpcdf.mpg.de/ift/NIFTy},
-      version = {nifty4},
+      version = {nifty5},
       date = {2018-04-05},
     }
 

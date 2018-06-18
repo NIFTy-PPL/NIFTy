@@ -1,5 +1,5 @@
 import numpy as np
-import nifty4 as ift
+import nifty5 as ift
 
 
 # TODO: MAKE RESPONSE MPI COMPATIBLE OR USE LOS RESPONSE INSTEAD

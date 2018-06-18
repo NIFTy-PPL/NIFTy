@@ -21,7 +21,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_, assert_equal, assert_raises,\
         assert_allclose
-import nifty4 as ift
+import nifty5 as ift
 from test.common import expand
 
 # [lmax, expected]

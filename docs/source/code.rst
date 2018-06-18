@@ -1,4 +1,4 @@
-.. currentmodule:: nifty4
+.. currentmodule:: nifty5
 
 =============
 Code Overview
@@ -35,7 +35,7 @@ Domains
 Abstract base class
 -------------------
 
-One of the fundamental building blocks of the NIFTy4 framework is the *domain*.
+One of the fundamental building blocks of the NIFTy5 framework is the *domain*.
 Its required capabilities are expressed by the abstract :class:`Domain` class.
 A domain must be able to answer the following queries:
 
@@ -151,7 +151,7 @@ performance benefits.
 Linear Operators
 ================
 
-A linear operator (represented by NIFTy4's abstract :class:`LinearOperator`
+A linear operator (represented by NIFTy5's abstract :class:`LinearOperator`
 class) can be interpreted as an (implicitly defined) matrix.
 It can be applied to :class:`Field` instances, resulting in other :class:`Field`
 instances that potentially live on other domains.
@@ -245,7 +245,7 @@ high-dimensional functions, which are often nonlinear.
 Energy functionals
 ------------------
 
-In NIFTy4 such functions are represented by objects of type :class:`Energy`.
+In NIFTy5 such functions are represented by objects of type :class:`Energy`.
 These hold the prescription how to calculate the function's
 :attr:`~Energy.value`, :attr:`~Energy.gradient` and
 (optionally) :attr:`~Energy.curvature` at any given :attr:`~Energy.position`
@@ -256,9 +256,9 @@ linear operator objects.
 
 Energies are classes that typically have to be provided by the user when
 tackling new IFT problems.
-Some examples of concrete energy classes delivered with NIFTy4 are
+Some examples of concrete energy classes delivered with NIFTy5 are
 :class:`QuadraticEnergy` (with position-independent curvature, mainly used with
-conjugate gradient minimization) and :class:`~nifty4.library.WienerFilterEnergy`.
+conjugate gradient minimization) and :class:`~nifty5.library.WienerFilterEnergy`.
 
 
 Iteration control
@@ -269,7 +269,7 @@ checking the quality of the current solution estimate and stopping once
 it is sufficiently accurate. In case of numerical problems, the iteration needs
 to be terminated as well, returning a suitable error description.
 
-In NIFTy4, this functionality is encapsulated in the abstract
+In NIFTy5, this functionality is encapsulated in the abstract
 :class:`IterationController` class, which is provided with the initial energy
 object before starting the minimization, and is updated with the improved
 energy after every iteration. Based on this information, it can either continue

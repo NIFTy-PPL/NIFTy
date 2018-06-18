@@ -21,7 +21,7 @@ from numpy.testing import assert_
 from itertools import product
 from types import LambdaType
 from test.common import expand
-import nifty4 as ift
+import nifty5 as ift
 
 spaces = [ift.RGSpace(4),
           ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),

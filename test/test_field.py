@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_equal, assert_allclose, assert_raises
 from itertools import product
-import nifty4 as ift
+import nifty5 as ift
 from test.common import expand
 
 

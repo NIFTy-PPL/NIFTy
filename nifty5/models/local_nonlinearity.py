@@ -1,5 +1,5 @@
-from nifty4.library.nonlinearities import Exponential, PositiveTanh, Tanh
-from nifty4.sugar import makeOp
+from nifty5.library.nonlinearities import Exponential, PositiveTanh, Tanh
+from nifty5.sugar import makeOp
 
 from .model import Model
 

@@ -1,5 +1,5 @@
-import nifty4 as ift
-from nifty4.library.nonlinearities import Linear, Exponential, Tanh
+import nifty5 as ift
+from nifty5.library.nonlinearities import Linear, Exponential, Tanh
 import numpy as np
 np.random.seed(20)
 

@@ -1,5 +1,5 @@
 import numpy as np
-import nifty4 as ift
+import nifty5 as ift
 
 
 if __name__ == "__main__":

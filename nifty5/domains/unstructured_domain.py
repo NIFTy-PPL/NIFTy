@@ -21,7 +21,7 @@ from functools import reduce
 
 
 class UnstructuredDomain(Domain):
-    """A :class:`~nifty4.domains.domain.Domain` subclass for spaces with no
+    """A :class:`~nifty5.domains.domain.Domain` subclass for spaces with no
     associated geometry.
 
     Typically used for data spaces.

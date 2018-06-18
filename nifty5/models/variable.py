@@ -1,4 +1,4 @@
-import nifty4 as ift
+import nifty5 as ift
 
 from .model import Model
 

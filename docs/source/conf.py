@@ -73,7 +73,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'NIFTy4'
+project = u'NIFTy5'
 copyright = u'2013-2018, Max-Planck-Society'
 author = u'Theo Steininger / Martin Reinecke'
 

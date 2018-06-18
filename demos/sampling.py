@@ -1,7 +1,7 @@
-import nifty4 as ift
+import nifty5 as ift
 import numpy as np
 import matplotlib.pyplot as plt
-from nifty4.sugar import create_power_operator
+from nifty5.sugar import create_power_operator
 
 np.random.seed(42)
 

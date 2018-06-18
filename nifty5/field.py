@@ -713,10 +713,10 @@ class Field(object):
         self.local_data[()] = other.local_data[()]
 
     def __repr__(self):
-        return "<nifty4.Field>"
+        return "<nifty5.Field>"
 
     def __str__(self):
-        return "nifty4.Field instance\n- domain      = " + \
+        return "nifty5.Field instance\n- domain      = " + \
                self._domain.__str__() + \
                "\n- val         = " + repr(self.val)
 
