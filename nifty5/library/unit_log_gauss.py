@@ -4,19 +4,19 @@ from ..utilities import memo
 
 
 class UnitLogGauss(Energy):
-    def __init__(self, position, s, inverter=None):
+    def __init__(self, s, inverter=None):
         """
         s: Sky model object
 
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(UnitLogGauss, self).__init__(position)
-        self._s = s.at(position)
+        super(UnitLogGauss, self).__init__(s.position)
+        self._s = s
         self._inverter = inverter
 
     def at(self, position):
-        return self.__class__(position, self._s, self._inverter)
+        return self.__class__(self._s.at(position), self._inverter)
 
     @property
     @memo
