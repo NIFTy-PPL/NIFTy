@@ -58,3 +58,142 @@ pages:
     - public
   only:
   - NIFTy_5
+
+before_script:
+  - export MPLBACKEND="agg"
+
+run_critical_filtering:
+  stage: test
+  script:
+    - ls
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/critical_filtering.py
+    - python3 demos/critical_filtering.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_nonlinear_critical_filter:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/nonlinear_critical_filter.py
+    - python3 demos/nonlinear_critical_filter.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_nonlinear_wiener_filter:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/nonlinear_wiener_filter.py
+    - python3 demos/nonlinear_wiener_filter.py
+  only:
+    - run_demos
+  artifacts:
+    paths:
+      - '*.png'
+
+run_poisson_demo:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/poisson_demo.py
+    - python3 demos/poisson_demo.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_probing:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/probing.py
+    - python3 demos/probing.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_sampling:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/sampling.py
+    - python3 demos/sampling.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_tomography:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/tomography.py
+    - python3 demos/tomography.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_wiener_filter_data_space_noiseless:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/wiener_filter_data_space_noiseless.py
+    - python3 demos/wiener_filter_data_space_noiseless.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_wiener_filter_easy.py:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/wiener_filter_easy.py
+    - python3 demos/wiener_filter_easy.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_wiener_filter_via_curvature.py:
+  stage: test
+  script:
+    - pip install --user numericalunits
+    - pip3 install --user numericalunits
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/wiener_filter_via_curvature.py
+    - python3 demos/wiener_filter_via_curvature.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_wiener_filter_via_hamiltonian.py:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - python demos/wiener_filter_via_hamiltonian.py
+    - python3 demos/wiener_filter_via_hamiltonian.py
+  artifacts:
+    paths:
+      - '*.png'
+
+run_ipynb:
+  stage: test
+  script:
+    - python setup.py install --user -f
+    - python3 setup.py install --user -f
+    - jupyter nbconvert --execute demos/Wiener_Filter.ipynb
+  artifacts:
+    paths:
+      - '*.png'
