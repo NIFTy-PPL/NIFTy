@@ -52,6 +52,16 @@ class MultiField(object):
     def dtype(self):
         return {key: val.dtype for key, val in self._val.items()}
 
+    @property
+    def real(self):
+        """MultiField : The real part of the multi field"""
+        return MultiField({key: field.real for key, field in self.items()})
+
+    @property
+    def imag(self):
+        """MultiField : The imaginary part of the multi field"""
+        return MultiField({key: field.imag for key, field in self.items()})
+
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
         dtype = MultiField.build_dtype(dtype, domain)
