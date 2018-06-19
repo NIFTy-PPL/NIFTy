@@ -12,7 +12,7 @@ from .power_distributor import PowerDistributor
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
 from .scaling_operator import ScalingOperator
-from .sky_gradient_operator import MultiSkyGradientOperator
+from .model_gradient_operator import ModelGradientOperator
 from .smoothness_operator import SmoothnessOperator
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
@@ -20,4 +20,4 @@ __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
            "InversionEnabler", "SandwichOperator", "SamplingEnabler",
-           "DOFDistributor", "MultiSkyGradientOperator"]
+           "DOFDistributor", "ModelGradientOperator"]

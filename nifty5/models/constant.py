@@ -1,4 +1,4 @@
-from ..operators import MultiSkyGradientOperator
+from ..operators.model_gradient_operator import ModelGradientOperator
 from .model import Model
 
 
@@ -9,9 +9,8 @@ class Constant(Model):
 
         self._value = self._constant
 
-        self._gradient = MultiSkyGradientOperator({},
-                                                  position.domain,
-                                                  self.value.domain)
+        self._gradient = ModelGradientOperator({}, position.domain,
+                                               self.value.domain)
 
     def at(self, position):
         return self.__class__(position, self._constant)

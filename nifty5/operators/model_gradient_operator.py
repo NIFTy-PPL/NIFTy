@@ -1,11 +1,12 @@
-from ..multi import MultiDomain, MultiField
+from ..multi.multi_domain import MultiDomain
+from ..multi.multi_field import MultiField
 from ..sugar import full
 from .linear_operator import LinearOperator
 
 
-class MultiSkyGradientOperator(LinearOperator):
+class ModelGradientOperator(LinearOperator):
     def __init__(self, gradients, domain, target):
-        super(MultiSkyGradientOperator, self).__init__()
+        super(ModelGradientOperator, self).__init__()
         self._gradients = gradients
         gradients_domain = MultiField(self._gradients).domain
         self._domain = MultiDomain.make(domain)
