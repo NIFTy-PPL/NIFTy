@@ -72,6 +72,9 @@ run_critical_filtering:
     - python3 demos/critical_filtering.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_nonlinear_critical_filter:
   stage: test
@@ -82,6 +85,9 @@ run_nonlinear_critical_filter:
     - python3 demos/nonlinear_critical_filter.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_nonlinear_wiener_filter:
   stage: test
@@ -92,6 +98,9 @@ run_nonlinear_wiener_filter:
     - python3 demos/nonlinear_wiener_filter.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_poisson_demo:
   stage: test
@@ -102,6 +111,9 @@ run_poisson_demo:
     - python3 demos/poisson_demo.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_probing:
   stage: test
@@ -112,6 +124,9 @@ run_probing:
     - python3 demos/probing.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_sampling:
   stage: test
@@ -122,6 +137,9 @@ run_sampling:
     - python3 demos/sampling.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_tomography:
   stage: test
@@ -132,6 +150,9 @@ run_tomography:
     - python3 demos/tomography.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_wiener_filter_data_space_noiseless:
   stage: test
@@ -142,6 +163,9 @@ run_wiener_filter_data_space_noiseless:
     - python3 demos/wiener_filter_data_space_noiseless.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_wiener_filter_easy.py:
   stage: test
@@ -152,6 +176,9 @@ run_wiener_filter_easy.py:
     - python3 demos/wiener_filter_easy.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_wiener_filter_via_curvature.py:
   stage: test
@@ -164,6 +191,9 @@ run_wiener_filter_via_curvature.py:
     - python3 demos/wiener_filter_via_curvature.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_wiener_filter_via_hamiltonian.py:
   stage: test
@@ -174,6 +204,9 @@ run_wiener_filter_via_hamiltonian.py:
     - python3 demos/wiener_filter_via_hamiltonian.py
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
 
 run_ipynb:
   stage: test
@@ -183,3 +216,6 @@ run_ipynb:
     - jupyter nbconvert --execute demos/Wiener_Filter.ipynb
   only:
     - run_demos
+  artifacts:
+    paths:
+      - '*.png'
