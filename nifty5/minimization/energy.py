@@ -138,14 +138,16 @@ class Energy(NiftyMetaBase()):
 
 
 def Add(energy1, energy2):
-    if isinstance(energy1.position, MultiField) and isinstance(energy2.position, MultiField):
+    if (isinstance(energy1.position, MultiField) and
+            isinstance(energy2.position, MultiField)):
         a = energy1.position._val
         b = energy2.position._val
         # Note: In python >3.5 one could do {**a, **b}
         ab = a.copy()
         ab.update(b)
         position = MultiField(ab)
-    elif isinstance(energy1.position, Field) and isinstance(energy2.position, Field):
+    elif (isinstance(energy1.position, Field) and
+          isinstance(energy2.position, Field)):
         position = energy1.position
     else:
         raise TypeError

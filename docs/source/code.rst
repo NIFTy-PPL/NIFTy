@@ -215,7 +215,7 @@ Further operator classes provided by NIFTy are
 Syntactic sugar
 ---------------
 
-Nifty4 allows simple and intuitive construction of altered and combined
+Nifty5 allows simple and intuitive construction of altered and combined
 operators.
 As an example, if ``A``, ``B`` and ``C`` are of type :class:`LinearOperator`
 and ``f1`` and ``f2`` are of type :class:`Field`, writing::

@@ -40,14 +40,16 @@ N_iter = 100
 tol = 1e-3
 IC = ift.GradientNormController(tol_abs_gradnorm=tol, iteration_limit=N_iter)
 inverter = ift.ConjugateGradient(IC)
-curv = ift.library.WienerFilterCurvature(S=S, N=N, R=R_p, inverter=inverter, sampling_inverter=inverter)
+curv = ift.library.WienerFilterCurvature(S=S, N=N, R=R_p, inverter=inverter,
+                                         sampling_inverter=inverter)
 m_xi = curv.inverse_times(j)
 samps_long = [curv.draw_sample(from_inverse=True) for i in range(N_samps)]
 
 tol = 1e2
 IC = ift.GradientNormController(tol_abs_gradnorm=tol, iteration_limit=N_iter)
 inverter = ift.ConjugateGradient(IC)
-curv = ift.library.WienerFilterCurvature(S=S, N=N, R=R_p, inverter=inverter, sampling_inverter=inverter)
+curv = ift.library.WienerFilterCurvature(S=S, N=N, R=R_p, inverter=inverter,
+                                         sampling_inverter=inverter)
 samps_short = [curv.draw_sample(from_inverse=True) for i in range(N_samps)]
 
 # Compute mean
