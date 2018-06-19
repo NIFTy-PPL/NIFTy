@@ -1,6 +1,5 @@
-import nifty5 as ift
-
 from .model import Model
+from ..operators.scaling_operator import ScalingOperator
 
 
 class Variable(Model):
