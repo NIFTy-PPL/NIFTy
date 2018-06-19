@@ -70,8 +70,6 @@ run_critical_filtering:
     - python3 setup.py install --user -f
     - python demos/critical_filtering.py
     - python3 demos/critical_filtering.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -83,8 +81,6 @@ run_nonlinear_critical_filter:
     - python3 setup.py install --user -f
     - python demos/nonlinear_critical_filter.py
     - python3 demos/nonlinear_critical_filter.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -109,8 +105,6 @@ run_poisson_demo:
     - python3 setup.py install --user -f
     - python demos/poisson_demo.py
     - python3 demos/poisson_demo.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -122,8 +116,6 @@ run_probing:
     - python3 setup.py install --user -f
     - python demos/probing.py
     - python3 demos/probing.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -135,8 +127,6 @@ run_sampling:
     - python3 setup.py install --user -f
     - python demos/sampling.py
     - python3 demos/sampling.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -148,8 +138,6 @@ run_tomography:
     - python3 setup.py install --user -f
     - python demos/tomography.py
     - python3 demos/tomography.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -161,8 +149,6 @@ run_wiener_filter_data_space_noiseless:
     - python3 setup.py install --user -f
     - python demos/wiener_filter_data_space_noiseless.py
     - python3 demos/wiener_filter_data_space_noiseless.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -174,8 +160,6 @@ run_wiener_filter_easy.py:
     - python3 setup.py install --user -f
     - python demos/wiener_filter_easy.py
     - python3 demos/wiener_filter_easy.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -189,8 +173,6 @@ run_wiener_filter_via_curvature.py:
     - python3 setup.py install --user -f
     - python demos/wiener_filter_via_curvature.py
     - python3 demos/wiener_filter_via_curvature.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -202,8 +184,6 @@ run_wiener_filter_via_hamiltonian.py:
     - python3 setup.py install --user -f
     - python demos/wiener_filter_via_hamiltonian.py
     - python3 demos/wiener_filter_via_hamiltonian.py
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
@@ -214,8 +194,6 @@ run_ipynb:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
     - jupyter nbconvert --execute demos/Wiener_Filter.ipynb
-  only:
-    - run_demos
   artifacts:
     paths:
       - '*.png'
