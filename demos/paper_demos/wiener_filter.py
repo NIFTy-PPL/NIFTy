@@ -50,10 +50,9 @@ if __name__ == "__main__":
     ctrl = ift.GradientNormController(name="inverter", tol_abs_gradnorm=1e-2)
     sampling_ctrl = ift.GradientNormController(name="sampling",
                                                tol_abs_gradnorm=2e1)
-    inverter = ift.ConjugateGradient(controller=ctrl)
-    sampling_inverter = ift.ConjugateGradient(controller=sampling_ctrl)
     wiener_curvature = ift.library.WienerFilterCurvature(
-        S=S, N=N, R=R, inverter=inverter, sampling_inverter=sampling_inverter)
+        S=S, N=N, R=R, iteration_controller=ctrl,
+        iteration_controller_sampling=sampling_ctrl)
     m_k = wiener_curvature.inverse_times(j)
     m = ht(m_k)
 

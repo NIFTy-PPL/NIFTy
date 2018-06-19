@@ -25,9 +25,9 @@ from ..sugar import log
 
 class PoissonEnergy(Energy):
     def __init__(self, position, d, Instrument, nonlinearity, ht, Phi_h,
-                 inverter=None):
+                 iteration_controller=None):
         super(PoissonEnergy, self).__init__(position=position)
-        self._inverter = inverter
+        self._ic = iteration_controller
         self._d = d
         self._Instrument = Instrument
         self._nonlinearity = nonlinearity
@@ -51,7 +51,7 @@ class PoissonEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self._d, self._Instrument,
                               self._nonlinearity, self._ht, self._Phi_h,
-                              self._inverter)
+                              self._ic)
 
     @property
     def value(self):
@@ -63,5 +63,4 @@ class PoissonEnergy(Energy):
 
     @property
     def curvature(self):
-        return InversionEnabler(self._curv, self._inverter,
-                                approximation=self._Phi_h.inverse)
+        return InversionEnabler(self._curv, self._ic, self._Phi_h.inverse)

@@ -16,11 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..minimization.quadratic_energy import QuadraticEnergy
-from ..minimization.iteration_controller import IterationController
-from ..logger import logger
-from .endomorphic_operator import EndomorphicOperator
 import numpy as np
+
+from ..logger import logger
+from ..minimization.conjugate_gradient import ConjugateGradient
+from ..minimization.iteration_controller import IterationController
+from ..minimization.quadratic_energy import QuadraticEnergy
+from .endomorphic_operator import EndomorphicOperator
 
 
 class InversionEnabler(EndomorphicOperator):
@@ -34,9 +36,9 @@ class InversionEnabler(EndomorphicOperator):
         The InversionEnabler object will support the same operation modes as
         `op`, and additionally the inverse set. The newly-added modes will
         be computed by iterative inversion.
-    inverter : :class:`Minimizer`
-        The minimizer to use for the iterative numerical inversion.
-        Typically, this is a :class:`ConjugateGradient` object.
+    iteration_controller : :class:`IterationController`
+        The iteration controller to use for the iterative numerical inversion
+        done by a :class:`ConjugateGradient` object.
     approximation : :class:`LinearOperator`, optional
         if not None, this operator should be an approximation to `op`, which
         supports the operation modes that `op` doesn't have. It is used as a
@@ -44,10 +46,10 @@ class InversionEnabler(EndomorphicOperator):
         convergence.
     """
 
-    def __init__(self, op, inverter, approximation=None):
+    def __init__(self, op, iteration_controller, approximation=None):
         super(InversionEnabler, self).__init__()
         self._op = op
-        self._inverter = inverter
+        self._ic = iteration_controller
         self._approximation = approximation
 
     @property
@@ -70,7 +72,8 @@ class InversionEnabler(EndomorphicOperator):
         if prec is not None:
             prec = prec._flip_modes(self._ilog[mode])
         energy = QuadraticEnergy(x0, invop, x)
-        r, stat = self._inverter(energy, preconditioner=prec)
+        inverter = ConjugateGradient(self._ic)
+        r, stat = inverter(energy, preconditioner=prec)
         if stat != IterationController.CONVERGED:
             logger.warning("Error detected during operator inversion")
         return r.position

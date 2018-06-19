@@ -85,15 +85,13 @@ if __name__ == "__main__":
     LS = ift.LineSearchStrongWolfe(c2=0.02)
     minimizer = ift.RelaxedNewton(IC1, line_searcher=LS)
 
-    ICI = ift.GradientNormController(iteration_limit=500,
-                                     tol_abs_gradnorm=1e-3)
-    inverter = ift.ConjugateGradient(controller=ICI)
+    IC = ift.GradientNormController(iteration_limit=500,
+                                    tol_abs_gradnorm=1e-3)
 
     for i in range(20):
         power0 = Distributor(ift.exp(0.5*t0))
         map0_energy = ift.library.NonlinearWienerFilterEnergy(
-            m0, d, MeasurementOperator, nonlinearity, HT, power0, N, S,
-            inverter=inverter)
+            m0, d, MeasurementOperator, nonlinearity, HT, power0, N, S, IC)
 
         # Minimization with chosen minimizer
         map0_energy, convergence = minimizer(map0_energy)
@@ -106,7 +104,8 @@ if __name__ == "__main__":
         power0_energy = ift.library.NonlinearPowerEnergy(
             position=t0, d=d, N=N, xi=m0, D=D0, ht=HT,
             Instrument=MeasurementOperator, nonlinearity=nonlinearity,
-            Distributor=Distributor, sigma=1., samples=2, inverter=inverter)
+            Distributor=Distributor, sigma=1., samples=2,
+            iteration_controller=IC)
 
         power0_energy = minimizer(power0_energy)[0]
 

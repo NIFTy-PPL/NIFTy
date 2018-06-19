@@ -52,14 +52,13 @@ if __name__ == "__main__":
     LS = ift.LineSearchStrongWolfe(c2=0.02)
     minimizer = ift.RelaxedNewton(IC1, line_searcher=LS)
 
-    ICI = ift.GradientNormController(iteration_limit=2000,
-                                     tol_abs_gradnorm=1e-3)
-    inverter = ift.ConjugateGradient(controller=ICI)
+    IC = ift.GradientNormController(iteration_limit=2000,
+                                    tol_abs_gradnorm=1e-3)
 
     # initial guess
     m = ift.full(h_space, 1e-7)
     map_energy = ift.library.NonlinearWienerFilterEnergy(
-        m, d, R, nonlinearity, HT, power, N, S, inverter=inverter)
+        m, d, R, nonlinearity, HT, power, N, S, IC)
 
     # Minimization with chosen minimizer
     map_energy, convergence = minimizer(map_energy)

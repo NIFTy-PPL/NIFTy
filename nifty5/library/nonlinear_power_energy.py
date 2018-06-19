@@ -63,7 +63,7 @@ class NonlinearPowerEnergy(Energy):
     # MR FIXME: docstring incomplete and outdated
     def __init__(self, position, d, N, xi, D, ht, Instrument, nonlinearity,
                  Distributor, sigma=0., samples=3, xi_sample_list=None,
-                 inverter=None):
+                 iteration_controller=None):
         super(NonlinearPowerEnergy, self).__init__(position)
         self.xi = xi
         self.D = D
@@ -83,7 +83,7 @@ class NonlinearPowerEnergy(Energy):
                 xi_sample_list = [D.draw_sample(from_inverse=True) + xi
                                   for _ in range(samples)]
         self.xi_sample_list = xi_sample_list
-        self.inverter = inverter
+        self._ic = iteration_controller
 
         A = Distributor(exp(.5 * position))
 
@@ -118,7 +118,7 @@ class NonlinearPowerEnergy(Energy):
                               self.Distributor, sigma=self.sigma,
                               samples=len(self.xi_sample_list),
                               xi_sample_list=self.xi_sample_list,
-                              inverter=self.inverter)
+                              iteration_controller=self._ic)
 
     @property
     def value(self):
@@ -139,4 +139,4 @@ class NonlinearPowerEnergy(Energy):
             op = LinearizedResponse.adjoint*self.N.inverse*LinearizedResponse
             result = op if result is None else result + op
         result = result*(1./len(self.xi_sample_list)) + self.T
-        return InversionEnabler(result, self.inverter)
+        return InversionEnabler(result, self._ic)

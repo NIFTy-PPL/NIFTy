@@ -65,7 +65,6 @@ class Noise_Energy_Tests(unittest.TestCase):
         IC = ift.GradientNormController(
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
-        inverter = ift.ConjugateGradient(IC)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         C = ift.library.NonlinearWienerFilterEnergy(
@@ -77,7 +76,7 @@ class Noise_Energy_Tests(unittest.TestCase):
             power=A,
             N=N,
             S=S,
-            inverter=inverter).curvature
+            iteration_controller=IC).curvature
 
         res_sample_list = [d - R(f(ht(C.draw_sample(from_inverse=True) + xi)))
                            for _ in range(10)]

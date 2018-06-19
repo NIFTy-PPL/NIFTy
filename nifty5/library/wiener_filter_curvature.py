@@ -21,7 +21,8 @@ from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sampling_enabler import SamplingEnabler
 
 
-def WienerFilterCurvature(R, N, S, inverter, sampling_inverter=None):
+def WienerFilterCurvature(R, N, S, iteration_controller=None,
+                          iteration_controller_sampling=None):
     """The curvature of the WienerFilterEnergy.
 
     This operator implements the second derivative of the
@@ -37,16 +38,16 @@ def WienerFilterCurvature(R, N, S, inverter, sampling_inverter=None):
         The noise covariance.
     S : DiagonalOperator
         The prior signal covariance
-    inverter : Minimizer
-        The minimizer to use during numerical inversion
-    sampling_inverter : Minimizer
-        The minimizer to use during numerical sampling
-        if None, it is not possible to draw inverse samples
-        default: None
+    iteration_controller : IterationController
+        The iteration controller to use during numerical inversion via
+        ConjugateGradient.
+    iteration_controller_sampling : IterationController
+        The iteration controller to use for sampling.
     """
     M = SandwichOperator.make(R, N.inverse)
-    if sampling_inverter is not None:
-        op = SamplingEnabler(M, S.inverse, sampling_inverter, S.inverse)
+    if iteration_controller is not None:
+        op = SamplingEnabler(M, S.inverse, iteration_controller_sampling,
+                             S.inverse)
     else:
         op = M + S.inverse
-    return InversionEnabler(op, inverter, S.inverse)
+    return InversionEnabler(op, iteration_controller, S.inverse)

@@ -24,8 +24,7 @@ from ..sugar import makeOp
 
 class NonlinearWienerFilterEnergy(Energy):
     def __init__(self, position, d, Instrument, nonlinearity, ht, power, N, S,
-                 inverter=None,
-                 sampling_inverter=None):
+                 iteration_controller=None, iteration_controller_sampling=None):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
         self.d = d.lock()
         self.Instrument = Instrument
@@ -37,10 +36,10 @@ class NonlinearWienerFilterEnergy(Energy):
         residual = d - Instrument(nonlinearity(m))
         self.N = N
         self.S = S
-        self.inverter = inverter
-        if sampling_inverter is None:
-            sampling_inverter = inverter
-        self.sampling_inverter = sampling_inverter
+        self._ic = iteration_controller
+        if iteration_controller_sampling is None:
+            iteration_controller_sampling = self._ic
+        self._ic_samp = iteration_controller_sampling
         t1 = S.inverse_times(position)
         t2 = N.inverse_times(residual)
         self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
@@ -51,7 +50,7 @@ class NonlinearWienerFilterEnergy(Energy):
     def at(self, position):
         return self.__class__(position, self.d, self.Instrument,
                               self.nonlinearity, self.ht, self.power, self.N,
-                              self.S, self.inverter)
+                              self.S, self._ic, self._ic_samp)
 
     @property
     def value(self):
@@ -64,5 +63,5 @@ class NonlinearWienerFilterEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return WienerFilterCurvature(self.R, self.N, self.S, self.inverter,
-                                     self.sampling_inverter)
+        return WienerFilterCurvature(self.R, self.N, self.S, self._ic,
+                                     self._ic_samp)

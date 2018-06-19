@@ -47,15 +47,14 @@ if __name__ == "__main__":
 
     # Choose minimization strategy
     ctrl = ift.GradientNormController(name="inverter", tol_abs_gradnorm=0.1)
-    inverter = ift.ConjugateGradient(controller=ctrl)
     controller = ift.GradientNormController(name="min", tol_abs_gradnorm=0.1)
     minimizer = ift.RelaxedNewton(controller=controller)
     m0 = ift.full(h_space, 0.)
 
     # Initialize Wiener filter energy
     energy = ift.library.WienerFilterEnergy(position=m0, d=d, R=R, N=N, S=S,
-                                            inverter=inverter,
-                                            sampling_inverter=inverter)
+                                            iteration_controller=ctrl,
+                                            iteration_controller_sampling=ctrl)
 
     energy, convergence = minimizer(energy)
     m = energy.position

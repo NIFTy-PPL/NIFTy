@@ -98,10 +98,9 @@ if __name__ == "__main__":
 
     IC = ift.GradientNormController(name="inverter", iteration_limit=1000,
                                     tol_abs_gradnorm=0.0001)
-    inverter = ift.ConjugateGradient(controller=IC)
     # setting up measurement precision matrix M
     M = (ift.SandwichOperator.make(R.adjoint, Sh) + N)
-    M = ift.InversionEnabler(M, inverter)
+    M = ift.InversionEnabler(M, IC)
     m = Sh(R.adjoint(M.inverse_times(d)))
 
     # Plotting

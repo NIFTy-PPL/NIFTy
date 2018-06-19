@@ -56,11 +56,10 @@ class Energy_Tests(unittest.TestCase):
         IC = ift.GradientNormController(
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
-        inverter = ift.ConjugateGradient(IC)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         energy = ift.library.WienerFilterEnergy(
-            position=s0, d=d, R=R, N=N, S=S, inverter=inverter)
+            position=s0, d=d, R=R, N=N, S=S, iteration_controller=IC)
         ift.extra.check_value_gradient_curvature_consistency(
             energy, tol=1e-4, ntries=10)
 

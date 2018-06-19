@@ -116,9 +116,7 @@ class Test_Minimizers(unittest.TestCase):
 
                 t1 = ift.GradientNormController(tol_abs_gradnorm=1e-5,
                                                 iteration_limit=1000)
-                t2 = ift.ConjugateGradient(controller=t1)
-                return ift.InversionEnabler(RBCurv(self._position),
-                                            inverter=t2)
+                return ift.InversionEnabler(RBCurv(self._position), t1)
 
         try:
             minimizer = eval(minimizer)

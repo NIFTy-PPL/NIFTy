@@ -57,7 +57,6 @@ class Energy_Tests(unittest.TestCase):
         IC = ift.GradientNormController(
             iteration_limit=100,
             tol_abs_gradnorm=1e-5)
-        inverter = ift.ConjugateGradient(IC)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         D = ift.library.NonlinearWienerFilterEnergy(
@@ -69,7 +68,7 @@ class Energy_Tests(unittest.TestCase):
             N=N,
             S=S,
             ht=ht,
-            inverter=inverter).curvature
+            iteration_controller=IC).curvature
 
         energy = ift.library.NonlinearPowerEnergy(
             position=tau0,

@@ -20,8 +20,8 @@ from ..minimization.quadratic_energy import QuadraticEnergy
 from .wiener_filter_curvature import WienerFilterCurvature
 
 
-def WienerFilterEnergy(position, d, R, N, S, inverter=None,
-                       sampling_inverter=None):
+def WienerFilterEnergy(position, d, R, N, S, iteration_controller=None,
+                       iteration_controller_sampling=None):
     """The Energy for the Wiener filter.
 
     It covers the case of linear measurement with
@@ -48,6 +48,7 @@ def WienerFilterEnergy(position, d, R, N, S, inverter=None,
         if None, it is not possible to draw inverse samples
         default: None
     """
-    op = WienerFilterCurvature(R, N, S, inverter, sampling_inverter)
+    op = WienerFilterCurvature(R, N, S, iteration_controller,
+                               iteration_controller_sampling)
     vec = R.adjoint_times(N.inverse_times(d))
     return QuadraticEnergy(position, op, vec)

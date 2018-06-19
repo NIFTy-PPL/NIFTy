@@ -81,9 +81,8 @@ if __name__ == "__main__":
     j = R.adjoint_times(N.inverse_times(d))
     IC = ift.GradientNormController(name="inverter", iteration_limit=500,
                                     tol_abs_gradnorm=1e-3)
-    inverter = ift.ConjugateGradient(controller=IC)
     D = (ift.SandwichOperator.make(R, N.inverse) + Phi_h.inverse).inverse
-    D = ift.InversionEnabler(D, inverter, approximation=Phi_h)
+    D = ift.InversionEnabler(D, IC, approximation=Phi_h)
     m = HT(D(j))
 
     # Uncertainty
@@ -116,8 +115,7 @@ if __name__ == "__main__":
 
     # initial guess
     psi0 = ift.full(h_domain, 1e-7)
-    energy = ift.library.PoissonEnergy(psi0, data, R0, nonlin, HT, Phi_h,
-                                       inverter)
+    energy = ift.library.PoissonEnergy(psi0, data, R0, nonlin, HT, Phi_h, IC)
     IC1 = ift.GradientNormController(name="IC1", iteration_limit=200,
                                      tol_abs_gradnorm=1e-4)
     minimizer = ift.RelaxedNewton(IC1)

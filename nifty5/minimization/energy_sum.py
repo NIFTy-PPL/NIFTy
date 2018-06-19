@@ -61,6 +61,4 @@ class EnergySum(Energy):
         if precon is None and self._precon_idx is not None:
             precon = self._energies[self._precon_idx].curvature
         from ..operators.inversion_enabler import InversionEnabler
-        from .conjugate_gradient import ConjugateGradient
-        return InversionEnabler(
-            res, ConjugateGradient(self._min_controller), precon)
+        return InversionEnabler(res, self._min_controller, precon)

@@ -18,6 +18,7 @@
 
 import numpy as np
 
+from ..minimization.conjugate_gradient import ConjugateGradient
 from ..minimization.quadratic_energy import QuadraticEnergy
 from .endomorphic_operator import EndomorphicOperator
 
@@ -33,9 +34,9 @@ class SamplingEnabler(EndomorphicOperator):
         The InversionEnabler object will support the same operation modes as
         `op`, and additionally the inverse set. The newly-added modes will
         be computed by iterative inversion.
-    inverter : :class:`Minimizer`
-        The minimizer to use for the iterative numerical inversion.
-        Typically, this is a :class:`ConjugateGradient` object.
+    iteration_controller : :class:`IterationController`
+        The iteration controller to use for the iterative numerical inversion
+        done by a :class:`ConjugateGradient` object.
     approximation : :class:`LinearOperator`, optional
         if not None, this operator should be an approximation to `op`, which
         supports the operation modes that `op` doesn't have. It is used as a
@@ -43,13 +44,13 @@ class SamplingEnabler(EndomorphicOperator):
         convergence.
     """
 
-    def __init__(self, likelihood, prior, sampling_inverter,
+    def __init__(self, likelihood, prior, iteration_controller,
                  approximation=None):
         self._op = likelihood + prior
         super(SamplingEnabler, self).__init__()
         self._likelihood = likelihood
         self._prior = prior
-        self._sampling_inverter = sampling_inverter
+        self._ic = iteration_controller
         self._approximation = approximation
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
@@ -61,8 +62,9 @@ class SamplingEnabler(EndomorphicOperator):
             nj = self._likelihood.draw_sample()
             energy = QuadraticEnergy(s, self._op, sp + nj,
                                      _grad=self._likelihood(s) - nj)
-            energy, convergence = self._sampling_inverter(
-                energy, preconditioner=self._approximation.inverse)
+            inverter = ConjugateGradient(self._ic)
+            energy, convergence = inverter(energy,
+                                           preconditioner=self._approximation.inverse)
             return energy.position
 
     @property
