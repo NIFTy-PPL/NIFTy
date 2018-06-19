@@ -6,15 +6,15 @@ from ..sugar import log, makeOp
 
 
 class PoissonLogLikelihood(Energy):
-    def __init__(self, position, lamb, d):
+    def __init__(self, lamb, d):
         """
         s: Sky model object
 
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(PoissonLogLikelihood, self).__init__(position)
-        self._lamb = lamb.at(position)
+        super(PoissonLogLikelihood, self).__init__(lamb.position)
+        self._lamb = lamb
         self._d = d
 
         lamb_val = self._lamb.value
@@ -29,7 +29,7 @@ class PoissonLogLikelihood(Energy):
         self._curvature = SandwichOperator.make(self._lamb.gradient, metric)
 
     def at(self, position):
-        return self.__class__(position, self._lamb, self._d)
+        return self.__class__(self._lamb.at(position), self._d)
 
     @property
     def value(self):
