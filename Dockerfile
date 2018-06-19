@@ -24,6 +24,10 @@ RUN apt-get update && apt-get install -y \
   && pip install coverage \
   && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y python-matplotlib python3-matplotlib
+
+RUN python3 -m pip install --upgrade pip && python3 -m pip install jupyter && python -m pip install --upgrade pip && python -m pip install jupyter
+
 # Create user (openmpi does not like to be run as root)
 RUN useradd -ms /bin/bash testinguser
 USER testinguser
