@@ -48,7 +48,8 @@ class MultiSkyGradientOperator(LinearOperator):
             # Needed if gradients == {}
             if res is None:
                 res = full(self.target, 0.)
-            assert res.domain == self.target
+            if not res.domain == self.target:
+                raise TypeError
         else:
             grad_keys = self._gradients.keys()
             res = {}
@@ -58,5 +59,6 @@ class MultiSkyGradientOperator(LinearOperator):
                 else:
                     res[dd] = full(self.domain[dd], 0.)
             res = MultiField(res)
-            assert res.domain == self.domain
+            if not res.domain == self.domain:
+                raise TypeError
         return res

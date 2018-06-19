@@ -129,11 +129,13 @@ class Energy(NiftyMetaBase()):
         return None
 
     def __add__(self, other):
-        assert isinstance(other, Energy)
+        if not isinstance(other, Energy):
+            raise TypeError
         return Add(self, other)
 
     def __sub__(self, other):
-        assert isinstance(other, Energy)
+        if not isinstance(other, Energy):
+            raise TypeError
         return Add(self, (-1) * other)
 
 
