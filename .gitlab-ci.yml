@@ -8,6 +8,7 @@ stages:
   - build_docker
   - test
   - release
+  - demo_runs
 
 build_docker_from_scratch:
   only:
@@ -63,7 +64,7 @@ before_script:
   - export MPLBACKEND="agg"
 
 run_critical_filtering:
-  stage: test
+  stage: demo_runs
   script:
     - ls
     - python setup.py install --user -f
@@ -75,7 +76,7 @@ run_critical_filtering:
       - '*.png'
 
 run_nonlinear_critical_filter:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -86,7 +87,7 @@ run_nonlinear_critical_filter:
       - '*.png'
 
 run_nonlinear_wiener_filter:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -99,7 +100,7 @@ run_nonlinear_wiener_filter:
       - '*.png'
 
 run_poisson_demo:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -110,7 +111,7 @@ run_poisson_demo:
       - '*.png'
 
 run_probing:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -121,7 +122,7 @@ run_probing:
       - '*.png'
 
 run_sampling:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -132,7 +133,7 @@ run_sampling:
       - '*.png'
 
 run_tomography:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -143,7 +144,7 @@ run_tomography:
       - '*.png'
 
 run_wiener_filter_data_space_noiseless:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -154,7 +155,7 @@ run_wiener_filter_data_space_noiseless:
       - '*.png'
 
 run_wiener_filter_easy.py:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -165,7 +166,7 @@ run_wiener_filter_easy.py:
       - '*.png'
 
 run_wiener_filter_via_curvature.py:
-  stage: test
+  stage: demo_runs
   script:
     - pip install --user numericalunits
     - pip3 install --user numericalunits
@@ -178,7 +179,7 @@ run_wiener_filter_via_curvature.py:
       - '*.png'
 
 run_wiener_filter_via_hamiltonian.py:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
@@ -189,7 +190,7 @@ run_wiener_filter_via_hamiltonian.py:
       - '*.png'
 
 run_ipynb:
-  stage: test
+  stage: demo_runs
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
