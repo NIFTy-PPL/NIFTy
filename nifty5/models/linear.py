@@ -10,25 +10,34 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 # Copyright(C) 2013-2018 Max-Planck-Society
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..operators.scaling_operator import ScalingOperator
+from ..operators.selection_operator import SelectionOperator
 from .model import Model
 
 
-class Variable(Model):
-    """
-    Returns the MultiField.
-    """
-    def __init__(self, position):
-        super(Variable, self).__init__(position)
+class LinearModel(Model):
+    def __init__(self, inp, lin_op):
+        """
+        Computes lin_op(inp) where lin_op is a Linear Operator
+        """
+        from ..operators import LinearOperator
+        super(LinearModel, self).__init__(inp.position)
 
-        self._value = position
-        self._gradient = ScalingOperator(1., position.domain)
+        if not isinstance(lin_op, LinearOperator):
+            raise TypeError("needs a LinearOperator as input")
+
+        self._lin_op = lin_op
+        self._inp = inp
+        if isinstance(self._lin_op, SelectionOperator):
+            self._lin_op = SelectionOperator(self._inp.value.domain,
+                                             self._lin_op._key)
+
+        self._value = self._lin_op(self._inp.value)
+        self._gradient = self._lin_op*self._inp.gradient
 
     def at(self, position):
-        return self.__class__(position)
+        return self.__class__(self._inp.at(position), self._lin_op)
