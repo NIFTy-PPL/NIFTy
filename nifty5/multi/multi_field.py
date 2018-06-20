@@ -180,12 +180,13 @@ class MultiField(object):
         if not isinstance(other, MultiField):
             return False
         for key, val in self._domain.items():
-            if not key in other._domain or other._domain[key] != val:
+            if key not in other._domain or other._domain[key] != val:
                 return False
         for key, val in self._val.items():
             if not val.isSubsetOf(other[key]):
                 return False
         return True
+
 
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",

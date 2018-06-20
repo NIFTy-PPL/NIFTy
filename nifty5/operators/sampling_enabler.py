@@ -66,8 +66,11 @@ class SamplingEnabler(EndomorphicOperator):
             energy = QuadraticEnergy(s, self._op, sp + nj,
                                      _grad=self._likelihood(s) - nj)
             inverter = ConjugateGradient(self._ic)
-            energy, convergence = inverter(energy,
-                                           preconditioner=self._approximation.inverse)
+            if self._approximation is not None:
+                energy, convergence = inverter(
+                    energy, preconditioner=self._approximation.inverse)
+            else:
+                energy, convergence = inverter(energy)
             return energy.position
 
     @property

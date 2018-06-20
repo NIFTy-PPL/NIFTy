@@ -24,7 +24,8 @@ from ..sugar import makeOp
 
 class NonlinearWienerFilterEnergy(Energy):
     def __init__(self, position, d, Instrument, nonlinearity, ht, power, N, S,
-                 iteration_controller=None, iteration_controller_sampling=None):
+                 iteration_controller=None,
+                 iteration_controller_sampling=None):
         super(NonlinearWienerFilterEnergy, self).__init__(position=position)
         self.d = d.lock()
         self.Instrument = Instrument
