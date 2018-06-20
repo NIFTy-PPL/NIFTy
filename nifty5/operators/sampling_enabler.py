@@ -57,6 +57,9 @@ class SamplingEnabler(EndomorphicOperator):
         try:
             return self._op.draw_sample(from_inverse, dtype)
         except NotImplementedError:
+            # MR FIXME: I think there is a silent assumption that
+            # from_inverse==True when we arrive here.
+            # Can we make this explicit?
             s = self._prior.draw_sample(from_inverse=True)
             sp = self._prior(s)
             nj = self._likelihood.draw_sample()

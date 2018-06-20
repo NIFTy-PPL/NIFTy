@@ -720,7 +720,9 @@ class Field(object):
                self._domain.__str__() + \
                "\n- val         = " + repr(self.val)
 
-    def equivalent(self, other):
+    def isEquivalentTo(self, other):
+        """Determines (as quickly as possible) whether `self`'s content is
+        identical to `other`'s content."""
         if self is other:
             return True
         if not isinstance(other, Field):
@@ -728,6 +730,11 @@ class Field(object):
         if self._domain != other._domain:
             return False
         return (self._val == other._val).all()
+
+    def isSubsetOf(self, other):
+        """Identical to `Field.isEquivalentTo()`. This method is provided for
+        easier interoperability with `MultiField`."""
+        return self.isEquivalentTo(other)
 
 
 for op in ["__add__", "__radd__", "__iadd__",

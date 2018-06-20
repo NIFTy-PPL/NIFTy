@@ -158,7 +158,9 @@ class MultiField(object):
         return MultiField({key: sub_field.conjugate()
                            for key, sub_field in self.items()})
 
-    def equivalent(self, other):
+    def isEquivalentTo(self, other):
+        """Determines (as quickly as possible) whether `self`'s content is
+        identical to `other`'s content."""
         if self is other:
             return True
         if not isinstance(other, MultiField):
@@ -166,10 +168,24 @@ class MultiField(object):
         if self._domain != other._domain:
             return False
         for key, val in self._val.items():
-            if not val.equivalent(other[key]):
+            if not val.isEquivalentTo(other[key]):
                 return False
         return True
 
+    def isSubsetOf(self, other):
+        """Determines (as quickly as possible) whether `self`'s content is
+        a subset of `other`'s content."""
+        if self is other:
+            return True
+        if not isinstance(other, MultiField):
+            return False
+        for key, val in self._domain.items():
+            if not key in other._domain or other._domain[key] != val:
+                return False
+        for key, val in self._val.items():
+            if not val.isSubsetOf(other[key]):
+                return False
+        return True
 
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",
