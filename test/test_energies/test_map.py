@@ -61,7 +61,7 @@ class Energy_Tests(unittest.TestCase):
         energy = ift.library.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, iteration_controller=IC)
         ift.extra.check_value_gradient_curvature_consistency(
-            energy, tol=1e-6, ntries=10)
+            energy, ntries=10)
 
     @expand(product([ift.GLSpace(15),
                      ift.RGSpace(64, distances=.789),
@@ -95,7 +95,7 @@ class Energy_Tests(unittest.TestCase):
             N=N, S=S)
         if isinstance(nonlinearity, ift.library.Linear):
             ift.extra.check_value_gradient_curvature_consistency(
-                energy, tol=1e-6, ntries=10)
+                energy, ntries=10)
         else:
             ift.extra.check_value_gradient_consistency(
-                energy, tol=1e-6, ntries=10)
+                energy, ntries=10)

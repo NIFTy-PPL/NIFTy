@@ -81,4 +81,4 @@ class Energy_Tests(unittest.TestCase):
             ht=ht,
             N=N,
             samples=10)
-        ift.extra.check_value_gradient_consistency(energy, tol=1e-6, ntries=10)
+        ift.extra.check_value_gradient_consistency(energy, ntries=10)

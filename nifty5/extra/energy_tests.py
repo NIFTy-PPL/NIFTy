@@ -44,7 +44,7 @@ def _get_acceptable_energy(E):
     return E2
 
 
-def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
+def check_value_gradient_consistency(E, tol=1e-10, ntries=100):
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
         val = E.value
@@ -54,9 +54,8 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
         for i in range(50):
             Emid = E.at(E.position + 0.5*dir)
             dirder = Emid.gradient.vdot(dir)/dirnorm
-            t1 = (E2.value-val)/dirnorm
-            xtol = tol*max(abs(t1), abs(dirder))
-            if abs(t1-dirder) < xtol:
+            xtol = tol*Emid.gradient_norm
+            if abs((E2.value-val)/dirnorm - dirder) < xtol:
                 break
             dir *= 0.5
             dirnorm *= 0.5
@@ -66,7 +65,7 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
         # E = Enext
 
 
-def check_value_gradient_curvature_consistency(E, tol=1e-6, ntries=100):
+def check_value_gradient_curvature_consistency(E, tol=1e-10, ntries=100):
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
         val = E.value
@@ -77,8 +76,9 @@ def check_value_gradient_curvature_consistency(E, tol=1e-6, ntries=100):
             Emid = E.at(E.position + 0.5*dir)
             dirder = Emid.gradient.vdot(dir)/dirnorm
             dgrad = Emid.curvature(dir)/dirnorm
-            if abs((E2.value-val)/dirnorm-dirder) < tol and \
-               (abs((E2.gradient-E.gradient)/dirnorm-dgrad) < tol).all():
+            xtol = tol*Emid.gradient_norm
+            if abs((E2.value-val)/dirnorm - dirder) < xtol and \
+               (abs((E2.gradient-E.gradient)/dirnorm-dgrad) < xtol).all():
                 break
             dir *= 0.5
             dirnorm *= 0.5

@@ -82,4 +82,4 @@ class Noise_Energy_Tests(unittest.TestCase):
                            for _ in range(10)]
 
         energy = ift.library.NoiseEnergy(eta0, alpha, q, res_sample_list)
-        ift.extra.check_value_gradient_consistency(energy, tol=1e-6, ntries=10)
+        ift.extra.check_value_gradient_consistency(energy, ntries=10)
