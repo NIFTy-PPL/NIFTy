@@ -44,7 +44,7 @@ def _get_acceptable_energy(E):
     return E2
 
 
-def check_value_gradient_consistency(E, tol=1e-10, ntries=100):
+def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
         val = E.value
@@ -65,7 +65,7 @@ def check_value_gradient_consistency(E, tol=1e-10, ntries=100):
         # E = Enext
 
 
-def check_value_gradient_curvature_consistency(E, tol=1e-10, ntries=100):
+def check_value_gradient_curvature_consistency(E, tol=1e-8, ntries=100):
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
         val = E.value
