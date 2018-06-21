@@ -16,6 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+import numpy as np
 from .linear_operator import LinearOperator
 
 
@@ -52,7 +53,8 @@ class ChainOperator(LinearOperator):
         opsnew = []
         lastdom = ops[-1].domain
         for op in ops:
-            if isinstance(op, ScalingOperator):
+            if (isinstance(op, ScalingOperator) and
+                    not np.issubdtype(type(op._factor), np.complexfloating)):
                 fct *= op._factor
             else:
                 opsnew.append(op)
