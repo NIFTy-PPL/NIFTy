@@ -54,7 +54,9 @@ def check_value_gradient_consistency(E, tol=1e-6, ntries=100):
         for i in range(50):
             Emid = E.at(E.position + 0.5*dir)
             dirder = Emid.gradient.vdot(dir)/dirnorm
-            if abs((E2.value-val)/dirnorm-dirder) < tol:
+            t1 = (E2.value-val)/dirnorm
+            xtol = tol*max(abs(t1), abs(dirder))
+            if abs(t1-dirder) < xtol:
                 break
             dir *= 0.5
             dirnorm *= 0.5
