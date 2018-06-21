@@ -17,7 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..operators.selection_operator import SelectionOperator
+from ..operators.diagonal_operator import DiagonalOperator
 from ..utilities import NiftyMetaBase
+from ..field import Field
 
 
 class Model(NiftyMetaBase()):
@@ -62,9 +64,15 @@ class Model(NiftyMetaBase()):
         if isinstance(other, Model):
             from .binary_helpers import Mul
             return Mul.make(self, other)
+        if isinstance(other, Field):
+            if other.domain == self.value.domain:
+                from .binary_helpers import Mul
+                return DiagonalOperator(other)(self)
         raise NotImplementedError
 
     def __rmul__(self, other):
         if isinstance(other, (float, int)):
+            return self.__mul__(other)
+        if isinstance(other, Field):
             return self.__mul__(other)
         raise NotImplementedError
