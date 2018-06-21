@@ -194,7 +194,7 @@ run_ipynb:
   script:
     - python setup.py install --user -f
     - python3 setup.py install --user -f
-    - jupyter nbconvert --execute demos/Wiener_Filter.ipynb
+    - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/Wiener_Filter.ipynb
   artifacts:
     paths:
       - '*.png'
