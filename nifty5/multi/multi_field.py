@@ -207,10 +207,29 @@ for op in ["__add__", "__radd__", "__iadd__",
                         raise ValueError("domain mismatch")
                     fullkeys = set(self._domain.keys()) | set(other._domain.keys())
                     result_val = {}
-                    for key in fullkeys:
-                        f1 = self[key] if key in self._domain.keys() else other[key]*0
-                        f2 = other[key] if key in other._domain.keys() else self[key]*0
-                        result_val[key] = getattr(f1, op)(f2)
+                    if op in ["__iadd__", "__add__"]:
+                        for key in fullkeys:
+                            f1 = self[key] if key in self._domain.keys() else None
+                            f2 = other[key] if key in other._domain.keys() else None
+                            if f1 is None:
+                                result_val[key] = f2
+                            elif f2 is None:
+                                result_val[key] = f1
+                            else:
+                                result_val[key] = getattr(f1, op)(f2)
+                    elif op in ["__mul__"]:
+                        for key in fullkeys:
+                            f1 = self[key] if key in self._domain.keys() else None
+                            f2 = other[key] if key in other._domain.keys() else None
+                            if f1 is None or f2 is None:
+                                continue
+                            else:
+                                result_val[key] = getattr(f1, op)(f2)
+                    else:
+                        for key in fullkeys:
+                            f1 = self[key] if key in self._domain.keys() else other[key]*0
+                            f2 = other[key] if key in other._domain.keys() else self[key]*0
+                            result_val[key] = getattr(f1, op)(f2)
             else:
                 result_val = {key: getattr(val, op)(other)
                               for key, val in self.items()}
