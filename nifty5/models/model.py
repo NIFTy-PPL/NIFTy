@@ -16,10 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..operators.selection_operator import SelectionOperator
-from ..operators.diagonal_operator import DiagonalOperator
-from ..utilities import NiftyMetaBase
 from ..field import Field
+from ..multi import MultiField
+from ..operators.selection_operator import SelectionOperator
+from ..sugar import makeOp
+from ..utilities import NiftyMetaBase
 
 
 class Model(NiftyMetaBase()):
@@ -49,7 +50,7 @@ class Model(NiftyMetaBase()):
         if isinstance(other, Model):
             from .binary_helpers import Add
             return Add.make(self, other)
-        if isinstance(other, Field):
+        if isinstance(other, (Field, MultiField)):
             from .constant import Constant
             return self.__add__(Constant(self.position, other))
         raise TypeError
@@ -64,8 +65,8 @@ class Model(NiftyMetaBase()):
         if isinstance(other, Model):
             from .binary_helpers import Mul
             return Mul.make(self, other)
-        if isinstance(other, Field):
-            return DiagonalOperator(other)(self)
+        if isinstance(other, (Field, MultiField)):
+            return makeOp(other)(self)
         raise NotImplementedError
 
     def __rmul__(self, other):
