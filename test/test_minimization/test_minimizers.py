@@ -76,7 +76,7 @@ class Test_Minimizers(unittest.TestCase):
         except ImportError:
             raise SkipTest
         np.random.seed(42)
-        space = ift.UnstructuredDomain((2,))
+        space = ift.DomainTuple.make(ift.UnstructuredDomain((2,)))
         starting_point = ift.Field.from_random('normal', domain=space)*10
 
         class RBEnergy(ift.Energy):

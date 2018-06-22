@@ -747,6 +747,7 @@ for op in ["__add__", "__radd__", "__iadd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
+            global COUNTER
             # if other is a field, make sure that the domains match
             if isinstance(other, Field):
                 if other._domain != self._domain:
