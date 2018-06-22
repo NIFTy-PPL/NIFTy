@@ -92,8 +92,10 @@ class MultiDomain(frozendict):
     def subsetOf(self, x):
         if not isinstance(x, MultiDomain):
             x = MultiDomain.make(x)
+        if len(x) == 0:
+            return True
         for key in self.keys():
-            if not key in x:
+            if key not in x:
                 return False
             if self[key] != x[key]:
                 return False
