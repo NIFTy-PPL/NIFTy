@@ -52,10 +52,7 @@ class Model(NiftyMetaBase()):
         return Add.make(self, other)
 
     def __sub__(self, other):
-        if not isinstance(other, Model):
-            raise TypeError
-        from .binary_helpers import Add
-        return Add.make(self, (-1) * other)
+        return self.__add__(self, (-1) * other)
 
     def __mul__(self, other):
         if isinstance(other, (float, int)):
@@ -65,14 +62,10 @@ class Model(NiftyMetaBase()):
             from .binary_helpers import Mul
             return Mul.make(self, other)
         if isinstance(other, Field):
-            if other.domain == self.value.domain:
-                from .binary_helpers import Mul
-                return DiagonalOperator(other)(self)
+            return DiagonalOperator(other)(self)
         raise NotImplementedError
 
     def __rmul__(self, other):
-        if isinstance(other, (float, int)):
-            return self.__mul__(other)
-        if isinstance(other, Field):
+        if isinstance(other, (float, int, Field)):
             return self.__mul__(other)
         raise NotImplementedError
