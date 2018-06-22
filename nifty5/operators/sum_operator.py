@@ -23,12 +23,14 @@ import numpy as np
 class SumOperator(LinearOperator):
     """Class representing sums of operators."""
 
-    def __init__(self, ops, neg, _callingfrommake=False):
+    def __init__(self, ops, neg, dom, tgt, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
         super(SumOperator, self).__init__()
         self._ops = ops
         self._neg = neg
+        self._domain = dom
+        self._target = tgt
         self._capability = self.TIMES | self.ADJOINT_TIMES
         for op in ops:
             self._capability &= op.capability
@@ -38,9 +40,12 @@ class SumOperator(LinearOperator):
         from .scaling_operator import ScalingOperator
         from .diagonal_operator import DiagonalOperator
         # Step 1: verify domains
+        dom = ops[0].domain
+        tgt = ops[0].target
         for op in ops[1:]:
-            if op.domain != ops[0].domain or op.target != ops[0].target:
-                raise ValueError("domain mismatch")
+            dom = dom.unitedWith(op.domain)
+            tgt = tgt.unitedWith(op.target)
+
         # Step 2: unpack SumOperators
         opsnew = []
         negnew = []
@@ -124,7 +129,7 @@ class SumOperator(LinearOperator):
                     negnew.append(neg[i])
         ops = opsnew
         neg = negnew
-        return ops, neg
+        return ops, neg, dom, tgt
 
     @staticmethod
     def make(ops, neg):
@@ -134,18 +139,18 @@ class SumOperator(LinearOperator):
             raise ValueError("ops is empty")
         if len(ops) != len(neg):
             raise ValueError("length mismatch between ops and neg")
-        ops, neg = SumOperator.simplify(ops, neg)
+        ops, neg, dom, tgt = SumOperator.simplify(ops, neg)
         if len(ops) == 1 and not neg[0]:
             return ops[0]
-        return SumOperator(ops, neg, _callingfrommake=True)
+        return SumOperator(ops, neg, dom, tgt, _callingfrommake=True)
 
     @property
     def domain(self):
-        return self._ops[0].domain
+        return self._domain
 
     @property
     def target(self):
-        return self._ops[0].target
+        return self._target
 
     @property
     def adjoint(self):

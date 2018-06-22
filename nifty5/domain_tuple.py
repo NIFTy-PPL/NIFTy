@@ -128,12 +128,23 @@ class DomainTuple(object):
     def __eq__(self, x):
         if not isinstance(x, DomainTuple):
             x = DomainTuple.make(x)
-        if self is x:
-            return True
-        return self._dom == x._dom
+        return self is x
 
     def __ne__(self, x):
         return not self.__eq__(x)
+
+    def compatibleTo(self, x):
+        return self.__eq__(x)
+
+    def subsetOf(self, x):
+        return self.__eq__(x)
+
+    def unitedWith(self, x):
+        if not isinstance(x, DomainTuple):
+            x = DomainTuple.make(x)
+        if self != x:
+            raise ValueError("domain mismatch")
+        return self
 
     def __str__(self):
         res = "DomainTuple, len: " + str(len(self))

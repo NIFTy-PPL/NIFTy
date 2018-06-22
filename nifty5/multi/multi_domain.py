@@ -71,3 +71,44 @@ class MultiDomain(frozendict):
         obj = MultiDomain(domain, _callingfrommake=True)
         MultiDomain._domainCache[domain] = obj
         return obj
+
+    def __eq__(self, x):
+        if not isinstance(x, MultiDomain):
+            x = MultiDomain.make(x)
+        return self is x
+
+    def __ne__(self, x):
+        return not self.__eq__(x)
+
+    def compatibleTo(self, x):
+        if not isinstance(x, MultiDomain):
+            x = MultiDomain.make(x)
+        commonKeys = set(self.keys()) & set(x.keys())
+        for key in commonKeys:
+            if self[key] != x[key]:
+                return False
+        return True
+
+    def subsetOf(self, x):
+        if not isinstance(x, MultiDomain):
+            x = MultiDomain.make(x)
+        for key in self.keys():
+            if not key in x:
+                return False
+            if self[key] != x[key]:
+                return False
+        return True
+
+    def unitedWith(self, x):
+        if not isinstance(x, MultiDomain):
+            x = MultiDomain.make(x)
+        if self == x:
+            return self
+        if not self.compatibleTo(x):
+            raise ValueError("domain mismatch")
+        res = {}
+        for key, val in self.items():
+            res[key] = val
+        for key, val in x.items():
+            res[key] = val
+        return MultiDomain.make(res)
