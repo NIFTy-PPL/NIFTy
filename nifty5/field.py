@@ -737,6 +737,8 @@ class Field(object):
         return self.isEquivalentTo(other)
 
 
+COUNTER = 0
+
 for op in ["__add__", "__radd__", "__iadd__",
            "__sub__", "__rsub__", "__isub__",
            "__mul__", "__rmul__", "__imul__",
@@ -747,10 +749,17 @@ for op in ["__add__", "__radd__", "__iadd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
+            global COUNTER
             # if other is a field, make sure that the domains match
             if isinstance(other, Field):
                 if other._domain != self._domain:
                     raise ValueError("domains are incompatible.")
+                if (self==0).all() or (other==0).all():
+                    COUNTER += 1
+                    print("({}) zero Field detected".format(COUNTER))
+                    print("op = ", op)
+                    # import traceback
+                    # traceback.print_stack()
                 tval = getattr(self.val, op)(other.val)
                 return self if tval is self.val else Field(self._domain, tval)
 
