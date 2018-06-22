@@ -17,7 +17,6 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..operators import LinearOperator
-from ..sugar import full
 
 
 class SelectionOperator(LinearOperator):
@@ -46,11 +45,5 @@ class SelectionOperator(LinearOperator):
         if mode == self.TIMES:
             return x[self._key].copy()
         else:
-            result = {}
-            for key, val in self.domain.items():
-                if key != self._key:
-                    result[key] = full(val, 0.)
-                else:
-                    result[key] = x.copy()
             from ..multi import MultiField
-            return MultiField(result)
+            return MultiField({self._key: x})
