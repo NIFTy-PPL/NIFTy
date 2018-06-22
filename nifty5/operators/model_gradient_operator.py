@@ -75,9 +75,9 @@ class ModelGradientOperator(LinearOperator):
             for dd in self.domain:
                 if dd in grad_keys:
                     res[dd] = self._gradients[dd].adjoint_times(x)
-                else:
-                    res[dd] = full(self.domain[dd], 0.)
+                # else:
+                    # res[dd] = full(self.domain[dd], 0.)
             res = MultiField(res)
-            if not res.domain == self.domain:
-                raise TypeError
+            # if not res.domain == self.domain:
+            #     raise TypeError
         return res
