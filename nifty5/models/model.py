@@ -16,10 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..operators.selection_operator import SelectionOperator
-from ..operators.diagonal_operator import DiagonalOperator
-from ..utilities import NiftyMetaBase
 from ..field import Field
+from ..multi import MultiField
+from ..operators.selection_operator import SelectionOperator
+from ..sugar import makeOp
+from ..utilities import NiftyMetaBase
 
 
 class Model(NiftyMetaBase()):
@@ -46,16 +47,16 @@ class Model(NiftyMetaBase()):
         return sel(self)
 
     def __add__(self, other):
-        if not isinstance(other, Model):
-            raise TypeError
-        from .binary_helpers import Add
-        return Add.make(self, other)
+        if isinstance(other, Model):
+            from .binary_helpers import Add
+            return Add.make(self, other)
+        if isinstance(other, (Field, MultiField)):
+            from .constant import Constant
+            return self.__add__(Constant(self.position, other))
+        raise TypeError
 
     def __sub__(self, other):
-        if not isinstance(other, Model):
-            raise TypeError
-        from .binary_helpers import Add
-        return Add.make(self, (-1) * other)
+        return self.__add__((-1) * other)
 
     def __mul__(self, other):
         if isinstance(other, (float, int)):
@@ -64,15 +65,11 @@ class Model(NiftyMetaBase()):
         if isinstance(other, Model):
             from .binary_helpers import Mul
             return Mul.make(self, other)
-        if isinstance(other, Field):
-            if other.domain == self.value.domain:
-                from .binary_helpers import Mul
-                return DiagonalOperator(other)(self)
+        if isinstance(other, (Field, MultiField)):
+            return makeOp(other)(self)
         raise NotImplementedError
 
     def __rmul__(self, other):
-        if isinstance(other, (float, int)):
-            return self.__mul__(other)
-        if isinstance(other, Field):
+        if isinstance(other, (float, int, Field)):
             return self.__mul__(other)
         raise NotImplementedError

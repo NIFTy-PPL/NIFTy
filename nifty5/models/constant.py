@@ -20,6 +20,7 @@ from .model import Model
 
 
 class Constant(Model):
+    # TODO Remove position
     def __init__(self, position, constant):
         super(Constant, self).__init__(position)
         self._constant = constant
