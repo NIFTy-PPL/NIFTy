@@ -16,7 +16,6 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..operators.model_gradient_operator import ModelGradientOperator
 from .model import Model
 
 
@@ -26,9 +25,7 @@ class Constant(Model):
         self._constant = constant
 
         self._value = self._constant
-
-        self._gradient = ModelGradientOperator({}, position.domain,
-                                               self.value.domain)
+        self._gradient = 0.
 
     def at(self, position):
         return self.__class__(position, self._constant)
