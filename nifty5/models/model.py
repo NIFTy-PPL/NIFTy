@@ -46,13 +46,16 @@ class Model(NiftyMetaBase()):
         return sel(self)
 
     def __add__(self, other):
-        if not isinstance(other, Model):
-            raise TypeError
-        from .binary_helpers import Add
-        return Add.make(self, other)
+        if isinstance(other, Model):
+            from .binary_helpers import Add
+            return Add.make(self, other)
+        if isinstance(other, Field):
+            from .constant import Constant
+            return self.__add__(Constant(self.position, other))
+        raise TypeError
 
     def __sub__(self, other):
-        return self.__add__(self, (-1) * other)
+        return self.__add__((-1) * other)
 
     def __mul__(self, other):
         if isinstance(other, (float, int)):
