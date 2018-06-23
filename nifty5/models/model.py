@@ -73,3 +73,10 @@ class Model(NiftyMetaBase()):
         if isinstance(other, (float, int, Field)):
             return self.__mul__(other)
         raise NotImplementedError
+
+    def __str__(self):
+        s = '--------------------------------------------------------------------------------\n'
+        s += '<Nifty Model at {}>\n\n'.format(hex(id(self)))
+        s += 'Position domain:\n{}\n\nValue domain:\n{}\n'.format(self.position.domain, self.value.domain)
+        s += '--------------------------------------------------------------------------------\n'
+        return s
