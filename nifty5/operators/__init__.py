@@ -8,6 +8,7 @@ from .harmonic_transform_operator import HarmonicTransformOperator
 from .inversion_enabler import InversionEnabler
 from .laplace_operator import LaplaceOperator
 from .linear_operator import LinearOperator
+from .multi_adaptor import MultiAdaptor
 from .power_distributor import PowerDistributor
 from .sampling_enabler import SamplingEnabler
 from .sandwich_operator import SandwichOperator
@@ -20,4 +21,4 @@ __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "FFTSmoothingOperator", "GeometryRemover",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
            "InversionEnabler", "SandwichOperator", "SamplingEnabler",
-           "DOFDistributor", "SelectionOperator"]
+           "DOFDistributor", "SelectionOperator", "MultiAdaptor"]
