@@ -18,8 +18,8 @@
 
 from numpy import inf, isnan
 
-from ..minimization import Energy
-from ..operators import SandwichOperator
+from ..minimization.energy import Energy
+from ..operators.sandwich_operator import SandwichOperator
 from ..sugar import log, makeOp
 
 
