@@ -75,8 +75,11 @@ class Model(NiftyMetaBase()):
         raise NotImplementedError
 
     def __str__(self):
-        s = '--------------------------------------------------------------------------------\n'
-        s += '<Nifty Model at {}>\n\n'.format(hex(id(self)))
-        s += 'Position domain:\n{}\n\nValue domain:\n{}\n'.format(self.position.domain, self.value.domain)
-        s += '--------------------------------------------------------------------------------\n'
+        s = ('----------------------------------------'
+             '----------------------------------------\n'
+             '<Nifty Model at {}>\n\n'.format(hex(id(self))))
+        s += 'Position domain:\n{}\n\nValue domain:\n{}\n'.format(
+            self.position.domain, self.value.domain)
+        s += ('---------------------------------------'
+              '-----------------------------------------\n')
         return s

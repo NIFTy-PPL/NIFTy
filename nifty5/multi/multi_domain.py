@@ -46,6 +46,8 @@ class frozendict(collections.Mapping):
 
 class MultiDomain(frozendict):
     _domainCache = {}
+    _subsetCache = set()
+    _compatCache = set()
 
     def __init__(self, domain, _callingfrommake=False):
         if not _callingfrommake:
@@ -83,22 +85,30 @@ class MultiDomain(frozendict):
     def compatibleTo(self, x):
         if not isinstance(x, MultiDomain):
             x = MultiDomain.make(x)
+        if (self, x) in MultiDomain._compatCache:
+            return True
         commonKeys = set(self.keys()) & set(x.keys())
         for key in commonKeys:
             if self[key] != x[key]:
                 return False
+        MultiDomain._compatCache.add((self, x))
+        MultiDomain._compatCache.add((x, self))
         return True
 
     def subsetOf(self, x):
         if not isinstance(x, MultiDomain):
             x = MultiDomain.make(x)
+        if (self, x) in MultiDomain._subsetCache:
+            return True
         if len(x) == 0:
+            MultiDomain._subsetCache.add((self, x))
             return True
         for key in self.keys():
             if key not in x:
                 return False
             if self[key] != x[key]:
                 return False
+        MultiDomain._subsetCache.add((self, x))
         return True
 
     def unitedWith(self, x):
