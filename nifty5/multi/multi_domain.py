@@ -82,6 +82,9 @@ class MultiDomain(frozendict):
     def __ne__(self, x):
         return not self.__eq__(x)
 
+    def __hash__(self):
+        return super(MultiDomain, self).__hash__()
+
     def compatibleTo(self, x):
         if not isinstance(x, MultiDomain):
             x = MultiDomain.make(x)
