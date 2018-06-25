@@ -99,16 +99,17 @@ run_nonlinear_wiener_filter:
     paths:
       - '*.png'
 
-run_poisson_demo:
-  stage: demo_runs
-  script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
-    - python demos/poisson_demo.py
-    - python3 demos/poisson_demo.py
-  artifacts:
-    paths:
-      - '*.png'
+# FIXME: disable for now. Fixing it is part of issue #244.
+#run_poisson_demo:
+#  stage: demo_runs
+#  script:
+#    - python setup.py install --user -f
+#    - python3 setup.py install --user -f
+#    - python demos/poisson_demo.py
+#    - python3 demos/poisson_demo.py
+#  artifacts:
+#    paths:
+#      - '*.png'
 
 run_probing:
   stage: demo_runs
