@@ -68,8 +68,6 @@ class DomainTuple(object):
         """
         if isinstance(domain, DomainTuple):
             return domain
-        if isinstance(domain, dict):
-            return domain
         domain = DomainTuple._parse_domain(domain)
         obj = DomainTuple._tupleCache.get(domain)
         if obj is not None:
@@ -126,8 +124,9 @@ class DomainTuple(object):
         return self._dom.__hash__()
 
     def __eq__(self, x):
-        if not isinstance(x, DomainTuple):
-            x = DomainTuple.make(x)
+        if self is x:
+            return True
+        x = DomainTuple.make(x)
         return self is x
 
     def __ne__(self, x):
@@ -140,9 +139,10 @@ class DomainTuple(object):
         return self.__eq__(x)
 
     def unitedWith(self, x):
-        if not isinstance(x, DomainTuple):
-            x = DomainTuple.make(x)
-        if self != x:
+        if self is x:
+            return self
+        x = DomainTuple.make(x)
+        if self is not x:
             raise ValueError("domain mismatch")
         return self
 
