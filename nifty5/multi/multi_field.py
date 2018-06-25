@@ -182,7 +182,7 @@ class MultiField(object):
         if len(set(self._domain.keys()) - set(other._domain.keys())) > 0:
             return False
         for key in self._domain.keys():
-            if other._domain[key] != self._domain[key]:
+            if other._domain[key] is not self._domain[key]:
                 return False
             if not other[key].isSubsetOf(self[key]):
                 return False
@@ -223,9 +223,11 @@ for op in ["__add__", "__radd__",
                         pass
                     else:
                         for key in only_self_keys:
-                            result_val[key] = getattr(self[key], op)(self[key]*0.)
+                            result_val[key] = getattr(
+                                self[key], op)(self[key]*0.)
                         for key in only_other_keys:
-                            result_val[key] = getattr(other[key]*0., op)(other[key])
+                            result_val[key] = getattr(
+                                other[key]*0., op)(other[key])
             else:
                 result_val = {key: getattr(val, op)(other)
                               for key, val in self.items()}
