@@ -46,6 +46,8 @@ class frozendict(collections.Mapping):
 
 class MultiDomain(frozendict):
     _domainCache = {}
+    _subsetCache = set()
+    _compatCache = set()
 
     def __init__(self, domain, _callingfrommake=False):
         if not _callingfrommake:
@@ -73,38 +75,53 @@ class MultiDomain(frozendict):
         return obj
 
     def __eq__(self, x):
-        if not isinstance(x, MultiDomain):
-            x = MultiDomain.make(x)
+        if self is x:
+            return True
+        x = MultiDomain.make(x)
         return self is x
 
     def __ne__(self, x):
         return not self.__eq__(x)
 
+    def __hash__(self):
+        return super(MultiDomain, self).__hash__()
+
     def compatibleTo(self, x):
-        if not isinstance(x, MultiDomain):
-            x = MultiDomain.make(x)
+        if self is x:
+            return True
+        x = MultiDomain.make(x)
+        if (self, x) in MultiDomain._compatCache:
+            return True
         commonKeys = set(self.keys()) & set(x.keys())
         for key in commonKeys:
-            if self[key] != x[key]:
+            if self[key] is not x[key]:
                 return False
+        MultiDomain._compatCache.add((self, x))
+        MultiDomain._compatCache.add((x, self))
         return True
 
     def subsetOf(self, x):
-        if not isinstance(x, MultiDomain):
-            x = MultiDomain.make(x)
+        if self is x:
+            return True
+        x = MultiDomain.make(x)
+        if (self, x) in MultiDomain._subsetCache:
+            return True
         if len(x) == 0:
+            MultiDomain._subsetCache.add((self, x))
             return True
         for key in self.keys():
             if key not in x:
                 return False
-            if self[key] != x[key]:
+            if self[key] is not x[key]:
                 return False
+        MultiDomain._subsetCache.add((self, x))
         return True
 
     def unitedWith(self, x):
-        if not isinstance(x, MultiDomain):
-            x = MultiDomain.make(x)
-        if self == x:
+        if self is x:
+            return self
+        x = MultiDomain.make(x)
+        if self is x:
             return self
         if not self.compatibleTo(x):
             raise ValueError("domain mismatch")

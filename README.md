@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_4/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_4)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_4/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_4)
+[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_5/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_5)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_5/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_5)
 
 **NIFTy** project homepage:
 [http://ift.pages.mpcdf.de/NIFTy](http://ift.pages.mpcdf.de/NIFTy)
@@ -62,7 +62,7 @@ distributions, the "apt" lines will need slight changes.
 NIFTy5 and its mandatory dependencies can be installed via:
 
     sudo apt-get install git libfftw3-dev python python-pip python-dev
-    pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_4
+    pip install --user git+https://gitlab.mpcdf.mpg.de/ift/NIFTy.git@NIFTy_5
 
 (Note: If you encounter problems related to `pyFFTW`, make sure that you are
 using a pip-installed `pyFFTW` package. Unfortunately, some distributions are

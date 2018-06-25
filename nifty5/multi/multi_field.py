@@ -179,22 +179,23 @@ class MultiField(object):
             return True
         if not isinstance(other, MultiField):
             return False
-        for key, val in self._domain.items():
-            if key not in other._domain or other._domain[key] != val:
+        if len(set(self._domain.keys()) - set(other._domain.keys())) > 0:
+            return False
+        for key in self._domain.keys():
+            if other._domain[key] is not self._domain[key]:
                 return False
-        for key, val in self._val.items():
-            if not val.isSubsetOf(other[key]):
+            if not other[key].isSubsetOf(self[key]):
                 return False
         return True
 
 
-for op in ["__add__", "__radd__", "__iadd__",
-           "__sub__", "__rsub__", "__isub__",
-           "__mul__", "__rmul__", "__imul__",
-           "__div__", "__rdiv__", "__idiv__",
-           "__truediv__", "__rtruediv__", "__itruediv__",
-           "__floordiv__", "__rfloordiv__", "__ifloordiv__",
-           "__pow__", "__rpow__", "__ipow__",
+for op in ["__add__", "__radd__",
+           "__sub__", "__rsub__",
+           "__mul__", "__rmul__",
+           "__div__", "__rdiv__",
+           "__truediv__", "__rtruediv__",
+           "__floordiv__", "__rfloordiv__",
+           "__pow__", "__rpow__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
@@ -205,31 +206,28 @@ for op in ["__add__", "__radd__", "__iadd__",
                 else:
                     if not self._domain.compatibleTo(other.domain):
                         raise ValueError("domain mismatch")
-                    fullkeys = set(self._domain.keys()) | set(other._domain.keys())
+                    s1 = set(self._domain.keys())
+                    s2 = set(other._domain.keys())
+                    common_keys = s1 & s2
+                    only_self_keys = s1 - s2
+                    only_other_keys = s2 - s1
                     result_val = {}
-                    if op in ["__iadd__", "__add__"]:
-                        for key in fullkeys:
-                            f1 = self[key] if key in self._domain.keys() else None
-                            f2 = other[key] if key in other._domain.keys() else None
-                            if f1 is None:
-                                result_val[key] = f2
-                            elif f2 is None:
-                                result_val[key] = f1
-                            else:
-                                result_val[key] = getattr(f1, op)(f2)
-                    elif op in ["__mul__"]:
-                        for key in fullkeys:
-                            f1 = self[key] if key in self._domain.keys() else None
-                            f2 = other[key] if key in other._domain.keys() else None
-                            if f1 is None or f2 is None:
-                                continue
-                            else:
-                                result_val[key] = getattr(f1, op)(f2)
+                    for key in common_keys:
+                        result_val[key] = getattr(self[key], op)(other[key])
+                    if op in ("__add__", "__radd__"):
+                        for key in only_self_keys:
+                            result_val[key] = self[key].copy()
+                        for key in only_other_keys:
+                            result_val[key] = other[key].copy()
+                    elif op in ("__mul__", "__rmul__"):
+                        pass
                     else:
-                        for key in fullkeys:
-                            f1 = self[key] if key in self._domain.keys() else other[key]*0
-                            f2 = other[key] if key in other._domain.keys() else self[key]*0
-                            result_val[key] = getattr(f1, op)(f2)
+                        for key in only_self_keys:
+                            result_val[key] = getattr(
+                                self[key], op)(self[key]*0.)
+                        for key in only_other_keys:
+                            result_val[key] = getattr(
+                                other[key]*0., op)(other[key])
             else:
                 result_val = {key: getattr(val, op)(other)
                               for key, val in self.items()}

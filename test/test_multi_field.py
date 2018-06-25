@@ -37,8 +37,6 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f1.locked, False)
         f1.lock()
         assert_equal(f1.locked, True)
-        with assert_raises(ValueError):
-            f1 += f1
         assert_equal(f1.locked_copy() is f1, True)
 
     def test_fill(self):
