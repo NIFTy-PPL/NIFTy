@@ -1,5 +1,5 @@
 from .constant import Constant
-from .linear import LinearModel
+from .linear_model import LinearModel
 from .local_nonlinearity import (LocalModel, PointwiseExponential,
                                  PointwisePositiveTanh, PointwiseTanh)
 from .model import Model

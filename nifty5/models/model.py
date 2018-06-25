@@ -17,7 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..field import Field
-from ..multi import MultiField
+from ..multi.multi_field import MultiField
 from ..operators.selection_operator import SelectionOperator
 from ..sugar import makeOp
 from ..utilities import NiftyMetaBase

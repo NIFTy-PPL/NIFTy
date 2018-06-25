@@ -17,8 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..domain_tuple import DomainTuple
-from ..multi import MultiField
-from ..operators import MultiAdaptor
+from ..multi.multi_field import MultiField
+from ..operators.multi_adaptor import MultiAdaptor
 from .model import Model
 
 

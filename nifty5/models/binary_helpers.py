@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..multi import MultiField
+from ..multi.multi_field import MultiField
 from ..sugar import makeOp
 from .model import Model
 

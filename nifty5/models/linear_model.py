@@ -24,7 +24,7 @@ class LinearModel(Model):
         """
         Computes lin_op(inp) where lin_op is a Linear Operator
         """
-        from ..operators import LinearOperator
+        from ..operators.linear_operaror import LinearOperator
         super(LinearModel, self).__init__(inp.position)
 
         if not isinstance(lin_op, LinearOperator):
