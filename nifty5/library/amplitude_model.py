@@ -33,6 +33,8 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     '''
     from ..operators import (ExpTransform, QHTOperator, SlopeOperator,
                              SymmetrizingOperator)
+    from ..models import Variable, Constant, PointwiseExponential
+
     h_space = s_space.get_default_codomain()
     p_space = PowerSpace(h_space)
     exp_transform = ExpTransform(p_space, Npixdof)
@@ -59,12 +61,10 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
 
     ceps = makeOp(sqrt(cepstrum))
     smooth_op = sym * qht * ceps
-    from ..models import Variable
     smooth_spec = smooth_op(Variable(position)[keys[0]])
-    phi = Variable(position)[keys[1]] + norm_phi_mean
+    phi = Variable(position)[keys[1]] + Constant(position, norm_phi_mean)
     linear_spec = slope(phi)
     loglog_spec = smooth_spec + linear_spec
-    from ..models import PointwiseExponential
     xlog_ampl = PointwiseExponential(0.5*loglog_spec)
 
     internals = {'loglog_spec': loglog_spec,
