@@ -5,12 +5,12 @@ from .. import dobj
 from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
 
-if dobj.ntask > 1:
-    raise NotImplementedError('UpProj class does not support MPI.')
-
 
 class DomainDistributor(LinearOperator):
     def __init__(self, target, axis):
+        # TODO Replace this by a DiagonalOperator
+        if dobj.ntask > 1:
+            raise NotImplementedError('UpProj class does not support MPI.')
         assert len(target) == 2
         assert axis in [0, 1]
 
