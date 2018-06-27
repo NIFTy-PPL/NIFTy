@@ -31,7 +31,7 @@ def _flat_PS(k):
 class Noise_Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Exponential, ift.library.Linear],
+                    [ift.Exponential, ift.Linear],
                     [23, 131, 32]))
     def testNoise(self, space, nonlinearity, seed):
         np.random.seed(seed)
