@@ -32,7 +32,9 @@ def _joint_position(op1, op2):
 
 class ScalarMul(Model):
     def __init__(self, factor, op):
+        # TODO op -> model
         super(ScalarMul, self).__init__(op.position)
+        # TODO -> floating
         if not isinstance(factor, (float, int)):
             raise TypeError
 
