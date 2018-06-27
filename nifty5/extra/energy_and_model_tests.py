@@ -18,11 +18,11 @@
 
 import numpy as np
 from ..sugar import from_random
-from .operator_tests import _assert_allclose
 from .. import Energy, Model
 
 __all__ = ["check_value_gradient_consistency",
            "check_value_gradient_curvature_consistency"]
+
 
 def _get_acceptable_model(M):
     # TODO: do for model
@@ -32,7 +32,7 @@ def _get_acceptable_model(M):
     dir = from_random("normal", M.position.domain)
     dirder = M.gradient(dir)
     dir *= val/(dirder).norm()*1e-5
-    # find a step length that leads to a "reasonable" Model
+    # Find a step length that leads to a "reasonable" Model
     for i in range(50):
         try:
             M2 = M.at(M.position+dir)
@@ -53,7 +53,7 @@ def _get_acceptable_energy(E):
     dir = from_random("normal", E.position.domain)
     dirder = E.gradient.vdot(dir)
     dir *= np.abs(val)/np.abs(dirder)*1e-5
-    # find a step length that leads to a "reasonable" energy
+    # Find a step length that leads to a "reasonable" energy
     for i in range(50):
         try:
             E2 = E.at(E.position+dir)
@@ -84,7 +84,7 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
             else:
                 dirder = Emid.gradient(dir)/dirnorm
             if isinstance(E, Model):
-                #TODO: use relative error here instead 
+                # TODO: use relative error here instead
                 if ((E2.value-val)/dirnorm - dirder).norm()/dirder.norm()< tol:
                     break
             else:

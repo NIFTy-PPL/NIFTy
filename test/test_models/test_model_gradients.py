@@ -17,12 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import nifty5 as ift
-import numpy as np
 from itertools import product
 from test.common import expand
-from numpy.testing import assert_allclose
 
+import nifty5 as ift
+import numpy as np
 
 
 class Model_Tests(unittest.TestCase):
@@ -32,9 +31,9 @@ class Model_Tests(unittest.TestCase):
                     [4, 78, 23]))
     def testMul(self, space, seed):
         np.random.seed(seed)
-        #TODO: use random Multifields instead
+        # TODO: use random Multifields instead
         s1 = ift.full(space, np.random.randn())
         s2 = ift.full(space, np.random.randn())
-        s1_var = ift.Variable(ift.MultiField({'s1':s1}))['s1']
-        s2_var = ift.Variable(ift.MultiField({'s2':s2}))['s2']
+        s1_var = ift.Variable(ift.MultiField({'s1': s1}))['s1']
+        s2_var = ift.Variable(ift.MultiField({'s2': s2}))['s2']
         ift.extra.check_value_gradient_consistency(s1_var*s2_var)
