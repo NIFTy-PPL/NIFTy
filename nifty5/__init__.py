@@ -21,5 +21,7 @@ from .logger import logger
 
 from .multi import *
 
+from .energies import *
+
 # We deliberately don't set __all__ here, because we don't want people to do a
 # "from nifty5 import *"; that would swamp the global namespace.
