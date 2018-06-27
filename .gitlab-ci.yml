@@ -58,7 +58,7 @@ pages:
     paths:
     - public
   only:
-  - NIFTy_5
+  - NIFTy_4
 
 before_script:
   - export MPLBACKEND="agg"
