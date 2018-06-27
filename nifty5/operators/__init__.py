@@ -1,5 +1,6 @@
 from .diagonal_operator import DiagonalOperator
 from .dof_distributor import DOFDistributor
+from .domain_distributor import DomainDistributor
 from .endomorphic_operator import EndomorphicOperator
 from .exp_transform import ExpTransform
 from .fft_operator import FFTOperator
@@ -27,4 +28,4 @@ __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "InversionEnabler", "SandwichOperator", "SamplingEnabler",
            "DOFDistributor", "SelectionOperator", "MultiAdaptor",
            "ExpTransform", "SymmetrizingOperator", "QHTOperator",
-           "SlopeOperator"]
+           "SlopeOperator", "DomainDistributor"]

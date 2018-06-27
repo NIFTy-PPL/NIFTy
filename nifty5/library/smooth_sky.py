@@ -1,5 +1,3 @@
-
-
 def make_smooth_sky_model(s_space, amplitude_model):
     '''
     Method for construction of correlated sky model
@@ -43,9 +41,10 @@ def make_smooth_mf_sky_model(s_space_spatial, s_space_energy,
 
     amplitude_model : model for correlation structure
     '''
-    from .. import (DomainTuple, Field, HarmonicTransformOperator, MultiField,
-                    PointwiseExponential, PowerDistributor, Variable)
-    from ..linear_operators import DomainDistributor
+    from .. import (DomainTuple, Field, MultiField,
+                    PointwiseExponential, Variable)
+    from ..operators import (DomainDistributor, PowerDistributor,
+                             HarmonicTransformOperator)
     h_space_spatial = s_space_spatial.get_default_codomain()
     h_space_energy = s_space_energy.get_default_codomain()
     h_space = DomainTuple.make((h_space_spatial, h_space_energy))
