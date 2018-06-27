@@ -3,7 +3,7 @@ from scipy.stats import invgamma, norm
 from ..field import Field
 from ..sugar import makeOp
 from ..multi import MultiField
-from ..model import Model
+from ..models import Model
 
 from ..operators import SelectionOperator
 from ..utilities import memo
