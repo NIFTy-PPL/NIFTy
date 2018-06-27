@@ -21,7 +21,6 @@ import nifty5 as ift
 import numpy as np
 from itertools import product
 from test.common import expand
-from numpy.testing import assert_allclose
 
 
 def _flat_PS(k):
@@ -31,7 +30,7 @@ def _flat_PS(k):
 class Energy_Tests(unittest.TestCase):
     @expand(product([ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Exponential, ift.library.Linear],
+                    [ift.Exponential, ift.Linear],
                     [132, 42, 3]))
     def testNonlinearPower(self, space, nonlinearity, seed):
         np.random.seed(seed)

@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..sugar import full, exp, tanh
+from .sugar import full, exp, tanh
 
 
 class Linear(object):
