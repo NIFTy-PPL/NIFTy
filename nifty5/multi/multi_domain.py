@@ -90,6 +90,8 @@ class MultiDomain(frozendict):
         if self is x:
             return True
         x = MultiDomain.make(x)
+        if self is x:
+            return True
         if (self, x) in MultiDomain._compatCache:
             return True
         commonKeys = set(self.keys()) & set(x.keys())
@@ -104,10 +106,11 @@ class MultiDomain(frozendict):
         if self is x:
             return True
         x = MultiDomain.make(x)
-        if (self, x) in MultiDomain._subsetCache:
+        if self is x:
             return True
         if len(x) == 0:
-            MultiDomain._subsetCache.add((self, x))
+            return True
+        if (self, x) in MultiDomain._subsetCache:
             return True
         for key in self.keys():
             if key not in x:
