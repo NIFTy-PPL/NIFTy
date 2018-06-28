@@ -57,7 +57,7 @@ class Energy_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
-        energy = ift.library.WienerFilterEnergy(
+        energy = ift.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, iteration_controller=IC)
         ift.extra.check_value_gradient_curvature_consistency(
             energy, ntries=10)
@@ -91,7 +91,7 @@ class Energy_Tests(unittest.TestCase):
 
         IC = ift.GradientNormController(iteration_limit=100,
                 tol_abs_gradnorm=1e-5)
-        energy = ift.library.NonlinearWienerFilterEnergy(
+        energy = ift.NonlinearWienerFilterEnergy(
             d, d_model, sqrtN, IC)
         if isinstance(nonlinearity, ift.Linear):
             ift.extra.check_value_gradient_curvature_consistency(

@@ -2,7 +2,7 @@ import nifty5 as ift
 import numpy as np
 from global_newton.models_other.apply_data import ApplyData
 from global_newton.models_energy.hamiltonian import Hamiltonian
-from nifty5.library.gaussian_energy import GaussianEnergy
+from nifty5 import GaussianEnergy
 
 
 if __name__ == '__main__':
