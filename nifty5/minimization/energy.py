@@ -140,7 +140,16 @@ class Energy(NiftyMetaBase()):
 
     def __add__(self, other):
         from .energy_sum import EnergySum
-        from ..sugar import full
         if not isinstance(other, Energy):
             raise TypeError("can only add Energies to Energies")
         return EnergySum.make([self, other])
+
+    def __sub__(self, other):
+        from .energy_sum import EnergySum
+        if not isinstance(other, Energy):
+            raise TypeError("can only subtract Energies from Energies")
+        return EnergySum.make([self, other], [1., -1.])
+
+    def __neg__(self):
+        from .energy_sum import EnergySum
+        return EnergySum.make([self], [-1.])
