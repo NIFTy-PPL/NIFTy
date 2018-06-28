@@ -25,7 +25,6 @@ __all__ = ["check_value_gradient_consistency",
 
 
 def _get_acceptable_model(M):
-    # TODO: do for model
     val = M.value
     if not np.isfinite(val.sum()):
         raise ValueError('Initial Model value must be finite')

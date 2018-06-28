@@ -31,9 +31,9 @@ class Model_Tests(unittest.TestCase):
                     [4, 78, 23]))
     def testMul(self, space, seed):
         np.random.seed(seed)
-        # TODO: use random Multifields instead
-        s1 = ift.full(space, np.random.randn())
-        s2 = ift.full(space, np.random.randn())
+        S = ift.ScalingOperator(1., space)
+        s1 = S.draw_sample()
+        s2 = S.draw_sample()
         s1_var = ift.Variable(ift.MultiField({'s1': s1}))['s1']
         s2_var = ift.Variable(ift.MultiField({'s2': s2}))['s2']
         ift.extra.check_value_gradient_consistency(s1_var*s2_var)
