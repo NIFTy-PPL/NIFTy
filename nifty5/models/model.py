@@ -52,7 +52,6 @@ class Model(NiftyMetaBase()):
         The location in parameter space where value and gradient are
         evaluated.
         """
-
         return self._position
 
     @property
@@ -62,7 +61,6 @@ class Model(NiftyMetaBase()):
 
             The value of the model at given `position`.
         """
-
         return self._value
 
     @property

@@ -21,8 +21,22 @@ from .model import Model
 
 class LinearModel(Model):
     def __init__(self, inp, lin_op):
-        """
-        Computes lin_op(inp) where lin_op is a Linear Operator
+        """Computes lin_op(inp) where lin_op is a Linear Operator
+
+        Parameters
+        ----------
+        inp : Model
+
+        lin_op : LinearOperator
+            linear function to be applied to model
+
+        Returns
+        -------
+        Model
+            Model with linear Operator applied:
+                - Model.value = LinOp (inp.value) [key-wise]
+                - Gradient = LinOp * inp.gradient
+
         """
         from ..operators.linear_operator import LinearOperator
         super(LinearModel, self).__init__(inp.position)
