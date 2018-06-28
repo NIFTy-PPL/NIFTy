@@ -64,10 +64,10 @@ class Consistency_Tests(unittest.TestCase):
     @expand(product(_p_spaces, [np.float64, np.complex128]))
     def testMask(self, sp, dtype):
         # Create mask
-        f = ift.from_random('normal', sp).val
+        f = ift.from_random('normal', sp).to_global_data()
         mask = np.zeros_like(f)
         mask[f > 0] = 1
-        mask = ift.Field(sp, mask)
+        mask = ift.Field.from_global_data(sp, mask)
         # Test MaskOperator
         op = ift.MaskOperator(mask)
         ift.extra.consistency_check(op, dtype, dtype)

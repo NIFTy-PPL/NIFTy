@@ -34,18 +34,21 @@ class MaskOperator(LinearOperator):
         self._target = DomainTuple.make(UnstructuredDomain(self._mask.sum()))
 
     def data_indices(self):
-        return np.indices(self.domain.shape).transpose((1, 2, 0))[self._mask]
+        if len(self.domain.shape) == 1:
+            return np.arange(self.domain.shape[0])[self._mask]
+        if len(self.domain.shape) == 2:
+            return np.indices(self.domain.shape).transpose((1, 2, 0))[self._mask]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
             res = x.to_global_data()[self._mask]
-            return Field(self.target, res)
+            return Field.from_global_data(self.target, res)
         x = x.to_global_data()
         res = np.empty(self.domain.shape, x.dtype)
         res[self._mask] = x
         res[~self._mask] = 0
-        return Field(self.domain, res)
+        return Field.from_global_data(self.domain, res)
 
     @property
     def capability(self):
