@@ -26,7 +26,7 @@ from ..sugar import log, makeOp
 class PoissonLogLikelihood(Energy):
     def __init__(self, lamb, d):
         """
-        s: Sky model object
+        lamb: Sky model object
 
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance

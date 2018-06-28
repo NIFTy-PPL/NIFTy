@@ -15,21 +15,25 @@
 #
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
-
 from .model import Model
 
 
 class Constant(Model):
-    """A sky model with a constant field as value.
-    
+    """A sky model with a constant (multi-)field as value.
+
     Parameters
     ----------
     position : Field or MultiField
         The current position in parameter space.
     constant : Field
         The value of the model.
+
+    Note
+    ----
+    Since there is no model-function associated:
+        - Position has no influence on value.
+        - There is no gradient.
     """
-  
     # TODO Remove position
     def __init__(self, position, constant):
         super(Constant, self).__init__(position)

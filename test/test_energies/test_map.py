@@ -77,20 +77,22 @@ class Energy_Tests(unittest.TestCase):
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
         Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
+        xi0_var = ift.Variable(ift.MultiField({'xi':xi0}))['xi']
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         A = Dist(ift.sqrt(pspec))
         n = ift.Field.from_random(domain=space, random_type='normal')
-        s = ht(xi0 * A)
+        s = ht(ift.makeOp(A)(xi0_var))
         R = ift.ScalingOperator(10., space)
-        N = ift.ScalingOperator(1., space)
-        d = R(f(s)) + n
+        sqrtN = ift.ScalingOperator(1., space)
+        d_model = R(ift.LocalModel(s, nonlinearity()))
+        d = d_model.value + n
 
-        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
+        IC = ift.GradientNormController(iteration_limit=100,
+                tol_abs_gradnorm=1e-5)
         energy = ift.library.NonlinearWienerFilterEnergy(
-            position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A,
-            N=N, S=S)
+            d, d_model, sqrtN, IC)
         if isinstance(nonlinearity, ift.Linear):
             ift.extra.check_value_gradient_curvature_consistency(
                 energy, ntries=10)

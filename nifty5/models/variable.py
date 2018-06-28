@@ -21,8 +21,12 @@ from .model import Model
 
 
 class Variable(Model):
-    """
-    Returns the MultiField.
+    """Changes (Multi-)Field to be a Variable model.
+
+    Parameters
+    ----------
+    position : Field or MultiField
+        The current position in parameter space.
     """
     def __init__(self, position):
         super(Variable, self).__init__(position)
