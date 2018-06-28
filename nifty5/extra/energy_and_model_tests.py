@@ -74,7 +74,6 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
             E2 = _get_acceptable_model(E)
         val = E.value
         dir = E2.position - E.position
-        # Enext = E2
         dirnorm = dir.norm()
         for i in range(50):
             Emid = E.at(E.position + 0.5*dir)
@@ -82,20 +81,20 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
                 dirder = Emid.gradient.vdot(dir)/dirnorm
             else:
                 dirder = Emid.gradient(dir)/dirnorm
+            numgrad = (E2.value-val)/dirnorm
             if isinstance(E, Model):
-                # TODO: use relative error here instead
-                if ((E2.value-val)/dirnorm - dirder).norm()/dirder.norm()< tol:
+                xtol = tol*dirder.norm()
+                if (abs(numgrad-dirder) < xtol).all():
                     break
             else:
                 xtol = tol*Emid.gradient_norm
-                if abs((E2.value-val)/dirnorm - dirder) < xtol:
+                if abs(numgrad-dirder) < xtol:
                     break
             dir *= 0.5
             dirnorm *= 0.5
             E2 = Emid
         else:
             raise ValueError("gradient and value seem inconsistent")
-        # E = Enext
 
 
 def check_value_gradient_curvature_consistency(E, tol=1e-8, ntries=100):
@@ -105,7 +104,6 @@ def check_value_gradient_curvature_consistency(E, tol=1e-8, ntries=100):
         E2 = _get_acceptable_energy(E)
         val = E.value
         dir = E2.position - E.position
-        # Enext = E2
         dirnorm = dir.norm()
         for i in range(50):
             Emid = E.at(E.position + 0.5*dir)
@@ -120,4 +118,3 @@ def check_value_gradient_curvature_consistency(E, tol=1e-8, ntries=100):
             E2 = Emid
         else:
             raise ValueError("gradient, value and curvature seem inconsistent")
-        # E = Enext
