@@ -45,7 +45,7 @@ class UnitLogGauss(Energy):
     @property
     @memo
     def value(self):
-        return .5 * self._s.value.vdot(self._s.value).real
+        return .5 * self._s.value.squared_norm()
 
     @property
     @memo

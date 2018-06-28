@@ -1,6 +1,7 @@
 import nifty5 as ift
-from nifty5.library.nonlinearities import Linear, Tanh, Exponential
 import numpy as np
+from nifty5 import Exponential, Linear, Tanh
+
 np.random.seed(42)
 
 

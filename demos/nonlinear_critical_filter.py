@@ -1,5 +1,5 @@
 import nifty5 as ift
-from nifty5.library.nonlinearities import Exponential
+from nifty5 import Exponential
 import numpy as np
 np.random.seed(42)
 

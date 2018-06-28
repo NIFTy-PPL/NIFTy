@@ -45,7 +45,7 @@ def WienerFilterCurvature(R, N, S, iteration_controller=None,
         The iteration controller to use for sampling.
     """
     M = SandwichOperator.make(R, N.inverse)
-    if iteration_controller is not None:
+    if iteration_controller_sampling is not None:
         op = SamplingEnabler(M, S.inverse, iteration_controller_sampling,
                              S.inverse)
     else:

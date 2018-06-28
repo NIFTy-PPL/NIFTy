@@ -487,6 +487,16 @@ class Field(object):
         """
         return np.sqrt(abs(self.vdot(x=self)))
 
+    def squared_norm(self):
+        """ Computes the square of the L2-norm of the field values.
+
+        Returns
+        -------
+        float
+            The square of the L2-norm of the field values.
+        """
+        return abs(self.vdot(x=self))
+
     def conjugate(self):
         """ Returns the complex conjugate of the field.
 

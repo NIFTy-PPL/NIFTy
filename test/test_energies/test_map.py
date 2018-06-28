@@ -21,7 +21,6 @@ import nifty5 as ift
 import numpy as np
 from itertools import product
 from test.common import expand
-from numpy.testing import assert_allclose
 
 
 def _flat_PS(k):
@@ -66,8 +65,7 @@ class Energy_Tests(unittest.TestCase):
     @expand(product([ift.GLSpace(15),
                      ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.library.Tanh, ift.library.Exponential,
-                     ift.library.Linear],
+                    [ift.Tanh, ift.Exponential, ift.Linear],
                     [4, 78, 23]))
     def testNonlinearMap(self, space, nonlinearity, seed):
         np.random.seed(seed)
@@ -95,7 +93,7 @@ class Energy_Tests(unittest.TestCase):
                 tol_abs_gradnorm=1e-5)
         energy = ift.library.NonlinearWienerFilterEnergy(
             d, d_model, sqrtN, IC)
-        if isinstance(nonlinearity, ift.library.Linear):
+        if isinstance(nonlinearity, ift.Linear):
             ift.extra.check_value_gradient_curvature_consistency(
                 energy, ntries=10)
         else:

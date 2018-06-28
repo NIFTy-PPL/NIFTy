@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..library.nonlinearities import Exponential, PositiveTanh, Tanh
+from ..nonlinearities import Exponential, PositiveTanh, Tanh
 from ..sugar import makeOp
 
 from .model import Model
