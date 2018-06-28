@@ -40,6 +40,8 @@ class Model(NiftyMetaBase()):
         Model
             Model object at new position.
         """
+        # Maybe this is correct ??
+        # return self.__init__(position)
         raise NotImplementedError
 
     @property
