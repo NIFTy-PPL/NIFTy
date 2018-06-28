@@ -48,7 +48,7 @@ class GaussianEnergy(Energy):
     @memo
     def value(self):
         if self._cov is not None:
-            return .5 * self.residual.vdot(self._cov.inverse(self.residual))
+            return .5 * self.residual.vdot(self._cov.inverse(self.residual)).real
         return .5 * self.residual.vdot(self.residual).real
 
     @property
