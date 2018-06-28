@@ -1,15 +1,13 @@
 import nifty5 as ift
-import sys
 import numpy as np
-import global_newton as gn
-from nifty5.library.nonlinearities import Exponential
+# from nifty5.library.nonlinearities import Exponential
 
 #DEFINE THE SIGNAL:
 
 #Define signal space as a regular grid
-#s_space = ift.RGSpace(10024)
-s_space = ift.RGSpace([128,128])
-
+#s_space = ift.RGSpace(1024)
+# s_space = ift.RGSpace([128,128])
+s_space = ift.HPSpace(128)
 #Define the harmonic space
 h_space = s_space.get_default_codomain()
 
@@ -21,10 +19,10 @@ domain = ift.MultiDomain.make({'xi': h_space})
 
 #Define positions from a Gaussian distribution
 position = ift.from_random('normal', domain)
-
+Nsamples = 5
 #Define a power spectrum
 def sqrtpspec(k):
-    return 16. / (20.+k**2)
+    return 10. / (20.+k**2)
 
 #Define a power space
 p_space = ift.PowerSpace(h_space)
@@ -53,17 +51,17 @@ sky = ift.PointwiseExponential(logsky)
 #DEFINE THE RESPONSE OPERATOR:
 
 #Define a mask to cover a patch of the real space
-mask = np.ones(s_space.shape)
-mask[int(s_space.shape[0]/3):int(s_space.shape[0]/3+10)] = 0.
+exposure = 1*np.ones(s_space.shape)
+# exposure[int(s_space.shape[0]/3):int(s_space.shape[0]/3+10)] = 10.
 
 #Convert the mask into a field
-mask = ift.Field(s_space,val=mask)
+exposure = ift.Field(s_space,val=exposure)
 
 #Create a diagonal matrix corresponding to the mask
-M = ift.DiagonalOperator(mask)
+E = ift.DiagonalOperator(exposure)
 
 #Create the response operator and apply the mask on it
-R = ift.ScalingOperator(1., s_space) * M
+R = ift.GeometryRemover(s_space) * E
 
 #CREATE THE MOCK DATA:
 
@@ -94,41 +92,20 @@ likelihood = ift.library.PoissonLogLikelihood(lamb, data)
 #Define a iteration controller with a maximum number of iterations
 ic_cg = ift.GradientNormController(iteration_limit=50)
 
-#Define a iteration controller with convergence criteria
-ic_samps = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-4)
 
 #Define a iteration controller for the minimizer
 ic_newton = ift.GradientNormController(name='Newton', tol_abs_gradnorm=1e-3)
 minimizer = ift.RelaxedNewton(ic_newton)
 
 #Build the Hamiltonian
-H = gn.Hamiltonian(likelihood, ic_cg, ic_samps)
-
-#Iterate the reconstruction
-for _ in range(N):
-    #Draw samples from the curvature
-    samples = [H.curvature.draw_sample(from_inverse=True)
-               for _ in range(Nsamples)]
-                          
-    sc_samplesky = ift.StatCalculator()
-    for s in samples:
-        sc_samplesky.add(sky.at(s+position).value)
-    ift.plot(sc_samplesky.mean, name='sample_mean.png')
-
-    #Compute the Kullbachh Leibler divergence
-    KL = gn.SampledKullbachLeiblerDivergence(H, samples, ic_cg)
-    
-    #Update the position
-    position = KL.position
-    
-    #Obtain the value of the KL and the convergence at the new position
-    KL, convergence = minimizer(KL)
+H = ift.Hamiltonian(likelihood, ic_cg)
+H, convergence = minimizer(H)
 
 #PLOT RESULTS:
    
 #Evaluate lambda at final position
-lamb_recontructed = lamb.at(KL.position).value
-
+lamb_recontructed = lamb.at(H.position).value
+sky_reconstructed = sky.at(H.position).value
 #Evaluate lambda at the data position for comparison
 lamb_mock = lamb.at(mock_position).value
 
