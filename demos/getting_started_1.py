@@ -7,13 +7,15 @@ def make_chess_mask():
     for i in range(4):
         for j in range(4):
             if (i+j)%2 == 0:
-                mask[i*128/4:(i+1)*128/4, j*128/4:(j+1)*128/4] = 0
+                mask[i*128//4:(i+1)*128//4, j*128//4:(j+1)*128//4] = 0
     return mask
+
 
 def make_random_mask():
     mask = ift.from_random('pm1',position_space)
     mask = (mask+1)/2
     return mask.val
+
 
 if __name__ == '__main__':
     ## describtion of the tutorial ###
@@ -24,13 +26,13 @@ if __name__ == '__main__':
     # position_space = ift.RGSpace([1024])
     # mask = np.ones(position_space.shape)
 
-    # # Two dimensional regular grid with chess mask
-    # position_space = ift.RGSpace([128,128])
-    # mask = make_chess_mask()
+    # Two dimensional regular grid with chess mask
+    position_space = ift.RGSpace([128,128])
+    mask = make_chess_mask()
 
     # # Sphere with half of its locations randomly masked
-    position_space = ift.HPSpace(128)
-    mask = make_random_mask()
+    # position_space = ift.HPSpace(128)
+    # mask = make_random_mask()
 
     # set up corresponding harmonic transform and space
     harmonic_space = position_space.get_default_codomain()
@@ -57,7 +59,6 @@ if __name__ == '__main__':
     noise = 5.
     N = ift.ScalingOperator(noise, data_space)
 
-
     # creating mock data
     MOCK_SIGNAL = S.draw_sample()
     MOCK_NOISE = N.draw_sample()
@@ -75,7 +76,3 @@ if __name__ == '__main__':
 
     ##PLOTTING
     #Truth, data, reconstruction, residuals
-
-
-
-
