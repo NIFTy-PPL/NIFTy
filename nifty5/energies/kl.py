@@ -1,4 +1,7 @@
-from nifty5 import Energy, InversionEnabler, ScalingOperator, memo
+from ..minimization.energy import Energy
+from ..operators.inversion_enabler import InversionEnabler
+from ..operators.scaling_operator import ScalingOperator
+from ..utilities import memo
 
 
 class SampledKullbachLeiblerDivergence(Energy):

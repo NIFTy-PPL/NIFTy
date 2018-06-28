@@ -1,5 +1,8 @@
-from nifty5 import Energy, InversionEnabler, SamplingEnabler, Variable, memo
-from nifty5.library import UnitLogGauss
+from ..minimization.energy import Energy
+from ..operators import InversionEnabler, SamplingEnabler
+from ..models.variable import Variable
+from ..utilities import memo
+from ..library.unit_log_gauss import UnitLogGauss
 
 
 class Hamiltonian(Energy):
