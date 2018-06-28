@@ -20,6 +20,16 @@ from .model import Model
 
 
 class Constant(Model):
+    """A sky model with a constant field as value.
+    
+    Parameters
+    ----------
+    position : Field or MultiField
+        The current position in parameter space.
+    constant : Field
+        The value of the model.
+    """
+  
     # TODO Remove position
     def __init__(self, position, constant):
         super(Constant, self).__init__(position)
