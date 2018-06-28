@@ -33,10 +33,7 @@ class Hamiltonian(Energy):
         super(Hamiltonian, self).__init__(lh.position)
         self._lh = lh
         self._ic = iteration_controller
-        if iteration_controller_sampling is None:
-            self._ic_samp = iteration_controller
-        else:
-            self._ic_samp = iteration_controller_sampling
+        self._ic_samp = iteration_controller_sampling
         self._prior = GaussianEnergy(Variable(self.position))
         self._precond = self._prior.curvature
 
@@ -57,8 +54,11 @@ class Hamiltonian(Energy):
     @memo
     def curvature(self):
         prior_curv = self._prior.curvature
-        c = SamplingEnabler(self._lh.curvature, prior_curv.inverse,
-                            self._ic_samp, prior_curv.inverse)
+        if self._ic_samp is not None:
+            c = SamplingEnabler(self._lh.curvature, prior_curv.inverse,
+                                self._ic_samp, prior_curv.inverse)
+        else:
+            c = self._lh.curvature + prior_curv
         return InversionEnabler(c, self._ic, self._precond)
 
     def __str__(self):
