@@ -61,6 +61,17 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.HarmonicTransformOperator(sp)
         ift.extra.consistency_check(op, dtype, dtype)
 
+    @expand(product(_p_spaces, [np.float64, np.complex128]))
+    def testMask(self, sp, dtype):
+        # Create mask
+        f = ift.from_random('normal', sp).val
+        mask = np.zeros_like(f)
+        mask[f > 0] = 1
+        mask = ift.Field(sp, mask)
+        # Test MaskOperator
+        op = ift.MaskOperator(mask)
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product(_h_spaces+_p_spaces, [np.float64, np.complex128]))
     def testDiagonal(self, sp, dtype):
         op = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
