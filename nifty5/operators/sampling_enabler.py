@@ -24,16 +24,17 @@ from .endomorphic_operator import EndomorphicOperator
 
 
 class SamplingEnabler(EndomorphicOperator):
-    """Class which augments the capability of another operator object via
-    numerical inversion.
+    """Class which acts as the operator object (likelihood + prior)
+    and enables sampling from it's inverse even if the operator object
+    itself does not support it.
+
 
     Parameters
     ----------
-    op : :class:`EndomorphicOperator`
-        The operator to be enhanced.
-        The InversionEnabler object will support the same operation modes as
-        `op`, and additionally the inverse set. The newly-added modes will
-        be computed by iterative inversion.
+    likelihood : :class:`EndomorphicOperator`
+        Curvature of the likelihood
+    prior : :class:`EndomorphicOperator`
+        Inverse curvature of the prior
     iteration_controller : :class:`IterationController`
         The iteration controller to use for the iterative numerical inversion
         done by a :class:`ConjugateGradient` object.
