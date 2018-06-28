@@ -47,9 +47,9 @@ class GaussianEnergy(Energy):
     @property
     @memo
     def value(self):
-        if self._cov is not None:
-            return .5 * self.residual.vdot(self._cov.inverse(self.residual)).real
-        return .5 * self.residual.vdot(self.residual).real
+        if self._cov is None:
+            return .5 * self.residual.vdot(self.residual).real
+        return .5 * self.residual.vdot(self._cov.inverse(self.residual)).real
 
     @property
     @memo
@@ -59,9 +59,9 @@ class GaussianEnergy(Energy):
     @property
     @memo
     def gradient(self):
-        if self._cov is not None:
-            return self._gradient_helper.adjoint(self._cov.inverse(self.residual))
-        return self._gradient_helper.adjoint(self.residual)
+        if self._cov is None:
+            return self._gradient_helper.adjoint(self.residual)
+        return self._gradient_helper.adjoint(self._cov.inverse(self.residual))
 
     @property
     @memo
