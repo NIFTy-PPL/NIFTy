@@ -16,11 +16,12 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-import nifty5 as ift
-import numpy as np
 import unittest
 from itertools import product
 from test.common import expand
+
+import nifty5 as ift
+import numpy as np
 from numpy.testing import assert_allclose, assert_raises
 
 

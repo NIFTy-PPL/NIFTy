@@ -131,24 +131,24 @@ class Energy(NiftyMetaBase()):
 
     def __mul__(self, factor):
         from .energy_sum import EnergySum
-        if not isinstance(factor, (float, int)):
-            raise TypeError("Factor must be a real-valued scalar")
-        return EnergySum.make([self], [factor])
+        if isinstance(factor, (float, int)):
+            return EnergySum.make([self], [factor])
+        return NotImplemented
 
     def __rmul__(self, factor):
         return self.__mul__(factor)
 
     def __add__(self, other):
         from .energy_sum import EnergySum
-        if not isinstance(other, Energy):
-            raise TypeError("can only add Energies to Energies")
-        return EnergySum.make([self, other])
+        if isinstance(other, Energy):
+            return EnergySum.make([self, other])
+        return NotImplemented
 
     def __sub__(self, other):
         from .energy_sum import EnergySum
-        if not isinstance(other, Energy):
-            raise TypeError("can only subtract Energies from Energies")
-        return EnergySum.make([self, other], [1., -1.])
+        if isinstance(other, Energy):
+            return EnergySum.make([self, other], [1., -1.])
+        return NotImplemented
 
     def __neg__(self):
         from .energy_sum import EnergySum
