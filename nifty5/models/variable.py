@@ -22,6 +22,7 @@ from .model import Model
 
 class Variable(Model):
     """
+    Changes MultiField to be a Variable model.
     Returns the MultiField.
     """
     def __init__(self, position):
