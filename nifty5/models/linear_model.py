@@ -32,11 +32,9 @@ class LinearModel(Model):
 
         Returns
         -------
-        Model
-            Model with linear Operator applied:
-                - Model.value = LinOp (inp.value) [key-wise]
-                - Gradient = LinOp * inp.gradient
-
+        Model with linear Operator applied:
+            - Model.value = LinOp (inp.value) [key-wise]
+            - Gradient = LinOp * inp.gradient
         """
         from ..operators.linear_operator import LinearOperator
         super(LinearModel, self).__init__(inp.position)

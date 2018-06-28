@@ -27,7 +27,7 @@ class LocalModel(Model):
         """
         Computes nonlinearity(inp)
             - LocalModel.value = nonlinearity(value) (pointwise)
-            - LocalModel.gradient = Outer Product
+            - LocalModel.gradient = Outer Product of gradients
 
         Parameters
         ----------

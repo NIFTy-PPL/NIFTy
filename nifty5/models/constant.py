@@ -20,9 +20,6 @@ from .model import Model
 
 class Constant(Model):
     """A sky model with a constant (multi-)field as value.
-       Since there is no model-function associated:
-        - Position has no influence on value.
-        - There is no gradient.
 
     Parameters
     ----------
@@ -30,6 +27,12 @@ class Constant(Model):
         The current position in parameter space.
     constant : Field
         The value of the model.
+
+    Note
+    ----
+    Since there is no model-function associated:
+        - Position has no influence on value.
+        - There is no gradient.
     """
     # TODO Remove position
     def __init__(self, position, constant):
