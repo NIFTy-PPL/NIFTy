@@ -54,11 +54,11 @@ class Hamiltonian(Energy):
     @memo
     def curvature(self):
         prior_curv = self._prior.curvature
-        if self._ic_samp is not None:
+        if self._ic_samp is None:
+            c = self._lh.curvature + prior_curv
+        else:
             c = SamplingEnabler(self._lh.curvature, prior_curv.inverse,
                                 self._ic_samp, prior_curv.inverse)
-        else:
-            c = self._lh.curvature + prior_curv
         return InversionEnabler(c, self._ic, self._precond)
 
     def __str__(self):
