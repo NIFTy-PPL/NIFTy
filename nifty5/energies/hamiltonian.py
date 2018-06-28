@@ -2,7 +2,7 @@ from ..minimization.energy import Energy
 from ..operators import InversionEnabler, SamplingEnabler
 from ..models.variable import Variable
 from ..utilities import memo
-from .unit_log_gauss import UnitLogGauss
+from ..library.unit_log_gauss import UnitLogGauss
 
 
 class Hamiltonian(Energy):

@@ -18,7 +18,7 @@
 
 from ..models.constant import Constant
 from .unit_log_gauss import UnitLogGauss
-from .hamiltonian import Hamiltonian
+from ..energies.hamiltonian import Hamiltonian
 
 
 def NonlinearWienerFilterEnergy(measured_data, data_model, sqrtN, iteration_controller):
@@ -26,4 +26,3 @@ def NonlinearWienerFilterEnergy(measured_data, data_model, sqrtN, iteration_cont
         residual = Constant(data_model.position, d) - data_model
         lh = UnitLogGauss(sqrtN.inverse(residual))
         return Hamiltonian(lh, iteration_controller)
-
