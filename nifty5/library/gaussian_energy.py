@@ -22,7 +22,7 @@ from ..operators.sandwich_operator import SandwichOperator
 from ..utilities import memo
 
 
-class UnitLogGauss(Energy):
+class GaussianEnergy(Energy):
     def __init__(self, s, inverter=None):
         """
         s: Sky model object
@@ -30,7 +30,7 @@ class UnitLogGauss(Energy):
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(UnitLogGauss, self).__init__(s.position)
+        super(GaussianEnergy, self).__init__(s.position)
         self._s = s
         self._inverter = inverter
 

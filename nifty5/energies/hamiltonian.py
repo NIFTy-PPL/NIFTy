@@ -2,7 +2,7 @@ from ..minimization.energy import Energy
 from ..operators import InversionEnabler, SamplingEnabler
 from ..models.variable import Variable
 from ..utilities import memo
-from ..library.unit_log_gauss import UnitLogGauss
+from ..library.gaussian_energy import GaussianEnergy
 
 
 class Hamiltonian(Energy):
@@ -19,7 +19,7 @@ class Hamiltonian(Energy):
             self._ic_samp = iteration_controller
         else:
             self._ic_samp = iteration_controller_sampling
-        self._prior = UnitLogGauss(Variable(self.position))
+        self._prior = GaussianEnergy(Variable(self.position))
         self._precond = self._prior.curvature
 
     def at(self, position):

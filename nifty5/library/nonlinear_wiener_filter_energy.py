@@ -17,12 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..models.constant import Constant
-from .unit_log_gauss import UnitLogGauss
+from .gaussian_energy import GaussianEnergy
 from ..energies.hamiltonian import Hamiltonian
 
 
 def NonlinearWienerFilterEnergy(measured_data, data_model, sqrtN, iteration_controller):
         d = measured_data.lock()
         residual = Constant(data_model.position, d) - data_model
-        lh = UnitLogGauss(sqrtN.inverse(residual))
+        lh = GaussianEnergy(sqrtN.inverse(residual))
         return Hamiltonian(lh, iteration_controller)
