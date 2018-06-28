@@ -151,6 +151,16 @@ class MultiField(object):
         """
         return np.sqrt(np.abs(self.vdot(x=self)))
 
+    def squared_norm(self):
+        """ Computes the square of the L2-norm of the field values.
+
+        Returns
+        -------
+        float
+            The square of the L2-norm of the field values.
+        """
+        return abs(self.vdot(x=self))
+
     def __neg__(self):
         return MultiField({key: -val for key, val in self.items()})
 

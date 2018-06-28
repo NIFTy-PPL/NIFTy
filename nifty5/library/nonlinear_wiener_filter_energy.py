@@ -16,53 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from .wiener_filter_curvature import WienerFilterCurvature
-from ..utilities import memo
-from ..minimization.energy import Energy
-from ..sugar import makeOp
+from ..models.constant import Constant
+from .unit_log_gauss import UnitLogGauss
+from ..energies.hamiltonian import Hamiltonian
 
 
-class NonlinearWienerFilterEnergy(Energy):
-    def __init__(self, position, d, Instrument, nonlinearity, ht, power, N, S,
-                 iteration_controller=None,
-                 iteration_controller_sampling=None):
-        super(NonlinearWienerFilterEnergy, self).__init__(position=position)
-        self.d = d.lock()
-        self.Instrument = Instrument
-        self.nonlinearity = nonlinearity
-        self.ht = ht
-        self.power = power
-        m = ht(power*position)
-
-        residual = d - Instrument(nonlinearity(m))
-        self.N = N
-        self.S = S
-        self._ic = iteration_controller
-        if iteration_controller_sampling is None:
-            iteration_controller_sampling = self._ic
-        self._ic_samp = iteration_controller_sampling
-        t1 = S.inverse_times(position)
-        t2 = N.inverse_times(residual)
-        self._value = 0.5 * (position.vdot(t1) + residual.vdot(t2)).real
-        self.R = (Instrument * makeOp(nonlinearity.derivative(m)) *
-                  ht * makeOp(power))
-        self._gradient = (t1 - self.R.adjoint_times(t2)).lock()
-
-    def at(self, position):
-        return self.__class__(position, self.d, self.Instrument,
-                              self.nonlinearity, self.ht, self.power, self.N,
-                              self.S, self._ic, self._ic_samp)
-
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def gradient(self):
-        return self._gradient
-
-    @property
-    @memo
-    def curvature(self):
-        return WienerFilterCurvature(self.R, self.N, self.S, self._ic,
-                                     self._ic_samp)
+def NonlinearWienerFilterEnergy(measured_data, data_model, sqrtN, iteration_controller):
+        d = measured_data.lock()
+        residual = Constant(data_model.position, d) - data_model
+        lh = UnitLogGauss(sqrtN.inverse(residual))
+        return Hamiltonian(lh, iteration_controller)

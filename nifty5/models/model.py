@@ -50,10 +50,7 @@ class Model(NiftyMetaBase()):
         if isinstance(other, Model):
             from .binary_helpers import Add
             return Add.make(self, other)
-        if isinstance(other, (Field, MultiField)):
-            from .constant import Constant
-            return self.__add__(Constant(self.position, other))
-        raise TypeError
+        return NotImplemented
 
     def __sub__(self, other):
         return self.__add__((-1) * other)
@@ -67,12 +64,12 @@ class Model(NiftyMetaBase()):
             return Mul.make(self, other)
         if isinstance(other, (Field, MultiField)):
             return makeOp(other)(self)
-        raise NotImplementedError
+        return NotImplemented
 
     def __rmul__(self, other):
         if isinstance(other, (float, int, Field)):
             return self.__mul__(other)
-        raise NotImplementedError
+        return NotImplemented
 
     def __str__(self):
         s = ('----------------------------------------'
