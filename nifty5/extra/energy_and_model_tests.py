@@ -83,7 +83,7 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
                 dirder = Emid.gradient(dir)/dirnorm
             numgrad = (E2.value-val)/dirnorm
             if isinstance(E, Model):
-                xtol = tol*dirder.norm()
+                xtol = tol * dirder.norm() / np.sqrt(dirder.size)
                 if (abs(numgrad-dirder) < xtol).all():
                     break
             else:
