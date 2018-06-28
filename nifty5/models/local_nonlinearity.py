@@ -26,6 +26,15 @@ class LocalModel(Model):
     def __init__(self, inp, nonlinearity):
         """
         Computes nonlinearity(inp)
+            - LocalModel.value = nonlinearity(value) (pointwise)
+            - LocalModel.gradient = Outer Product
+
+        Parameters
+        ----------
+        inp : Model
+            The model for which the  nonlinarity will be applied.
+        nonlinearity: Function
+            The nonlinearity to be applied to model.
         """
         super(LocalModel, self).__init__(inp.position)
         self._inp = inp

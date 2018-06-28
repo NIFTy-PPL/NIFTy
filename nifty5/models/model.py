@@ -28,18 +28,48 @@ class Model(NiftyMetaBase()):
         self._position = position
 
     def at(self, position):
+        """ Returns a new Model object, initialized at `position`.
+
+        Parameters
+        ----------
+        position : Field or MultiField
+            Location in parameter space for the new Model object.
+
+        Returns
+        -------
+        Model
+            Model object at new position.
+        """
+        # Maybe this is correct ??
+        # return self.__init__(position)
         raise NotImplementedError
 
     @property
     def position(self):
+        """
+        Field or MultiField: selected location in parameter space.
+
+        The location in parameter space where value and gradient are
+        evaluated.
+        """
+
         return self._position
 
     @property
     def value(self):
+        """
+        Field : value of the model.
+
+            The value of the model at given `position`.
+        """
+
         return self._value
 
     @property
     def gradient(self):
+        """
+        LinearOperator : The derivative of the model at given `position`.
+        """
         return self._gradient
 
     def __getitem__(self, key):
