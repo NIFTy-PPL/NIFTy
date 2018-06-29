@@ -72,3 +72,16 @@ run_ipynb:
   artifacts:
     paths:
       - '*.png'
+
+run_getting_started_1:
+  stage: demo_runs
+  script:
+    - python demos/getting_started_1.py
+    - python3 demos/getting_started_1.py
+
+# # TODO Please uncomment this as soon as the demo is working
+# run_getting_started_2:
+#   stage: demo_runs
+#   script:
+#     - python demos/getting_started_2.py
+#     - python3 demos/getting_started_2.py
