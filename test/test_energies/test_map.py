@@ -84,7 +84,7 @@ class Energy_Tests(unittest.TestCase):
         n = ift.Field.from_random(domain=space, random_type='normal')
         s = ht(ift.makeOp(A)(xi0_var))
         R = ift.ScalingOperator(10., space)
-        N = ift.ScalingOperator(1., space)
+        N = ift.ScalingOperator(1e2, space)
         d_model = R(ift.LocalModel(s, nonlinearity()))
         d = d_model.value + n
 
