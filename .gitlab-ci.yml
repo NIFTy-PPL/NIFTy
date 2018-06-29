@@ -15,6 +15,8 @@ build_docker_from_scratch:
     - schedules
   image: docker:stable
   stage: build_docker
+  before_script:
+    - ls
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
@@ -25,6 +27,8 @@ build_docker_from_cache:
     - schedules
   image: docker:stable
   stage: build_docker
+  before_script:
+    - ls
   script:
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
     - docker build -t $CONTAINER_TEST_IMAGE .
@@ -33,7 +37,6 @@ build_docker_from_cache:
 test_python2_with_coverage:
   stage: test
   script:
-    - python setup.py install --user -f
     - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
     - nosetests -q --with-coverage --cover-package=nifty5 --cover-erase
     - >
@@ -44,12 +47,13 @@ test_python2_with_coverage:
 test_python3:
   stage: test
   script:
-    - python3 setup.py install --user -f
     - nosetests3 -q
     - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
 
 pages:
   stage: release
+  before_script:
+    - ls
   script:
     - python setup.py install --user -f
     - sh docs/generate.sh
@@ -62,12 +66,12 @@ pages:
 
 before_script:
   - export MPLBACKEND="agg"
+  - python setup.py install --user -f
+  - python3 setup.py install --user -f
 
 run_ipynb:
   stage: demo_runs
   script:
-    - python setup.py install --user -f
-    - python3 setup.py install --user -f
     - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/Wiener_Filter.ipynb
   artifacts:
     paths:
