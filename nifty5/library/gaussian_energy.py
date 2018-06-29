@@ -61,4 +61,6 @@ class GaussianEnergy(Energy):
     @property
     @memo
     def curvature(self):
-        return SandwichOperator.make(self._inp.gradient)
+        if self._cov is None:
+            return SandwichOperator.make(self._inp.gradient)
+        return SandwichOperator.make(self._inp.gradient, self._cov.inverse)
