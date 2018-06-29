@@ -7,7 +7,7 @@ def make_chess_mask():
     for i in range(4):
         for j in range(4):
             if (i+j)%2 == 0:
-                mask[i*128/4:(i+1)*128/4, j*128/4:(j+1)*128/4] = 0
+                mask[i*512/4:(i+1)*512/4, j*512/4:(j+1)*512/4] = 0
     return mask
 
 def make_random_mask():
@@ -25,12 +25,12 @@ if __name__ == '__main__':
     # mask = np.ones(position_space.shape)
 
     # # Two dimensional regular grid with chess mask
-    # position_space = ift.RGSpace([128,128])
-    # mask = make_chess_mask()
+    position_space = ift.RGSpace([512,512])
+    mask = make_chess_mask()
 
     # # Sphere with half of its locations randomly masked
-    position_space = ift.HPSpace(128)
-    mask = make_random_mask()
+    # position_space = ift.HPSpace(128)
+    # mask = make_random_mask()
 
     # set up corresponding harmonic transform and space
     harmonic_space = position_space.get_default_codomain()
