@@ -66,8 +66,9 @@ class Energy_Tests(unittest.TestCase):
                      ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [ift.Tanh, ift.Exponential, ift.Linear],
+                    [1, 1e-2, 1e2],
                     [4, 78, 23]))
-    def testGaussianEnergy(self, space, nonlinearity, seed):
+    def testGaussianEnergy(self, space, nonlinearity, noise, seed):
         np.random.seed(seed)
         dim = len(space.shape)
         hspace = space.get_default_codomain()
@@ -81,12 +82,15 @@ class Energy_Tests(unittest.TestCase):
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         A = Dist(ift.sqrt(pspec))
-        n = ift.Field.from_random(domain=space, random_type='normal')
+        N = ift.ScalingOperator(noise, space)
+        n = N.draw_sample()
         s = ht(ift.makeOp(A)(xi0_var))
         R = ift.ScalingOperator(10., space)
-        N = ift.ScalingOperator(1e2, space)
         d_model = R(ift.LocalModel(s, nonlinearity()))
         d = d_model.value + n
+
+        if noise == 1:
+            N = None
 
         energy = ift.GaussianEnergy(d_model, d, N)
         if isinstance(nonlinearity, ift.Linear):
