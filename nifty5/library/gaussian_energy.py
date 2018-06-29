@@ -24,7 +24,7 @@ from ..utilities import memo
 class GaussianEnergy(Energy):
     def __init__(self, inp, mean=None, covariance=None):
         """
-        inp: Sky model object
+        inp: Model object
 
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
