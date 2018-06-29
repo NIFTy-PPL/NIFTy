@@ -93,7 +93,7 @@ class Energy_Tests(unittest.TestCase):
             N = None
 
         energy = ift.GaussianEnergy(d_model, d, N)
-        if isinstance(nonlinearity, ift.Linear):
+        if isinstance(nonlinearity(), ift.Linear):
             ift.extra.check_value_gradient_curvature_consistency(
                 energy, ntries=10)
         else:

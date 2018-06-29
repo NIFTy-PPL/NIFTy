@@ -164,9 +164,24 @@ class MultiField(object):
     def __neg__(self):
         return MultiField({key: -val for key, val in self.items()})
 
+    def __abs__(self):
+        return MultiField({key: abs(val) for key, val in self.items()})
+
     def conjugate(self):
         return MultiField({key: sub_field.conjugate()
                            for key, sub_field in self.items()})
+
+    def all(self):
+        for v in self.values():
+            if not v.all():
+                return False
+        return True
+
+    def any(self):
+        for v in self.values():
+            if v.any():
+                return True
+        return False
 
     def isEquivalentTo(self, other):
         """Determines (as quickly as possible) whether `self`'s content is
