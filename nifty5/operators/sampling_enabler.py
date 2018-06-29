@@ -25,7 +25,7 @@ from .endomorphic_operator import EndomorphicOperator
 
 class SamplingEnabler(EndomorphicOperator):
     """Class which acts as the operator object (likelihood + prior)
-    and enables sampling from it's inverse even if the operator object
+    and enables sampling from its inverse even if the operator object
     itself does not support it.
 
 
