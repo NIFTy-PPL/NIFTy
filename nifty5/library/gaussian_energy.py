@@ -53,17 +53,12 @@ class GaussianEnergy(Energy):
 
     @property
     @memo
-    def _gradient_helper(self):
-        return self._inp.gradient
-
-    @property
-    @memo
     def gradient(self):
         if self._cov is None:
-            return self._gradient_helper.adjoint(self.residual)
-        return self._gradient_helper.adjoint(self._cov.inverse(self.residual))
+            return self._inp.gradient.adjoint(self.residual)
+        return self._inp.gradient.adjoint(self._cov.inverse(self.residual))
 
     @property
     @memo
     def curvature(self):
-        return SandwichOperator.make(self._gradient_helper)
+        return SandwichOperator.make(self._inp.gradient)
