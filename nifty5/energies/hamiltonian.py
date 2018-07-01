@@ -35,7 +35,6 @@ class Hamiltonian(Energy):
         self._ic = iteration_controller
         self._ic_samp = iteration_controller_sampling
         self._prior = GaussianEnergy(Variable(self.position))
-        self._precond = self._prior.curvature
 
     def at(self, position):
         return self.__class__(self._lh.at(position), self._ic, self._ic_samp)
@@ -59,7 +58,7 @@ class Hamiltonian(Energy):
         else:
             c = SamplingEnabler(self._lh.curvature, prior_curv.inverse,
                                 self._ic_samp, prior_curv.inverse)
-        return InversionEnabler(c, self._ic, self._precond)
+        return InversionEnabler(c, self._ic, prior_curv)
 
     def __str__(self):
         res = 'Likelihood:\t{:.2E}\n'.format(self._lh.value)
