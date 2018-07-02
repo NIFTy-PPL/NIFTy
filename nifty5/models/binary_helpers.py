@@ -21,9 +21,9 @@ from ..sugar import makeOp
 from .model import Model
 
 
-def _joint_position(op1, op2):
-    a = op1.position._val
-    b = op2.position._val
+def _joint_position(model1, model2):
+    a = model1.position._val
+    b = model2.position._val
     # Note: In python >3.5 one could do {**a, **b}
     ab = a.copy()
     ab.update(b)
@@ -32,59 +32,77 @@ def _joint_position(op1, op2):
 
 class ScalarMul(Model):
     """Class representing a model multiplied by a scalar factor."""
-    def __init__(self, factor, op):
-        # TODO op -> model
-        super(ScalarMul, self).__init__(op.position)
+    def __init__(self, factor, model):
+        super(ScalarMul, self).__init__(model.position)
         # TODO -> floating
         if not isinstance(factor, (float, int)):
             raise TypeError
 
-        self._op = op
+        self._model = model
         self._factor = factor
 
-        self._value = self._factor * self._op.value
-        self._gradient = self._factor * self._op.gradient
+        self._value = self._factor * self._model.value
+        self._gradient = self._factor * self._model.gradient
 
     def at(self, position):
-        return self.__class__(self._factor, self._op.at(position))
+        return self.__class__(self._factor, self._model.at(position))
 
 
 class Add(Model):
     """Class representing the sum of two models."""
-    def __init__(self, position, op1, op2):
+    def __init__(self, position, model1, model2):
         super(Add, self).__init__(position)
 
-        self._op1 = op1.at(position)
-        self._op2 = op2.at(position)
+        self._model1 = model1.at(position)
+        self._model2 = model2.at(position)
 
-        self._value = self._op1.value + self._op2.value
-        self._gradient = self._op1.gradient + self._op2.gradient
+        self._value = self._model1.value + self._model2.value
+        self._gradient = self._model1.gradient + self._model2.gradient
 
     @staticmethod
-    def make(op1, op2):
-        position = _joint_position(op1, op2)
-        return Add(position, op1, op2)
+    def make(model1, model2):
+        """Build the sum of two models.
+
+        Parameters
+        ----------
+        model1: Model
+            First model.
+        model2: Model
+            Second model
+        """
+
+        position = _joint_position(model1, model2)
+        return Add(position, model1, model2)
 
     def at(self, position):
-        return self.__class__(position, self._op1, self._op2)
+        return self.__class__(position, self._model1, self._model2)
 
 
 class Mul(Model):
     """Class representing the pointwise product of two models."""
-    def __init__(self, position, op1, op2):
+    def __init__(self, position, model1, model2):
         super(Mul, self).__init__(position)
 
-        self._op1 = op1.at(position)
-        self._op2 = op2.at(position)
+        self._model1 = model1.at(position)
+        self._model2 = model2.at(position)
 
-        self._value = self._op1.value * self._op2.value
-        self._gradient = (makeOp(self._op1.value) * self._op2.gradient +
-                          makeOp(self._op2.value) * self._op1.gradient)
+        self._value = self._model1.value * self._model2.value
+        self._gradient = (makeOp(self._model1.value) * self._model2.gradient +
+                          makeOp(self._model2.value) * self._model1.gradient)
 
     @staticmethod
-    def make(op1, op2):
-        position = _joint_position(op1, op2)
-        return Mul(position, op1, op2)
+    def make(model1, model2):
+        """Build the pointwise product of two models.
+
+        Parameters
+        ----------
+        model1: Model
+            First model.
+        model2: Model
+            Second model
+        """
+        position = _joint_position(model1, model2)
+        return Mul(position, model1, model2)
 
     def at(self, position):
-        return self.__class__(position, self._op1, self._op2)
+        return self.__class__(position, self._model1, self._model2)
