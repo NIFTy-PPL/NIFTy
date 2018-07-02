@@ -6,19 +6,19 @@ def make_chess_mask():
     mask = np.ones(position_space.shape)
     for i in range(4):
         for j in range(4):
-            if (i+j)%2 == 0:
+            if (i+j) % 2 == 0:
                 mask[i*128//4:(i+1)*128//4, j*128//4:(j+1)*128//4] = 0
     return mask
 
 
 def make_random_mask():
-    mask = ift.from_random('pm1',position_space)
+    mask = ift.from_random('pm1', position_space)
     mask = (mask+1)/2
     return mask.val
 
 
 if __name__ == '__main__':
-    ## describtion of the tutorial ###
+    # # description of the tutorial ###
 
     # Choose problem geometry and masking
 
@@ -34,11 +34,11 @@ if __name__ == '__main__':
     # position_space = ift.HPSpace(128)
     # mask = make_random_mask()
 
-
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, target=position_space)
 
-    # set correlation structure with a power spectrum and build prior correlation covariance
+    # set correlation structure with a power spectrum and build
+    # prior correlation covariance
     def power_spectrum(k):
         return 100. / (20.+k**3)
     power_space = ift.PowerSpace(harmonic_space)
@@ -47,9 +47,10 @@ if __name__ == '__main__':
 
     S = ift.DiagonalOperator(prior_correlation_structure)
 
-    # build instrument response consisting of a discretization, mask and harmonic transformaion
+    # build instrument response consisting of a discretization, mask
+    # and harmonic transformaion
     GR = ift.GeometryRemover(position_space)
-    mask = ift.Field(position_space,val=mask)
+    mask = ift.Field.from_global_data(position_space, mask)
     Mask = ift.DiagonalOperator(mask)
     R = GR * Mask * HT
 
@@ -69,10 +70,10 @@ if __name__ == '__main__':
     D_inv = R.adjoint * N.inverse * R + S.inverse
     # make it invertible
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
-    D = ift.InversionEnabler(D_inv,IC,approximation=S.inverse).inverse
+    D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
 
     # WIENER FILTER
     m = D(j)
 
-    ##PLOTTING
-    #Truth, data, reconstruction, residuals
+    # PLOTTING
+    # Truth, data, reconstruction, residuals

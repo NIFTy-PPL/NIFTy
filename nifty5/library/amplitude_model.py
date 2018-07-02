@@ -22,7 +22,7 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
 
     Npixdof : #pix in dof_space
 
-    ceps_a, ceps_k0 : Smoothnessparameters in ceps_kernel
+    ceps_a, ceps_k0 : Smoothness parameters in ceps_kernel
                         eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
                         a = ceps_a,  k0 = ceps_k0
 
@@ -48,7 +48,7 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     phi_sig = np.array([sv, iv])
 
     slope = SlopeOperator(param_space, logk_space, phi_sig)
-    norm_phi_mean = Field(param_space, val=phi_mean/phi_sig)
+    norm_phi_mean = Field.from_global_data(param_space, phi_mean/phi_sig)
 
     fields = {keys[0]: Field.from_random('normal', dof_space),
               keys[1]: Field.from_random('normal', param_space)}
@@ -93,7 +93,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     # Prepare q_array
     q_array = np.zeros((dim,) + shape)
     if dim == 1:
-        ks = domain.get_k_length_array().val
+        ks = domain.get_k_length_array().to_global_data()
         q_array = np.array([ks])
     else:
         for i in range(dim):
@@ -120,4 +120,4 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
         # Do summation
         cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=i)
 
-    return Field(domain, val=cepstrum_field)
+    return Field.from_global_data(domain, cepstrum_field)

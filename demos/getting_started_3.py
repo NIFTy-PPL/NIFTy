@@ -7,18 +7,20 @@ from scipy.io import loadmat
 
 
 def get_random_LOS(n_los):
-    starts = list(np.random.uniform(0,1,(n_los,2)).T)
-    ends = list(np.random.uniform(0,1,(n_los,2)).T)
+    starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
+    ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
 
     return starts, ends
 
+
 if __name__ == '__main__':
-    ### ABOUT THIS TUTORIAL
+    # ## ABOUT THIS TUTORIAL
     np.random.seed(42)
-    position_space = ift.RGSpace([128,128])
+    position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
-    A, amplitude_internals = make_amplitude_model(position_space,16, 1, 10, -4., 1, 0., 1.)
+    A, amplitude_internals = make_amplitude_model(
+        position_space, 16, 1, 10, -4., 1, 0., 1.)
 
     # Building the model for a correlated signal
     harmonic_space = position_space.get_default_codomain()
@@ -46,8 +48,7 @@ if __name__ == '__main__':
     # specify noise
     data_space = R.target
     noise = .001
-    N = ift.ScalingOperator(noise,data_space)
-
+    N = ift.ScalingOperator(noise, data_space)
 
     # generate mock data
     MOCK_POSITION = ift.from_random('normal', signal.position.domain)
@@ -63,28 +64,31 @@ if __name__ == '__main__':
     minimizer = ift.RelaxedNewton(ic_newton)
 
     # build model Hamiltonian
-    H = ift.Hamiltonian(likelihood,ic_cg,iteration_controller_sampling=ic_sampling)
+    H = ift.Hamiltonian(likelihood, ic_cg,
+                        iteration_controller_sampling=ic_sampling)
 
-    INITIAL_POSITION = ift.from_random('normal',H.position.domain)
+    INITIAL_POSITION = ift.from_random('normal', H.position.domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal.at(MOCK_POSITION).value,name='truth.pdf')
-    ift.plot(R.adjoint_times(data),name='data.pdf')
-    ift.plot([ A.at(MOCK_POSITION).value], name='power.pdf')
+    ift.plot(signal.at(MOCK_POSITION).value, name='truth.pdf')
+    ift.plot(R.adjoint_times(data), name='data.pdf')
+    ift.plot([A.at(MOCK_POSITION).value], name='power.pdf')
 
     # number of samples used to estimate the KL
     N_samples = 20
     for i in range(5):
         H = H.at(position)
-        samples = [H.curvature.draw_sample(from_inverse=True) for _ in range(N_samples)]
+        samples = [H.curvature.draw_sample(from_inverse=True)
+                   for _ in range(N_samples)]
 
         KL = ift.SampledKullbachLeiblerDivergence(H, samples, ic_cg)
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal.at(position).value,name='reconstruction.pdf')
+        ift.plot(signal.at(position).value, name='reconstruction.pdf')
 
-        ift.plot([A.at(position).value, A.at(MOCK_POSITION).value],name='power.pdf')
+        ift.plot([A.at(position).value, A.at(MOCK_POSITION).value],
+                 name='power.pdf')
 
     avrg = 0.
     va = 0.
@@ -101,15 +105,5 @@ if __name__ == '__main__':
     std = ift.sqrt(va)
     ift.plot(avrg, name='avrg.pdf')
     ift.plot(std, name='std.pdf')
-    ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers, name='power.pdf')
-
-
-
-
-
-
-
-
-
-
-
+    ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers,
+             name='power.pdf')
