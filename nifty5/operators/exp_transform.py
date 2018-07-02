@@ -4,6 +4,7 @@ from ..domain_tuple import DomainTuple
 from ..domains import PowerSpace, RGSpace
 from ..field import Field
 from .linear_operator import LinearOperator
+from .. import dobj
 
 
 class ExpTransform(LinearOperator):
@@ -27,7 +28,7 @@ class ExpTransform(LinearOperator):
         for i in range(ndim):
             if isinstance(target, RGSpace):
                 rng = np.arange(target.shape[i])
-                tmp = np.minimum(rng, target.shape[i] + 1 - rng)
+                tmp = np.minimum(rng, target.shape[i]+1-rng)
                 k_array = tmp * target.distances[i]
             else:
                 k_array = target.k_lengths
@@ -42,8 +43,8 @@ class ExpTransform(LinearOperator):
             # Save t_min for later
             t_mins[i] = t_min
 
-            bindistances[i] = (t_max - t_min) / (dof[i] - 1)
-            coord = np.append(0., 1. + (log_k_array - t_min) / bindistances[i])
+            bindistances[i] = (t_max-t_min) / (dof[i]-1)
+            coord = np.append(0., 1. + (log_k_array-t_min) / bindistances[i])
             self._bindex[i] = np.floor(coord).astype(int)
 
             # Interpolated value is computed via
@@ -52,7 +53,7 @@ class ExpTransform(LinearOperator):
             self._frac[i] = coord - self._bindex[i]
 
         from ..domains import LogRGSpace
-        log_space = LogRGSpace(2 * dof + 1, bindistances,
+        log_space = LogRGSpace(2*dof+1, bindistances,
                                t_mins, harmonic=False)
         self._target = DomainTuple.make(target)
         self._domain = DomainTuple.make(log_space)
@@ -67,30 +68,34 @@ class ExpTransform(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.to_global_data()
+        x = x.val
+        ax = dobj.distaxis(x)
         ndim = len(self.target.shape)
-        idx = ()
+        curshp = list(self._dom(mode).shape)
         for d in range(ndim):
-            fst_dims = (1,) * d
-            lst_dims = (1,) * (ndim - d - 1)
-            wgt = self._frac[d].reshape(fst_dims + (-1,) + lst_dims)
+            idx = (slice(None,),) * d
+            wgt = self._frac[d].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
 
-            # ADJOINT_TIMES
+            if d == ax:
+                x = dobj.redistribute(x, nodist=(ax,))
+            curax = dobj.distaxis(x)
+            x = dobj.local_data(x)
+
             if mode == self.ADJOINT_TIMES:
                 shp = list(x.shape)
                 shp[d] = self._tgt(mode).shape[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
-                np.add.at(xnew, idx + (self._bindex[d],), x * (1. - wgt))
-                np.add.at(xnew, idx + (self._bindex[d] + 1,), x * wgt)
+                np.add.at(xnew, idx + (self._bindex[d],), x * (1.-wgt))
+                np.add.at(xnew, idx + (self._bindex[d]+1,), x * wgt)
+            else:  # TIMES
+                xnew = x[idx + (self._bindex[d],)] * (1.-wgt)
+                xnew += x[idx + (self._bindex[d]+1,)] * wgt
 
-            # TIMES
-            else:
-                xnew = x[idx + (self._bindex[d],)] * (1. - wgt)
-                xnew += x[idx + (self._bindex[d] + 1,)] * wgt
-
-            x = xnew
-            idx = (slice(None),) + idx
-        return Field.from_global_data(self._tgt(mode), x)
+            curshp[d] = self._tgt(mode).shape[d]
+            x = dobj.from_local_data(curshp, xnew, distaxis=curax)
+            if d == ax:
+                x = dobj.redistribute(x, dist=ax)
+        return Field(self._tgt(mode), val=x)
 
     @property
     def capability(self):

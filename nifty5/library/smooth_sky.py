@@ -1,10 +1,10 @@
 def make_correlated_field(s_space, amplitude_model):
     '''
-    Method for construction of correlated sky model
+    Method for construction of correlated fields
 
     Parameters
     ----------
-    s_space : domain of sky model
+    s_space : Field domain
 
     amplitude_model : model for correlation structure
     '''
@@ -30,16 +30,10 @@ def make_correlated_field(s_space, amplitude_model):
     return correlated_field, internals
 
 
-def make_smooth_mf_sky_model(s_space_spatial, s_space_energy,
+def make_mf_correlated_field(s_space_spatial, s_space_energy,
                              amplitude_model_spatial, amplitude_model_energy):
     '''
-    Method for construction of correlated sky model
-
-    Parameters
-    ----------
-    s_space : domain of sky model
-
-    amplitude_model : model for correlation structure
+    Method for construction of correlated multi-frequency fields
     '''
     from .. import (DomainTuple, Field, MultiField,
                     PointwiseExponential, Variable)
