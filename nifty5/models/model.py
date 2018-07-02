@@ -73,7 +73,7 @@ class Model(NiftyMetaBase()):
     @property
     def value(self):
         """
-        Field : value of the model.
+        Field or MultiField: value of the model.
 
             The value of the model at given `position`.
         """
