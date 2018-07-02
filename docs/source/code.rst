@@ -13,8 +13,10 @@ recognized from a large distance, ignoring all technical details.
 
 From such a perspective,
 
-- IFT problems largely consist of *minimization* problems involving a large
-  number of equations.
+- IFT problems largely consist of the combination of several high dimensional 
+  *minimization* problems.
+- Within NIFTy, *models* are used to define the characteristic equations and  
+  properties of the problems. 
 - The equations are built mostly from the application of *linear operators*,
   but there may also be nonlinear functions involved.
 - The unknowns in the equations represent either continuous physical *fields*,
@@ -230,6 +232,60 @@ as well as the set of operations it can support.
 The properties :attr:`~LinearOperator.adjoint` and
 :attr:`~LinearOperator.inverse` return a new operator which behaves as if it
 were the original operator's adjoint or inverse, respectively.
+
+
+Models
+======
+
+Model classes (represented by NIFTy5's abstract :class:`Model` class) are used to construct
+the equations of a specific inference problem. 
+Most models are defined via a position, which is a :class:`MultiField` object,  
+their value at these positions, which is again a :class:`MultiField` object and a jacobian derivative, 
+which is a :class:`LinearOperator` and is needed for the minimization procedure.
+Using the existing basic model classes one can construct more complicated models, as
+NIFTy allows for easy and self-consinstent combination via pointwise multiplication, 
+addition and subtraction. The resulting model of these operations then automatically 
+contains the correct jacobians, positions and values. 
+Notably, :class:`Constant` and :class:`Variable` allows for an easy way to turn on and off the 
+inference of specific quantities.
+The basic model classes also allow for more complex operations on models such as 
+the application of :class:`LinearOperators` or local non-linearities.
+As an example one may consider the following combination of ``x``, which is a model of type
+:class:`Variable` and ``y``, which is a model of type :class:`Constant`::
+
+	z = x*x + y 
+
+``z`` will then be a model with position::
+
+	z.value = x.value*x.value + y.value
+	z.position = x.position*x.position + y.position
+	z.jacobian = 2*makeOp(x.value)
+
+
+Basic models
+------------ 
+
+Basic model classes provided by NIFTy are 
+
+- :class:`Constant` contains a constant value and has a zero valued jacobian. 
+It has no position (?currently it still has one?), as the value is the same everywhere.
+- :class:`Variable` returns the position as its value, its derivative is one.
+- :class:`LinearModel` applies a :class:`LinearOperator` on the model.
+- :class:`LocalModel` applies a non-linearity locally on the model.
+- :class:`MultiModel` combines various models into one. In this case the position, 
+	value and jacobian get combined into corresponding :class:`MultiFields` and operators.  
+ 
+
+Advanced models
+---------------
+
+NIFTy also provides a library of more sophisticated models which are used for more 
+specific inference problems. Currently these are:
+
+- :class:'AmplitudeModel', which returns a smooth power spectrum. 
+- :class:'PointModel', which models points sources which follow a inverse gamma distribution.
+- :class:'SmoothSkyModel', which models a diffuse lognormal field. It takes an amplitude model
+	to specify the correlation structure of the field.
 
 
 .. _minimization:
