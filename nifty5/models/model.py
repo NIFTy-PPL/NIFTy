@@ -24,22 +24,66 @@ from ..utilities import NiftyMetaBase
 
 
 class Model(NiftyMetaBase()):
+    """
+    The Model object is an implementation of a * which knows:
+        - position in parameterspace.  (Field, MulitField)
+        - value according to its modelfunction A.  A(position)
+        - gradient of the modelfunction at the current position.
+
+    Parameters
+    ----------
+    position : Field, MulitField
+        The input parameter of the model
+
+    Notes
+    -----
+    An instance of the model class knows its position, value and gradient.
+    One can 'jump' to a new position, with the help of the 'at' method, whereby
+    one automatically gets the value and gradient of the model. The 'at' method
+    creates a new instance of the class.
+    """
     def __init__(self, position):
         self._position = position
 
     def at(self, position):
+        """ Returns a new Model object, initialized at `position`.
+
+        Parameters
+        ----------
+        position : Field or MultiField
+            Location in parameter space for the new Model object.
+
+        Returns
+        -------
+        Model
+            Model object at new position.
+        """
         raise NotImplementedError
 
     @property
     def position(self):
+        """
+        Field or MultiField: selected location in parameter space.
+
+        The location in parameter space where value and gradient are
+        evaluated.
+        """
         return self._position
 
     @property
     def value(self):
+        """
+        Field or MultiField: value of the model.
+
+            The value of the model at given `position`.
+        """
         return self._value
 
     @property
     def gradient(self):
+        """
+        LinearOperator : The derivative of the model at given `position`.
+        """
         return self._gradient
 
     def __getitem__(self, key):

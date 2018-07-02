@@ -1,5 +1,6 @@
 from ..domain_tuple import DomainTuple
 from ..field import Field
+from .. import dobj
 from ..utilities import hartley
 from .linear_operator import LinearOperator
 
@@ -34,11 +35,13 @@ class QHTOperator(LinearOperator):
         x = x.val * self.domain[0].scalar_dvol()
         n = len(self.domain[0].shape)
         rng = range(n) if mode == self.TIMES else reversed(range(n))
+        # MR FIXME: this needs to be fixed properly for MPI
+        x = dobj.to_global_data(x)
         for i in rng:
             sl = (slice(None),)*i + (slice(1, None),)
             x[sl] = hartley(x[sl], axes=(i,))
 
-        return Field(self._tgt(mode), val=x)
+        return Field.from_global_data(self._tgt(mode), x)
 
     @property
     def capability(self):

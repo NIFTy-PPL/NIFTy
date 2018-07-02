@@ -1,62 +1,79 @@
 import nifty5 as ift
 import numpy as np
-from global_newton.models_other.apply_data import ApplyData
-from global_newton.models_energy.hamiltonian import Hamiltonian
-from nifty5 import GaussianEnergy
+
+
+def make_chess_mask():
+    mask = np.ones(position_space.shape)
+    for i in range(4):
+        for j in range(4):
+            if (i+j) % 2 == 0:
+                mask[i*128//4:(i+1)*128//4, j*128//4:(j+1)*128//4] = 0
+    return mask
+
+
+def make_random_mask():
+    mask = ift.from_random('pm1', position_space)
+    mask = (mask+1)/2
+    return mask.to_global_data()
 
 
 if __name__ == '__main__':
-    # s_space = ift.RGSpace([1024])
-    s_space = ift.RGSpace([128,128])
-    # s_space = ift.HPSpace(64)
+    # # description of the tutorial ###
 
-    h_space = s_space.get_default_codomain()
-    total_domain = ift.MultiDomain.make({'xi': h_space})
-    HT = ift.HarmonicTransformOperator(h_space, s_space)
+    # Choose problem geometry and masking
 
-    def sqrtpspec(k):
-        return 16. / (20.+k**2)
+    # One dimensional regular grid
+    position_space = ift.RGSpace([1024])
+    mask = np.ones(position_space.shape)
 
-    GR = ift.GeometryRemover(s_space)
+    # # Two dimensional regular grid with chess mask
+    # position_space = ift.RGSpace([128,128])
+    # mask = make_chess_mask()
 
-    d_space = GR.target
-    B = ift.FFTSmoothingOperator(s_space,0.1)
-    mask = np.ones(s_space.shape)
-    mask[64:89,76:100] = 0.
-    mask = ift.Field(s_space,val=mask)
+    # # Sphere with half of its locations randomly masked
+    # position_space = ift.HPSpace(128)
+    # mask = make_random_mask()
+
+    harmonic_space = position_space.get_default_codomain()
+    HT = ift.HarmonicTransformOperator(harmonic_space, target=position_space)
+
+    # set correlation structure with a power spectrum and build
+    # prior correlation covariance
+    def power_spectrum(k):
+        return 100. / (20.+k**3)
+    power_space = ift.PowerSpace(harmonic_space)
+    PD = ift.PowerDistributor(harmonic_space, power_space)
+    prior_correlation_structure = PD(ift.PS_field(power_space, power_spectrum))
+
+    S = ift.DiagonalOperator(prior_correlation_structure)
+
+    # build instrument response consisting of a discretization, mask
+    # and harmonic transformaion
+    GR = ift.GeometryRemover(position_space)
+    mask = ift.Field.from_global_data(position_space, mask)
     Mask = ift.DiagonalOperator(mask)
-    R = GR * Mask * B
-    noise = 1.
-    N = ift.ScalingOperator(noise, d_space)
+    R = GR * Mask * HT
 
-    p_space = ift.PowerSpace(h_space)
-    pd = ift.PowerDistributor(h_space, p_space)
-    position = ift.from_random('normal', total_domain)
-    xi = ift.Variable(position)['xi']
-    a = ift.Constant(position, ift.PS_field(p_space, sqrtpspec))
-    A = pd(a)
-    s_h = A * xi
-    s = HT(s_h)
-    Rs = R(s)
+    data_space = GR.target
 
+    # setting the noise covariance
+    noise = 5.
+    N = ift.ScalingOperator(noise, data_space)
 
+    # creating mock data
+    MOCK_SIGNAL = S.draw_sample()
+    MOCK_NOISE = N.draw_sample()
+    data = R(MOCK_SIGNAL) + MOCK_NOISE
 
-    MOCK_POSITION = ift.from_random('normal',total_domain)
-    data = Rs.at(MOCK_POSITION).value + N.draw_sample()
-
-    NWR = ApplyData(data, ift.Field(d_space,val=noise), Rs)
-
-    INITIAL_POSITION = ift.from_random('normal',total_domain)
-    likelihood = GaussianEnergy(INITIAL_POSITION, NWR)
-
+    # building propagator D and information source j
+    j = R.adjoint_times(N.inverse_times(data))
+    D_inv = R.adjoint * N.inverse * R + S.inverse
+    # make it invertible
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
-    inverter = ift.ConjugateGradient(controller=IC)
-    IC2 = ift.GradientNormController(name='Newton', iteration_limit=15)
-    minimizer = ift.RelaxedNewton(IC2)
+    D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
 
+    # WIENER FILTER
+    m = D(j)
 
-    H = Hamiltonian(likelihood, inverter)
-    H, convergence = minimizer(H)
-    result = s.at(H.position).value
-
-
+    # PLOTTING
+    # Truth, data, reconstruction, residuals
