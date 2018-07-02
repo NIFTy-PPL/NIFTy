@@ -257,10 +257,10 @@ As an example one may consider the following combination of ``x``, which is a mo
 
 	z = x*x + y
 
-``z`` will then be a model with position::
+``z`` will then be a model with the following properties::
 
 	z.value = x.value*x.value + y.value
-	z.position = x.position*x.position + y.position
+	z.position = Union(x.position, y.position)
 	z.jacobian = 2*makeOp(x.value)
 
 
