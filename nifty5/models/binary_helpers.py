@@ -31,6 +31,7 @@ def _joint_position(op1, op2):
 
 
 class ScalarMul(Model):
+    """Class representing a model multiplied by a scalar factor."""
     def __init__(self, factor, op):
         # TODO op -> model
         super(ScalarMul, self).__init__(op.position)
@@ -49,6 +50,7 @@ class ScalarMul(Model):
 
 
 class Add(Model):
+    """Class representing the sum of two models."""
     def __init__(self, position, op1, op2):
         super(Add, self).__init__(position)
 
@@ -68,6 +70,7 @@ class Add(Model):
 
 
 class Mul(Model):
+    """Class representing the pointwise product of two models."""
     def __init__(self, position, op1, op2):
         super(Mul, self).__init__(position)
 
