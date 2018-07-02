@@ -1,6 +1,7 @@
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
+from .. import dobj
 
 
 class SymmetrizingOperator(EndomorphicOperator):
@@ -14,12 +15,20 @@ class SymmetrizingOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        # FIXME Not efficient with MPI
-        tmp = x.to_global_data().copy()
+        tmp = x.copy().val
+        ax = dobj.distaxis(tmp)
+        globshape = tmp.shape
         for i in range(self._ndim):
             lead = (slice(None),)*i
+            if i == ax:
+                tmp = dobj.redistribute(tmp, nodist=(ax,))
+            curax = dobj.distaxis(tmp)
+            tmp = dobj.local_data(tmp)
             tmp[lead + (slice(1, None),)] -= tmp[lead + (slice(None, 0, -1),)]
-        return Field.from_global_data(self.target, tmp)
+            tmp = dobj.from_local_data(globshape, tmp, distaxis=curax)
+            if i == ax:
+                tmp = dobj.redistribute(tmp, dist=ax)
+            return Field(self.target, val=tmp)
 
     @property
     def capability(self):

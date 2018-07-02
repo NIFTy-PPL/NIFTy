@@ -23,8 +23,10 @@ from .model import Model
 
 
 class MultiModel(Model):
+    """ """
     def __init__(self, model, key):
-        # TODO Rewrite it such that it takes a dictionary as input. Just like MultiFields.
+        # TODO Rewrite it such that it takes a dictionary as input.
+        # (just like MultiFields).
         super(MultiModel, self).__init__(model.position)
         self._model = model
         self._key = key

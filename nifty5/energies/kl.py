@@ -24,7 +24,6 @@ class SampledKullbachLeiblerDivergence(Energy):
         return self.__class__(self._h.at(position), self._res_samples,
                               self._iteration_controller)
 
-
     @property
     @memo
     def value(self):
