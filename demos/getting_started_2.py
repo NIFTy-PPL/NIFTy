@@ -6,12 +6,12 @@ def get_2D_exposure():
     x_shape, y_shape = position_space.shape
 
     exposure = np.ones(position_space.shape)
-    exposure[x_shape/3:x_shape/2, :] *= 2.
-    exposure[x_shape*4/5:x_shape, :] *= .1
-    exposure[x_shape/2:x_shape*3/2, :] *= 3.
-    exposure[:, x_shape/3:x_shape/2] *= 2.
-    exposure[:, x_shape*4/5:x_shape] *= .1
-    exposure[:, x_shape/2:x_shape*3/2] *= 3.
+    exposure[x_shape//3:x_shape//2, :] *= 2.
+    exposure[x_shape*4//5:x_shape, :] *= .1
+    exposure[x_shape//2:x_shape*3//2, :] *= 3.
+    exposure[:, x_shape//3:x_shape//2] *= 2.
+    exposure[:, x_shape*4//5:x_shape] *= .1
+    exposure[:, x_shape//2:x_shape*3//2] *= 3.
 
     exposure = ift.Field.from_global_data(position_space, exposure)
     return exposure
