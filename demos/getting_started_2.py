@@ -1,122 +1,88 @@
 import nifty5 as ift
 import numpy as np
-# from nifty5.library.nonlinearities import Exponential
-
-#DEFINE THE SIGNAL:
-
-#Define signal space as a regular grid
-#s_space = ift.RGSpace(1024)
-# s_space = ift.RGSpace([128,128])
-s_space = ift.HPSpace(128)
-#Define the harmonic space
-h_space = s_space.get_default_codomain()
-
-#Prepare Harmonic transformation between the two spaces
-HT = ift.HarmonicTransformOperator(h_space, s_space)
-
-#Define domain
-domain = ift.MultiDomain.make({'xi': h_space})
-
-#Define positions from a Gaussian distribution
-position = ift.from_random('normal', domain)
-Nsamples = 5
-#Define a power spectrum
-def sqrtpspec(k):
-    return 10. / (20.+k**2)
-
-#Define a power space
-p_space = ift.PowerSpace(h_space)
-
-#Define the power distribution between the harmonic and the power spaces
-pd = ift.PowerDistributor(h_space, p_space)
-
-#Create a field with the defined power spectrum
-a = ift.PS_field(p_space, sqrtpspec)
-
-#Define the amplitudes
-A = pd(a)
-
-#Unpack the positions xi from the Multifield
-xi = ift.Variable(position)['xi']
-
-#Multiply the positions by the amplitudes in the harmonic domain
-logsky_h = xi * A
-
-#Transform to the real domain
-logsky = HT(logsky_h)
-
-#Create a sky model by applying the exponential (Poisson)
-sky = ift.PointwiseExponential(logsky)
-
-#DEFINE THE RESPONSE OPERATOR:
-
-#Define a mask to cover a patch of the real space
-exposure = 1*np.ones(s_space.shape)
-# exposure[int(s_space.shape[0]/3):int(s_space.shape[0]/3+10)] = 10.
-
-#Convert the mask into a field
-exposure = ift.Field(s_space,val=exposure)
-
-#Create a diagonal matrix corresponding to the mask
-E = ift.DiagonalOperator(exposure)
-
-#Create the response operator and apply the mask on it
-R = ift.GeometryRemover(s_space) * E
-
-#CREATE THE MOCK DATA:
-
-#Define the data space
-d_space = R.target[0]
-
-#Apply the response operator to the signal
-#lamb corresponds to the mean in the Poisson distribution
-lamb = R(sky)
-
-#Draw coordinates of the mock data from a Gaussian distribution
-mock_position = ift.from_random('normal', lamb.position.domain)
-
-#Generate mock data from a Poisson distribution using lamb as a mean
-data = np.random.poisson(lamb.at(mock_position).value.val.astype(np.float64))
-
-#Store the data as a field
-data = ift.Field.from_local_data(d_space, data)
-
-#RECONSTRUCT THE SIGNAL:
-
-#Define the positions where we perform the analysis from a Gaussian distribution
-position = ift.from_random('normal', lamb.position.domain)
-
-#Define the Poisson likelihood knowing the mean and the data
-likelihood = ift.library.PoissonLogLikelihood(lamb, data)
-
-#Define a iteration controller with a maximum number of iterations
-ic_cg = ift.GradientNormController(iteration_limit=50)
 
 
-#Define a iteration controller for the minimizer
-ic_newton = ift.GradientNormController(name='Newton', tol_abs_gradnorm=1e-3)
-minimizer = ift.RelaxedNewton(ic_newton)
+def get_2D_exposure():
+    x_shape, y_shape = position_space.shape
 
-#Build the Hamiltonian
-H = ift.Hamiltonian(likelihood, ic_cg)
-H, convergence = minimizer(H)
+    exposure = np.ones(position_space.shape)
+    exposure[x_shape/3:x_shape/2,:] *= 2.
+    exposure[x_shape*4/5:x_shape,:] *= .1
+    exposure[x_shape/2:x_shape*3/2,:] *=3.
+    exposure[:,x_shape / 3:x_shape / 2] *= 2.
+    exposure[:,x_shape * 4 / 5:x_shape] *= .1
+    exposure[:,x_shape / 2:x_shape * 3 / 2] *= 3.
 
-#PLOT RESULTS:
-   
-#Evaluate lambda at final position
-lamb_recontructed = lamb.at(H.position).value
-sky_reconstructed = sky.at(H.position).value
-#Evaluate lambda at the data position for comparison
-lamb_mock = lamb.at(mock_position).value
+    exposure = ift.Field(position_space, val=exposure)
+    return exposure
 
-#Plot the data, reconstruction and underlying signal
-ift.plot([data, lamb_mock, lamb_recontructed], name="poisson.png",
-         label=['Data', 'Mock signal', 'Reconstruction'],
-         alpha=[.5, 1, 1])
-         
-#Plot power spectrum for posterior test         
-a_mock = a
-a_recon = a
-ift.plot([a_mock**2, a_recon**2, ift.power_analyze(logsky_h.at(KL.position).value)],
-         name='power_spectrum.png', label=['Mock', 'Reconstruction', 'power_analyze'])
+
+if __name__ == '__main__':
+    # ABOUT THIS CODE
+    np.random.seed(42)
+
+    # Set up the position space of the signal
+
+    # # One dimensional regular grid with uniform exposure
+    # position_space = ift.RGSpace(1024)
+    # exposure = np.ones(position_space.shape)
+
+
+    # Two dimensional regular grid with inhomogeneous exposure
+    position_space = ift.RGSpace([512, 512])
+    exposure = get_2D_exposure()
+
+    # # Sphere with with uniform exposure
+    # position_space = ift.HPSpace(128)
+    # exposure = np.ones(position_space.shape)
+
+    # Defining harmonic space and transform
+    harmonic_space = position_space.get_default_codomain()
+    HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
+
+    domain = ift.MultiDomain.make({'xi': harmonic_space})
+    position = ift.from_random('normal', domain)
+
+    # Define power spectrum and amplitudes
+    def sqrtpspec(k):
+        return 1. / (20. + k**2)
+
+    p_space = ift.PowerSpace(harmonic_space)
+    pd = ift.PowerDistributor(harmonic_space, p_space)
+    a = ift.PS_field(p_space, sqrtpspec)
+    A = pd(a)
+
+    # Set up a sky model
+    xi = ift.Variable(position)['xi']
+    logsky_h = xi * A
+    logsky = HT(logsky_h)
+    sky = ift.PointwiseExponential(logsky)
+
+    exposure = ift.Field(position_space, val=exposure)
+    M = ift.DiagonalOperator(exposure)
+    GR = ift.GeometryRemover(position_space)
+    # Set up instrumental response
+    R = GR * M
+
+    # Generate mock data
+    d_space = R.target[0]
+    lamb = R(sky)
+    mock_position = ift.from_random('normal', lamb.position.domain)
+    data = np.random.poisson(lamb.at(mock_position).value.val.astype(np.float64))
+    data = ift.Field.from_local_data(d_space, data)
+
+    # Compute likelihood and Hamiltonian
+    position = ift.from_random('normal', lamb.position.domain)
+    likelihood = ift.PoissonianEnergy(lamb, data)
+    ic_cg = ift.GradientNormController(iteration_limit=50)
+    ic_newton = ift.GradientNormController(name='Newton',iteration_limit=50, tol_abs_gradnorm=1e-3)
+    minimizer = ift.RelaxedNewton(ic_newton)
+
+    # Minimize the Hamiltonian
+    H = ift.Hamiltonian(likelihood, ic_cg)
+    H, convergence = minimizer(H)
+
+    # Plot results
+    result_sky = sky.at(H.position).value
+
 
