@@ -6,3 +6,4 @@ from .point_sources import PointSources
 from .poissonian_energy import PoissonianEnergy
 from .wiener_filter_curvature import WienerFilterCurvature
 from .wiener_filter_energy import WienerFilterEnergy
+from .smooth_sky import make_correlated_field, make_mf_correlated_field
