@@ -24,8 +24,6 @@ from .domain_tuple import DomainTuple
 from functools import reduce
 from . import dobj
 
-__all__ = ["Field", "sqrt", "exp", "log", "conjugate"]
-
 
 class Field(object):
     """ The discrete representation of a continuous field over multiple spaces.

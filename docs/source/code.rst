@@ -275,7 +275,7 @@ Basic model classes provided by NIFTy are
 - :class:`LinearModel` applies a :class:`LinearOperator` on the model.
 - :class:`LocalModel` applies a non-linearity locally on the model.
 - :class:`MultiModel` combines various models into one. In this case the position,
-	value and Jacobian are combined into corresponding :class:`MultiField`s and operators.
+	value and Jacobian are combined into corresponding :class:`MultiFields` and operators.
 
 
 Advanced models
@@ -284,9 +284,9 @@ Advanced models
 NIFTy also provides a library of more sophisticated models which are used for more
 specific inference problems. Currently these are:
 
-- :class:'AmplitudeModel', which returns a smooth power spectrum.
-- :class:'PointModel', which models point sources which follow a inverse gamma distribution.
-- :class:'SmoothSkyModel', which models a diffuse lognormal field. It takes an amplitude model
+- :class:`AmplitudeModel`, which returns a smooth power spectrum.
+- :class:`PointModel`, which models point sources which follow a inverse gamma distribution.
+- :class:`SmoothSkyModel`, which models a diffuse lognormal field. It takes an amplitude model
 	to specify the correlation structure of the field.
 
 
