@@ -14,7 +14,7 @@ def make_chess_mask():
 def make_random_mask():
     mask = ift.from_random('pm1', position_space)
     mask = (mask+1)/2
-    return mask.val
+    return mask.to_global_data()
 
 
 if __name__ == '__main__':
