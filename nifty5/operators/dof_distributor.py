@@ -26,20 +26,24 @@ from ..domains.dof_space import DOFSpace
 
 
 class DOFDistributor(LinearOperator):
-    """Operator which distributes actual degrees of freedom (dof) according to some
-    distribution scheme into a higher dimensional space. This distribution scheme is
-    defined by the dofdex, a degree of freedom index, which associates the entries within
-    the operators domain to locations in its target. This operators domain is a DOFSpace,
-     which is defined according to the distribution scheme.
+    """Operator which distributes actual degrees of freedom (dof) according to
+    some distribution scheme into a higher dimensional space. This distribution
+    scheme is defined by the dofdex, a degree of freedom index, which
+    associates the entries within the operators domain to locations in its
+    target. This operator's domain is a DOFSpace, which is defined according to
+    the distribution scheme.
 
     Parameters
     ----------
     dofdex: Field of integers
-        An integer Field on exactly one Space establishing the association between the
-        locations in the operators target and the underlying degrees of freedom in its domain.
-        It has to start at 0 and it increases monotonicly, no empty bins are allowed.
+        An integer Field on exactly one Space establishing the association
+        between the locations in the operators target and the underlying
+        degrees of freedom in its domain.
+        It has to start at 0 and it increases monotonicly, no empty bins are
+        allowed.
     target: Domain, tuple of Domain, or DomainTuple, optional
-        The target of the operator. If not specified, the domain of the dofdex is used.
+        The target of the operator. If not specified, the domain of the dofdex
+        is used.
     space: int, optional:
        The index of the sub-domain on which the operator acts.
        Can be omitted if `target` only has one sub-domain.
