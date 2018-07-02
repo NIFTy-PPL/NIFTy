@@ -6,33 +6,6 @@ from nifty5.library.amplitude_model import make_amplitude_model
 from nifty5.library.smooth_sky import make_correlated_field
 import numpy as np
 
-# def get_radial_LOS(lines=100, rotations=100, scale=1/400.):
-#     def make_los(n=10, angle=0, d=1 / 40.):
-#         starts_list = []
-#         ends_list = []
-#         for i in xrange(n):
-#             starts_list += [[-(110.) * d + 0.5, d * 0 + 0.5]]
-#
-#             ends_list += [[(190.) * d + 0.5, (-57.4 + (114.8 * i) / n) * d + 0.5]]
-#         starts_list = np.array(starts_list)
-#         ends_list = np.array(ends_list)
-#
-#         rot_matrix = np.array([[np.cos(angle), -np.sin(angle)],
-#                                [np.sin(angle), np.cos(angle)]])
-#         starts_list = rot_matrix.dot(starts_list.T - 0.5).T + 0.5
-#         ends_list = rot_matrix.dot(ends_list.T - 0.5).T + 0.5
-#
-#         return (starts_list, ends_list)
-#
-#     rotation_angle = np.pi*2
-#     temp_coords = (np.empty((0, 2)), np.empty((0, 2)))
-#     for alpha in [-rotation_angle/rotations*j for j in xrange(rotations)]:
-#         temp = make_los(n=lines, angle=alpha, d = scale)
-#         temp_coords = np.concatenate([temp_coords, temp], axis=1)
-#
-#     starts = list(temp_coords[0].T)
-#     ends = list(temp_coords[1].T)
-#     return starts, ends
 
 def get_random_LOS(n_los):
     starts = list(np.random.uniform(0,1,(n_los,2)).T)
@@ -48,10 +21,8 @@ if __name__ == '__main__':
     A, __ = make_amplitude_model(position_space,16, 1, 10, -4., 1, 0., 1.)
     log_signal, _ = make_correlated_field(position_space,A)
     signal = ift.PointwisePositiveTanh(log_signal)
-    # LOS_starts, LOS_ends = get_radial_LOS()
     LOS_starts, LOS_ends = get_random_LOS(100)
     R = LOSResponse(position_space, starts=LOS_starts, ends=LOS_ends)
-    # R = ift.GeometryRemover(position_space)
     data_space = R.target
     signal_response = R(signal)
     noise = .001
@@ -74,8 +45,6 @@ if __name__ == '__main__':
     ift.plot(R.adjoint_times(data),name='data.pdf')
     ift.plot([ A.at(MOCK_POSITION).value], name='power.pdf')
 
-    # H, convergence = minimizer(H)
-    # position = H.position
     for i in range(5):
         H = H.at(position)
         samples = [H.curvature.draw_sample(from_inverse=True) for _ in range(N_samples)]
