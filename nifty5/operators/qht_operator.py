@@ -35,18 +35,18 @@ class QHTOperator(LinearOperator):
         x = x.val * self.domain[0].scalar_dvol()
         n = len(self.domain[0].shape)
         rng = range(n) if mode == self.TIMES else reversed(range(n))
+        ax = dobj.distaxis(x)
+        globshape = x.shape
         for i in rng:
             sl = (slice(None),)*i + (slice(1, None),)
-            if i == dobj.distaxis(x):
-                x = dobj.redistribute(x, nodist=(i,))
-                ax = dobj.distaxis(x)
-                x = dobj.local_data(x)
-                x[sl] = hartley(x[sl], axes=(i,))
-                x = dobj.from_local_data(x.shape, x, distaxis=ax)
-                x = dobj.redistribute(x, dist=i)
-            else:
-                x[sl] = hartley(x[sl], axes=(i,))
-
+            if i == ax:
+                x = dobj.redistribute(x, nodist=(ax,))
+            curax = dobj.distaxis(x)
+            x = dobj.local_data(x)
+            x[sl] = hartley(x[sl], axes=(i,))
+            x = dobj.from_local_data(globshape, x, distaxis=curax)
+            if i == ax:
+                x = dobj.redistribute(x, dist=ax)
         return Field(self._tgt(mode), val=x)
 
     @property

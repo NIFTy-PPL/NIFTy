@@ -59,6 +59,8 @@ class data_object(object):
             distaxis = -1
         self._distaxis = distaxis
         self._data = data
+        if local_shape(self._shape, self._distaxis) != self._data.shape:
+            raise ValueError("shape mismatch")
 
 #     def _sanity_checks(self):
 #         # check whether the distaxis is consistent
