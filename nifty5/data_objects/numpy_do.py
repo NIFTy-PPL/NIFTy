@@ -79,7 +79,7 @@ def distaxis(arr):
 
 
 def from_local_data(shape, arr, distaxis=-1):
-    if shape != arr.shape:
+    if tuple(shape) != arr.shape:
         raise ValueError
     return arr
 
