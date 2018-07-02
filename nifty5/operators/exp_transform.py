@@ -67,7 +67,7 @@ class ExpTransform(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
+        x = x.to_global_data()
         ndim = len(self.target.shape)
         idx = ()
         for d in range(ndim):
@@ -90,7 +90,7 @@ class ExpTransform(LinearOperator):
 
             x = xnew
             idx = (slice(None),) + idx
-        return Field(self._tgt(mode), val=x)
+        return Field.from_global_data(self._tgt(mode), x)
 
     @property
     def capability(self):

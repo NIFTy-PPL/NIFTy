@@ -18,7 +18,7 @@ class SlopeOperator(LinearOperator):
         self.pos = np.zeros((self.ndim,) + self.target[0].shape)
 
         if self.ndim == 1:
-            self.pos[0] = self.target[0].get_k_length_array().val
+            self.pos[0] = self.target[0].get_k_length_array().to_global_data()
         else:
             shape = self.target[0].shape
             for i in range(self.ndim):
@@ -46,18 +46,19 @@ class SlopeOperator(LinearOperator):
 
         # Times
         if mode == self.TIMES:
-            inp = x.val
+            inp = x.to_global_data()
             res = self.sigmas[-1] * inp[-1]
             for i in range(self.ndim):
                 res += self.sigmas[i] * inp[i] * self.pos[i]
-            return Field(self.target, val=res)
+            return Field.from_global_data(self.target, res)
 
         # Adjoint times
         res = np.zeros(self.domain[0].shape)
-        res[-1] = np.sum(x.val) * self.sigmas[-1]
+        xglob = x.to_global_data()
+        res[-1] = np.sum(xglob) * self.sigmas[-1]
         for i in range(self.ndim):
-            res[i] = np.sum(self.pos[i] * x.val) * self.sigmas[i]
-        return Field(self.domain, val=res)
+            res[i] = np.sum(self.pos[i] * xglob) * self.sigmas[i]
+        return Field.from_global_data(self.domain, res)
 
     @property
     def capability(self):

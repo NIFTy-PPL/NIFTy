@@ -67,7 +67,7 @@ class MultiField(object):
         dtype = MultiField.build_dtype(dtype, domain)
         return MultiField({key: Field.from_random(random_type, domain[key],
                                                   dtype[key], **kwargs)
-                           for key in domain.keys()})
+                           for key in sorted(domain.keys())})
 
     def fill(self, fill_value):
         """Fill `self` uniformly with `fill_value`
