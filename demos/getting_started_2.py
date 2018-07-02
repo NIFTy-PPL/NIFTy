@@ -19,10 +19,10 @@ def get_2D_exposure():
 
 if __name__ == '__main__':
     # ABOUT THIS CODE
-    np.random.seed(42)
+    np.random.seed(41)
 
     # Set up the position space of the signal
-
+    #
     # # One dimensional regular grid with uniform exposure
     # position_space = ift.RGSpace(1024)
     # exposure = np.ones(position_space.shape)
@@ -84,5 +84,6 @@ if __name__ == '__main__':
 
     # Plot results
     result_sky = sky.at(H.position).value
+    ##PLOTTING
 
 
