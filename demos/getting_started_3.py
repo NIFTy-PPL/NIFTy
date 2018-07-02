@@ -64,8 +64,7 @@ if __name__ == '__main__':
     minimizer = ift.RelaxedNewton(ic_newton)
 
     # build model Hamiltonian
-    H = ift.Hamiltonian(likelihood, ic_cg,
-                        iteration_controller_sampling=ic_sampling)
+    H = ift.Hamiltonian(likelihood, ic_sampling)
 
     INITIAL_POSITION = ift.from_random('normal', H.position.domain)
     position = INITIAL_POSITION
