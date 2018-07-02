@@ -16,7 +16,7 @@ from .minimization import *
 from .sugar import *
 from .plotting.plot import plot
 
-from . import library
+from .library import *
 from . import extra
 
 from .utilities import memo

@@ -10,6 +10,7 @@ from .harmonic_transform_operator import HarmonicTransformOperator
 from .inversion_enabler import InversionEnabler
 from .laplace_operator import LaplaceOperator
 from .linear_operator import LinearOperator
+from .mask_operator import MaskOperator
 from .multi_adaptor import MultiAdaptor
 from .power_distributor import PowerDistributor
 from .qht_operator import QHTOperator
@@ -23,7 +24,7 @@ from .symmetrizing_operator import SymmetrizingOperator
 
 __all__ = ["LinearOperator", "EndomorphicOperator", "ScalingOperator",
            "DiagonalOperator", "HarmonicTransformOperator", "FFTOperator",
-           "FFTSmoothingOperator", "GeometryRemover",
+           "FFTSmoothingOperator", "GeometryRemover", "MaskOperator",
            "LaplaceOperator", "SmoothnessOperator", "PowerDistributor",
            "InversionEnabler", "SandwichOperator", "SamplingEnabler",
            "DOFDistributor", "SelectionOperator", "MultiAdaptor",

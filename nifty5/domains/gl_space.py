@@ -34,7 +34,7 @@ class GLSpace(StructuredDomain):
         pixelization.
     nlon : int, optional
         Number of longitudinal bins that are used for this pixelization.
-        Default value is 2*nlat + 1.
+        Default value is 2*nlat - 1.
     """
 
     _needed_for_hash = ["_nlat", "_nlon"]
