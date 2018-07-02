@@ -81,7 +81,8 @@ if __name__ == '__main__':
         samples = [H.curvature.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
 
-        KL = ift.SampledKullbachLeiblerDivergence(H, samples, ic_cg)
+        KL = ift.SampledKullbachLeiblerDivergence(H, samples)
+        KL = KL.makeInvertible(ic_cg)
         KL, convergence = minimizer(KL)
         position = KL.position
 
