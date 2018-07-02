@@ -30,10 +30,6 @@ class SlopeOperator(LinearOperator):
                 self.pos[i] += tmp.reshape(fst_dims + (shape[i],) + lst_dims)
 
     @property
-    def sigmas(self):
-        return self._sigmas
-
-    @property
     def domain(self):
         return self._domain
 
@@ -47,17 +43,17 @@ class SlopeOperator(LinearOperator):
         # Times
         if mode == self.TIMES:
             inp = x.to_global_data()
-            res = self.sigmas[-1] * inp[-1]
+            res = self._sigmas[-1] * inp[-1]
             for i in range(self.ndim):
-                res += self.sigmas[i] * inp[i] * self.pos[i]
+                res += self._sigmas[i] * inp[i] * self.pos[i]
             return Field.from_global_data(self.target, res)
 
         # Adjoint times
         res = np.zeros(self.domain[0].shape)
         xglob = x.to_global_data()
-        res[-1] = np.sum(xglob) * self.sigmas[-1]
+        res[-1] = np.sum(xglob) * self._sigmas[-1]
         for i in range(self.ndim):
-            res[i] = np.sum(self.pos[i] * xglob) * self.sigmas[i]
+            res[i] = np.sum(self.pos[i] * xglob) * self._sigmas[i]
         return Field.from_global_data(self.domain, res)
 
     @property
