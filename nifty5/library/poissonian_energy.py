@@ -23,7 +23,7 @@ from ..operators.sandwich_operator import SandwichOperator
 from ..sugar import log, makeOp
 
 
-class PoissonLogLikelihood(Energy):
+class PoissonianEnergy(Energy):
     def __init__(self, lamb, d):
         """
         lamb: Sky model object
@@ -31,7 +31,7 @@ class PoissonLogLikelihood(Energy):
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(PoissonLogLikelihood, self).__init__(lamb.position)
+        super(PoissonianEnergy, self).__init__(lamb.position)
         self._lamb = lamb
         self._d = d
 

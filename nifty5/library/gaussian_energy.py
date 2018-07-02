@@ -17,45 +17,50 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from ..minimization.energy import Energy
-from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sandwich_operator import SandwichOperator
 from ..utilities import memo
 
 
-class UnitLogGauss(Energy):
-    def __init__(self, s, inverter=None):
+class GaussianEnergy(Energy):
+    def __init__(self, inp, mean=None, covariance=None):
         """
-        s: Sky model object
+        inp: Model object
 
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(UnitLogGauss, self).__init__(s.position)
-        self._s = s
-        self._inverter = inverter
+        super(GaussianEnergy, self).__init__(inp.position)
+        self._inp = inp
+        self._mean = mean
+        self._cov = covariance
 
     def at(self, position):
-        return self.__class__(self._s.at(position), self._inverter)
+        return self.__class__(self._inp.at(position), self._mean, self._cov)
 
     @property
     @memo
-    def _gradient_helper(self):
-        return self._s.gradient
+    def residual(self):
+        if self._mean is not None:
+            return self._inp.value - self._mean
+        return self._inp.value
 
     @property
     @memo
     def value(self):
-        return .5 * self._s.value.squared_norm()
+        if self._cov is None:
+            return .5 * self.residual.vdot(self.residual).real
+        return .5 * self.residual.vdot(self._cov.inverse(self.residual)).real
 
     @property
     @memo
     def gradient(self):
-        return self._gradient_helper.adjoint(self._s.value)
+        if self._cov is None:
+            return self._inp.gradient.adjoint(self.residual)
+        return self._inp.gradient.adjoint(self._cov.inverse(self.residual))
 
     @property
     @memo
     def curvature(self):
-        c = SandwichOperator.make(self._gradient_helper)
-        if self._inverter is None:
-            return c
-        return InversionEnabler(c, self._inverter)
+        if self._cov is None:
+            return SandwichOperator.make(self._inp.gradient, None)
+        return SandwichOperator.make(self._inp.gradient, self._cov.inverse)

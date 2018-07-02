@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # position_space = ift.HPSpace(128)
     # mask = make_random_mask()
 
-    # set up corresponding harmonic transform and space
+
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, target=position_space)
 
