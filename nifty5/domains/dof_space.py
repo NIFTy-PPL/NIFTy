@@ -21,7 +21,17 @@ from .structured_domain import StructuredDomain
 
 
 class DOFSpace(StructuredDomain):
-    """Generic degree-of-freedom space."""
+    """Generic degree-of-freedom space. It is defined as the domain of some
+    DOFDistributor.
+    Its entries represent the underlying degrees of freedom of some other
+    space, according to the dofdex.
+
+    Parameters
+    ----------
+    dof_weights: 1-D numpy array
+        A numpy array containing the multiplicity of each individual degree of
+        freedom.
+    """
 
     _needed_for_hash = ["_dvol"]
 
