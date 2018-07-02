@@ -27,7 +27,7 @@ class Model(NiftyMetaBase()):
     """
     The Model object is an implementation of a * which knows:
         - position in parameterspace.  (Field, MulitField)
-        - value of according to its modelfunction A.  A(position)
+        - value according to its modelfunction A.  A(position)
         - gradient of the modelfunction at the current position.
 
     Parameters
