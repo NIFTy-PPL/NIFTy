@@ -2,7 +2,9 @@ import nifty5 as ift
 import numpy as np
 from global_newton.models_other.apply_data import ApplyData
 from global_newton.models_energy.hamiltonian import Hamiltonian
-from nifty5.library.unit_log_gauss import UnitLogGauss
+from nifty5 import GaussianEnergy
+
+
 if __name__ == '__main__':
     # s_space = ift.RGSpace([1024])
     s_space = ift.RGSpace([128,128])
@@ -45,7 +47,7 @@ if __name__ == '__main__':
     NWR = ApplyData(data, ift.Field(d_space,val=noise), Rs)
 
     INITIAL_POSITION = ift.from_random('normal',total_domain)
-    likelihood = UnitLogGauss(INITIAL_POSITION, NWR)
+    likelihood = GaussianEnergy(INITIAL_POSITION, NWR)
 
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     inverter = ift.ConjugateGradient(controller=IC)

@@ -16,13 +16,24 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..models.constant import Constant
-from .unit_log_gauss import UnitLogGauss
-from ..energies.hamiltonian import Hamiltonian
+import unittest
+from itertools import product
+from test.common import expand
+
+import nifty5 as ift
+import numpy as np
 
 
-def NonlinearWienerFilterEnergy(measured_data, data_model, sqrtN, iteration_controller):
-        d = measured_data.lock()
-        residual = Constant(data_model.position, d) - data_model
-        lh = UnitLogGauss(sqrtN.inverse(residual))
-        return Hamiltonian(lh, iteration_controller)
+class Model_Tests(unittest.TestCase):
+    @expand(product([ift.GLSpace(15),
+                     ift.RGSpace(64, distances=.789),
+                     ift.RGSpace([32, 32], distances=.789)],
+                    [4, 78, 23]))
+    def testMul(self, space, seed):
+        np.random.seed(seed)
+        S = ift.ScalingOperator(1., space)
+        s1 = S.draw_sample()
+        s2 = S.draw_sample()
+        s1_var = ift.Variable(ift.MultiField({'s1': s1}))['s1']
+        s2_var = ift.Variable(ift.MultiField({'s2': s2}))['s2']
+        ift.extra.check_value_gradient_consistency(s1_var*s2_var)
