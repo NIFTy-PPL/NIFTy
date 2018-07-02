@@ -25,9 +25,8 @@ class SlopeOperator(LinearOperator):
                 rng = np.arange(target.shape[i])
                 tmp = np.minimum(
                     rng, target.shape[i] + 1 - rng) * target.bindistances[i]
-                fst_dims = (1,) * i
-                lst_dims = (1,) * (self.ndim - i - 1)
-                self.pos[i] += tmp.reshape(fst_dims + (shape[i],) + lst_dims)
+                self.pos[i] += tmp.reshape(
+                    (1,)*i + (shape[i],) + (1,)*(self.ndim-i-1))
 
     @property
     def domain(self):
