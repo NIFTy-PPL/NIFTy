@@ -1,6 +1,6 @@
 from builtins import *
 from ..minimization.energy import Energy
-from ..utilities import memo
+from ..utilities import memo, my_sum
 
 
 class SampledKullbachLeiblerDivergence(Energy):
