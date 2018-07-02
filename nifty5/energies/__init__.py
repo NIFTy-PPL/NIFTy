@@ -1,2 +1,2 @@
-from .hamiltonian import Hamiltonian
 from .kl import SampledKullbachLeiblerDivergence
+from .hamiltonian import Hamiltonian

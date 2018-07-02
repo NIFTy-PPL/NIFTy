@@ -16,47 +16,51 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from numpy import inf, isnan
-
 from ..minimization.energy import Energy
 from ..operators.sandwich_operator import SandwichOperator
-from ..sugar import log, makeOp
+from ..utilities import memo
 
 
-class PoissonLogLikelihood(Energy):
-    def __init__(self, lamb, d):
+class GaussianEnergy(Energy):
+    def __init__(self, inp, mean=None, covariance=None):
         """
-        s: Sky model object
+        inp: Model object
 
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(PoissonLogLikelihood, self).__init__(lamb.position)
-        self._lamb = lamb
-        self._d = d
-
-        lamb_val = self._lamb.value
-
-        self._value = lamb_val.sum() - d.vdot(log(lamb_val))
-        if isnan(self._value):
-            self._value = inf
-        self._gradient = self._lamb.gradient.adjoint_times(1 - d/lamb_val)
-
-        # metric = makeOp(d/lamb_val/lamb_val)
-        metric = makeOp(1./lamb_val)
-        self._curvature = SandwichOperator.make(self._lamb.gradient, metric)
+        super(GaussianEnergy, self).__init__(inp.position)
+        self._inp = inp
+        self._mean = mean
+        self._cov = covariance
 
     def at(self, position):
-        return self.__class__(self._lamb.at(position), self._d)
+        return self.__class__(self._inp.at(position), self._mean, self._cov)
 
     @property
+    @memo
+    def residual(self):
+        if self._mean is not None:
+            return self._inp.value - self._mean
+        return self._inp.value
+
+    @property
+    @memo
     def value(self):
-        return self._value
+        if self._cov is None:
+            return .5 * self.residual.vdot(self.residual).real
+        return .5 * self.residual.vdot(self._cov.inverse(self.residual)).real
 
     @property
+    @memo
     def gradient(self):
-        return self._gradient
+        if self._cov is None:
+            return self._inp.gradient.adjoint(self.residual)
+        return self._inp.gradient.adjoint(self._cov.inverse(self.residual))
 
     @property
+    @memo
     def curvature(self):
-        return self._curvature
+        if self._cov is None:
+            return SandwichOperator.make(self._inp.gradient, None)
+        return SandwichOperator.make(self._inp.gradient, self._cov.inverse)

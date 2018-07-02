@@ -57,7 +57,7 @@ class Energy_Tests(unittest.TestCase):
             tol_abs_gradnorm=1e-5)
 
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
-        energy = ift.library.WienerFilterEnergy(
+        energy = ift.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, iteration_controller=IC)
         ift.extra.check_value_gradient_curvature_consistency(
             energy, ntries=10)
@@ -66,10 +66,10 @@ class Energy_Tests(unittest.TestCase):
                      ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
                     [ift.Tanh, ift.Exponential, ift.Linear],
+                    [1, 1e-2, 1e2],
                     [4, 78, 23]))
-    def testNonlinearMap(self, space, nonlinearity, seed):
+    def testGaussianEnergy(self, space, nonlinearity, noise, seed):
         np.random.seed(seed)
-        f = nonlinearity()
         dim = len(space.shape)
         hspace = space.get_default_codomain()
         ht = ift.HarmonicTransformOperator(hspace, target=space)
@@ -77,21 +77,23 @@ class Energy_Tests(unittest.TestCase):
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
         Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
+        xi0_var = ift.Variable(ift.MultiField({'xi': xi0}))['xi']
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
         A = Dist(ift.sqrt(pspec))
-        n = ift.Field.from_random(domain=space, random_type='normal')
-        s = ht(xi0 * A)
+        N = ift.ScalingOperator(noise, space)
+        n = N.draw_sample()
+        s = ht(ift.makeOp(A)(xi0_var))
         R = ift.ScalingOperator(10., space)
-        N = ift.ScalingOperator(1., space)
-        d = R(f(s)) + n
+        d_model = R(ift.LocalModel(s, nonlinearity()))
+        d = d_model.value + n
 
-        S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
-        energy = ift.library.NonlinearWienerFilterEnergy(
-            position=xi0, d=d, Instrument=R, nonlinearity=f, ht=ht, power=A,
-            N=N, S=S)
-        if isinstance(nonlinearity, ift.Linear):
+        if noise == 1:
+            N = None
+
+        energy = ift.GaussianEnergy(d_model, d, N)
+        if isinstance(nonlinearity(), ift.Linear):
             ift.extra.check_value_gradient_curvature_consistency(
                 energy, ntries=10)
         else:

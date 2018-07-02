@@ -16,46 +16,47 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from numpy import inf, isnan
+
 from ..minimization.energy import Energy
-from ..operators.inversion_enabler import InversionEnabler
 from ..operators.sandwich_operator import SandwichOperator
-from ..utilities import memo
+from ..sugar import log, makeOp
 
 
-class UnitLogGauss(Energy):
-    def __init__(self, s, inverter=None):
+class PoissonianEnergy(Energy):
+    def __init__(self, lamb, d):
         """
-        s: Sky model object
+        lamb: Sky model object
 
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(UnitLogGauss, self).__init__(s.position)
-        self._s = s
-        self._inverter = inverter
+        super(PoissonianEnergy, self).__init__(lamb.position)
+        self._lamb = lamb
+        self._d = d
+
+        lamb_val = self._lamb.value
+
+        self._value = lamb_val.sum() - d.vdot(log(lamb_val))
+        if isnan(self._value):
+            self._value = inf
+        self._gradient = self._lamb.gradient.adjoint_times(1 - d/lamb_val)
+
+        # metric = makeOp(d/lamb_val/lamb_val)
+        metric = makeOp(1./lamb_val)
+        self._curvature = SandwichOperator.make(self._lamb.gradient, metric)
 
     def at(self, position):
-        return self.__class__(self._s.at(position), self._inverter)
+        return self.__class__(self._lamb.at(position), self._d)
 
     @property
-    @memo
-    def _gradient_helper(self):
-        return self._s.gradient
-
-    @property
-    @memo
     def value(self):
-        return .5 * self._s.value.squared_norm()
+        return self._value
 
     @property
-    @memo
     def gradient(self):
-        return self._gradient_helper.adjoint(self._s.value)
+        return self._gradient
 
     @property
-    @memo
     def curvature(self):
-        c = SandwichOperator.make(self._gradient_helper)
-        if self._inverter is None:
-            return c
-        return InversionEnabler(c, self._inverter)
+        return self._curvature
