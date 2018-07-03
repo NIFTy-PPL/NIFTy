@@ -82,12 +82,14 @@ run_getting_started_1:
   script:
     - python demos/getting_started_1.py
     - python3 demos/getting_started_1.py
+    - mpiexec -n 2 --bind-to none python3 demos/getting_started_1.py 2> /dev/null
 
 run_getting_started_2:
   stage: demo_runs
   script:
     - python demos/getting_started_2.py
     - python3 demos/getting_started_2.py
+    - mpiexec -n 2 --bind-to none python3 demos/getting_started_2.py 2> /dev/null
 
 run_getting_started_3:
   stage: demo_runs

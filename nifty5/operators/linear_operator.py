@@ -198,7 +198,8 @@ class LinearOperator(NiftyMetaBase()):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
-        from ..models import LinearModel, Model
+        from ..models.model import Model
+        from ..models.linear_model import LinearModel
         if isinstance(x, Model):
             return LinearModel(x, self)
         return self.apply(x, self.TIMES)

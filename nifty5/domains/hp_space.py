@@ -80,7 +80,7 @@ class HPSpace(StructuredDomain):
         The `lmax` and `mmax` parameters of the returned :class:`LMSpace` are
         set to `2*self.nside`.
         """
-        from .. import LMSpace
+        from ..domains.lm_space import LMSpace
         return LMSpace(lmax=2*self.nside)
 
     def check_codomain(self, codomain):
@@ -92,6 +92,6 @@ class HPSpace(StructuredDomain):
         This function only checks whether `codomain` is of type
         :class:`LMSpace`.
         """
-        from .. import LMSpace
+        from ..domains.lm_space import LMSpace
         if not isinstance(codomain, LMSpace):
             raise TypeError("codomain must be a LMSpace.")

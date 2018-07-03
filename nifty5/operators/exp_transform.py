@@ -1,7 +1,8 @@
 import numpy as np
 
 from ..domain_tuple import DomainTuple
-from ..domains import PowerSpace, RGSpace
+from ..domains.power_space import PowerSpace
+from ..domains.rg_space import RGSpace
 from ..field import Field
 from .linear_operator import LinearOperator
 from .. import dobj
@@ -52,7 +53,7 @@ class ExpTransform(LinearOperator):
             # 0 <= frac < 1.
             self._frac[i] = coord - self._bindex[i]
 
-        from ..domains import LogRGSpace
+        from ..domains.log_rg_space import LogRGSpace
         log_space = LogRGSpace(2*dof+1, bindistances,
                                t_mins, harmonic=False)
         self._target = DomainTuple.make(target)
