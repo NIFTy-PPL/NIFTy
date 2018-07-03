@@ -34,5 +34,5 @@ class SampledKullbachLeiblerDivergence(Energy):
     @property
     @memo
     def curvature(self):
-       return (my_sum(map(lambda v: v.curvature, self._energy_list)) *
-               (1./len(self._energy_list)))
+        return (my_sum(map(lambda v: v.curvature, self._energy_list)) *
+                (1./len(self._energy_list)))

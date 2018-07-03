@@ -51,7 +51,8 @@ class PointSources(Model):
     @staticmethod
     def IG_prime(field, alpha, q):
         inner = norm.pdf(field.local_data)
-        outer = invgamma.pdf(invgamma.ppf(norm.cdf(field.local_data), alpha, scale=q), alpha, scale=q)
+        outer = invgamma.pdf(invgamma.ppf(norm.cdf(field.local_data), alpha,
+                                          scale=q), alpha, scale=q)
         # # FIXME
         # outer = np.clip(outer, 1e-20, None)
         outer = 1/outer
