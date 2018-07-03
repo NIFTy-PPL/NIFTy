@@ -7,6 +7,8 @@ from .linear_operator import LinearOperator
 
 class SlopeOperator(LinearOperator):
     def __init__(self, domain, target, sigmas):
+        # MR FIXME: check explicitly for the required domain types etc.
+        # Maybe compute domain from target automatically?
         self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.make(target)
 
@@ -24,7 +26,7 @@ class SlopeOperator(LinearOperator):
             for i in range(self.ndim):
                 rng = np.arange(target.shape[i])
                 tmp = np.minimum(
-                    rng, target.shape[i] + 1 - rng) * target.bindistances[i]
+                    rng, target.shape[i]+1-rng) * target.bindistances[i]
                 self.pos[i] += tmp.reshape(
                     (1,)*i + (shape[i],) + (1,)*(self.ndim-i-1))
 
