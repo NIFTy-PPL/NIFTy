@@ -35,7 +35,6 @@ class BernoulliEnergy(Energy):
         self._d = d
 
         p_val = self._p.value
-        print p_val.min(), p_val.max()
         self._value = -self._d.vdot(log(p_val)) - (1. - d).vdot(log(1.-p_val))
         if isnan(self._value):
             self._value = inf
