@@ -32,9 +32,13 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
 
     im, iv : y-intercept_mean, y-intercept_variance  of power_slope
     '''
-    from ..operators import (ExpTransform, QHTOperator, SlopeOperator,
-                             SymmetrizingOperator)
-    from ..models import Variable, Constant, PointwiseExponential
+    from ..operators.exp_transform import ExpTransform
+    from ..operators.qht_operator import QHTOperator
+    from ..operators.slope_operator import SlopeOperator
+    from ..operators.symmetrizing_operator import SymmetrizingOperator
+    from ..models.variable import Variable
+    from ..models.constant import Constant
+    from ..models.local_nonlinearity import PointwiseExponential
 
     h_space = s_space.get_default_codomain()
     p_space = PowerSpace(h_space)

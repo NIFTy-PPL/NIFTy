@@ -18,7 +18,6 @@
 
 import numpy as np
 from ..field import Field
-from ..multi import MultiField
 from ..utilities import NiftyMetaBase, memo
 
 

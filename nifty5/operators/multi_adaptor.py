@@ -16,12 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..multi import MultiDomain, MultiField
+from ..multi.multi_domain import MultiDomain
+from ..multi.multi_field import MultiField
 from .linear_operator import LinearOperator
 
 
 class MultiAdaptor(LinearOperator):
-    """Transforms a Field into a MultiField and vise versa when 
+    """Transforms a Field into a MultiField and vise versa when
     using adjoint_times.
 
     Parameters
