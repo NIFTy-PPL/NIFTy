@@ -2,10 +2,10 @@ import numpy as np
 from scipy.stats import invgamma, norm
 from ..field import Field
 from ..sugar import makeOp
-from ..multi import MultiField
-from ..models import Model
+from ..multi.multi_field import MultiField
+from ..models.model import Model
 
-from ..operators import SelectionOperator
+from ..operators.selection_operator import SelectionOperator
 from ..utilities import memo
 
 
@@ -38,7 +38,8 @@ class PointSources(Model):
         # FIXME
         outer_inv = np.clip(outer_inv, 1e-20, None)
         outer = 1/outer_inv
-        grad = Field.from_local_data(u.domain, inner*outer)
+        grad = Field.from_local_data(self.position['points'].domain,
+                                     inner*outer)
         grad = makeOp(MultiField({'points': grad}))
         return SelectionOperator(grad.target, 'points')*grad
 

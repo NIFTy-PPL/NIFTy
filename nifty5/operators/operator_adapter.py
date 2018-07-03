@@ -21,7 +21,24 @@ import numpy as np
 
 
 class OperatorAdapter(LinearOperator):
-    """Class representing the inverse and/or adjoint of another operator."""
+    """Class representing the inverse and/or adjoint of another operator.
+
+    Objects of this class are created internally by `LinearOperator` whenever
+    the inverse and/or adjoint of an already existing operator object is
+    requested via the `LinearOperator` attributes `inverse`, `adjoint` or
+    `_flip_modes()`.
+
+    Users should never have to create instances of this class directly.
+
+    Parameters
+    ----------
+    op : LinearOperator
+        The operator on which the adapter will act
+    op_transform : int
+        1) adjoint
+        2) inverse
+        3) adjoint inverse
+    """
 
     def __init__(self, op, op_transform):
         super(OperatorAdapter, self).__init__()

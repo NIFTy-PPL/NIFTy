@@ -16,7 +16,7 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..operators import LinearOperator
+from .linear_operator import LinearOperator
 
 
 class SelectionOperator(LinearOperator):
@@ -31,7 +31,7 @@ class SelectionOperator(LinearOperator):
         String identifier of the wanted subdomain
     """
     def __init__(self, domain, key):
-        from ..multi import MultiDomain
+        from ..multi.multi_domain import MultiDomain
         if not isinstance(domain, MultiDomain):
             raise TypeError("Domain must be a MultiDomain")
         self._target = domain[key]
@@ -56,5 +56,5 @@ class SelectionOperator(LinearOperator):
         if mode == self.TIMES:
             return x[self._key].copy()
         else:
-            from ..multi import MultiField
+            from ..multi.multi_field import MultiField
             return MultiField({self._key: x.copy()})
