@@ -19,7 +19,7 @@ from .model import Model
 
 
 class Constant(Model):
-    """A sky model with a constant (multi-)field as value.
+    """A model with a constant (multi-)field as value.
 
     Parameters
     ----------
