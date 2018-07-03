@@ -16,15 +16,36 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from builtins import next, range
+from builtins import *
 import numpy as np
 from itertools import product
 import abc
 from future.utils import with_metaclass
+from functools import reduce
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
-           "my_fftn"]
+           "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb",
+           "my_product"]
+
+
+def my_sum(terms):
+    return reduce(lambda x, y: x+y, terms)
+
+
+def my_lincomb_simple(terms, factors):
+    terms2 = map(lambda v: v[0]*v[1], zip(terms, factors))
+    return my_sum(terms2)
+
+
+def my_lincomb(terms, factors):
+    terms2 = map(lambda v: v[0] if v[1] == 1. else v[0]*v[1],
+                 zip(terms, factors))
+    return my_sum(terms2)
+
+
+def my_product(iterable):
+    return reduce(lambda x, y: x*y, iterable)
 
 
 def get_slice_list(shape, axes):

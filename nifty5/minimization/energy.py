@@ -129,6 +129,12 @@ class Energy(NiftyMetaBase()):
         """
         return None
 
+    def makeInvertible(self, controller, preconditioner=None):
+        from .iteration_controller import IterationController
+        if not isinstance(controller, IterationController):
+            raise TypeError
+        return CurvatureInversionEnabler(self, controller, preconditioner)
+
     def __mul__(self, factor):
         from .energy_sum import EnergySum
         if isinstance(factor, (float, int)):
@@ -153,3 +159,45 @@ class Energy(NiftyMetaBase()):
     def __neg__(self):
         from .energy_sum import EnergySum
         return EnergySum.make([self], [-1.])
+
+
+class CurvatureInversionEnabler(Energy):
+    def __init__(self, ene, controller, preconditioner):
+        super(CurvatureInversionEnabler, self).__init__(ene.position)
+        self._energy = ene
+        self._controller = controller
+        self._preconditioner = preconditioner
+
+    def at(self, position):
+        if self._position.isSubsetOf(position):
+            return self
+        return CurvatureInversionEnabler(
+            self._energy.at(position), self._controller, self._preconditioner)
+
+    @property
+    def position(self):
+        return self._energy.position
+
+    @property
+    def value(self):
+        return self._energy.value
+
+    @property
+    def gradient(self):
+        return self._energy.gradient
+
+    @property
+    def curvature(self):
+        from ..operators.linear_operator import LinearOperator
+        from ..operators.inversion_enabler import InversionEnabler
+        curv = self._energy.curvature
+        if self._preconditioner is None:
+            precond = None
+        elif isinstance(self._preconditioner, LinearOperator):
+            precond = self._preconditioner
+        elif isinstance(self._preconditioner, Energy):
+            precond = self._preconditioner.at(self.position).curvature
+        return InversionEnabler(curv, self._controller, precond)
+
+    def longest_step(self, dir):
+        return self._energy.longest_step(dir)

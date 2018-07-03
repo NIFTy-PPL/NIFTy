@@ -79,7 +79,8 @@ if __name__ == '__main__':
     minimizer = ift.RelaxedNewton(ic_newton)
 
     # Minimize the Hamiltonian
-    H = ift.Hamiltonian(likelihood, ic_cg)
+    H = ift.Hamiltonian(likelihood)
+    H = H.makeInvertible(ic_cg)
     H, convergence = minimizer(H)
 
     # Plot results
