@@ -1,7 +1,7 @@
 NIFTy - Numerical Information Field Theory
 ==========================================
-[![build status](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_5/build.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_5)
-[![coverage report](https://gitlab.mpcdf.mpg.de/ift/NIFTy/badges/NIFTy_5/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/NIFTy/commits/NIFTy_5)
+[![build status](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/badges/NIFTy_5/build.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/commits/NIFTy_5)
+[![coverage report](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/badges/NIFTy_5/coverage.svg)](https://gitlab.mpcdf.mpg.de/ift/nifty-dev/commits/NIFTy_5)
 
 **NIFTy** project homepage:
 [http://ift.pages.mpcdf.de/NIFTy](http://ift.pages.mpcdf.de/NIFTy)
@@ -108,7 +108,7 @@ For a quick start, you can browse through the [informal
 introduction](http://ift.pages.mpcdf.de/NIFTy/code.html) or
 dive into NIFTy by running one of the demonstrations, e.g.:
 
-    python demos/wiener_filter_via_curvature.py
+    python demos/getting_started_1.py
 
 
 ### Acknowledgement

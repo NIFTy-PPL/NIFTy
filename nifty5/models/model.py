@@ -28,7 +28,7 @@ class Model(NiftyMetaBase()):
     The Model object is an implementation of a * which knows:
         - position in parameterspace.  (Field, MulitField)
         - value according to its modelfunction A.  A(position)
-        - gradient of the modelfunction at the current position.
+        - Jacobian of the model function at the current position.
 
     Parameters
     ----------
@@ -37,9 +37,9 @@ class Model(NiftyMetaBase()):
 
     Notes
     -----
-    An instance of the model class knows its position, value and gradient.
+    An instance of the model class knows its position, value and Jacobian.
     One can 'jump' to a new position, with the help of the 'at' method, whereby
-    one automatically gets the value and gradient of the model. The 'at' method
+    one automatically gets the value and Jacobian of the model. The 'at' method
     creates a new instance of the class.
     """
     def __init__(self, position):
@@ -65,7 +65,7 @@ class Model(NiftyMetaBase()):
         """
         Field or MultiField: selected location in parameter space.
 
-        The location in parameter space where value and gradient are
+        The location in parameter space where value and Jacobian are
         evaluated.
         """
         return self._position
@@ -80,11 +80,11 @@ class Model(NiftyMetaBase()):
         return self._value
 
     @property
-    def gradient(self):
+    def jacobian(self):
         """
         LinearOperator : The derivative of the model at given `position`.
         """
-        return self._gradient
+        return self._jacobian
 
     def __getitem__(self, key):
         sel = SelectionOperator(self.value.domain, key)

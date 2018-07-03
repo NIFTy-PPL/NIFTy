@@ -49,13 +49,13 @@ class Hamiltonian(Energy):
 
     @property
     @memo
-    def curvature(self):
-        prior_curv = self._prior.curvature
+    def metric(self):
+        prior_mtr = self._prior.metric
         if self._ic_samp is None:
-            return self._lh.curvature + prior_curv
+            return self._lh.metric + prior_mtr
         else:
-            return SamplingEnabler(self._lh.curvature, prior_curv.inverse,
-                                   self._ic_samp, prior_curv.inverse)
+            return SamplingEnabler(self._lh.metric, prior_mtr.inverse,
+                                   self._ic_samp, prior_mtr.inverse)
 
     def __str__(self):
         res = 'Likelihood:\t{:.2E}\n'.format(self._lh.value)

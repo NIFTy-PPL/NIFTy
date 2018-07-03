@@ -94,9 +94,8 @@ class ChainOperator(LinearOperator):
 
     @staticmethod
     def make(ops):
-        """Build a ChainOperator (or something simpler if possible), 
+        """Build a ChainOperator (or something simpler if possible),
         a sequence of concatenated LinearOperators.
-        
 
         Parameters
         ----------

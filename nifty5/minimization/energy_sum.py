@@ -67,6 +67,6 @@ class EnergySum(Energy):
 
     @property
     @memo
-    def curvature(self):
-        return my_lincomb(map(lambda v: v.curvature, self._energies),
+    def metric(self):
+        return my_lincomb(map(lambda v: v.metric, self._energies),
                           self._factors)

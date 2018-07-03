@@ -21,7 +21,7 @@ from .energy import Energy
 
 class QuadraticEnergy(Energy):
     """The Energy for a quadratic form.
-    The most important aspect of this energy is that its curvature must be
+    The most important aspect of this energy is that its metric must be
     position-independent.
     """
 
@@ -74,5 +74,5 @@ class QuadraticEnergy(Energy):
         return self._grad
 
     @property
-    def curvature(self):
+    def metric(self):
         return self._A

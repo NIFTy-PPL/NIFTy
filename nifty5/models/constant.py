@@ -32,7 +32,7 @@ class Constant(Model):
     -----
     Since there is no model-function associated:
         - Position has no influence on value.
-        - There is no gradient.
+        - There is no Jacobian.
     """
     # TODO Remove position
     def __init__(self, position, constant):
@@ -40,7 +40,7 @@ class Constant(Model):
         self._constant = constant
 
         self._value = self._constant
-        self._gradient = 0.
+        self._jacobian = 0.
 
     def at(self, position):
         return self.__class__(position, self._constant)

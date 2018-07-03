@@ -27,7 +27,7 @@ class LocalModel(Model):
         """
         Computes nonlinearity(inp)
             - LocalModel.value = nonlinearity(value) (pointwise)
-            - LocalModel.gradient = Outer Product of gradients
+            - LocalModel.jacobian = Outer Product of Jacobians
 
         Parameters
         ----------
@@ -40,9 +40,9 @@ class LocalModel(Model):
         self._inp = inp
         self._nonlinearity = nonlinearity
         self._value = nonlinearity(self._inp.value)
-        d_inner = self._inp.gradient
+        d_inner = self._inp.jacobian
         d_outer = makeOp(self._nonlinearity.derivative(self._inp.value))
-        self._gradient = d_outer * d_inner
+        self._jacobian = d_outer * d_inner
 
     def at(self, position):
         return self.__class__(self._inp.at(position), self._nonlinearity)

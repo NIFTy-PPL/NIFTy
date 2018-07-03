@@ -39,9 +39,9 @@ class BernoulliEnergy(Energy):
         if isnan(self._value):
             self._value = inf
         metric = makeOp(1./((p_val) * (1.-p_val)))
-        self._gradient = self._p.gradient.adjoint_times(metric(p_val-d))
+        self._gradient = self._p.jacobian.adjoint_times(metric(p_val-d))
 
-        self._curvature = SandwichOperator.make(self._p.gradient, metric)
+        self._metric = SandwichOperator.make(self._p.jacobian, metric)
 
     def at(self, position):
         return self.__class__(self._p.at(position), self._d)
@@ -55,5 +55,5 @@ class BernoulliEnergy(Energy):
         return self._gradient
 
     @property
-    def curvature(self):
-        return self._curvature
+    def metric(self):
+        return self._metric

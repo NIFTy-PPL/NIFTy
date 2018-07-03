@@ -25,7 +25,7 @@ class Energy(NiftyMetaBase()):
     """ Provides the functional used by minimization schemes.
 
    The Energy object is an implementation of a scalar function including its
-   gradient and curvature at some position.
+   gradient and metric at some position.
 
     Parameters
     ----------
@@ -35,11 +35,11 @@ class Energy(NiftyMetaBase()):
     Notes
     -----
     An instance of the Energy class is defined at a certain location. If one
-    is interested in the value, gradient or curvature of the abstract energy
+    is interested in the value, gradient or metric of the abstract energy
     functional one has to 'jump' to the new position using the `at` method.
     This method returns a new energy instance residing at the new position. By
     this approach, intermediate results from computing e.g. the gradient can
-    safely be reused for e.g. the value or the curvature.
+    safely be reused for e.g. the value or the metric.
 
     Memorizing the evaluations of some quantities (using the memo decorator)
     minimizes the computational effort for multiple calls.
@@ -75,7 +75,7 @@ class Energy(NiftyMetaBase()):
         Field : selected location in parameter space.
 
         The Field location in parameter space where value, gradient and
-        curvature are evaluated.
+        metric are evaluated.
         """
         return self._position
 
@@ -104,11 +104,11 @@ class Energy(NiftyMetaBase()):
         return self.gradient.norm()
 
     @property
-    def curvature(self):
+    def metric(self):
         """
-        LinearOperator : implicitly defined curvature.
+        LinearOperator : implicitly defined metric.
             A positive semi-definite operator or function describing the
-            curvature of the potential at the given `position`.
+            metric of the potential at the given `position`.
         """
         raise NotImplementedError
 
@@ -132,7 +132,7 @@ class Energy(NiftyMetaBase()):
         from .iteration_controller import IterationController
         if not isinstance(controller, IterationController):
             raise TypeError
-        return CurvatureInversionEnabler(self, controller, preconditioner)
+        return MetricInversionEnabler(self, controller, preconditioner)
 
     def __mul__(self, factor):
         from .energy_sum import EnergySum
@@ -160,9 +160,9 @@ class Energy(NiftyMetaBase()):
         return EnergySum.make([self], [-1.])
 
 
-class CurvatureInversionEnabler(Energy):
+class MetricInversionEnabler(Energy):
     def __init__(self, ene, controller, preconditioner):
-        super(CurvatureInversionEnabler, self).__init__(ene.position)
+        super(MetricInversionEnabler, self).__init__(ene.position)
         self._energy = ene
         self._controller = controller
         self._preconditioner = preconditioner
@@ -170,7 +170,7 @@ class CurvatureInversionEnabler(Energy):
     def at(self, position):
         if self._position.isSubsetOf(position):
             return self
-        return CurvatureInversionEnabler(
+        return MetricInversionEnabler(
             self._energy.at(position), self._controller, self._preconditioner)
 
     @property
@@ -186,16 +186,16 @@ class CurvatureInversionEnabler(Energy):
         return self._energy.gradient
 
     @property
-    def curvature(self):
+    def metric(self):
         from ..operators.linear_operator import LinearOperator
         from ..operators.inversion_enabler import InversionEnabler
-        curv = self._energy.curvature
+        curv = self._energy.metric
         if self._preconditioner is None:
             precond = None
         elif isinstance(self._preconditioner, LinearOperator):
             precond = self._preconditioner
         elif isinstance(self._preconditioner, Energy):
-            precond = self._preconditioner.at(self.position).curvature
+            precond = self._preconditioner.at(self.position).metric
         return InversionEnabler(curv, self._controller, precond)
 
     def longest_step(self, dir):

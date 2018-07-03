@@ -42,7 +42,7 @@ class ScalarMul(Model):
         self._factor = factor
 
         self._value = self._factor * self._model.value
-        self._gradient = self._factor * self._model.gradient
+        self._jacobian = self._factor * self._model.jacobian
 
     def at(self, position):
         return self.__class__(self._factor, self._model.at(position))
@@ -57,7 +57,7 @@ class Add(Model):
         self._model2 = model2.at(position)
 
         self._value = self._model1.value + self._model2.value
-        self._gradient = self._model1.gradient + self._model2.gradient
+        self._jacobian = self._model1.jacobian + self._model2.jacobian
 
     @staticmethod
     def make(model1, model2):
@@ -87,8 +87,8 @@ class Mul(Model):
         self._model2 = model2.at(position)
 
         self._value = self._model1.value * self._model2.value
-        self._gradient = (makeOp(self._model1.value) * self._model2.gradient +
-                          makeOp(self._model2.value) * self._model1.gradient)
+        self._jacobian = (makeOp(self._model1.value) * self._model2.jacobian +
+                          makeOp(self._model2.value) * self._model1.jacobian)
 
     @staticmethod
     def make(model1, model2):

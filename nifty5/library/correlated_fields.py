@@ -47,7 +47,8 @@ def make_mf_correlated_field(s_space_spatial, s_space_energy,
     from ..models.variable import Variable
     from ..domain_tuple import DomainTuple
     from ..operators.domain_distributor import DomainDistributor
-    from ..operators.harmonic_transform_operator import HarmonicTransformOperator
+    from ..operators.harmonic_transform_operator \
+        import HarmonicTransformOperator
     h_space_spatial = s_space_spatial.get_default_codomain()
     h_space_energy = s_space_energy.get_default_codomain()
     h_space = DomainTuple.make((h_space_spatial, h_space_energy))

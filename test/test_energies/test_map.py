@@ -59,7 +59,7 @@ class Energy_Tests(unittest.TestCase):
         S = ift.create_power_operator(hspace, power_spectrum=_flat_PS)
         energy = ift.WienerFilterEnergy(
             position=s0, d=d, R=R, N=N, S=S, iteration_controller=IC)
-        ift.extra.check_value_gradient_curvature_consistency(
+        ift.extra.check_value_gradient_metric_consistency(
             energy, ntries=10)
 
     @expand(product([ift.GLSpace(15),
@@ -94,7 +94,7 @@ class Energy_Tests(unittest.TestCase):
 
         energy = ift.GaussianEnergy(d_model, d, N)
         if isinstance(nonlinearity(), ift.Linear):
-            ift.extra.check_value_gradient_curvature_consistency(
+            ift.extra.check_value_gradient_metric_consistency(
                 energy, ntries=10)
         else:
             ift.extra.check_value_gradient_consistency(

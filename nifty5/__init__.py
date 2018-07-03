@@ -21,7 +21,7 @@ from .nonlinearities import Exponential, Linear, PositiveTanh, Tanh
 from .models.constant import Constant
 from .models.linear_model import LinearModel
 from .models.local_nonlinearity import (LocalModel, PointwiseExponential,
-                                 PointwisePositiveTanh, PointwiseTanh)
+                                        PointwisePositiveTanh, PointwiseTanh)
 from .models.model import Model
 from .models.multi_model import MultiModel
 from .models.variable import Variable
@@ -65,7 +65,8 @@ from .minimization.steepest_descent import SteepestDescent
 from .minimization.vl_bfgs import VL_BFGS
 from .minimization.l_bfgs import L_BFGS
 from .minimization.relaxed_newton import RelaxedNewton
-from .minimization.scipy_minimizer import ScipyMinimizer, NewtonCG, L_BFGS_B, ScipyCG
+from .minimization.scipy_minimizer import (ScipyMinimizer, NewtonCG, L_BFGS_B,
+                                           ScipyCG)
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.line_energy import LineEnergy
@@ -82,7 +83,8 @@ from .library.point_sources import PointSources
 from .library.poissonian_energy import PoissonianEnergy
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.wiener_filter_energy import WienerFilterEnergy
-from .library.correlated_fields import make_correlated_field, make_mf_correlated_field
+from .library.correlated_fields import (make_correlated_field,
+                                        make_mf_correlated_field)
 from .library.bernoulli_energy import BernoulliEnergy
 
 from . import extra
