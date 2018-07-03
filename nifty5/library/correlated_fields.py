@@ -62,6 +62,6 @@ def make_mf_correlated_field(s_space_spatial, s_space_energy,
 
     position = MultiField({'xi': Field.from_random('normal', h_space)})
     xi = Variable(position)['xi']
-    logsky_h = A*xi
-    logsky = ht(logsky_h)
-    return PointwiseExponential(logsky)
+    correlated_field_h = A*xi
+    correlated_field = ht(correlated_field_h)
+    return PointwiseExponential(correlated_field)
