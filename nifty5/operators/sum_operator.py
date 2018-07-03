@@ -139,9 +139,9 @@ class SumOperator(LinearOperator):
         ----------
         ops: list of LinearOperator
             Individual operators of the sum.
-        negs: list of bool
+        neg: list of bool
             Same length as ops.
-            If True then the equivalent operator gets a minus in the sum. 
+            If True then the equivalent operator gets a minus in the sum.
         """
         ops = tuple(ops)
         neg = tuple(neg)
