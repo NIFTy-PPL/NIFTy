@@ -32,9 +32,9 @@ class SamplingEnabler(EndomorphicOperator):
     Parameters
     ----------
     likelihood : :class:`EndomorphicOperator`
-        Curvature of the likelihood
+        Metric of the likelihood
     prior : :class:`EndomorphicOperator`
-        Inverse curvature of the prior
+        Inverse metric of the prior
     iteration_controller : :class:`IterationController`
         The iteration controller to use for the iterative numerical inversion
         done by a :class:`ConjugateGradient` object.

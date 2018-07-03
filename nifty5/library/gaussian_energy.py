@@ -62,7 +62,7 @@ class GaussianEnergy(Energy):
 
     @property
     @memo
-    def curvature(self):
+    def metric(self):
         if self._cov is None:
             return SandwichOperator.make(self._inp.jacobian, None)
         return SandwichOperator.make(self._inp.jacobian, self._cov.inverse)

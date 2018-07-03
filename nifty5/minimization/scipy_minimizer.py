@@ -56,7 +56,7 @@ class _MinHelper(object):
 
     def hessp(self, x, p):
         self._update(x)
-        res = self._energy.curvature(_toField(p, self._domain))
+        res = self._energy.metric(_toField(p, self._domain))
         return _toFlatNdarray(res)
 
 

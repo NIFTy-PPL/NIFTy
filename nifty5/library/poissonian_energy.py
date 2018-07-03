@@ -44,7 +44,7 @@ class PoissonianEnergy(Energy):
 
         # metric = makeOp(d/lamb_val/lamb_val)
         metric = makeOp(1./lamb_val)
-        self._curvature = SandwichOperator.make(self._lamb.jacobian, metric)
+        self._metric = SandwichOperator.make(self._lamb.jacobian, metric)
 
     def at(self, position):
         return self.__class__(self._lamb.at(position), self._d)
@@ -58,5 +58,5 @@ class PoissonianEnergy(Energy):
         return self._gradient
 
     @property
-    def curvature(self):
-        return self._curvature
+    def metric(self):
+        return self._metric
