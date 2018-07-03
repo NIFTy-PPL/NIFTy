@@ -19,26 +19,23 @@
 from ..library.gaussian_energy import GaussianEnergy
 from ..minimization.energy import Energy
 from ..models.variable import Variable
-from ..operators import InversionEnabler, SamplingEnabler
+from ..operators.sampling_enabler import SamplingEnabler
 from ..utilities import memo
 
 
 class Hamiltonian(Energy):
-    def __init__(self, lh, iteration_controller,
-                 iteration_controller_sampling=None):
+    def __init__(self, lh, iteration_controller_sampling=None):
         """
         lh: Likelihood (energy object)
         prior:
         """
         super(Hamiltonian, self).__init__(lh.position)
         self._lh = lh
-        self._ic = iteration_controller
         self._ic_samp = iteration_controller_sampling
         self._prior = GaussianEnergy(Variable(self.position))
-        self._precond = self._prior.curvature
 
     def at(self, position):
-        return self.__class__(self._lh.at(position), self._ic, self._ic_samp)
+        return self.__class__(self._lh.at(position), self._ic_samp)
 
     @property
     @memo
@@ -55,11 +52,10 @@ class Hamiltonian(Energy):
     def curvature(self):
         prior_curv = self._prior.curvature
         if self._ic_samp is None:
-            c = self._lh.curvature + prior_curv
+            return self._lh.curvature + prior_curv
         else:
-            c = SamplingEnabler(self._lh.curvature, prior_curv.inverse,
-                                self._ic_samp, prior_curv.inverse)
-        return InversionEnabler(c, self._ic, self._precond)
+            return SamplingEnabler(self._lh.curvature, prior_curv.inverse,
+                                   self._ic_samp, prior_curv.inverse)
 
     def __str__(self):
         res = 'Likelihood:\t{:.2E}\n'.format(self._lh.value)

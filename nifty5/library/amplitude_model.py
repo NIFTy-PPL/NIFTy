@@ -1,8 +1,9 @@
 import numpy as np
 
-from ..domains import PowerSpace, UnstructuredDomain
+from ..domains.power_space import PowerSpace
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..multi import MultiField
+from ..multi.multi_field import MultiField
 from ..sugar import makeOp, sqrt
 
 
@@ -26,7 +27,7 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
                         eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
                         a = ceps_a,  k0 = ceps_k0
 
-    sm, sv : slope_mean = expected exponent of powerlaw (e.g. -4),
+    sm, sv : slope_mean = expected exponent of power law (e.g. -4),
                 slope_variance (default=1)
 
     im, iv : y-intercept_mean, y-intercept_variance  of power_slope
