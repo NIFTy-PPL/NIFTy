@@ -6,7 +6,6 @@ from .domain_tuple import DomainTuple
 from .field import Field
 
 from .nonlinearities import Exponential, Linear, PositiveTanh, Tanh
-
 from .models import *
 from .operators import *
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
