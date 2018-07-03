@@ -28,8 +28,8 @@ class Constant(Model):
     constant : Field
         The value of the model.
 
-    Note
-    ----
+    Notes
+    -----
     Since there is no model-function associated:
         - Position has no influence on value.
         - There is no gradient.
