@@ -5,4 +5,4 @@ def ApplyData(data, var, model_data):
     from ..sugar import sqrt
     sqrt_n = DiagonalOperator(sqrt(var))
     data = Constant(model_data.position, data)
-    return sqrt_n.inverse_times(model_data - data)
+    return sqrt_n.inverse(model_data - data)

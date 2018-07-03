@@ -28,7 +28,7 @@ class PointSources(Model):
 
     @property
     @memo
-    def gradient(self):
+    def jacobian(self):
         u = self.position['points'].local_data
         inner = norm.pdf(u)
         outer_inv = invgamma.pdf(invgamma.ppf(norm.cdf(u),
