@@ -74,7 +74,6 @@ from .minimization.energy_sum import EnergySum
 from .sugar import *
 from .plotting.plot import plot
 
-from .library import *
 from .library.amplitude_model import make_amplitude_model
 from .library.apply_data import ApplyData
 from .library.gaussian_energy import GaussianEnergy

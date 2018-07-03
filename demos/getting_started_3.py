@@ -15,7 +15,7 @@ if __name__ == '__main__':
     position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
-    A, amplitude_internals = ift.library.make_amplitude_model(
+    A, amplitude_internals = ift.make_amplitude_model(
         position_space, 16, 1, 10, -4., 1, 0., 1.)
 
     # Building the model for a correlated signal
@@ -32,14 +32,14 @@ if __name__ == '__main__':
     correlated_field_h = Amp * xi
     correlated_field = ht(correlated_field_h)
     # alternatively to the block above one can do:
-    # correlated_field,_ = ift.library.make_correlated_field(position_space, A)
+    # correlated_field,_ = ift.make_correlated_field(position_space, A)
 
     # apply some nonlinearity
     signal = ift.PointwisePositiveTanh(correlated_field)
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
-    R = ift.library.LOSResponse(position_space, starts=LOS_starts,
-                                ends=LOS_ends)
+    R = ift.LOSResponse(position_space, starts=LOS_starts,
+                        ends=LOS_ends)
     # build signal response model and model likelihood
     signal_response = R(signal)
     # specify noise
