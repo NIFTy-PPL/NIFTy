@@ -94,7 +94,7 @@ class Test_Minimizers(unittest.TestCase):
                 return out
 
             @property
-            def curvature(self):
+            def metric(self):
                 class RBCurv(ift.EndomorphicOperator):
                     def __init__(self, loc):
                         self._loc = loc.to_global_data().copy()
@@ -150,7 +150,7 @@ class Test_Minimizers(unittest.TestCase):
                 return ift.Field(self.position.domain, val=2*x*np.exp(-(x**2)))
 
             @property
-            def curvature(self):
+            def metric(self):
                 x = self.position.to_global_data()[0]
                 v = (2 - 4*x*x)*np.exp(-x**2)
                 return ift.DiagonalOperator(
@@ -188,7 +188,7 @@ class Test_Minimizers(unittest.TestCase):
                 return ift.Field(self.position.domain, val=np.sinh(x))
 
             @property
-            def curvature(self):
+            def metric(self):
                 x = self.position.to_global_data()[0]
                 v = np.cosh(x)
                 return ift.DiagonalOperator(

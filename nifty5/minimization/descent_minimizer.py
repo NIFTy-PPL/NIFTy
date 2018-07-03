@@ -51,7 +51,7 @@ class DescentMinimizer(Minimizer):
         Parameters
         ----------
         energy : Energy
-           Energy object which provides value, gradient and curvature at a
+           Energy object which provides value, gradient and metric at a
            specific position in parameter space.
 
         Returns

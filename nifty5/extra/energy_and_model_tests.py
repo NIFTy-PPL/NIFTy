@@ -22,7 +22,7 @@ from ..minimization.energy import Energy
 from ..models.model import Model
 
 __all__ = ["check_value_gradient_consistency",
-           "check_value_gradient_curvature_consistency"]
+           "check_value_gradient_metric_consistency"]
 
 
 def _get_acceptable_model(M):
@@ -30,7 +30,7 @@ def _get_acceptable_model(M):
     if not np.isfinite(val.sum()):
         raise ValueError('Initial Model value must be finite')
     dir = from_random("normal", M.position.domain)
-    dirder = M.gradient(dir)
+    dirder = M.jacobian(dir)
     dir *= val/(dirder).norm()*1e-5
     # Find a step length that leads to a "reasonable" Model
     for i in range(50):
@@ -82,7 +82,7 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
             if isinstance(E, Energy):
                 dirder = Emid.gradient.vdot(dir)/dirnorm
             else:
-                dirder = Emid.gradient(dir)/dirnorm
+                dirder = Emid.jacobian(dir)/dirnorm
             numgrad = (E2.value-val)/dirnorm
             if isinstance(E, Model):
                 xtol = tol * dirder.norm() / np.sqrt(dirder.size)
@@ -100,9 +100,9 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
         E = Enext
 
 
-def check_value_gradient_curvature_consistency(E, tol=1e-8, ntries=100):
+def check_value_gradient_metric_consistency(E, tol=1e-8, ntries=100):
     if isinstance(E, Model):
-        raise ValueError('Models have no curvature, thus it cannot be tested.')
+        raise ValueError('Models have no metric, thus it cannot be tested.')
     for _ in range(ntries):
         E2 = _get_acceptable_energy(E)
         val = E.value
@@ -112,7 +112,7 @@ def check_value_gradient_curvature_consistency(E, tol=1e-8, ntries=100):
         for i in range(50):
             Emid = E.at(E.position + 0.5*dir)
             dirder = Emid.gradient.vdot(dir)/dirnorm
-            dgrad = Emid.curvature(dir)/dirnorm
+            dgrad = Emid.metric(dir)/dirnorm
             xtol = tol*Emid.gradient_norm
             if abs((E2.value-val)/dirnorm - dirder) < xtol and \
                (abs((E2.gradient-E.gradient)/dirnorm-dgrad) < xtol).all():
@@ -121,5 +121,5 @@ def check_value_gradient_curvature_consistency(E, tol=1e-8, ntries=100):
             dirnorm *= 0.5
             E2 = Emid
         else:
-            raise ValueError("gradient, value and curvature seem inconsistent")
+            raise ValueError("gradient, value and metric seem inconsistent")
         E = Enext

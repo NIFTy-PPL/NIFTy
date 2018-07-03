@@ -47,7 +47,7 @@ class ConjugateGradient(Minimizer):
         Parameters
         ----------
         energy : Energy object at the starting point of the iteration.
-            Its curvature operator must be independent of position, otherwise
+            Its metric operator must be independent of position, otherwise
             linear conjugate gradient minimization will fail.
         preconditioner : Operator *optional*
             This operator can be provided which transforms the variables of the
@@ -73,7 +73,7 @@ class ConjugateGradient(Minimizer):
             return energy, controller.CONVERGED
 
         while True:
-            q = energy.curvature(d)
+            q = energy.metric(d)
             ddotq = d.vdot(q).real
             if ddotq == 0.:
                 logger.error("Error: ConjugateGradient: ddotq==0.")

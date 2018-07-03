@@ -306,16 +306,16 @@ Energy functionals
 In NIFTy5 such functions are represented by objects of type :class:`Energy`.
 These hold the prescription how to calculate the function's
 :attr:`~Energy.value`, :attr:`~Energy.gradient` and
-(optionally) :attr:`~Energy.curvature` at any given :attr:`~Energy.position`
+(optionally) :attr:`~Energy.metric` at any given :attr:`~Energy.position`
 in parameter space.
 Function values are floating-point scalars, gradients have the form of fields
-living on the energy's position domain, and curvatures are represented by
+living on the energy's position domain, and metrics are represented by
 linear operator objects.
 
 Energies are classes that typically have to be provided by the user when
 tackling new IFT problems.
 Some examples of concrete energy classes delivered with NIFTy5 are
-:class:`QuadraticEnergy` (with position-independent curvature, mainly used with
+:class:`QuadraticEnergy` (with position-independent metric, mainly used with
 conjugate gradient minimization) and :class:`~nifty5.library.WienerFilterEnergy`.
 
 
@@ -367,7 +367,7 @@ This family of algorithms is encapsulated in NIFTy's :class:`DescentMinimizer`
 class, which currently has three concrete implementations:
 :class:`SteepestDescent`, :class:`VL_BFGS`, and :class:`RelaxedNewton`.
 Of these algorithms, only :class:`RelaxedNewton` requires the energy object to
-provide a :attr:`~Energy.curvature` property, the others only need energy
+provide a :attr:`~Energy.metric` property, the others only need energy
 values and gradients.
 
 The flexibility of NIFTy's design allows using externally provided

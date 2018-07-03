@@ -34,7 +34,8 @@ class MultiModel(Model):
         if not isinstance(val.domain, DomainTuple):
             raise TypeError
         self._value = MultiField({key: val})
-        self._gradient = MultiAdaptor(self.value.domain) * self._model.gradient
+        self._jacobian = (MultiAdaptor(self.value.domain) *
+                          self._model.jacobian)
 
     def at(self, position):
         return self.__class__(self._model.at(position), self._key)

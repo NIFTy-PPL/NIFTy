@@ -32,7 +32,7 @@ class Variable(Model):
         super(Variable, self).__init__(position)
 
         self._value = position
-        self._gradient = ScalingOperator(1., position.domain)
+        self._jacobian = ScalingOperator(1., position.domain)
 
     def at(self, position):
         return self.__class__(position)

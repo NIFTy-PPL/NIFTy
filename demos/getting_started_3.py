@@ -74,7 +74,7 @@ if __name__ == '__main__':
     N_samples = 20
     for i in range(5):
         H = H.at(position)
-        samples = [H.curvature.draw_sample(from_inverse=True)
+        samples = [H.metric.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
 
         KL = ift.SampledKullbachLeiblerDivergence(H, samples)

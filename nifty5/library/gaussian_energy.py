@@ -49,18 +49,20 @@ class GaussianEnergy(Energy):
     def value(self):
         if self._cov is None:
             return .5 * self.residual.vdot(self.residual).real
-        return .5 * self.residual.vdot(self._cov.inverse(self.residual)).real
+        return .5 * self.residual.vdot(
+            self._cov.inverse_times(self.residual)).real
 
     @property
     @memo
     def gradient(self):
         if self._cov is None:
-            return self._inp.gradient.adjoint(self.residual)
-        return self._inp.gradient.adjoint(self._cov.inverse(self.residual))
+            return self._inp.jacobian.adjoint_times(self.residual)
+        return self._inp.jacobian.adjoint_times(
+            self._cov.inverse_times(self.residual))
 
     @property
     @memo
-    def curvature(self):
+    def metric(self):
         if self._cov is None:
-            return SandwichOperator.make(self._inp.gradient, None)
-        return SandwichOperator.make(self._inp.gradient, self._cov.inverse)
+            return SandwichOperator.make(self._inp.jacobian, None)
+        return SandwichOperator.make(self._inp.jacobian, self._cov.inverse)
