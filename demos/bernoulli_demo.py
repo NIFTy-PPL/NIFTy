@@ -2,8 +2,6 @@ import nifty5 as ift
 import numpy as np
 
 
-
-
 if __name__ == '__main__':
     # ABOUT THIS CODE
     np.random.seed(41)
@@ -52,7 +50,7 @@ if __name__ == '__main__':
     p = R(sky)
     mock_position = ift.from_random('normal', p.position.domain)
     pp = p.at(mock_position).value
-    data = np.random.binomial(1,pp.to_global_data().astype(np.float64))
+    data = np.random.binomial(1, pp.to_global_data().astype(np.float64))
     data = ift.Field.from_global_data(d_space, data)
 
     # Compute likelihood and Hamiltonian
@@ -69,7 +67,6 @@ if __name__ == '__main__':
     H = H.makeInvertible(ic_cg)
     # minimizer = ift.SteepestDescent(ic_newton)
     H, convergence = minimizer(H)
-    
+
     # result_sky = sky.at(H.position).value
     # ift.plot(result_sky)
-
