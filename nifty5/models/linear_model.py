@@ -34,7 +34,7 @@ class LinearModel(Model):
         -------
         Model with linear Operator applied:
             - Model.value = LinOp (inp.value) [key-wise]
-            - Gradient = LinOp * inp.gradient
+            - Jacobian = LinOp * inp.jacobian
         """
         from ..operators.linear_operator import LinearOperator
         super(LinearModel, self).__init__(inp.position)
@@ -49,7 +49,7 @@ class LinearModel(Model):
                                              self._lin_op._key)
 
         self._value = self._lin_op(self._inp.value)
-        self._gradient = self._lin_op*self._inp.gradient
+        self._jacobian = self._lin_op*self._inp.jacobian
 
     def at(self, position):
         return self.__class__(self._inp.at(position), self._lin_op)
