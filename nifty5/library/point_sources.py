@@ -38,7 +38,8 @@ class PointSources(Model):
         # FIXME
         outer_inv = np.clip(outer_inv, 1e-20, None)
         outer = 1/outer_inv
-        grad = Field.from_local_data(u.domain, inner*outer)
+        grad = Field.from_local_data(self.position['points'].domain,
+                                     inner*outer)
         grad = makeOp(MultiField({'points': grad}))
         return SelectionOperator(grad.target, 'points')*grad
 
