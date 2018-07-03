@@ -2,10 +2,10 @@ import numpy as np
 from scipy.stats import invgamma, norm
 from ..field import Field
 from ..sugar import makeOp
-from ..multi import MultiField
-from ..models import Model
+from ..multi.multi_field import MultiField
+from ..models.model import Model
 
-from ..operators import SelectionOperator
+from ..operators.selection_operator import SelectionOperator
 from ..utilities import memo
 
 
