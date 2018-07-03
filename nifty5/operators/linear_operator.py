@@ -274,9 +274,9 @@ class LinearOperator(NiftyMetaBase()):
 
     def _check_mode(self, mode):
         if not self._validMode[mode]:
-            raise ValueError("invalid operator mode specified")
+            raise NotImplementedError("invalid operator mode specified")
         if mode & self.capability == 0:
-            raise ValueError("requested operator mode is not supported")
+            raise NotImplementedError("requested operator mode is not supported")
 
     def _check_input(self, x, mode):
         self._check_mode(mode)

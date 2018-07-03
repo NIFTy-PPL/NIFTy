@@ -61,8 +61,7 @@ if __name__ == '__main__':
     minimizer = ift.RelaxedNewton(ic_newton)
 
     # build model Hamiltonian
-    H = ift.Hamiltonian(likelihood, ic_cg,
-                        iteration_controller_sampling=ic_sampling)
+    H = ift.Hamiltonian(likelihood, ic_sampling)
 
     INITIAL_POSITION = ift.from_random('normal', H.position.domain)
     position = INITIAL_POSITION
@@ -78,7 +77,8 @@ if __name__ == '__main__':
         samples = [H.curvature.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
 
-        KL = ift.SampledKullbachLeiblerDivergence(H, samples, ic_cg)
+        KL = ift.SampledKullbachLeiblerDivergence(H, samples)
+        KL = KL.makeInvertible(ic_cg)
         KL, convergence = minimizer(KL)
         position = KL.position
 

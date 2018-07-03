@@ -16,7 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from ..utilities import memo
+from builtins import *
+from ..utilities import memo, my_lincomb_simple, my_lincomb
 from .energy import Energy
 
 
@@ -55,26 +56,17 @@ class EnergySum(Energy):
     @property
     @memo
     def value(self):
-        res = self._energies[0].value * self._factors[0]
-        for e, f in zip(self._energies[1:], self._factors[1:]):
-            res += e.value * f
-        return res
+        return my_lincomb_simple(map(lambda v: v.value, self._energies),
+                                 self._factors)
 
     @property
     @memo
     def gradient(self):
-        res = self._energies[0].gradient.copy() if self._factors[0] == 1. \
-            else self._energies[0].gradient * self._factors[0]
-
-        for e, f in zip(self._energies[1:], self._factors[1:]):
-            res += e.gradient if f == 1. else f*e.gradient
-        return res.lock()
+        return my_lincomb(map(lambda v: v.gradient, self._energies),
+                          self._factors).lock()
 
     @property
     @memo
     def curvature(self):
-        res = self._energies[0].curvature if self._factors[0] == 1. \
-            else self._energies[0].curvature * self._factors[0]
-        for e, f in zip(self._energies[1:], self._factors[1:]):
-            res = res + (e.curvature if f == 1. else e.curvature*f)
-        return res
+        return my_lincomb(map(lambda v: v.curvature, self._energies),
+                          self._factors)
