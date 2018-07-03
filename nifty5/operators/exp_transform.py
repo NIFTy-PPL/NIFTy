@@ -53,7 +53,7 @@ class ExpTransform(LinearOperator):
             # 0 <= frac < 1.
             self._frac[i] = coord - self._bindex[i]
 
-        from ..domains import LogRGSpace
+        from ..domains.log_rg_space import LogRGSpace
         log_space = LogRGSpace(2*dof+1, bindistances,
                                t_mins, harmonic=False)
         self._target = DomainTuple.make(target)

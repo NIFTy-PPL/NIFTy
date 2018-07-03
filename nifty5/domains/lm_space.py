@@ -139,7 +139,7 @@ class LMSpace(StructuredDomain):
         GLSpace
             The partner domain
         """
-        from .. import GLSpace
+        from ..domains.gl_space import GLSpace
         return GLSpace(self.lmax+1, self.mmax*2+1)
 
     def check_codomain(self, codomain):
@@ -151,6 +151,7 @@ class LMSpace(StructuredDomain):
         This function only checks whether `codomain` is of type
         :class:`GLSpace` or :class:`HPSpace`.
         """
-        from .. import GLSpace, HPSpace
+        from ..domains.gl_space import GLSpace
+        from ..domains.hp_space import HPSpace
         if not isinstance(codomain, (GLSpace, HPSpace)):
             raise TypeError("codomain must be a GLSpace or HPSpace.")

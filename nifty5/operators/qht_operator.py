@@ -27,7 +27,7 @@ class QHTOperator(LinearOperator):
         if target.harmonic:
             raise TypeError("Target is not a codomain of domain")
 
-        from ..domains import LogRGSpace
+        from ..domains.log_rg_space import LogRGSpace
         if not isinstance(domain, LogRGSpace):
             raise ValueError("Domain has to be a LogRGSpace!")
         if not isinstance(target, LogRGSpace):
