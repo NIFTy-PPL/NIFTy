@@ -6,6 +6,20 @@ from .linear_operator import LinearOperator
 
 
 class QHTOperator(LinearOperator):
+    """
+    Does a Hartley transform on LogRGSpace
+
+    This operator takes a field on a LogRGSpace and transforms it
+    according to the Hartley transform. The zero modes are not transformed
+    because they are infinitely far away.
+
+    Parameters
+    ----------
+    domain : LogRGSpace
+        The domain needs to be a LogRGSpace.
+    target : LogRGSpace
+        The target needs to be a LogRGSpace.
+    """
     def __init__(self, domain, target):
         if not domain.harmonic:
             raise TypeError(

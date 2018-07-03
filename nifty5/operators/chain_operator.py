@@ -94,6 +94,15 @@ class ChainOperator(LinearOperator):
 
     @staticmethod
     def make(ops):
+        """Build a ChainOperator (or something simpler if possible), 
+        a sequence of concatenated LinearOperators.
+        
+
+        Parameters
+        ----------
+        ops: list of LinearOperator
+            Individual operators of the chain.
+        """
         ops = tuple(ops)
         if len(ops) == 0:
             raise ValueError("ops is empty")

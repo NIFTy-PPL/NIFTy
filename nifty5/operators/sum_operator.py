@@ -133,6 +133,16 @@ class SumOperator(LinearOperator):
 
     @staticmethod
     def make(ops, neg):
+        """Build a SumOperator (or something simpler if possible)
+
+        Parameters
+        ----------
+        ops: list of LinearOperator
+            Individual operators of the sum.
+        neg: list of bool
+            Same length as ops.
+            If True then the equivalent operator gets a minus in the sum.
+        """
         ops = tuple(ops)
         neg = tuple(neg)
         if len(ops) == 0:

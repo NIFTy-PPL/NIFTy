@@ -197,8 +197,8 @@ class LinearOperator(NiftyMetaBase()):
         raise NotImplementedError
 
     def __call__(self, x):
-        from ..models import LinearModel, Model
         """Same as :meth:`times`"""
+        from ..models import LinearModel, Model
         if isinstance(x, Model):
             return LinearModel(x, self)
         return self.apply(x, self.TIMES)

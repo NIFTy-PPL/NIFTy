@@ -21,6 +21,15 @@ from .linear_operator import LinearOperator
 
 
 class MultiAdaptor(LinearOperator):
+    """Transforms a Field into a MultiField and vise versa when 
+    using adjoint_times.
+
+    Parameters
+    ----------
+    target: MultiDomain
+        MultiDomain with only one entry (key).
+    """
+
     def __init__(self, target):
         super(MultiAdaptor, self).__init__()
         if not isinstance(target, MultiDomain) or len(target) > 1:

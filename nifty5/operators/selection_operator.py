@@ -20,6 +20,16 @@ from ..operators import LinearOperator
 
 
 class SelectionOperator(LinearOperator):
+    """Extracts from a MultiField a copy of the Field
+    living on the subdomain selected by `key`.
+
+    Parameters
+    ----------
+    domain : :class:`MultiDomain`
+        Domain of the MultiFields to be acted on
+    key : :class:`str`
+        String identifier of the wanted subdomain
+    """
     def __init__(self, domain, key):
         from ..multi import MultiDomain
         if not isinstance(domain, MultiDomain):
