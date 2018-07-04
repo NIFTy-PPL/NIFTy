@@ -84,8 +84,7 @@ class ConjugateGradient(Minimizer):
                 logger.error("Error: ConjugateGradient: alpha<0.")
                 return energy, controller.ERROR
 
-            q *= -alpha
-            r = r + q
+            r = r - q*alpha
 
             energy = energy.at_with_grad(energy.position - alpha*d, r)
 
@@ -103,7 +102,6 @@ class ConjugateGradient(Minimizer):
             if status != controller.CONTINUE:
                 return energy, status
 
-            d *= max(0, gamma/previous_gamma)
-            d += s
+            d = d * max(0, gamma/previous_gamma) + s
 
             previous_gamma = gamma

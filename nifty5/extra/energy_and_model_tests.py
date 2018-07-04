@@ -31,7 +31,7 @@ def _get_acceptable_model(M):
         raise ValueError('Initial Model value must be finite')
     dir = from_random("normal", M.position.domain)
     dirder = M.jacobian(dir)
-    dir *= val/(dirder).norm()*1e-5
+    dir = dir * val * (1e-5/dirder.norm())
     # Find a step length that leads to a "reasonable" Model
     for i in range(50):
         try:
@@ -40,7 +40,7 @@ def _get_acceptable_model(M):
                 break
         except FloatingPointError:
             pass
-        dir *= 0.5
+        dir = dir*0.5
     else:
         raise ValueError("could not find a reasonable initial step")
     return M2
@@ -52,7 +52,7 @@ def _get_acceptable_energy(E):
         raise ValueError('Initial Energy must be finite')
     dir = from_random("normal", E.position.domain)
     dirder = E.gradient.vdot(dir)
-    dir *= np.abs(val)/np.abs(dirder)*1e-5
+    dir = dir * (np.abs(val)/np.abs(dirder)*1e-5)
     # Find a step length that leads to a "reasonable" energy
     for i in range(50):
         try:
@@ -61,7 +61,7 @@ def _get_acceptable_energy(E):
                 break
         except FloatingPointError:
             pass
-        dir *= 0.5
+        dir = dir*0.5
     else:
         raise ValueError("could not find a reasonable initial step")
     return E2
@@ -92,7 +92,7 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
                 xtol = tol*Emid.gradient_norm
                 if abs(numgrad-dirder) < xtol:
                     break
-            dir *= 0.5
+            dir = dir*0.5
             dirnorm *= 0.5
             E2 = Emid
         else:
@@ -117,7 +117,7 @@ def check_value_gradient_metric_consistency(E, tol=1e-8, ntries=100):
             if abs((E2.value-val)/dirnorm - dirder) < xtol and \
                (abs((E2.gradient-E.gradient)/dirnorm-dgrad) < xtol).all():
                 break
-            dir *= 0.5
+            dir = dir*0.5
             dirnorm *= 0.5
             E2 = Emid
         else:

@@ -141,9 +141,7 @@ class RGSpace(StructuredDomain):
     @staticmethod
     def _kernel(x, sigma):
         from ..sugar import exp
-        tmp = x*x
-        tmp *= -2.*np.pi*np.pi*sigma*sigma
-        return exp(tmp)
+        return exp(x*x * (-2.*np.pi*np.pi*sigma*sigma))
 
     def get_fft_smoothing_kernel_function(self, sigma):
         if (not self.harmonic):

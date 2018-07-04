@@ -118,10 +118,7 @@ class FFTOperator(LinearOperator):
             fct = self._domain[self._space].scalar_dvol
         else:
             fct = self._target[self._space].scalar_dvol
-        if fct != 1:
-            Tval *= fct
-
-        return Tval
+        return Tval if fct == 1 else Tval*fct
 
     @property
     def domain(self):

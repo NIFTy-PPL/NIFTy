@@ -172,14 +172,15 @@ class SumOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_mode(mode)
-        for i, op in enumerate(self._ops):
-            if i == 0:
-                res = -op.apply(x, mode) if self._neg[i] else op.apply(x, mode)
+        res = None
+        for op, neg in zip(self._ops, self._neg):
+            if res is None:
+                res = -op.apply(x, mode) if neg else op.apply(x, mode)
             else:
-                if self._neg[i]:
-                    res -= op.apply(x, mode)
+                if neg:
+                    res = res - op.apply(x, mode)
                 else:
-                    res += op.apply(x, mode)
+                    res = res + op.apply(x, mode)
         return res
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):

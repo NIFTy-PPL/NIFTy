@@ -220,3 +220,12 @@ for op in ["__add__", "__radd__",
             return MultiField(result_val)
         return func2
     setattr(MultiField, op, func(op))
+
+for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
+           "__itruediv__", "__ifloordiv__", "__ipow__"]:
+    def func(op):
+        def func2(self, other):
+            raise TypeError(
+                "In-place operations are deliberately not supported")
+        return func2
+    setattr(MultiField, op, func(op))
