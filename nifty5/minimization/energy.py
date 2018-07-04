@@ -52,7 +52,7 @@ class Energy(NiftyMetaBase()):
 
     def __init__(self, position):
         super(Energy, self).__init__()
-        self._position = position.lock()
+        self._position = position
 
     def at(self, position):
         """ Returns a new Energy object, initialized at `position`.

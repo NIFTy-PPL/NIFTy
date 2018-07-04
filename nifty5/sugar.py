@@ -31,7 +31,7 @@ from .logger import logger
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
-           'full', 'empty', 'from_global_data', 'from_local_data',
+           'full', 'from_global_data', 'from_local_data',
            'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'conjugate',
            'get_signal_variance', 'makeOp']
 
@@ -203,12 +203,6 @@ def full(domain, val):
     return Field.full(domain, val)
 
 
-def empty(domain, dtype):
-    if isinstance(domain, (dict, MultiDomain)):
-        return MultiField.empty(domain, dtype)
-    return Field.empty(domain, dtype)
-
-
 def from_random(random_type, domain, dtype=np.float64, **kwargs):
     if isinstance(domain, (dict, MultiDomain)):
         return MultiField.from_random(random_type, domain, dtype, **kwargs)
@@ -248,26 +242,13 @@ _current_module = sys.modules[__name__]
 
 for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
     def func(f):
-        def func2(x, out=None):
+        def func2(x):
             if isinstance(x, MultiField):
-                if out is not None:
-                    if (not isinstance(out, MultiField) or
-                            x._domain != out._domain):
-                        raise ValueError("Bad 'out' argument")
-                    for key, value in x.items():
-                        func2(value, out=out[key])
-                    return out
                 return MultiField({key: func2(val) for key, val in x.items()})
             elif isinstance(x, Field):
                 fu = getattr(dobj, f)
-                if out is not None:
-                    if not isinstance(out, Field) or x._domain != out._domain:
-                        raise ValueError("Bad 'out' argument")
-                    fu(x.val, out=out.val)
-                    return out
-                else:
-                    return Field(domain=x._domain, val=fu(x.val))
+                return Field(domain=x._domain, val=fu(x.val))
             else:
-                return getattr(np, f)(x, out)
+                return getattr(np, f)(x)
         return func2
     setattr(_current_module, f, func(f))

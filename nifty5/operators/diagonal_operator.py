@@ -185,7 +185,7 @@ class DiagonalOperator(EndomorphicOperator):
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
         if from_inverse:
-            res.local_data[()] /= np.sqrt(self._ldiag)
+            res /= np.sqrt(self._ldiag)
         else:
-            res.local_data[()] *= np.sqrt(self._ldiag)
+            res *= np.sqrt(self._ldiag)
         return res

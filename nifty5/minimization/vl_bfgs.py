@@ -109,8 +109,8 @@ class _InformationStore(object):
         self.max_history_length = max_history_length
         self.s = [None]*max_history_length
         self.y = [None]*max_history_length
-        self.last_x = x0.copy()
-        self.last_gradient = gradient.copy()
+        self.last_x = x0
+        self.last_gradient = gradient
         self.k = 0
 
         mmax = max_history_length
@@ -233,7 +233,7 @@ class _InformationStore(object):
         self.s[self.k % mmax] = x - self.last_x
         self.y[self.k % mmax] = gradient - self.last_gradient
 
-        self.last_x = x.copy()
-        self.last_gradient = gradient.copy()
+        self.last_x = x
+        self.last_gradient = gradient
 
         self.k += 1

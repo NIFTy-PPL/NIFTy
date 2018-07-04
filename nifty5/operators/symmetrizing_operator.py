@@ -15,7 +15,7 @@ class SymmetrizingOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        tmp = x.copy().val
+        tmp = x.val.copy()
         ax = dobj.distaxis(tmp)
         globshape = tmp.shape
         for i in range(self._ndim):

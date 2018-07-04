@@ -50,10 +50,9 @@ class SelectionOperator(LinearOperator):
         return self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
-        # FIXME Is the copying necessary?
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return x[self._key].copy()
+            return x[self._key]
         else:
             from ..multi.multi_field import MultiField
-            return MultiField({self._key: x.copy()})
+            return MultiField({self._key: x})

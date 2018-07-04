@@ -95,22 +95,18 @@ class RGSpace(StructuredDomain):
     def get_k_length_array(self):
         if (not self.harmonic):
             raise NotImplementedError
-        out = Field(self, dtype=np.float64)
-        oloc = out.local_data
-        ibegin = dobj.ibegin(out.val)
-        res = np.arange(oloc.shape[0], dtype=np.float64) + ibegin[0]
+        ibegin = dobj.ibegin_from_shape(self._shape)
+        res = np.arange(self.local_shape[0], dtype=np.float64) + ibegin[0]
         res = np.minimum(res, self.shape[0]-res)*self.distances[0]
         if len(self.shape) == 1:
-            oloc[()] = res
-            return out
+            return Field.from_local_data(self, res)
         res *= res
         for i in range(1, len(self.shape)):
-            tmp = np.arange(oloc.shape[i], dtype=np.float64) + ibegin[i]
+            tmp = np.arange(self.local_shape[i], dtype=np.float64) + ibegin[i]
             tmp = np.minimum(tmp, self.shape[i]-tmp)*self.distances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
-        oloc[()] = np.sqrt(res)
-        return out
+        return Field.from_local_data(self, np.sqrt(res))
 
     def get_unique_k_lengths(self):
         if (not self.harmonic):
@@ -147,8 +143,7 @@ class RGSpace(StructuredDomain):
         from ..sugar import exp
         tmp = x*x
         tmp *= -2.*np.pi*np.pi*sigma*sigma
-        exp(tmp, out=tmp)
-        return tmp
+        return exp(tmp)
 
     def get_fft_smoothing_kernel_function(self, sigma):
         if (not self.harmonic):

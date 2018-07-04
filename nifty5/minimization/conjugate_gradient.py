@@ -66,7 +66,7 @@ class ConjugateGradient(Minimizer):
             return energy, status
 
         r = energy.gradient
-        d = r.copy() if preconditioner is None else preconditioner(r)
+        d = r if preconditioner is None else preconditioner(r)
 
         previous_gamma = r.vdot(d).real
         if previous_gamma == 0:

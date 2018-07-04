@@ -69,18 +69,6 @@ class MultiField(object):
                                                   dtype[key], **kwargs)
                            for key in sorted(domain.keys())})
 
-    def fill(self, fill_value):
-        """Fill `self` uniformly with `fill_value`
-
-        Parameters
-        ----------
-        fill_value: float or complex or int
-            The value to fill the field with.
-        """
-        for val in self._val.values():
-            val.fill(fill_value)
-        return self
-
     def _check_domain(self, other):
         if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
@@ -92,27 +80,6 @@ class MultiField(object):
             result += sub_field.vdot(x[key])
         return result
 
-    def lock(self):
-        for v in self.values():
-            v.lock()
-        return self
-
-    @property
-    def locked(self):
-        return all(v.locked for v in self.values())
-
-    def copy(self):
-        return MultiField({key: val.copy() for key, val in self.items()})
-
-    def locked_copy(self):
-        if self.locked:
-            return self
-        return MultiField({key: val.locked_copy()
-                          for key, val in self.items()})
-
-    def empty_copy(self):
-        return MultiField({key: val.empty_copy() for key, val in self.items()})
-
     @staticmethod
     def build_dtype(dtype, domain):
         if isinstance(dtype, dict):
@@ -120,12 +87,6 @@ class MultiField(object):
         if dtype is None:
             dtype = np.float64
         return {key: dtype for key in domain.keys()}
-
-    @staticmethod
-    def empty(domain, dtype=None):
-        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField({key: Field.empty(dom, dtype=dtype[key])
-                           for key, dom in domain.items()})
 
     @staticmethod
     def full(domain, val):
@@ -241,9 +202,9 @@ for op in ["__add__", "__radd__",
                         result_val[key] = getattr(self[key], op)(other[key])
                     if op in ("__add__", "__radd__"):
                         for key in only_self_keys:
-                            result_val[key] = self[key].copy()
+                            result_val[key] = self[key]
                         for key in only_other_keys:
-                            result_val[key] = other[key].copy()
+                            result_val[key] = other[key]
                     elif op in ("__mul__", "__rmul__"):
                         pass
                     else:

@@ -33,7 +33,7 @@ def _toFlatNdarray(fld):
 
 
 def _toField(arr, dom):
-    return Field.from_global_data(dom, arr.reshape(dom.shape))
+    return Field.from_global_data(dom, arr.reshape(dom.shape).copy())
 
 
 class _MinHelper(object):
@@ -44,7 +44,7 @@ class _MinHelper(object):
     def _update(self, x):
         pos = _toField(x, self._domain)
         if (pos != self._energy.position).any():
-            self._energy = self._energy.at(pos.locked_copy())
+            self._energy = self._energy.at(pos)
 
     def fun(self, x):
         self._update(x)
