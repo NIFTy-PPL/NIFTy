@@ -68,5 +68,8 @@ if __name__ == '__main__':
     # minimizer = ift.SteepestDescent(ic_newton)
     H, convergence = minimizer(H)
 
-    # result_sky = sky.at(H.position).value
-    # ift.plot(result_sky)
+    reconstruction = sky.at(H.position).value
+
+    ift.plot(reconstruction, title='reconstruction', name='reconstruction.pdf')
+    ift.plot(GR.adjoint_times(data), title='data', name='data.pdf')
+    ift.plot(sky.at(mock_position).value, title='truth', name='truth.pdf')
