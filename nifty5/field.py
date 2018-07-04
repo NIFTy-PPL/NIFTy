@@ -654,7 +654,6 @@ for op in ["__add__", "__radd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            global COUNTER
             # if other is a field, make sure that the domains match
             if isinstance(other, Field):
                 if other._domain != self._domain:
@@ -662,10 +661,12 @@ for op in ["__add__", "__radd__",
                 tval = getattr(self.val, op)(other.val)
                 return Field(self._domain, tval)
 
-            if np.isscalar(other) or isinstance(other, dobj.data_object):
+            if (np.isscalar(other) or
+                    isinstance(other, (dobj.data_object, np.ndarray))):
                 tval = getattr(self.val, op)(other)
                 return Field(self._domain, tval)
 
+            raise TypeError("should not arrive here")
             return NotImplemented
         return func2
     setattr(Field, op, func(op))
