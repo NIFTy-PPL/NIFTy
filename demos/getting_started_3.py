@@ -5,7 +5,6 @@ import numpy as np
 def get_random_LOS(n_los):
     starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
     ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
-
     return starts, ends
 
 
@@ -87,20 +86,12 @@ if __name__ == '__main__':
         ift.plot([A.at(position).value, A.at(MOCK_POSITION).value],
                  name='power.pdf')
 
-    avrg = 0.
-    va = 0.
-    powers = []
+    sc = ift.StatCalculator()
     for sample in samples:
-        sam = signal.at(sample + position).value
-        powers.append(A.at(sample+position).value)
-        avrg = avrg + sam
-        va = va + sam**2
+        sc.add(signal.at(sample+position).value)
+    ift.plot(sc.mean, name='avrg.pdf')
+    ift.plot(ift.sqrt(sc.var), name='std.pdf')
 
-    avrg = avrg /len(samples)
-    va = va / len(samples)
-    va = va - avrg**2
-    std = ift.sqrt(va)
-    ift.plot(avrg, name='avrg.pdf')
-    ift.plot(std, name='std.pdf')
+    powers = [A.at(s+position).value for s in samples]
     ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers,
              name='power.pdf')
