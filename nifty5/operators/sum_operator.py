@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from builtins import *
+from ..utilities import my_sum
 from .linear_operator import LinearOperator
 import numpy as np
 
@@ -187,7 +189,5 @@ class SumOperator(LinearOperator):
         if from_inverse:
             raise NotImplementedError(
                 "cannot draw from inverse of this operator")
-        res = self._ops[0].draw_sample(from_inverse, dtype)
-        for op in self._ops[1:]:
-            res += op.draw_sample(from_inverse, dtype)
-        return res
+        return my_sum(map(lambda op: op.draw_sample(from_inverse, dtype),
+                          self._ops))

@@ -125,9 +125,10 @@ class DOFDistributor(LinearOperator):
         else:
             arr = x.local_data
         arr = arr.reshape(self._hshape)
-        oarr = arr[(slice(None), self._dofdex, slice(None))]
-        return Field.from_local_data(self._target, oarr.reshape(self._target.local_shape))
-        oarr = res.local_data.reshape(self._pshape)
+        oarr = np.empty(self._pshape, dtype=x.dtype)
+        oarr[()] = arr[(slice(None), self._dofdex, slice(None))]
+        return Field.from_local_data(
+            self._target, oarr.reshape(self._target.local_shape))
 
     def apply(self, x, mode):
         self._check_input(x, mode)

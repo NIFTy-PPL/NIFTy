@@ -101,12 +101,7 @@ class LMSpace(StructuredDomain):
         # by Challinor et al.
         # http://arxiv.org/abs/astro-ph/0008228
         from ..sugar import exp
-
-        res = x+1.
-        res *= x
-        res *= -0.5*sigma*sigma
-        exp(res, out=res)
-        return res
+        return exp((x+1.) * x * (-0.5*sigma*sigma))
 
     def get_fft_smoothing_kernel_function(self, sigma):
         return lambda x: self._kernel(x, sigma)
