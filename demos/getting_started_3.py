@@ -93,12 +93,12 @@ if __name__ == '__main__':
     for sample in samples:
         sam = signal.at(sample + position).value
         powers.append(A.at(sample+position).value)
-        avrg += sam
-        va += sam**2
+        avrg = avrg + sam
+        va = va + sam**2
 
-    avrg /= len(samples)
-    va /= len(samples)
-    va -= avrg**2
+    avrg = avrg /len(samples)
+    va = va / len(samples)
+    va = va - avrg**2
     std = ift.sqrt(va)
     ift.plot(avrg, name='avrg.pdf')
     ift.plot(std, name='std.pdf')
