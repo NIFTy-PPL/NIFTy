@@ -34,7 +34,6 @@ class SelectionOperator(LinearOperator):
         from ..multi.multi_domain import MultiDomain
         if not isinstance(domain, MultiDomain):
             raise TypeError("Domain must be a MultiDomain")
-        self._target = domain[key]
         self._domain = domain
         self._key = key
 
@@ -44,7 +43,7 @@ class SelectionOperator(LinearOperator):
 
     @property
     def target(self):
-        return self._target
+        return self._domain[self._key]
 
     @property
     def capability(self):
