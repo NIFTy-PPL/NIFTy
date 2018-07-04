@@ -19,6 +19,7 @@
 from ..field import Field
 import numpy as np
 from .multi_domain import MultiDomain
+from ..utilities import frozendict
 
 
 class MultiField(object):
@@ -28,7 +29,7 @@ class MultiField(object):
         ----------
         val : dict
         """
-        self._val = val
+        self._val = frozendict(val)
         self._domain = MultiDomain.make(
             {key: val.domain for key, val in self._val.items()})
 

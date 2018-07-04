@@ -16,17 +16,19 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import (absolute_import, division, print_function)
 from builtins import *
 import numpy as np
 from itertools import product
 import abc
 from future.utils import with_metaclass
 from functools import reduce
+import collections
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
            "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb",
-           "my_product"]
+           "my_product", "frozendict"]
 
 
 def my_sum(terms):
@@ -290,3 +292,43 @@ def my_fftn_r2c(a, axes=None):
 def my_fftn(a, axes=None):
     from pyfftw.interfaces.numpy_fft import fftn
     return fftn(a, axes=axes, **_fft_extra_args)
+
+
+class frozendict(collections.Mapping):
+    """
+    An immutable wrapper around dictionaries that implements the complete
+    :py:class:`collections.Mapping` interface. It can be used as a drop-in
+    replacement for dictionaries where immutability is desired.
+    """
+
+    dict_cls = dict
+
+    def __init__(self, *args, **kwargs):
+        self._dict = self.dict_cls(*args, **kwargs)
+        self._hash = None
+
+    def __getitem__(self, key):
+        return self._dict[key]
+
+    def __contains__(self, key):
+        return key in self._dict
+
+    def copy(self, **add_or_replace):
+        return self.__class__(self, **add_or_replace)
+
+    def __iter__(self):
+        return iter(self._dict)
+
+    def __len__(self):
+        return len(self._dict)
+
+    def __repr__(self):
+        return '<%s %r>' % (self.__class__.__name__, self._dict)
+
+    def __hash__(self):
+        if self._hash is None:
+            h = 0
+            for key, value in self._dict.items():
+                h ^= hash((key, value))
+            self._hash = h
+        return self._hash

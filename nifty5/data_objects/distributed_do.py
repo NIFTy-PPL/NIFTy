@@ -16,11 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import (absolute_import, division, print_function)
+from builtins import *
+from functools import reduce
 import numpy as np
 from .random import Random
 from mpi4py import MPI
 import sys
-from functools import reduce
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -61,6 +63,9 @@ class data_object(object):
         self._data = data
         if local_shape(self._shape, self._distaxis) != self._data.shape:
             raise ValueError("shape mismatch")
+
+    def copy(self):
+        return data_object(self._shape, self._data.copy(), self._distaxis)
 
 #     def _sanity_checks(self):
 #         # check whether the distaxis is consistent

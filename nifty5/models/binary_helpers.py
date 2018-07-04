@@ -25,7 +25,7 @@ def _joint_position(model1, model2):
     a = model1.position._val
     b = model2.position._val
     # Note: In python >3.5 one could do {**a, **b}
-    ab = a.copy()
+    ab = dict(a)
     ab.update(b)
     return MultiField(ab)
 
