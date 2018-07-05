@@ -89,7 +89,7 @@ from .library.bernoulli_energy import BernoulliEnergy
 
 from . import extra
 
-from .utilities import memo
+from .utilities import memo, frozendict
 
 from .logger import logger
 
