@@ -15,17 +15,15 @@ class SymmetrizingOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        tmp = x.copy().val
+        tmp = x.val.copy()
         ax = dobj.distaxis(tmp)
         globshape = tmp.shape
         for i in range(self._ndim):
             lead = (slice(None),)*i
             if i == ax:
                 tmp = dobj.redistribute(tmp, nodist=(ax,))
-            curax = dobj.distaxis(tmp)
-            tmp = dobj.local_data(tmp)
-            tmp[lead + (slice(1, None),)] -= tmp[lead + (slice(None, 0, -1),)]
-            tmp = dobj.from_local_data(globshape, tmp, distaxis=curax)
+            tmp2 = dobj.local_data(tmp)
+            tmp2[lead+(slice(1, None),)] -= tmp2[lead+(slice(None, 0, -1),)]
             if i == ax:
                 tmp = dobj.redistribute(tmp, dist=ax)
             return Field(self.target, val=tmp)

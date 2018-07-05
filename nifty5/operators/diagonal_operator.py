@@ -16,7 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division
+from __future__ import (absolute_import, division, print_function)
+from builtins import *
 import numpy as np
 from ..field import Field
 from ..domain_tuple import DomainTuple
@@ -185,7 +186,6 @@ class DiagonalOperator(EndomorphicOperator):
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
         if from_inverse:
-            res.local_data[()] /= np.sqrt(self._ldiag)
+            return res/np.sqrt(self._ldiag)
         else:
-            res.local_data[()] *= np.sqrt(self._ldiag)
-        return res
+            return res*np.sqrt(self._ldiag)

@@ -6,6 +6,7 @@ from ..utilities import memo, my_sum
 class SampledKullbachLeiblerDivergence(Energy):
     def __init__(self, h, res_samples):
         """
+        # MR FIXME: does h have to be a Hamiltonian? Couldn't it be any energy?
         h: Hamiltonian
         N: Number of samples to be used
         """

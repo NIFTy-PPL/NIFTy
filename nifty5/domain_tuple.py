@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import (absolute_import, division, print_function)
+from builtins import *
 from functools import reduce
 from .domains.domain import Domain
 
@@ -103,6 +105,16 @@ class DomainTuple(object):
         living on the DomainTuple.
         """
         return self._shape
+
+    @property
+    def local_shape(self):
+        """tuple of int: number of pixels along each axis on the local task
+
+        The shape of the array-like object required to store information
+        living on part of the domain which is stored on the local MPI task.
+        """
+        from .dobj import local_shape
+        return local_shape(self._shape)
 
     @property
     def size(self):

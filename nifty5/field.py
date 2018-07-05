@@ -16,8 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division
-from builtins import range
+from __future__ import (absolute_import, division, print_function)
+from builtins import *
 import numpy as np
 from . import utilities
 from .domain_tuple import DomainTuple
@@ -35,7 +35,7 @@ class Field(object):
     ----------
     domain : None, DomainTuple, tuple of Domain, or Domain
 
-    val : None, Field, data_object, or scalar
+    val : Field, data_object or scalar
         The values the array should contain after init. A scalar input will
         fill the whole array with this scalar. If a data_object is provided,
         its dimensions must match the domain's.
@@ -49,32 +49,30 @@ class Field(object):
     many convenience functions for Field conatruction!
     """
 
-    def __init__(self, domain=None, val=None, dtype=None, copy=False,
-                 locked=False):
+    def __init__(self, domain=None, val=None, dtype=None):
         self._domain = self._infer_domain(domain=domain, val=val)
 
         dtype = self._infer_dtype(dtype=dtype, val=val)
         if isinstance(val, Field):
             if self._domain != val._domain:
                 raise ValueError("Domain mismatch")
-            self._val = dobj.from_object(val.val, dtype=dtype, copy=copy,
-                                         set_locked=locked)
+            self._val = val._val
+
         elif (np.isscalar(val)):
             self._val = dobj.full(self._domain.shape, dtype=dtype,
                                   fill_value=val)
         elif isinstance(val, dobj.data_object):
             if self._domain.shape == val.shape:
-                self._val = dobj.from_object(val, dtype=dtype, copy=copy,
-                                             set_locked=locked)
+                if dtype == val.dtype:
+                    self._val = val
+                else:
+                    self._val = dobj.from_object(val, dtype, True, True)
             else:
                 raise ValueError("Shape mismatch")
-        elif val is None:
-            self._val = dobj.empty(self._domain.shape, dtype=dtype)
         else:
             raise TypeError("unknown source type")
 
-        if locked:
-            dobj.lock(self._val)
+        dobj.lock(self._val)
 
     # prevent implicit conversion to bool
     def __nonzero__(self):
@@ -84,7 +82,7 @@ class Field(object):
         raise TypeError("Field does not support implicit conversion to bool")
 
     @staticmethod
-    def full(domain, val, dtype=None):
+    def full(domain, val):
         """Creates a Field with a given domain, filled with a constant value.
 
         Parameters
@@ -101,11 +99,7 @@ class Field(object):
         """
         if not np.isscalar(val):
             raise TypeError("val must be a scalar")
-        return Field(DomainTuple.make(domain), val, dtype)
-
-    @staticmethod
-    def empty(domain, dtype=None):
-        return Field(DomainTuple.make(domain), None, dtype)
+        return Field(DomainTuple.make(domain), val)
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
@@ -152,11 +146,6 @@ class Field(object):
 
         Returns a handle to the part of the array data residing on the local
         task (or to the entore array if MPI is not active).
-
-        Notes
-        -----
-        If the field is not locked, the array data can be modified.
-        Use with care!
         """
         return dobj.local_data(self._val)
 
@@ -196,8 +185,6 @@ class Field(object):
             return dtype
         if val is None:
             raise ValueError("could not infer dtype")
-        if isinstance(val, Field):
-            return val.dtype
         return np.result_type(val)
 
     @staticmethod
@@ -222,41 +209,6 @@ class Field(object):
         return Field(domain=domain,
                      val=dobj.from_random(random_type, dtype=dtype,
                                           shape=domain.shape, **kwargs))
-
-    def fill(self, fill_value):
-        """Fill `self` uniformly with `fill_value`
-
-        Parameters
-        ----------
-        fill_value: float or complex or int
-            The value to fill the field with.
-        """
-        self._val.fill(fill_value)
-        return self
-
-    def lock(self):
-        """Write-protect the data content of `self`.
-
-        After this call, it will no longer be possible to change the data
-        entries of `self`. This is convenient if, for example, a
-        DiagonalOperator wants to ensure that its diagonal cannot be modified
-        inadvertently, without making copies.
-
-        Notes
-        -----
-        This will not only prohibit modifications to the entries of `self`, but
-        also to the entries of any other Field or numpy array pointing to the
-        same data. If an unlocked instance is needed, use copy().
-
-        The fact that there is no `unlock()` method is deliberate.
-        """
-        dobj.lock(self._val)
-        return self
-
-    @property
-    def locked(self):
-        """bool : True iff the field's data content has been locked"""
-        return dobj.locked(self._val)
 
     @property
     def val(self):
@@ -302,43 +254,6 @@ class Field(object):
         if not np.issubdtype(self.dtype, np.complexfloating):
             raise ValueError(".imag called on a non-complex Field")
         return Field(self._domain, self.val.imag)
-
-    def copy(self):
-        """ Returns a full copy of the Field.
-
-        The returned object will be an identical copy of the original Field.
-        The copy will be writeable, even if `self` was locked.
-
-        Returns
-        -------
-        Field
-            An identical, but unlocked copy of 'self'.
-        """
-        return Field(val=self, copy=True)
-
-    def empty_copy(self):
-        """ Returns a Field with identical domain and data type, but
-        uninitialized data.
-
-        Returns
-        -------
-        Field
-            A copy of 'self', with uninitialized data.
-        """
-        return Field(self._domain, dtype=self.dtype)
-
-    def locked_copy(self):
-        """ Returns a read-only version of the Field.
-
-        If `self` is locked, returns `self`. Otherwise returns a locked copy
-        of `self`.
-
-        Returns
-        -------
-        Field
-            A read-only version of `self`.
-        """
-        return self if self.locked else Field(val=self, copy=True, locked=True)
 
     def scalar_weight(self, spaces=None):
         """Returns the uniform volume element for a sub-domain of `self`.
@@ -392,7 +307,7 @@ class Field(object):
             res *= self._domain[i].total_volume
         return res
 
-    def weight(self, power=1, spaces=None, out=None):
+    def weight(self, power=1, spaces=None):
         """ Weights the pixels of `self` with their invidual pixel-volume.
 
         Parameters
@@ -404,21 +319,12 @@ class Field(object):
             Determines on which sub-domain the operation takes place.
             If None, the entire domain is used.
 
-        out : Field or None
-            if not None, the result is returned in a new Field
-            otherwise the contents of "out" are overwritten with the result.
-            "out" may be identical to "self"!
-
         Returns
         -------
         Field
             The weighted field.
         """
-        if out is None:
-            out = self.copy()
-        else:
-            if out is not self:
-                out.copy_content_from(self)
+        aout = self.local_data.copy()
 
         spaces = utilities.parse_spaces(spaces, len(self._domain))
 
@@ -435,12 +341,12 @@ class Field(object):
                 if dobj.distaxis(self._val) >= 0 and ind == 0:
                     # we need to distribute the weights along axis 0
                     wgt = dobj.local_data(dobj.from_global_data(wgt))
-                out.local_data[()] *= wgt**power
+                aout *= wgt**power
         fct = fct**power
         if fct != 1.:
-            out *= fct
+            aout *= fct
 
-        return out
+        return Field.from_local_data(self._domain, aout)
 
     def vdot(self, x=None, spaces=None):
         """ Computes the dot product of 'self' with x.
@@ -508,7 +414,7 @@ class Field(object):
     # ---General unary/contraction methods---
 
     def __pos__(self):
-        return self.copy()
+        return self
 
     def __neg__(self):
         return Field(self._domain, -self.val)
@@ -538,7 +444,7 @@ class Field(object):
                                   for i, dom in enumerate(self._domain)
                                   if i not in spaces)
 
-            return Field(domain=return_domain, val=data, copy=False)
+            return Field(domain=return_domain, val=data)
 
     def sum(self, spaces=None):
         """Sums up over the sub-domains given by `spaces`.
@@ -713,13 +619,6 @@ class Field(object):
             return self._contraction_helper('std', spaces)
         return sqrt(self.var(spaces))
 
-    def copy_content_from(self, other):
-        if not isinstance(other, Field):
-            raise TypeError("argument must be a Field")
-        if other._domain != self._domain:
-            raise ValueError("domains are incompatible.")
-        self.local_data[()] = other.local_data[()]
-
     def __repr__(self):
         return "<nifty5.Field>"
 
@@ -745,28 +644,38 @@ class Field(object):
         return self.isEquivalentTo(other)
 
 
-for op in ["__add__", "__radd__", "__iadd__",
-           "__sub__", "__rsub__", "__isub__",
-           "__mul__", "__rmul__", "__imul__",
-           "__div__", "__rdiv__", "__idiv__",
-           "__truediv__", "__rtruediv__", "__itruediv__",
-           "__floordiv__", "__rfloordiv__", "__ifloordiv__",
-           "__pow__", "__rpow__", "__ipow__",
+for op in ["__add__", "__radd__",
+           "__sub__", "__rsub__",
+           "__mul__", "__rmul__",
+           "__div__", "__rdiv__",
+           "__truediv__", "__rtruediv__",
+           "__floordiv__", "__rfloordiv__",
+           "__pow__", "__rpow__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            global COUNTER
             # if other is a field, make sure that the domains match
             if isinstance(other, Field):
                 if other._domain != self._domain:
                     raise ValueError("domains are incompatible.")
                 tval = getattr(self.val, op)(other.val)
-                return self if tval is self.val else Field(self._domain, tval)
+                return Field(self._domain, tval)
 
-            if np.isscalar(other) or isinstance(other, dobj.data_object):
+            if (np.isscalar(other) or
+                    isinstance(other, (dobj.data_object, np.ndarray))):
                 tval = getattr(self.val, op)(other)
-                return self if tval is self.val else Field(self._domain, tval)
+                return Field(self._domain, tval)
 
+            raise TypeError("should not arrive here")
             return NotImplemented
+        return func2
+    setattr(Field, op, func(op))
+
+for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
+           "__itruediv__", "__ifloordiv__", "__ipow__"]:
+    def func(op):
+        def func2(self, other):
+            raise TypeError(
+                "In-place operations are deliberately not supported")
         return func2
     setattr(Field, op, func(op))

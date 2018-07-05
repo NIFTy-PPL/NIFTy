@@ -32,19 +32,6 @@ class Test_Functionality(unittest.TestCase):
         f2 = ift.from_random("normal", domain=dom, dtype=np.complex128)
         assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
 
-    def test_lock(self):
-        f1 = ift.full(dom, 27)
-        assert_equal(f1.locked, False)
-        f1.lock()
-        assert_equal(f1.locked, True)
-        assert_equal(f1.locked_copy() is f1, True)
-
-    def test_fill(self):
-        f1 = ift.full(dom, 27)
-        f1.fill(10)
-        for val in f1.values():
-            assert_equal((val == 10).all(), True)
-
     def test_dataconv(self):
         f1 = ift.full(dom, 27)
         f2 = ift.from_global_data(dom, f1.to_global_data())

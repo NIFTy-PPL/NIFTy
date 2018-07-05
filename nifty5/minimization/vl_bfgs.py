@@ -16,9 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division
-from builtins import range
-from builtins import object
+from __future__ import (absolute_import, division, print_function)
+from builtins import *
 import numpy as np
 from .descent_minimizer import DescentMinimizer
 from .line_search_strong_wolfe import LineSearchStrongWolfe
@@ -67,7 +66,7 @@ class VL_BFGS(DescentMinimizer):
 
         descent_direction = delta[0] * b[0]
         for i in range(1, len(delta)):
-            descent_direction += delta[i] * b[i]
+            descent_direction = descent_direction + delta[i]*b[i]
 
         return descent_direction
 
@@ -109,8 +108,8 @@ class _InformationStore(object):
         self.max_history_length = max_history_length
         self.s = [None]*max_history_length
         self.y = [None]*max_history_length
-        self.last_x = x0.copy()
-        self.last_gradient = gradient.copy()
+        self.last_x = x0
+        self.last_gradient = gradient
         self.k = 0
 
         mmax = max_history_length
@@ -233,7 +232,7 @@ class _InformationStore(object):
         self.s[self.k % mmax] = x - self.last_x
         self.y[self.k % mmax] = gradient - self.last_gradient
 
-        self.last_x = x.copy()
-        self.last_gradient = gradient.copy()
+        self.last_x = x
+        self.last_gradient = gradient
 
         self.k += 1

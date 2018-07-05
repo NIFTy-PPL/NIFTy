@@ -3,7 +3,7 @@ from ..sugar import exp
 
 import numpy as np
 
-from ..dobj import ibegin
+from .. import dobj
 from ..field import Field
 from .structured_domain import StructuredDomain
 
@@ -62,26 +62,22 @@ class LogRGSpace(StructuredDomain):
                           np.zeros(len(self.shape)), True)
 
     def get_k_length_array(self):
-        out = Field(self, dtype=np.float64)
-        oloc = out.local_data
-        ib = ibegin(out.val)
-        res = np.arange(oloc.shape[0], dtype=np.float64) + ib[0]
+        ib = dobj.ibegin_from_shape(self._shape)
+        res = np.arange(self.local_shape[0], dtype=np.float64) + ib[0]
         res = np.minimum(res, self.shape[0]-res)*self.bindistances[0]
         if len(self.shape) == 1:
-            oloc[()] = res
-            return out
+            return Field.from_local_data(self, res)
         res *= res
         for i in range(1, len(self.shape)):
-            tmp = np.arange(oloc.shape[i], dtype=np.float64) + ib[i]
+            tmp = np.arange(self.local_shape[i], dtype=np.float64) + ib[i]
             tmp = np.minimum(tmp, self.shape[i]-tmp)*self.bindistances[i]
             tmp *= tmp
             res = np.add.outer(res, tmp)
-        oloc[()] = np.sqrt(res)
-        return out
+        return Field.from_local_data(self, np.sqrt(res))
 
     def get_expk_length_array(self):
         # FIXME This is a hack! Only for plotting. Seems not to be the final version.
-        out = exp(self.get_k_length_array())
-        out.val[1:] = out.val[:-1]
-        out.val[0] = 0
-        return out
+        out = exp(self.get_k_length_array()).to_global_data().copy()
+        out[1:] = out[:-1]
+        out[0] = 0
+        return Field.from_global_data(self, out)

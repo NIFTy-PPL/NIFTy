@@ -142,12 +142,11 @@ There is also a set of convenience functions to generate fields with constant
 values or fields filled with random numbers according to a user-specified
 distribution.
 
-Fields are the only fundamental NIFTy objects which can change state after they
-have been constructed: while their data type, domain, and array shape cannot
-be modified, the actual data content of the array may be manipulated during the
-lifetime of the object. This is a slight deviation from the philosophy that all
-NIFTy objects should be immutable, but this choice offers considerable
-performance benefits.
+Like almost all NIFTy objects, fields are immutable: their value or any other
+attribute cannot be modified after construction. To manipulate a field in ways
+that are not covered by the provided standard operations, its data content must
+be extracted first, then changed, and a new field has to be created from the
+result.
 
 
 Linear Operators

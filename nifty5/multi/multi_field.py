@@ -19,6 +19,7 @@
 from ..field import Field
 import numpy as np
 from .multi_domain import MultiDomain
+from ..utilities import frozendict
 
 
 class MultiField(object):
@@ -28,7 +29,7 @@ class MultiField(object):
         ----------
         val : dict
         """
-        self._val = val
+        self._val = frozendict(val)
         self._domain = MultiDomain.make(
             {key: val.domain for key, val in self._val.items()})
 
@@ -69,18 +70,6 @@ class MultiField(object):
                                                   dtype[key], **kwargs)
                            for key in sorted(domain.keys())})
 
-    def fill(self, fill_value):
-        """Fill `self` uniformly with `fill_value`
-
-        Parameters
-        ----------
-        fill_value: float or complex or int
-            The value to fill the field with.
-        """
-        for val in self._val.values():
-            val.fill(fill_value)
-        return self
-
     def _check_domain(self, other):
         if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
@@ -92,27 +81,6 @@ class MultiField(object):
             result += sub_field.vdot(x[key])
         return result
 
-    def lock(self):
-        for v in self.values():
-            v.lock()
-        return self
-
-    @property
-    def locked(self):
-        return all(v.locked for v in self.values())
-
-    def copy(self):
-        return MultiField({key: val.copy() for key, val in self.items()})
-
-    def locked_copy(self):
-        if self.locked:
-            return self
-        return MultiField({key: val.locked_copy()
-                          for key, val in self.items()})
-
-    def empty_copy(self):
-        return MultiField({key: val.empty_copy() for key, val in self.items()})
-
     @staticmethod
     def build_dtype(dtype, domain):
         if isinstance(dtype, dict):
@@ -120,12 +88,6 @@ class MultiField(object):
         if dtype is None:
             dtype = np.float64
         return {key: dtype for key in domain.keys()}
-
-    @staticmethod
-    def empty(domain, dtype=None):
-        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField({key: Field.empty(dom, dtype=dtype[key])
-                           for key, dom in domain.items()})
 
     @staticmethod
     def full(domain, val):
@@ -241,9 +203,9 @@ for op in ["__add__", "__radd__",
                         result_val[key] = getattr(self[key], op)(other[key])
                     if op in ("__add__", "__radd__"):
                         for key in only_self_keys:
-                            result_val[key] = self[key].copy()
+                            result_val[key] = self[key]
                         for key in only_other_keys:
-                            result_val[key] = other[key].copy()
+                            result_val[key] = other[key]
                     elif op in ("__mul__", "__rmul__"):
                         pass
                     else:
@@ -257,5 +219,14 @@ for op in ["__add__", "__radd__",
                 result_val = {key: getattr(val, op)(other)
                               for key, val in self.items()}
             return MultiField(result_val)
+        return func2
+    setattr(MultiField, op, func(op))
+
+for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
+           "__itruediv__", "__ifloordiv__", "__ipow__"]:
+    def func(op):
+        def func2(self, other):
+            raise TypeError(
+                "In-place operations are deliberately not supported")
         return func2
     setattr(MultiField, op, func(op))

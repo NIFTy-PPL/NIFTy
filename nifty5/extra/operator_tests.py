@@ -35,9 +35,9 @@ def adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol):
     needed_cap = op.TIMES | op.ADJOINT_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    f1 = from_random("normal", op.domain, dtype=domain_dtype).lock()
-    f2 = from_random("normal", op.target, dtype=target_dtype).lock()
-    res1 = f1.vdot(op.adjoint_times(f2).lock())
+    f1 = from_random("normal", op.domain, dtype=domain_dtype)
+    f2 = from_random("normal", op.target, dtype=target_dtype)
+    res1 = f1.vdot(op.adjoint_times(f2))
     res2 = op.times(f1).vdot(f2)
     np.testing.assert_allclose(res1, res2, atol=atol, rtol=rtol)
 
@@ -46,12 +46,12 @@ def inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
     needed_cap = op.TIMES | op.INVERSE_TIMES
     if (op.capability & needed_cap) != needed_cap:
         return
-    foo = from_random("normal", op.target, dtype=target_dtype).lock()
-    res = op(op.inverse_times(foo).lock())
+    foo = from_random("normal", op.target, dtype=target_dtype)
+    res = op(op.inverse_times(foo))
     _assert_allclose(res, foo, atol=atol, rtol=rtol)
 
-    foo = from_random("normal", op.domain, dtype=domain_dtype).lock()
-    res = op.inverse_times(op(foo).lock())
+    foo = from_random("normal", op.domain, dtype=domain_dtype)
+    res = op.inverse_times(op(foo))
     _assert_allclose(res, foo, atol=atol, rtol=rtol)
 
 

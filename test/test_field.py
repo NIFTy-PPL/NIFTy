@@ -124,21 +124,6 @@ class Test_Functionality(unittest.TestCase):
         res = m.vdot(m, spaces=1)
         assert_allclose(res.local_data, 37.5)
 
-    def test_lock(self):
-        s1 = ift.RGSpace((10,))
-        f1 = ift.Field(s1, 27)
-        assert_equal(f1.locked, False)
-        f1.lock()
-        assert_equal(f1.locked, True)
-        with assert_raises(ValueError):
-            f1 += f1
-        assert_equal(f1.locked_copy() is f1, True)
-
-    def test_fill(self):
-        s1 = ift.RGSpace((10,))
-        f1 = ift.Field(s1, 27)
-        assert_equal(f1.fill(10).local_data, 10)
-
     def test_dataconv(self):
         s1 = ift.RGSpace((10,))
         ld = np.arange(ift.dobj.local_shape(s1.shape)[0])
@@ -158,12 +143,6 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f.local_data, 5)
         f = ift.Field(None, 5)
         assert_equal(f.local_data, 5)
-        assert_equal(f.empty_copy().domain, f.domain)
-        assert_equal(f.empty_copy().dtype, f.dtype)
-        assert_equal(f.copy().domain, f.domain)
-        assert_equal(f.copy().dtype, f.dtype)
-        assert_equal(f.copy().local_data, f.local_data)
-        assert_equal(f.copy() is f, False)
 
     def test_trivialities(self):
         s1 = ift.RGSpace((10,))
@@ -182,8 +161,7 @@ class Test_Functionality(unittest.TestCase):
     def test_weight(self):
         s1 = ift.RGSpace((10,))
         f = ift.Field(s1, 10.)
-        f2 = f.copy()
-        f.weight(1, out=f2)
+        f2 = f.weight(1)
         assert_equal(f.weight(1).local_data, f2.local_data)
         assert_equal(f.total_volume(), 1)
         assert_equal(f.total_volume(0), 1)
@@ -234,10 +212,6 @@ class Test_Functionality(unittest.TestCase):
         with assert_raises(ValueError):
             f1.vdot(ift.Field(s2, 1.))
         with assert_raises(TypeError):
-            f1.copy_content_from(1)
-        with assert_raises(ValueError):
-            f1.copy_content_from(ift.Field(s2, 1.))
-        with assert_raises(TypeError):
             ift.full(s1, [2, 3])
 
     def test_stdfunc(self):
@@ -246,9 +220,6 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f.local_data, 27)
         assert_equal(f.shape, (200,))
         assert_equal(f.dtype, np.int)
-        fx = ift.empty(f.domain, f.dtype)
-        assert_equal(f.dtype, fx.dtype)
-        assert_equal(f.shape, fx.shape)
         fx = ift.full(f.domain, 0)
         assert_equal(f.dtype, fx.dtype)
         assert_equal(f.shape, fx.shape)

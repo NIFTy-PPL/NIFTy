@@ -26,19 +26,19 @@ from ..utilities import NiftyMetaBase
 class Model(NiftyMetaBase()):
     """
     The Model object is an implementation of a * which knows:
-        - position in parameterspace.  (Field, MulitField)
-        - value according to its modelfunction A.  A(position)
+        - position in parameter space.  (Field, MultiField)
+        - value according to its model function A.  A(position)
         - Jacobian of the model function at the current position.
 
     Parameters
     ----------
-    position : Field, MulitField
+    position : Field, MultiField
         The input parameter of the model
 
     Notes
     -----
     An instance of the model class knows its position, value and Jacobian.
-    One can 'jump' to a new position, with the help of the 'at' method, whereby
+    One can 'jump' to a new position with the help of the 'at' method, whereby
     one automatically gets the value and Jacobian of the model. The 'at' method
     creates a new instance of the class.
     """

@@ -63,7 +63,7 @@ class EnergySum(Energy):
     @memo
     def gradient(self):
         return my_lincomb(map(lambda v: v.gradient, self._energies),
-                          self._factors).lock()
+                          self._factors)
 
     @property
     @memo

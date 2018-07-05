@@ -35,7 +35,6 @@ class QuadraticEnergy(Energy):
         else:
             Ax = self._A(self.position)
             self._grad = Ax if b is None else Ax - b
-        self._grad.lock()
         self._value = 0.5*self.position.vdot(Ax)
         if b is not None:
             self._value -= b.vdot(self.position)

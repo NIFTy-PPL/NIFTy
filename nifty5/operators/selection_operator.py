@@ -34,7 +34,6 @@ class SelectionOperator(LinearOperator):
         from ..multi.multi_domain import MultiDomain
         if not isinstance(domain, MultiDomain):
             raise TypeError("Domain must be a MultiDomain")
-        self._target = domain[key]
         self._domain = domain
         self._key = key
 
@@ -44,17 +43,16 @@ class SelectionOperator(LinearOperator):
 
     @property
     def target(self):
-        return self._target
+        return self._domain[self._key]
 
     @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
-        # FIXME Is the copying necessary?
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return x[self._key].copy()
+            return x[self._key]
         else:
             from ..multi.multi_field import MultiField
-            return MultiField({self._key: x.copy()})
+            return MultiField({self._key: x})

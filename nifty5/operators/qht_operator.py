@@ -55,10 +55,8 @@ class QHTOperator(LinearOperator):
             sl = (slice(None),)*i + (slice(1, None),)
             if i == ax:
                 x = dobj.redistribute(x, nodist=(ax,))
-            curax = dobj.distaxis(x)
-            x = dobj.local_data(x)
-            x[sl] = hartley(x[sl], axes=(i,))
-            x = dobj.from_local_data(globshape, x, distaxis=curax)
+            tmp = dobj.local_data(x)
+            tmp[sl] = hartley(tmp[sl], axes=(i,))
             if i == ax:
                 x = dobj.redistribute(x, dist=ax)
         return Field(self._tgt(mode), val=x)

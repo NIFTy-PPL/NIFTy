@@ -22,6 +22,7 @@ from ..field import Field
 from ..multi.multi_field import MultiField
 from .endomorphic_operator import EndomorphicOperator
 from ..domain_tuple import DomainTuple
+from ..sugar import full
 
 
 class ScalingOperator(EndomorphicOperator):
@@ -61,9 +62,9 @@ class ScalingOperator(EndomorphicOperator):
         self._check_input(x, mode)
 
         if self._factor == 1.:
-            return x.copy()
+            return x
         if self._factor == 0.:
-            return x.empty_copy().fill(0.)
+            return full(self.domain, 0.)
 
         if mode == self.TIMES:
             return x*self._factor

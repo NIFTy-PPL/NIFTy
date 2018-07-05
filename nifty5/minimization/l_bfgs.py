@@ -16,10 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import division
-
-from builtins import range
-
+from __future__ import (absolute_import, division, print_function)
+from builtins import *
 from ..logger import logger
 from .descent_minimizer import DescentMinimizer
 from .line_search_strong_wolfe import LineSearchStrongWolfe
@@ -61,16 +59,16 @@ class L_BFGS(DescentMinimizer):
             for i in range(k-1, k-nhist-1, -1):
                 idx = i % maxhist
                 alpha[idx] = s[idx].vdot(p)/s[idx].vdot(y[idx])
-                p -= alpha[idx]*y[idx]
+                p = p - alpha[idx]*y[idx]
             idx = (k-1) % maxhist
             fact = s[idx].vdot(y[idx]) / y[idx].vdot(y[idx])
             if fact <= 0.:
                 logger.error("L-BFGS curvature not positive definite!")
-            p *= fact
+            p = p*fact
             for i in range(k-nhist, k):
                 idx = i % maxhist
                 beta = y[idx].vdot(p) / s[idx].vdot(y[idx])
-                p += (alpha[idx]-beta)*s[idx]
+                p = p + (alpha[idx]-beta)*s[idx]
         self._lastx = x
         self._lastgrad = gradient
         self._k += 1
