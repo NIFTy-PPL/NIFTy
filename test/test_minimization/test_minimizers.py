@@ -133,7 +133,7 @@ class Test_Minimizers(unittest.TestCase):
     @expand(product(minimizers+slow_minimizers))
     def test_gauss(self, minimizer):
         space = ift.UnstructuredDomain((1,))
-        starting_point = ift.Field(space, val=3.)
+        starting_point = ift.Field.full(space, 3.)
 
         class ExpEnergy(ift.Energy):
             def __init__(self, position):
@@ -147,14 +147,15 @@ class Test_Minimizers(unittest.TestCase):
             @property
             def gradient(self):
                 x = self.position.to_global_data()[0]
-                return ift.Field(self.position.domain, val=2*x*np.exp(-(x**2)))
+                return ift.Field.full(self.position.domain,
+                                      2*x*np.exp(-(x**2)))
 
             @property
             def metric(self):
                 x = self.position.to_global_data()[0]
                 v = (2 - 4*x*x)*np.exp(-x**2)
                 return ift.DiagonalOperator(
-                    ift.Field(self.position.domain, val=v))
+                    ift.Field.full(self.position.domain, v))
 
         try:
             minimizer = eval(minimizer)
@@ -171,7 +172,7 @@ class Test_Minimizers(unittest.TestCase):
     @expand(product(minimizers+newton_minimizers+slow_minimizers))
     def test_cosh(self, minimizer):
         space = ift.UnstructuredDomain((1,))
-        starting_point = ift.Field(space, val=3.)
+        starting_point = ift.Field.full(space, 3.)
 
         class CoshEnergy(ift.Energy):
             def __init__(self, position):
@@ -185,14 +186,14 @@ class Test_Minimizers(unittest.TestCase):
             @property
             def gradient(self):
                 x = self.position.to_global_data()[0]
-                return ift.Field(self.position.domain, val=np.sinh(x))
+                return ift.Field.full(self.position.domain, np.sinh(x))
 
             @property
             def metric(self):
                 x = self.position.to_global_data()[0]
                 v = np.cosh(x)
                 return ift.DiagonalOperator(
-                    ift.Field(self.position.domain, val=v))
+                    ift.Field.full(self.position.domain, v))
 
         try:
             minimizer = eval(minimizer)

@@ -33,45 +33,28 @@ class Field(object):
 
     Parameters
     ----------
-    domain : None, DomainTuple, tuple of Domain, or Domain
+    domain : DomainTuple
+        the domain of the new Field
 
-    val : Field, data_object or scalar
-        The values the array should contain after init. A scalar input will
-        fill the whole array with this scalar. If a data_object is provided,
-        its dimensions must match the domain's.
-
-    dtype : type
-        A numpy.type. Most common are float and complex.
+    val : data_object
+        This object's global shape must match the domain shape
+        After construction, the object will no longer be writeable!
 
     Notes
     -----
     If possible, do not invoke the constructor directly, but use one of the
-    many convenience functions for Field conatruction!
+    many convenience functions for Field construction!
     """
 
-    def __init__(self, domain=None, val=None, dtype=None):
-        self._domain = self._infer_domain(domain=domain, val=val)
-
-        dtype = self._infer_dtype(dtype=dtype, val=val)
-        if isinstance(val, Field):
-            if self._domain != val._domain:
-                raise ValueError("Domain mismatch")
-            self._val = val._val
-
-        elif (np.isscalar(val)):
-            self._val = dobj.full(self._domain.shape, dtype=dtype,
-                                  fill_value=val)
-        elif isinstance(val, dobj.data_object):
-            if self._domain.shape == val.shape:
-                if dtype == val.dtype:
-                    self._val = val
-                else:
-                    self._val = dobj.from_object(val, dtype, True, True)
-            else:
-                raise ValueError("Shape mismatch")
-        else:
-            raise TypeError("unknown source type")
-
+    def __init__(self, domain, val):
+        if not isinstance(domain, DomainTuple):
+            raise TypeError("domain must be of type DomainTuple")
+        if not isinstance(val, dobj.data_object):
+            raise TypeError("val must be of type dobj.data_object")
+        if domain.shape != val.shape:
+            raise ValueError("mismatch between the shapes of val and domain")
+        self._domain = domain
+        self._val = val
         dobj.lock(self._val)
 
     # prevent implicit conversion to bool
@@ -99,7 +82,10 @@ class Field(object):
         """
         if not np.isscalar(val):
             raise TypeError("val must be a scalar")
-        return Field(DomainTuple.make(domain), val)
+        if not (np.isreal(val) or np.iscomplex(val)):
+            raise TypeError("need arithmetic scalar")
+        domain = DomainTuple.make(domain)
+        return Field(domain, dobj.full(domain.shape, fill_value=val))
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
@@ -118,12 +104,13 @@ class Field(object):
             If False, the contens of `arr` are used directly, and must be
             identical on all MPI tasks.
         """
-        return Field(domain, dobj.from_global_data(arr, sum_up))
+        return Field(DomainTuple.make(domain),
+                     dobj.from_global_data(arr, sum_up))
 
     @staticmethod
     def from_local_data(domain, arr):
-        domain = DomainTuple.make(domain)
-        return Field(domain, dobj.from_local_data(domain.shape, arr))
+        return Field(DomainTuple.make(domain),
+            dobj.from_local_data(domain.shape, arr))
 
     def to_global_data(self):
         """Returns an array containing the full data of the field.
@@ -167,25 +154,7 @@ class Field(object):
         -----
         No copy is made. If needed, use an additional copy() invocation.
         """
-        return Field(new_domain, self._val)
-
-    @staticmethod
-    def _infer_domain(domain, val=None):
-        if domain is None:
-            if isinstance(val, Field):
-                return val._domain
-            if np.isscalar(val):
-                return DomainTuple.make(())  # empty domain tuple
-            raise TypeError("could not infer domain from value")
-        return DomainTuple.make(domain)
-
-    @staticmethod
-    def _infer_dtype(dtype, val):
-        if dtype is not None:
-            return dtype
-        if val is None:
-            raise ValueError("could not infer dtype")
-        return np.result_type(val)
+        return Field(DomainTuple.make(new_domain), self._val)
 
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
@@ -444,7 +413,7 @@ class Field(object):
                                   for i, dom in enumerate(self._domain)
                                   if i not in spaces)
 
-            return Field(domain=return_domain, val=data)
+            return Field(DomainTuple.make(return_domain), data)
 
     def sum(self, spaces=None):
         """Sums up over the sub-domains given by `spaces`.

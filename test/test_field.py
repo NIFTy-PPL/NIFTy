@@ -139,16 +139,16 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(d, d2)
 
     def test_empty_domain(self):
-        f = ift.Field((), 5)
+        f = ift.Field.full((), 5)
         assert_equal(f.local_data, 5)
-        f = ift.Field(None, 5)
+        f = ift.Field.full(None, 5)
         assert_equal(f.local_data, 5)
 
     def test_trivialities(self):
         s1 = ift.RGSpace((10,))
-        f1 = ift.Field(s1, 27)
+        f1 = ift.Field.full(s1, 27)
         assert_equal(f1.local_data, f1.real.local_data)
-        f1 = ift.Field(s1, 27.+3j)
+        f1 = ift.Field.full(s1, 27.+3j)
         assert_equal(f1.real.local_data, 27.)
         assert_equal(f1.imag.local_data, 3.)
         assert_equal(f1.local_data, +f1.local_data)
@@ -160,7 +160,7 @@ class Test_Functionality(unittest.TestCase):
 
     def test_weight(self):
         s1 = ift.RGSpace((10,))
-        f = ift.Field(s1, 10.)
+        f = ift.Field.full(s1, 10.)
         f2 = f.weight(1)
         assert_equal(f.weight(1).local_data, f2.local_data)
         assert_equal(f.total_volume(), 1)
@@ -170,7 +170,7 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f.scalar_weight(0), 0.1)
         assert_equal(f.scalar_weight((0,)), 0.1)
         s1 = ift.GLSpace(10)
-        f = ift.Field(s1, 10.)
+        f = ift.Field.full(s1, 10.)
         assert_equal(f.scalar_weight(), None)
         assert_equal(f.scalar_weight(0), None)
         assert_equal(f.scalar_weight((0,)), None)
@@ -178,7 +178,7 @@ class Test_Functionality(unittest.TestCase):
     @expand(product([ift.RGSpace(10), ift.GLSpace(10)],
                     [np.float64, np.complex128]))
     def test_reduction(self, dom, dt):
-        s1 = ift.Field(dom, 1., dtype=dt)
+        s1 = ift.Field.full(dom, dt(1.))
         assert_allclose(s1.mean(), 1.)
         assert_allclose(s1.mean(0), 1.)
         assert_allclose(s1.var(), 0., atol=1e-14)
@@ -189,13 +189,11 @@ class Test_Functionality(unittest.TestCase):
     def test_err(self):
         s1 = ift.RGSpace((10,))
         s2 = ift.RGSpace((11,))
-        f1 = ift.Field(s1, 27)
+        f1 = ift.Field.full(s1, 27)
         with assert_raises(ValueError):
-            f2 = ift.Field(s2, f1)
-        with assert_raises(ValueError):
-            f2 = ift.Field(s2, f1.val)
+            f2 = ift.Field(ift.DomainTuple.make(s2), f1.val)
         with assert_raises(TypeError):
-            f2 = ift.Field(s2, "xyz")
+            f2 = ift.Field.full(s2, "xyz")
         with assert_raises(TypeError):
             if f1:
                 pass
@@ -203,20 +201,20 @@ class Test_Functionality(unittest.TestCase):
             f1.full((2, 4, 6))
         with assert_raises(TypeError):
             f2 = ift.Field(None, None)
-        with assert_raises(ValueError):
+        with assert_raises(TypeError):
             f2 = ift.Field(s1, None)
         with assert_raises(ValueError):
             f1.imag
         with assert_raises(TypeError):
             f1.vdot(42)
         with assert_raises(ValueError):
-            f1.vdot(ift.Field(s2, 1.))
+            f1.vdot(ift.Field.full(s2, 1.))
         with assert_raises(TypeError):
             ift.full(s1, [2, 3])
 
     def test_stdfunc(self):
         s = ift.RGSpace((200,))
-        f = ift.Field(s, 27)
+        f = ift.Field.full(s, 27)
         assert_equal(f.local_data, 27)
         assert_equal(f.shape, (200,))
         assert_equal(f.dtype, np.int)
