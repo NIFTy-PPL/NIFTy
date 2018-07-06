@@ -25,8 +25,8 @@ from .domains.domain import Domain
 class DomainTuple(object):
     """Ordered sequence of Domain objects.
 
-    This class holds a set of :class:`Domain` objects, which together form the
-    space on which a :class:`Field` is defined.
+    This class holds a tuple of :class:`Domain` objects, which together form
+    the space on which a :class:`Field` is defined.
 
     Notes
     -----

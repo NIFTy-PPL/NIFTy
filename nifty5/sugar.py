@@ -40,7 +40,7 @@ def PS_field(pspace, func):
     if not isinstance(pspace, PowerSpace):
         raise TypeError
     data = dobj.from_global_data(func(pspace.k_lengths))
-    return Field(pspace, val=data)
+    return Field(DomainTuple.make(pspace), data)
 
 
 def get_signal_variance(spec, space):
@@ -158,7 +158,7 @@ def _create_power_field(domain, power_spectrum):
         if not isinstance(power_spectrum.domain[0], PowerSpace):
             raise TypeError("PowerSpace required")
         power_domain = power_spectrum.domain[0]
-        fp = Field(power_domain, val=power_spectrum.val)
+        fp = power_spectrum
     else:
         power_domain = PowerSpace(domain)
         fp = PS_field(power_domain, power_spectrum)
