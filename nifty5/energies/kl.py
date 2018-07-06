@@ -1,4 +1,5 @@
-from builtins import *
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from ..minimization.energy import Energy
 from ..utilities import memo, my_sum
 

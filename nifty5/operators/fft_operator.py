@@ -73,7 +73,7 @@ class FFTOperator(LinearOperator):
 
     def _apply_cartesian(self, x, mode):
         axes = x.domain.axes[self._space]
-        tdom = self._target if x.domain == self._domain else self._domain
+        tdom = self._tgt(mode)
         oldax = dobj.distaxis(x.val)
         if oldax not in axes:  # straightforward, no redistribution needed
             ldat = x.local_data

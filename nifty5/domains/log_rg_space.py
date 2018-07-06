@@ -1,8 +1,7 @@
-from functools import reduce
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from ..sugar import exp
-
 import numpy as np
-
 from .. import dobj
 from ..field import Field
 from .structured_domain import StructuredDomain

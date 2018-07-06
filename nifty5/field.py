@@ -16,12 +16,11 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import (absolute_import, division, print_function)
-from builtins import *
+from __future__ import absolute_import, division, print_function
+from .compat import *
 import numpy as np
 from . import utilities
 from .domain_tuple import DomainTuple
-from functools import reduce
 from . import dobj
 
 
@@ -338,7 +337,7 @@ class Field(object):
             raise TypeError("The dot-partner must be an instance of " +
                             "the NIFTy field class")
 
-        if x._domain != self._domain:
+        if x._domain is not self._domain:
             raise ValueError("Domain mismatch")
 
         ndom = len(self._domain)
@@ -603,7 +602,7 @@ class Field(object):
             return True
         if not isinstance(other, Field):
             return False
-        if self._domain != other._domain:
+        if self._domain is not other._domain:
             return False
         return (self._val == other._val).all()
 
@@ -625,7 +624,7 @@ for op in ["__add__", "__radd__",
         def func2(self, other):
             # if other is a field, make sure that the domains match
             if isinstance(other, Field):
-                if other._domain != self._domain:
+                if other._domain is not self._domain:
                     raise ValueError("domains are incompatible.")
                 tval = getattr(self.val, op)(other.val)
                 return Field(self._domain, tval)
