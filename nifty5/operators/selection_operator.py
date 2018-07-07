@@ -53,6 +53,4 @@ class SelectionOperator(LinearOperator):
             return x[self._key]
         else:
             from ..multi.multi_field import MultiField
-            rval = [None]*len(self._domain)
-            rval[self._domain._dict[self._key]] = x
-            return MultiField(self._domain, tuple(rval))
+            return MultiField.from_dict({self._key: x}, self._domain)

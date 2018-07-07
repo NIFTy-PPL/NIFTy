@@ -228,10 +228,12 @@ def makeDomain(domain):
 
 
 def makeOp(input):
+    if input is None:
+        return None
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
-        return BlockDiagonalOperator({key: makeOp(val)
+        return BlockDiagonalOperator(input.domain, {key: makeOp(val)
                                       for key, val in input.items()})
     raise NotImplementedError
 

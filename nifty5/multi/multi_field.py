@@ -55,21 +55,24 @@ class MultiField(object):
         self._val = val
 
     @staticmethod
-    def from_dict(dict):
-        domain = MultiDomain.make({key: v._domain for key, v in dict.items()})
-        return MultiField(domain, tuple(dict[key] for key in domain._keys))
+    def from_dict(dict, domain=None):
+        if domain is None:
+            domain = MultiDomain.make({key: v._domain
+                                       for key, v in dict.items()})
+        return MultiField(domain, tuple(dict[key] if key in dict else None
+                                        for key in domain.keys()))
 
     def to_dict(self):
-        return {key: val for key, val in zip(self._domain._keys, self._val)}
+        return {key: val for key, val in zip(self._domain.keys(), self._val)}
 
     def __getitem__(self, key):
-        return self._val[self._domain._dict[key]]
+        return self._val[self._domain.idx[key]]
 
     def keys(self):
         return self._domain.keys()
 
     def items(self):
-        return zip(self._domain._keys, self._val)
+        return zip(self._domain.keys(), self._val)
 
     def values(self):
         return self._val

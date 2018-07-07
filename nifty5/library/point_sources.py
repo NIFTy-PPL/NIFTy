@@ -22,6 +22,7 @@ class PointSources(Model):
     @memo
     def value(self):
         points = self.position['points'].local_data
+        # MR FIXME?!
         points = np.clip(points, None, 8.2)
         points = Field.from_local_data(self.position['points'].domain, points)
         return self.IG(points, self._alpha, self._q)
@@ -40,7 +41,8 @@ class PointSources(Model):
         outer = 1/outer_inv
         grad = Field.from_local_data(self.position['points'].domain,
                                      inner*outer)
-        grad = makeOp(MultiField({'points': grad}))
+        grad = makeOp(MultiField.from_dict({"points": grad},
+                                           self.position._domain))
         return SelectionOperator(grad.target, 'points')*grad
 
     @staticmethod

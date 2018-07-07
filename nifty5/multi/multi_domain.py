@@ -6,8 +6,6 @@ from ..utilities import frozendict
 
 class MultiDomain(object):
     _domainCache = {}
-    _subsetCache = set()
-    _compatCache = set()
 
     def __init__(self, dict, _callingfrommake=False):
         if not _callingfrommake:
@@ -15,7 +13,7 @@ class MultiDomain(object):
                 'To create a MultiDomain call `MultiDomain.make()`.')
         self._keys = tuple(sorted(dict.keys()))
         self._domains = tuple(dict[key] for key in self._keys)
-        self._dict = frozendict({key: i for i, key in enumerate(self._keys)})
+        self._idx = frozendict({key: i for i, key in enumerate(self._keys)})
 
     @staticmethod
     def make(inp):
@@ -42,11 +40,15 @@ class MultiDomain(object):
     def domains(self):
         return self._domains
 
+    @property
+    def idx(self):
+        return self._idx
+
     def items(self):
         return zip(self._keys, self._domains)
 
     def __getitem__(self, key):
-        return self._domains[self._dict[key]]
+        return self._domains[self._idx[key]]
 
     def __len__(self):
         return len(self._keys)
