@@ -45,7 +45,7 @@ class BlockDiagonalOperator(EndomorphicOperator):
         if self._domain is not op._domain:
             raise ValueError("domain mismatch")
         res = {key : v1*v2 for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
-        return BlockDiagonalOperator(res)
+        return BlockDiagonalOperator(self._domain, res)
 
     def _combine_sum(self, op, selfneg, opneg):
         from ..operators.sum_operator import SumOperator
@@ -54,4 +54,4 @@ class BlockDiagonalOperator(EndomorphicOperator):
         res = {}
         for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops):
             res[key] = SumOperator.make([v1, v2], [selfneg, opneg])
-        return BlockDiagonalOperator(res)
+        return BlockDiagonalOperator(self._domain, res)
