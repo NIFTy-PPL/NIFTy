@@ -142,20 +142,6 @@ class DomainTuple(object):
     def __ne__(self, x):
         return not self.__eq__(x)
 
-    def compatibleTo(self, x):
-        return self.__eq__(x)
-
-    def subsetOf(self, x):
-        return self.__eq__(x)
-
-    def unitedWith(self, x):
-        if self is x:
-            return self
-        x = DomainTuple.make(x)
-        if self is not x:
-            raise ValueError("domain mismatch")
-        return self
-
     def __str__(self):
         res = "DomainTuple, len: " + str(len(self))
         for i in self:

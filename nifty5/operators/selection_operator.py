@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from .linear_operator import LinearOperator
+from ..multi.multi_domain import MultiDomain
 
 
 class SelectionOperator(LinearOperator):
@@ -31,10 +32,7 @@ class SelectionOperator(LinearOperator):
         String identifier of the wanted subdomain
     """
     def __init__(self, domain, key):
-        from ..multi.multi_domain import MultiDomain
-        if not isinstance(domain, MultiDomain):
-            raise TypeError("Domain must be a MultiDomain")
-        self._domain = domain
+        self._domain = MultiDomain.make(domain)
         self._key = key
 
     @property
@@ -55,4 +53,6 @@ class SelectionOperator(LinearOperator):
             return x[self._key]
         else:
             from ..multi.multi_field import MultiField
-            return MultiField.from_dict({self._key: x})
+            rval = [None]*len(self._domain)
+            rval[self._domain._dict[self._key]] = x
+            return MultiField(self._domain, tuple(rval))

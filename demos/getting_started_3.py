@@ -24,7 +24,7 @@ if __name__ == '__main__':
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
     position = {}
     position['xi'] = ift.Field.from_random('normal', harmonic_space)
-    position = ift.MultiField(position)
+    position = ift.MultiField.from_dict(position)
 
     xi = ift.Variable(position)['xi']
     Amp = power_distributor(A)

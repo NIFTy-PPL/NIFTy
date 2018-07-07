@@ -103,7 +103,7 @@ class MultiField(object):
 #        dtype = MultiField.build_dtype(dtype, domain)
         return MultiField(
             domain, tuple(Field.from_random(random_type, dom, dtype, **kwargs)
-            for dom in domain._domains))
+                          for dom in domain._domains))
 
     def _check_domain(self, other):
         if other._domain is not self._domain:
@@ -131,13 +131,14 @@ class MultiField(object):
                           for dom in domain._domains))
 
     def to_global_data(self):
-        return {key: val.to_global_data() for key, val in zip(self._domain.keys(), self._val)}
+        return {key: val.to_global_data()
+                for key, val in zip(self._domain.keys(), self._val)}
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
         return MultiField(domain, tuple(Field.from_global_data(domain[key],
-                                                       arr[key], sum_up)
-                           for key in domain.keys()))
+                                                               arr[key], sum_up)
+                          for key in domain.keys()))
 
     def norm(self):
         """ Computes the L2-norm of the field values.

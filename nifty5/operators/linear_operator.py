@@ -282,5 +282,5 @@ class LinearOperator(NiftyMetaBase()):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        if not self._dom(mode).subsetOf(x.domain):
+        if self._dom(mode) is not x.domain:
             raise ValueError("The operator's and field's domains don't match.")

@@ -109,7 +109,7 @@ class Field(object):
     @staticmethod
     def from_local_data(domain, arr):
         return Field(DomainTuple.make(domain),
-            dobj.from_local_data(domain.shape, arr))
+                     dobj.from_local_data(domain.shape, arr))
 
     def to_global_data(self):
         """Returns an array containing the full data of the field.

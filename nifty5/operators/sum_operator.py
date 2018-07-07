@@ -46,8 +46,8 @@ class SumOperator(LinearOperator):
         dom = ops[0].domain
         tgt = ops[0].target
         for op in ops[1:]:
-            dom = dom.unitedWith(op.domain)
-            tgt = tgt.unitedWith(op.target)
+            if dom is not op.domain or tgt is not op.target:
+                raise ValueError("Domain mismatch")
 
         # Step 2: unpack SumOperators
         opsnew = []

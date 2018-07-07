@@ -58,7 +58,7 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     fields = {keys[0]: Field.from_random('normal', dof_space),
               keys[1]: Field.from_random('normal', param_space)}
 
-    position = MultiField(fields)
+    position = MultiField.from_dict(fields)
 
     dof_space = position[keys[0]].domain[0]
     kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
