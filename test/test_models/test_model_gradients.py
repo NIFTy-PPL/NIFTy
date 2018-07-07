@@ -34,6 +34,6 @@ class Model_Tests(unittest.TestCase):
         S = ift.ScalingOperator(1., space)
         s1 = S.draw_sample()
         s2 = S.draw_sample()
-        s1_var = ift.Variable(ift.MultiField({'s1': s1}))['s1']
-        s2_var = ift.Variable(ift.MultiField({'s2': s2}))['s2']
+        s1_var = ift.Variable(ift.MultiField.from_dict({'s1': s1}))['s1']
+        s2_var = ift.Variable(ift.MultiField.from_dict({'s2': s2}))['s2']
         ift.extra.check_value_gradient_consistency(s1_var*s2_var)

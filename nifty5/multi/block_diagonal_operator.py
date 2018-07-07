@@ -31,12 +31,11 @@ class BlockDiagonalOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        return MultiField({key: op.apply(x[key], mode=mode)
-                           for key, op in self._operators.items()})
+        return MultiField(x.domain, tuple(self._operators[key].apply(x._val[i], mode=mode) for i, key in enumerate(x.keys())))
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         dtype = MultiField.build_dtype(dtype, self._domain)
-        return MultiField({key: op.draw_sample(from_inverse, dtype[key])
+        return MultiField.from_dict({key: op.draw_sample(from_inverse, dtype[key])
                            for key, op in self._operators.items()})
 
     def _combine_chain(self, op):

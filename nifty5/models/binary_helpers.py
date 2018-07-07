@@ -22,12 +22,12 @@ from .model import Model
 
 
 def _joint_position(model1, model2):
-    a = model1.position._val
-    b = model2.position._val
+    a = model1.position.to_dict()
+    b = model2.position.to_dict()
     # Note: In python >3.5 one could do {**a, **b}
-    ab = dict(a)
+    ab = a
     ab.update(b)
-    return MultiField(ab)
+    return MultiField.from_dict(ab)
 
 
 class ScalarMul(Model):

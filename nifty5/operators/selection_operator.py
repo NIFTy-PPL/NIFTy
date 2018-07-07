@@ -55,4 +55,4 @@ class SelectionOperator(LinearOperator):
             return x[self._key]
         else:
             from ..multi.multi_field import MultiField
-            return MultiField({self._key: x})
+            return MultiField.from_dict({self._key: x})
