@@ -23,6 +23,8 @@ from ..sugar import makeOp
 from ..utilities import NiftyMetaBase
 
 
+# MR FIXME: it seems that the code expects that the position of a Model is
+# always a MultiField ... should we document this?
 class Model(NiftyMetaBase()):
     """
     The Model object is an implementation of a * which knows:

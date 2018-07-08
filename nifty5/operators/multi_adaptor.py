@@ -31,5 +31,3 @@ def MultiAdaptor(target):
     if not isinstance(target, MultiDomain) or len(target) > 1:
         raise TypeError
     return SelectionOperator(target,target.keys()[0]).adjoint
-    self._target = target
-    self._domain = list(target.values())[0]
