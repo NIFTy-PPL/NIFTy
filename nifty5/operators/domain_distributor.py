@@ -6,9 +6,9 @@ from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
 
 
+# MR FIXME: this needs to be rewritten in a generic fashion
 class DomainDistributor(LinearOperator):
     def __init__(self, target, axis):
-        # TODO Replace this by a DiagonalOperator
         if dobj.ntask > 1:
             raise NotImplementedError('UpProj class does not support MPI.')
         assert len(target) == 2

@@ -4,6 +4,7 @@ from .endomorphic_operator import EndomorphicOperator
 from .. import dobj
 
 
+# MR FIXME: we should make sure that the domain is a harmonic RGSpace, correct?
 class SymmetrizingOperator(EndomorphicOperator):
     def __init__(self, domain):
         self._domain = DomainTuple.make(domain)
