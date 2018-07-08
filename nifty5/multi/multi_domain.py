@@ -66,6 +66,6 @@ class MultiDomain(object):
 
     def __str__(self):
         res = "MultiDomain:\n"
-        for key, dom  in zip(self._keys, self._domains):
+        for key, dom in zip(self._keys, self._domains):
             res += key+": "+str(dom)+"\n"
         return res

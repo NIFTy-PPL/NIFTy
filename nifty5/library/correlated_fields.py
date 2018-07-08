@@ -1,3 +1,14 @@
+from ..operators.fft_operator import FFTOperator
+from ..field import Field
+from ..multi.multi_field import MultiField
+from ..models.local_nonlinearity import PointwiseExponential
+from ..operators.power_distributor import PowerDistributor
+from ..models.variable import Variable
+from ..domain_tuple import DomainTuple
+from ..operators.domain_distributor import DomainDistributor
+from ..operators.harmonic_transform_operator \
+    import HarmonicTransformOperator
+
 def make_correlated_field(s_space, amplitude_model):
     '''
     Method for construction of correlated fields
@@ -8,21 +19,14 @@ def make_correlated_field(s_space, amplitude_model):
 
     amplitude_model : model for correlation structure
     '''
-    from ..operators.fft_operator import FFTOperator
-    from ..field import Field
-    from ..multi.multi_field import MultiField
-    from ..models.local_nonlinearity import PointwiseExponential
-    from ..operators.power_distributor import PowerDistributor
-    from ..models.variable import Variable
     h_space = s_space.get_default_codomain()
     ht = FFTOperator(h_space, s_space)
     p_space = amplitude_model.value.domain[0]
     power_distributor = PowerDistributor(h_space, p_space)
-    position = {}
-    position['xi'] = Field.from_random('normal', h_space)
-    position['tau'] = amplitude_model.position['tau']
-    position['phi'] = amplitude_model.position['phi']
-    position = MultiField.from_dict(position)
+    position = MultiField.from_dict({
+        'xi': Field.from_random('normal', h_space),
+        'tau': amplitude_model.position['tau'],
+        'phi': amplitude_model.position['phi']})
 
     xi = Variable(position)['xi']
     A = power_distributor(amplitude_model)
@@ -39,16 +43,6 @@ def make_mf_correlated_field(s_space_spatial, s_space_energy,
     '''
     Method for construction of correlated multi-frequency fields
     '''
-    from ..operators.fft_operator import FFTOperator
-    from ..field import Field
-    from ..multi.multi_field import MultiField
-    from ..models.local_nonlinearity import PointwiseExponential
-    from ..operators.power_distributor import PowerDistributor
-    from ..models.variable import Variable
-    from ..domain_tuple import DomainTuple
-    from ..operators.domain_distributor import DomainDistributor
-    from ..operators.harmonic_transform_operator \
-        import HarmonicTransformOperator
     h_space_spatial = s_space_spatial.get_default_codomain()
     h_space_energy = s_space_energy.get_default_codomain()
     h_space = DomainTuple.make((h_space_spatial, h_space_energy))

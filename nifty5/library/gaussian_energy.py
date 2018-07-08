@@ -21,6 +21,7 @@ from ..operators.sandwich_operator import SandwichOperator
 from ..utilities import memo
 
 
+# MR FIXME documentation incomplete
 class GaussianEnergy(Energy):
     def __init__(self, inp, mean=None, covariance=None):
         """
@@ -39,30 +40,29 @@ class GaussianEnergy(Energy):
 
     @property
     @memo
-    def residual(self):
-        if self._mean is not None:
-            return self._inp.value - self._mean
-        return self._inp.value
+    def _residual(self):
+        return self._inp.value if self._mean is None else \
+            self._inp.value - self._mean
+
+    @property
+    @memo
+    def _icovres(self):
+        return self._residual if self._cov is None else \
+            self._cov.inverse_times(self._residual)
 
     @property
     @memo
     def value(self):
-        if self._cov is None:
-            return .5 * self.residual.vdot(self.residual).real
-        return .5 * self.residual.vdot(
-            self._cov.inverse_times(self.residual)).real
+        return .5 * self._residual.vdot(self._icovres).real
 
     @property
     @memo
     def gradient(self):
-        if self._cov is None:
-            return self._inp.jacobian.adjoint_times(self.residual)
-        return self._inp.jacobian.adjoint_times(
-            self._cov.inverse_times(self.residual))
+        return self._inp.jacobian.adjoint_times(self._icovres)
 
     @property
     @memo
     def metric(self):
-        if self._cov is None:
-            return SandwichOperator.make(self._inp.jacobian, None)
-        return SandwichOperator.make(self._inp.jacobian, self._cov.inverse)
+        return SandwichOperator.make(
+            self._inp.jacobian,
+            None if self._cov is None else self._cov.inverse)

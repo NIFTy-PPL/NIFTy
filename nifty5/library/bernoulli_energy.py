@@ -35,10 +35,10 @@ class BernoulliEnergy(Energy):
         self._d = d
 
         p_val = self._p.value
-        self._value = -self._d.vdot(log(p_val)) - (1. - d).vdot(log(1.-p_val))
+        self._value = -self._d.vdot(log(p_val)) - (1.-d).vdot(log(1.-p_val))
         if isnan(self._value):
             self._value = inf
-        metric = makeOp(1./((p_val) * (1.-p_val)))
+        metric = makeOp(1. / (p_val * (1.-p_val)))
         self._gradient = self._p.jacobian.adjoint_times(metric(p_val-d))
 
         self._metric = SandwichOperator.make(self._p.jacobian, metric)

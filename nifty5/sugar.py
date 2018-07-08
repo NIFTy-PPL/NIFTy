@@ -233,8 +233,8 @@ def makeOp(input):
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
-        return BlockDiagonalOperator(input.domain, {key: makeOp(val)
-                                      for key, val in input.items()})
+        return BlockDiagonalOperator(
+            input.domain, {key: makeOp(val) for key, val in input.items()})
     raise NotImplementedError
 
 # Arithmetic functions working on Fields

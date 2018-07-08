@@ -42,7 +42,6 @@ class PoissonianEnergy(Energy):
             self._value = inf
         self._gradient = self._lamb.jacobian.adjoint_times(1 - d/lamb_val)
 
-        # metric = makeOp(d/lamb_val/lamb_val)
         metric = makeOp(1./lamb_val)
         self._metric = SandwichOperator.make(self._lamb.jacobian, metric)
 

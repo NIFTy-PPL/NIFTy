@@ -104,9 +104,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
         for i in range(dim):
             ks = np.minimum(shape[i] - np.arange(shape[i]) +
                             1, np.arange(shape[i])) * dist[i]
-            fst_dims = (1,) * i
-            lst_dims = (1,) * (dim - i - 1)
-            q_array[i] += ks.reshape(fst_dims + (shape[i],) + lst_dims)
+            q_array[i] += ks.reshape((1,)*i + (shape[i],) + (1,)*(dim-i-1))
 
     # Fill cepstrum field (all non-zero modes)
     no_zero_modes = (slice(1, None),) * dim
@@ -117,10 +115,9 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     # Fill cepstrum field (zero-mode subspaces)
     for i in range(dim):
         # Prepare indices
-        fst_dims = (slice(None),) * i
-        lst_dims = (slice(None),) * (dim - i - 1)
-        sl = fst_dims + (slice(1, None),) + lst_dims
-        sl2 = fst_dims + (0,) + lst_dims
+        fst_dims = (slice(None),)*i
+        sl = fst_dims + (slice(1, None),)
+        sl2 = fst_dims + (0,)
 
         # Do summation
         cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=i)
