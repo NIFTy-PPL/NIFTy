@@ -44,6 +44,7 @@ class LinearModel(Model):
 
         self._lin_op = lin_op
         self._inp = inp
+        # MR FIXME: what does this do?
         if isinstance(self._lin_op, SelectionOperator):
             self._lin_op = SelectionOperator(self._inp.value.domain,
                                              self._lin_op._key)

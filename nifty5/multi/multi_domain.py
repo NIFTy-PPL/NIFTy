@@ -63,3 +63,9 @@ class MultiDomain(object):
 
     def __ne__(self, x):
         return not self.__eq__(x)
+
+    def __str__(self):
+        res = "MultiDomain:\n"
+        for key, dom  in zip(self._keys, self._domains):
+            res += key+": "+str(dom)+"\n"
+        return res
