@@ -214,14 +214,14 @@ class Field(object):
         """Field : The real part of the field"""
         if not np.issubdtype(self.dtype, np.complexfloating):
             return self
-        return Field(self._domain, self.val.real)
+        return Field(self._domain, self._val.real)
 
     @property
     def imag(self):
         """Field : The imaginary part of the field"""
         if not np.issubdtype(self.dtype, np.complexfloating):
             raise ValueError(".imag called on a non-complex Field")
-        return Field(self._domain, self.val.imag)
+        return Field(self._domain, self._val.imag)
 
     def scalar_weight(self, spaces=None):
         """Returns the uniform volume element for a sub-domain of `self`.
@@ -344,7 +344,7 @@ class Field(object):
         spaces = utilities.parse_spaces(spaces, ndom)
 
         if len(spaces) == ndom:
-            return dobj.vdot(self.val, x.val)
+            return dobj.vdot(self._val, x._val)
         # If we arrive here, we have to do a partial dot product.
         # For the moment, do this the explicit, non-optimized way
         return (self.conjugate()*x).sum(spaces=spaces)
@@ -377,7 +377,7 @@ class Field(object):
         Field
             The complex conjugated field.
         """
-        return Field(self._domain, self.val.conjugate())
+        return Field(self._domain, self._val.conjugate())
 
     # ---General unary/contraction methods---
 
@@ -385,14 +385,14 @@ class Field(object):
         return self
 
     def __neg__(self):
-        return Field(self._domain, -self.val)
+        return Field(self._domain, -self._val)
 
     def __abs__(self):
-        return Field(self._domain, abs(self.val))
+        return Field(self._domain, abs(self._val))
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
-            return getattr(self.val, op)()
+            return getattr(self._val, op)()
 
         spaces = utilities.parse_spaces(spaces, len(self._domain))
 
@@ -402,7 +402,7 @@ class Field(object):
             axes_list = reduce(lambda x, y: x+y, axes_list)
 
         # perform the contraction on the data
-        data = getattr(self.val, op)(axis=axes_list)
+        data = getattr(self._val, op)(axis=axes_list)
 
         # check if the result is scalar or if a result_field must be constr.
         if np.isscalar(data):
@@ -593,7 +593,7 @@ class Field(object):
     def __str__(self):
         return "nifty5.Field instance\n- domain      = " + \
                self._domain.__str__() + \
-               "\n- val         = " + repr(self.val)
+               "\n- val         = " + repr(self._val)
 
     def isEquivalentTo(self, other):
         """Determines (as quickly as possible) whether `self`'s content is
@@ -626,12 +626,12 @@ for op in ["__add__", "__radd__",
             if isinstance(other, Field):
                 if other._domain is not self._domain:
                     raise ValueError("domains are incompatible.")
-                tval = getattr(self.val, op)(other.val)
+                tval = getattr(self._val, op)(other._val)
                 return Field(self._domain, tval)
 
             if (np.isscalar(other) or
                     isinstance(other, (dobj.data_object, np.ndarray))):
-                tval = getattr(self.val, op)(other)
+                tval = getattr(self._val, op)(other)
                 return Field(self._domain, tval)
 
             raise TypeError("should not arrive here")
