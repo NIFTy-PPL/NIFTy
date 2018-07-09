@@ -16,7 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from builtins import *
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from ..utilities import my_sum
 from .linear_operator import LinearOperator
 import numpy as np
@@ -45,8 +46,8 @@ class SumOperator(LinearOperator):
         dom = ops[0].domain
         tgt = ops[0].target
         for op in ops[1:]:
-            dom = dom.unitedWith(op.domain)
-            tgt = tgt.unitedWith(op.target)
+            if dom is not op.domain or tgt is not op.target:
+                raise ValueError("Domain mismatch")
 
         # Step 2: unpack SumOperators
         opsnew = []

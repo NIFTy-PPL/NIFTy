@@ -16,9 +16,10 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import abc
 import numpy as np
-
 from ..utilities import NiftyMetaBase
 
 
@@ -282,5 +283,5 @@ class LinearOperator(NiftyMetaBase()):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        if not self._dom(mode).subsetOf(x.domain):
+        if self._dom(mode) is not x.domain:
             raise ValueError("The operator's and field's domains don't match.")

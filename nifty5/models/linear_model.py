@@ -15,6 +15,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from ..operators.selection_operator import SelectionOperator
 from .model import Model
 
@@ -44,6 +46,7 @@ class LinearModel(Model):
 
         self._lin_op = lin_op
         self._inp = inp
+        # MR FIXME: what does this do?
         if isinstance(self._lin_op, SelectionOperator):
             self._lin_op = SelectionOperator(self._inp.value.domain,
                                              self._lin_op._key)

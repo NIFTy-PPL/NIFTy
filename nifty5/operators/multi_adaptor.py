@@ -16,13 +16,13 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from ..multi.multi_domain import MultiDomain
-from ..multi.multi_field import MultiField
-from .linear_operator import LinearOperator
 
 
-class MultiAdaptor(LinearOperator):
-    """Transforms a Field into a MultiField and vise versa when
+def MultiAdaptor(target):
+    """Transforms a Field into a MultiField and vice versa when
     using adjoint_times.
 
     Parameters
@@ -30,30 +30,6 @@ class MultiAdaptor(LinearOperator):
     target: MultiDomain
         MultiDomain with only one entry (key).
     """
-
-    def __init__(self, target):
-        super(MultiAdaptor, self).__init__()
-        if not isinstance(target, MultiDomain) or len(target) > 1:
-            raise TypeError
-        self._target = target
-        self._domain = list(target.values())[0]
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        key = list(self.target.keys())[0]
-        if mode == self.TIMES:
-            return MultiField({key: x})
-        else:
-            return x[key]
+    if not isinstance(target, MultiDomain) or len(target) > 1:
+        raise TypeError
+    return SelectionOperator(target, target.keys()[0]).adjoint

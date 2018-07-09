@@ -77,7 +77,7 @@ class Energy_Tests(unittest.TestCase):
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
         Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
-        xi0_var = ift.Variable(ift.MultiField({'xi': xi0}))['xi']
+        xi0_var = ift.Variable(ift.MultiField.from_dict({'xi': xi0}))['xi']
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)

@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
 from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
@@ -121,7 +123,7 @@ class SHTOperator(LinearOperator):
         distaxis = dobj.distaxis(tval)
 
         p2h = not x.domain[self._space].harmonic
-        tdom = self._target if x.domain == self._domain else self._domain
+        tdom = self._tgt(mode)
         func = self._slice_p2h if p2h else self._slice_h2p
         idat = dobj.local_data(tval)
         odat = np.empty(dobj.local_shape(tdom.shape, distaxis=distaxis),

@@ -16,8 +16,9 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from numpy import inf, isnan
-
 from ..minimization.energy import Energy
 from ..operators.sandwich_operator import SandwichOperator
 from ..sugar import log, makeOp
@@ -35,10 +36,10 @@ class BernoulliEnergy(Energy):
         self._d = d
 
         p_val = self._p.value
-        self._value = -self._d.vdot(log(p_val)) - (1. - d).vdot(log(1.-p_val))
+        self._value = -self._d.vdot(log(p_val)) - (1.-d).vdot(log(1.-p_val))
         if isnan(self._value):
             self._value = inf
-        metric = makeOp(1./((p_val) * (1.-p_val)))
+        metric = makeOp(1. / (p_val * (1.-p_val)))
         self._gradient = self._p.jacobian.adjoint_times(metric(p_val-d))
 
         self._metric = SandwichOperator.make(self._p.jacobian, metric)

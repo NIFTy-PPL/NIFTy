@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from .compat import *
 import sys
 import numpy as np
 from .domains.power_space import PowerSpace
@@ -228,11 +230,13 @@ def makeDomain(domain):
 
 
 def makeOp(input):
+    if input is None:
+        return None
     if isinstance(input, Field):
         return DiagonalOperator(input)
     if isinstance(input, MultiField):
-        return BlockDiagonalOperator({key: makeOp(val)
-                                      for key, val in input.items()})
+        return BlockDiagonalOperator(
+            input.domain, {key: makeOp(val) for key, val in input.items()})
     raise NotImplementedError
 
 # Arithmetic functions working on Fields

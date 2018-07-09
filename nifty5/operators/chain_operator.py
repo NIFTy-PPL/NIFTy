@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
 from .linear_operator import LinearOperator
 
@@ -38,7 +40,7 @@ class ChainOperator(LinearOperator):
         from .diagonal_operator import DiagonalOperator
         # Step 1: verify domains
         for i in range(len(ops)-1):
-            if ops[i+1].target != ops[i].domain:
+            if ops[i+1].target is not ops[i].domain:
                 raise ValueError("domain mismatch")
         # Step 2: unpack ChainOperators
         opsnew = []

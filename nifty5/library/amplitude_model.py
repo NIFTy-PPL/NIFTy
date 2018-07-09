@@ -1,5 +1,24 @@
-import numpy as np
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2018 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
+import numpy as np
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
@@ -58,7 +77,7 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     fields = {keys[0]: Field.from_random('normal', dof_space),
               keys[1]: Field.from_random('normal', param_space)}
 
-    position = MultiField(fields)
+    position = MultiField.from_dict(fields)
 
     dof_space = position[keys[0]].domain[0]
     kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
@@ -104,9 +123,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
         for i in range(dim):
             ks = np.minimum(shape[i] - np.arange(shape[i]) +
                             1, np.arange(shape[i])) * dist[i]
-            fst_dims = (1,) * i
-            lst_dims = (1,) * (dim - i - 1)
-            q_array[i] += ks.reshape(fst_dims + (shape[i],) + lst_dims)
+            q_array[i] += ks.reshape((1,)*i + (shape[i],) + (1,)*(dim-i-1))
 
     # Fill cepstrum field (all non-zero modes)
     no_zero_modes = (slice(1, None),) * dim
@@ -117,10 +134,9 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
     # Fill cepstrum field (zero-mode subspaces)
     for i in range(dim):
         # Prepare indices
-        fst_dims = (slice(None),) * i
-        lst_dims = (slice(None),) * (dim - i - 1)
-        sl = fst_dims + (slice(1, None),) + lst_dims
-        sl2 = fst_dims + (0,) + lst_dims
+        fst_dims = (slice(None),)*i
+        sl = fst_dims + (slice(1, None),)
+        sl2 = fst_dims + (0,)
 
         # Do summation
         cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=i)

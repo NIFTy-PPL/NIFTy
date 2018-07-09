@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from ..field import Field
 import numpy as np
 from .multi_domain import MultiDomain
@@ -23,85 +25,116 @@ from ..utilities import frozendict
 
 
 class MultiField(object):
-    def __init__(self, val):
+    def __init__(self, domain, val):
         """
         Parameters
         ----------
-        val : dict
+        domain: MultiDomain
+        val: tuple of Fields
         """
-        self._val = frozendict(val)
-        self._domain = MultiDomain.make(
-            {key: val.domain for key, val in self._val.items()})
+        if not isinstance(domain, MultiDomain):
+            raise TypeError("domain must be of type MultiDomain")
+        if not isinstance(val, tuple):
+            raise TypeError("val must be a tuple")
+        if len(val) != len(domain):
+            raise ValueError("length mismatch")
+        for i, v in enumerate(val):
+            if isinstance(v, Field):
+                if v._domain is not domain._domains[i]:
+                    raise ValueError("domain mismatch")
+            elif v is not None:
+                raise TypeError("bad entry in val")
+        self._domain = domain
+        self._val = val
+
+    @staticmethod
+    def from_dict(dict, domain=None):
+        if domain is None:
+            domain = MultiDomain.make({key: v._domain
+                                       for key, v in dict.items()})
+        return MultiField(domain, tuple(dict[key] if key in dict else None
+                                        for key in domain.keys()))
+
+    def to_dict(self):
+        return {key: val for key, val in zip(self._domain.keys(), self._val)}
 
     def __getitem__(self, key):
-        return self._val[key]
+        return self._val[self._domain.idx[key]]
 
     def keys(self):
-        return self._val.keys()
+        return self._domain.keys()
 
     def items(self):
-        return self._val.items()
+        return zip(self._domain.keys(), self._val)
 
     def values(self):
-        return self._val.values()
+        return self._val
 
     @property
     def domain(self):
         return self._domain
 
-    @property
-    def dtype(self):
-        return {key: val.dtype for key, val in self._val.items()}
+#    @property
+#    def dtype(self):
+#        return {key: val.dtype for key, val in self._val.items()}
+
+    def _transform(self, op):
+        return MultiField(
+            self._domain,
+            tuple(op(v) if v is not None else None for v in self._val))
 
     @property
     def real(self):
         """MultiField : The real part of the multi field"""
-        return MultiField({key: field.real for key, field in self.items()})
+        return self._transform(lambda x: x.real)
 
     @property
     def imag(self):
         """MultiField : The imaginary part of the multi field"""
-        return MultiField({key: field.imag for key, field in self.items()})
+        return self._transform(lambda x: x.imag)
 
     @staticmethod
     def from_random(random_type, domain, dtype=np.float64, **kwargs):
-        dtype = MultiField.build_dtype(dtype, domain)
-        return MultiField({key: Field.from_random(random_type, domain[key],
-                                                  dtype[key], **kwargs)
-                           for key in sorted(domain.keys())})
+        domain = MultiDomain.make(domain)
+#        dtype = MultiField.build_dtype(dtype, domain)
+        return MultiField(
+            domain, tuple(Field.from_random(random_type, dom, dtype, **kwargs)
+                          for dom in domain._domains))
 
     def _check_domain(self, other):
-        if other._domain != self._domain:
+        if other._domain is not self._domain:
             raise ValueError("domains are incompatible.")
 
     def vdot(self, x):
         result = 0.
         self._check_domain(x)
-        for key, sub_field in self.items():
-            result += sub_field.vdot(x[key])
+        for v1, v2 in zip(self._val, x._val):
+            if v1 is not None and v2 is not None:
+                result += v1.vdot(v2)
         return result
 
-    @staticmethod
-    def build_dtype(dtype, domain):
-        if isinstance(dtype, dict):
-            return dtype
-        if dtype is None:
-            dtype = np.float64
-        return {key: dtype for key in domain.keys()}
+#    @staticmethod
+#    def build_dtype(dtype, domain):
+#        if isinstance(dtype, dict):
+#            return dtype
+#        if dtype is None:
+#            dtype = np.float64
+#        return {key: dtype for key in domain.keys()}
 
     @staticmethod
     def full(domain, val):
-        return MultiField({key: Field.full(dom, val)
-                           for key, dom in domain.items()})
+        return MultiField(domain, tuple(Field.full(dom, val)
+                          for dom in domain._domains))
 
     def to_global_data(self):
-        return {key: val.to_global_data() for key, val in self._val.items()}
+        return {key: val.to_global_data()
+                for key, val in zip(self._domain.keys(), self._val)}
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
-        return MultiField({key: Field.from_global_data(domain[key],
-                                                       val, sum_up)
-                           for key, val in arr.items()})
+        return MultiField(domain, tuple(Field.from_global_data(domain[key],
+                                                               arr[key], sum_up)
+                          for key in domain.keys()))
 
     def norm(self):
         """ Computes the L2-norm of the field values.
@@ -124,24 +157,23 @@ class MultiField(object):
         return abs(self.vdot(x=self))
 
     def __neg__(self):
-        return MultiField({key: -val for key, val in self.items()})
+        return self._transform(lambda x: -x)
 
     def __abs__(self):
-        return MultiField({key: abs(val) for key, val in self.items()})
+        return self._transform(lambda x: abs(x))
 
     def conjugate(self):
-        return MultiField({key: sub_field.conjugate()
-                           for key, sub_field in self.items()})
+        return self._transform(lambda x: x.conjugate())
 
     def all(self):
-        for v in self.values():
-            if not v.all():
+        for v in self._val:
+            if v is None or not v.all():
                 return False
         return True
 
     def any(self):
-        for v in self.values():
-            if v.any():
+        for v in self._val:
+            if v is not None and v.any():
                 return True
         return False
 
@@ -152,10 +184,10 @@ class MultiField(object):
             return True
         if not isinstance(other, MultiField):
             return False
-        if self._domain != other._domain:
+        if self._domain is not other._domain:
             return False
-        for key, val in self._val.items():
-            if not val.isEquivalentTo(other[key]):
+        for v1, v2 in zip(self._val, other._val):
+            if not v1.isEquivalentTo(v2):
                 return False
         return True
 
@@ -186,39 +218,24 @@ for op in ["__add__", "__radd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
+            res = []
             if isinstance(other, MultiField):
-                if self._domain == other._domain:
-                    result_val = {key: getattr(sub_field, op)(other[key])
-                                  for key, sub_field in self.items()}
-                else:
-                    if not self._domain.compatibleTo(other.domain):
-                        raise ValueError("domain mismatch")
-                    s1 = set(self._domain.keys())
-                    s2 = set(other._domain.keys())
-                    common_keys = s1 & s2
-                    only_self_keys = s1 - s2
-                    only_other_keys = s2 - s1
-                    result_val = {}
-                    for key in common_keys:
-                        result_val[key] = getattr(self[key], op)(other[key])
-                    if op in ("__add__", "__radd__"):
-                        for key in only_self_keys:
-                            result_val[key] = self[key]
-                        for key in only_other_keys:
-                            result_val[key] = other[key]
-                    elif op in ("__mul__", "__rmul__"):
-                        pass
+                if self._domain is not other._domain:
+                    raise ValueError("domain mismatch")
+                for v1, v2 in zip(self._val, other._val):
+                    if v1 is not None:
+                        if v2 is None:
+                            res.append(getattr(v1, op)(v1*0))
+                        else:
+                            res.append(getattr(v1, op)(v2))
                     else:
-                        for key in only_self_keys:
-                            result_val[key] = getattr(
-                                self[key], op)(self[key]*0.)
-                        for key in only_other_keys:
-                            result_val[key] = getattr(
-                                other[key]*0., op)(other[key])
+                        if v2 is None:
+                            res.append(None)
+                        else:
+                            res.append(getattr(v2*0, op)(v2))
+                return MultiField(self._domain, tuple(res))
             else:
-                result_val = {key: getattr(val, op)(other)
-                              for key, val in self.items()}
-            return MultiField(result_val)
+                return self._transform(lambda x: getattr(x, op)(other))
         return func2
     setattr(MultiField, op, func(op))
 

@@ -39,8 +39,8 @@ class Test_Functionality(unittest.TestCase):
             assert_equal(val.local_data, f2[key].local_data)
 
     def test_blockdiagonal(self):
-        op = ift.BlockDiagonalOperator({"d1":
-                                        ift.ScalingOperator(20., dom["d1"])})
+        op = ift.BlockDiagonalOperator(
+            dom, {"d1": ift.ScalingOperator(20., dom["d1"])})
         op2 = op*op
         ift.extra.consistency_check(op2)
         assert_equal(type(op2), ift.BlockDiagonalOperator)

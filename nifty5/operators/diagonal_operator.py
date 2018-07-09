@@ -16,8 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-from __future__ import (absolute_import, division, print_function)
-from builtins import *
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
 from ..field import Field
 from ..domain_tuple import DomainTuple
@@ -66,7 +66,7 @@ class DiagonalOperator(EndomorphicOperator):
             self._domain = DomainTuple.make(domain)
         if spaces is None:
             self._spaces = None
-            if diagonal.domain != self._domain:
+            if diagonal.domain is not self._domain:
                 raise ValueError("domain mismatch")
         else:
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))

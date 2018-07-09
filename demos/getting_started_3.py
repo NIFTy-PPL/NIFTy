@@ -22,9 +22,8 @@ if __name__ == '__main__':
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
     power_space = A.value.domain[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
-    position = {}
-    position['xi'] = ift.Field.from_random('normal', harmonic_space)
-    position = ift.MultiField(position)
+    position = ift.MultiField.from_dict(
+        {'xi': ift.Field.from_random('normal', harmonic_space)})
 
     xi = ift.Variable(position)['xi']
     Amp = power_distributor(A)
@@ -35,6 +34,7 @@ if __name__ == '__main__':
 
     # apply some nonlinearity
     signal = ift.PointwisePositiveTanh(correlated_field)
+
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
     R = ift.LOSResponse(position_space, starts=LOS_starts,

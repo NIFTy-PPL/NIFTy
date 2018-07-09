@@ -16,6 +16,8 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
@@ -73,7 +75,7 @@ class FFTOperator(LinearOperator):
 
     def _apply_cartesian(self, x, mode):
         axes = x.domain.axes[self._space]
-        tdom = self._target if x.domain == self._domain else self._domain
+        tdom = self._tgt(mode)
         oldax = dobj.distaxis(x.val)
         if oldax not in axes:  # straightforward, no redistribution needed
             ldat = x.local_data
