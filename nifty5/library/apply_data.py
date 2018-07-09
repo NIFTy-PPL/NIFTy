@@ -1,3 +1,7 @@
+from __future__ import absolute_import, division, print_function
+from ..compat import *
+
+
 def ApplyData(data, var, model_data):
     # TODO This is rather confusing. Delete that eventually.
     from ..operators.diagonal_operator import DiagonalOperator

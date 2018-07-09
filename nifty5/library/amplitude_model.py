@@ -1,5 +1,6 @@
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
-
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field

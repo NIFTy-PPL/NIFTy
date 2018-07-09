@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
 from scipy.stats import invgamma, norm
 from ..field import Field
