@@ -132,8 +132,8 @@ class MultiField(object):
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
-        return MultiField(domain, tuple(Field.from_global_data(domain[key],
-                                                               arr[key], sum_up)
+        return MultiField(
+            domain, tuple(Field.from_global_data(domain[key], arr[key], sum_up)
                           for key in domain.keys()))
 
     def norm(self):
