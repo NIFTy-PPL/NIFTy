@@ -29,6 +29,7 @@ from ..operators.domain_distributor import DomainDistributor
 from ..operators.harmonic_transform_operator \
     import HarmonicTransformOperator
 
+
 def make_correlated_field(s_space, amplitude_model):
     '''
     Method for construction of correlated fields
@@ -84,7 +85,8 @@ def make_mf_correlated_field(s_space_spatial, s_space_energy,
     a = a_spatial*a_energy
     A = pd(a)
 
-    position = MultiField.from_dict({'xi': Field.from_random('normal', h_space)})
+    position = MultiField.from_dict(
+        {'xi': Field.from_random('normal', h_space)})
     xi = Variable(position)['xi']
     correlated_field_h = A*xi
     correlated_field = ht(correlated_field_h)
