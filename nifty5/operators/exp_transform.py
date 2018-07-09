@@ -1,5 +1,6 @@
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
-
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace

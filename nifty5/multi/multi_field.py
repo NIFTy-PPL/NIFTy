@@ -16,21 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 from ..field import Field
 import numpy as np
 from .multi_domain import MultiDomain
 from ..utilities import frozendict
 
 
-# ways of creating MultiFields:
-# - (Field)
-# - (Field, name)
-# - (dict {string, Field})
-# - MultiDomain, dict(string, Field)
-
-# new methods
-# .field(name)
-# .domain(name)
 class MultiField(object):
     def __init__(self, domain, val):
         """

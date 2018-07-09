@@ -1,6 +1,7 @@
+from __future__ import absolute_import, division, print_function
+from ..compat import *
 import numpy as np
 from ..field import Field
-
 from .. import dobj
 from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
