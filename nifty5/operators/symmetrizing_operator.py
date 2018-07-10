@@ -47,7 +47,7 @@ class SymmetrizingOperator(EndomorphicOperator):
             tmp2[lead+(slice(1, None),)] -= tmp2[lead+(slice(None, 0, -1),)]
             if i == ax:
                 tmp = dobj.redistribute(tmp, dist=ax)
-            return Field(self.target, val=tmp)
+        return Field(self.target, val=tmp)
 
     @property
     def capability(self):
