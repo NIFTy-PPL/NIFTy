@@ -44,7 +44,7 @@ class Constant(Model):
         self._constant = constant
 
         self._value = self._constant
-        self._jacobian = NullOperator(position.domain, constand.domain)
+        self._jacobian = NullOperator(position.domain, constant.domain)
 
     def at(self, position):
         return self.__class__(position, self._constant)
