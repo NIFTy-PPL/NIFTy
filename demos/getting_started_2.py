@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood)
-    H = H.makeInvertible(ic_cg)
+    H = H.make_invertible(ic_cg)
     H, convergence = minimizer(H)
 
     # Plot results
