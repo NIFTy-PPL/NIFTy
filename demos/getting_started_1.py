@@ -36,7 +36,7 @@ def make_random_mask():
 
 
 if __name__ == '__main__':
-    # # description of the tutorial ###
+    # FIXME description of the tutorial
 
     # Choose problem geometry and masking
 

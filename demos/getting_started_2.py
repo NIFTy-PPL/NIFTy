@@ -36,7 +36,7 @@ def get_2D_exposure():
 
 
 if __name__ == '__main__':
-    # ABOUT THIS CODE
+    # FIXME description of the tutorial
     np.random.seed(41)
 
     # Set up the position space of the signal

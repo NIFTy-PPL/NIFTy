@@ -27,7 +27,7 @@ def get_random_LOS(n_los):
 
 
 if __name__ == '__main__':
-    # ## ABOUT THIS TUTORIAL
+    # FIXME description of the tutorial
     np.random.seed(42)
     position_space = ift.RGSpace([128, 128])
 
