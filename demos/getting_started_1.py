@@ -77,4 +77,14 @@ if __name__ == '__main__':
     m = D(j)
 
     # PLOTTING
-    # Truth, data, reconstruction, residuals
+    rg = isinstance(position_space, ift.RGSpace)
+    if rg and len(position_space.shape) == 1:
+        ift.plot([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
+                 label=['Mock signal', 'Data', 'Reconstruction'],
+                 alpha=[1, .3, 1],
+                 name='getting_started_1.png')
+    else:
+        ift.plot(HT(MOCK_SIGNAL), title='Mock Signal', name='mock_signal.png')
+        ift.plot((GR*Mask).adjoint(data), title='Data', name='data.png')
+        ift.plot(HT(m), title='Reconstruction', name='reconstruction.png')
+    ift.plot(HT(m-MOCK_SIGNAL), name='residuals.png')
