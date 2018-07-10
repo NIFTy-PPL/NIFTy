@@ -70,6 +70,6 @@ if __name__ == '__main__':
 
     reconstruction = sky.at(H.position).value
 
-    ift.plot(reconstruction, title='reconstruction', name='reconstruction.pdf')
-    ift.plot(GR.adjoint_times(data), title='data', name='data.pdf')
-    ift.plot(sky.at(mock_position).value, title='truth', name='truth.pdf')
+    ift.plot(reconstruction, title='reconstruction', name='reconstruction.png')
+    ift.plot(GR.adjoint_times(data), title='data', name='data.png')
+    ift.plot(sky.at(mock_position).value, title='truth', name='truth.png')

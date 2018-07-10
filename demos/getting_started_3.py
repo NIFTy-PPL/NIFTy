@@ -65,9 +65,9 @@ if __name__ == '__main__':
     INITIAL_POSITION = ift.from_random('normal', H.position.domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal.at(MOCK_POSITION).value, name='truth.pdf')
-    ift.plot(R.adjoint_times(data), name='data.pdf')
-    ift.plot([A.at(MOCK_POSITION).value], name='power.pdf')
+    ift.plot(signal.at(MOCK_POSITION).value, name='truth.png')
+    ift.plot(R.adjoint_times(data), name='data.png')
+    ift.plot([A.at(MOCK_POSITION).value], name='power.png')
 
     # number of samples used to estimate the KL
     N_samples = 20
@@ -81,17 +81,17 @@ if __name__ == '__main__':
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal.at(position).value, name='reconstruction.pdf')
+        ift.plot(signal.at(position).value, name='reconstruction.png')
 
         ift.plot([A.at(position).value, A.at(MOCK_POSITION).value],
-                 name='power.pdf')
+                 name='power.png')
 
     sc = ift.StatCalculator()
     for sample in samples:
         sc.add(signal.at(sample+position).value)
-    ift.plot(sc.mean, name='avrg.pdf')
-    ift.plot(ift.sqrt(sc.var), name='std.pdf')
+    ift.plot(sc.mean, name='avrg.png')
+    ift.plot(ift.sqrt(sc.var), name='std.png')
 
     powers = [A.at(s+position).value for s in samples]
     ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers,
-             name='power.pdf')
+             name='power.png')
