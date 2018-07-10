@@ -30,7 +30,7 @@ class MultiField(object):
         Parameters
         ----------
         domain: MultiDomain
-        val: tuple of Fields
+        val: tuple containing Field or None entries
         """
         if not isinstance(domain, MultiDomain):
             raise TypeError("domain must be of type MultiDomain")
@@ -38,12 +38,12 @@ class MultiField(object):
             raise TypeError("val must be a tuple")
         if len(val) != len(domain):
             raise ValueError("length mismatch")
-        for i, v in enumerate(val):
+        for d, v in zip(domain._domains, val):
             if isinstance(v, Field):
-                if v._domain is not domain._domains[i]:
+                if v._domain is not d:
                     raise ValueError("domain mismatch")
             elif v is not None:
-                raise TypeError("bad entry in val")
+                raise TypeError("bad entry in val (must be Field or None)")
         self._domain = domain
         self._val = val
 
