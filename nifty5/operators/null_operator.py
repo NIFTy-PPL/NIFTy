@@ -42,7 +42,7 @@ class NullOperator(LinearOperator):
     @staticmethod
     def _nullfield(dom):
         if isinstance (dom, DomainTuple):
-            return Field.full(self._target, 0)
+            return Field.full(dom, 0)
         else:
             return MultiField(dom, (None,)*len(dom))
 
