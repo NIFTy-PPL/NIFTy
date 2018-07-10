@@ -76,7 +76,6 @@ from .sugar import *
 from .plotting.plot import plot
 
 from .library.amplitude_model import make_amplitude_model
-from .library.apply_data import ApplyData
 from .library.gaussian_energy import GaussianEnergy
 from .library.los_response import LOSResponse
 from .library.point_sources import PointSources
