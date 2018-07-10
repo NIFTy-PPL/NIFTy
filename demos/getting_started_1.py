@@ -22,18 +22,19 @@ if __name__ == '__main__':
     # FIXME description of the tutorial
 
     # Choose problem geometry and masking
-
-    # One dimensional regular grid
-    position_space = ift.RGSpace([1024])
-    mask = np.ones(position_space.shape)
-
-    # # Two dimensional regular grid with chess mask
-    # position_space = ift.RGSpace([128, 128])
-    # mask = make_chess_mask(position_space)
-
-    # # Sphere with half of its locations randomly masked
-    # position_space = ift.HPSpace(128)
-    # mask = make_random_mask()
+    mode = 0
+    if mode == 0:
+        # One dimensional regular grid
+        position_space = ift.RGSpace([1024])
+        mask = np.ones(position_space.shape)
+    elif mode == 1:
+        # Two dimensional regular grid with chess mask
+        position_space = ift.RGSpace([128, 128])
+        mask = make_chess_mask(position_space)
+    else:
+        # Sphere with half of its locations randomly masked
+        position_space = ift.HPSpace(128)
+        mask = make_random_mask()
 
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, target=position_space)
