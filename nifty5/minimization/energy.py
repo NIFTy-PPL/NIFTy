@@ -130,7 +130,7 @@ class Energy(NiftyMetaBase()):
         """
         return None
 
-    def makeInvertible(self, controller, preconditioner=None):
+    def make_invertible(self, controller, preconditioner=None):
         from .iteration_controller import IterationController
         if not isinstance(controller, IterationController):
             raise TypeError
