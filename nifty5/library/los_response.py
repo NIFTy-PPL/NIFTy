@@ -17,17 +17,19 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
-from scipy.special import erfc
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import aslinearoperator
-from ..operators.linear_operator import LinearOperator
+from scipy.special import erfc
+
+from .. import dobj
+from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from .. import dobj
+from ..operators.linear_operator import LinearOperator
 
 
 def _gaussian_error_function(x):

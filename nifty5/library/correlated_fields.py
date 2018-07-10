@@ -17,17 +17,17 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
-from ..operators.fft_operator import FFTOperator
-from ..field import Field
-from ..multi.multi_field import MultiField
-from ..models.local_nonlinearity import PointwiseExponential
-from ..operators.power_distributor import PowerDistributor
-from ..models.variable import Variable
 from ..domain_tuple import DomainTuple
+from ..field import Field
+from ..models.local_nonlinearity import PointwiseExponential
+from ..models.variable import Variable
+from ..multi.multi_field import MultiField
 from ..operators.domain_distributor import DomainDistributor
-from ..operators.harmonic_transform_operator \
-    import HarmonicTransformOperator
+from ..operators.fft_operator import FFTOperator
+from ..operators.harmonic_transform_operator import HarmonicTransformOperator
+from ..operators.power_distributor import PowerDistributor
 
 
 def make_correlated_field(s_space, amplitude_model):
