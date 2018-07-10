@@ -18,9 +18,9 @@ def make_random_mask():
 
 
 if __name__ == '__main__':
-    # # description of the tutorial ###
-
     np.random.seed(42)
+    # FIXME description of the tutorial
+
     # Choose problem geometry and masking
 
     # One dimensional regular grid
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     mask = np.ones(position_space.shape)
 
     # # Two dimensional regular grid with chess mask
-    # position_space = ift.RGSpace([128,128])
+    # position_space = ift.RGSpace([128, 128])
     # mask = make_chess_mask(position_space)
 
     # # Sphere with half of its locations randomly masked
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, target=position_space)
 
-    # set correlation structure with a power spectrum and build
+    # Set correlation structure with a power spectrum and build
     # prior correlation covariance
     def power_spectrum(k):
         return 100. / (20.+k**3)
@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     S = ift.DiagonalOperator(prior_correlation_structure)
 
-    # build instrument response consisting of a discretization, mask
+    # Build instrument response consisting of a discretization, mask
     # and harmonic transformaion
     GR = ift.GeometryRemover(position_space)
     mask = ift.Field.from_global_data(position_space, mask)
@@ -57,19 +57,19 @@ if __name__ == '__main__':
 
     data_space = GR.target
 
-    # setting the noise covariance
+    # Set the noise covariance
     noise = 5.
     N = ift.ScalingOperator(noise, data_space)
 
-    # creating mock data
+    # Create mock data
     MOCK_SIGNAL = S.draw_sample()
     MOCK_NOISE = N.draw_sample()
     data = R(MOCK_SIGNAL) + MOCK_NOISE
 
-    # building propagator D and information source j
+    # Build propagator D and information source j
     j = R.adjoint_times(N.inverse_times(data))
     D_inv = R.adjoint * N.inverse * R + S.inverse
-    # make it invertible
+    # Make it invertible
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
 
