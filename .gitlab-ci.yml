@@ -96,3 +96,12 @@ run_getting_started_3:
   script:
     - python demos/getting_started_3.py
     - python3 demos/getting_started_3.py
+
+run_bernoulli:
+  stage: demo_runs
+  script:
+    - python demos/bernoulli_demo.py
+    - python3 demos/bernoulli_demo.py
+  artifacts:
+    paths:
+      - '*.png'
