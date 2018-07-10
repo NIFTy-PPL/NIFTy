@@ -17,14 +17,16 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
-from ..field import Field
-from ..domains.power_space import PowerSpace
-from .endomorphic_operator import EndomorphicOperator
-from ..utilities import infer_space
-from ..domain_tuple import DomainTuple
+
 from .. import dobj
+from ..compat import *
+from ..domain_tuple import DomainTuple
+from ..domains.power_space import PowerSpace
+from ..field import Field
+from ..utilities import infer_space
+from .endomorphic_operator import EndomorphicOperator
 
 
 class LaplaceOperator(EndomorphicOperator):

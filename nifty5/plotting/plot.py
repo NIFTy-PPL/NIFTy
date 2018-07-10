@@ -17,10 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
-import numpy as np
-from ..import Field, RGSpace, HPSpace, GLSpace, PowerSpace, dobj
+
 import os
+
+import numpy as np
+
+from ..compat import *
+from ..importField import GLSpace, HPSpace, PowerSpace, RGSpace, dobj
 
 # relevant properties:
 # - x/y size

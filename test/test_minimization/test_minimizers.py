@@ -17,12 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import numpy as np
-from numpy.testing import assert_allclose, assert_equal
-import nifty5 as ift
 from itertools import product
 from test.common import expand
+
+import nifty5 as ift
+import numpy as np
 from nose.plugins.skip import SkipTest
+from numpy.testing import assert_allclose, assert_equal
 
 IC = ift.GradientNormController(tol_abs_gradnorm=1e-5, iteration_limit=1000)
 

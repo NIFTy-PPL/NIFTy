@@ -17,12 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import numpy as np
-from numpy.testing import assert_equal, assert_allclose, assert_raises
 from itertools import product
-import nifty5 as ift
 from test.common import expand
 
+import nifty5 as ift
+import numpy as np
+from numpy.testing import assert_allclose, assert_equal, assert_raises
 
 SPACES = [ift.RGSpace((4,)), ift.RGSpace((5))]
 SPACE_COMBINATIONS = [(), SPACES[0], SPACES[1], SPACES]

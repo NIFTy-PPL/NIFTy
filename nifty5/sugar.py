@@ -17,19 +17,22 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from .compat import *
+
 import sys
+
 import numpy as np
+
+from . import dobj, utilities
+from .compat import *
+from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
-from .multi.multi_field import MultiField
+from .logger import logger
 from .multi.block_diagonal_operator import BlockDiagonalOperator
 from .multi.multi_domain import MultiDomain
+from .multi.multi_field import MultiField
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
-from .domain_tuple import DomainTuple
-from . import dobj, utilities
-from .logger import logger
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
