@@ -3,7 +3,7 @@ import numpy as np
 
 
 if __name__ == '__main__':
-    # ABOUT THIS CODE
+    # FIXME ABOUT THIS CODE
     np.random.seed(41)
 
     # Set up the position space of the signal
