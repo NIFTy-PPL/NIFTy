@@ -48,8 +48,8 @@ class SamplingEnabler(EndomorphicOperator):
 
     def __init__(self, likelihood, prior, iteration_controller,
                  approximation=None):
-        self._op = likelihood + prior
         super(SamplingEnabler, self).__init__()
+        self._op = likelihood + prior
         self._likelihood = likelihood
         self._prior = prior
         self._ic = iteration_controller
@@ -59,9 +59,8 @@ class SamplingEnabler(EndomorphicOperator):
         try:
             return self._op.draw_sample(from_inverse, dtype)
         except NotImplementedError:
-            # MR FIXME: I think there is a silent assumption that
-            # from_inverse==True when we arrive here.
-            # Can we make this explicit?
+            if not from_inverse:
+                raise ValueError("from_inverse must be True here")
             s = self._prior.draw_sample(from_inverse=True)
             sp = self._prior(s)
             nj = self._likelihood.draw_sample()
