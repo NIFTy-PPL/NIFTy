@@ -170,8 +170,6 @@ class MetricInversionEnabler(Energy):
         self._preconditioner = preconditioner
 
     def at(self, position):
-        if self._position.isSubsetOf(position):
-            return self
         return MetricInversionEnabler(
             self._energy.at(position), self._controller, self._preconditioner)
 

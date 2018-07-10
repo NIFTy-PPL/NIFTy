@@ -34,8 +34,12 @@ class BlockDiagonalOperator(EndomorphicOperator):
             LinearOperators as items
         """
         super(BlockDiagonalOperator, self).__init__()
+        if not isinstance(domain, MultiDomain):
+            raise TypeError("MultiDomain expected")
+        if not isinstance(operators, tuple):
+            raise TypeError("tuple expected")
         self._domain = domain
-        self._ops = tuple(operators[key] for key in self.domain.keys())
+        self._ops = operators
         self._cap = self._all_ops
         for op in self._ops:
             if op is not None:
@@ -64,15 +68,13 @@ class BlockDiagonalOperator(EndomorphicOperator):
     def _combine_chain(self, op):
         if self._domain is not op._domain:
             raise ValueError("domain mismatch")
-        res = {key: v1*v2
-               for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops)}
+        res = tuple(v1*v2 for v1, v2 in zip(self._ops, op._ops))
         return BlockDiagonalOperator(self._domain, res)
 
     def _combine_sum(self, op, selfneg, opneg):
         from ..operators.sum_operator import SumOperator
         if self._domain is not op._domain:
             raise ValueError("domain mismatch")
-        res = {}
-        for key, v1, v2 in zip(self._domain.keys(), self._ops, op._ops):
-            res[key] = SumOperator.make([v1, v2], [selfneg, opneg])
+        res = tuple(SumOperator.make([v1, v2], [selfneg, opneg])
+                    for v1, v2 in zip(self._ops, op._ops))
         return BlockDiagonalOperator(self._domain, res)

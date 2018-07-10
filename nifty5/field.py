@@ -606,11 +606,6 @@ class Field(object):
             return False
         return (self._val == other._val).all()
 
-    def isSubsetOf(self, other):
-        """Identical to `Field.isEquivalentTo()`. This method is provided for
-        easier interoperability with `MultiField`."""
-        return self.isEquivalentTo(other)
-
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
