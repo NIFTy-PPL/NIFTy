@@ -70,16 +70,6 @@ class PointSources(Model):
         foo = invgamma.ppf(norm.cdf(field.local_data), alpha, scale=q)
         return Field.from_local_data(field.domain, foo)
 
-    # MR FIXME: is this function needed?
-    @staticmethod
-    def IG_prime(field, alpha, q):
-        inner = norm.pdf(field.local_data)
-        outer = invgamma.pdf(invgamma.ppf(norm.cdf(field.local_data), alpha,
-                                          scale=q), alpha, scale=q)
-        # # FIXME
-        # outer = np.clip(outer, 1e-20, None)
-        return Field.from_local_data(field.domain, inner/outer)
-
     # MR FIXME: why does this take an np.ndarray instead of a Field?
     @staticmethod
     def inverseIG(u, alpha, q):
