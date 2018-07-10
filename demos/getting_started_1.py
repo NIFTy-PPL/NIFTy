@@ -20,6 +20,7 @@ def make_random_mask():
 if __name__ == '__main__':
     # # description of the tutorial ###
 
+    np.random.seed(42)
     # Choose problem geometry and masking
 
     # One dimensional regular grid
