@@ -2,7 +2,7 @@ import nifty5 as ift
 import numpy as np
 
 
-def make_chess_mask():
+def make_chess_mask(position_space):
     mask = np.ones(position_space.shape)
     for i in range(4):
         for j in range(4):
@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     # # Two dimensional regular grid with chess mask
     # position_space = ift.RGSpace([128,128])
-    # mask = make_chess_mask()
+    # mask = make_chess_mask(position_space)
 
     # # Sphere with half of its locations randomly masked
     # position_space = ift.HPSpace(128)
