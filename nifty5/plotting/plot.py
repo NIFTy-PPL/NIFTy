@@ -23,7 +23,7 @@ import os
 import numpy as np
 
 from ..compat import *
-from ..importField import GLSpace, HPSpace, PowerSpace, RGSpace, dobj
+from .. import Field, GLSpace, HPSpace, PowerSpace, RGSpace, dobj
 
 # relevant properties:
 # - x/y size
