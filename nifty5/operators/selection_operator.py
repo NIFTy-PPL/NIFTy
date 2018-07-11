@@ -20,6 +20,7 @@ from __future__ import absolute_import, division, print_function
 
 from ..compat import *
 from ..multi.multi_domain import MultiDomain
+from ..field import Field
 from .linear_operator import LinearOperator
 
 
@@ -53,7 +54,8 @@ class SelectionOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return x[self._key]
+            f = x[self._key]
+            return Field.full(self.target, 0) if f is None else f
         else:
             from ..multi.multi_field import MultiField
             return MultiField.from_dict({self._key: x}, self._domain)
