@@ -19,6 +19,7 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
+from ..operators.null_operator import NullOperator
 from .model import Model
 
 
@@ -44,7 +45,7 @@ class Constant(Model):
         self._constant = constant
 
         self._value = self._constant
-        self._jacobian = 0.
+        self._jacobian = NullOperator(position.domain, constant.domain)
 
     def at(self, position):
         return self.__class__(position, self._constant)

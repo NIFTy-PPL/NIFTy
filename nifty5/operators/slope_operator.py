@@ -22,14 +22,19 @@ import numpy as np
 
 from ..compat import *
 from ..domain_tuple import DomainTuple
+from ..domains.log_rg_space import LogRGSpace
+from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from .linear_operator import LinearOperator
 
 
 class SlopeOperator(LinearOperator):
     def __init__(self, domain, target, sigmas):
-        # MR FIXME: check explicitly for the required domain types etc.
-        # Maybe compute domain from target automatically?
+        if not isinstance(target, LogRGSpace):
+            raise TypeError
+        if not (isinstance(domain, UnstructuredDomain) and domain.shape == (2,)):
+            raise TypeError
+
         self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.make(target)
 

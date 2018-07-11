@@ -31,7 +31,7 @@ class MultiField(object):
         Parameters
         ----------
         domain: MultiDomain
-        val: tuple of Fields
+        val: tuple containing Field or None entries
         """
         if not isinstance(domain, MultiDomain):
             raise TypeError("domain must be of type MultiDomain")
@@ -39,12 +39,12 @@ class MultiField(object):
             raise TypeError("val must be a tuple")
         if len(val) != len(domain):
             raise ValueError("length mismatch")
-        for i, v in enumerate(val):
+        for d, v in zip(domain._domains, val):
             if isinstance(v, Field):
-                if v._domain is not domain._domains[i]:
+                if v._domain is not d:
                     raise ValueError("domain mismatch")
             elif v is not None:
-                raise TypeError("bad entry in val")
+                raise TypeError("bad entry in val (must be Field or None)")
         self._domain = domain
         self._val = val
 
@@ -192,26 +192,45 @@ class MultiField(object):
                 return False
         return True
 
-    def isSubsetOf(self, other):
-        """Determines (as quickly as possible) whether `self`'s content is
-        a subset of `other`'s content."""
-        if self is other:
-            return True
-        if not isinstance(other, MultiField):
-            return False
-        if len(set(self._domain.keys()) - set(other._domain.keys())) > 0:
-            return False
-        for key in self._domain.keys():
-            if other._domain[key] is not self._domain[key]:
-                return False
-            if not other[key].isSubsetOf(self[key]):
-                return False
-        return True
+
+for op in ["__add__", "__radd__"]:
+    def func(op):
+        def func2(self, other):
+            if isinstance(other, MultiField):
+                if self._domain is not other._domain:
+                    raise ValueError("domain mismatch")
+                val = []
+                for v1, v2 in zip(self._val, other._val):
+                    if v1 is not None:
+                        val.append(v1 if v2 is None else (v1+v2))
+                    else:
+                        val.append(None if v2 is None else v2)
+                val = tuple(val)
+            else:
+                val = tuple(other if v1 is None else (v1+other)
+                            for v1 in self._val)
+            return MultiField(self._domain, val)
+        return func2
+    setattr(MultiField, op, func(op))
 
 
-for op in ["__add__", "__radd__",
-           "__sub__", "__rsub__",
-           "__mul__", "__rmul__",
+for op in ["__mul__", "__rmul__"]:
+    def func(op):
+        def func2(self, other):
+            if isinstance(other, MultiField):
+                if self._domain is not other._domain:
+                    raise ValueError("domain mismatch")
+                val = tuple(None if v1 is None or v2 is None else v1*v2
+                            for v1, v2 in zip(self._val, other._val))
+            else:
+                val = tuple(None if v1 is None else (v1*other)
+                            for v1 in self._val)
+            return MultiField(self._domain, val)
+        return func2
+    setattr(MultiField, op, func(op))
+
+
+for op in ["__sub__", "__rsub__",
            "__div__", "__rdiv__",
            "__truediv__", "__rtruediv__",
            "__floordiv__", "__rfloordiv__",
@@ -219,26 +238,17 @@ for op in ["__add__", "__radd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            res = []
             if isinstance(other, MultiField):
                 if self._domain is not other._domain:
                     raise ValueError("domain mismatch")
-                for v1, v2 in zip(self._val, other._val):
-                    if v1 is not None:
-                        if v2 is None:
-                            res.append(getattr(v1, op)(v1*0))
-                        else:
-                            res.append(getattr(v1, op)(v2))
-                    else:
-                        if v2 is None:
-                            res.append(None)
-                        else:
-                            res.append(getattr(v2*0, op)(v2))
-                return MultiField(self._domain, tuple(res))
+                val = tuple(getattr(v1, op)(v2)
+                            for v1, v2 in zip (self._val, other._val))
             else:
-                return self._transform(lambda x: getattr(x, op)(other))
+                val = tuple(getattr(v1, op)(other) for v1 in self._val)
+            return MultiField(self._domain, val)
         return func2
     setattr(MultiField, op, func(op))
+
 
 for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
            "__itruediv__", "__ifloordiv__", "__ipow__"]:

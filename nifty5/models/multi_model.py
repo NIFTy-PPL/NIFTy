@@ -36,7 +36,7 @@ class MultiModel(Model):
         val = self._model.value
         if not isinstance(val.domain, DomainTuple):
             raise TypeError
-        self._value = MultiField({key: val})
+        self._value = MultiField.from_dict({key: val})
         self._jacobian = (MultiAdaptor(self.value.domain) *
                           self._model.jacobian)
 

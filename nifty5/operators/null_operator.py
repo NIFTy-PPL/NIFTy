@@ -17,40 +17,49 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-
-from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..domains.log_rg_space import LogRGSpace
 from ..field import Field
-from .endomorphic_operator import EndomorphicOperator
+from ..multi.multi_field import MultiField
+from ..operators.linear_operator import LinearOperator
 
 
-class SymmetrizingOperator(EndomorphicOperator):
-    def __init__(self, domain):
-        if not (isinstance(domain, LogRGSpace) and not domain.harmonic):
-            raise TypeError
-        self._domain = DomainTuple.make(domain)
-        self._ndim = len(self.domain.shape)
+class NullOperator(LinearOperator):
+    """Operator corresponding to a matrix of all zeros.
+
+    Parameters
+    ----------
+    domain : DomainTuple or MultiDomain
+        input domain
+    target : DomainTuple or MultiDomain
+        output domain
+    """
+    def __init__(self, domain, target):
+        from ..sugar import makeDomain
+        self._domain = makeDomain(domain)
+        self._target = makeDomain(target)
+
+    @staticmethod
+    def _nullfield(dom):
+        if isinstance (dom, DomainTuple):
+            return Field.full(dom, 0)
+        else:
+            return MultiField(dom, (None,)*len(dom))
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+
+        if mode == self.TIMES:
+            return self._nullfield(self._target)
+        return self._nullfield(self._domain)
 
     @property
     def domain(self):
         return self._domain
 
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        tmp = x.val.copy()
-        ax = dobj.distaxis(tmp)
-        globshape = tmp.shape
-        for i in range(self._ndim):
-            lead = (slice(None),)*i
-            if i == ax:
-                tmp = dobj.redistribute(tmp, nodist=(ax,))
-            tmp2 = dobj.local_data(tmp)
-            tmp2[lead+(slice(1, None),)] -= tmp2[lead+(slice(None, 0, -1),)]
-            if i == ax:
-                tmp = dobj.redistribute(tmp, dist=ax)
-        return Field(self.target, val=tmp)
+    @property
+    def target(self):
+        return self._target
 
     @property
     def capability(self):
