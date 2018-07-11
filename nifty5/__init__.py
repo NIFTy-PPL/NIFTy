@@ -80,6 +80,7 @@ from .library.gaussian_energy import GaussianEnergy
 from .library.los_response import LOSResponse
 from .library.point_sources import PointSources
 from .library.poissonian_energy import PoissonianEnergy
+from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.correlated_fields import (make_correlated_field,
                                         make_mf_correlated_field)
 from .library.bernoulli_energy import BernoulliEnergy
