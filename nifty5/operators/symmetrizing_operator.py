@@ -21,14 +21,14 @@ from __future__ import absolute_import, division, print_function
 from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..domains.rg_space import RGSpace
+from ..domains.log_rg_space import LogRGSpace
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
 
 
 class SymmetrizingOperator(EndomorphicOperator):
     def __init__(self, domain):
-        if not (isinstance(domain, RGSpace) and domain.harmonic):
+        if not (isinstance(domain, LogRGSpace) and not domain.harmonic):
             raise TypeError
         self._domain = DomainTuple.make(domain)
         self._ndim = len(self.domain.shape)
