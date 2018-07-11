@@ -17,8 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from .compat import *
-from .sugar import full, exp, tanh
+from .sugar import exp, full, tanh
 
 
 class Linear(object):

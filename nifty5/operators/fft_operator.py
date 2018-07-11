@@ -17,14 +17,15 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
+
+from .. import dobj, utilities
+from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
-from .linear_operator import LinearOperator
-from .. import dobj
-from .. import utilities
 from ..field import Field
+from .linear_operator import LinearOperator
 
 
 class FFTOperator(LinearOperator):

@@ -19,9 +19,10 @@
 # Data object module for NIFTy that uses simple numpy ndarrays.
 
 import numpy as np
+from numpy import empty, empty_like, exp, full, log
 from numpy import ndarray as data_object
-from numpy import full, empty, empty_like, sqrt, ones, zeros, vdot, \
-                  exp, log, tanh
+from numpy import ones, sqrt, tanh, vdot, zeros
+
 from .random import Random
 
 ntask = 1

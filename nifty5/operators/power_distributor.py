@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
-from .dof_distributor import DOFDistributor
 from ..domain_tuple import DomainTuple
-from ..utilities import infer_space
 from ..domains.power_space import PowerSpace
+from ..utilities import infer_space
+from .dof_distributor import DOFDistributor
 
 
 class PowerDistributor(DOFDistributor):

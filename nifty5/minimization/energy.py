@@ -17,9 +17,8 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
-import numpy as np
-from ..field import Field
 from ..utilities import NiftyMetaBase, memo
 
 

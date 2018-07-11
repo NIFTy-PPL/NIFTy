@@ -17,11 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import abc
-from .minimizer import Minimizer
-from .line_search_strong_wolfe import LineSearchStrongWolfe
+
+from ..compat import *
 from ..logger import logger
+from .line_search_strong_wolfe import LineSearchStrongWolfe
+from .minimizer import Minimizer
 
 
 class DescentMinimizer(Minimizer):

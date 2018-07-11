@@ -17,13 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+
 import unittest
-import numpy as np
-from numpy.testing import assert_, assert_equal, assert_allclose,\
-        assert_raises
-import nifty5 as ift
+from itertools import chain, product
 from test.common import expand
-from itertools import product, chain
+
+import nifty5 as ift
+import numpy as np
+from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
 
 HARMONIC_SPACES = [ift.RGSpace((8,), harmonic=True),
                    ift.RGSpace((7, 8), harmonic=True),

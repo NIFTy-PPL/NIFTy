@@ -1,3 +1,21 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2018 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
+
 import nifty5 as ift
 import numpy as np
 
@@ -9,7 +27,7 @@ def get_random_LOS(n_los):
 
 
 if __name__ == '__main__':
-    # ## ABOUT THIS TUTORIAL
+    # FIXME description of the tutorial
     np.random.seed(42)
     position_space = ift.RGSpace([128, 128])
 
@@ -65,9 +83,9 @@ if __name__ == '__main__':
     INITIAL_POSITION = ift.from_random('normal', H.position.domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal.at(MOCK_POSITION).value, name='truth.pdf')
-    ift.plot(R.adjoint_times(data), name='data.pdf')
-    ift.plot([A.at(MOCK_POSITION).value], name='power.pdf')
+    ift.plot(signal.at(MOCK_POSITION).value, name='truth.png')
+    ift.plot(R.adjoint_times(data), name='data.png')
+    ift.plot([A.at(MOCK_POSITION).value], name='power.png')
 
     # number of samples used to estimate the KL
     N_samples = 20
@@ -81,17 +99,17 @@ if __name__ == '__main__':
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal.at(position).value, name='reconstruction.pdf')
+        ift.plot(signal.at(position).value, name='reconstruction.png')
 
         ift.plot([A.at(position).value, A.at(MOCK_POSITION).value],
-                 name='power.pdf')
+                 name='power.png')
 
     sc = ift.StatCalculator()
     for sample in samples:
         sc.add(signal.at(sample+position).value)
-    ift.plot(sc.mean, name='avrg.pdf')
-    ift.plot(ift.sqrt(sc.var), name='std.pdf')
+    ift.plot(sc.mean, name='avrg.png')
+    ift.plot(ift.sqrt(sc.var), name='std.png')
 
     powers = [A.at(s+position).value for s in samples]
     ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers,
-             name='power.pdf')
+             name='power.png')

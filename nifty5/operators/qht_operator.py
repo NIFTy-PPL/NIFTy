@@ -17,10 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
+from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from .. import dobj
 from ..utilities import hartley
 from .linear_operator import LinearOperator
 

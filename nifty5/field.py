@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from .compat import *
+
 import numpy as np
-from . import utilities
+
+from . import dobj, utilities
+from .compat import *
 from .domain_tuple import DomainTuple
-from . import dobj
 
 
 class Field(object):

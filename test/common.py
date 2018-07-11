@@ -17,8 +17,9 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from builtins import str
-from parameterized import parameterized
+
 import numpy as np
+from parameterized import parameterized
 
 np.seterr(all='raise', under='ignore')
 
