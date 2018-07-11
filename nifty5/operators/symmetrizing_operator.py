@@ -17,16 +17,19 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
+from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
+from ..domains.log_rg_space import LogRGSpace
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
-from .. import dobj
 
 
-# MR FIXME: we should make sure that the domain is a harmonic RGSpace, correct?
 class SymmetrizingOperator(EndomorphicOperator):
     def __init__(self, domain):
+        if not (isinstance(domain, LogRGSpace) and not domain.harmonic):
+            raise TypeError
         self._domain = DomainTuple.make(domain)
         self._ndim = len(self.domain.shape)
 
@@ -47,7 +50,7 @@ class SymmetrizingOperator(EndomorphicOperator):
             tmp2[lead+(slice(1, None),)] -= tmp2[lead+(slice(None, 0, -1),)]
             if i == ax:
                 tmp = dobj.redistribute(tmp, dist=ax)
-            return Field(self.target, val=tmp)
+        return Field(self.target, val=tmp)
 
     @property
     def capability(self):

@@ -17,11 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import numpy as np
-from numpy.testing import assert_equal, assert_allclose, assert_raises
-from itertools import product
+
 import nifty5 as ift
-from test.common import expand
+import numpy as np
+from numpy.testing import assert_allclose, assert_equal
 
 dom = ift.makeDomain({"d1": ift.RGSpace(10)})
 
@@ -40,7 +39,7 @@ class Test_Functionality(unittest.TestCase):
 
     def test_blockdiagonal(self):
         op = ift.BlockDiagonalOperator(
-            dom, {"d1": ift.ScalingOperator(20., dom["d1"])})
+            dom, (ift.ScalingOperator(20., dom["d1"]),))
         op2 = op*op
         ift.extra.consistency_check(op2)
         assert_equal(type(op2), ift.BlockDiagonalOperator)

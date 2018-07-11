@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
 from .energy import Energy
 
@@ -35,14 +36,14 @@ class QuadraticEnergy(Energy):
             self._grad = _grad
             Ax = _grad if b is None else _grad + b
         else:
-            Ax = self._A(self.position)
+            Ax = self._A(self._position)
             self._grad = Ax if b is None else Ax - b
-        self._value = 0.5*self.position.vdot(Ax)
+        self._value = 0.5*self._position.vdot(Ax)
         if b is not None:
-            self._value -= b.vdot(self.position)
+            self._value -= b.vdot(self._position)
 
     def at(self, position):
-        return QuadraticEnergy(position=position, A=self._A, b=self._b)
+        return QuadraticEnergy(position, self._A, self._b)
 
     def at_with_grad(self, position, grad):
         """ Specialized version of `at`, taking also a gradient.
@@ -63,8 +64,7 @@ class QuadraticEnergy(Energy):
         Energy
             Energy object at new position.
         """
-        return QuadraticEnergy(position=position, A=self._A, b=self._b,
-                               _grad=grad)
+        return QuadraticEnergy(position, self._A, self._b, grad)
 
     @property
     def value(self):

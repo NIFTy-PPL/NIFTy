@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
 from ..minimization.energy import Energy
 from ..operators.sandwich_operator import SandwichOperator
@@ -32,7 +33,7 @@ class GaussianEnergy(Energy):
         value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
         covariance
         """
-        super(GaussianEnergy, self).__init__(inp.position)
+        super(GaussianEnergy, self).__init__(inp._position)
         self._inp = inp
         self._mean = mean
         self._cov = covariance

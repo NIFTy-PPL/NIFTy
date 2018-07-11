@@ -17,14 +17,16 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
+
+from .. import dobj
+from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace
 from ..field import Field
 from .linear_operator import LinearOperator
-from .. import dobj
 
 
 class ExpTransform(LinearOperator):

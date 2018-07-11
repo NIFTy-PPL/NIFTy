@@ -17,15 +17,16 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
 from scipy.stats import invgamma, norm
-from ..field import Field
-from ..sugar import makeOp
-from ..multi.multi_field import MultiField
-from ..models.model import Model
 
+from ..compat import *
+from ..field import Field
+from ..models.model import Model
+from ..multi.multi_field import MultiField
 from ..operators.selection_operator import SelectionOperator
+from ..sugar import makeOp
 from ..utilities import memo
 
 
@@ -69,16 +70,6 @@ class PointSources(Model):
     def IG(field, alpha, q):
         foo = invgamma.ppf(norm.cdf(field.local_data), alpha, scale=q)
         return Field.from_local_data(field.domain, foo)
-
-    # MR FIXME: is this function needed?
-    @staticmethod
-    def IG_prime(field, alpha, q):
-        inner = norm.pdf(field.local_data)
-        outer = invgamma.pdf(invgamma.ppf(norm.cdf(field.local_data), alpha,
-                                          scale=q), alpha, scale=q)
-        # # FIXME
-        # outer = np.clip(outer, 1e-20, None)
-        return Field.from_local_data(field.domain, inner/outer)
 
     # MR FIXME: why does this take an np.ndarray instead of a Field?
     @staticmethod

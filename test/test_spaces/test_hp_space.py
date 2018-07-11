@@ -17,12 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+
 import unittest
-import numpy as np
-from numpy.testing import assert_, assert_equal, assert_raises,\
-                          assert_almost_equal
-from nifty5 import HPSpace
 from test.common import expand
+
+import numpy as np
+from nifty5 import HPSpace
+from numpy.testing import (assert_, assert_almost_equal, assert_equal,
+                           assert_raises)
 
 # [nside, expected]
 CONSTRUCTOR_CONFIGS = [

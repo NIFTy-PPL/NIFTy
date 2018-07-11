@@ -1,8 +1,26 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2018 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
+
 import nifty5 as ift
 import numpy as np
 
 
-def make_chess_mask():
+def make_chess_mask(position_space):
     mask = np.ones(position_space.shape)
     for i in range(4):
         for j in range(4):
@@ -17,27 +35,35 @@ def make_random_mask():
     return mask.to_global_data()
 
 
+def mask_to_nan(mask, field):
+    masked_data = field.local_data.copy()
+    masked_data[mask.local_data == 0] = np.nan
+    return ift.from_local_data(field.domain, masked_data)
+
+
 if __name__ == '__main__':
-    # # description of the tutorial ###
+    np.random.seed(42)
+    # FIXME description of the tutorial
 
     # Choose problem geometry and masking
-
-    # One dimensional regular grid
-    position_space = ift.RGSpace([1024])
-    mask = np.ones(position_space.shape)
-
-    # # Two dimensional regular grid with chess mask
-    # position_space = ift.RGSpace([128,128])
-    # mask = make_chess_mask()
-
-    # # Sphere with half of its locations randomly masked
-    # position_space = ift.HPSpace(128)
-    # mask = make_random_mask()
+    mode = 0
+    if mode == 0:
+        # One dimensional regular grid
+        position_space = ift.RGSpace([1024])
+        mask = np.ones(position_space.shape)
+    elif mode == 1:
+        # Two dimensional regular grid with chess mask
+        position_space = ift.RGSpace([128, 128])
+        mask = make_chess_mask(position_space)
+    else:
+        # Sphere with half of its locations randomly masked
+        position_space = ift.HPSpace(128)
+        mask = make_random_mask()
 
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, target=position_space)
 
-    # set correlation structure with a power spectrum and build
+    # Set correlation structure with a power spectrum and build
     # prior correlation covariance
     def power_spectrum(k):
         return 100. / (20.+k**3)
@@ -47,7 +73,7 @@ if __name__ == '__main__':
 
     S = ift.DiagonalOperator(prior_correlation_structure)
 
-    # build instrument response consisting of a discretization, mask
+    # Build instrument response consisting of a discretization, mask
     # and harmonic transformaion
     GR = ift.GeometryRemover(position_space)
     mask = ift.Field.from_global_data(position_space, mask)
@@ -56,19 +82,19 @@ if __name__ == '__main__':
 
     data_space = GR.target
 
-    # setting the noise covariance
+    # Set the noise covariance
     noise = 5.
     N = ift.ScalingOperator(noise, data_space)
 
-    # creating mock data
+    # Create mock data
     MOCK_SIGNAL = S.draw_sample()
     MOCK_NOISE = N.draw_sample()
     data = R(MOCK_SIGNAL) + MOCK_NOISE
 
-    # building propagator D and information source j
+    # Build propagator D and information source j
     j = R.adjoint_times(N.inverse_times(data))
     D_inv = R.adjoint * N.inverse * R + S.inverse
-    # make it invertible
+    # Make it invertible
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
 
@@ -76,4 +102,16 @@ if __name__ == '__main__':
     m = D(j)
 
     # PLOTTING
-    # Truth, data, reconstruction, residuals
+    rg = isinstance(position_space, ift.RGSpace)
+    if rg and len(position_space.shape) == 1:
+        ift.plot([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
+                 label=['Mock signal', 'Data', 'Reconstruction'],
+                 alpha=[1, .3, 1],
+                 name='getting_started_1.png')
+    else:
+        ift.plot(HT(MOCK_SIGNAL), title='Mock Signal', name='mock_signal.png')
+        ift.plot(mask_to_nan(mask, (GR*Mask).adjoint(data)),
+                 title='Data', name='data.png')
+        ift.plot(HT(m), title='Reconstruction', name='reconstruction.png')
+    ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), name='residuals.png')
+

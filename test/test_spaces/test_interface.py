@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-from numpy.testing import assert_
 from itertools import product
-from types import LambdaType
 from test.common import expand
+from types import LambdaType
+
 import nifty5 as ift
+from numpy.testing import assert_
 
 spaces = [ift.RGSpace(4),
           ift.PowerSpace(ift.RGSpace((4, 4), harmonic=True)),

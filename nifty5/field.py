@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from .compat import *
+
 import numpy as np
-from . import utilities
+
+from . import dobj, utilities
+from .compat import *
 from .domain_tuple import DomainTuple
-from . import dobj
 
 
 class Field(object):
@@ -605,11 +606,6 @@ class Field(object):
         if self._domain is not other._domain:
             return False
         return (self._val == other._val).all()
-
-    def isSubsetOf(self, other):
-        """Identical to `Field.isEquivalentTo()`. This method is provided for
-        easier interoperability with `MultiField`."""
-        return self.isEquivalentTo(other)
 
 
 for op in ["__add__", "__radd__",

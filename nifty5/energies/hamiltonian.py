@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
 from ..library.gaussian_energy import GaussianEnergy
 from ..minimization.energy import Energy
@@ -31,10 +32,10 @@ class Hamiltonian(Energy):
         lh: Likelihood (energy object)
         prior:
         """
-        super(Hamiltonian, self).__init__(lh.position)
+        super(Hamiltonian, self).__init__(lh._position)
         self._lh = lh
         self._ic_samp = iteration_controller_sampling
-        self._prior = GaussianEnergy(Variable(self.position))
+        self._prior = GaussianEnergy(Variable(self._position))
 
     def at(self, position):
         return self.__class__(self._lh.at(position), self._ic_samp)

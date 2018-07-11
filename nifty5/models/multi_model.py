@@ -17,6 +17,7 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..multi.multi_field import MultiField
@@ -35,7 +36,7 @@ class MultiModel(Model):
         val = self._model.value
         if not isinstance(val.domain, DomainTuple):
             raise TypeError
-        self._value = MultiField({key: val})
+        self._value = MultiField.from_dict({key: val})
         self._jacobian = (MultiAdaptor(self.value.domain) *
                           self._model.jacobian)
 
