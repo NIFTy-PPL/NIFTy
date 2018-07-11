@@ -17,6 +17,12 @@ def make_random_mask():
     return mask.to_global_data()
 
 
+def mask_to_nan(mask, field):
+    masked_data = field.local_data.copy()
+    masked_data[mask.local_data == 0] = np.nan
+    return ift.from_local_data(field.domain, masked_data)
+
+
 if __name__ == '__main__':
     np.random.seed(42)
     # FIXME description of the tutorial
@@ -86,6 +92,8 @@ if __name__ == '__main__':
                  name='getting_started_1.png')
     else:
         ift.plot(HT(MOCK_SIGNAL), title='Mock Signal', name='mock_signal.png')
-        ift.plot((GR*Mask).adjoint(data), title='Data', name='data.png')
+        ift.plot(mask_to_nan(mask, (GR*Mask).adjoint(data)),
+                 title='Data', name='data.png')
         ift.plot(HT(m), title='Reconstruction', name='reconstruction.png')
-    ift.plot(HT(m-MOCK_SIGNAL), name='residuals.png')
+    ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), name='residuals.png')
+
