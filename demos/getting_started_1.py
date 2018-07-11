@@ -114,4 +114,3 @@ if __name__ == '__main__':
                  title='Data', name='data.png')
         ift.plot(HT(m), title='Reconstruction', name='reconstruction.png')
     ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), name='residuals.png')
-
