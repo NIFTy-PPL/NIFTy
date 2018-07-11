@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
+import numpy as np
+
 from ..compat import *
 from ..field import Field
-import numpy as np
 from .multi_domain import MultiDomain
-from ..utilities import frozendict
 
 
 class MultiField(object):

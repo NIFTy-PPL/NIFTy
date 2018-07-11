@@ -17,12 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
-from .minimizer import Minimizer
-from ..field import Field
+
 from .. import dobj
+from ..compat import *
+from ..field import Field
 from ..logger import logger
 from .iteration_controller import IterationController
+from .minimizer import Minimizer
 
 
 def _toNdarray(fld):

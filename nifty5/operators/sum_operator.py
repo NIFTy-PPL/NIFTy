@@ -17,10 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
+import numpy as np
+
 from ..compat import *
 from ..utilities import my_sum
 from .linear_operator import LinearOperator
-import numpy as np
 
 
 class SumOperator(LinearOperator):

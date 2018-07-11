@@ -17,11 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+
 import unittest
-from numpy.testing import assert_equal, assert_allclose
-import nifty5 as ift
 from itertools import product
 from test.common import expand
+
+import nifty5 as ift
+from numpy.testing import assert_allclose, assert_equal
 
 
 class DiagonalOperator_Tests(unittest.TestCase):

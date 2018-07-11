@@ -17,11 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import division
+
 import unittest
-import numpy as np
-from numpy.testing import assert_, assert_equal, assert_allclose
-import nifty5 as ift
 from test.common import expand
+
+import nifty5 as ift
+import numpy as np
+from numpy.testing import assert_, assert_allclose, assert_equal
 
 # [shape, distances, harmonic, expected]
 CONSTRUCTOR_CONFIGS = [

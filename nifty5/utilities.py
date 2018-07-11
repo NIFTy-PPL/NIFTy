@@ -17,12 +17,15 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from .compat import *
-import numpy as np
-from itertools import product
+
 import abc
-from future.utils import with_metaclass
 import collections
+from itertools import product
+
+import numpy as np
+from future.utils import with_metaclass
+
+from .compat import *
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
