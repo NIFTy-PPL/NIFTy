@@ -20,6 +20,7 @@ from __future__ import absolute_import, division, print_function
 
 from ..compat import *
 from ..operators.endomorphic_operator import EndomorphicOperator
+from .multi_domain import MultiDomain
 from .multi_field import MultiField
 
 
