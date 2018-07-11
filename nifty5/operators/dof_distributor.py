@@ -17,14 +17,16 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
-from .linear_operator import LinearOperator
-from ..utilities import infer_space
-from ..field import Field
-from ..domain_tuple import DomainTuple
+
 from .. import dobj
+from ..compat import *
+from ..domain_tuple import DomainTuple
 from ..domains.dof_space import DOFSpace
+from ..field import Field
+from ..utilities import infer_space
+from .linear_operator import LinearOperator
 
 
 class DOFDistributor(LinearOperator):

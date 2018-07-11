@@ -17,11 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
-from .linear_operator import LinearOperator
+
+from ..compat import *
 from .diagonal_operator import DiagonalOperator
 from .endomorphic_operator import EndomorphicOperator
+from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator
 
 

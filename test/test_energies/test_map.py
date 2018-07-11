@@ -17,10 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import nifty5 as ift
-import numpy as np
 from itertools import product
 from test.common import expand
+
+import nifty5 as ift
+import numpy as np
 
 
 def _flat_PS(k):

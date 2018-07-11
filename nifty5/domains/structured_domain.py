@@ -17,10 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import abc
-from .domain import Domain
+
 import numpy as np
+
+from ..compat import *
+from .domain import Domain
 
 
 class StructuredDomain(Domain):

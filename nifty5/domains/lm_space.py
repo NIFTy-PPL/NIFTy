@@ -17,10 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
-from .structured_domain import StructuredDomain
+
+from ..compat import *
 from ..field import Field
+from .structured_domain import StructuredDomain
 
 
 class LMSpace(StructuredDomain):

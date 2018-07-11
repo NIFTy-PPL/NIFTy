@@ -17,10 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-from numpy.testing import assert_allclose, assert_equal
-import nifty5 as ift
 from itertools import product
 from test.common import expand
+
+import nifty5 as ift
+from numpy.testing import assert_allclose, assert_equal
 
 
 class ComposedOperator_Tests(unittest.TestCase):

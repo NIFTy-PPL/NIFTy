@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import numpy as np
-from numpy.testing import assert_allclose
-import nifty5 as ift
 from itertools import product
 from test.common import expand
+
+import nifty5 as ift
+import numpy as np
+from numpy.testing import assert_allclose
 
 
 def _get_rtol(tp):

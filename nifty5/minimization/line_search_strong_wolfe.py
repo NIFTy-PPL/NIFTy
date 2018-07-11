@@ -17,11 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
-from .line_search import LineSearch
-from .line_energy import LineEnergy
+
+from ..compat import *
 from ..logger import logger
+from .line_energy import LineEnergy
+from .line_search import LineSearch
 
 
 class LineSearchStrongWolfe(LineSearch):

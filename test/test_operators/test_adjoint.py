@@ -17,11 +17,11 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
-import nifty5 as ift
-import numpy as np
 from itertools import product
 from test.common import expand
 
+import nifty5 as ift
+import numpy as np
 
 _h_RG_spaces = [ift.RGSpace(7, distances=0.2, harmonic=True),
                 ift.RGSpace((12, 46), distances=(.2, .3), harmonic=True)]

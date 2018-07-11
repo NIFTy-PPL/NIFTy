@@ -17,13 +17,14 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
+from .. import utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
-from .linear_operator import LinearOperator
 from .fft_operator import FFTOperator
+from .linear_operator import LinearOperator
 from .sht_operator import SHTOperator
-from .. import utilities
 
 
 class HarmonicTransformOperator(LinearOperator):

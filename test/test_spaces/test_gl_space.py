@@ -16,13 +16,14 @@
 # NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
-import unittest
-import numpy as np
 import itertools
-from numpy.testing import assert_, assert_equal, assert_raises,\
-        assert_almost_equal
-from nifty5 import GLSpace
+import unittest
 from test.common import expand
+
+import numpy as np
+from nifty5 import GLSpace
+from numpy.testing import (assert_, assert_almost_equal, assert_equal,
+                           assert_raises)
 
 # [nlat, nlon, expected]
 CONSTRUCTOR_CONFIGS = [

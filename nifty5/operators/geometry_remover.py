@@ -17,9 +17,10 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
-from ..domains.unstructured_domain import UnstructuredDomain
 from ..domain_tuple import DomainTuple
+from ..domains.unstructured_domain import UnstructuredDomain
 from .linear_operator import LinearOperator
 
 

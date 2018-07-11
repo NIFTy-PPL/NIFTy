@@ -17,12 +17,13 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
 from ..compat import *
-from .scaling_operator import ScalingOperator
-from .fft_operator import FFTOperator
+from ..domain_tuple import DomainTuple
 from ..utilities import infer_space
 from .diagonal_operator import DiagonalOperator
-from ..domain_tuple import DomainTuple
+from .fft_operator import FFTOperator
+from .scaling_operator import ScalingOperator
 
 
 def FFTSmoothingOperator(domain, sigma, space=None):

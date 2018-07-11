@@ -17,11 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
+
+from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
-from .. import dobj
 
 
 # MR FIXME: we should make sure that the domain is a harmonic RGSpace, correct?
