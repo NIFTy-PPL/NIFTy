@@ -10,6 +10,8 @@ from ..domain_tuple import DomainTuple
 from .linear_operator import LinearOperator
 
 
+# MR FIXME: we probably need a better name. This thing is actually
+#           an AdointFieldZeroPadder (no, that's not a name suggestion ...)
 class FieldZeroPadder(LinearOperator):
     def __init__(self, target, factor, space=0):
         super(FieldZeroPadder, self).__init__()
