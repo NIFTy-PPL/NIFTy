@@ -66,5 +66,6 @@ class PowerDistributor(DOFDistributor):
             if x.imag.sum() == 0:
                 x = x.real
             else:
-                raise TypeError
+                print('Warning: Assume real in PowerDistributor.')
+                x = x.real
         return DOFDistributor.apply(self, x, mode)
