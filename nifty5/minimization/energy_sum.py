@@ -37,9 +37,9 @@ class EnergySum(Energy):
         eout = []
         fout = []
         EnergySum._unpackEnergies(energies, factors, 1., eout, fout)
-        for e in eout[1:]:
-            if not e.position.isEquivalentTo(eout[0].position):
-                raise ValueError("position mismatch")
+        # for e in eout[1:]:
+        #     if not e.position.isEquivalentTo(eout[0].position):
+        #         raise ValueError("position mismatch")
         return EnergySum(eout[0].position, eout, fout)
 
     @staticmethod
