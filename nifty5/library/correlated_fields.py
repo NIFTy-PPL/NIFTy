@@ -44,6 +44,7 @@ def make_correlated_field(s_space, amplitude_model):
     ht = FFTOperator(h_space, s_space)
     p_space = amplitude_model.value.domain[0]
     power_distributor = PowerDistributor(h_space, p_space)
+    # FIXME Remove tau and phi stuff from here. Should not be necessary
     position = MultiField.from_dict({
         'xi': Field.from_random('normal', h_space),
         'tau': amplitude_model.position['tau'],
