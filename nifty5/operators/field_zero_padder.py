@@ -4,31 +4,29 @@ import numpy as np
 
 from .. import dobj
 from ..compat import *
-from ..field import Field
-from ..domains.rg_space import RGSpace
 from ..domain_tuple import DomainTuple
+from ..domains.rg_space import RGSpace
+from ..field import Field
 from .linear_operator import LinearOperator
 
 
-# MR FIXME: we probably need a better name. This thing is actually
-#           an AdointFieldZeroPadder (no, that's not a name suggestion ...)
 class FieldZeroPadder(LinearOperator):
-    def __init__(self, target, factor, space=0):
+    def __init__(self, domain, factor, space=0):
         super(FieldZeroPadder, self).__init__()
-        self._target = DomainTuple.make(target)
+        self._domain = DomainTuple.make(domain)
         self._space = int(space)
-        tgt = self._target[self._space]
-        if not isinstance(tgt, RGSpace):
+        dom = self._domain[self._space]
+        if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
-        if not len(tgt.shape) == 1:
+        if not len(dom.shape) == 1:
             raise TypeError("RGSpace must be one-dimensional")
-        if tgt.harmonic:
+        if dom.harmonic:
             raise TypeError("RGSpace must not be harmonic")
 
-        dom = RGSpace((int(factor*tgt.shape[0]),), tgt.distances)
-        self._domain = list(self._target)
-        self._domain[self._space] = dom
-        self._domain = DomainTuple.make(self._domain)
+        tgt = RGSpace((int(factor*dom.shape[0]),), dom.distances)
+        self._target = list(self._domain)
+        self._target[self._space] = tgt
+        self._target = DomainTuple.make(self._target)
 
     @property
     def domain(self):
@@ -48,12 +46,12 @@ class FieldZeroPadder(LinearOperator):
         dax = dobj.distaxis(x)
         shp_in = x.shape
         shp_out = self._tgt(mode).shape
-        ax = self._domain.axes[self._space][0]
+        ax = self._target.axes[self._space][0]
         if dax == ax:
             x = dobj.redistribute(x, nodist=(ax,))
         curax = dobj.distaxis(x)
 
-        if mode == self.TIMES:
+        if mode == self.ADJOINT_TIMES:
             newarr = np.empty(dobj.local_shape(shp_out), dtype=x.dtype)
             newarr[()] = dobj.local_data(x)[(slice(None),)*ax +
                                             (slice(0, shp_out[ax]),)]
