@@ -33,6 +33,7 @@ from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
 from .operators.fft_operator import FFTOperator
 from .operators.fft_smoothing_operator import FFTSmoothingOperator
+from .operators.field_zero_padder import FieldZeroPadder
 from .operators.geometry_remover import GeometryRemover
 from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.inversion_enabler import InversionEnabler

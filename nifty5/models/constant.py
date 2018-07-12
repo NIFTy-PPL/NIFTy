@@ -37,9 +37,8 @@ class Constant(Model):
     -----
     Since there is no model-function associated:
         - Position has no influence on value.
-        - There is no Jacobian.
+        - The Jacobian is a null matrix.
     """
-    # TODO Remove position
     def __init__(self, position, constant):
         super(Constant, self).__init__(position)
         self._constant = constant
