@@ -88,6 +88,7 @@ class LinearOperator(NiftyMetaBase()):
 
     @abc.abstractproperty
     def domain(self):
+        # FIXME Adopt documentation to MultiDomains
         """DomainTuple : the operator's input domain
 
             The domain on which the Operator's input Field lives."""
