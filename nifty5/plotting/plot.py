@@ -169,7 +169,7 @@ def _register_cmaps():
     plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
-def plot(f, **kwargs):
+def _plot(f, ax, **kwargs):
     import matplotlib.pyplot as plt
     _register_cmaps()
     if isinstance(f, Field):
@@ -209,12 +209,12 @@ def plot(f, **kwargs):
         alpha = [alpha]
 
     dom = dom[0]
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
+    #fig = plt.figure()
+    #ax = fig.add_subplot(1, 1, 1)
 
-    xsize = kwargs.pop("xsize", 6)
-    ysize = kwargs.pop("ysize", 6)
-    fig.set_size_inches(xsize, ysize)
+    #xsize = kwargs.pop("xsize", 6)
+    #ysize = kwargs.pop("ysize", 6)
+    #fig.set_size_inches(xsize, ysize)
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
@@ -231,7 +231,7 @@ def plot(f, **kwargs):
             _limit_xy(**kwargs)
             if label != ([None]*len(f)):
                 plt.legend()
-            _makeplot(kwargs.get("name"))
+            #_makeplot(kwargs.get("name"))
             return
         elif len(dom.shape) == 2:
             f = f[0]
@@ -251,7 +251,7 @@ def plot(f, **kwargs):
             # plt.colorbar(im,cax=cax)
             plt.colorbar(im)
             _limit_xy(**kwargs)
-            _makeplot(kwargs.get("name"))
+            #_makeplot(kwargs.get("name"))
             return
     elif isinstance(dom, PowerSpace):
         plt.xscale('log')
@@ -265,7 +265,7 @@ def plot(f, **kwargs):
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
-        _makeplot(kwargs.get("name"))
+        #_makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, HPSpace):
         f = f[0]
@@ -282,7 +282,7 @@ def plot(f, **kwargs):
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
-        _makeplot(kwargs.get("name"))
+        #_makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, GLSpace):
         f = f[0]
@@ -300,7 +300,23 @@ def plot(f, **kwargs):
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
-        _makeplot(kwargs.get("name"))
+        #_makeplot(kwargs.get("name"))
         return
 
     raise ValueError("Field type not(yet) supported")
+
+_plots = []
+_kwargs = []
+
+def add_plot(f, **kwargs):
+    _plots.append(f)
+    _kwargs.append(kwargs)
+
+def plot(**kwargs):
+    import matplotlib.pyplot as plt
+    nplot = len(_plots)
+    fig = plt.figure()
+    for i in range(nplot):
+        ax = fig.add_subplot(nplot,1,i+1)
+        _plot(_plots[i], ax, **_kwargs[i])
+    _makeplot(None)
