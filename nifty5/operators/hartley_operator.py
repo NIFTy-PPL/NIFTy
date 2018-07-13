@@ -43,6 +43,18 @@ class HartleyOperator(LinearOperator):
         The index of the subdomain on which the operator should act
         If None, it is set to 0 if `domain` contains exactly one space.
         `domain[space]` must be an RGSpace.
+
+    Notes
+    -----
+    This operator always produces output fields with the same data type as
+    its input. This is achieved by performing so-called Hartley transforms
+    (https://en.wikipedia.org/wiki/Discrete_Hartley_transform).
+    For complex input fields, the operator will transform the real and
+    imaginary parts separately and use the results as real and imaginary parts
+    of the result field, respectivey.
+    In many contexts the Hartley transform is a perfect substitute for the
+    Fourier transform, but in some situations (e.g. convolution with a general,
+    non-symmetrc kernel, the full FFT must be used instead.
     """
 
     def __init__(self, domain, target=None, space=None):

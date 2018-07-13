@@ -43,6 +43,13 @@ class FFTOperator(LinearOperator):
         The index of the subdomain on which the operator should act
         If None, it is set to 0 if `domain` contains exactly one space.
         `domain[space]` must be an RGSpace.
+
+    Notes
+    -----
+    This operator performs full FFTs, which implies that its output field will
+    always have complex type, regardless of the type of the input field.
+    If a real field is desired after a forward/backward transform couple, it
+    must be manually cast to real.
     """
 
     def __init__(self, domain, target=None, space=None):
