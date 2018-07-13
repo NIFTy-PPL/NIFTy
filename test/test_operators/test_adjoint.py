@@ -56,6 +56,14 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.FFTOperator(sp.get_default_codomain())
         ift.extra.consistency_check(op, dtype, dtype)
 
+    @expand(product(_h_RG_spaces+_p_RG_spaces,
+                    [np.float64, np.complex128]))
+    def testHartley(self, sp, dtype):
+        op = ift.HartleyOperator(sp)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = ift.HartleyOperator(sp.get_default_codomain())
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testHarmonic(self, sp, dtype):
         op = ift.HarmonicTransformOperator(sp)

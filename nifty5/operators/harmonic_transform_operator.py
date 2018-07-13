@@ -22,7 +22,7 @@ from .. import utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
-from .fft_operator import FFTOperator
+from .hartley_operator import HartleyOperator
 from .linear_operator import LinearOperator
 from .sht_operator import SHTOperator
 
@@ -65,7 +65,7 @@ class HarmonicTransformOperator(LinearOperator):
             raise TypeError(
                 "HarmonicTransformOperator only works on a harmonic space")
         if isinstance(hspc, RGSpace):
-            self._op = FFTOperator(domain, target, space)
+            self._op = HartleyOperator(domain, target, space)
         else:
             self._op = SHTOperator(domain, target, space)
 
