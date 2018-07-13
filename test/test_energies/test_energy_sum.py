@@ -53,5 +53,5 @@ class EnergySum_Tests(unittest.TestCase):
             E1+2
         with assert_raises(TypeError):
             E1-"hello"
-        with assert_raises(ValueError):
-            E1+E2.at(2*pos)
+        # with assert_raises(ValueError):
+        #     E1+E2.at(2*pos)
