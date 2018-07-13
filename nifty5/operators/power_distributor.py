@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import numpy as np
-
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
@@ -59,7 +57,3 @@ class PowerDistributor(DOFDistributor):
                 raise ValueError("power_space does not match its partner")
 
         self._init2(power_space.pindex, self._space, power_space)
-
-    def apply(self, x, mode):
-        self._check_input(x, mode)
-        return DOFDistributor.apply(self, x, mode)
