@@ -62,10 +62,4 @@ class PowerDistributor(DOFDistributor):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if x.dtype == np.complex:
-            if x.imag.sum() == 0:
-                x = x.real
-            else:
-                print('Warning: Assume real in PowerDistributor.')
-                x = x.real
         return DOFDistributor.apply(self, x, mode)
