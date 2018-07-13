@@ -242,7 +242,7 @@ for op in ["__sub__", "__rsub__",
                 if self._domain is not other._domain:
                     raise ValueError("domain mismatch")
                 val = tuple(getattr(v1, op)(v2)
-                            for v1, v2 in zip (self._val, other._val))
+                            for v1, v2 in zip(self._val, other._val))
             else:
                 val = tuple(getattr(v1, op)(other) for v1 in self._val)
             return MultiField(self._domain, val)
