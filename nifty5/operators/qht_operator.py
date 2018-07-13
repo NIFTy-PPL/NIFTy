@@ -36,26 +36,34 @@ class QHTOperator(LinearOperator):
 
     Parameters
     ----------
-    domain : LogRGSpace
-        The domain needs to be a LogRGSpace.
+    domain : domain, tuple of domains or DomainTuple
+        The full input domain
+    space : int
+        The index of the domain on which the operator acts.
+        domain[space] must be a harmonic LogRGSpace.
     target : LogRGSpace
-        The target needs to be a LogRGSpace.
+        The target codomain of domain[space]
+        Must be a nonharmonic LogRGSpace.
     """
-    def __init__(self, domain, target):
-        if not domain.harmonic:
+    def __init__(self, domain, target, space=0):
+        self._domain = DomainTuple.make(domain)
+        self._space = int(space)
+
+        from ..domains.log_rg_space import LogRGSpace
+        if not isinstance(self._domain[self._space], LogRGSpace):
+            raise ValueError("Domain[space] has to be a LogRGSpace!")
+        if not isinstance(target, LogRGSpace):
+            raise ValueError("Target has to be a LogRGSpace!")
+
+        if not self._domain[self._space].harmonic:
             raise TypeError(
                 "HarmonicTransformOperator only works on a harmonic space")
         if target.harmonic:
             raise TypeError("Target is not a codomain of domain")
 
-        from ..domains.log_rg_space import LogRGSpace
-        if not isinstance(domain, LogRGSpace):
-            raise ValueError("Domain has to be a LogRGSpace!")
-        if not isinstance(target, LogRGSpace):
-            raise ValueError("Target has to be a LogRGSpace!")
-
-        self._domain = DomainTuple.make(domain)
-        self._target = DomainTuple.make(target)
+        self._target = [dom for dom in self._domain]
+        self._target[self._space] = target
+        self._target = DomainTuple.make(self._target)
 
     @property
     def domain(self):
@@ -67,9 +75,10 @@ class QHTOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val * self.domain[0].scalar_dvol()
-        n = len(self.domain[0].shape)
-        rng = range(n) if mode == self.TIMES else reversed(range(n))
+        dom = self._domain[self._space]
+        x = x.val * dom.scalar_dvol()
+        n = self._domain.axes[self._space]
+        rng = n if mode == self.TIMES else reversed(n)
         ax = dobj.distaxis(x)
         globshape = x.shape
         for i in rng:

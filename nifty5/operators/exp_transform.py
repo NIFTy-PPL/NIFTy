@@ -30,17 +30,19 @@ from .linear_operator import LinearOperator
 
 
 class ExpTransform(LinearOperator):
-    def __init__(self, target, dof):
-
-        if not ((isinstance(target, RGSpace) and target.harmonic) or
-                isinstance(target, PowerSpace)):
+    def __init__(self, target, dof, space=0):
+        self._target = DomainTuple.make(target)
+        self._space = int(space)
+        tgt = self._target[self._space]
+        if not ((isinstance(tgt, RGSpace) and tgt.harmonic) or
+                isinstance(tgt, PowerSpace)):
             raise ValueError(
                 "Target must be a harmonic RGSpace or a power space.")
 
         if np.isscalar(dof):
-            dof = np.full(len(target.shape), int(dof), dtype=np.int)
+            dof = np.full(len(tgt.shape), int(dof), dtype=np.int)
         dof = np.array(dof)
-        ndim = len(target.shape)
+        ndim = len(tgt.shape)
 
         t_mins = np.empty(ndim)
         bindistances = np.empty(ndim)
@@ -48,12 +50,12 @@ class ExpTransform(LinearOperator):
         self._frac = [None] * ndim
 
         for i in range(ndim):
-            if isinstance(target, RGSpace):
-                rng = np.arange(target.shape[i])
-                tmp = np.minimum(rng, target.shape[i]+1-rng)
-                k_array = tmp * target.distances[i]
+            if isinstance(tgt, RGSpace):
+                rng = np.arange(tgt.shape[i])
+                tmp = np.minimum(rng, tgt.shape[i]+1-rng)
+                k_array = tmp * tgt.distances[i]
             else:
-                k_array = target.k_lengths
+                k_array = tgt.k_lengths
 
             # avoid taking log of first entry
             log_k_array = np.log(k_array[1:])
@@ -77,8 +79,9 @@ class ExpTransform(LinearOperator):
         from ..domains.log_rg_space import LogRGSpace
         log_space = LogRGSpace(2*dof+1, bindistances,
                                t_mins, harmonic=False)
-        self._target = DomainTuple.make(target)
-        self._domain = DomainTuple.make(log_space)
+        self._domain = [dom for dom in self._target]
+        self._domain[self._space] = log_space
+        self._domain = DomainTuple.make(self._domain)
 
     @property
     def domain(self):
@@ -94,9 +97,10 @@ class ExpTransform(LinearOperator):
         ax = dobj.distaxis(x)
         ndim = len(self.target.shape)
         curshp = list(self._dom(mode).shape)
-        for d in range(ndim):
+        d0 = self._target.axes[self._space][0]
+        for d in self._target.axes[self._space]:
             idx = (slice(None,),) * d
-            wgt = self._frac[d].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
+            wgt = self._frac[d-d0].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
 
             if d == ax:
                 x = dobj.redistribute(x, nodist=(ax,))
@@ -107,11 +111,11 @@ class ExpTransform(LinearOperator):
                 shp = list(x.shape)
                 shp[d] = self._tgt(mode).shape[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
-                np.add.at(xnew, idx + (self._bindex[d],), x * (1.-wgt))
-                np.add.at(xnew, idx + (self._bindex[d]+1,), x * wgt)
+                np.add.at(xnew, idx + (self._bindex[d-d0],), x * (1.-wgt))
+                np.add.at(xnew, idx + (self._bindex[d-d0]+1,), x * wgt)
             else:  # TIMES
-                xnew = x[idx + (self._bindex[d],)] * (1.-wgt)
-                xnew += x[idx + (self._bindex[d]+1,)] * wgt
+                xnew = x[idx + (self._bindex[d-d0],)] * (1.-wgt)
+                xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt
 
             curshp[d] = self._tgt(mode).shape[d]
             x = dobj.from_local_data(curshp, xnew, distaxis=curax)
