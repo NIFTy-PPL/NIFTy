@@ -86,16 +86,6 @@ def _makeplot(name):
     elif extension == ".png":
         plt.savefig(name)
         plt.close()
-    # elif extension==".html":
-        # import mpld3
-        # mpld3.save_html(plt.gcf(),fileobj=name,no_extras=True)
-        # import plotly.offline as py
-        # import plotly.tools as tls
-        # plotly_fig = tls.mpl_to_plotly(plt.gcf())
-        # py.plot(plotly_fig,filename=name)
-        # py.plot_mpl(plt.gcf(),filename=name)
-        # import bokeh
-        # bokeh.mpl.to_bokeh(plt.gcf())
     else:
         raise ValueError("file format not understood")
 
@@ -306,18 +296,20 @@ def plot(f, **kwargs):
     _plots.append(f)
     _kwargs.append(kwargs)
 
-def plot_finish(nx, ny, **kwargs):
+def plot_finish(**kwargs):
     global _plots, _kwargs
     import matplotlib.pyplot as plt
     nplot = len(_plots)
     fig = plt.figure()
     if "title" in kwargs:
         plt.suptitle(kwargs.pop("title"))
+    nx = kwargs.pop("nx", 1)
+    ny = kwargs.pop("ny", 1)
     xsize = kwargs.pop("xsize", 6)
     ysize = kwargs.pop("ysize", 6)
     fig.set_size_inches(xsize, ysize)
     for i in range(nplot):
-        ax = fig.add_subplot(nx,ny,i+1)
+        ax = fig.add_subplot(ny,nx,i+1)
         _plot(_plots[i], ax, **_kwargs[i])
     _makeplot(kwargs.pop("name", None))
     _plots = []

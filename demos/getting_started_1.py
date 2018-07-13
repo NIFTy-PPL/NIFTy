@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # FIXME description of the tutorial
 
     # Choose problem geometry and masking
-    mode = 0
+    mode = 1
     if mode == 0:
         # One dimensional regular grid
         position_space = ift.RGSpace([1024])
@@ -108,10 +108,12 @@ if __name__ == '__main__':
                  label=['Mock signal', 'Data', 'Reconstruction'],
                  alpha=[1, .3, 1])
         ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
-        ift.plot_finish(1, 2, xsize=10, ysize=4, title="getting_started_1")
+        ift.plot_finish(nx=2, ny=1, xsize=10, ysize=4,
+                        title="getting_started_1")
     else:
         ift.plot(HT(MOCK_SIGNAL), title='Mock Signal')
         ift.plot(mask_to_nan(mask, (GR*Mask).adjoint(data)), title='Data')
         ift.plot(HT(m), title='Reconstruction')
         ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
-        ift.plot_finish(2, 2, xsize=10, ysize=8, title="getting_started_1")
+        ift.plot_finish(nx=4, ny=1, xsize=20, ysize=4,
+                        title="getting_started_1")
