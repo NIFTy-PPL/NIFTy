@@ -37,13 +37,13 @@ class SmoothingOperator_Tests(unittest.TestCase):
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_property(self, space, sigma):
-        op = ift.FFTSmoothingOperator(space, sigma=sigma)
+        op = ift.HarmonicSmoothingOperator(space, sigma=sigma)
         if op.domain[0] != space:
             raise TypeError
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_adjoint_times(self, space, sigma):
-        op = ift.FFTSmoothingOperator(space, sigma=sigma)
+        op = ift.HarmonicSmoothingOperator(space, sigma=sigma)
         rand1 = ift.Field.from_random('normal', domain=space)
         rand2 = ift.Field.from_random('normal', domain=space)
         tt1 = rand1.vdot(op.times(rand2))
@@ -52,7 +52,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
 
     @expand(product(spaces, [0., .5, 5.]))
     def test_times(self, space, sigma):
-        op = ift.FFTSmoothingOperator(space, sigma=sigma)
+        op = ift.HarmonicSmoothingOperator(space, sigma=sigma)
         fld = np.zeros(space.shape, dtype=np.float64)
         fld[0] = 1.
         rand1 = ift.Field.from_global_data(space, fld)
@@ -64,7 +64,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_regular1(self, sz, d, sigma, tp):
         tol = _get_rtol(tp)
         sp = ift.RGSpace(sz, distances=d)
-        smo = ift.FFTSmoothingOperator(sp, sigma=sigma)
+        smo = ift.HarmonicSmoothingOperator(sp, sigma=sigma)
         inp = ift.Field.from_random(domain=sp, random_type='normal', std=1,
                                     mean=4, dtype=tp)
         out = smo(inp)
@@ -75,7 +75,7 @@ class SmoothingOperator_Tests(unittest.TestCase):
     def test_smooth_regular2(self, sz1, sz2, d1, d2, sigma, tp):
         tol = _get_rtol(tp)
         sp = ift.RGSpace([sz1, sz2], distances=[d1, d2])
-        smo = ift.FFTSmoothingOperator(sp, sigma=sigma)
+        smo = ift.HarmonicSmoothingOperator(sp, sigma=sigma)
         inp = ift.Field.from_random(domain=sp, random_type='normal', std=1,
                                     mean=4, dtype=tp)
         out = smo(inp)

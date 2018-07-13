@@ -28,7 +28,7 @@ from ..field import Field
 from .linear_operator import LinearOperator
 
 
-class FFTOperator(LinearOperator):
+class HartleyOperator(LinearOperator):
     """Transforms between a pair of position and harmonic RGSpaces.
 
     Parameters
@@ -46,14 +46,19 @@ class FFTOperator(LinearOperator):
 
     Notes
     -----
-    This operator performs full FFTs, which implies that its output field will
-    always have complex type, regardless of the type of the input field.
-    If a real field is desired after a forward/backward transform couple, it
-    must be manually cast to real.
+    This operator always produces output fields with the same data type as
+    its input. This is achieved by performing so-called Hartley transforms
+    (https://en.wikipedia.org/wiki/Discrete_Hartley_transform).
+    For complex input fields, the operator will transform the real and
+    imaginary parts separately and use the results as real and imaginary parts
+    of the result field, respectivey.
+    In many contexts the Hartley transform is a perfect substitute for the
+    Fourier transform, but in some situations (e.g. convolution with a general,
+    non-symmetrc kernel, the full FFT must be used instead.
     """
 
     def __init__(self, domain, target=None, space=None):
-        super(FFTOperator, self).__init__()
+        super(HartleyOperator, self).__init__()
 
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
@@ -61,7 +66,7 @@ class FFTOperator(LinearOperator):
 
         adom = self._domain[self._space]
         if not isinstance(adom, RGSpace):
-            raise TypeError("FFTOperator only works on RGSpaces")
+            raise TypeError("HartleyOperator only works on RGSpaces")
         if target is None:
             target = adom.get_default_codomain()
 
@@ -74,35 +79,41 @@ class FFTOperator(LinearOperator):
         utilities.fft_prep()
 
     def apply(self, x, mode):
-        from pyfftw.interfaces.numpy_fft import fftn, ifftn
         self._check_input(x, mode)
-        ncells = x.domain[self._space].size
-        if x.domain[self._space].harmonic:  # harmonic -> position
-            func = fftn
-            fct = 1.
+        if np.issubdtype(x.dtype, np.complexfloating):
+            return (self._apply_cartesian(x.real, mode) +
+                    1j*self._apply_cartesian(x.imag, mode))
         else:
-            func = ifftn
-            fct = ncells
+            return self._apply_cartesian(x, mode)
+
+    def _apply_cartesian(self, x, mode):
         axes = x.domain.axes[self._space]
         tdom = self._tgt(mode)
         oldax = dobj.distaxis(x.val)
         if oldax not in axes:  # straightforward, no redistribution needed
             ldat = x.local_data
-            ldat = func(ldat, axes=axes)
+            ldat = utilities.hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(x.val.shape, ldat, distaxis=oldax)
         elif len(axes) < len(x.shape) or len(axes) == 1:
-            # we can use one FFT pass in between the redistributions
+            # we can use one Hartley pass in between the redistributions
             tmp = dobj.redistribute(x.val, nodist=axes)
             newax = dobj.distaxis(tmp)
             ldat = dobj.local_data(tmp)
-            ldat = func(ldat, axes=axes)
+            ldat = utilities.hartley(ldat, axes=axes)
             tmp = dobj.from_local_data(tmp.shape, ldat, distaxis=newax)
             tmp = dobj.redistribute(tmp, dist=oldax)
-        else:  # two separate FFTs needed
+        else:  # two separate, full FFTs needed
+            # ideal strategy for the moment would be:
+            # - do real-to-complex FFT on all local axes
+            # - fill up array
+            # - redistribute array
+            # - do complex-to-complex FFT on remaining axis
+            # - add re+im
+            # - redistribute back
             rem_axes = tuple(i for i in axes if i != oldax)
             tmp = x.val
             ldat = dobj.local_data(tmp)
-            ldat = func(ldat, axes=rem_axes)
+            ldat = utilities.my_fftn_r2c(ldat, axes=rem_axes)
             if oldax != 0:
                 raise ValueError("bad distribution")
             ldat2 = ldat.reshape((ldat.shape[0],
@@ -111,16 +122,17 @@ class FFTOperator(LinearOperator):
             tmp = dobj.from_local_data(shp2d, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)
             ldat2 = dobj.local_data(tmp)
-            ldat2 = func(ldat2, axes=(1,))
+            ldat2 = utilities.my_fftn(ldat2, axes=(1,))
+            ldat2 = ldat2.real+ldat2.imag
             tmp = dobj.from_local_data(tmp.shape, ldat2, distaxis=0)
             tmp = dobj.transpose(tmp)
             ldat2 = dobj.local_data(tmp).reshape(ldat.shape)
             tmp = dobj.from_local_data(x.val.shape, ldat2, distaxis=0)
         Tval = Field(tdom, tmp)
         if mode & (LinearOperator.TIMES | LinearOperator.ADJOINT_TIMES):
-            fct *= self._domain[self._space].scalar_dvol
+            fct = self._domain[self._space].scalar_dvol
         else:
-            fct *= self._target[self._space].scalar_dvol
+            fct = self._target[self._space].scalar_dvol
         return Tval if fct == 1 else Tval*fct
 
     @property

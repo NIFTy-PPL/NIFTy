@@ -25,7 +25,7 @@ from ..models.local_nonlinearity import PointwiseExponential
 from ..models.variable import Variable
 from ..multi.multi_field import MultiField
 from ..operators.domain_distributor import DomainDistributor
-from ..operators.fft_operator import FFTOperator
+from ..operators.hartley_operator import HartleyOperator
 from ..operators.harmonic_transform_operator import HarmonicTransformOperator
 from ..operators.power_distributor import PowerDistributor
 
@@ -41,7 +41,7 @@ def make_correlated_field(s_space, amplitude_model):
     amplitude_model : model for correlation structure
     '''
     h_space = s_space.get_default_codomain()
-    ht = FFTOperator(h_space, s_space)
+    ht = HartleyOperator(h_space, s_space)
     p_space = amplitude_model.value.domain[0]
     power_distributor = PowerDistributor(h_space, p_space)
     # FIXME Remove tau and phi stuff from here. Should not be necessary

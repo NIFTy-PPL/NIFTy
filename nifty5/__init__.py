@@ -32,8 +32,9 @@ from .operators.domain_distributor import DomainDistributor
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
 from .operators.fft_operator import FFTOperator
-from .operators.fft_smoothing_operator import FFTSmoothingOperator
 from .operators.field_zero_padder import FieldZeroPadder
+from .operators.hartley_operator import HartleyOperator
+from .operators.harmonic_smoothing_operator import HarmonicSmoothingOperator
 from .operators.geometry_remover import GeometryRemover
 from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.inversion_enabler import InversionEnabler
