@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # FIXME description of the tutorial
 
     # Choose problem geometry and masking
-    mode = 1
+    mode = 0
     if mode == 0:
         # One dimensional regular grid
         position_space = ift.RGSpace([1024])
@@ -104,14 +104,14 @@ if __name__ == '__main__':
     # PLOTTING
     rg = isinstance(position_space, ift.RGSpace)
     if rg and len(position_space.shape) == 1:
-        ift.add_plot([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
+        ift.plot([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
                  label=['Mock signal', 'Data', 'Reconstruction'],
-                 alpha=[1, .3, 1],
-                 name='getting_started_1.png')
+                 alpha=[1, .3, 1])
+        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
+        ift.plot_finish(1, 2, xsize=10, ysize=4, title="getting_started_1")
     else:
-        ift.add_plot(HT(MOCK_SIGNAL), title='Mock Signal', name='mock_signal.png')
-        ift.add_plot(mask_to_nan(mask, (GR*Mask).adjoint(data)),
-                 title='Data', name='data.png')
-        ift.add_plot(HT(m), title='Reconstruction', name='reconstruction.png')
-    ift.add_plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), name='residuals.png')
-    ift.plot()
+        ift.plot(HT(MOCK_SIGNAL), title='Mock Signal')
+        ift.plot(mask_to_nan(mask, (GR*Mask).adjoint(data)), title='Data')
+        ift.plot(HT(m), title='Reconstruction')
+        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
+        ift.plot_finish(2, 2, xsize=10, ysize=8, title="getting_started_1")
