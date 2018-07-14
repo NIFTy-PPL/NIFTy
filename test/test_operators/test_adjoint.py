@@ -101,3 +101,25 @@ class Consistency_Tests(unittest.TestCase):
     def testGeometryRemover(self, sp, dtype):
         op = ift.GeometryRemover(sp)
         ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)],
+                    [np.float64, np.complex128]))
+    def testDomainDistributor(self, spaces, dtype):
+        dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.GLSpace(5),
+               ift.HPSpace(4))
+        op = ift.DomainDistributor(dom, spaces)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([0, 2], [np.float64, np.complex128]))
+    def testSymmetrizingOperator(self, space, dtype):
+        dom = (ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13),
+               ift.LogRGSpace((5, 27), [1., 2.7], [0., 4.]), ift.HPSpace(4))
+        op = ift.SymmetrizingOperator(dom, space)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([0, 2], [2, 2.7], [np.float64, np.complex128]))
+    def testZeroPadder(self, space, factor, dtype):
+        dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7),
+               ift.HPSpace(4))
+        op = ift.FieldZeroPadder(dom, factor, space)
+        ift.extra.consistency_check(op, dtype, dtype)

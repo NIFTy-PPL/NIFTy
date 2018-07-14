@@ -27,12 +27,13 @@ from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace
 from ..field import Field
 from .linear_operator import LinearOperator
+from .. import utilities
 
 
 class ExpTransform(LinearOperator):
     def __init__(self, target, dof, space=0):
         self._target = DomainTuple.make(target)
-        self._space = int(space)
+        self._space = utilities.infer_space(self._target, space)
         tgt = self._target[self._space]
         if not ((isinstance(tgt, RGSpace) and tgt.harmonic) or
                 isinstance(tgt, PowerSpace)):

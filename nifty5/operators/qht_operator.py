@@ -22,7 +22,7 @@ from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from ..utilities import hartley
+from ..utilities import hartley, infer_space
 from .linear_operator import LinearOperator
 
 
@@ -47,7 +47,7 @@ class QHTOperator(LinearOperator):
     """
     def __init__(self, domain, target, space=0):
         self._domain = DomainTuple.make(domain)
-        self._space = int(space)
+        self._space = infer_space(self._domain, space)
 
         from ..domains.log_rg_space import LogRGSpace
         if not isinstance(self._domain[self._space], LogRGSpace):
