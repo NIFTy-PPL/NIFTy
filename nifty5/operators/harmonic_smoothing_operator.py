@@ -22,11 +22,11 @@ from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..utilities import infer_space
 from .diagonal_operator import DiagonalOperator
-from .fft_operator import FFTOperator
+from .hartley_operator import HartleyOperator
 from .scaling_operator import ScalingOperator
 
 
-def FFTSmoothingOperator(domain, sigma, space=None):
+def HarmonicSmoothingOperator(domain, sigma, space=None):
     """ This function returns an operator that carries out a smoothing with
     a Gaussian kernel of width `sigma` on the part of `domain` given by
     `space`.
@@ -59,12 +59,12 @@ def FFTSmoothingOperator(domain, sigma, space=None):
     space = infer_space(domain, space)
     if domain[space].harmonic:
         raise TypeError("domain must not be harmonic")
-    FFT = FFTOperator(domain, space=space)
-    codomain = FFT.domain[space].get_default_codomain()
+    Hartley = HartleyOperator(domain, space=space)
+    codomain = Hartley.domain[space].get_default_codomain()
     kernel = codomain.get_k_length_array()
     smoother = codomain.get_fft_smoothing_kernel_function(sigma)
     kernel = smoother(kernel)
     ddom = list(domain)
     ddom[space] = codomain
     diag = DiagonalOperator(kernel, ddom, space)
-    return FFT.inverse*diag*FFT
+    return Hartley.inverse*diag*Hartley

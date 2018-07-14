@@ -24,15 +24,16 @@ from ..domain_tuple import DomainTuple
 from ..domains.log_rg_space import LogRGSpace
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
+from .. import utilities
 
 
 class SymmetrizingOperator(EndomorphicOperator):
     def __init__(self, domain, space=0):
         self._domain = DomainTuple.make(domain)
-        self._space = int(space)
+        self._space = utilities.infer_space(self._domain, space)
         dom = self._domain[self._space]
         if not (isinstance(dom, LogRGSpace) and not dom.harmonic):
-            raise TypeError
+            raise TypeError("nonharmonic LogRGSpace needed")
 
     @property
     def domain(self):
