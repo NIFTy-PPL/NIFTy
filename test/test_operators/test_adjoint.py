@@ -123,3 +123,28 @@ class Consistency_Tests(unittest.TestCase):
                ift.HPSpace(4))
         op = ift.FieldZeroPadder(dom, factor, space)
         ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
+                     (ift.RGSpace((24, 31), distances=(0.4, 2.34),
+                                  harmonic=True), (4, 3), 0),
+                     ((ift.HPSpace(4), ift.RGSpace(27, distances=0.3,
+                                                   harmonic=True)), (10,), 1),
+                     (ift.PowerSpace(ift.RGSpace(10, distances=0.3,
+                                     harmonic=True)), 6, 0)],
+                    [np.float64, np.complex128]))
+    def testExpTransform(self, args, dtype):
+        op = ift.ExpTransform(args[0], args[1], args[2])
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([(ift.LogRGSpace([10, 17], [2., 3.], [1., 0.]), 0),
+                     ((ift.LogRGSpace(10, [2.], [1.]),
+                       ift.UnstructuredDomain(13)), 0),
+                     ((ift.UnstructuredDomain(13),
+                       ift.LogRGSpace(17, [3.], [.7])), 1)],
+                    [np.float64]))
+    def testQHTOperator(self, args, dtype):
+        dom = ift.DomainTuple.make(args[0])
+        tgt = list(dom)
+        tgt[args[1]] = tgt[args[1]].get_default_codomain()
+        op = ift.QHTOperator(tgt, dom[args[1]], args[1])
+        ift.extra.consistency_check(op, dtype, dtype)

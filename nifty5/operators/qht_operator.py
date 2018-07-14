@@ -57,7 +57,7 @@ class QHTOperator(LinearOperator):
 
         if not self._domain[self._space].harmonic:
             raise TypeError(
-                "HarmonicTransformOperator only works on a harmonic space")
+                "QHTOperator only works on a harmonic space")
         if target.harmonic:
             raise TypeError("Target is not a codomain of domain")
 
