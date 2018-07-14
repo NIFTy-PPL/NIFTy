@@ -73,9 +73,6 @@ run_ipynb:
   stage: demo_runs
   script:
     - jupyter nbconvert --execute --ExecutePreprocessor.timeout=None demos/Wiener_Filter.ipynb
-  artifacts:
-    paths:
-      - '*.png'
 
 run_getting_started_1:
   stage: demo_runs
@@ -83,6 +80,9 @@ run_getting_started_1:
     - python demos/getting_started_1.py
     - python3 demos/getting_started_1.py
     - mpiexec -n 2 --bind-to none python3 demos/getting_started_1.py 2> /dev/null
+  artifacts:
+    paths:
+      - '*.png'
 
 run_getting_started_2:
   stage: demo_runs
@@ -90,12 +90,18 @@ run_getting_started_2:
     - python demos/getting_started_2.py
     - python3 demos/getting_started_2.py
     - mpiexec -n 2 --bind-to none python3 demos/getting_started_2.py 2> /dev/null
+  artifacts:
+    paths:
+      - '*.png'
 
 run_getting_started_3:
   stage: demo_runs
   script:
     - python demos/getting_started_3.py
     - python3 demos/getting_started_3.py
+  artifacts:
+    paths:
+      - '*.png'
 
 run_bernoulli:
   stage: demo_runs
