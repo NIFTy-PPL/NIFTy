@@ -43,7 +43,6 @@ class SymmetrizingOperator(EndomorphicOperator):
         self._check_input(x, mode)
         tmp = x.val.copy()
         ax = dobj.distaxis(tmp)
-        globshape = tmp.shape
         for i in self._domain.axes[self._space]:
             lead = (slice(None),)*i
             if i == ax:

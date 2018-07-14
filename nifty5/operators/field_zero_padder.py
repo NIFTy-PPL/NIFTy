@@ -19,12 +19,11 @@ class FieldZeroPadder(LinearOperator):
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
-        if not len(dom.shape) == 1:
-            raise TypeError("RGSpace must be one-dimensional")
         if dom.harmonic:
             raise TypeError("RGSpace must not be harmonic")
 
-        tgt = RGSpace((int(factor*dom.shape[0]),), dom.distances)
+        newshp = tuple(factor*s for s in dom.shape)
+        tgt = RGSpace(newshp, dom.distances)
         self._target = list(self._domain)
         self._target[self._space] = tgt
         self._target = DomainTuple.make(self._target)
@@ -47,20 +46,21 @@ class FieldZeroPadder(LinearOperator):
         dax = dobj.distaxis(x)
         shp_in = x.shape
         shp_out = self._tgt(mode).shape
-        ax = self._target.axes[self._space][0]
-        if dax == ax:
-            x = dobj.redistribute(x, nodist=(ax,))
+        axbefore = self._target.axes[self._space][0]
+        axes = self._target.axes[self._space]
+        if dax in axes:
+            x = dobj.redistribute(x, nodist=axes)
         curax = dobj.distaxis(x)
 
         if mode == self.ADJOINT_TIMES:
             newarr = np.empty(dobj.local_shape(shp_out, curax), dtype=x.dtype)
-            newarr[()] = dobj.local_data(x)[(slice(None),)*ax +
-                                            (slice(0, shp_out[ax]),)]
+            sl = tuple(slice(0, shp_out[axis]) for axis in axes)
+            newarr[()] = dobj.local_data(x)[(slice(None),)*axbefore + sl]
         else:
             newarr = np.zeros(dobj.local_shape(shp_out, curax), dtype=x.dtype)
-            newarr[(slice(None),)*ax +
-                   (slice(0, shp_in[ax]),)] = dobj.local_data(x)
+            sl = tuple(slice(0, shp_in[axis]) for axis in axes)
+            newarr[(slice(None),)*axbefore + sl] = dobj.local_data(x)
         newarr = dobj.from_local_data(shp_out, newarr, distaxis=curax)
-        if dax == ax:
-            newarr = dobj.redistribute(newarr, dist=ax)
+        if dax in axes:
+            newarr = dobj.redistribute(newarr, dist=dax)
         return Field(self._tgt(mode), val=newarr)
