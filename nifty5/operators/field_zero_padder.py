@@ -8,13 +8,14 @@ from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..field import Field
 from .linear_operator import LinearOperator
+from .. import utilities
 
 
 class FieldZeroPadder(LinearOperator):
     def __init__(self, domain, factor, space=0):
         super(FieldZeroPadder, self).__init__()
         self._domain = DomainTuple.make(domain)
-        self._space = int(space)
+        self._space = utilities.infer_space(self._domain, space)
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
@@ -52,11 +53,11 @@ class FieldZeroPadder(LinearOperator):
         curax = dobj.distaxis(x)
 
         if mode == self.ADJOINT_TIMES:
-            newarr = np.empty(dobj.local_shape(shp_out), dtype=x.dtype)
+            newarr = np.empty(dobj.local_shape(shp_out, curax), dtype=x.dtype)
             newarr[()] = dobj.local_data(x)[(slice(None),)*ax +
                                             (slice(0, shp_out[ax]),)]
         else:
-            newarr = np.zeros(dobj.local_shape(shp_out), dtype=x.dtype)
+            newarr = np.zeros(dobj.local_shape(shp_out, curax), dtype=x.dtype)
             newarr[(slice(None),)*ax +
                    (slice(0, shp_in[ax]),)] = dobj.local_data(x)
         newarr = dobj.from_local_data(shp_out, newarr, distaxis=curax)
