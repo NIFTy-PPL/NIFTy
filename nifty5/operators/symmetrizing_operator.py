@@ -24,14 +24,16 @@ from ..domain_tuple import DomainTuple
 from ..domains.log_rg_space import LogRGSpace
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
+from .. import utilities
 
 
 class SymmetrizingOperator(EndomorphicOperator):
-    def __init__(self, domain):
-        if not (isinstance(domain, LogRGSpace) and not domain.harmonic):
-            raise TypeError
+    def __init__(self, domain, space=0):
         self._domain = DomainTuple.make(domain)
-        self._ndim = len(self.domain.shape)
+        self._space = utilities.infer_space(self._domain, space)
+        dom = self._domain[self._space]
+        if not (isinstance(dom, LogRGSpace) and not dom.harmonic):
+            raise TypeError("nonharmonic LogRGSpace needed")
 
     @property
     def domain(self):
@@ -42,7 +44,7 @@ class SymmetrizingOperator(EndomorphicOperator):
         tmp = x.val.copy()
         ax = dobj.distaxis(tmp)
         globshape = tmp.shape
-        for i in range(self._ndim):
+        for i in self._domain.axes[self._space]:
             lead = (slice(None),)*i
             if i == ax:
                 tmp = dobj.redistribute(tmp, nodist=(ax,))

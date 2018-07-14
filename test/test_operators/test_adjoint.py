@@ -56,6 +56,14 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.FFTOperator(sp.get_default_codomain())
         ift.extra.consistency_check(op, dtype, dtype)
 
+    @expand(product(_h_RG_spaces+_p_RG_spaces,
+                    [np.float64, np.complex128]))
+    def testHartley(self, sp, dtype):
+        op = ift.HartleyOperator(sp)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = ift.HartleyOperator(sp.get_default_codomain())
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testHarmonic(self, sp, dtype):
         op = ift.HarmonicTransformOperator(sp)
@@ -92,4 +100,51 @@ class Consistency_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def testGeometryRemover(self, sp, dtype):
         op = ift.GeometryRemover(sp)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)],
+                    [np.float64, np.complex128]))
+    def testDomainDistributor(self, spaces, dtype):
+        dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.GLSpace(5),
+               ift.HPSpace(4))
+        op = ift.DomainDistributor(dom, spaces)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([0, 2], [np.float64, np.complex128]))
+    def testSymmetrizingOperator(self, space, dtype):
+        dom = (ift.LogRGSpace(10, [2.], [1.]), ift.UnstructuredDomain(13),
+               ift.LogRGSpace((5, 27), [1., 2.7], [0., 4.]), ift.HPSpace(4))
+        op = ift.SymmetrizingOperator(dom, space)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([0, 2], [2, 2.7], [np.float64, np.complex128]))
+    def testZeroPadder(self, space, factor, dtype):
+        dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7),
+               ift.HPSpace(4))
+        op = ift.FieldZeroPadder(dom, factor, space)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
+                     (ift.RGSpace((24, 31), distances=(0.4, 2.34),
+                                  harmonic=True), (4, 3), 0),
+                     ((ift.HPSpace(4), ift.RGSpace(27, distances=0.3,
+                                                   harmonic=True)), (10,), 1),
+                     (ift.PowerSpace(ift.RGSpace(10, distances=0.3,
+                                     harmonic=True)), 6, 0)],
+                    [np.float64, np.complex128]))
+    def testExpTransform(self, args, dtype):
+        op = ift.ExpTransform(args[0], args[1], args[2])
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([(ift.LogRGSpace([10, 17], [2., 3.], [1., 0.]), 0),
+                     ((ift.LogRGSpace(10, [2.], [1.]),
+                       ift.UnstructuredDomain(13)), 0),
+                     ((ift.UnstructuredDomain(13),
+                       ift.LogRGSpace(17, [3.], [.7])), 1)],
+                    [np.float64]))
+    def testQHTOperator(self, args, dtype):
+        dom = ift.DomainTuple.make(args[0])
+        tgt = list(dom)
+        tgt[args[1]] = tgt[args[1]].get_default_codomain()
+        op = ift.QHTOperator(tgt, dom[args[1]], args[1])
         ift.extra.consistency_check(op, dtype, dtype)

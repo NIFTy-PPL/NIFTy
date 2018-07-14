@@ -52,7 +52,7 @@ class DomainTuple(object):
             nax = len(thing.shape)
             res[idx] = tuple(range(i, i+nax))
             i += nax
-        return res
+        return tuple(res)
 
     @staticmethod
     def make(domain):
