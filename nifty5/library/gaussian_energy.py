@@ -61,7 +61,7 @@ class GaussianEnergy(Energy):
     @property
     @memo
     def gradient(self):
-        return self._inp.jacobian.adjoint_times(self._icovres)
+        return self._inp.jacobian.adjoint_times(self._icovres).real
 
     @property
     @memo
