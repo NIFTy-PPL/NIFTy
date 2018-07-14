@@ -12,7 +12,7 @@ from .. import utilities
 
 
 class FieldZeroPadder(LinearOperator):
-    def __init__(self, domain, factor, space=0):
+    def __init__(self, domain, new_shape, space=0):
         super(FieldZeroPadder, self).__init__()
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
@@ -22,8 +22,11 @@ class FieldZeroPadder(LinearOperator):
         if dom.harmonic:
             raise TypeError("RGSpace must not be harmonic")
 
-        newshp = tuple(factor*s for s in dom.shape)
-        tgt = RGSpace(newshp, dom.distances)
+        if len(new_shape) != len(dom.shape):
+            raise ValueError("Shape mismatch")
+        if any([a < b for a, b in zip(new_shape, dom.shape)]):
+            raise ValueError("New shape must be larger than old shape")
+        tgt = RGSpace(new_shape, dom.distances)
         self._target = list(self._domain)
         self._target[self._space] = tgt
         self._target = DomainTuple.make(self._target)
