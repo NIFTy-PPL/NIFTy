@@ -74,11 +74,9 @@ class LogRGSpace(StructuredDomain):
                 % (self.shape, self.harmonic))
 
     def get_default_codomain(self):
-        if self._harmonic:
-            raise ValueError("only supported for nonharmonic space")
         codomain_bindistances = 1. / (self.bindistances * self.shape)
         return LogRGSpace(self.shape, codomain_bindistances,
-                          np.zeros(len(self.shape)), True)
+                          self._t_0, True)
 
     def get_k_length_array(self):
         ib = dobj.ibegin_from_shape(self._shape)

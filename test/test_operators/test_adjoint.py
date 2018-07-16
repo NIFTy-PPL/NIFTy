@@ -143,8 +143,6 @@ class Consistency_Tests(unittest.TestCase):
                        ift.LogRGSpace(17, [3.], [.7])), 1)],
                     [np.float64]))
     def testQHTOperator(self, args, dtype):
-        dom = ift.DomainTuple.make(args[0])
-        tgt = list(dom)
-        tgt[args[1]] = tgt[args[1]].get_default_codomain()
-        op = ift.QHTOperator(tgt, dom[args[1]], args[1])
+        tgt = ift.DomainTuple.make(args[0])
+        op = ift.QHTOperator(tgt, args[1])
         ift.extra.consistency_check(op, dtype, dtype)

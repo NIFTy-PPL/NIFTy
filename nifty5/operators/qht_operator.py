@@ -36,34 +36,28 @@ class QHTOperator(LinearOperator):
 
     Parameters
     ----------
-    domain : domain, tuple of domains or DomainTuple
-        The full input domain
+    target : domain, tuple of domains or DomainTuple
+        The full output domain
     space : int
         The index of the domain on which the operator acts.
-        domain[space] must be a harmonic LogRGSpace.
-    target : LogRGSpace
-        The target codomain of domain[space]
-        Must be a nonharmonic LogRGSpace.
+        target[space] must be a nonharmonic LogRGSpace.
     """
-    def __init__(self, domain, target, space=0):
-        self._domain = DomainTuple.make(domain)
-        self._space = infer_space(self._domain, space)
+    def __init__(self, target, space=0):
+        self._target = DomainTuple.make(target)
+        self._space = infer_space(self._target, space)
 
         from ..domains.log_rg_space import LogRGSpace
-        if not isinstance(self._domain[self._space], LogRGSpace):
-            raise ValueError("Domain[space] has to be a LogRGSpace!")
-        if not isinstance(target, LogRGSpace):
-            raise ValueError("Target has to be a LogRGSpace!")
+        if not isinstance(self._target[self._space], LogRGSpace):
+            raise ValueError("target[space] has to be a LogRGSpace!")
 
-        if not self._domain[self._space].harmonic:
+        if self._target[self._space].harmonic:
             raise TypeError(
-                "QHTOperator only works on a harmonic space")
-        if target.harmonic:
-            raise TypeError("Target is not a codomain of domain")
+                "target[space] must be a nonharmonic space")
 
-        self._target = [dom for dom in self._domain]
-        self._target[self._space] = target
-        self._target = DomainTuple.make(self._target)
+        self._domain = [dom for dom in self._target]
+        self._domain[self._space] = \
+            self._target[self._space].get_default_codomain()
+        self._domain = DomainTuple.make(self._domain)
 
     @property
     def domain(self):
