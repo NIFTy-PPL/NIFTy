@@ -292,9 +292,11 @@ def _plot(f, ax, **kwargs):
 _plots = []
 _kwargs = []
 
+
 def plot(f, **kwargs):
     _plots.append(f)
     _kwargs.append(kwargs)
+
 
 def plot_finish(**kwargs):
     global _plots, _kwargs
@@ -303,14 +305,17 @@ def plot_finish(**kwargs):
     fig = plt.figure()
     if "title" in kwargs:
         plt.suptitle(kwargs.pop("title"))
-    nx = kwargs.pop("nx", 1)
-    ny = kwargs.pop("ny", 1)
+    nx = kwargs.pop("nx", int(np.ceil(np.sqrt(nplot))))
+    ny = kwargs.pop("ny", int(np.ceil(np.sqrt(nplot))))
+    if nx*ny < nplot:
+        raise ValueError('Figure dimensions not sufficient for number of plots')
     xsize = kwargs.pop("xsize", 6)
     ysize = kwargs.pop("ysize", 6)
     fig.set_size_inches(xsize, ysize)
     for i in range(nplot):
-        ax = fig.add_subplot(ny,nx,i+1)
+        ax = fig.add_subplot(ny, nx, i+1)
         _plot(_plots[i], ax, **_kwargs[i])
+    fig.tight_layout()
     _makeplot(kwargs.pop("name", None))
     _plots = []
     _kwargs = []
