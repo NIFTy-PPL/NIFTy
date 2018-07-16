@@ -28,16 +28,7 @@ class MultiDomain(object):
 
     This class is the domain of the direct sum of fields living
     over (possibly different) domains. To make an instance
-    of this class call MultiDomain.make(inp)
-
-    Parameters
-    ----------
-    inp : MultiDomain or tuple(DomainTuple)
-        The already built MultiDomain or a tuple of DomainTuples
-
-    Returns
-    ------
-    A MultiDomain with the input Domains as domains
+    of this class, call `MultiDomain.make(inp)`.
     """
     _domainCache = {}
 
