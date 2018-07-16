@@ -39,7 +39,7 @@ class MultiDomain(object):
     ------
     A MultiDomain with the input Domains as domains
     """
-     _domainCache = {}
+    _domainCache = {}
 
     def __init__(self, dict, _callingfrommake=False):
         if not _callingfrommake:
