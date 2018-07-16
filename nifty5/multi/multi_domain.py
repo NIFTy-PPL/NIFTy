@@ -24,6 +24,12 @@ from ..utilities import frozendict
 
 
 class MultiDomain(object):
+    """A tuple of domains corresponding to a direct sum.
+
+    This class is the domain of the direct sum of fields living
+    over (possibly different) domains. To make an instance
+    of this class, call `MultiDomain.make(inp)`.
+    """
     _domainCache = {}
 
     def __init__(self, dict, _callingfrommake=False):
@@ -36,6 +42,17 @@ class MultiDomain(object):
 
     @staticmethod
     def make(inp):
+        """Creates a MultiDomain object from a dictionary of names and domains
+
+        Parameters
+        ----------
+        inp : MultiDomain or dict{name: DomainTuple}
+            The already built MultiDomain or a dictionary of DomainTuples
+
+        Returns
+        ------
+        A MultiDomain with the input Domains as domains
+        """
         if isinstance(inp, MultiDomain):
             return inp
         if not isinstance(inp, dict):
