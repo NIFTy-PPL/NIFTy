@@ -27,6 +27,21 @@ class MultiDomain(object):
     _domainCache = {}
 
     def __init__(self, dict, _callingfrommake=False):
+        """A tuple of domains corresponding to a direct sum.
+
+        This class is the domain of the direct sum of fields living
+        over (possibly different) domains. To make an instance
+        of this class call .make(inp)
+
+        Parameters
+        ----------
+        inp : MultiDomain or tuple(DomainTuple)
+            The already built MultiDomain or a tuple of DomainTuples 
+
+        Returns
+        ------
+        A MutliDomain with the input Domains as domains
+        """
         if not _callingfrommake:
             raise NotImplementedError(
                 'To create a MultiDomain call `MultiDomain.make()`.')
