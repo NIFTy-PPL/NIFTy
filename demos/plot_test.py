@@ -10,11 +10,12 @@ def plot_test():
 
     fft = ift.FFTOperator(rg_space2)
 
-    field_rg1_1 = ift.Field(domain=rg_space1, val=np.random.randn(100))
-    field_rg1_2 = ift.Field(domain=rg_space1, val=np.random.randn(100))
-    field_rg2 = ift.Field(domain=rg_space2, val=np.random.randn(80 ** 2).reshape((80, 80)))
-    field_hp = ift.Field(domain=hp_space, val=np.random.randn(12*64**2))
-    field_gl = ift.Field(domain=gl_space, val=np.random.randn(32640))
+    field_rg1_1 = ift.Field.from_global_data(rg_space1, np.random.randn(100))
+    field_rg1_2 = ift.Field.from_global_data(rg_space1, np.random.randn(100))
+    field_rg2 = ift.Field.from_global_data(
+        rg_space2, np.random.randn(80 ** 2).reshape((80, 80)))
+    field_hp = ift.Field.from_global_data(hp_space, np.random.randn(12*64**2))
+    field_gl = ift.Field.from_global_data(gl_space, np.random.randn(32640))
     field_ps = ift.power_analyze(fft.times(field_rg2))
 
     ## Start various plotting tests
@@ -24,7 +25,8 @@ def plot_test():
 
     ift.plot(field_rg2, title='2d rg')
     ift.plot([field_rg1_1, field_rg1_2], title='list 1d rg', label=['1', '2'])
-    ift.plot(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0., xlabel='xmin=0.5', ylabel='ymin=0')
+    ift.plot(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0.,
+             xlabel='xmin=0.5', ylabel='ymin=0')
     ift.plot_finish(title='Three plots')
 
     ift.plot(field_hp, title='HP planck-color', colormap='Planck-like')
@@ -36,4 +38,3 @@ def plot_test():
 
 if __name__ == '__main__':
     plot_test()
-

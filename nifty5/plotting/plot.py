@@ -289,6 +289,7 @@ def _plot(f, ax, **kwargs):
 
     raise ValueError("Field type not(yet) supported")
 
+
 _plots = []
 _kwargs = []
 
@@ -308,7 +309,8 @@ def plot_finish(**kwargs):
     nx = kwargs.pop("nx", int(np.ceil(np.sqrt(nplot))))
     ny = kwargs.pop("ny", int(np.ceil(np.sqrt(nplot))))
     if nx*ny < nplot:
-        raise ValueError('Figure dimensions not sufficient for number of plots')
+        raise ValueError(
+            'Figure dimensions not sufficient for number of plots')
     xsize = kwargs.pop("xsize", 6)
     ysize = kwargs.pop("ysize", 6)
     fig.set_size_inches(xsize, ysize)
