@@ -309,8 +309,6 @@ def plot(f, **kwargs):
         `PowerSpace`, `HPSpace`, `GLSPace`.
         If it is a list, all list members must be Fields living over the same
         one-dimensional `RGSpace` or `PowerSpace`.
-
-    Allowed key words:
     title: string
         title of the plot
     xlabel: string
@@ -333,20 +331,20 @@ def plot(f, **kwargs):
 
 
 def plot_finish(**kwargs):
-    """Plot the accumulated list of figures
+    """Plot the accumulated list of figures.
 
-    Allowed key words:
+    Parameters
+    ----------
     title: string
         title of the full plot
-    nx, ny: integer (default: square root of the numer of plots in the list,
-                     rounded up)
+    nx, ny: integer (default: square root of the numer of plots, rounded up)
         number of subplots to use in x- and y-direction
     xsize, ysize: float (default: 6)
         dimensions of the full plot in inches
     name: string (default: "")
-        if left empty, the plot will be shown on the screen
+        if left empty, the plot will be shown on the screen,
         otherwise it will be written to a file with the given name.
-        Supported extensions: .png and .pdf)
+        Supported extensions: .png and .pdf
     """
     global _plots, _kwargs
     import matplotlib.pyplot as plt
