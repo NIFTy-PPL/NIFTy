@@ -295,11 +295,59 @@ _kwargs = []
 
 
 def plot(f, **kwargs):
+    """Add a figure to the current list of plots.
+
+    Notes
+    -----
+    After doing one or more calls `plot()`, one also needs to call
+    `plot_finish()` to output the result.
+
+    Parameters
+    ----------
+    f: Field, or list of Field objects
+        If `f` is a single Field, it must live over a single `RGSpace`,
+        `PowerSpace`, `HPSpace`, `GLSPace`.
+        If it is a list, all list members must be Fields living over the same
+        one-dimensional `RGSpace` or `PowerSpace`.
+
+    Allowed key words:
+    title: string
+        title of the plot
+    xlabel: string
+        label for the x axis
+    ylabel: string
+        label for the y axis
+    [xyz]min, [xyz]max: float
+        limits for the values to plot
+    colormap: string
+        color map to use for the plot (if it is a 2D plot)
+    linewidth: float or list of floats
+        line width
+    label: string of list of strings
+        annotation string
+    alpha: float or list of floats
+        transparency value
+    """
     _plots.append(f)
     _kwargs.append(kwargs)
 
 
 def plot_finish(**kwargs):
+    """Plot the accumulated list of figures
+
+    Allowed key words:
+    title: string
+        title of the full plot
+    nx, ny: integer (default: square root of the numer of plots in the list,
+                     rounded up)
+        number of subplots to use in x- and y-direction
+    xsize, ysize: float (default: 6)
+        dimensions of the full plot in inches
+    name: string (default: "")
+        if left empty, the plot will be shown on the screen
+        otherwise it will be written to a file with the given name.
+        Supported extensions: .png and .pdf)
+    """
     global _plots, _kwargs
     import matplotlib.pyplot as plt
     nplot = len(_plots)
