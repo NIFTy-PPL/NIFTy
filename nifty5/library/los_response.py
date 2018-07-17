@@ -62,7 +62,7 @@ def _comp_traverse(start, end, shp, dist, lo, mid, hi, erf):
         # hack: move away from potential grid crossings
         dmin += 1e-7
         dmax -= 1e-7
-        if dmin > dmax:  # no intersection
+        if dmin >= dmax:  # no intersection
             out[i] = (np.full(0, 0), np.full(0, 0.))
             continue
         # determine coordinates of first cell crossing

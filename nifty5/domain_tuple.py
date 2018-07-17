@@ -27,6 +27,8 @@ class DomainTuple(object):
 
     This class holds a tuple of :class:`Domain` objects, which together form
     the space on which a :class:`Field` is defined.
+    This corresponds to a tensor product of the corresponding vector
+    fields.
 
     Notes
     -----

@@ -83,13 +83,14 @@ if __name__ == '__main__':
     INITIAL_POSITION = ift.from_random('normal', H.position.domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal.at(MOCK_POSITION).value, name='truth.png')
-    ift.plot(R.adjoint_times(data), name='data.png')
-    ift.plot([A.at(MOCK_POSITION).value], name='power.png')
+    ift.plot(signal.at(MOCK_POSITION).value, title='ground truth')
+    ift.plot(R.adjoint_times(data), title='data')
+    ift.plot([A.at(MOCK_POSITION).value], title='power')
+    ift.plot_finish(nx=3, xsize=16, ysize=5, title="setup", name="setup.png")
 
     # number of samples used to estimate the KL
     N_samples = 20
-    for i in range(5):
+    for i in range(2):
         H = H.at(position)
         samples = [H.metric.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
@@ -99,17 +100,19 @@ if __name__ == '__main__':
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal.at(position).value, name='reconstruction.png')
+        ift.plot(signal.at(position).value, title="reconstruction")
 
         ift.plot([A.at(position).value, A.at(MOCK_POSITION).value],
-                 name='power.png')
+                 title="power")
+        ift.plot_finish(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
 
     sc = ift.StatCalculator()
     for sample in samples:
         sc.add(signal.at(sample+position).value)
-    ift.plot(sc.mean, name='avrg.png')
-    ift.plot(ift.sqrt(sc.var), name='std.png')
+    ift.plot(sc.mean, title="mean")
+    ift.plot(ift.sqrt(sc.var), title="std deviation")
 
     powers = [A.at(s+position).value for s in samples]
     ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers,
-             name='power.png')
+             title="power")
+    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results", name="results.png")

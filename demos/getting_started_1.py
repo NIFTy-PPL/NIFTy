@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # FIXME description of the tutorial
 
     # Choose problem geometry and masking
-    mode = 0
+    mode = 1
     if mode == 0:
         # One dimensional regular grid
         position_space = ift.RGSpace([1024])
@@ -106,11 +106,14 @@ if __name__ == '__main__':
     if rg and len(position_space.shape) == 1:
         ift.plot([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
                  label=['Mock signal', 'Data', 'Reconstruction'],
-                 alpha=[1, .3, 1],
-                 name='getting_started_1.png')
+                 alpha=[1, .3, 1])
+        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
+        ift.plot_finish(nx=2, ny=1, xsize=10, ysize=4,
+                        title="getting_started_1")
     else:
-        ift.plot(HT(MOCK_SIGNAL), title='Mock Signal', name='mock_signal.png')
-        ift.plot(mask_to_nan(mask, (GR*Mask).adjoint(data)),
-                 title='Data', name='data.png')
-        ift.plot(HT(m), title='Reconstruction', name='reconstruction.png')
-    ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), name='residuals.png')
+        ift.plot(HT(MOCK_SIGNAL), title='Mock Signal')
+        ift.plot(mask_to_nan(mask, (GR*Mask).adjoint(data)), title='Data')
+        ift.plot(HT(m), title='Reconstruction')
+        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
+        ift.plot_finish(nx=2, ny=2, xsize=10, ysize=10,
+                        title="getting_started_1")
