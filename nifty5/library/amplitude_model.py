@@ -65,9 +65,9 @@ def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
     p_space = PowerSpace(h_space)
     exp_transform = ExpTransform(p_space, Npixdof)
     logk_space = exp_transform.domain[0]
-    dof_space = logk_space.get_default_codomain()
+    qht = QHTOperator(target=logk_space)
+    dof_space = qht.domain[0]
     param_space = UnstructuredDomain(2)
-    qht = QHTOperator(dof_space, logk_space)
     sym = SymmetrizingOperator(logk_space)
 
     phi_mean = np.array([sm, im])
