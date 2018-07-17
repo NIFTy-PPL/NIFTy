@@ -74,7 +74,6 @@ class QHTOperator(LinearOperator):
         n = self._domain.axes[self._space]
         rng = n if mode == self.TIMES else reversed(n)
         ax = dobj.distaxis(x)
-        globshape = x.shape
         for i in rng:
             sl = (slice(None),)*i + (slice(1, None),)
             if i == ax:
