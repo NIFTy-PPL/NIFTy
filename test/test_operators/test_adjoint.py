@@ -41,7 +41,8 @@ class Consistency_Tests(unittest.TestCase):
     def testDOFDistributor(self, sp, dtype):
         if sp.size < 4:
             return
-        while True:
+        N_tries = 10
+        for i in range(N_tries):
             try:
                 dofdex = np.random.choice(np.arange(3), size=sp.shape)
                 dofdex = ift.Field.from_global_data(sp, dofdex)
