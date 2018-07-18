@@ -158,11 +158,11 @@ class data_object(object):
     def prod(self, axis=None):
         return self._contraction_helper("prod", MPI.PROD, axis)
 
-    def min(self, axis=None):
-        return self._contraction_helper("min", MPI.MIN, axis)
+#    def min(self, axis=None):
+#        return self._contraction_helper("min", MPI.MIN, axis)
 
-    def max(self, axis=None):
-        return self._contraction_helper("max", MPI.MAX, axis)
+#    def max(self, axis=None):
+#        return self._contraction_helper("max", MPI.MAX, axis)
 
     def mean(self, axis=None):
         if axis is None:
