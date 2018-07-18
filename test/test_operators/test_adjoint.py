@@ -47,10 +47,11 @@ class Consistency_Tests(unittest.TestCase):
                 dofdex = np.random.choice(np.arange(3), size=sp.shape)
                 dofdex = ift.Field.from_global_data(sp, dofdex)
                 op = ift.DOFDistributor(dofdex)
-                break
+                ift.extra.consistency_check(op, dtype, dtype)
+                return
             except ValueError:
                 pass
-        ift.extra.consistency_check(op, dtype, dtype)
+
 
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
