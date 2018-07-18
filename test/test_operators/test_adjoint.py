@@ -39,18 +39,13 @@ class Consistency_Tests(unittest.TestCase):
                         + _pow_spaces,
                     [np.float64, np.complex128]))
     def testDOFDistributor(self, sp, dtype):
+        #TODO: Test for DomainTuple
         if sp.size < 4:
             return
-        N_tries = 10
-        for i in range(N_tries):
-            try:
-                dofdex = np.random.choice(np.arange(3), size=sp.shape)
-                dofdex = ift.Field.from_global_data(sp, dofdex)
-                op = ift.DOFDistributor(dofdex)
-                ift.extra.consistency_check(op, dtype, dtype)
-                return
-            except ValueError:
-                pass
+        dofdex = np.arange(sp.size).reshape(sp.shape)%3
+        dofdex = ift.Field.from_global_data(sp, dofdex)
+        op = ift.DOFDistributor(dofdex)
+        ift.extra.consistency_check(op, dtype, dtype)
 
 
     @expand(product(_h_spaces, [np.float64, np.complex128]))
