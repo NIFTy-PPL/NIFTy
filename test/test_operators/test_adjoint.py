@@ -35,6 +35,22 @@ _pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), harmonic=True))]
 
 
 class Consistency_Tests(unittest.TestCase):
+    @expand(product(_h_spaces + _p_RG_spaces + _p_spaces
+                        + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testDOFDistributor(self, sp, dtype):
+        if sp.size < 4:
+            return
+        while True:
+            try:
+                dofdex = np.random.choice(np.arange(3), size=sp.shape)
+                dofdex = ift.Field.from_global_data(sp, dofdex)
+                op = ift.DOFDistributor(dofdex)
+                break
+            except ValueError:
+                pass
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
         op = ift.PowerDistributor(target=sp)
