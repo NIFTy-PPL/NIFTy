@@ -76,7 +76,7 @@ class SlopeOperator(LinearOperator):
             return Field.from_global_data(self.target, res)
 
         # Adjoint times
-        res = np.zeros(self.domain[0].shape)
+        res = np.zeros(self.domain[0].shape, dtype=x.dtype)
         xglob = x.to_global_data()
         res[-1] = np.sum(xglob) * self._sigmas[-1]
         for i in range(self.ndim):
