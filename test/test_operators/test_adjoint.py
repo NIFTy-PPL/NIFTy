@@ -35,6 +35,20 @@ _pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), harmonic=True))]
 
 
 class Consistency_Tests(unittest.TestCase):
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testOperatorCombinations(self, sp, dtype):
+        a = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
+                                                        dtype=dtype))
+        b = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
+                                                        dtype=dtype))
+        op = ift.SandwichOperator.make(a, b)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = a*b
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = a+b
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
                      (ift.RGSpace((24, 31), distances=(0.4, 2.34),
                                   harmonic=True), 3, 0),
@@ -54,16 +68,6 @@ class Consistency_Tests(unittest.TestCase):
     def testSelectionOperator(self, sp1, sp2, dtype):
         mdom = ift.MultiDomain.make({'a':sp1, 'b':sp2})
         op = ift.SelectionOperator(mdom, 'a')
-        ift.extra.consistency_check(op, dtype, dtype)
-
-    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
-                    [np.float64, np.complex128]))
-    def testSandwichOperator(self, sp, dtype):
-        bun = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
-                                                        dtype=dtype))
-        cheese = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
-                                                        dtype=dtype))
-        op = ift.SandwichOperator.make(bun, cheese)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
