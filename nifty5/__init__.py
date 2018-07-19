@@ -26,6 +26,7 @@ from .models.model import Model
 from .models.multi_model import MultiModel
 from .models.variable import Variable
 
+from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.dof_distributor import DOFDistributor
 from .operators.domain_distributor import DomainDistributor
