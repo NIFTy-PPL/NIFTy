@@ -111,3 +111,12 @@ run_bernoulli:
   artifacts:
     paths:
       - '*.png'
+
+run_curve_fitting:
+  stage: demo_runs
+  script:
+    - python demos/polynomial_fit.py
+    - python3 demos/polynomial_fit.py
+  artifacts:
+    paths:
+      - '*.png'
