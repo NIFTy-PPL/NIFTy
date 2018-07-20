@@ -69,6 +69,7 @@ class CentralZeroPadder(LinearOperator):
         if dax in axes:
             x = dobj.redistribute(x, nodist=axes)
         curax = dobj.distaxis(x)
+        x = dobj.local_data(x)
 
         if mode == self.TIMES:
             y = np.zeros(dobj.local_shape(shp_out, curax), dtype=x.dtype)
