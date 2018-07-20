@@ -35,6 +35,90 @@ _pow_spaces = [ift.PowerSpace(ift.RGSpace((17, 38), harmonic=True))]
 
 
 class Consistency_Tests(unittest.TestCase):
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testOperatorCombinations(self, sp, dtype):
+        a = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
+                                                       dtype=dtype))
+        b = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
+                                                       dtype=dtype))
+        op = ift.SandwichOperator.make(a, b)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = a*b
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = a+b
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
+                     (ift.RGSpace((24, 31), distances=(0.4, 2.34),
+                                  harmonic=True), 3, 0),
+                     (ift.LMSpace(4), 10, 0)],
+                    [np.float64, np.complex128]))
+    def testSlopeOperator(self, args, dtype):
+        tmp = ift.ExpTransform(ift.PowerSpace(args[0]), args[1], args[2])
+        tgt = tmp.domain[0]
+        sig = np.array([0.3, 0.13])
+        dom = ift.UnstructuredDomain(2)
+        op = ift.SlopeOperator(dom, tgt, sig)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    _h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testSelectionOperator(self, sp1, sp2, dtype):
+        mdom = ift.MultiDomain.make({'a': sp1, 'b': sp2})
+        op = ift.SelectionOperator(mdom, 'a')
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testOperatorAdaptor(self, sp, dtype):
+        op = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
+                                                        dtype=dtype))
+        ift.extra.consistency_check(op.adjoint, dtype, dtype)
+        ift.extra.consistency_check(op.inverse, dtype, dtype)
+        ift.extra.consistency_check(op.inverse.adjoint, dtype, dtype)
+        ift.extra.consistency_check(op.adjoint.inverse, dtype, dtype)
+
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    _h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testNullOperator(self, sp1, sp2, dtype):
+        op = ift.NullOperator(sp1, sp2)
+        ift.extra.consistency_check(op, dtype, dtype)
+        mdom1 = ift.MultiDomain.make({'a': sp1})
+        mdom2 = ift.MultiDomain.make({'b': sp2})
+        op = ift.NullOperator(mdom1, mdom2)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = ift.NullOperator(sp1, mdom2)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = ift.NullOperator(mdom1, sp2)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testMultiAdaptor(self, sp, dtype):
+        mdom = ift.MultiDomain.make({'a': sp})
+        op = ift.MultiAdaptor(mdom)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_p_RG_spaces,
+                    [np.float64, np.complex128]))
+    def testHarmonicSmoothingOperator(self, sp, dtype):
+        op = ift.HarmonicSmoothingOperator(sp, 0.1)
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testDOFDistributor(self, sp, dtype):
+        # TODO: Test for DomainTuple
+        if sp.size < 4:
+            return
+        dofdex = np.arange(sp.size).reshape(sp.shape) % 3
+        dofdex = ift.Field.from_global_data(sp, dofdex)
+        op = ift.DOFDistributor(dofdex)
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
         op = ift.PowerDistributor(target=sp)
@@ -144,8 +228,6 @@ class Consistency_Tests(unittest.TestCase):
                        ift.LogRGSpace(17, [3.], [.7])), 1)],
                     [np.float64]))
     def testQHTOperator(self, args, dtype):
-        dom = ift.DomainTuple.make(args[0])
-        tgt = list(dom)
-        tgt[args[1]] = tgt[args[1]].get_default_codomain()
-        op = ift.QHTOperator(tgt, dom[args[1]], args[1])
+        tgt = ift.DomainTuple.make(args[0])
+        op = ift.QHTOperator(tgt, args[1])
         ift.extra.consistency_check(op, dtype, dtype)

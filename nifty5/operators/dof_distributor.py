@@ -41,9 +41,9 @@ class DOFDistributor(LinearOperator):
     ----------
     dofdex: Field of integers
         An integer Field on exactly one Space establishing the association
-        between the locations in the operators target and the underlying
+        between the locations in the operator's target and the underlying
         degrees of freedom in its domain.
-        It has to start at 0 and it increases monotonicly, no empty bins are
+        It has to start at 0 and it increases monotonically, no empty bins are
         allowed.
     target: Domain, tuple of Domain, or DomainTuple, optional
         The target of the operator. If not specified, the domain of the dofdex
@@ -70,12 +70,17 @@ class DOFDistributor(LinearOperator):
         if partner != dofdex.domain[0]:
             raise ValueError("incorrect dofdex domain")
 
-        nbin = dofdex.max()
+        ldat = dofdex.local_data
+        if ldat.size == 0:  # can happen for weird configurations
+            nbin = 0
+        else:
+            nbin = ldat.max()
+        nbin = dobj.np_allreduce_max(np.array(nbin))[()] + 1
         if partner.scalar_dvol is not None:
             wgt = np.bincount(dofdex.local_data.ravel(), minlength=nbin)
             wgt = wgt*partner.scalar_dvol
         else:
-            dvol = dobj.local_data(partner.dvol)
+            dvol = Field.from_global_data(partner, partner.dvol).local_data
             wgt = np.bincount(dofdex.local_data.ravel(),
                               minlength=nbin, weights=dvol)
         # The explicit conversion to float64 is necessary because bincount

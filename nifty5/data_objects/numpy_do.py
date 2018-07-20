@@ -75,6 +75,10 @@ def np_allreduce_min(arr):
     return arr
 
 
+def np_allreduce_max(arr):
+    return arr
+
+
 def distaxis(arr):
     return -1
 

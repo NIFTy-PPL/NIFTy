@@ -23,7 +23,12 @@ import os
 import numpy as np
 
 from ..compat import *
-from .. import Field, GLSpace, HPSpace, PowerSpace, RGSpace, dobj
+from ..field import Field
+from ..domains.gl_space import GLSpace
+from ..domains.hp_space import HPSpace
+from ..domains.power_space import PowerSpace
+from ..domains.rg_space import RGSpace
+from .. import dobj
 
 # relevant properties:
 # - x/y size
@@ -81,16 +86,6 @@ def _makeplot(name):
     elif extension == ".png":
         plt.savefig(name)
         plt.close()
-    # elif extension==".html":
-        # import mpld3
-        # mpld3.save_html(plt.gcf(),fileobj=name,no_extras=True)
-        # import plotly.offline as py
-        # import plotly.tools as tls
-        # plotly_fig = tls.mpl_to_plotly(plt.gcf())
-        # py.plot(plotly_fig,filename=name)
-        # py.plot_mpl(plt.gcf(),filename=name)
-        # import bokeh
-        # bokeh.mpl.to_bokeh(plt.gcf())
     else:
         raise ValueError("file format not understood")
 
@@ -169,7 +164,7 @@ def _register_cmaps():
     plt.register_cmap(cmap=LinearSegmentedColormap("Plus Minus", pm_cmap))
 
 
-def plot(f, **kwargs):
+def _plot(f, ax, **kwargs):
     import matplotlib.pyplot as plt
     _register_cmaps()
     if isinstance(f, Field):
@@ -209,12 +204,6 @@ def plot(f, **kwargs):
         alpha = [alpha]
 
     dom = dom[0]
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-
-    xsize = kwargs.pop("xsize", 6)
-    ysize = kwargs.pop("ysize", 6)
-    fig.set_size_inches(xsize, ysize)
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
     ax.set_ylabel(kwargs.pop("ylabel", ""))
@@ -231,7 +220,6 @@ def plot(f, **kwargs):
             _limit_xy(**kwargs)
             if label != ([None]*len(f)):
                 plt.legend()
-            _makeplot(kwargs.get("name"))
             return
         elif len(dom.shape) == 2:
             f = f[0]
@@ -251,7 +239,6 @@ def plot(f, **kwargs):
             # plt.colorbar(im,cax=cax)
             plt.colorbar(im)
             _limit_xy(**kwargs)
-            _makeplot(kwargs.get("name"))
             return
     elif isinstance(dom, PowerSpace):
         plt.xscale('log')
@@ -265,7 +252,6 @@ def plot(f, **kwargs):
         _limit_xy(**kwargs)
         if label != ([None]*len(f)):
             plt.legend()
-        _makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, HPSpace):
         f = f[0]
@@ -282,7 +268,6 @@ def plot(f, **kwargs):
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
-        _makeplot(kwargs.get("name"))
         return
     elif isinstance(dom, GLSpace):
         f = f[0]
@@ -300,7 +285,85 @@ def plot(f, **kwargs):
         plt.imshow(res, vmin=kwargs.get("zmin"), vmax=kwargs.get("zmax"),
                    cmap=cmap, origin="lower")
         plt.colorbar(orientation="horizontal")
-        _makeplot(kwargs.get("name"))
         return
 
     raise ValueError("Field type not(yet) supported")
+
+
+_plots = []
+_kwargs = []
+
+
+def plot(f, **kwargs):
+    """Add a figure to the current list of plots.
+
+    Notes
+    -----
+    After doing one or more calls `plot()`, one also needs to call
+    `plot_finish()` to output the result.
+
+    Parameters
+    ----------
+    f: Field, or list of Field objects
+        If `f` is a single Field, it must live over a single `RGSpace`,
+        `PowerSpace`, `HPSpace`, `GLSPace`.
+        If it is a list, all list members must be Fields living over the same
+        one-dimensional `RGSpace` or `PowerSpace`.
+    title: string
+        title of the plot
+    xlabel: string
+        label for the x axis
+    ylabel: string
+        label for the y axis
+    [xyz]min, [xyz]max: float
+        limits for the values to plot
+    colormap: string
+        color map to use for the plot (if it is a 2D plot)
+    linewidth: float or list of floats
+        line width
+    label: string of list of strings
+        annotation string
+    alpha: float or list of floats
+        transparency value
+    """
+    _plots.append(f)
+    _kwargs.append(kwargs)
+
+
+def plot_finish(**kwargs):
+    """Plot the accumulated list of figures.
+
+    Parameters
+    ----------
+    title: string
+        title of the full plot
+    nx, ny: integer (default: square root of the numer of plots, rounded up)
+        number of subplots to use in x- and y-direction
+    xsize, ysize: float (default: 6)
+        dimensions of the full plot in inches
+    name: string (default: "")
+        if left empty, the plot will be shown on the screen,
+        otherwise it will be written to a file with the given name.
+        Supported extensions: .png and .pdf
+    """
+    global _plots, _kwargs
+    import matplotlib.pyplot as plt
+    nplot = len(_plots)
+    fig = plt.figure()
+    if "title" in kwargs:
+        plt.suptitle(kwargs.pop("title"))
+    nx = kwargs.pop("nx", int(np.ceil(np.sqrt(nplot))))
+    ny = kwargs.pop("ny", int(np.ceil(np.sqrt(nplot))))
+    if nx*ny < nplot:
+        raise ValueError(
+            'Figure dimensions not sufficient for number of plots')
+    xsize = kwargs.pop("xsize", 6)
+    ysize = kwargs.pop("ysize", 6)
+    fig.set_size_inches(xsize, ysize)
+    for i in range(nplot):
+        ax = fig.add_subplot(ny, nx, i+1)
+        _plot(_plots[i], ax, **_kwargs[i])
+    fig.tight_layout()
+    _makeplot(kwargs.pop("name", None))
+    _plots = []
+    _kwargs = []

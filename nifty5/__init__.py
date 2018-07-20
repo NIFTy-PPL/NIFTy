@@ -43,6 +43,7 @@ from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
 from .operators.multi_adaptor import MultiAdaptor
+from .operators.null_operator import NullOperator
 from .operators.power_distributor import PowerDistributor
 from .operators.qht_operator import QHTOperator
 from .operators.sampling_enabler import SamplingEnabler
@@ -76,7 +77,7 @@ from .minimization.line_energy import LineEnergy
 from .minimization.energy_sum import EnergySum
 
 from .sugar import *
-from .plotting.plot import plot
+from .plotting.plot import plot, plot_finish
 
 from .library.amplitude_model import make_amplitude_model
 from .library.gaussian_energy import GaussianEnergy

@@ -33,6 +33,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "empty", "zeros", "ones", "empty_like", "vdot", "exp",
            "log", "tanh", "sqrt", "from_object", "from_random",
            "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
+           "np_allreduce_min", "np_allreduce_max",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis", "is_numpy",
            "lock", "locked"]

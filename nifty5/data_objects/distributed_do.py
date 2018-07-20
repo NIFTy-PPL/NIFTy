@@ -158,11 +158,11 @@ class data_object(object):
     def prod(self, axis=None):
         return self._contraction_helper("prod", MPI.PROD, axis)
 
-    def min(self, axis=None):
-        return self._contraction_helper("min", MPI.MIN, axis)
+#    def min(self, axis=None):
+#        return self._contraction_helper("min", MPI.MIN, axis)
 
-    def max(self, axis=None):
-        return self._contraction_helper("max", MPI.MAX, axis)
+#    def max(self, axis=None):
+#        return self._contraction_helper("max", MPI.MAX, axis)
 
     def mean(self, axis=None):
         if axis is None:
@@ -345,6 +345,12 @@ def np_allreduce_sum(arr):
 def np_allreduce_min(arr):
     res = np.empty_like(arr)
     _comm.Allreduce(arr, res, MPI.MIN)
+    return res
+
+
+def np_allreduce_max(arr):
+    res = np.empty_like(arr)
+    _comm.Allreduce(arr, res, MPI.MAX)
     return res
 
 
