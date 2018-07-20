@@ -154,8 +154,8 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f1.local_data, +f1.local_data)
         assert_equal(f1.sum(), f1.sum(0))
         f1 = ift.from_global_data(s1, np.arange(10))
-        assert_equal(f1.min(), 0)
-        assert_equal(f1.max(), 9)
+#        assert_equal(f1.min(), 0)
+#        assert_equal(f1.max(), 9)
         assert_equal(f1.prod(), 0)
 
     def test_weight(self):
