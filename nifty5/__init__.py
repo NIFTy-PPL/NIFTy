@@ -42,6 +42,7 @@ from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
 from .operators.multi_adaptor import MultiAdaptor
+from .operators.null_operator import NullOperator
 from .operators.power_distributor import PowerDistributor
 from .operators.qht_operator import QHTOperator
 from .operators.sampling_enabler import SamplingEnabler

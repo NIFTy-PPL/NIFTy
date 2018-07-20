@@ -481,39 +481,39 @@ class Field(object):
     def any(self, spaces=None):
         return self._contraction_helper('any', spaces)
 
-    def min(self, spaces=None):
-        """Determines the minimum over the sub-domains given by `spaces`.
-
-        Parameters
-        ----------
-        spaces : None, int or tuple of int (default: None)
-            The operation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains.
-
-        Returns
-        -------
-        Field or scalar
-            The result of the operation. If it is carried out over the entire
-            domain, this is a scalar, otherwise a Field.
-        """
-        return self._contraction_helper('min', spaces)
-
-    def max(self, spaces=None):
-        """Determines the maximum over the sub-domains given by `spaces`.
-
-        Parameters
-        ----------
-        spaces : None, int or tuple of int (default: None)
-            The operation is only carried out over the sub-domains in this
-            tuple. If None, it is carried out over all sub-domains.
-
-        Returns
-        -------
-        Field or scalar
-            The result of the operation. If it is carried out over the entire
-            domain, this is a scalar, otherwise a Field.
-        """
-        return self._contraction_helper('max', spaces)
+#     def min(self, spaces=None):
+#         """Determines the minimum over the sub-domains given by `spaces`.
+#
+#         Parameters
+#         ----------
+#         spaces : None, int or tuple of int (default: None)
+#             The operation is only carried out over the sub-domains in this
+#             tuple. If None, it is carried out over all sub-domains.
+#
+#         Returns
+#         -------
+#         Field or scalar
+#             The result of the operation. If it is carried out over the entire
+#             domain, this is a scalar, otherwise a Field.
+#         """
+#         return self._contraction_helper('min', spaces)
+#
+#     def max(self, spaces=None):
+#         """Determines the maximum over the sub-domains given by `spaces`.
+#
+#         Parameters
+#         ----------
+#         spaces : None, int or tuple of int (default: None)
+#             The operation is only carried out over the sub-domains in this
+#             tuple. If None, it is carried out over all sub-domains.
+#
+#         Returns
+#         -------
+#         Field or scalar
+#             The result of the operation. If it is carried out over the entire
+#             domain, this is a scalar, otherwise a Field.
+#         """
+#         return self._contraction_helper('max', spaces)
 
     def mean(self, spaces=None):
         """Determines the mean over the sub-domains given by `spaces`.
