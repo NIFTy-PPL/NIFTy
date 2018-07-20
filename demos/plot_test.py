@@ -18,7 +18,7 @@ def plot_test():
     field_gl = ift.Field.from_global_data(gl_space, np.random.randn(32640))
     field_ps = ift.power_analyze(fft.times(field_rg2))
 
-    ## Start various plotting tests
+    # Start various plotting tests
 
     ift.plot(field_rg1_1, title='Single plot')
     ift.plot_finish()
@@ -35,6 +35,7 @@ def plot_test():
     ift.plot(field_gl, title='GL')
     ift.plot(field_rg2, title='2d rg')
     ift.plot_finish(nx=2, ny=3, title='Five plots')
+
 
 if __name__ == '__main__':
     plot_test()

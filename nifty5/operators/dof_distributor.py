@@ -71,7 +71,7 @@ class DOFDistributor(LinearOperator):
             raise ValueError("incorrect dofdex domain")
 
         ldat = dofdex.local_data
-        if ldat.size==0:  # can happen for weird configurations
+        if ldat.size == 0:  # can happen for weird configurations
             nbin = 0
         else:
             nbin = ldat.max()

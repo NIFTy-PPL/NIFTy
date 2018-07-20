@@ -39,9 +39,9 @@ class Consistency_Tests(unittest.TestCase):
                     [np.float64, np.complex128]))
     def testOperatorCombinations(self, sp, dtype):
         a = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
-                                                        dtype=dtype))
+                                                       dtype=dtype))
         b = ift.DiagonalOperator(ift.Field.from_random("normal", sp,
-                                                        dtype=dtype))
+                                                       dtype=dtype))
         op = ift.SandwichOperator.make(a, b)
         ift.extra.consistency_check(op, dtype, dtype)
         op = a*b
@@ -66,7 +66,7 @@ class Consistency_Tests(unittest.TestCase):
                     _h_spaces + _p_spaces + _pow_spaces,
                     [np.float64, np.complex128]))
     def testSelectionOperator(self, sp1, sp2, dtype):
-        mdom = ift.MultiDomain.make({'a':sp1, 'b':sp2})
+        mdom = ift.MultiDomain.make({'a': sp1, 'b': sp2})
         op = ift.SelectionOperator(mdom, 'a')
         ift.extra.consistency_check(op, dtype, dtype)
 
@@ -86,20 +86,19 @@ class Consistency_Tests(unittest.TestCase):
     def testNullOperator(self, sp1, sp2, dtype):
         op = ift.NullOperator(sp1, sp2)
         ift.extra.consistency_check(op, dtype, dtype)
-        mdom1 = ift.MultiDomain.make({'a':sp1})
-        mdom2 = ift.MultiDomain.make({'b':sp2})
+        mdom1 = ift.MultiDomain.make({'a': sp1})
+        mdom2 = ift.MultiDomain.make({'b': sp2})
         op = ift.NullOperator(mdom1, mdom2)
         ift.extra.consistency_check(op, dtype, dtype)
         op = ift.NullOperator(sp1, mdom2)
         ift.extra.consistency_check(op, dtype, dtype)
         op = ift.NullOperator(mdom1, sp2)
         ift.extra.consistency_check(op, dtype, dtype)
-        
-    @expand(product(_h_spaces + _p_spaces
-                        + _pow_spaces,
+
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
                     [np.float64, np.complex128]))
     def testMultiAdaptor(self, sp, dtype):
-        mdom = ift.MultiDomain.make({'a':sp})
+        mdom = ift.MultiDomain.make({'a': sp})
         op = ift.MultiAdaptor(mdom)
         ift.extra.consistency_check(op, dtype, dtype)
 
@@ -109,18 +108,16 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.HarmonicSmoothingOperator(sp, 0.1)
         ift.extra.consistency_check(op, dtype, dtype)
 
-    @expand(product(_h_spaces + _p_spaces
-                        + _pow_spaces,
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
                     [np.float64, np.complex128]))
     def testDOFDistributor(self, sp, dtype):
-        #TODO: Test for DomainTuple
+        # TODO: Test for DomainTuple
         if sp.size < 4:
             return
-        dofdex = np.arange(sp.size).reshape(sp.shape)%3
+        dofdex = np.arange(sp.size).reshape(sp.shape) % 3
         dofdex = ift.Field.from_global_data(sp, dofdex)
         op = ift.DOFDistributor(dofdex)
         ift.extra.consistency_check(op, dtype, dtype)
-
 
     @expand(product(_h_spaces, [np.float64, np.complex128]))
     def testPPO(self, sp, dtype):
