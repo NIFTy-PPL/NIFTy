@@ -6,6 +6,7 @@ from .linear_operator import LinearOperator
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..field import Field
+from .. import dobj
 
 
 class CentralZeroPadder(LinearOperator):
@@ -21,7 +22,7 @@ class CentralZeroPadder(LinearOperator):
         if dom.harmonic:
             raise TypeError("RGSpace must not be harmonic")
         if len(new_shape) != len(dom.shape):
-            raise ValueError("Shape missmatch")
+            raise ValueError("Shape mismatch")
         if any([a < b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must be larger than old shape")
 
@@ -34,15 +35,15 @@ class CentralZeroPadder(LinearOperator):
         axes = self._target.axes[self._space]
         for i in range(len(self._domain.shape)):
             if i in axes:
-                slicer_fw = slice(0, self._domain.shape[i]/2)
-                slicer_bw = slice(-self._domain.shape[i]/2, None)
+                slicer_fw = slice(0, (self._domain.shape[i]+1)//2)
+                slicer_bw = slice(-1, -1-(self._domain.shape[i]//2), -1)
                 slicer.append([slicer_fw, slicer_bw])
         self.slicer = list(itertools.product(*slicer))
 
         for i in range(len(self.slicer)):
             for j in range(len(self._domain.shape)):
                 if j not in axes:
-                    tmp = (list(self.slicer[i]))
+                    tmp = list(self.slicer[i])
                     tmp.insert(j, slice(None))
                     self.slicer[i] = tmp
 
@@ -61,15 +62,23 @@ class CentralZeroPadder(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         x = x.val
+        dax = dobj.distaxis(x)
+        shp_in = x.shape
+        shp_out = self._tgt(mode).shape
+        axes = self._target.axes[self._space]
+        if dax in axes:
+            x = dobj.redistribute(x, nodist=axes)
+        curax = dobj.distaxis(x)
 
         if mode == self.TIMES:
-            y = np.zeros(self._target.shape)
+            y = np.zeros(dobj.local_shape(shp_out, curax), dtype=x.dtype)
             for i in self.slicer:
                 y[i] = x[i]
-            return Field(self._target, val=y)
-
-        if mode == self.ADJOINT_TIMES:
-            y = np.zeros(self._domain.shape)
+        else:
+            y = np.empty(dobj.local_shape(shp_out, curax), dtype=x.dtype)
             for i in self.slicer:
                 y[i] = x[i]
-            return Field(self._domain, val=y)
+        y = dobj.from_local_data(shp_out, y, distaxis=curax)
+        if dax in axes:
+            y = dobj.redistribute(y, dist=dax)
+        return Field(self._tgt(mode), val=y)

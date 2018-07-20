@@ -209,6 +209,14 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.FieldZeroPadder(dom, newshape, space)
         ift.extra.consistency_check(op, dtype, dtype)
 
+    @expand(product([0, 2], [2, 2.7], [np.float64, np.complex128]))
+    def testZeroPadder2(self, space, factor, dtype):
+        dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
+               ift.HPSpace(4))
+        newshape = [factor*l for l in dom[space].shape]
+        op = ift.CentralZeroPadder(dom, newshape, space)
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
                      (ift.RGSpace((24, 31), distances=(0.4, 2.34),
                                   harmonic=True), (4, 3), 0),
