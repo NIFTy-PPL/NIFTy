@@ -28,5 +28,6 @@ class SteepestDescent(DescentMinimizer):
     Also known as 'gradient descent'. This algorithm simply follows the
     functional's gradient for minimization.
     """
+
     def get_descent_direction(self, energy):
         return -energy.gradient

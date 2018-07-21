@@ -35,6 +35,7 @@ class SelectionOperator(LinearOperator):
     key : :class:`str`
         String identifier of the wanted subdomain
     """
+
     def __init__(self, domain, key):
         self._domain = MultiDomain.make(domain)
         self._key = key

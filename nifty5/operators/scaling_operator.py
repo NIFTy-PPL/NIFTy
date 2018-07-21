@@ -111,4 +111,4 @@ class ScalingOperator(EndomorphicOperator):
         fct = 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
         cls = Field if isinstance(self._domain, DomainTuple) else MultiField
         return cls.from_random(
-           random_type="normal", domain=self._domain, std=fct, dtype=dtype)
+            random_type="normal", domain=self._domain, std=fct, dtype=dtype)

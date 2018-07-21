@@ -47,6 +47,7 @@ class Model(NiftyMetaBase()):
     one automatically gets the value and Jacobian of the model. The 'at' method
     creates a new instance of the class.
     """
+
     def __init__(self, position):
         self._position = position
 

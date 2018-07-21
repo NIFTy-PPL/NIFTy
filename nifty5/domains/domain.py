@@ -27,6 +27,7 @@ from ..utilities import NiftyMetaBase
 class Domain(NiftyMetaBase()):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
+
     def __init__(self):
         self._hash = None
 
