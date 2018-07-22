@@ -34,6 +34,7 @@ class NullOperator(LinearOperator):
     target : DomainTuple or MultiDomain
         output domain
     """
+
     def __init__(self, domain, target):
         from ..sugar import makeDomain
         self._domain = makeDomain(domain)

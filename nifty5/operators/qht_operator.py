@@ -42,6 +42,7 @@ class QHTOperator(LinearOperator):
         The index of the domain on which the operator acts.
         target[space] must be a nonharmonic LogRGSpace.
     """
+
     def __init__(self, target, space=0):
         self._target = DomainTuple.make(target)
         self._space = infer_space(self._target, space)

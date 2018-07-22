@@ -106,6 +106,7 @@ class _InformationStore(object):
     yy : numpy.ndarray
         2D circular buffer of scalar products between different elements of y.
     """
+
     def __init__(self, max_history_length, x0, gradient):
         self.max_history_length = max_history_length
         self.s = [None]*max_history_length

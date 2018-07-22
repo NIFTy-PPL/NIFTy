@@ -54,7 +54,7 @@ class HartleyOperator(LinearOperator):
     of the result field, respectivey.
     In many contexts the Hartley transform is a perfect substitute for the
     Fourier transform, but in some situations (e.g. convolution with a general,
-    non-symmetrc kernel, the full FFT must be used instead.
+    non-symmetric kernel, the full FFT must be used instead.
     """
 
     def __init__(self, domain, target=None, space=None):

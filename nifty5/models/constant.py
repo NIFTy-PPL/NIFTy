@@ -39,6 +39,7 @@ class Constant(Model):
         - Position has no influence on value.
         - The Jacobian is a null matrix.
     """
+
     def __init__(self, position, constant):
         super(Constant, self).__init__(position)
         self._constant = constant

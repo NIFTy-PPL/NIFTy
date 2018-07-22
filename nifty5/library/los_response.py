@@ -132,6 +132,7 @@ class LOSResponse(LinearOperator):
     every calling MPI task (i.e. the full LOS information has to be provided on
     every task).
     """
+
     def __init__(self, domain, starts, ends, sigmas_low=None, sigmas_up=None):
 
         super(LOSResponse, self).__init__()

@@ -31,6 +31,7 @@ class Variable(Model):
     position : Field or MultiField
         The current position in parameter space.
     """
+
     def __init__(self, position):
         super(Variable, self).__init__(position)
 
