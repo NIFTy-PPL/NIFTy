@@ -91,4 +91,5 @@ if __name__ == '__main__':
     ift.plot(reconstruction, title='reconstruction')
     ift.plot(GR.adjoint_times(data), title='data')
     ift.plot(sky.at(mock_position).value, title='truth')
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results", name="bernoulli.png")
+    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
+                    name="bernoulli.png")

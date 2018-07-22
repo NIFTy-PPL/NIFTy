@@ -115,4 +115,5 @@ if __name__ == '__main__':
     powers = [A.at(s+position).value for s in samples]
     ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers,
              title="power")
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results", name="results.png")
+    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
+                    name="results.png")
