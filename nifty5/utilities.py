@@ -30,7 +30,7 @@ from .compat import *
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
            "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb",
-           "my_product", "frozendict"]
+           "my_product", "frozendict", "special_add_at"]
 
 
 def my_sum(terms):
@@ -81,7 +81,7 @@ def get_slice_list(shape, axes):
     if axes:
         if not all(axis < len(shape) for axis in axes):
             raise ValueError("axes(axis) does not match shape.")
-        axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
+        axes_select = [0 if x in axes else 1 for x in range(len(shape))]
         axes_iterables = \
             [list(range(y)) for x, y in enumerate(shape) if x not in axes]
         for index in product(*axes_iterables):
@@ -334,3 +334,25 @@ class frozendict(collections.Mapping):
                 h ^= hash((key, value))
             self._hash = h
         return self._hash
+
+
+def special_add_at(a, axis, index, b):
+    if a.dtype != b.dtype:
+        raise TypeError("data type mismatch")
+    sz1 = int(np.prod(a.shape[:axis]))
+    sz3 = int(np.prod(a.shape[axis+1:]))
+    a2 = a.reshape([sz1, -1, sz3])
+    b2 = b.reshape([sz1, -1, sz3])
+    if np.issubdtype(a.dtype, np.complexfloating):
+        dt2 = a.real.dtype
+        a2 = a2.view(dt2)
+        b2 = b2.view(dt2)
+        sz3 *= 2
+    for i1 in range(sz1):
+        for i3 in range(sz3):
+            a2[i1, :, i3] += np.bincount(index, b2[i1, :, i3],
+                                         minlength=a2.shape[1])
+
+    if np.issubdtype(a.dtype, np.complexfloating):
+        a2 = a2.view(a.dtype)
+    return a2.reshape(a.shape)

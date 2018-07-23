@@ -65,7 +65,6 @@ pages:
   - NIFTy_4
 
 before_script:
-  - export MPLBACKEND="agg"
   - python setup.py install --user -f
   - python3 setup.py install --user -f
 

@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y python-matplotlib python3-matplotlib \
   && python3 -m pip install --upgrade pip && python3 -m pip install jupyter && python -m pip install --upgrade pip && python -m pip install jupyter \
   && rm -rf /var/lib/apt/lists/*
 
+# Set matplotlib backend
+ENV MPLBACKEND agg
+
 # Create user (openmpi does not like to be run as root)
 RUN useradd -ms /bin/bash testinguser
 USER testinguser
