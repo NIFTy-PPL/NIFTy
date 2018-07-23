@@ -33,7 +33,10 @@ def _get_acceptable_model(M):
         raise ValueError('Initial Model value must be finite')
     dir = from_random("normal", M.position.domain)
     dirder = M.jacobian(dir)
-    dir = dir * val * (1e-5/dirder.norm())
+    if dirder.norm() == 0:
+        dir = dir * val * 1e-5
+    else:
+        dir = dir * val * (1e-5/dirder.norm())
     # Find a step length that leads to a "reasonable" Model
     for i in range(50):
         try:
@@ -88,11 +91,11 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
             numgrad = (E2.value-val)/dirnorm
             if isinstance(E, Model):
                 xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-                if (abs(numgrad-dirder) < xtol).all():
+                if (abs(numgrad-dirder) <= xtol).all():
                     break
             else:
                 xtol = tol*Emid.gradient_norm
-                if abs(numgrad-dirder) < xtol:
+                if abs(numgrad-dirder) <= xtol:
                     break
             dir = dir*0.5
             dirnorm *= 0.5
