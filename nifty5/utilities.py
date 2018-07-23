@@ -30,7 +30,7 @@ from .compat import *
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
            "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb",
-           "my_product", "frozendict"]
+           "my_product", "frozendict", "special_add_at"]
 
 
 def my_sum(terms):
@@ -334,3 +334,24 @@ class frozendict(collections.Mapping):
                 h ^= hash((key, value))
             self._hash = h
         return self._hash
+
+
+def special_add_at(inp, axis, index, out):
+    sz1=int(np.prod(inp.shape[:axis]))
+    sz3=int(np.prod(inp.shape[axis+1:]))
+    print(inp.shape, sz1, sz3)
+    inp2 = inp.reshape([sz1,-1,sz3])
+    out2 = out.reshape([sz1,-1,sz3])
+    if not np.issubdtype(inp.dtype, np.complexfloating):
+        for i1 in range(sz1):
+            for i3 in range(sz3):
+                out2[i1,:,i3] += np.bincount(index, inp2[i1,:,i3],
+                                             minlength=out2.shape[1])
+    else:
+        for i1 in range(sz1):
+            for i3 in range(sz3):
+                out2[i1,:,i3].real += np.bincount(index, inp2[i1,:,i3].real,
+                                                  minlength=out2.shape[1])
+                out2[i1,:,i3].imag += np.bincount(index, inp2[i1,:,i3].imag,
+                                                  minlength=out2.shape[1])
+    return out2.reshape(out.shape)

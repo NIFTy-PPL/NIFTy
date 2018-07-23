@@ -112,8 +112,10 @@ class ExpTransform(LinearOperator):
                 shp = list(x.shape)
                 shp[d] = self._tgt(mode).shape[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
-                np.add.at(xnew, idx + (self._bindex[d-d0],), x * (1.-wgt))
-                np.add.at(xnew, idx + (self._bindex[d-d0]+1,), x * wgt)
+                xnew = utilities.special_add_at(x*(1.-wgt), d,
+                                                self._bindex[d-d0], xnew)
+                xnew = utilities.special_add_at(x*wgt, d,
+                                                self._bindex[d-d0]+1, xnew)
             else:  # TIMES
                 xnew = x[idx + (self._bindex[d-d0],)] * (1.-wgt)
                 xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt
