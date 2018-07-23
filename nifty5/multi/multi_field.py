@@ -147,6 +147,36 @@ class MultiField(object):
         """
         return np.sqrt(np.abs(self.vdot(x=self)))
 
+    def sum(self):
+        """ Computes the sum all field values.
+
+        Returns
+        -------
+        norm : float
+            The sum of the field values.
+        """
+        result = 0.0
+        for v in self._val:
+            if isinstance(v, Field):
+                #not using += here in case of complex numbers
+                result = result + v.sum()
+        return result
+
+    @property
+    def size(self):
+        """ Computes the overall degrees of freedom.
+
+        Returns
+        -------
+        size : int
+            The sum of the size of the individual fields
+        """
+        result = 0
+        for k in self.keys():
+            result += self._domain[k].size
+        return result
+
+
     def squared_norm(self):
         """ Computes the square of the L2-norm of the field values.
 
