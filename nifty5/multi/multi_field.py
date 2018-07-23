@@ -23,6 +23,7 @@ import numpy as np
 from ..compat import *
 from ..field import Field
 from .multi_domain import MultiDomain
+from .. import utilities
 
 
 class MultiField(object):
@@ -155,12 +156,7 @@ class MultiField(object):
         norm : float
             The sum of the field values.
         """
-        result = 0.0
-        for v in self._val:
-            if isinstance(v, Field):
-                #not using += here in case of complex numbers
-                result = result + v.sum()
-        return result
+        return utilities.my_sum(map(lambda v: v.sum(), self._val))
 
     @property
     def size(self):
@@ -171,11 +167,7 @@ class MultiField(object):
         size : int
             The sum of the size of the individual fields
         """
-        result = 0
-        for k in self.keys():
-            result += self._domain[k].size
-        return result
-
+        return utilities.my_sum(map(lambda d: d.size, self._domain.domains()))
 
     def squared_norm(self):
         """ Computes the square of the L2-norm of the field values.
