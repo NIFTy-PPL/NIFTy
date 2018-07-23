@@ -116,7 +116,7 @@ class DOFDistributor(LinearOperator):
         arr = x.local_data
         arr = arr.reshape(self._pshape)
         oarr = np.zeros(self._hshape, dtype=x.dtype)
-        oarr = special_add_at(arr, 1, self._dofdex, oarr)
+        oarr = special_add_at(oarr, 1, self._dofdex, arr)
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
             oarr = dobj.np_allreduce_sum(oarr).reshape(self._domain.shape)
             res = Field.from_global_data(self._domain, oarr)

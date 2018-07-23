@@ -336,21 +336,23 @@ class frozendict(collections.Mapping):
         return self._hash
 
 
-def special_add_at(inp, axis, index, out):
-    sz1=int(np.prod(inp.shape[:axis]))
-    sz3=int(np.prod(inp.shape[axis+1:]))
-    inp2 = inp.reshape([sz1,-1,sz3])
-    out2 = out.reshape([sz1,-1,sz3])
-    if not np.issubdtype(inp.dtype, np.complexfloating):
-        for i1 in range(sz1):
-            for i3 in range(sz3):
-                out2[i1,:,i3] += np.bincount(index, inp2[i1,:,i3],
-                                             minlength=out2.shape[1])
-    else:
-        for i1 in range(sz1):
-            for i3 in range(sz3):
-                out2[i1,:,i3].real += np.bincount(index, inp2[i1,:,i3].real,
-                                                  minlength=out2.shape[1])
-                out2[i1,:,i3].imag += np.bincount(index, inp2[i1,:,i3].imag,
-                                                  minlength=out2.shape[1])
-    return out2.reshape(out.shape)
+def special_add_at(a, axis, index, b):
+    if a.dtype != b.dtype:
+        raise TypeError("data type mismatch")
+    sz1=int(np.prod(a.shape[:axis]))
+    sz3=int(np.prod(a.shape[axis+1:]))
+    a2 = a.reshape([sz1,-1,sz3])
+    b2 = b.reshape([sz1,-1,sz3])
+    if np.issubdtype(a.dtype, np.complexfloating):
+        dt2 = a.real.dtype
+        a2 = a2.view(dt2)
+        b2 = b2.view(dt2)
+        sz3 *= 2
+    for i1 in range(sz1):
+        for i3 in range(sz3):
+            a2[i1,:,i3] += np.bincount(index, b2[i1,:,i3],
+                                       minlength=a2.shape[1])
+
+    if np.issubdtype(a.dtype, np.complexfloating):
+        a2 = a2.view(a.dtype)
+    return a2.reshape(a.shape)
