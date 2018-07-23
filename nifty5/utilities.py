@@ -89,7 +89,7 @@ def get_slice_list(shape, axes):
             slice_list = [
                 next(it_iter)
                 if axis else slice(None, None) for axis in axes_select
-                ]
+            ]
             yield slice_list
     else:
         yield [slice(None, None)]

@@ -29,6 +29,7 @@ class RelaxedNewton(DescentMinimizer):
     The descent direction is determined by weighting the gradient at the
     current parameter position with the inverse local metric.
     """
+
     def __init__(self, controller, line_searcher=None):
         if line_searcher is None:
             line_searcher = LineSearchStrongWolfe(
