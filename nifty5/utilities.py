@@ -339,7 +339,6 @@ class frozendict(collections.Mapping):
 def special_add_at(inp, axis, index, out):
     sz1=int(np.prod(inp.shape[:axis]))
     sz3=int(np.prod(inp.shape[axis+1:]))
-    print(inp.shape, sz1, sz3)
     inp2 = inp.reshape([sz1,-1,sz3])
     out2 = out.reshape([sz1,-1,sz3])
     if not np.issubdtype(inp.dtype, np.complexfloating):
