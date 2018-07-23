@@ -34,9 +34,9 @@ def _get_acceptable_model(M):
     dir = from_random("normal", M.position.domain)
     dirder = M.jacobian(dir)
     if dirder.norm() == 0:
-        dir = dir * val * 1e-5
+        dir = dir * val.norm() * 1e-5
     else:
-        dir = dir * val * (1e-5/dirder.norm())
+        dir = dir * val.norm() * (1e-5/dirder.norm())
     # Find a step length that leads to a "reasonable" Model
     for i in range(50):
         try:
