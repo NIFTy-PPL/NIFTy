@@ -25,7 +25,7 @@ from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.dof_space import DOFSpace
 from ..field import Field
-from ..utilities import infer_space
+from ..utilities import infer_space, special_add_at
 from .linear_operator import LinearOperator
 
 
@@ -116,7 +116,7 @@ class DOFDistributor(LinearOperator):
         arr = x.local_data
         arr = arr.reshape(self._pshape)
         oarr = np.zeros(self._hshape, dtype=x.dtype)
-        np.add.at(oarr, (slice(None), self._dofdex, slice(None)), arr)
+        oarr = special_add_at(oarr, 1, self._dofdex, arr)
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
             oarr = dobj.np_allreduce_sum(oarr).reshape(self._domain.shape)
             res = Field.from_global_data(self._domain, oarr)
