@@ -27,13 +27,13 @@ from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace
 from ..field import Field
 from .linear_operator import LinearOperator
-from .. import utilities
+from ..utilities import infer_space, special_add_at
 
 
 class ExpTransform(LinearOperator):
     def __init__(self, target, dof, space=0):
         self._target = DomainTuple.make(target)
-        self._space = utilities.infer_space(self._target, space)
+        self._space = infer_space(self._target, space)
         tgt = self._target[self._space]
         if not ((isinstance(tgt, RGSpace) and tgt.harmonic) or
                 isinstance(tgt, PowerSpace)):
@@ -112,10 +112,8 @@ class ExpTransform(LinearOperator):
                 shp = list(x.shape)
                 shp[d] = self._tgt(mode).shape[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
-                xnew = utilities.special_add_at(xnew, d,
-                                                self._bindex[d-d0], x*(1.-wgt))
-                xnew = utilities.special_add_at(xnew, d,
-                                                self._bindex[d-d0]+1, x*wgt)
+                xnew = special_add_at(xnew, d, self._bindex[d-d0], x*(1.-wgt))
+                xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, x*wgt)
             else:  # TIMES
                 xnew = x[idx + (self._bindex[d-d0],)] * (1.-wgt)
                 xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt

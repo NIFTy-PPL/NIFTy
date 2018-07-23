@@ -81,7 +81,7 @@ def get_slice_list(shape, axes):
     if axes:
         if not all(axis < len(shape) for axis in axes):
             raise ValueError("axes(axis) does not match shape.")
-        axes_select = [0 if x in axes else 1 for x, y in enumerate(shape)]
+        axes_select = [0 if x in axes else 1 for x in range(len(shape))]
         axes_iterables = \
             [list(range(y)) for x, y in enumerate(shape) if x not in axes]
         for index in product(*axes_iterables):
