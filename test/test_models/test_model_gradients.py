@@ -105,10 +105,11 @@ class Model_Tests(unittest.TestCase):
     def testLocalModel(self, type, space, seed):
         model = self.make_model(
             type, space_key='s', space=space, seed=seed)['s']
-        ift.extra.check_value_gradient_consistency(ift.PointwiseExponential(model))
+        ift.extra.check_value_gradient_consistency(
+            ift.PointwiseExponential(model))
         ift.extra.check_value_gradient_consistency(ift.PointwiseTanh(model))
-        ift.extra.check_value_gradient_consistency(ift.PointwisePositiveTanh(model))
-
+        ift.extra.check_value_gradient_consistency(
+            ift.PointwisePositiveTanh(model))
 
     @expand(product(
         ['Variable', 'Constant'],
