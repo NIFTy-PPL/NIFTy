@@ -9,6 +9,8 @@ from ..field import Field
 from .. import dobj
 
 
+# MR FIXME: for even axis lengths, we probably should split the value at the
+#           highest frequency.
 class CentralZeroPadder(LinearOperator):
     def __init__(self, domain, new_shape, space=0):
         super(CentralZeroPadder, self).__init__()
