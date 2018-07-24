@@ -81,6 +81,25 @@ class Energy_Tests(unittest.TestCase):
          ift.RGSpace([32, 32], distances=.789)],
         [4, 78, 23]
         ))
+    def testHamiltonian_and_KL(self, type1, space, seed):
+        model = self.make_model(
+            type1, space_key='s1', space=space, seed=seed)['s1']
+        model = ift.PointwiseExponential(model)
+        lh = ift.GaussianEnergy(model)
+        hamiltonian = ift.Hamiltonian(lh)
+        ift.extra.check_value_gradient_consistency(hamiltonian)
+        S = ift.ScalingOperator(1., space)
+        samps = [S.draw_sample() for i in range(3)]
+        kl = ift.SampledKullbachLeiblerDivergence(hamiltonian, samps)
+        ift.extra.check_value_gradient_consistency(kl)
+
+    @expand(product(
+        ['Variable'],
+        [ift.GLSpace(15),
+         ift.RGSpace(64, distances=.789),
+         ift.RGSpace([32, 32], distances=.789)],
+        [4, 78, 23]
+        ))
     def testBernoulli(self, type1, space, seed):
         model = self.make_model(
             type1, space_key='s1', space=space, seed=seed)['s1']
