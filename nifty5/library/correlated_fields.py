@@ -41,7 +41,7 @@ def make_correlated_field(s_space, amplitude_model):
     amplitude_model : model for correlation structure
     '''
     h_space = s_space.get_default_codomain()
-    ht = HartleyOperator(h_space, s_space)
+    ht = HarmonicTransformOperator(h_space, s_space)
     p_space = amplitude_model.value.domain[0]
     power_distributor = PowerDistributor(h_space, p_space)
 
