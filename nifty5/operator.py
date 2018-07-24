@@ -38,7 +38,10 @@ class Linearization(object):
 
     def __add__(self, other):
         if isinstance(other, Linearization):
-            return Linearization(self._val+other._val, self._jac+other._jac)
+            from .operators.relaxed_sum_operator import RelaxedSumOperator
+            return Linearization(
+                MultiField.combine((self._val, other._val)),
+                RelaxedSumOperator((self._jac, other._jac)))
         if isinstance(other, (int, float, complex, Field, MultiField)):
             return Linearization(self._val+other, self._jac)
 
@@ -52,10 +55,10 @@ class Linearization(object):
         return (-self).__add__(other)
 
     def __mul__(self, other):
-        from .operators.diagonal_operator import DiagonalOperator
+        from .sugar import makeOp
         if isinstance(other, Linearization):
-            d1 = DiagonalOperator(self._val)
-            d2 = DiagonalOperator(other._val)
+            d1 = makeOp(self._val)
+            d2 = makeOp(other._val)
             return Linearization(self._val*other._val,
                                  self._jac*d2 + d1*other._jac)
         if isinstance(other, (int, float, complex)):
@@ -63,15 +66,16 @@ class Linearization(object):
             #    return ...
             return Linearization(self._val*other, self._jac*other)
         if isinstance(other, (Field, MultiField)):
-            d2 = DiagonalOperator(other)
+            d2 = makeOp(other)
             return Linearization(self._val*other, self._jac*d2)
         raise TypeError
 
     def __rmul__(self, other):
+        from .sugar import makeOp
         if isinstance(other, (int, float, complex)):
             return Linearization(self._val*other, self._jac*other)
         if isinstance(other, (Field, MultiField)):
-            d1 = DiagonalOperator(other)
+            d1 = makeOp(other)
             return Linearization(self._val*other, d1*self._jac)
 
     @staticmethod
@@ -80,8 +84,8 @@ class Linearization(object):
         return Linearization(field, ScalingOperator(1., field.domain))
     @staticmethod
     def make_const(field):
-        from .operators.scaling_operator import ScalingOperator
-        return Linearization(field, ScalingOperator(0., {}))
+        from .operators.null_operator import NullOperator
+        return Linearization(field, NullOperator({}, field.domain))
 
 class Operator(NiftyMetaBase()):
     """Transforms values living on one domain into values living on another

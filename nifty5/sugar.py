@@ -251,7 +251,8 @@ for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
     def func(f):
         def func2(x):
             if isinstance(x, MultiField):
-                return MultiField({key: func2(val) for key, val in x.items()})
+                return MultiField(x.domain,
+                                  tuple(func2(val) for val in x.values()))
             elif isinstance(x, Field):
                 fu = getattr(dobj, f)
                 return Field(domain=x._domain, val=fu(x.val))
