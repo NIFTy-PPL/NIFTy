@@ -1,6 +1,9 @@
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
 import itertools
 
+from ..compat import *
 from .. import utilities
 from .linear_operator import LinearOperator
 from ..domain_tuple import DomainTuple

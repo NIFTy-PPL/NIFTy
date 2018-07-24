@@ -32,7 +32,7 @@ class MultiField(object):
         Parameters
         ----------
         domain: MultiDomain
-        val: tuple containing Field or None entries
+        val: tuple containing Field entries
         """
         if not isinstance(domain, MultiDomain):
             raise TypeError("domain must be of type MultiDomain")
@@ -44,8 +44,8 @@ class MultiField(object):
             if isinstance(v, Field):
                 if v._domain is not d:
                     raise ValueError("domain mismatch")
-            elif v is not None:
-                raise TypeError("bad entry in val (must be Field or None)")
+            else:
+                raise TypeError("bad entry in val (must be Field)")
         self._domain = domain
         self._val = val
 
@@ -54,8 +54,7 @@ class MultiField(object):
         if domain is None:
             domain = MultiDomain.make({key: v._domain
                                        for key, v in dict.items()})
-        return MultiField(domain, tuple(dict[key] if key in dict else None
-                                        for key in domain.keys()))
+        return MultiField(domain, tuple(dict[key] for key in domain.keys()))
 
     def to_dict(self):
         return {key: val for key, val in zip(self._domain.keys(), self._val)}
@@ -81,9 +80,7 @@ class MultiField(object):
 #        return {key: val.dtype for key, val in self._val.items()}
 
     def _transform(self, op):
-        return MultiField(
-            self._domain,
-            tuple(op(v) if v is not None else None for v in self._val))
+        return MultiField(self._domain, tuple(op(v) for v in self._val))
 
     @property
     def real(self):
@@ -111,8 +108,7 @@ class MultiField(object):
         result = 0.
         self._check_domain(x)
         for v1, v2 in zip(self._val, x._val):
-            if v1 is not None and v2 is not None:
-                result += v1.vdot(v2)
+            result += v1.vdot(v2)
         return result
 
 #    @staticmethod
@@ -190,13 +186,13 @@ class MultiField(object):
 
     def all(self):
         for v in self._val:
-            if v is None or not v.all():
+            if not v.all():
                 return False
         return True
 
     def any(self):
         for v in self._val:
-            if v is not None and v.any():
+            if v.any():
                 return True
         return False
 
@@ -215,44 +211,9 @@ class MultiField(object):
         return True
 
 
-for op in ["__add__", "__radd__"]:
-    def func(op):
-        def func2(self, other):
-            if isinstance(other, MultiField):
-                if self._domain is not other._domain:
-                    raise ValueError("domain mismatch")
-                val = []
-                for v1, v2 in zip(self._val, other._val):
-                    if v1 is not None:
-                        val.append(v1 if v2 is None else (v1+v2))
-                    else:
-                        val.append(None if v2 is None else v2)
-                val = tuple(val)
-            else:
-                val = tuple(other if v1 is None else (v1+other)
-                            for v1 in self._val)
-            return MultiField(self._domain, val)
-        return func2
-    setattr(MultiField, op, func(op))
-
-
-for op in ["__mul__", "__rmul__"]:
-    def func(op):
-        def func2(self, other):
-            if isinstance(other, MultiField):
-                if self._domain is not other._domain:
-                    raise ValueError("domain mismatch")
-                val = tuple(None if v1 is None or v2 is None else v1*v2
-                            for v1, v2 in zip(self._val, other._val))
-            else:
-                val = tuple(None if v1 is None else (v1*other)
-                            for v1 in self._val)
-            return MultiField(self._domain, val)
-        return func2
-    setattr(MultiField, op, func(op))
-
-
-for op in ["__sub__", "__rsub__",
+for op in ["__add__", "__radd__",
+           "__sub__", "__rsub__",
+           "__mul__", "__rmul__",
            "__div__", "__rdiv__",
            "__truediv__", "__rtruediv__",
            "__floordiv__", "__rfloordiv__",
