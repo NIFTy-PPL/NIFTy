@@ -33,6 +33,7 @@ from .operators.domain_distributor import DomainDistributor
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
 from .operators.fft_operator import FFTOperator
+from .operators.field_adapter import FieldAdapter
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.hartley_operator import HartleyOperator
 from .operators.harmonic_smoothing_operator import HarmonicSmoothingOperator
