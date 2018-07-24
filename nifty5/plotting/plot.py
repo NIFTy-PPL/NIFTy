@@ -247,7 +247,6 @@ def _plot(f, ax, **kwargs):
     elif isinstance(dom, PowerSpace):
         plt.xscale('log')
         plt.yscale('log')
-        plt.title('power')
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
             ycoord = fld.to_global_data()
