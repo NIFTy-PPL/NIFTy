@@ -23,10 +23,10 @@ import abc
 import numpy as np
 
 from ..compat import *
-from ..utilities import NiftyMetaBase
+from ..operator import Operator, Linearization
 
 
-class LinearOperator(NiftyMetaBase()):
+class LinearOperator(Operator):
     """NIFTY base class for linear operators.
 
     The base NIFTY operator class is an abstract class from which
@@ -205,6 +205,8 @@ class LinearOperator(NiftyMetaBase()):
         """Same as :meth:`times`"""
         from ..models.model import Model
         from ..models.linear_model import LinearModel
+        if isinstance(x, Linearization):
+            return Linearization(self(x._val), self*x._jac)
         if isinstance(x, Model):
             return LinearModel(x, self)
         return self.apply(x, self.TIMES)

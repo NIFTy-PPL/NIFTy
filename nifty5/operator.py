@@ -10,8 +10,6 @@ from .utilities import NiftyMetaBase
 #from ..multi.multi_domain import MultiDomain
 from .field import Field
 from .multi.multi_field import MultiField
-from .operators.scaling_operator import ScalingOperator
-from .operators.diagonal_operator import DiagonalOperator
 
 
 class Linearization(object):
@@ -54,6 +52,7 @@ class Linearization(object):
         return (-self).__add__(other)
 
     def __mul__(self, other):
+        from .operators.diagonal_operator import DiagonalOperator
         if isinstance(other, Linearization):
             d1 = DiagonalOperator(self._val)
             d2 = DiagonalOperator(other._val)
@@ -77,9 +76,11 @@ class Linearization(object):
 
     @staticmethod
     def make_var(field):
+        from .operators.scaling_operator import ScalingOperator
         return Linearization(field, ScalingOperator(1., field.domain))
     @staticmethod
     def make_const(field):
+        from .operators.scaling_operator import ScalingOperator
         return Linearization(field, ScalingOperator(0., {}))
 
 class Operator(NiftyMetaBase()):

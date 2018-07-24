@@ -210,6 +210,23 @@ class MultiField(object):
                 return False
         return True
 
+    def extract(self, subset):
+        if isinstance(subset, MultiDomain):
+            return MultiField(subset,
+                              tuple(self[key] for key in subset.keys()))
+        else:
+            return MultiField.from_dict({key: self[key] for key in subset})
+
+    @staticmethod
+    def combine(fields):
+        res = {}
+        for f in fields:
+            for key in f.keys():
+                if key in res:
+                    res[key] = res[key]+f[key]
+                else:
+                    res[key] = f[key]
+        return MultiField.from_dict(res)
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
