@@ -203,11 +203,8 @@ def _plot(f, ax, **kwargs):
     if not isinstance(alpha, list):
         alpha = [alpha]
 
-    norm = kwargs.pop("norm", None)
-    if norm is None:
-        norm = {}
-    else:
-        norm = {'norm': norm}
+    foo = kwargs.pop("norm", None)
+    norm = {} if foo is None else {'norm': foo}
 
     dom = dom[0]
     ax.set_title(kwargs.pop("title", ""))
