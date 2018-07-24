@@ -203,6 +203,12 @@ def _plot(f, ax, **kwargs):
     if not isinstance(alpha, list):
         alpha = [alpha]
 
+    norm = kwargs.pop("norm", None)
+    if norm is None:
+        norm = {}
+    else:
+        norm = {'norm': norm}
+
     dom = dom[0]
     ax.set_title(kwargs.pop("title", ""))
     ax.set_xlabel(kwargs.pop("xlabel", ""))
@@ -232,7 +238,8 @@ def _plot(f, ax, **kwargs):
             im = ax.imshow(fld.to_global_data(),
                            extent=[xc[0], xc[-1], yc[0], yc[-1]],
                            vmin=kwargs.get("zmin"),
-                           vmax=kwargs.get("zmax"), cmap=cmap, origin="lower")
+                           vmax=kwargs.get("zmax"), cmap=cmap, origin="lower",
+                           **norm)
             # from mpl_toolkits.axes_grid1 import make_axes_locatable
             # divider = make_axes_locatable(ax)
             # cax = divider.append_axes("right", size="5%", pad=0.05)
