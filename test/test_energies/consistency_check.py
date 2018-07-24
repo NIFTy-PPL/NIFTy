@@ -65,6 +65,20 @@ class Energy_Tests(unittest.TestCase):
          ift.RGSpace([32, 32], distances=.789)],
         [4, 78, 23]
         ))
+    def testQuadratic(self, type1, space, seed):
+        np.random.seed(seed)
+        S = ift.ScalingOperator(1., space)
+        s = [S.draw_sample() for _ in range(3)]
+        energy = ift.QuadraticEnergy(s[0], ift.makeOp(s[1]), s[2])
+        ift.extra.check_value_gradient_consistency(energy)
+
+    @expand(product(
+        ['Variable'],
+        [ift.GLSpace(15),
+         ift.RGSpace(64, distances=.789),
+         ift.RGSpace([32, 32], distances=.789)],
+        [4, 78, 23]
+        ))
     def testPoissonian(self, type1, space, seed):
         model = self.make_model(
             type1, space_key='s1', space=space, seed=seed)['s1']
