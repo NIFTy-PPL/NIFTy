@@ -75,6 +75,4 @@ class PointSources(Model):
     @staticmethod
     def inverseIG(u, alpha, q):
         res = norm.ppf(invgamma.cdf(u, alpha, scale=q))
-        # # FIXME
-        # res = np.clip(res, 0, None)
         return res
