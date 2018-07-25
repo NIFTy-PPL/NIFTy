@@ -5,6 +5,7 @@ from .linear_operator import LinearOperator
 from ..multi.multi_domain import MultiDomain
 from ..multi.multi_field import MultiField
 
+
 class FieldAdapter(LinearOperator):
     def __init__(self, op, name_dom, name_tgt):
         if name_dom is None:

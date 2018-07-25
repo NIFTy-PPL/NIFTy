@@ -23,17 +23,19 @@ import numpy as np
 from ..compat import *
 from ..utilities import my_sum
 from .linear_operator import LinearOperator
+from ..sugar import domain_union
 from ..multi.multi_domain import MultiDomain
+from ..multi.multi_field import MultiField
 
 
 class RelaxedSumOperator(LinearOperator):
-    """Class representing sums of operators with compatible MultiDomains."""
+    """Class representing sums of operators with compatible domains."""
 
     def __init__(self, ops):
         super(RelaxedSumOperator, self).__init__()
         self._ops = ops
-        self._domain = MultiDomain.union([op.domain for op in ops])
-        self._target = MultiDomain.union([op.target for op in ops])
+        self._domain = domain_union([op.domain for op in ops])
+        self._target = domain_union([op.target for op in ops])
         self._capability = self.TIMES | self.ADJOINT_TIMES
         for op in ops:
             self._capability &= op.capability
@@ -58,9 +60,14 @@ class RelaxedSumOperator(LinearOperator):
         self._check_mode(mode)
         res = None
         for op in self._ops:
-            tmp = x.extract(op._dom(mode), mode)
+            if isinstance(x.domain, MultiDomain):
+                x = x.extract(op._dom(mode))
+            x = op.apply(x, mode)
             if res is None:
                 res = tmp
             else:
-                res = MultiField.combine([res, tmp])
+                if isinstance(x.domain, MultiDomain):
+                    res = MultiField.combine([res, tmp])
+                else:
+                    res = res + tmp
         return res

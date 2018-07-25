@@ -6,8 +6,6 @@ import numpy as np
 
 from .compat import *
 from .utilities import NiftyMetaBase
-#from ..domain_tuple import DomainTuple
-#from ..multi.multi_domain import MultiDomain
 from .field import Field
 from .multi.multi_field import MultiField
 
@@ -62,8 +60,8 @@ class Linearization(object):
             return Linearization(self._val*other._val,
                                  self._jac*d2 + d1*other._jac)
         if isinstance(other, (int, float, complex)):
-            #if other == 0:
-            #    return ...
+            # if other == 0:
+            #     return ...
             return Linearization(self._val*other, self._jac*other)
         if isinstance(other, (Field, MultiField)):
             d2 = makeOp(other)
@@ -82,10 +80,12 @@ class Linearization(object):
     def make_var(field):
         from .operators.scaling_operator import ScalingOperator
         return Linearization(field, ScalingOperator(1., field.domain))
+
     @staticmethod
     def make_const(field):
         from .operators.null_operator import NullOperator
         return Linearization(field, NullOperator({}, field.domain))
+
 
 class Operator(NiftyMetaBase()):
     """Transforms values living on one domain into values living on another

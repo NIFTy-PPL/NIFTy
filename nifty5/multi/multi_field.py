@@ -229,6 +229,7 @@ class MultiField(object):
                     res[key] = f[key]
         return MultiField.from_dict(res)
 
+
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
            "__mul__", "__rmul__",
