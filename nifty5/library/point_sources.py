@@ -43,6 +43,8 @@ class PointSources(Model):
     @memo
     def value(self):
         points = self.position['points'].local_data
+        # MR FIXME?!
+        points = np.clip(points, None, 8.2)
         points = Field.from_local_data(self.position['points'].domain, points)
         return self.IG(points, self._alpha, self._q)
 
@@ -55,6 +57,8 @@ class PointSources(Model):
                                               self._alpha,
                                               scale=self._q),
                                  self._alpha, scale=self._q)
+        # FIXME
+        outer_inv = np.clip(outer_inv, 1e-20, None)
         outer = 1/outer_inv
         grad = Field.from_local_data(self.position['points'].domain,
                                      inner*outer)
