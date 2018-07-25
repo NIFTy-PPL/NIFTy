@@ -58,7 +58,7 @@ class Linearization(object):
             d1 = makeOp(self._val)
             d2 = makeOp(other._val)
             return Linearization(self._val*other._val,
-                                 self._jac*d2 + d1*other._jac)
+                                 d2*self._jac + d1*other._jac)
         if isinstance(other, (int, float, complex)):
             # if other == 0:
             #     return ...

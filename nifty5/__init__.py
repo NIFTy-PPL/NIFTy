@@ -54,6 +54,7 @@ from .operators.selection_operator import SelectionOperator
 from .operators.slope_operator import SlopeOperator
 from .operators.smoothness_operator import SmoothnessOperator
 from .operators.symmetrizing_operator import SymmetrizingOperator
+from .operators.vdot_operator import VdotOperator
 
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator

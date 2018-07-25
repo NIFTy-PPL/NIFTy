@@ -49,6 +49,13 @@ class Consistency_Tests(unittest.TestCase):
         op = a+b
         ift.extra.consistency_check(op, dtype, dtype)
 
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testVdotOperator(self, sp, dtype):
+        op = ift.VdotOperator(ift.Field.from_random("normal", sp,
+                                                    dtype=dtype))
+        ift.extra.consistency_check(op, dtype, dtype)
+
     @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
                      (ift.RGSpace((24, 31), distances=(0.4, 2.34),
                                   harmonic=True), 3, 0),
