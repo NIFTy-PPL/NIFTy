@@ -247,7 +247,6 @@ def _plot(f, ax, **kwargs):
     elif isinstance(dom, PowerSpace):
         plt.xscale('log')
         plt.yscale('log')
-        plt.title('power')
         xcoord = dom.k_lengths
         for i, fld in enumerate(f):
             ycoord = fld.to_global_data()
@@ -360,7 +359,9 @@ def plot_finish(**kwargs):
     ny = kwargs.pop("ny", int(np.ceil(np.sqrt(nplot))))
     if nx*ny < nplot:
         raise ValueError(
-            'Figure dimensions not sufficient for number of plots')
+            'Figure dimensions not sufficient for number of plots. '
+            'Available plot slots: {}, number of plots: {}'
+            .format(nx*ny, nplot))
     xsize = kwargs.pop("xsize", 6)
     ysize = kwargs.pop("ysize", 6)
     fig.set_size_inches(xsize, ysize)
