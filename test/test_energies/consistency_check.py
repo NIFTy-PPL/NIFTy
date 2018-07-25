@@ -83,7 +83,7 @@ class Energy_Tests(unittest.TestCase):
         model = self.make_model(
             type1, space_key='s1', space=space, seed=seed)['s1']
         model = ift.PointwiseExponential(model)
-        d = np.random.poisson(120, size = space.shape)
+        d = np.random.poisson(120, size=space.shape)
         d = ift.Field.from_global_data(space, d)
         energy = ift.PoissonianEnergy(model, d)
         ift.extra.check_value_gradient_consistency(energy)
@@ -118,8 +118,7 @@ class Energy_Tests(unittest.TestCase):
         model = self.make_model(
             type1, space_key='s1', space=space, seed=seed)['s1']
         model = ift.PointwisePositiveTanh(model)
-        d = np.random.binomial(1, 0.1, size = space.shape)
+        d = np.random.binomial(1, 0.1, size=space.shape)
         d = ift.Field.from_global_data(space, d)
         energy = ift.BernoulliEnergy(model, d)
         ift.extra.check_value_gradient_consistency(energy)
-

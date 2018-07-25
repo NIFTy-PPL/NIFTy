@@ -125,11 +125,11 @@ class Model_Tests(unittest.TestCase):
         [4, 78, 23],
         ))
     def testModelLibrary(self, space, Npixdof, ceps_a,
-            ceps_k, sm, sv, im, iv, seed):
-        #tests amplitude model and coorelated field model
+                         ceps_k, sm, sv, im, iv, seed):
+        # tests amplitude model and coorelated field model
         np.random.seed(seed)
-        model = ift.make_amplitude_model(space, 
-                Npixdof, ceps_a, ceps_k, sm, sv, im, iv)[0]
+        model = ift.make_amplitude_model(space, Npixdof, ceps_a, ceps_k, sm,
+                                         sv, im, iv)[0]
         S = ift.ScalingOperator(1., model.position.domain)
         model = model.at(S.draw_sample())
         ift.extra.check_value_gradient_consistency(model)
@@ -143,19 +143,17 @@ class Model_Tests(unittest.TestCase):
         [ift.GLSpace(15),
          ift.RGSpace(64, distances=.789),
          ift.RGSpace([32, 32], distances=.789)],
-        [4,78,23]))
+        [4, 78, 23]))
     def testPointModel(seld, space, seed):
-        
+
         S = ift.ScalingOperator(1., space)
         pos = ift.MultiField.from_dict(
                 {'points': S.draw_sample()})
         alpha = 1.5
         q = 0.73
         model = ift.PointSources(pos, alpha, q)
-        #All those cdfs and ppfs are not that accurate
+        # All those cdfs and ppfs are not that accurate
         ift.extra.check_value_gradient_consistency(model, tol=1e-5)
-
-
 
     @expand(product(
         ['Variable', 'Constant'],
