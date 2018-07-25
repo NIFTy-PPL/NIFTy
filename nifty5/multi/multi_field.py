@@ -218,6 +218,9 @@ class MultiField(object):
         else:
             return MultiField.from_dict({key: self[key] for key in subset})
 
+    def unite(self, other):
+        return self.combine((self, other))
+
     @staticmethod
     def combine(fields):
         res = {}

@@ -607,6 +607,13 @@ class Field(object):
             return False
         return (self._val == other._val).all()
 
+    def extract(self, dom):
+        if dom is not self._domain:
+            raise ValueError("domain mismatch")
+        return self
+
+    def unite(self, other):
+        return self + other
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",

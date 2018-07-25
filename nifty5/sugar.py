@@ -250,6 +250,7 @@ def domain_union(domains):
         return domains[0]
     return MultiDomain.union(domains)
 
+
 # Arithmetic functions working on Fields
 
 

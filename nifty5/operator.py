@@ -38,7 +38,7 @@ class Linearization(object):
         if isinstance(other, Linearization):
             from .operators.relaxed_sum_operator import RelaxedSumOperator
             return Linearization(
-                MultiField.combine((self._val, other._val)),
+                self._val.unite(other._val),
                 RelaxedSumOperator((self._jac, other._jac)))
         if isinstance(other, (int, float, complex, Field, MultiField)):
             return Linearization(self._val+other, self._jac)

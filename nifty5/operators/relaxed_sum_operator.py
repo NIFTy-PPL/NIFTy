@@ -60,14 +60,6 @@ class RelaxedSumOperator(LinearOperator):
         self._check_mode(mode)
         res = None
         for op in self._ops:
-            if isinstance(x.domain, MultiDomain):
-                x = x.extract(op._dom(mode))
-            x = op.apply(x, mode)
-            if res is None:
-                res = tmp
-            else:
-                if isinstance(x.domain, MultiDomain):
-                    res = MultiField.combine([res, tmp])
-                else:
-                    res = res + tmp
+            x = op.apply(x.extract(op._dom(mode)), mode)
+            res = x if res is None else res.unite(x)
         return res
