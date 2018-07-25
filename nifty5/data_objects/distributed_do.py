@@ -262,6 +262,8 @@ def empty_like(a, dtype=None):
 
 def vdot(a, b):
     tmp = np.array(np.vdot(a._data, b._data))
+    if a._distaxis==-1:
+        return tmp[()]
     res = np.empty((), dtype=tmp.dtype)
     _comm.Allreduce(tmp, res, MPI.SUM)
     return res[()]
@@ -309,6 +311,10 @@ def from_object(object, dtype, copy, set_locked):
 # algorithm.
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
+    if shape == ():
+        ldat = generator_function(dtype=dtype, shape=shape, **kwargs)
+        ldat = _comm.bcast(ldat)
+        return from_local_data(shape, ldat, distaxis=-1)
     for i in range(ntask):
         lshape = list(shape)
         lshape[0] = _shareSize(shape[0], ntask, i)

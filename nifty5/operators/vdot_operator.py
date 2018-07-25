@@ -31,7 +31,7 @@ class VdotOperator(LinearOperator):
     def __init__(self, field):
         super(VdotOperator, self).__init__()
         self._field = field
-        self._target = DomainTuple.make(UnstructuredDomain(1))
+        self._target = DomainTuple.make(())
 
     @property
     def domain(self):
@@ -49,4 +49,4 @@ class VdotOperator(LinearOperator):
         self._check_input(x, mode)
         if mode == self.TIMES:
             return full(self._target, self._field.vdot(x))
-        return self._field*x.to_global_data()[()]
+        return self._field*x.local_data[()]
