@@ -630,7 +630,6 @@ for op in ["__add__", "__radd__",
                 tval = getattr(self._val, op)(other)
                 return Field(self._domain, tval)
 
-            raise TypeError("should not arrive here")
             return NotImplemented
         return func2
     setattr(Field, op, func(op))

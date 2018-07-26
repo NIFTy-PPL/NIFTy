@@ -243,3 +243,12 @@ class Test_Functionality(unittest.TestCase):
         assert_equal((f/f2).local_data, f.local_data/f2.local_data)
         assert_equal((-f).local_data, -(f.local_data))
         assert_equal(abs(f).local_data, abs(f.local_data))
+
+    def test_emptydomain(self):
+        f = ift.Field.full((), 3.)
+        assert_equal(f.sum(), 3.)
+        assert_equal(f.prod(), 3.)
+        assert_equal(f.local_data, 3.)
+        assert_equal(f.local_data.shape, ())
+        assert_equal(f.local_data.size, 1)
+        assert_equal(f.vdot(f), 9.)
