@@ -57,7 +57,7 @@ class RelaxedSumOperator(LinearOperator):
         return self._capability
 
     def apply(self, x, mode):
-        self._check_mode(mode)
+        self._check_input(x, mode)
         res = None
         for op in self._ops:
             tmp = op.apply(x.extract(op._dom(mode)), mode)
