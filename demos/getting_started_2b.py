@@ -19,18 +19,6 @@
 import nifty5 as ift
 import numpy as np
 
-def myexp(lin):
-    if isinstance(lin, ift.Linearization):
-        tmp = ift.exp(lin.val)
-        return ift.Linearization(tmp, ift.makeOp(tmp)*lin.jac)
-    return ift.exp(lin)
-
-def mylog(lin):
-    if isinstance(lin, ift.Linearization):
-        tmp = ift.log(lin.val)
-        return ift.Linearization(tmp, ift.makeOp(1./lin.val)*lin.jac)
-    return ift.log(lin)
-
 class GaussianEnergy2(ift.Operator):
     def __init__(self, mean=None, covariance=None):
         super(GaussianEnergy2, self).__init__()
@@ -42,7 +30,7 @@ class GaussianEnergy2(ift.Operator):
         icovres = residual if self._icov is None else self._icov(residual)
         res = .5 * (residual*icovres).sum()
         metric = ift.SandwichOperator.make(x.jac, self._icov)
-        return ift.Linearization(res.val, res.jac, metric)
+        return res.add_metric(metric)
 
 class PoissonianEnergy2(ift.Operator):
     def __init__(self, op, d):
@@ -52,9 +40,9 @@ class PoissonianEnergy2(ift.Operator):
 
     def __call__(self, x):
         x = self._op(x)
-        res = (x - self._d*mylog(x)).sum()
+        res = (x - self._d*x.log()).sum()
         metric = ift.SandwichOperator.make(x.jac, ift.makeOp(1./x.val))
-        return ift.Linearization(res.val, res.jac, metric)
+        return res.add_metric(metric)
 
 class MyHamiltonian(ift.Operator):
     def __init__(self, lh):
@@ -138,7 +126,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    sky = lambda inp: myexp(HT(inp*A))
+    sky = lambda inp: (HT(A*inp)).exp()
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)

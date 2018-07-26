@@ -34,6 +34,7 @@ from .multi.multi_field import MultiField
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
 
+
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'from_global_data', 'from_local_data',
@@ -259,12 +260,9 @@ _current_module = sys.modules[__name__]
 for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
     def func(f):
         def func2(x):
-            if isinstance(x, MultiField):
-                return MultiField(x.domain,
-                                  tuple(func2(val) for val in x.values()))
-            elif isinstance(x, Field):
-                fu = getattr(dobj, f)
-                return Field(domain=x._domain, val=fu(x.val))
+            from .linearization import Linearization
+            if isinstance(x, (Field, MultiField, Linearization)):
+                return getattr(x, f)()
             else:
                 return getattr(np, f)(x)
         return func2

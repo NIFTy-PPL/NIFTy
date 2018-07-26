@@ -263,3 +263,13 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
                 "In-place operations are deliberately not supported")
         return func2
     setattr(MultiField, op, func(op))
+
+
+for f in ["sqrt", "exp", "log", "tanh"]:
+    def func(f):
+        def func2(self):
+            fu = getattr(dobj, f)
+            return MultiField(self.domain,
+                              tuple(func2(val) for val in self.values()))
+        return func2
+    setattr(MultiField, f, func(f))

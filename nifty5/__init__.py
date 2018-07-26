@@ -104,7 +104,8 @@ from .multi.block_diagonal_operator import BlockDiagonalOperator
 from .energies.kl import SampledKullbachLeiblerDivergence
 from .energies.hamiltonian import Hamiltonian
 
-from.operator import Linearization, Operator
+from .operator import Operator
+from .linearization import Linearization
 
 # We deliberately don't set __all__ here, because we don't want people to do a
 # "from nifty5 import *"; that would swamp the global namespace.
