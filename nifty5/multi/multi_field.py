@@ -125,6 +125,7 @@ class MultiField(object):
 
     @staticmethod
     def full(domain, val):
+        domain = MultiDomain.make(domain)
         return MultiField(domain, tuple(Field.full(dom, val)
                           for dom in domain._domains))
 

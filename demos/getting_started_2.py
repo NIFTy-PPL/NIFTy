@@ -89,7 +89,6 @@ if __name__ == '__main__':
     data = ift.Field.from_global_data(d_space, data)
 
     # Compute likelihood and Hamiltonian
-    position = ift.from_random('normal', lamb.position.domain)
     likelihood = ift.PoissonianEnergy(lamb, data)
     ic_cg = ift.GradientNormController(iteration_limit=50)
     ic_newton = ift.GradientNormController(name='Newton', iteration_limit=50,
@@ -103,4 +102,6 @@ if __name__ == '__main__':
 
     # Plot results
     result_sky = sky.at(H.position).value
-    # FIXME PLOTTING
+    ift.plot(result_sky)
+    ift.plot_finish()
+    # FIXME MORE PLOTTING
