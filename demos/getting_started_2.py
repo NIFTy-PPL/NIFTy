@@ -104,4 +104,4 @@ if __name__ == '__main__':
     result_sky = sky.at(H.position).value
     ift.plot(result_sky)
     ift.plot_finish()
-    # FIXME PLOTTING
+    # FIXME MORE PLOTTING

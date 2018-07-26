@@ -252,4 +252,3 @@ class Test_Functionality(unittest.TestCase):
         assert_equal(f.local_data.shape, ())
         assert_equal(f.local_data.size, 1)
         assert_equal(f.vdot(f), 9.)
-
