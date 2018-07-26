@@ -60,6 +60,6 @@ class RelaxedSumOperator(LinearOperator):
         self._check_mode(mode)
         res = None
         for op in self._ops:
-            x = op.apply(x.extract(op._dom(mode)), mode)
-            res = x if res is None else res.unite(x)
+            tmp = op.apply(x.extract(op._dom(mode)), mode)
+            res = tmp if res is None else res.unite(tmp)
         return res

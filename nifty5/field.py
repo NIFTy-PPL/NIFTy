@@ -49,6 +49,8 @@ class Field(object):
     def __init__(self, domain, val):
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
+        if np.isscalar(val):
+            val = np.full((), val)
         if not isinstance(val, dobj.data_object):
             raise TypeError("val must be of type dobj.data_object")
         if domain.shape != val.shape:
