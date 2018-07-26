@@ -72,7 +72,7 @@ class Linearization(object):
             return Linearization(self._val*other, self._jac*other)
         if isinstance(other, (Field, MultiField)):
             d2 = makeOp(other)
-            return Linearization(self._val*other, self._jac*d2)
+            return Linearization(self._val*other, d2*self._jac)
         raise TypeError
 
     def __rmul__(self, other):
