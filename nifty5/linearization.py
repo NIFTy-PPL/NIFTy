@@ -31,7 +31,14 @@ class Linearization(object):
         return self._jac
 
     @property
+    def gradient(self):
+        """Only available if target is a scalar"""
+        from .sugar import full
+        return self._jac.adjoint_times(full(self._jac.target, 1.))
+
+    @property
     def metric(self):
+        """Only available if target is a scalar"""
         return self._metric
 
     def __neg__(self):

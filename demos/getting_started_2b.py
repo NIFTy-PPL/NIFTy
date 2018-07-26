@@ -69,7 +69,7 @@ class EnergyAdapter(ift.Energy):
 
     @property
     def gradient(self):
-        return self._res.jac.adjoint_times(ift.full(self._res.jac.target, 1.))
+        return self._res.gradient
 
     @property
     def metric(self):
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    sky = lambda inp: (HT(A*inp)).exp()
+    sky = lambda inp: (HT(inp*A)).exp()
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
