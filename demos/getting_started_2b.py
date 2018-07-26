@@ -20,12 +20,16 @@ import nifty5 as ift
 import numpy as np
 
 def myexp(lin):
-    tmp = ift.exp(lin.val)
-    return ift.Linearization(tmp, ift.makeOp(tmp)*lin.jac)
+    if isinstance(lin, ift.Linearization):
+        tmp = ift.exp(lin.val)
+        return ift.Linearization(tmp, ift.makeOp(tmp)*lin.jac)
+    return ift.exp(lin)
 
 def mylog(lin):
-    tmp = ift.log(lin.val)
-    return ift.Linearization(tmp, ift.makeOp(1./lin.val)*lin.jac)
+    if isinstance(lin, ift.Linearization):
+        tmp = ift.log(lin.val)
+        return ift.Linearization(tmp, ift.makeOp(1./lin.val)*lin.jac)
+    return ift.log(lin)
 
 class GaussianEnergy2(ift.Operator):
     def __init__(self, mean=None, covariance=None):
@@ -57,8 +61,6 @@ class MyHamiltonian(ift.Operator):
         super(MyHamiltonian, self).__init__()
         self._lh = lh
         self._prior = GaussianEnergy2()
-        pvar = ift.Linearization.make_var(position)
-        self._res = self._lh(pvar)+self._prior(pvar)
 
     def __call__(self, x):
         return self._lh(x) + self._prior(x)
@@ -147,7 +149,7 @@ if __name__ == '__main__':
     d_space = R.target[0]
     lamb = lambda inp: R(sky(inp))
     mock_position = ift.from_random('normal', domain)
-    data = lamb(ift.Linearization.make_var(mock_position)).val
+    data = lamb(mock_position)
     data = np.random.poisson(data.to_global_data().astype(np.float64))
     data = ift.Field.from_global_data(d_space, data)
 
@@ -166,7 +168,7 @@ if __name__ == '__main__':
     H, convergence = minimizer(H)
 
     # Plot results
-    result_sky = sky(ift.Linearization.make_var(H.position)).val
+    result_sky = sky(H.position)
     ift.plot(result_sky)
     ift.plot_finish()
     # FIXME PLOTTING
