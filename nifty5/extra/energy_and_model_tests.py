@@ -22,9 +22,12 @@ import numpy as np
 from ..sugar import from_random
 from ..minimization.energy import Energy
 from ..models.model import Model
+from ..linearization import Linearization
 
 __all__ = ["check_value_gradient_consistency",
-           "check_value_gradient_metric_consistency"]
+           "check_value_gradient_metric_consistency",
+           "check_value_gradient_metric_consistency2",
+           "check_value_gradient_consistency2"]
 
 
 def _get_acceptable_model(M):
@@ -71,6 +74,30 @@ def _get_acceptable_energy(E):
         raise ValueError("could not find a reasonable initial step")
     return E2
 
+def _get_acceptable_location(op, loc, lin):
+    val = lin.val
+    if not np.isfinite(val.sum()):
+        raise ValueError('Initial value must be finite')
+    dir = from_random("normal", loc.domain)
+    dirder = lin.jac(dir)
+    if dirder.norm() == 0:
+        dir = dir * val.norm() * 1e-5
+    else:
+        dir = dir * val.norm() * (1e-5/dirder.norm())
+    # Find a step length that leads to a "reasonable" location
+    for i in range(50):
+        try:
+            loc2 = loc+dir
+            lin2 = op(Linearization.make_var(loc2))
+            if np.isfinite(lin2.val.sum()) and abs(lin2.val.sum()) < 1e20:
+                break
+        except FloatingPointError:
+            pass
+        dir = dir*0.5
+    else:
+        raise ValueError("could not find a reasonable initial step")
+    return loc2, lin2
+
 
 def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
     for _ in range(ntries):
@@ -104,6 +131,54 @@ def check_value_gradient_consistency(E, tol=1e-8, ntries=100):
             raise ValueError("gradient and value seem inconsistent")
         E = Enext
 
+def check_value_gradient_consistency2(op, loc, tol=1e-8, ntries=100):
+    for _ in range(ntries):
+        lin = op(Linearization.make_var(loc))
+        loc2, lin2 = _get_acceptable_location(op, loc, lin)
+        val = lin.val
+        dir = loc2 - loc
+        locnext = loc2
+        dirnorm = dir.norm()
+        for i in range(50):
+            locmid = loc + 0.5*dir
+            linmid = op(Linearization.make_var(locmid))
+            dirder = linmid.jac(dir)/dirnorm
+            numgrad = (lin2.val-val)/dirnorm
+            xtol = tol * dirder.norm() / np.sqrt(dirder.size)
+            if (abs(numgrad-dirder) <= xtol).all():
+                break
+            dir = dir*0.5
+            dirnorm *= 0.5
+            loc2 = locmid
+            lin2 = linmid
+        else:
+            raise ValueError("gradient and value seem inconsistent")
+        loc = locnext
+def check_value_gradient_metric_consistency2(op, loc, tol=1e-8, ntries=100):
+    for _ in range(ntries):
+        lin = op(Linearization.make_var(loc))
+        loc2, lin2 = _get_acceptable_location(op, loc, lin)
+        val = lin.val
+        dir = loc2 - loc
+        locnext = loc2
+        dirnorm = dir.norm()
+        for i in range(50):
+            locmid = loc + 0.5*dir
+            linmid = op(Linearization.make_var(locmid))
+            dirder = linmid.jac(dir)/dirnorm
+            numgrad = (lin2.val-val)/dirnorm
+            dgrad = linmid.metric(dir)/dirnorm
+            xtol = tol * dirder.norm() / np.sqrt(dirder.size)
+            if ((abs(numgrad-dirder) <= xtol).all() and
+                (abs(dgrad-dirder) <= xtol).all()):
+                    break
+            dir = dir*0.5
+            dirnorm *= 0.5
+            loc2 = locmid
+            lin2 = linmid
+        else:
+            raise ValueError("gradient and value seem inconsistent")
+        loc = locnext
 
 def check_value_gradient_metric_consistency(E, tol=1e-8, ntries=100):
     if isinstance(E, Model):
