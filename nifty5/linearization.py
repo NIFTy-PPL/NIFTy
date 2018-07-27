@@ -82,7 +82,8 @@ class Linearization(object):
         if isinstance(other, (int, float, complex)):
             # if other == 0:
             #     return ...
-            return Linearization(self._val*other, self._jac*other)
+            met = None if self._metric is None else self._metric*other
+            return Linearization(self._val*other, self._jac*other, met)
         if isinstance(other, (Field, MultiField)):
             d2 = makeOp(other)
             return Linearization(self._val*other, d2*self._jac)

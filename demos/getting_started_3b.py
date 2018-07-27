@@ -97,9 +97,8 @@ if __name__ == '__main__':
 
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
-    H = EnergyAdapter(MOCK_POSITION, H)
 
-    INITIAL_POSITION = ift.from_random('normal', H.position.domain)
+    INITIAL_POSITION = ift.from_random('normal', domain)
     position = INITIAL_POSITION
 
     ift.plot(signal(MOCK_POSITION), title='ground truth')
@@ -110,11 +109,12 @@ if __name__ == '__main__':
     # number of samples used to estimate the KL
     N_samples = 20
     for i in range(2):
-        H = H.at(position)
-        samples = [H.metric.draw_sample(from_inverse=True)
+        metric = H(ift.Linearization.make_var(position)).metric
+        samples = [metric.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
 
         KL = ift.SampledKullbachLeiblerDivergence(H, samples)
+        KL = EnergyAdapter(position, KL)
         KL = KL.make_invertible(ic_cg)
         KL, convergence = minimizer(KL)
         position = KL.position
