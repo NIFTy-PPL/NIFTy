@@ -18,45 +18,21 @@
 
 from __future__ import absolute_import, division, print_function
 
-from numpy import inf, isnan
-
 from ..compat import *
-from ..minimization.energy import Energy
+from ..operator import Operator
 from ..operators.sandwich_operator import SandwichOperator
-from ..sugar import log, makeOp
+from ..sugar import makeOp
 
 
-class BernoulliEnergy(Energy):
+class BernoulliEnergy(Operator):
     def __init__(self, p, d):
-        """
-        p: Model object
-
-
-        """
-        super(BernoulliEnergy, self).__init__(p.position)
+        super(BernoulliEnergy, self).__init__()
         self._p = p
         self._d = d
 
-        p_val = self._p.value
-        self._value = -self._d.vdot(log(p_val)) - (1.-d).vdot(log(1.-p_val))
-        if isnan(self._value):
-            self._value = inf
-        metric = makeOp(1. / (p_val * (1.-p_val)))
-        self._gradient = self._p.jacobian.adjoint_times(metric(p_val-d))
-
-        self._metric = SandwichOperator.make(self._p.jacobian, metric)
-
-    def at(self, position):
-        return self.__class__(self._p.at(position), self._d)
-
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def gradient(self):
-        return self._gradient
-
-    @property
-    def metric(self):
-        return self._metric
+    def __call__(self, x):
+        x = self._p(x)
+        v = ((-self._d)*x.log()).sum() - ((1.-self._d)*((1.-x).log())).sum()
+        met = makeOp(1./(x.val*(1.-x.val)))
+        met = SandwichOperator.make(x.jac, met)
+        return v.add_metric(met)

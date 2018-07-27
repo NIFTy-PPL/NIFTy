@@ -41,8 +41,7 @@ if __name__ == '__main__':
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
-    domain = ift.MultiDomain.make({'xi': harmonic_space})
-    position = ift.from_random('normal', domain)
+    position = ift.from_random('normal', harmonic_space)
 
     # Define power spectrum and amplitudes
     def sqrtpspec(k):
@@ -54,10 +53,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    xi = ift.Variable(position)['xi']
-    logsky_h = xi * A
-    logsky = HT(logsky_h)
-    sky = ift.PointwisePositiveTanh(logsky)
+    sky = lambda inp: HT(A*inp).positive_tanh()
 
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response
@@ -65,14 +61,14 @@ if __name__ == '__main__':
 
     # Generate mock data
     d_space = R.target[0]
-    p = R(sky)
-    mock_position = ift.from_random('normal', p.position.domain)
-    pp = p.at(mock_position).value
+    p = lambda inp: R(sky(inp))
+    mock_position = ift.from_random('normal', harmonic_space)
+    pp = p(mock_position)
     data = np.random.binomial(1, pp.to_global_data().astype(np.float64))
     data = ift.Field.from_global_data(d_space, data)
 
     # Compute likelihood and Hamiltonian
-    position = ift.from_random('normal', p.position.domain)
+    position = ift.from_random('normal', harmonic_space)
     likelihood = ift.BernoulliEnergy(p, data)
     ic_cg = ift.GradientNormController(iteration_limit=50)
     ic_newton = ift.GradientNormController(name='Newton', iteration_limit=30,
@@ -82,14 +78,15 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
+    H = ift.EnergyAdapter(position, H)
     H = H.make_invertible(ic_cg)
     # minimizer = ift.SteepestDescent(ic_newton)
     H, convergence = minimizer(H)
 
-    reconstruction = sky.at(H.position).value
+    reconstruction = sky(H.position)
 
     ift.plot(reconstruction, title='reconstruction')
     ift.plot(GR.adjoint_times(data), title='data')
-    ift.plot(sky.at(mock_position).value, title='truth')
+    ift.plot(sky(mock_position), title='truth')
     ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
                     name="bernoulli.png")
