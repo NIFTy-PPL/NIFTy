@@ -21,44 +21,19 @@ from __future__ import absolute_import, division, print_function
 from numpy import inf, isnan
 
 from ..compat import *
-from ..minimization.energy import Energy
+from ..operator import Operator
 from ..operators.sandwich_operator import SandwichOperator
-from ..sugar import log, makeOp
+from ..sugar import makeOp
 
 
-class PoissonianEnergy(Energy):
-    def __init__(self, lamb, d):
-        """
-        lamb: Model object
-
-        value = 0.5 * s.vdot(s), i.e. a log-Gauss distribution with unit
-        covariance
-        """
-        super(PoissonianEnergy, self).__init__(lamb.position)
-        self._lamb = lamb
+class PoissonianEnergy(Operator):
+    def __init__(self, op, d):
+        super(PoissonianEnergy, self).__init__()
+        self._op = op
         self._d = d
 
-        lamb_val = self._lamb.value
-
-        self._value = lamb_val.sum() - d.vdot(log(lamb_val))
-        if isnan(self._value):
-            self._value = inf
-        self._gradient = self._lamb.jacobian.adjoint_times(1 - d/lamb_val)
-
-        metric = makeOp(1./lamb_val)
-        self._metric = SandwichOperator.make(self._lamb.jacobian, metric)
-
-    def at(self, position):
-        return self.__class__(self._lamb.at(position), self._d)
-
-    @property
-    def value(self):
-        return self._value
-
-    @property
-    def gradient(self):
-        return self._gradient
-
-    @property
-    def metric(self):
-        return self._metric
+    def __call__(self, x):
+        x = self._op(x)
+        res = (x - self._d*x.log()).sum()
+        metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
+        return res.add_metric(metric)

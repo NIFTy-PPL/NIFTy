@@ -32,7 +32,7 @@ class Energy_Tests(unittest.TestCase):
     @expand(product([ift.GLSpace(15),
                      ift.RGSpace(64, distances=.789),
                      ift.RGSpace([32, 32], distances=.789)],
-                    [ift.Tanh, ift.Exponential, ift.Linear],
+                    ["tanh", "exp", ""],
                     [1, 1e-2, 1e2],
                     [4, 78, 23]))
     def testGaussianEnergy(self, space, nonlinearity, noise, seed):
@@ -44,7 +44,7 @@ class Energy_Tests(unittest.TestCase):
         pspace = ift.PowerSpace(hspace, binbounds=binbounds)
         Dist = ift.PowerDistributor(target=hspace, power_space=pspace)
         xi0 = ift.Field.from_random(domain=hspace, random_type='normal')
-        xi0_var = ift.Variable(ift.MultiField.from_dict({'xi': xi0}))['xi']
+        xi0_var = ift.Linearization.make_var(xi0)
 
         def pspec(k): return 1 / (1 + k**2)**dim
         pspec = ift.PS_field(pspace, pspec)
@@ -53,16 +53,22 @@ class Energy_Tests(unittest.TestCase):
         n = N.draw_sample()
         s = ht(ift.makeOp(A)(xi0_var))
         R = ift.ScalingOperator(10., space)
-        d_model = R(ift.LocalModel(s, nonlinearity()))
-        d = d_model.value + n
+        def d_model(inp):
+            if nonlinearity == "":
+                return R(ht(ift.makeOp(A)(inp)))
+            else:
+                tmp = ht(ift.makeOp(A)(inp))
+                nonlin = getattr(tmp, nonlinearity)
+                return R(nonlin())
+        d = d_model(xi0) + n
 
         if noise == 1:
             N = None
 
-        energy = ift.GaussianEnergy(d_model, d, N)
-        if isinstance(nonlinearity(), ift.Linear):
-            ift.extra.check_value_gradient_metric_consistency(
-                energy, ntries=10)
+        energy = lambda inp: ift.GaussianEnergy(d, N)(d_model(inp))
+        if nonlinearity == "":
+            ift.extra.check_value_gradient_metric_consistency2(
+                energy, xi0, ntries=10)
         else:
-            ift.extra.check_value_gradient_consistency(
-                energy, ntries=10)
+            ift.extra.check_value_gradient_consistency2(
+                energy, xi0, ntries=10)

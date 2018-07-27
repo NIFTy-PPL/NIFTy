@@ -25,37 +25,6 @@ def get_random_LOS(n_los):
     ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
     return starts, ends
 
-class GaussianEnergy2(ift.Operator):
-    def __init__(self, mean=None, covariance=None):
-        super(GaussianEnergy2, self).__init__()
-        self._mean = mean
-        self._icov = None if covariance is None else covariance.inverse
-
-    def __call__(self, x):
-        residual = x if self._mean is None else x-self._mean
-        icovres = residual if self._icov is None else self._icov(residual)
-        res = .5 * (residual*icovres).sum()
-        metric = ift.SandwichOperator.make(x.jac, self._icov)
-        return res.add_metric(metric)
-
-class MyHamiltonian(ift.Operator):
-    def __init__(self, lh, ic_samp=None):
-        super(MyHamiltonian, self).__init__()
-        self._lh = lh
-        self._prior = GaussianEnergy2()
-        self._ic_samp = ic_samp
-
-    def __call__(self, x):
-        res = self._lh(x) + self._prior(x)
-        if self._ic_samp is None:
-            return self._lh(x) + self._prior(x)
-        else:
-            lhx = self._lh(x)
-            prx = self._prior(x)
-            mtr = ift.SamplingEnabler(lhx.metric, prx.metric.inverse,
-                                      self._ic_samp, prx.metric.inverse)
-            return (lhx+prx).add_metric(mtr)
-
 class EnergyAdapter(ift.Energy):
     def __init__(self, position, op):
         super(EnergyAdapter, self).__init__(position)
@@ -78,15 +47,6 @@ class EnergyAdapter(ift.Energy):
     def metric(self):
         return self._res.metric
 
-class FieldPicker(ift.Operator):
-    def __init__(self, name_dom):
-        self._name_dom = name_dom
-    def __call__(self, x):
-        if isinstance(x, (ift.Field, ift.MultiField)):
-            return x[self._name_dom]
-        dom = x[self._name_dom].domain
-        return ift.Linearization(x._val[self._name_dom], ift.FieldAdapter(dom, self._name_dom, None))
-
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(42)
@@ -108,7 +68,7 @@ if __name__ == '__main__':
     # correlated_field,_ = ift.make_correlated_field(position_space, A)
 
     # apply some nonlinearity
-    signal = lambda inp:  correlated_field(inp).positive_tanh()
+    signal = lambda inp: correlated_field(inp).positive_tanh()
 
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
@@ -127,7 +87,7 @@ if __name__ == '__main__':
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
-    likelihood = lambda inp: GaussianEnergy2(mean=data, covariance=N)(signal_response(inp))
+    likelihood = lambda inp: ift.GaussianEnergy(mean=data, covariance=N)(signal_response(inp))
 
     # set up minimization and inversion schemes
     ic_cg = ift.GradientNormController(iteration_limit=10)
@@ -136,7 +96,7 @@ if __name__ == '__main__':
     minimizer = ift.RelaxedNewton(ic_newton)
 
     # build model Hamiltonian
-    H = MyHamiltonian(likelihood, ic_sampling)
+    H = ift.Hamiltonian(likelihood, ic_sampling)
     H = EnergyAdapter(MOCK_POSITION, H)
 
     INITIAL_POSITION = ift.from_random('normal', H.position.domain)
@@ -160,9 +120,7 @@ if __name__ == '__main__':
         position = KL.position
 
         ift.plot(signal(position), title="reconstruction")
-
-        ift.plot([A(position), A(MOCK_POSITION)],
-                 title="power")
+        ift.plot([A(position), A(MOCK_POSITION)], title="power")
         ift.plot_finish(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
 
     sc = ift.StatCalculator()
@@ -172,7 +130,6 @@ if __name__ == '__main__':
     ift.plot(ift.sqrt(sc.var), title="std deviation")
 
     powers = [A(s+position) for s in samples]
-    ift.plot([A(position), A(MOCK_POSITION)]+powers,
-             title="power")
+    ift.plot([A(position), A(MOCK_POSITION)]+powers, title="power")
     ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
                     name="results.png")
