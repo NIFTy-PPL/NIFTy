@@ -168,9 +168,10 @@ def check_value_gradient_metric_consistency2(op, loc, tol=1e-8, ntries=100):
             dirder = linmid.jac(dir)/dirnorm
             numgrad = (lin2.val-val)/dirnorm
             dgrad = linmid.metric(dir)/dirnorm
+            dgrad2 = (lin2.gradient-lin.gradient)/dirnorm
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
             if ((abs(numgrad-dirder) <= xtol).all() and
-                (abs(dgrad-dirder) <= xtol).all()):
+                (abs(dgrad-dgrad2) <= xtol).all()):
                     break
             dir = dir*0.5
             dirnorm *= 0.5
