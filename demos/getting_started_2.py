@@ -137,6 +137,9 @@ if __name__ == '__main__':
     d_space = R.target[0]
     lamb = lambda inp: R(sky(inp))
     mock_position = ift.from_random('normal', domain)
+    #ift.extra.check_value_gradient_consistency2(lamb, mock_position)
+    #testl = GaussianEnergy2(None, M)
+    #ift.extra.check_value_gradient_metric_consistency2(testl, sky(mock_position))
     data = lamb(mock_position)
     data = np.random.poisson(data.to_global_data().astype(np.float64))
     data = ift.Field.from_global_data(d_space, data)
