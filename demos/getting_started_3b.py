@@ -24,6 +24,7 @@ def get_random_LOS(n_los):
     starts = list(np.random.uniform(0, 1, (n_los, 2)).T)
     ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
     return starts, ends
+
 class GaussianEnergy2(ift.Operator):
     def __init__(self, mean=None, covariance=None):
         super(GaussianEnergy2, self).__init__()
@@ -89,7 +90,6 @@ class FieldPicker(ift.Operator):
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(42)
-    #print(np.random.random())
     position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
@@ -101,12 +101,8 @@ if __name__ == '__main__':
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
-    position = ift.MultiField.from_dict(
-        {'xi': ift.Field.from_random('normal', harmonic_space)})
+    dummy = ift.Field.from_random('normal', harmonic_space)
 
- #   xi = ift.Variable(position)['xi']
-#    Amp = power_distributor(A)
-#    correlated_field_h = Amp * xi
     correlated_field = lambda inp: ht(power_distributor(A(inp))*inp["xi"])
     # alternatively to the block above one can do:
     # correlated_field,_ = ift.make_correlated_field(position_space, A)
@@ -127,10 +123,7 @@ if __name__ == '__main__':
 
     # generate mock data
     domain = ift.MultiDomain.union((A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
-    #print(np.random.random())
-    #print(A.domain)
     MOCK_POSITION = ift.from_random('normal', domain)
-    #print(np.random.random())
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
@@ -144,9 +137,6 @@ if __name__ == '__main__':
 
     # build model Hamiltonian
     H = MyHamiltonian(likelihood, ic_sampling)
-    #position = ift.from_random('normal', domain)
-    #print (position.domain)
-    #exit()
     H = EnergyAdapter(MOCK_POSITION, H)
 
     INITIAL_POSITION = ift.from_random('normal', H.position.domain)
