@@ -313,7 +313,7 @@ def from_object(object, dtype, copy, set_locked):
 # algorithm.
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
-    if lem(shape) == 0:
+    if len(shape) == 0:
         ldat = generator_function(dtype=dtype, shape=shape, **kwargs)
         ldat = _comm.bcast(ldat)
         return from_local_data(shape, ldat, distaxis=-1)
