@@ -61,6 +61,8 @@ class data_object(object):
         self._shape = tuple(shape)
         if len(self._shape) == 0:
             distaxis = -1
+            if not isinstance(data, np.ndarray):
+                data = np.full((), data)
         self._distaxis = distaxis
         self._data = data
         if local_shape(self._shape, self._distaxis) != self._data.shape:
@@ -311,7 +313,7 @@ def from_object(object, dtype, copy, set_locked):
 # algorithm.
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
-    if shape == ():
+    if lem(shape) == 0:
         ldat = generator_function(dtype=dtype, shape=shape, **kwargs)
         ldat = _comm.bcast(ldat)
         return from_local_data(shape, ldat, distaxis=-1)

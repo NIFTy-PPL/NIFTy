@@ -19,6 +19,62 @@
 import nifty5 as ift
 import numpy as np
 
+class GaussianEnergy2(ift.Operator):
+    def __init__(self, mean=None, covariance=None):
+        super(GaussianEnergy2, self).__init__()
+        self._mean = mean
+        self._icov = None if covariance is None else covariance.inverse
+
+    def __call__(self, x):
+        residual = x if self._mean is None else x-self._mean
+        icovres = residual if self._icov is None else self._icov(residual)
+        res = .5 * (residual*icovres).sum()
+        metric = ift.SandwichOperator.make(x.jac, self._icov)
+        return res.add_metric(metric)
+
+class PoissonianEnergy2(ift.Operator):
+    def __init__(self, op, d):
+        super(PoissonianEnergy2, self).__init__()
+        self._op = op
+        self._d = d
+
+    def __call__(self, x):
+        x = self._op(x)
+        res = (x - self._d*x.log()).sum()
+        metric = ift.SandwichOperator.make(x.jac, ift.makeOp(1./x.val))
+        return res.add_metric(metric)
+
+class MyHamiltonian(ift.Operator):
+    def __init__(self, lh):
+        super(MyHamiltonian, self).__init__()
+        self._lh = lh
+        self._prior = GaussianEnergy2()
+
+    def __call__(self, x):
+        return self._lh(x) + self._prior(x)
+
+class EnergyAdapter(ift.Energy):
+    def __init__(self, position, op):
+        super(EnergyAdapter, self).__init__(position)
+        self._op = op
+        pvar = ift.Linearization.make_var(position)
+        self._res = op(pvar)
+
+    def at(self, position):
+        return EnergyAdapter(position, self._op)
+
+    @property
+    def value(self):
+        return self._res.val.local_data[()]
+
+    @property
+    def gradient(self):
+        return self._res.gradient
+
+    @property
+    def metric(self):
+        return self._res.metric
+
 
 def get_2D_exposure():
     x_shape, y_shape = position_space.shape
@@ -57,7 +113,7 @@ if __name__ == '__main__':
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
-    domain = ift.MultiDomain.make({'xi': harmonic_space})
+    domain = ift.DomainTuple.make(harmonic_space)
     position = ift.from_random('normal', domain)
 
     # Define power spectrum and amplitudes
@@ -70,10 +126,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    xi = ift.Variable(position)['xi']
-    logsky_h = xi * A
-    logsky = HT(logsky_h)
-    sky = ift.PointwiseExponential(logsky)
+    sky = lambda inp: (HT(inp*A)).exp()
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
@@ -82,26 +135,28 @@ if __name__ == '__main__':
 
     # Generate mock data
     d_space = R.target[0]
-    lamb = R(sky)
-    mock_position = ift.from_random('normal', lamb.position.domain)
-    data = lamb.at(mock_position).value
+    lamb = lambda inp: R(sky(inp))
+    mock_position = ift.from_random('normal', domain)
+    data = lamb(mock_position)
     data = np.random.poisson(data.to_global_data().astype(np.float64))
     data = ift.Field.from_global_data(d_space, data)
 
     # Compute likelihood and Hamiltonian
-    likelihood = ift.PoissonianEnergy(lamb, data)
+    likelihood = PoissonianEnergy2(lamb, data)
     ic_cg = ift.GradientNormController(iteration_limit=50)
     ic_newton = ift.GradientNormController(name='Newton', iteration_limit=50,
                                            tol_abs_gradnorm=1e-3)
     minimizer = ift.RelaxedNewton(ic_newton)
 
     # Minimize the Hamiltonian
-    H = ift.Hamiltonian(likelihood)
+    H = MyHamiltonian(likelihood)
+    H = EnergyAdapter(position, H)
+    #ift.extra.check_value_gradient_consistency(H)
     H = H.make_invertible(ic_cg)
     H, convergence = minimizer(H)
 
     # Plot results
-    result_sky = sky.at(H.position).value
+    result_sky = sky(H.position)
     ift.plot(result_sky)
     ift.plot_finish()
-    # FIXME MORE PLOTTING
+    # FIXME PLOTTING
