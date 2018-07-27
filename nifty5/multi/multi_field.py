@@ -54,7 +54,9 @@ class MultiField(object):
         if domain is None:
             domain = MultiDomain.make({key: v._domain
                                        for key, v in dict.items()})
-        return MultiField(domain, tuple(dict[key] for key in domain.keys()))
+        res = tuple(dict[key] if key in dict else Field.full(dom, 0)
+                    for key, dom in zip(domain.keys(), domain.domains()))
+        return MultiField(domain, res)
 
     def to_dict(self):
         return {key: val for key, val in zip(self._domain.keys(), self._val)}
