@@ -618,6 +618,9 @@ class Field(object):
     def unite(self, other):
         return self + other
 
+    def positive_tanh(self):
+        return 0.5*(1.+self.tanh())
+
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
            "__mul__", "__rmul__",

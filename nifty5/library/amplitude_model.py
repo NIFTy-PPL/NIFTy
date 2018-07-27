@@ -25,7 +25,9 @@ from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
 from ..multi.multi_field import MultiField
+from ..multi.multi_domain import MultiDomain
 from ..sugar import makeOp, sqrt
+from ..operator import Operator
 
 
 def _ceps_kernel(dof_space, k, a, k0):
@@ -144,3 +146,82 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
         cepstrum_field[sl2] = np.sum(cepstrum_field[sl], axis=i)
 
     return Field.from_global_data(domain, cepstrum_field)
+
+class AmplitudeModel(Operator):
+    '''
+    Computes a smooth power spectrum.
+    Output lives in PowerSpace.
+
+    Parameters
+    ----------
+
+    Npixdof : #pix in dof_space
+
+    ceps_a, ceps_k0 : Smoothness parameters in ceps_kernel
+                        eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
+                        a = ceps_a,  k0 = ceps_k0
+
+    sm, sv : slope_mean = expected exponent of power law (e.g. -4),
+                slope_variance (default=1)
+
+    im, iv : y-intercept_mean, y-intercept_variance  of power_slope
+    '''
+    def __init__(self, s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
+                         keys=['tau', 'phi']):
+        from ..operators.exp_transform import ExpTransform
+        from ..operators.qht_operator import QHTOperator
+        from ..operators.slope_operator import SlopeOperator
+        from ..operators.symmetrizing_operator import SymmetrizingOperator
+        from ..models.variable import Variable
+        from ..models.constant import Constant
+        from ..models.local_nonlinearity import PointwiseExponential
+
+        h_space = s_space.get_default_codomain()
+        p_space = PowerSpace(h_space)
+        self._exp_transform = ExpTransform(p_space, Npixdof)
+        logk_space = self._exp_transform.domain[0]
+        qht = QHTOperator(target=logk_space)
+        dof_space = qht.domain[0]
+        param_space = UnstructuredDomain(2)
+        sym = SymmetrizingOperator(logk_space)
+
+        phi_mean = np.array([sm, im])
+        phi_sig = np.array([sv, iv])
+
+        self._slope = SlopeOperator(param_space, logk_space, phi_sig)
+        self._norm_phi_mean = Field.from_global_data(param_space, phi_mean/phi_sig)
+
+        self._domain = MultiDomain.make({keys[0]: dof_space, keys[1]: param_space})
+#        fields = {keys[0]: Field.from_random('normal', dof_space),
+#                  keys[1]: Field.from_random('normal', param_space)}
+#        position = MultiField.from_dict(fields)
+
+#        dof_space = position[keys[0]].domain[0]
+        kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
+        cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
+
+        ceps = makeOp(sqrt(cepstrum))
+        self._smooth_op = sym * qht * ceps
+        self._keys = tuple(keys)
+
+#        smooth_spec = smooth_op(Variable(position)[keys[0]])
+
+#        phi = Variable(position)[keys[1]] + Constant(position, norm_phi_mean)
+#        linear_spec = slope(phi)
+#        loglog_spec = smooth_spec + linear_spec
+#        xlog_ampl = PointwiseExponential(0.5*loglog_spec)
+
+    def __call__(self, x):
+        smooth_spec = self._smooth_op(x[self._keys[0]])
+        phi = x[self._keys[1]] + self._norm_phi_mean
+        linear_spec = self._slope(phi)
+        loglog_spec = smooth_spec + linear_spec
+        return self._exp_transform((0.5*loglog_spec).exp())
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._exp_transform.target

@@ -41,6 +41,11 @@ class Linearization(object):
         """Only available if target is a scalar"""
         return self._metric
 
+    def __getitem__(self, name):
+        from .operators.field_adapter import FieldAdapter
+        dom = self._val[name].domain
+        return Linearization(self._val[name], FieldAdapter(dom, name))
+
     def __neg__(self):
         return Linearization(-self._val, self._jac*(-1),
                              None if self._metric is None else self._metric*(-1))
@@ -68,11 +73,12 @@ class Linearization(object):
 
     def __mul__(self, other):
         from .sugar import makeOp
+        from .operators.relaxed_sum_operator import RelaxedSumOperator
         if isinstance(other, Linearization):
             d1 = makeOp(self._val)
             d2 = makeOp(other._val)
             return Linearization(self._val*other._val,
-                                 d2*self._jac + d1*other._jac)
+                                 RelaxedSumOperator((d2*self._jac, d1*other._jac)))
         if isinstance(other, (int, float, complex)):
             # if other == 0:
             #     return ...
@@ -103,6 +109,15 @@ class Linearization(object):
     def log(self):
         tmp = self._val.log()
         return Linearization(tmp, makeOp(1./self._val)*self._jac)
+
+    def tanh(self):
+        tmp = self._val.tanh()
+        return Linearization(tmp, makeOp(1.-tmp**2)*self._jac)
+
+    def positive_tanh(self):
+        tmp = self._val.tanh()
+        tmp2 = 0.5*(1.+tmp)
+        return Linearization(tmp2, makeOp(0.5*(1.-tmp**2))*self._jac)
 
     def add_metric(self, metric):
         return Linearization(self._val, self._jac, metric)

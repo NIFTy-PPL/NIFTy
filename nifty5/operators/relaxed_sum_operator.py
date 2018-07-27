@@ -63,3 +63,13 @@ class RelaxedSumOperator(LinearOperator):
             tmp = op.apply(x.extract(op._dom(mode)), mode)
             res = tmp if res is None else res.unite(tmp)
         return res
+
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
+        if from_inverse:
+            raise NotImplementedError(
+                "cannot draw from inverse of this operator")
+        res = None
+        for op in self._ops:
+            tmp = op.draw_sample(from_inverse, dtype)
+            res = tmp if res is None else res.unite(tmp)
+        return res

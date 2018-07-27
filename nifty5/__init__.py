@@ -81,7 +81,7 @@ from .minimization.energy_sum import EnergySum
 from .sugar import *
 from .plotting.plot import plot, plot_finish
 
-from .library.amplitude_model import make_amplitude_model
+from .library.amplitude_model import make_amplitude_model, AmplitudeModel
 from .library.gaussian_energy import GaussianEnergy
 from .library.los_response import LOSResponse
 from .library.point_sources import PointSources
