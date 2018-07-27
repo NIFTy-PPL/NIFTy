@@ -25,28 +25,6 @@ def get_random_LOS(n_los):
     ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
     return starts, ends
 
-class EnergyAdapter(ift.Energy):
-    def __init__(self, position, op):
-        super(EnergyAdapter, self).__init__(position)
-        self._op = op
-        pvar = ift.Linearization.make_var(position)
-        self._res = op(pvar)
-
-    def at(self, position):
-        return EnergyAdapter(position, self._op)
-
-    @property
-    def value(self):
-        return self._res.val.local_data[()]
-
-    @property
-    def gradient(self):
-        return self._res.gradient
-
-    @property
-    def metric(self):
-        return self._res.metric
-
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(42)
@@ -114,7 +92,7 @@ if __name__ == '__main__':
                    for _ in range(N_samples)]
 
         KL = ift.SampledKullbachLeiblerDivergence(H, samples)
-        KL = EnergyAdapter(position, KL)
+        KL = ift.EnergyAdapter(position, KL)
         KL = KL.make_invertible(ic_cg)
         KL, convergence = minimizer(KL)
         position = KL.position

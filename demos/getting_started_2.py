@@ -20,29 +20,6 @@ import nifty5 as ift
 import numpy as np
 
 
-class EnergyAdapter(ift.Energy):
-    def __init__(self, position, op):
-        super(EnergyAdapter, self).__init__(position)
-        self._op = op
-        pvar = ift.Linearization.make_var(position)
-        self._res = op(pvar)
-
-    def at(self, position):
-        return EnergyAdapter(position, self._op)
-
-    @property
-    def value(self):
-        return self._res.val.local_data[()]
-
-    @property
-    def gradient(self):
-        return self._res.gradient
-
-    @property
-    def metric(self):
-        return self._res.metric
-
-
 def get_2D_exposure():
     x_shape, y_shape = position_space.shape
 
@@ -120,7 +97,7 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood)
-    H = EnergyAdapter(position, H)
+    H = ift.EnergyAdapter(position, H)
     #ift.extra.check_value_gradient_consistency(H)
     H = H.make_invertible(ic_cg)
     H, convergence = minimizer(H)

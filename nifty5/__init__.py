@@ -103,6 +103,7 @@ from .multi.block_diagonal_operator import BlockDiagonalOperator
 
 from .energies.kl import SampledKullbachLeiblerDivergence
 from .energies.hamiltonian import Hamiltonian
+from .energies.energy_adapter import EnergyAdapter
 
 from .operator import Operator
 from .linearization import Linearization
