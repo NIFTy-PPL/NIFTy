@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
     # Generate mock data
     d_space = R.target[0]
-    lamb = lambda inp: R(sky(inp))
+    lamb = R.chain(sky)
     mock_position = ift.from_random('normal', domain)
     #ift.extra.check_value_gradient_consistency2(lamb, mock_position)
     #testl = GaussianEnergy2(None, M)

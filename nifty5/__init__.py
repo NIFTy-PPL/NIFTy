@@ -16,8 +16,6 @@ from .domains.log_rg_space import LogRGSpace
 from .domain_tuple import DomainTuple
 from .field import Field
 
-from .nonlinearities import Exponential, Linear, PositiveTanh, Tanh
-
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.dof_distributor import DOFDistributor

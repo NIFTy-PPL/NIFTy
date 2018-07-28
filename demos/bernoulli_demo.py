@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     # Generate mock data
     d_space = R.target[0]
-    p = lambda inp: R(sky(inp))
+    p = R.chain(sky)
     mock_position = ift.from_random('normal', harmonic_space)
     pp = p(mock_position)
     data = np.random.binomial(1, pp.to_global_data().astype(np.float64))

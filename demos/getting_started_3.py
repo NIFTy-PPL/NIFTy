@@ -53,7 +53,7 @@ if __name__ == '__main__':
     R = ift.LOSResponse(position_space, starts=LOS_starts,
                         ends=LOS_ends)
     # build signal response model and model likelihood
-    signal_response = lambda inp: R(signal(inp))
+    signal_response = R.chain(signal)
     # specify noise
     data_space = R.target
     noise = .001
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
-    likelihood = lambda inp: ift.GaussianEnergy(mean=data, covariance=N)(signal_response(inp))
+    likelihood = ift.GaussianEnergy(mean=data, covariance=N).chain(signal_response)
 
     # set up minimization and inversion schemes
     ic_cg = ift.GradientNormController(iteration_limit=10)

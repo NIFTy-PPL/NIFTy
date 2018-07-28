@@ -97,7 +97,7 @@ d = ift.from_global_data(d_space, y)
 N = ift.DiagonalOperator(ift.from_global_data(d_space, var))
 
 IC = ift.GradientNormController(tol_abs_gradnorm=1e-8)
-likelihood = lambda inp: ift.GaussianEnergy(d, N)(R(inp))
+likelihood = ift.GaussianEnergy(d, N).chain(R)
 H = ift.Hamiltonian(likelihood, IC)
 H = ift.EnergyAdapter(params, H)
 H = H.make_invertible(IC)
