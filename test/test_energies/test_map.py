@@ -67,8 +67,8 @@ class Energy_Tests(unittest.TestCase):
 
         energy = lambda inp: ift.GaussianEnergy(d, N)(d_model(inp))
         if nonlinearity == "":
-            ift.extra.check_value_gradient_metric_consistency2(
+            ift.extra.check_value_gradient_metric_consistency(
                 energy, xi0, ntries=10)
         else:
-            ift.extra.check_value_gradient_consistency2(
+            ift.extra.check_value_gradient_consistency(
                 energy, xi0, ntries=10)

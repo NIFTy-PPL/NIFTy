@@ -34,74 +34,6 @@ def _ceps_kernel(dof_space, k, a, k0):
     return a**2/(1+(k/(k0*dof_space.bindistances[0]))**2)**2
 
 
-def make_amplitude_model(s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
-                         keys=['tau', 'phi']):
-    '''
-    Method for construction of amplitude model
-    Computes a smooth power spectrum.
-    Output lives in PowerSpace.
-
-    Parameters
-    ----------
-
-    Npixdof : #pix in dof_space
-
-    ceps_a, ceps_k0 : Smoothness parameters in ceps_kernel
-                        eg. ceps_kernel(k) = (a/(1+(k/k0)**2))**2
-                        a = ceps_a,  k0 = ceps_k0
-
-    sm, sv : slope_mean = expected exponent of power law (e.g. -4),
-                slope_variance (default=1)
-
-    im, iv : y-intercept_mean, y-intercept_variance  of power_slope
-    '''
-    from ..operators.exp_transform import ExpTransform
-    from ..operators.qht_operator import QHTOperator
-    from ..operators.slope_operator import SlopeOperator
-    from ..operators.symmetrizing_operator import SymmetrizingOperator
-    from ..models.variable import Variable
-    from ..models.constant import Constant
-    from ..models.local_nonlinearity import PointwiseExponential
-
-    h_space = s_space.get_default_codomain()
-    p_space = PowerSpace(h_space)
-    exp_transform = ExpTransform(p_space, Npixdof)
-    logk_space = exp_transform.domain[0]
-    qht = QHTOperator(target=logk_space)
-    dof_space = qht.domain[0]
-    param_space = UnstructuredDomain(2)
-    sym = SymmetrizingOperator(logk_space)
-
-    phi_mean = np.array([sm, im])
-    phi_sig = np.array([sv, iv])
-
-    slope = SlopeOperator(param_space, logk_space, phi_sig)
-    norm_phi_mean = Field.from_global_data(param_space, phi_mean/phi_sig)
-
-    fields = {keys[0]: Field.from_random('normal', dof_space),
-              keys[1]: Field.from_random('normal', param_space)}
-
-    position = MultiField.from_dict(fields)
-
-    dof_space = position[keys[0]].domain[0]
-    kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
-    cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
-
-    ceps = makeOp(sqrt(cepstrum))
-    smooth_op = sym * qht * ceps
-    smooth_spec = smooth_op(Variable(position)[keys[0]])
-    phi = Variable(position)[keys[1]] + Constant(position, norm_phi_mean)
-    linear_spec = slope(phi)
-    loglog_spec = smooth_spec + linear_spec
-    xlog_ampl = PointwiseExponential(0.5*loglog_spec)
-
-    internals = {'loglog_spec': loglog_spec,
-                 'qht': qht,
-                 'ceps': ceps,
-                 'norm_phi_mean': norm_phi_mean}
-    return exp_transform(xlog_ampl), internals
-
-
 def create_cepstrum_amplitude_field(domain, cepstrum):
     """Creates a ...
     Writes the sum of all modes into the zero-mode.
@@ -147,6 +79,7 @@ def create_cepstrum_amplitude_field(domain, cepstrum):
 
     return Field.from_global_data(domain, cepstrum_field)
 
+
 class AmplitudeModel(Operator):
     '''
     Computes a smooth power spectrum.
@@ -172,9 +105,6 @@ class AmplitudeModel(Operator):
         from ..operators.qht_operator import QHTOperator
         from ..operators.slope_operator import SlopeOperator
         from ..operators.symmetrizing_operator import SymmetrizingOperator
-        from ..models.variable import Variable
-        from ..models.constant import Constant
-        from ..models.local_nonlinearity import PointwiseExponential
 
         h_space = s_space.get_default_codomain()
         p_space = PowerSpace(h_space)
@@ -192,24 +122,13 @@ class AmplitudeModel(Operator):
         self._norm_phi_mean = Field.from_global_data(param_space, phi_mean/phi_sig)
 
         self._domain = MultiDomain.make({keys[0]: dof_space, keys[1]: param_space})
-#        fields = {keys[0]: Field.from_random('normal', dof_space),
-#                  keys[1]: Field.from_random('normal', param_space)}
-#        position = MultiField.from_dict(fields)
 
-#        dof_space = position[keys[0]].domain[0]
         kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
         cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
 
         ceps = makeOp(sqrt(cepstrum))
         self._smooth_op = sym * qht * ceps
         self._keys = tuple(keys)
-
-#        smooth_spec = smooth_op(Variable(position)[keys[0]])
-
-#        phi = Variable(position)[keys[1]] + Constant(position, norm_phi_mean)
-#        linear_spec = slope(phi)
-#        loglog_spec = smooth_spec + linear_spec
-#        xlog_ampl = PointwiseExponential(0.5*loglog_spec)
 
     def __call__(self, x):
         smooth_spec = self._smooth_op(x[self._keys[0]])

@@ -18,14 +18,6 @@ from .field import Field
 
 from .nonlinearities import Exponential, Linear, PositiveTanh, Tanh
 
-from .models.constant import Constant
-from .models.linear_model import LinearModel
-from .models.local_nonlinearity import (LocalModel, PointwiseExponential,
-                                        PointwisePositiveTanh, PointwiseTanh)
-from .models.model import Model
-from .models.multi_model import MultiModel
-from .models.variable import Variable
-
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.dof_distributor import DOFDistributor
@@ -43,14 +35,12 @@ from .operators.inversion_enabler import InversionEnabler
 from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
-from .operators.multi_adaptor import MultiAdaptor
 from .operators.null_operator import NullOperator
 from .operators.power_distributor import PowerDistributor
 from .operators.qht_operator import QHTOperator
 from .operators.sampling_enabler import SamplingEnabler
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
-from .operators.selection_operator import SelectionOperator
 from .operators.slope_operator import SlopeOperator
 from .operators.smoothness_operator import SmoothnessOperator
 from .operators.symmetrizing_operator import SymmetrizingOperator
@@ -81,14 +71,14 @@ from .minimization.energy_sum import EnergySum
 from .sugar import *
 from .plotting.plot import plot, plot_finish
 
-from .library.amplitude_model import make_amplitude_model, AmplitudeModel
+from .library.amplitude_model import AmplitudeModel
 from .library.gaussian_energy import GaussianEnergy
 from .library.los_response import LOSResponse
-from .library.point_sources import PointSources
+#from .library.point_sources import PointSources
 from .library.poissonian_energy import PoissonianEnergy
 from .library.wiener_filter_curvature import WienerFilterCurvature
-from .library.correlated_fields import (make_correlated_field,
-                                        make_mf_correlated_field)
+#from .library.correlated_fields import (make_correlated_field,
+#                                        make_mf_correlated_field)
 from .library.bernoulli_energy import BernoulliEnergy
 
 from . import extra

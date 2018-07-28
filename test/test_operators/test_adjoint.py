@@ -78,14 +78,6 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.SlopeOperator(dom, tgt, sig)
         ift.extra.consistency_check(op, dtype, dtype)
 
-#     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
-#                     _h_spaces + _p_spaces + _pow_spaces,
-#                     [np.float64, np.complex128]))
-#     def testSelectionOperator(self, sp1, sp2, dtype):
-#         mdom = ift.MultiDomain.make({'a': sp1, 'b': sp2})
-#         op = ift.SelectionOperator(mdom, 'a')
-#         ift.extra.consistency_check(op, dtype, dtype)
-
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
                     [np.float64, np.complex128]))
     def testOperatorAdaptor(self, sp, dtype):
@@ -96,26 +88,19 @@ class Consistency_Tests(unittest.TestCase):
         ift.extra.consistency_check(op.inverse.adjoint, dtype, dtype)
         ift.extra.consistency_check(op.adjoint.inverse, dtype, dtype)
 
-#     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
-#                     _h_spaces + _p_spaces + _pow_spaces,
-#                     [np.float64, np.complex128]))
-#     def testNullOperator(self, sp1, sp2, dtype):
-#         op = ift.NullOperator(sp1, sp2)
-#         ift.extra.consistency_check(op, dtype, dtype)
-#         mdom1 = ift.MultiDomain.make({'a': sp1})
-#         mdom2 = ift.MultiDomain.make({'b': sp2})
-#         op = ift.NullOperator(mdom1, mdom2)
-#         ift.extra.consistency_check(op, dtype, dtype)
-#         op = ift.NullOperator(sp1, mdom2)
-#         ift.extra.consistency_check(op, dtype, dtype)
-#         op = ift.NullOperator(mdom1, sp2)
-#         ift.extra.consistency_check(op, dtype, dtype)
-
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    _h_spaces + _p_spaces + _pow_spaces,
                     [np.float64, np.complex128]))
-    def testMultiAdaptor(self, sp, dtype):
-        mdom = ift.MultiDomain.make({'a': sp})
-        op = ift.MultiAdaptor(mdom)
+    def testNullOperator(self, sp1, sp2, dtype):
+        op = ift.NullOperator(sp1, sp2)
+        ift.extra.consistency_check(op, dtype, dtype)
+        mdom1 = ift.MultiDomain.make({'a': sp1})
+        mdom2 = ift.MultiDomain.make({'b': sp2})
+        op = ift.NullOperator(mdom1, mdom2)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = ift.NullOperator(sp1, mdom2)
+        ift.extra.consistency_check(op, dtype, dtype)
+        op = ift.NullOperator(mdom1, sp2)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_p_RG_spaces,

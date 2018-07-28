@@ -203,13 +203,9 @@ class LinearOperator(Operator):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
-        from ..models.model import Model
-        from ..models.linear_model import LinearModel
         from ..linearization import Linearization
         if isinstance(x, Linearization):
             return Linearization(self(x._val), self*x._jac)
-        if isinstance(x, Model):
-            return LinearModel(x, self)
         return self.apply(x, self.TIMES)
 
     def times(self, x):
