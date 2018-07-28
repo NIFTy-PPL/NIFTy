@@ -152,7 +152,7 @@ class Model_Tests(unittest.TestCase):
         alpha = 1.5
         q = 0.73
         model = ift.PointSources(pos, alpha, q)
-        # All those cdfs and ppfs are not that accurate
+        # FIXME All those cdfs and ppfs are not that accurate
         ift.extra.check_value_gradient_consistency(model, tol=1e-5)
 
     @expand(product(
