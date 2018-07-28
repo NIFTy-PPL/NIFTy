@@ -135,31 +135,6 @@ class Energy(NiftyMetaBase()):
             raise TypeError
         return MetricInversionEnabler(self, controller, preconditioner)
 
-    def __mul__(self, factor):
-        from .energy_sum import EnergySum
-        if isinstance(factor, (float, int)):
-            return EnergySum.make([self], [factor])
-        return NotImplemented
-
-    def __rmul__(self, factor):
-        return self.__mul__(factor)
-
-    def __add__(self, other):
-        from .energy_sum import EnergySum
-        if isinstance(other, Energy):
-            return EnergySum.make([self, other])
-        return NotImplemented
-
-    def __sub__(self, other):
-        from .energy_sum import EnergySum
-        if isinstance(other, Energy):
-            return EnergySum.make([self, other], [1., -1.])
-        return NotImplemented
-
-    def __neg__(self):
-        from .energy_sum import EnergySum
-        return EnergySum.make([self], [-1.])
-
 
 class MetricInversionEnabler(Energy):
     def __init__(self, ene, controller, preconditioner):
