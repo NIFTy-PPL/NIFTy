@@ -100,7 +100,7 @@ class AmplitudeModel(Operator):
     im, iv : y-intercept_mean, y-intercept_variance  of power_slope
     '''
     def __init__(self, s_space, Npixdof, ceps_a, ceps_k, sm, sv, im, iv,
-                         keys=['tau', 'phi']):
+                 keys=['tau', 'phi']):
         from ..operators.exp_transform import ExpTransform
         from ..operators.qht_operator import QHTOperator
         from ..operators.slope_operator import SlopeOperator
@@ -119,9 +119,11 @@ class AmplitudeModel(Operator):
         phi_sig = np.array([sv, iv])
 
         self._slope = SlopeOperator(param_space, logk_space, phi_sig)
-        self._norm_phi_mean = Field.from_global_data(param_space, phi_mean/phi_sig)
+        self._norm_phi_mean = Field.from_global_data(param_space,
+                                                     phi_mean/phi_sig)
 
-        self._domain = MultiDomain.make({keys[0]: dof_space, keys[1]: param_space})
+        self._domain = MultiDomain.make({keys[0]: dof_space,
+                                         keys[1]: param_space})
 
         kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
         cepstrum = create_cepstrum_amplitude_field(dof_space, kern)

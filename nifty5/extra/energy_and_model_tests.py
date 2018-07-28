@@ -93,8 +93,8 @@ def check_value_gradient_metric_consistency(op, loc, tol=1e-8, ntries=100):
             dgrad2 = (lin2.gradient-lin.gradient)/dirnorm
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
             if ((abs(numgrad-dirder) <= xtol).all() and
-                (abs(dgrad-dgrad2) <= xtol).all()):
-                    break
+                    (abs(dgrad-dgrad2) <= xtol).all()):
+                break
             dir = dir*0.5
             dirnorm *= 0.5
             loc2 = locmid

@@ -47,8 +47,9 @@ class Linearization(object):
         return Linearization(self._val[name], FieldAdapter(dom, name))
 
     def __neg__(self):
-        return Linearization(-self._val, self._jac*(-1),
-                             None if self._metric is None else self._metric*(-1))
+        return Linearization(
+            -self._val, self._jac*(-1),
+            None if self._metric is None else self._metric*(-1))
 
     def __add__(self, other):
         if isinstance(other, Linearization):
@@ -77,8 +78,9 @@ class Linearization(object):
         if isinstance(other, Linearization):
             d1 = makeOp(self._val)
             d2 = makeOp(other._val)
-            return Linearization(self._val*other._val,
-                                 RelaxedSumOperator((d2*self._jac, d1*other._jac)))
+            return Linearization(
+                self._val*other._val,
+                RelaxedSumOperator((d2*self._jac, d1*other._jac)))
         if isinstance(other, (int, float, complex)):
             # if other == 0:
             #     return ...
@@ -100,8 +102,8 @@ class Linearization(object):
     def sum(self):
         from .sugar import full
         from .operators.vdot_operator import VdotOperator
-        return Linearization(full((),self._val.sum()),
-                             VdotOperator(full(self._jac.target,1))*self._jac)
+        return Linearization(full((), self._val.sum()),
+                             VdotOperator(full(self._jac.target, 1))*self._jac)
 
     def exp(self):
         tmp = self._val.exp()
@@ -132,4 +134,3 @@ class Linearization(object):
     def make_const(field):
         from .operators.null_operator import NullOperator
         return Linearization(field, NullOperator({}, field.domain))
-

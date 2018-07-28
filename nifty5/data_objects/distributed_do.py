@@ -264,7 +264,7 @@ def empty_like(a, dtype=None):
 
 def vdot(a, b):
     tmp = np.array(np.vdot(a._data, b._data))
-    if a._distaxis==-1:
+    if a._distaxis == -1:
         return tmp[()]
     res = np.empty((), dtype=tmp.dtype)
     _comm.Allreduce(tmp, res, MPI.SUM)
