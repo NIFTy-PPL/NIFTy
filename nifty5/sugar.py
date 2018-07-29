@@ -38,8 +38,8 @@ from .operators.power_distributor import PowerDistributor
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'from_global_data', 'from_local_data',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'conjugate',
-           'get_signal_variance', 'makeOp', 'domain_union']
+           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'positive_tanh',
+           'conjugate', 'get_signal_variance', 'makeOp', 'domain_union']
 
 
 def PS_field(pspace, func):
@@ -257,7 +257,7 @@ def domain_union(domains):
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
     def func(f):
         def func2(x):
             from .linearization import Linearization

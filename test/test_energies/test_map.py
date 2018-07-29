@@ -53,6 +53,7 @@ class Energy_Tests(unittest.TestCase):
         n = N.draw_sample()
         s = ht(ift.makeOp(A)(xi0_var))
         R = ift.ScalingOperator(10., space)
+
         def d_model(inp):
             if nonlinearity == "":
                 return R(ht(ift.makeOp(A)(inp)))
