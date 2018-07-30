@@ -30,28 +30,29 @@ from ..sugar import makeOp
 from ..utilities import memo
 
 
-class PointSources(Model):
-    def __init__(self, position, alpha, q):
-        super(PointSources, self).__init__(position)
+class InverseGammaModel(Model):
+    def __init__(self, position, alpha, q, key):
+        super(InverseGammaModel, self).__init__(position)
         self._alpha = alpha
         self._q = q
+        self._key = key
 
     def at(self, position):
-        return self.__class__(position, self._alpha, self._q)
+        return self.__class__(position, self._alpha, self._q, self._key)
 
     @property
     @memo
     def value(self):
-        points = self.position['points'].local_data
+        points = self.position[self._key].local_data
         # MR FIXME?!
         points = np.clip(points, None, 8.2)
-        points = Field.from_local_data(self.position['points'].domain, points)
+        points = Field.from_local_data(self.position[self._key].domain, points)
         return self.IG(points, self._alpha, self._q)
 
     @property
     @memo
     def jacobian(self):
-        u = self.position['points'].local_data
+        u = self.position[self._key].local_data
         inner = norm.pdf(u)
         outer_inv = invgamma.pdf(invgamma.ppf(norm.cdf(u),
                                               self._alpha,
@@ -60,11 +61,11 @@ class PointSources(Model):
         # FIXME
         outer_inv = np.clip(outer_inv, 1e-20, None)
         outer = 1/outer_inv
-        grad = Field.from_local_data(self.position['points'].domain,
+        grad = Field.from_local_data(self.position[self._key].domain,
                                      inner*outer)
-        grad = makeOp(MultiField.from_dict({"points": grad},
+        grad = makeOp(MultiField.from_dict({self._key: grad},
                                            self.position._domain))
-        return SelectionOperator(grad.target, 'points')*grad
+        return SelectionOperator(grad.target, self._key)*grad
 
     @staticmethod
     def IG(field, alpha, q):
