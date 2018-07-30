@@ -37,6 +37,12 @@ class InverseGammaModel(Model):
         self._q = q
         self._key = key
 
+    @classmethod
+    def make(cls, actual_position, alpha, q, key):
+        pos = cls.inverseIG(actual_position, alpha, q)
+        mf = MultiField.from_dict({key: pos})
+        return cls(mf, alpha, q, key)
+
     def at(self, position):
         return self.__class__(position, self._alpha, self._q, self._key)
 
