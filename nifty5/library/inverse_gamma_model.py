@@ -72,8 +72,7 @@ class InverseGammaModel(Model):
         foo = invgamma.ppf(norm.cdf(field.local_data), alpha, scale=q)
         return Field.from_local_data(field.domain, foo)
 
-    # MR FIXME: why does this take an np.ndarray instead of a Field?
     @staticmethod
     def inverseIG(u, alpha, q):
-        res = norm.ppf(invgamma.cdf(u, alpha, scale=q))
-        return res
+        res = norm.ppf(invgamma.cdf(u.local_data, alpha, scale=q))
+        return Field.from_local_data(u.domain, res)
