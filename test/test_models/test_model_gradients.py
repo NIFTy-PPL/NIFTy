@@ -151,7 +151,7 @@ class Model_Tests(unittest.TestCase):
                 {'points': S.draw_sample()})
         alpha = 1.5
         q = 0.73
-        model = ift.InverseGammaModel(pos, alpha, q)
+        model = ift.InverseGammaModel(pos, alpha, q, 'points')
         # FIXME All those cdfs and ppfs are not very accurate
         ift.extra.check_value_gradient_consistency(model, tol=1e-5)
 
