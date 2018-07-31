@@ -381,7 +381,9 @@ class Field(object):
         Field
             The complex conjugated field.
         """
-        return Field(self._domain, self._val.conjugate())
+        if np.issubdtype(self._val.dtype, np.complexfloating):
+            return Field(self._domain, self._val.conjugate())
+        return self
 
     # ---General unary/contraction methods---
 
