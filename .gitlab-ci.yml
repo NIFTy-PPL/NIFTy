@@ -37,12 +37,12 @@ build_docker_from_scratch:
 test_python2_with_coverage:
   stage: test
   script:
-    - mpiexec -n 2 --bind-to none pytest -q --cov=nifty5 2> /dev/null
+    - mpiexec -n 2 --bind-to none pytest -q --cov=nifty5 test 2> /dev/null
     - pytest -q --cov=nifty5 --cov-append test
     - >
-      coverage report --omit "*plotting*"
+      python -m coverage report --omit "*plotting*"
     - >
-      coverage report --omit "*plotting*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
+      python -m coverage report --omit "*plotting*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
 
 test_python3:
   stage: test
