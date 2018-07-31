@@ -20,19 +20,17 @@ from __future__ import absolute_import, division, print_function
 
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..field import Field
-from ..models.local_nonlinearity import PointwiseExponential
-from ..models.variable import Variable
 from ..multi.multi_field import MultiField
+from ..multi.multi_domain import MultiDomain
 from ..operators.domain_distributor import DomainDistributor
-from ..operators.hartley_operator import HartleyOperator
 from ..operators.harmonic_transform_operator import HarmonicTransformOperator
 from ..operators.power_distributor import PowerDistributor
+from ..operator import Operator
 
 
-def make_correlated_field(s_space, amplitude_model):
+class CorrelatedField(Operator):
     '''
-    Method for construction of correlated fields
+    Class for construction of correlated fields
 
     Parameters
     ----------
@@ -40,53 +38,58 @@ def make_correlated_field(s_space, amplitude_model):
 
     amplitude_model : model for correlation structure
     '''
-    h_space = s_space.get_default_codomain()
-    ht = HarmonicTransformOperator(h_space, s_space)
-    p_space = amplitude_model.value.domain[0]
-    power_distributor = PowerDistributor(h_space, p_space)
+    def __init__(self, s_space, amplitude_model):
+        self._s_space = s_space
+        self._amplitude_model = amplitude_model
+        self._h_space = s_space.get_default_codomain()
+        self._ht = HarmonicTransformOperator(self._h_space, s_space)
+        self._p_space = amplitude_model.target[0]
+        self._power_distributor = PowerDistributor(self._h_space,
+                                                   self._p_space)
 
-    position = MultiField.from_dict({'xi': Field.full(h_space, 0.)})
-    xi = Variable(position)['xi']
+    @property
+    def domain(self):
+        return MultiDomain.union(
+            (self._amplitude_model.domain,
+             MultiDomain.make({"xi": self._h_space})))
 
-    A = power_distributor(amplitude_model)
-    correlated_field_h = A * xi
-    correlated_field = ht(correlated_field_h)
-    internals = {'correlated_field_h': correlated_field_h,
-                 'power_distributor': power_distributor,
-                 'ht': ht}
-    return correlated_field, internals
+    def __call__(self, x):
+        A = self._power_distributor(self._amplitude_model(x))
+        correlated_field_h = A * x["xi"]
+        correlated_field = self._ht(correlated_field_h)
+        return correlated_field
 
 
-def make_mf_correlated_field(s_space_spatial, s_space_energy,
-                             amplitude_model_spatial, amplitude_model_energy):
-    '''
-    Method for construction of correlated multi-frequency fields
-    '''
-    h_space_spatial = s_space_spatial.get_default_codomain()
-    h_space_energy = s_space_energy.get_default_codomain()
-    h_space = DomainTuple.make((h_space_spatial, h_space_energy))
-    ht1 = HarmonicTransformOperator(h_space, space=0)
-    ht2 = HarmonicTransformOperator(ht1.target, space=1)
-    ht = ht2*ht1
-
-    p_space_spatial = amplitude_model_spatial.value.domain[0]
-    p_space_energy = amplitude_model_energy.value.domain[0]
-
-    pd_spatial = PowerDistributor(h_space, p_space_spatial, 0)
-    pd_energy = PowerDistributor(pd_spatial.domain, p_space_energy, 1)
-    pd = pd_spatial*pd_energy
-
-    dom_distr_spatial = DomainDistributor(pd.domain, 0)
-    dom_distr_energy = DomainDistributor(pd.domain, 1)
-
-    a_spatial = dom_distr_spatial(amplitude_model_spatial)
-    a_energy = dom_distr_energy(amplitude_model_energy)
-    a = a_spatial*a_energy
-    A = pd(a)
-
-    position = MultiField.from_dict(
-        {'xi': Field.from_random('normal', h_space)})
-    xi = Variable(position)['xi']
-    correlated_field_h = A*xi
-    correlated_field = ht(correlated_field_h)
-    return PointwiseExponential(correlated_field)
+# def make_mf_correlated_field(s_space_spatial, s_space_energy,
+#                              amplitude_model_spatial, amplitude_model_energy):
+#     '''
+#     Method for construction of correlated multi-frequency fields
+#     '''
+#     h_space_spatial = s_space_spatial.get_default_codomain()
+#     h_space_energy = s_space_energy.get_default_codomain()
+#     h_space = DomainTuple.make((h_space_spatial, h_space_energy))
+#     ht1 = HarmonicTransformOperator(h_space, space=0)
+#     ht2 = HarmonicTransformOperator(ht1.target, space=1)
+#     ht = ht2*ht1
+#
+#     p_space_spatial = amplitude_model_spatial.value.domain[0]
+#     p_space_energy = amplitude_model_energy.value.domain[0]
+#
+#     pd_spatial = PowerDistributor(h_space, p_space_spatial, 0)
+#     pd_energy = PowerDistributor(pd_spatial.domain, p_space_energy, 1)
+#     pd = pd_spatial*pd_energy
+#
+#     dom_distr_spatial = DomainDistributor(pd.domain, 0)
+#     dom_distr_energy = DomainDistributor(pd.domain, 1)
+#
+#     a_spatial = dom_distr_spatial(amplitude_model_spatial)
+#     a_energy = dom_distr_energy(amplitude_model_energy)
+#     a = a_spatial*a_energy
+#     A = pd(a)
+#
+#     position = MultiField.from_dict(
+#         {'xi': Field.from_random('normal', h_space)})
+#     xi = Variable(position)['xi']
+#     correlated_field_h = A*xi
+#     correlated_field = ht(correlated_field_h)
+#     return PointwiseExponential(correlated_field)

@@ -508,7 +508,7 @@ def transpose(arr):
         sz = rsz[i]//arr._data.itemsize
         arrnew[:, lo:hi] = rbuf[ofs:ofs+sz].reshape(hi-lo, sz2).T
         ofs += sz
-    return from_local_data((arr.shape[1],arr.shape[0]), arrnew, 0)
+    return from_local_data((arr.shape[1], arr.shape[0]), arrnew, 0)
 
 
 def default_distaxis():

@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     correlated_field = lambda inp: ht(power_distributor(A(inp))*inp["xi"])
     # alternatively to the block above one can do:
-    # correlated_field,_ = ift.make_correlated_field(position_space, A)
+    #correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
     signal = lambda inp: correlated_field(inp).positive_tanh()
