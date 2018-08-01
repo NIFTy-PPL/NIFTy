@@ -159,7 +159,7 @@ class _DocStringInheritor(type):
                 if doc:
                     clsdict['__doc__'] = doc
                     break
-        for attr, attribute in list(clsdict.items()):
+        for attr, attribute in clsdict.items():
             if not attribute.__doc__:
                 for mro_cls in (mro_cls for base in bases
                                 for mro_cls in base.mro()
