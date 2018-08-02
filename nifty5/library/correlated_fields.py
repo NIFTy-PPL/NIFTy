@@ -46,12 +46,17 @@ class CorrelatedField(Operator):
         self._p_space = amplitude_model.target[0]
         self._power_distributor = PowerDistributor(self._h_space,
                                                    self._p_space)
+        self._domain = MultiDomain.union(
+            (self._amplitude_model.domain,
+             MultiDomain.make({"xi": self._h_space})))
 
     @property
     def domain(self):
-        return MultiDomain.union(
-            (self._amplitude_model.domain,
-             MultiDomain.make({"xi": self._h_space})))
+        return self._domain
+
+    @property
+    def target(self):
+        return self._ht.target
 
     def __call__(self, x):
         A = self._power_distributor(self._amplitude_model(x))

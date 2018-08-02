@@ -40,7 +40,7 @@ class Energy_Tests(unittest.TestCase):
     def testGaussian(self, space, seed):
         model = self.make_model(
             space_key='s1', space=space, seed=seed)['s1']
-        energy = ift.GaussianEnergy()
+        energy = ift.GaussianEnergy(domain=space)
         ift.extra.check_value_gradient_consistency(energy, model)
 
 #     @expand(product(
@@ -81,7 +81,7 @@ class Energy_Tests(unittest.TestCase):
         model = self.make_model(
             space_key='s1', space=space, seed=seed)['s1']
         model = model.exp()
-        lh = ift.GaussianEnergy()
+        lh = ift.GaussianEnergy(domain=space)
         hamiltonian = ift.Hamiltonian(lh)
         ift.extra.check_value_gradient_consistency(hamiltonian, model)
         S = ift.ScalingOperator(1., space)
