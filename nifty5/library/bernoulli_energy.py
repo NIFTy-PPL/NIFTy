@@ -30,6 +30,14 @@ class BernoulliEnergy(Operator):
         self._p = p
         self._d = d
 
+    @property
+    def domain(self):
+        return self._p.domain
+
+    @property
+    def target(self):
+        return DomainTuple.scalar_domain()
+
     def __call__(self, x):
         x = self._p(x)
         v = ((-self._d)*x.log()).sum() - ((1.-self._d)*((1.-x).log())).sum()

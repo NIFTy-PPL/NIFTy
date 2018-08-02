@@ -25,11 +25,34 @@ from ..domain_tuple import DomainTuple
 
 
 class GaussianEnergy(Operator):
-    def __init__(self, mean=None, covariance=None):
+    def __init__(self, mean=None, covariance=None, domain=None):
         super(GaussianEnergy, self).__init__()
+        self._domain = None
+        if mean is not None:
+            self._checkEquivalence(mean.domain)
+        if covariance is not None:
+            self._checkEquivalence(covariance.domain)
+        if domain is not None:
+            self._checkEquivalence(domain)
+        if self._domain is None:
+            raise ValueError("no domain given")
         self._mean = mean
         self._icov = None if covariance is None else covariance.inverse
-        self._target = DomainTuple.scalar_domain()
+
+    def _checkEquivalence(self, newdom):
+        if self._domain is None:
+            self._domain = newdom
+        else:
+            if self._domain is not newdom:
+                raise ValueError("domain mismatch")
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return DomainTuple.scalar_domain()
 
     def __call__(self, x):
         residual = x if self._mean is None else x-self._mean

@@ -28,8 +28,16 @@ class Hamiltonian(Operator):
     def __init__(self, lh, ic_samp=None):
         super(Hamiltonian, self).__init__()
         self._lh = lh
-        self._prior = GaussianEnergy()
+        self._prior = GaussianEnergy(domain=lh.domain)
         self._ic_samp = ic_samp
+
+    @property
+    def domain(self):
+        return self._lh.domain
+
+    @property
+    def target(self):
+        return DomainTuple.scalar_domain()
 
     def __call__(self, x):
         res = self._lh(x) + self._prior(x)

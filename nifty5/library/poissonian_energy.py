@@ -32,6 +32,14 @@ class PoissonianEnergy(Operator):
         self._op = op
         self._d = d
 
+    @property
+    def domain(self):
+        return self._op.domain
+
+    @property
+    def target(self):
+        return DomainTuple.scalar_domain()
+
     def __call__(self, x):
         x = self._op(x)
         res = (x - self._d*x.log()).sum()

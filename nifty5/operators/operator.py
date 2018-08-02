@@ -10,19 +10,19 @@ class Operator(NiftyMetaBase()):
     domain, and can also provide the Jacobian.
     """
 
-    @property
+    @abc.abstractproperty
     def domain(self):
         """DomainTuple or MultiDomain : the operator's input domain
 
             The domain on which the Operator's input Field lives."""
-        return self._domain
+        raise NotImplementedError
 
-    @property
+    @abc.abstractproperty
     def target(self):
         """DomainTuple or MultiDomain : the operator's output domain
 
             The domain on which the Operator's output Field lives."""
-        return self._target
+        raise NotImplementedError
 
     def __matmul__(self, x):
         if not isinstance(x, Operator):
@@ -59,7 +59,7 @@ class Operator(NiftyMetaBase()):
 for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
     def func(f):
         def func2(self):
-            fa = _FunctionApplier(self._target, f)
+            fa = _FunctionApplier(self.target, f)
             return _OpChain.make((fa, self))
         return func2
     setattr(Operator, f, func(f))
@@ -68,8 +68,16 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
 class _FunctionApplier(Operator):
     def __init__(self, domain, funcname):
         from ..sugar import makeDomain
-        self._domain = self._target = makeDomain(domain)
+        self._domain = makeDomain(domain)
         self._funcname = funcname
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._domain
 
     def __call__(self, x):
         return getattr(x, self._funcname)()
@@ -101,8 +109,14 @@ class _CombinedOperator(Operator):
 class _OpChain(_CombinedOperator):
     def __init__(self, ops, _callingfrommake=False):
         super(_OpChain, self).__init__(ops, _callingfrommake)
-        self._domain = self._ops[-1].domain
-        self._target = self._ops[0].target
+
+    @property
+    def domain(self):
+        return self._ops[-1].domain
+
+    @property
+    def target(self):
+        return self._ops[0].target
 
     def __call__(self, x):
         for op in reversed(self._ops):
@@ -113,8 +127,14 @@ class _OpChain(_CombinedOperator):
 class _OpProd(_CombinedOperator):
     def __init__(self, ops, _callingfrommake=False):
         super(_OpProd, self).__init__(ops, _callingfrommake)
-        self._domain = self._ops[0].domain
-        self._target = self._ops[0].target
+
+    @property
+    def domain(self):
+        return self._ops[0].domain
+
+    @property
+    def target(self):
+        return self._ops[0].target
 
     def __call__(self, x):
         from ..utilities import my_product
@@ -126,6 +146,14 @@ class _OpSum(_CombinedOperator):
         super(_OpSum, self).__init__(ops, _callingfrommake)
         self._domain = domain_union([op.domain for op in self._ops])
         self._target = domain_union([op.target for op in self._ops])
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
 
     def __call__(self, x):
         raise NotImplementedError

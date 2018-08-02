@@ -14,6 +14,14 @@ class FieldAdapter(LinearOperator):
         self._target = dom[name_dom]
 
     @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
     def capability(self):
         return self._all_ops
 

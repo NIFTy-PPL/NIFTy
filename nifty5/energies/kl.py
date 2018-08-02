@@ -34,6 +34,14 @@ class SampledKullbachLeiblerDivergence(Operator):
         self._h = h
         self._res_samples = tuple(res_samples)
 
+    @property
+    def domain(self):
+        return self._h.domain
+
+    @property
+    def target(self):
+        return DomainTuple.scalar_domain()
+
     def __call__(self, x):
         return (my_sum(map(lambda v: self._h(x+v), self._res_samples)) *
                 (1./len(self._res_samples)))
