@@ -54,19 +54,20 @@ class Energy_Tests(unittest.TestCase):
         s = ht(ift.makeOp(A)(xi0_var))
         R = ift.ScalingOperator(10., space)
 
-        def d_model(inp):
+        def d_model():
             if nonlinearity == "":
-                return R(ht(ift.makeOp(A)(inp)))
+                return R.chain(ht.chain(ift.makeOp(A)))
             else:
-                tmp = ht(ift.makeOp(A)(inp))
-                nonlin = getattr(tmp, nonlinearity)
-                return R(nonlin())
-        d = d_model(xi0) + n
+                tmp = ht.chain(ift.makeOp(A))
+                nonlin = getattr(tmp, nonlinearity)()
+                return R.chain(nonlin)
+
+        d = d_model()(xi0) + n
 
         if noise == 1:
             N = None
 
-        energy = lambda inp: ift.GaussianEnergy(d, N)(d_model(inp))
+        energy = ift.GaussianEnergy(d, N).chain(d_model())
         if nonlinearity == "":
             ift.extra.check_value_gradient_metric_consistency(
                 energy, xi0, ntries=10)

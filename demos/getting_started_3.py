@@ -25,6 +25,7 @@ def get_random_LOS(n_los):
     ends = list(np.random.uniform(0, 1, (n_los, 2)).T)
     return starts, ends
 
+
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(42)
@@ -40,11 +41,13 @@ if __name__ == '__main__':
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
     dummy = ift.Field.from_random('normal', harmonic_space)
-    domain = ift.MultiDomain.union((A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
+    domain = ift.MultiDomain.union(
+        (A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
 
-    correlated_field = ht.chain(power_distributor.chain(A)*ift.FieldAdapter(domain, "xi"))
+    correlated_field = ht.chain(
+        power_distributor.chain(A)*ift.FieldAdapter(domain, "xi"))
     # alternatively to the block above one can do:
-    #correlated_field = ift.CorrelatedField(position_space, A)
+    # correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
     signal = correlated_field.positive_tanh()
@@ -65,7 +68,8 @@ if __name__ == '__main__':
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
-    likelihood = ift.GaussianEnergy(mean=data, covariance=N).chain(signal_response)
+    likelihood = ift.GaussianEnergy(
+        mean=data, covariance=N).chain(signal_response)
 
     # set up minimization and inversion schemes
     ic_cg = ift.GradientNormController(iteration_limit=10)

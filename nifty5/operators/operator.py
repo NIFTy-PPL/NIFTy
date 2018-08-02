@@ -127,6 +127,5 @@ class _OpSum(_CombinedOperator):
         self._domain = domain_union([op.domain for op in self._ops])
         self._target = domain_union([op.target for op in self._ops])
 
-
     def __call__(self, x):
         raise NotImplementedError
