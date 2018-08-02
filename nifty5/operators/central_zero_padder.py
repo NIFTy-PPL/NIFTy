@@ -42,7 +42,7 @@ class CentralZeroPadder(LinearOperator):
             if i in axes:
                 slicer_fw = slice(0, (self._domain.shape[i]+1)//2)
                 slicer_bw = slice(-1, -1-(self._domain.shape[i]//2), -1)
-                slicer.append([slicer_fw, slicer_bw])
+                slicer.append((slicer_fw, slicer_bw))
         self.slicer = list(itertools.product(*slicer))
 
         for i in range(len(self.slicer)):
@@ -50,7 +50,8 @@ class CentralZeroPadder(LinearOperator):
                 if j not in axes:
                     tmp = list(self.slicer[i])
                     tmp.insert(j, slice(None))
-                    self.slicer[i] = tmp
+                    self.slicer[i] = tuple(tmp)
+        self.slicer = tuple(self.slicer)
 
     @property
     def domain(self):

@@ -50,7 +50,10 @@ class Field(object):
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
         if not isinstance(val, dobj.data_object):
-            raise TypeError("val must be of type dobj.data_object")
+            if np.isscalar(val):
+                val = dobj.from_local_data((), np.full((), val))
+            else:
+                raise TypeError("val must be of type dobj.data_object")
         if domain.shape != val.shape:
             raise ValueError("mismatch between the shapes of val and domain")
         self._domain = domain
@@ -378,7 +381,9 @@ class Field(object):
         Field
             The complex conjugated field.
         """
-        return Field(self._domain, self._val.conjugate())
+        if np.issubdtype(self._val.dtype, np.complexfloating):
+            return Field(self._domain, self._val.conjugate())
+        return self
 
     # ---General unary/contraction methods---
 
@@ -607,6 +612,17 @@ class Field(object):
             return False
         return (self._val == other._val).all()
 
+    def extract(self, dom):
+        if dom is not self._domain:
+            raise ValueError("domain mismatch")
+        return self
+
+    def unite(self, other):
+        return self + other
+
+    def positive_tanh(self):
+        return 0.5*(1.+self.tanh())
+
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
@@ -642,3 +658,11 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
                 "In-place operations are deliberately not supported")
         return func2
     setattr(Field, op, func(op))
+
+for f in ["sqrt", "exp", "log", "tanh"]:
+    def func(f):
+        def func2(self):
+            fu = getattr(dobj, f)
+            return Field(domain=self._domain, val=fu(self.val))
+        return func2
+    setattr(Field, f, func(f))

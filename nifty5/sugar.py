@@ -34,11 +34,12 @@ from .multi.multi_field import MultiField
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
 
+
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'from_global_data', 'from_local_data',
-           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'conjugate',
-           'get_signal_variance', 'makeOp']
+           'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'positive_tanh',
+           'conjugate', 'get_signal_variance', 'makeOp', 'domain_union']
 
 
 def PS_field(pspace, func):
@@ -242,19 +243,25 @@ def makeOp(input):
             input.domain, tuple(makeOp(val) for val in input.values()))
     raise NotImplementedError
 
+
+def domain_union(domains):
+    if isinstance(domains[0], DomainTuple):
+        if any(dom is not domains[0] for dom in domains[1:]):
+            raise ValueError("domain mismatch")
+        return domains[0]
+    return MultiDomain.union(domains)
+
+
 # Arithmetic functions working on Fields
 
 
 _current_module = sys.modules[__name__]
 
-for f in ["sqrt", "exp", "log", "tanh", "conjugate"]:
+for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
     def func(f):
         def func2(x):
-            if isinstance(x, MultiField):
-                return MultiField({key: func2(val) for key, val in x.items()})
-            elif isinstance(x, Field):
-                fu = getattr(dobj, f)
-                return Field(domain=x._domain, val=fu(x.val))
+            if isinstance(x, (Field, MultiField)):
+                return getattr(x, f)()
             else:
                 return getattr(np, f)(x)
         return func2

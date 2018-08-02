@@ -45,7 +45,7 @@ class NullOperator(LinearOperator):
         if isinstance(dom, DomainTuple):
             return Field.full(dom, 0)
         else:
-            return MultiField(dom, (None,)*len(dom))
+            return MultiField.full(dom, 0)
 
     def apply(self, x, mode):
         self._check_input(x, mode)

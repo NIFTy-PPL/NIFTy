@@ -61,6 +61,8 @@ class data_object(object):
         self._shape = tuple(shape)
         if len(self._shape) == 0:
             distaxis = -1
+            if not isinstance(data, np.ndarray):
+                data = np.full((), data)
         self._distaxis = distaxis
         self._data = data
         if local_shape(self._shape, self._distaxis) != self._data.shape:
@@ -262,7 +264,7 @@ def empty_like(a, dtype=None):
 
 def vdot(a, b):
     tmp = np.array(np.vdot(a._data, b._data))
-    if a._distaxis==-1:
+    if a._distaxis == -1:
         return tmp[()]
     res = np.empty((), dtype=tmp.dtype)
     _comm.Allreduce(tmp, res, MPI.SUM)
@@ -311,7 +313,7 @@ def from_object(object, dtype, copy, set_locked):
 # algorithm.
 def from_random(random_type, shape, dtype=np.float64, **kwargs):
     generator_function = getattr(Random, random_type)
-    if shape == ():
+    if len(shape) == 0:
         ldat = generator_function(dtype=dtype, shape=shape, **kwargs)
         ldat = _comm.bcast(ldat)
         return from_local_data(shape, ldat, distaxis=-1)
@@ -460,15 +462,16 @@ def redistribute(arr, dist=None, nodist=None):
         rbuf = rbuf.reshape(local_shape(arr.shape, dist))
         arrnew = from_local_data(arr.shape, rbuf, distaxis=dist)
     else:
-        arrnew = empty(arr.shape, dtype=arr.dtype, distaxis=dist)
+        arrnew = np.empty(local_shape(arr.shape, dist), dtype=arr.dtype)
         rslice = [slice(None)]*arr._data.ndim
         ofs = 0
         for i in range(ntask):
             lo, hi = _shareRange(arr.shape[arr._distaxis], ntask, i)
             rslice[arr._distaxis] = slice(lo, hi)
             sz = rsz[i]//arr._data.itemsize
-            arrnew._data[rslice].flat = rbuf[ofs:ofs+sz]
+            arrnew[rslice].flat = rbuf[ofs:ofs+sz]
             ofs += sz
+        arrnew = from_local_data(arr.shape, arrnew, distaxis=dist)
     return arrnew
 
 
@@ -497,15 +500,15 @@ def transpose(arr):
     r_msg = [rbuf, (rsz, rdisp), MPI.BYTE]
     _comm.Alltoallv(s_msg, r_msg)
     del sbuf  # free memory
-    arrnew = empty((arr.shape[1], arr.shape[0]), dtype=arr.dtype, distaxis=0)
-    ofs = 0
     sz2 = _shareSize(arr.shape[1], ntask, rank)
+    arrnew = np.empty((sz2, arr.shape[0]), dtype=arr.dtype)
+    ofs = 0
     for i in range(ntask):
         lo, hi = _shareRange(arr.shape[0], ntask, i)
         sz = rsz[i]//arr._data.itemsize
-        arrnew._data[:, lo:hi] = rbuf[ofs:ofs+sz].reshape(hi-lo, sz2).T
+        arrnew[:, lo:hi] = rbuf[ofs:ofs+sz].reshape(hi-lo, sz2).T
         ofs += sz
-    return arrnew
+    return from_local_data((arr.shape[1], arr.shape[0]), arrnew, 0)
 
 
 def default_distaxis():
