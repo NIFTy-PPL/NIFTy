@@ -33,8 +33,8 @@ __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "my_product", "frozendict", "special_add_at"]
 
 
-def my_sum(terms):
-    return reduce(lambda x, y: x+y, terms)
+def my_sum(iterable):
+    return reduce(lambda x, y: x+y, iterable)
 
 
 def my_lincomb_simple(terms, factors):
@@ -86,10 +86,10 @@ def get_slice_list(shape, axes):
             [list(range(y)) for x, y in enumerate(shape) if x not in axes]
         for index in product(*axes_iterables):
             it_iter = iter(index)
-            slice_list = [
+            slice_list = tuple(
                 next(it_iter)
                 if axis else slice(None, None) for axis in axes_select
-            ]
+            )
             yield slice_list
     else:
         yield [slice(None, None)]
@@ -159,7 +159,7 @@ class _DocStringInheritor(type):
                 if doc:
                     clsdict['__doc__'] = doc
                     break
-        for attr, attribute in list(clsdict.items()):
+        for attr, attribute in clsdict.items():
             if not attribute.__doc__:
                 for mro_cls in (mro_cls for base in bases
                                 for mro_cls in base.mro()
@@ -223,7 +223,7 @@ def hartley(a, axes=None):
             axes = tuple(range(tmp.ndim))
         lastaxis = axes[-1]
         ntmplast = tmp.shape[lastaxis]
-        slice1 = [slice(None)]*lastaxis + [slice(0, ntmplast)]
+        slice1 = (slice(None),)*lastaxis + (slice(0, ntmplast),)
         np.add(tmp.real, tmp.imag, out=res[slice1])
 
         def _fill_upper_half(tmp, res, axes):
@@ -236,9 +236,11 @@ def hartley(a, axes=None):
             for i in axes[:-1]:
                 slice1[i] = slice(1, None)
                 slice2[i] = slice(None, 0, -1)
+            slice1 = tuple(slice1)
+            slice2 = tuple(slice2)
             np.subtract(tmp[slice2].real, tmp[slice2].imag, out=res[slice1])
             for i, ax in enumerate(axes[:-1]):
-                dim1 = [slice(None)]*ax + [slice(0, 1)]
+                dim1 = (slice(None),)*ax + (slice(0, 1),)
                 axes2 = axes[:i] + axes[i+1:]
                 _fill_upper_half(tmp[dim1], res[dim1], axes2)
 

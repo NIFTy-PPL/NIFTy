@@ -105,3 +105,15 @@ class MultiDomain(object):
         for key, dom in zip(self._keys, self._domains):
             res += key+": "+str(dom)+"\n"
         return res
+
+    @staticmethod
+    def union(inp):
+        res = {}
+        for dom in inp:
+            for key, subdom in zip(dom._keys, dom._domains):
+                if key in res:
+                    if res[key] is not subdom:
+                        raise ValueError("domain mismatch")
+                else:
+                    res[key] = subdom
+        return MultiDomain.make(res)
