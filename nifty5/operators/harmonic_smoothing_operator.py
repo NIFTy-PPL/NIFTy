@@ -67,4 +67,4 @@ def HarmonicSmoothingOperator(domain, sigma, space=None):
     ddom = list(domain)
     ddom[space] = codomain
     diag = DiagonalOperator(kernel, ddom, space)
-    return Hartley.inverse*diag*Hartley
+    return Hartley.inverse.chain(diag).chain(Hartley)

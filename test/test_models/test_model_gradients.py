@@ -36,33 +36,6 @@ class Model_Tests(unittest.TestCase):
             return ift.Linearization.make_var(s)
         raise ValueError('unknown type passed')
 
-    def make_model(self, type, **kwargs):
-        if type == 'Constant':
-            np.random.seed(kwargs['seed'])
-            S = ift.ScalingOperator(1., kwargs['space'])
-            s = S.draw_sample()
-            return ift.Constant(
-                ift.MultiField.from_dict({kwargs['space_key']: s}),
-                ift.MultiField.from_dict({kwargs['space_key']: s}))
-        elif type == 'Variable':
-            np.random.seed(kwargs['seed'])
-            S = ift.ScalingOperator(1., kwargs['space'])
-            s = S.draw_sample()
-            return ift.Variable(
-                ift.MultiField.from_dict({kwargs['space_key']: s}))
-        elif type == 'LinearModel':
-            return ift.LinearModel(
-                inp=kwargs['model'], lin_op=kwargs['lin_op'])
-        else:
-            raise ValueError('unknown type passed')
-
-    def make_linear_operator(self, type, **kwargs):
-        if type == 'ScalingOperator':
-            lin_op = ift.ScalingOperator(1., kwargs['space'])
-        else:
-            raise ValueError('unknown type passed')
-        return lin_op
-
     @expand(product(
         [ift.GLSpace(15),
          ift.RGSpace(64, distances=.789),
@@ -71,7 +44,7 @@ class Model_Tests(unittest.TestCase):
         ))
     def testBasics(self, space, seed):
         var = self.make_linearization("Variable", space, seed)
-        model = lambda inp: inp
+        model = ift.ScalingOperator(6., var.target)
         ift.extra.check_value_gradient_consistency(model, var.val)
 
     @expand(product(
@@ -89,17 +62,17 @@ class Model_Tests(unittest.TestCase):
         lin2 = self.make_linearization(type2, dom2, seed)
 
         dom = ift.MultiDomain.union((dom1, dom2))
-        model = lambda inp: inp["s1"]*inp["s2"]
+        model = ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
-        model = lambda inp: inp["s1"]+inp["s2"]
+        model = ift.FieldAdapter(dom, "s1")+ift.FieldAdapter(dom, "s2")
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
-        model = lambda inp: inp["s1"]*3.
-        pos = ift.from_random("normal", dom1)
+        model = ift.FieldAdapter(dom, "s1")*3.
+        pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
-        model = lambda inp: ift.ScalingOperator(2.456, space)(
-            inp["s1"]*inp["s2"])
+        model = ift.ScalingOperator(2.456, space).chain(
+            ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
         model = lambda inp: ift.ScalingOperator(2.456, space)(

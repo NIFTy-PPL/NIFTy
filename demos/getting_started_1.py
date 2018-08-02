@@ -78,7 +78,7 @@ if __name__ == '__main__':
     GR = ift.GeometryRemover(position_space)
     mask = ift.Field.from_global_data(position_space, mask)
     Mask = ift.DiagonalOperator(mask)
-    R = GR * Mask * HT
+    R = GR.chain(Mask).chain(HT)
 
     data_space = GR.target
 
@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     # Build propagator D and information source j
     j = R.adjoint_times(N.inverse_times(data))
-    D_inv = R.adjoint * N.inverse * R + S.inverse
+    D_inv = R.adjoint.chain(N.inverse).chain(R) + S.inverse
     # Make it invertible
     IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
@@ -112,7 +112,8 @@ if __name__ == '__main__':
                         title="getting_started_1")
     else:
         ift.plot(HT(MOCK_SIGNAL), title='Mock Signal')
-        ift.plot(mask_to_nan(mask, (GR*Mask).adjoint(data)), title='Data')
+        ift.plot(mask_to_nan(mask, (GR.chain(Mask)).adjoint(data)),
+                 title='Data')
         ift.plot(HT(m), title='Reconstruction')
         ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
         ift.plot_finish(nx=2, ny=2, xsize=10, ysize=10,

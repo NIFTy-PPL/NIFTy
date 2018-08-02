@@ -37,7 +37,7 @@ class ComposedOperator_Tests(unittest.TestCase):
         op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
         op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-        op = op2*op1
+        op = op2.chain(op1)
 
         rand1 = ift.Field.from_random('normal', domain=(space1, space2))
         rand2 = ift.Field.from_random('normal', domain=(space1, space2))
@@ -54,7 +54,7 @@ class ComposedOperator_Tests(unittest.TestCase):
         op1 = ift.DiagonalOperator(diag1, cspace, spaces=(0,))
         op2 = ift.DiagonalOperator(diag2, cspace, spaces=(1,))
 
-        op = op2*op1
+        op = op2.chain(op1)
 
         rand1 = ift.Field.from_random('normal', domain=(space1, space2))
         tt1 = op.inverse_times(op.times(rand1))
@@ -75,7 +75,8 @@ class ComposedOperator_Tests(unittest.TestCase):
     def test_chain(self, space):
         op1 = ift.makeOp(ift.Field.full(space, 2.))
         op2 = 3.
-        full_op = op1 * op2 * (op2 * op1) * op1 * op1 * op2
+        full_op = (op1.chain(op2).chain(op2).chain(op1).
+                   chain(op1).chain(op1).chain(op2))
         x = ift.Field.full(space, 1.)
         res = full_op(x)
         assert_equal(isinstance(full_op, ift.DiagonalOperator), True)
@@ -85,7 +86,7 @@ class ComposedOperator_Tests(unittest.TestCase):
     def test_mix(self, space):
         op1 = ift.makeOp(ift.Field.full(space, 2.))
         op2 = 3.
-        full_op = op1 * (op2 + op2) * op1 * op1 - op1 * op2
+        full_op = op1.chain(op2 + op2).chain(op1).chain(op1) - op1.chain(op2)
         x = ift.Field.full(space, 1.)
         res = full_op(x)
         assert_equal(isinstance(full_op, ift.DiagonalOperator), True)

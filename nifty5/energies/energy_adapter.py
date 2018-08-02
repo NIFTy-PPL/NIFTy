@@ -23,7 +23,7 @@ class EnergyAdapter(Energy):
     @property
     def value(self):
         if self._val is None:
-            self._val =  self._op(self._position)
+            self._val = self._op(self._position)
         return self._val
 
     @property

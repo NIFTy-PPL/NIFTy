@@ -130,7 +130,7 @@ class AmplitudeModel(Operator):
         cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
 
         ceps = makeOp(sqrt(cepstrum))
-        self._smooth_op = sym * qht * ceps
+        self._smooth_op = sym.chain(qht).chain(ceps)
         self._keys = tuple(keys)
 
     @property

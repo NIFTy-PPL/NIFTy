@@ -47,8 +47,8 @@ class Linearization(object):
 
     def __neg__(self):
         return Linearization(
-            -self._val, self._jac*(-1),
-            None if self._metric is None else self._metric*(-1))
+            -self._val, self._jac.chain(-1),
+            None if self._metric is None else self._metric.chain(-1))
 
     def __add__(self, other):
         if isinstance(other, Linearization):
@@ -79,47 +79,49 @@ class Linearization(object):
             d2 = makeOp(other._val)
             return Linearization(
                 self._val*other._val,
-                RelaxedSumOperator((d2*self._jac, d1*other._jac)))
+                RelaxedSumOperator((d2.chain(self._jac),
+                                    d1.chain(other._jac))))
         if isinstance(other, (int, float, complex)):
             # if other == 0:
             #     return ...
-            met = None if self._metric is None else self._metric*other
-            return Linearization(self._val*other, self._jac*other, met)
+            met = None if self._metric is None else self._metric.chain(other)
+            return Linearization(self._val*other, self._jac.chain(other), met)
         if isinstance(other, (Field, MultiField)):
             d2 = makeOp(other)
-            return Linearization(self._val*other, d2*self._jac)
+            return Linearization(self._val*other, d2.chain(self._jac))
         raise TypeError
 
     def __rmul__(self, other):
         from .sugar import makeOp
         if isinstance(other, (int, float, complex)):
-            return Linearization(self._val*other, self._jac*other)
+            return Linearization(self._val*other, self._jac.chain(other))
         if isinstance(other, (Field, MultiField)):
             d1 = makeOp(other)
-            return Linearization(self._val*other, d1*self._jac)
+            return Linearization(self._val*other, d1.chain(self._jac))
 
     def sum(self):
         from .sugar import full
         from .operators.vdot_operator import VdotOperator
-        return Linearization(full((), self._val.sum()),
-                             VdotOperator(full(self._jac.target, 1))*self._jac)
+        return Linearization(
+            full((), self._val.sum()),
+            VdotOperator(full(self._jac.target, 1)).chain(self._jac))
 
     def exp(self):
         tmp = self._val.exp()
-        return Linearization(tmp, makeOp(tmp)*self._jac)
+        return Linearization(tmp, makeOp(tmp).chain(self._jac))
 
     def log(self):
         tmp = self._val.log()
-        return Linearization(tmp, makeOp(1./self._val)*self._jac)
+        return Linearization(tmp, makeOp(1./self._val).chain(self._jac))
 
     def tanh(self):
         tmp = self._val.tanh()
-        return Linearization(tmp, makeOp(1.-tmp**2)*self._jac)
+        return Linearization(tmp, makeOp(1.-tmp**2).chain(self._jac))
 
     def positive_tanh(self):
         tmp = self._val.tanh()
         tmp2 = 0.5*(1.+tmp)
-        return Linearization(tmp2, makeOp(0.5*(1.-tmp**2))*self._jac)
+        return Linearization(tmp2, makeOp(0.5*(1.-tmp**2)).chain(self._jac))
 
     def add_metric(self, metric):
         return Linearization(self._val, self._jac, metric)

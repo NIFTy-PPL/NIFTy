@@ -75,7 +75,7 @@ if __name__ == '__main__':
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response
-    R = GR * M
+    R = GR.chain(M)
 
     # Generate mock data
     d_space = R.target[0]

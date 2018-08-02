@@ -117,17 +117,45 @@ class LinearOperator(Operator):
 
     def __mul__(self, other):
         from .chain_operator import ChainOperator
-        if np.isscalar(other) and other == 1.:
+        if not np.isscalar(other):
+            return Operator.__mul__(self, other)
+        if other == 1.:
             return self
-        other = self._toOperator(other, self.domain)
+        from .scaling_operator import ScalingOperator
+        other = ScalingOperator(other, self.domain)
         return ChainOperator.make([self, other])
 
     def __rmul__(self, other):
         from .chain_operator import ChainOperator
+        if not np.isscalar(other):
+            return Operator.__rmul__(self, other)
+        if other == 1.:
+            return self
+        from .scaling_operator import ScalingOperator
+        other = ScalingOperator(other, self.target)
+        return ChainOperator.make([other, self])
+
+    def __matmul__(self, other):
         if np.isscalar(other) and other == 1.:
             return self
-        other = self._toOperator(other, self.target)
-        return ChainOperator.make([other, self])
+        other2 = self._toOperator(other, self.domain)
+        if other2 == NotImplemented:
+            return Operator.__matmul__(self, other)
+        from .chain_operator import ChainOperator
+        return ChainOperator.make([self, other2])
+
+    def chain(self, other):
+        return self.__matmul__(other)
+
+    def __rmatmul__(self, other):
+        if np.isscalar(other) and other == 1.:
+            return self
+        other2 = self._toOperator(other, self.target)
+        if other2 == NotImplemented:
+            from .chain_operator import ChainOperator
+            return Operator.__rmatmul__(self, other)
+        from .chain_operator import ChainOperator
+        return ChainOperator.make([other2, self])
 
     def __add__(self, other):
         from .sum_operator import SumOperator
@@ -190,7 +218,7 @@ class LinearOperator(Operator):
         """Same as :meth:`times`"""
         from ..linearization import Linearization
         if isinstance(x, Linearization):
-            return Linearization(self(x._val), self*x._jac)
+            return Linearization(self(x._val), self.chain(x._jac))
         return self.apply(x, self.TIMES)
 
     def times(self, x):
