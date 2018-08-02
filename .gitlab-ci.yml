@@ -11,8 +11,8 @@ stages:
   - demo_runs
 
 build_docker_from_scratch:
-#  only:
-#    - schedules
+  only:
+    - schedules
   image: docker:stable
   stage: build_docker
   before_script:
@@ -22,17 +22,17 @@ build_docker_from_scratch:
     - docker build -t $CONTAINER_TEST_IMAGE --no-cache .
     - docker push $CONTAINER_TEST_IMAGE
 
-#build_docker_from_cache:
-#  except:
-#    - schedules
-#  image: docker:stable
-#  stage: build_docker
-#  before_script:
-#    - ls
-#  script:
-#    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
-#    - docker build -t $CONTAINER_TEST_IMAGE .
-#    - docker push $CONTAINER_TEST_IMAGE
+build_docker_from_cache:
+  except:
+    - schedules
+  image: docker:stable
+  stage: build_docker
+  before_script:
+    - ls
+  script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN gitlab-registry.mpcdf.mpg.de
+    - docker build -t $CONTAINER_TEST_IMAGE .
+    - docker push $CONTAINER_TEST_IMAGE
 
 test_python2_with_coverage:
   stage: test
