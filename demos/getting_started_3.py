@@ -40,13 +40,14 @@ if __name__ == '__main__':
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
     dummy = ift.Field.from_random('normal', harmonic_space)
+    domain = ift.MultiDomain.union((A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
 
-    correlated_field = lambda inp: ht(power_distributor(A(inp))*inp["xi"])
+    correlated_field = ht.chain(power_distributor.chain(A)*ift.FieldAdapter(domain, "xi"))
     # alternatively to the block above one can do:
     #correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
-    signal = lambda inp: correlated_field(inp).positive_tanh()
+    signal = correlated_field.positive_tanh()
 
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
@@ -60,7 +61,6 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(noise, data_space)
 
     # generate mock data
-    domain = ift.MultiDomain.union((A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
     MOCK_POSITION = ift.from_random('normal', domain)
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 

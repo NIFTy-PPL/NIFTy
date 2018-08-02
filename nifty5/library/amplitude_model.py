@@ -124,6 +124,7 @@ class AmplitudeModel(Operator):
 
         self._domain = MultiDomain.make({keys[0]: dof_space,
                                          keys[1]: param_space})
+        self._target = self._exp_transform.target
 
         kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
         cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
@@ -138,11 +139,3 @@ class AmplitudeModel(Operator):
         linear_spec = self._slope(phi)
         loglog_spec = smooth_spec + linear_spec
         return self._exp_transform((0.5*loglog_spec).exp())
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._exp_transform.target

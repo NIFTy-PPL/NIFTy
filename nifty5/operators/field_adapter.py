@@ -8,16 +8,10 @@ from ..multi.multi_field import MultiField
 
 class FieldAdapter(LinearOperator):
     def __init__(self, dom, name_dom):
-        self._domain = MultiDomain.make({name_dom: dom})
-        self._target = dom
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
+        self._domain = MultiDomain.make(dom)
+        self._smalldom = MultiDomain.make({name_dom: self._domain[name_dom]})
+        self._name = name_dom
+        self._target = dom[name_dom]
 
     @property
     def capability(self):
@@ -27,5 +21,6 @@ class FieldAdapter(LinearOperator):
         self._check_input(x, mode)
 
         if mode == self.TIMES:
-            return x.values()[0]
-        return MultiField(self._domain, (x,))
+            return x[self._name]
+        tmp = MultiField(self._smalldom, (x,))
+        return tmp.unite(MultiField.full(self._domain, 0.))

@@ -10,12 +10,14 @@ class Operator(NiftyMetaBase()):
     domain, and can also provide the Jacobian.
     """
 
+    @property
     def domain(self):
         """DomainTuple or MultiDomain : the operator's input domain
 
             The domain on which the Operator's input Field lives."""
         return self._domain
 
+    @property
     def target(self):
         """DomainTuple or MultiDomain : the operator's output domain
 
@@ -26,6 +28,11 @@ class Operator(NiftyMetaBase()):
         if not isinstance(x, Operator):
             return NotImplemented
         return _OpChain.make((self, x))
+
+    def __mul__(self, x):
+        if not isinstance(x, Operator):
+            return NotImplemented
+        return _OpProd.make((self, x))
 
     def chain(self, x):
         res = self.__matmul__(x)
@@ -110,7 +117,8 @@ class _OpProd(_CombinedOperator):
         self._target = self._ops[0].target
 
     def __call__(self, x):
-        return my_prod(map(lambda op: op(x) for op in self._ops))
+        from ..utilities import my_product
+        return my_product(map(lambda op: op(x), self._ops))
 
 
 class _OpSum(_CombinedOperator):

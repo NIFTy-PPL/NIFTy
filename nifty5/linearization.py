@@ -43,8 +43,7 @@ class Linearization(object):
 
     def __getitem__(self, name):
         from .operators.field_adapter import FieldAdapter
-        dom = self._val[name].domain
-        return Linearization(self._val[name], FieldAdapter(dom, name))
+        return Linearization(self._val[name], FieldAdapter(self.domain, name))
 
     def __neg__(self):
         return Linearization(
