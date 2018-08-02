@@ -49,7 +49,7 @@ if __name__ == '__main__':
     position_space = ift.RGSpace([512, 512])
     exposure = get_2D_exposure()
 
-    # # Sphere with with uniform exposure
+    #  Sphere with uniform exposure
     # position_space = ift.HPSpace(128)
     # exposure = ift.Field.full(position_space, 1.)
 
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    sky = HT.chain(ift.makeOp(A)).exp()
+    sky = ift.exp(HT.chain(ift.makeOp(A)))
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
@@ -99,7 +99,6 @@ if __name__ == '__main__':
     H, convergence = minimizer(H)
 
     # Plot results
-    result_sky = sky(H.position)
-    ift.plot(result_sky)
+    ift.plot(sky(H.position))
     ift.plot_finish()
     # FIXME PLOTTING

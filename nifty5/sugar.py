@@ -261,7 +261,8 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
     def func(f):
         def func2(x):
             from .linearization import Linearization
-            if isinstance(x, (Field, MultiField, Linearization)):
+            from .operators.operator import Operator
+            if isinstance(x, (Field, MultiField, Linearization, Operator)):
                 return getattr(x, f)()
             else:
                 return getattr(np, f)(x)

@@ -25,8 +25,8 @@ from ..utilities import NiftyMetaBase, memo
 class Energy(NiftyMetaBase()):
     """ Provides the functional used by minimization schemes.
 
-   The Energy object is an implementation of a scalar function including its
-   gradient and metric at some position.
+    The Energy object is an implementation of a scalar function including its
+    gradient and metric at some position.
 
     Parameters
     ----------

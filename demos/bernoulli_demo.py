@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # Two-dimensional regular grid with inhomogeneous exposure
     position_space = ift.RGSpace([512, 512])
 
-    # # Sphere with with uniform exposure
+    #  Sphere with uniform exposure
     # position_space = ift.HPSpace(128)
     # exposure = ift.Field.full(position_space, 1.)
 
