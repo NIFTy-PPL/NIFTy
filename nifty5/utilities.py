@@ -33,8 +33,8 @@ __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "my_product", "frozendict", "special_add_at"]
 
 
-def my_sum(terms):
-    return reduce(lambda x, y: x+y, terms)
+def my_sum(iterable):
+    return reduce(lambda x, y: x+y, iterable)
 
 
 def my_lincomb_simple(terms, factors):

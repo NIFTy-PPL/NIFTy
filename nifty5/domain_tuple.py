@@ -37,6 +37,7 @@ class DomainTuple(object):
     via the factory function :attr:`make`!
     """
     _tupleCache = {}
+    _scalarDomain = None
 
     def __init__(self, domain, _callingfrommake=False):
         if not _callingfrommake:
@@ -150,3 +151,9 @@ class DomainTuple(object):
         for i in self:
             res += "\n" + str(i)
         return res
+
+    @staticmethod
+    def scalar_domain():
+        if DomainTuple._scalarDomain is None:
+            DomainTuple._scalarDomain = DomainTuple.make(())
+        return DomainTuple._scalarDomain
