@@ -27,7 +27,7 @@ from ..field import Field
 from ..multi.multi_field import MultiField
 from ..multi.multi_domain import MultiDomain
 from ..sugar import makeOp, sqrt
-from ..operator import Operator
+from ..operators.operator import Operator
 
 
 def _ceps_kernel(dof_space, k, a, k0):

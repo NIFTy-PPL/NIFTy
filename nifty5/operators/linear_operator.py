@@ -23,7 +23,7 @@ import abc
 import numpy as np
 
 from ..compat import *
-from ..operator import Operator
+from .operator import Operator
 
 
 class LinearOperator(Operator):
@@ -85,21 +85,6 @@ class LinearOperator(Operator):
 
     def __init__(self):
         pass
-
-    @abc.abstractproperty
-    def domain(self):
-        # FIXME Adopt documentation to MultiDomains
-        """DomainTuple : the operator's input domain
-
-            The domain on which the Operator's input Field lives."""
-        raise NotImplementedError
-
-    @abc.abstractproperty
-    def target(self):
-        """DomainTuple : the operator's output domain
-
-            The domain on which the Operator's output Field lives."""
-        raise NotImplementedError
 
     def _flip_modes(self, trafo):
         from .operator_adapter import OperatorAdapter

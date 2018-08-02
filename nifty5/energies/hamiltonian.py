@@ -19,7 +19,7 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..operator import Operator
+from ..operators.operator import Operator
 from ..library.gaussian_energy import GaussianEnergy
 from ..operators.sampling_enabler import SamplingEnabler
 

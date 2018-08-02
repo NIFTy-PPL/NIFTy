@@ -16,6 +16,7 @@ from .domains.log_rg_space import LogRGSpace
 from .domain_tuple import DomainTuple
 from .field import Field
 
+from .operators.operator import Operator
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.dof_distributor import DOFDistributor
@@ -92,7 +93,6 @@ from .energies.kl import SampledKullbachLeiblerDivergence
 from .energies.hamiltonian import Hamiltonian
 from .energies.energy_adapter import EnergyAdapter
 
-from .operator import Operator
 from .linearization import Linearization
 
 # We deliberately don't set __all__ here, because we don't want people to do a

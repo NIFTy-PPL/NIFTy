@@ -19,8 +19,9 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..operator import Operator
+from ..operators.operator import Operator
 from ..operators.sandwich_operator import SandwichOperator
+from ..domain_tuple import DomainTuple
 
 
 class GaussianEnergy(Operator):
@@ -28,6 +29,7 @@ class GaussianEnergy(Operator):
         super(GaussianEnergy, self).__init__()
         self._mean = mean
         self._icov = None if covariance is None else covariance.inverse
+        self._target = DomainTuple.scalar_domain()
 
     def __call__(self, x):
         residual = x if self._mean is None else x-self._mean
