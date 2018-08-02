@@ -53,7 +53,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    sky = lambda inp: HT(A*inp).positive_tanh()
+    sky = HT.chain(ift.makeOp(A)).positive_tanh()
 
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response

@@ -70,7 +70,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    sky = lambda inp: (HT(inp*A)).exp()
+    sky = HT.chain(ift.makeOp(A)).exp()
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
