@@ -22,6 +22,7 @@ from ..compat import *
 from ..operators.operator import Operator
 from ..operators.sandwich_operator import SandwichOperator
 from ..domain_tuple import DomainTuple
+from ..linearization import Linearization
 
 
 class GaussianEnergy(Operator):
@@ -58,5 +59,7 @@ class GaussianEnergy(Operator):
         residual = x if self._mean is None else x-self._mean
         icovres = residual if self._icov is None else self._icov(residual)
         res = .5*(residual*icovres).sum()
+        if not isinstance(x, Linearization):
+            return res
         metric = SandwichOperator.make(x.jac, self._icov)
         return res.add_metric(metric)

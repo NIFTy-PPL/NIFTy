@@ -22,6 +22,7 @@ from ..compat import *
 from ..operators.operator import Operator
 from ..library.gaussian_energy import GaussianEnergy
 from ..operators.sampling_enabler import SamplingEnabler
+from ..linearization import Linearization
 
 
 class Hamiltonian(Operator):
@@ -40,8 +41,7 @@ class Hamiltonian(Operator):
         return DomainTuple.scalar_domain()
 
     def __call__(self, x):
-        res = self._lh(x) + self._prior(x)
-        if self._ic_samp is None:
+        if self._ic_samp is None or not isinstance(x, Linearization):
             return self._lh(x) + self._prior(x)
         else:
             lhx = self._lh(x)

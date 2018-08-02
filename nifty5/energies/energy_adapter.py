@@ -9,20 +9,31 @@ class EnergyAdapter(Energy):
     def __init__(self, position, op):
         super(EnergyAdapter, self).__init__(position)
         self._op = op
-        pvar = Linearization.make_var(position)
-        self._res = op(pvar)
+        self._val = self._grad = self._metric = None
 
     def at(self, position):
         return EnergyAdapter(position, self._op)
 
+    def _fill_all(self):
+        tmp = self._op(Linearization.make_var(self._position))
+        self._val = tmp.val.local_data[()]
+        self._grad = tmp.gradient
+        self._metric = tmp.metric
+
     @property
     def value(self):
-        return self._res.val.local_data[()]
+        if self._val is None:
+            self._val =  self._op(self._position)
+        return self._val
 
     @property
     def gradient(self):
-        return self._res.gradient
+        if self._grad is None:
+            self._fill_all()
+        return self._grad
 
     @property
     def metric(self):
-        return self._res.metric
+        if self._metric is None:
+            self._fill_all()
+        return self._metric
