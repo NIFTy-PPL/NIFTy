@@ -73,4 +73,4 @@ class Energy_Tests(unittest.TestCase):
                 energy, xi0, ntries=10)
         else:
             ift.extra.check_value_gradient_consistency(
-                energy, xi0, ntries=10)
+                energy, xi0, ntries=10, tol=5e-8)

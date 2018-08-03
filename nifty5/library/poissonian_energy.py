@@ -43,7 +43,7 @@ class PoissonianEnergy(Operator):
 
     def __call__(self, x):
         x = self._op(x)
-        res = (x - self._d*x.log()).sum()
+        res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
             return res
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))

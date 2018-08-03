@@ -25,13 +25,14 @@ from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from .linear_operator import LinearOperator
 from ..sugar import full
+from ..field import Field
 
 
 class VdotOperator(LinearOperator):
     def __init__(self, field):
         super(VdotOperator, self).__init__()
         self._field = field
-        self._target = DomainTuple.make(())
+        self._target = DomainTuple.scalar_domain()
 
     @property
     def domain(self):
@@ -48,5 +49,30 @@ class VdotOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return full(self._target, self._field.vdot(x))
+            return Field(self._target, self._field.vdot(x))
         return self._field*x.local_data[()]
+
+
+class SumReductionOperator(LinearOperator):
+    def __init__(self, domain):
+        super(SumReductionOperator, self).__init__()
+        self._domain = domain
+        self._target = DomainTuple.scalar_domain()
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            return Field(self._target, x.sum())
+        return full(self._domain, x.local_data[()])

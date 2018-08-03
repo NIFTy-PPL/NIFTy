@@ -58,7 +58,7 @@ class GaussianEnergy(Operator):
     def __call__(self, x):
         residual = x if self._mean is None else x-self._mean
         icovres = residual if self._icov is None else self._icov(residual)
-        res = .5*(residual*icovres).sum()
+        res = .5*residual.vdot(icovres)
         if not isinstance(x, Linearization):
             return res
         metric = SandwichOperator.make(x.jac, self._icov)

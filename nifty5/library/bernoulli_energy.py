@@ -41,7 +41,7 @@ class BernoulliEnergy(Operator):
 
     def __call__(self, x):
         x = self._p(x)
-        v = ((-self._d)*x.log()).sum() - ((1.-self._d)*((1.-x).log())).sum()
+        v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
         if not isinstance(x, Linearization):
             return v
         met = makeOp(1./(x.val*(1.-x.val)))

@@ -33,8 +33,7 @@ class Linearization(object):
     @property
     def gradient(self):
         """Only available if target is a scalar"""
-        from .sugar import full
-        return self._jac.adjoint_times(full(self._jac.target, 1.))
+        return self._jac.adjoint_times(Field(self._jac.target, 1.))
 
     @property
     def metric(self):
@@ -73,14 +72,12 @@ class Linearization(object):
 
     def __mul__(self, other):
         from .sugar import makeOp
-        from .operators.relaxed_sum_operator import RelaxedSumOperator
         if isinstance(other, Linearization):
             d1 = makeOp(self._val)
             d2 = makeOp(other._val)
             return Linearization(
                 self._val*other._val,
-                RelaxedSumOperator((d2.chain(self._jac),
-                                    d1.chain(other._jac))))
+                d2.chain(self._jac) + d1.chain(other._jac))
         if isinstance(other, (int, float, complex)):
             # if other == 0:
             #     return ...
@@ -99,12 +96,25 @@ class Linearization(object):
             d1 = makeOp(other)
             return Linearization(self._val*other, d1.chain(self._jac))
 
-    def sum(self):
-        from .sugar import full
+    def vdot(self, other):
+        from .domain_tuple import DomainTuple
         from .operators.vdot_operator import VdotOperator
+        if isinstance(other, (Field, MultiField)):
+            return Linearization(
+                Field(DomainTuple.scalar_domain(),self._val.vdot(other)),
+                VdotOperator(other).chain(self._jac))
         return Linearization(
-            full((), self._val.sum()),
-            VdotOperator(full(self._jac.target, 1)).chain(self._jac))
+            Field(DomainTuple.scalar_domain(),self._val.vdot(other._val)),
+            VdotOperator(self._val).chain(other._jac) +
+            VdotOperator(other._val).chain(self._jac))
+
+    def sum(self):
+        from .domain_tuple import DomainTuple
+        from .operators.vdot_operator import SumReductionOperator
+        from .sugar import full
+        return Linearization(
+            Field(DomainTuple.scalar_domain(), self._val.sum()),
+            SumReductionOperator(self._jac.target).chain(self._jac))
 
     def exp(self):
         tmp = self._val.exp()
