@@ -75,12 +75,13 @@ class Model_Tests(unittest.TestCase):
             ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
-        model = lambda inp: ift.ScalingOperator(2.456, space)(
-            inp["s1"]*inp["s2"]).positive_tanh()
+        model = ift.positive_tanh(ift.ScalingOperator(2.456, space).chain(
+            ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")))
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
         if isinstance(space, ift.RGSpace):
-            model = lambda inp: ift.FFTOperator(space)(inp["s1"]*inp["s2"])
+            model = ift.FFTOperator(space).chain(
+                ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
             pos = ift.from_random("normal", dom)
             ift.extra.check_value_gradient_consistency(model, pos)
 

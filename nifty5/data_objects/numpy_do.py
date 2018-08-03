@@ -32,7 +32,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "np_allreduce_min", "np_allreduce_max",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis", "is_numpy",
-           "lock", "locked", "uniform_full"]
+           "lock", "locked", "uniform_full", "to_global_data_rw"]
 
 ntask = 1
 rank = 0
@@ -104,6 +104,10 @@ def from_global_data(arr, sum_up=False, distaxis=-1):
 
 def to_global_data(arr):
     return arr
+
+
+def to_global_data_rw(arr):
+    return arr.copy()
 
 
 def redistribute(arr, dist=None, nodist=None):

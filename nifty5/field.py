@@ -124,13 +124,18 @@ class Field(object):
         -------
         numpy.ndarray : array containing all field entries.
             Its shape is identical to `self.shape`.
-
-        Notes
-        -----
-        Do not write to the returned array! Depending on whether MPI is
-        active or not, this may or may not change the field's data content.
         """
         return dobj.to_global_data(self._val)
+
+    def to_global_data_rw(self):
+        """Returns a modifiable array containing the full data of the field.
+
+        Returns
+        -------
+        numpy.ndarray : array containing all field entries, which can be
+            modified. Its shape is identical to `self.shape`.
+        """
+        return dobj.to_global_data_rw(self._val)
 
     @property
     def local_data(self):
@@ -154,10 +159,6 @@ class Field(object):
         -------
         Field
             Field living on `new_domain`, but with the same data as `self`.
-
-        Notes
-        -----
-        No copy is made. If needed, use an additional copy() invocation.
         """
         return Field(DomainTuple.make(new_domain), self._val)
 

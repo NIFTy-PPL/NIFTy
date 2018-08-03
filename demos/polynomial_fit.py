@@ -53,7 +53,7 @@ class PolynomialResponse(ift.LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        val = x.to_global_data()
+        val = x.to_global_data_rw()
         if mode == self.TIMES:
             # FIXME Use polynomial() here
             out = self._mat.dot(val)
@@ -132,6 +132,7 @@ plt.close()
 # Print parameters
 mean = sc.mean.to_global_data()
 sigma = np.sqrt(sc.var.to_global_data())
-for ii in range(len(mean)):
-    print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii],
-                                                        sigma[ii]))
+if ift.dobj.master:
+    for ii in range(len(mean)):
+        print('Coefficient x**{}: {:.2E} +/- {:.2E}'.format(ii, mean[ii],
+                                                            sigma[ii]))

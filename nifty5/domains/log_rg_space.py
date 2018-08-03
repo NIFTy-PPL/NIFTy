@@ -94,7 +94,7 @@ class LogRGSpace(StructuredDomain):
 
     def get_expk_length_array(self):
         # FIXME This is a hack! Only for plotting. Seems not to be the final version.
-        out = exp(self.get_k_length_array()).to_global_data().copy()
+        out = exp(self.get_k_length_array()).to_global_data_rw()
         out[1:] = out[:-1]
         out[0] = 0
         return Field.from_global_data(self, out)

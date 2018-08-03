@@ -33,7 +33,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "np_allreduce_min", "np_allreduce_max",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis", "is_numpy",
-           "lock", "locked", "uniform_full", "transpose"]
+           "lock", "locked", "uniform_full", "transpose", "to_global_data_rw"]
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -399,6 +399,13 @@ def from_global_data(arr, sum_up=False, distaxis=0):
 def to_global_data(arr):
     if arr._distaxis == -1:
         return arr._data
+    tmp = redistribute(arr, dist=-1)
+    return tmp._data
+
+
+def to_global_data_rw(arr):
+    if arr._distaxis == -1:
+        return arr._data.copy()
     tmp = redistribute(arr, dist=-1)
     return tmp._data
 
