@@ -22,6 +22,7 @@ import numpy as np
 
 from ..compat import *
 from .linear_operator import LinearOperator
+from .null_operator import NullOperator
 
 
 class ChainOperator(LinearOperator):
@@ -52,14 +53,16 @@ class ChainOperator(LinearOperator):
             else:
                 opsnew.append(op)
         ops = opsnew
+        # Step 2.5: check for NullOperators
+        if any(isinstance(op, NullOperator) for op in ops):
+            ops = (NullOperator(ops[-1].domain, ops[0].target),)
         # Step 3: collect ScalingOperators
         fct = 1.
         opsnew = []
         lastdom = ops[-1].domain
         for op in ops:
-            if (isinstance(op, ScalingOperator) and
-                    not np.issubdtype(type(op._factor), np.complexfloating)):
-                fct *= op._factor
+            if (isinstance(op, ScalingOperator) and op._factor.imag == 0):
+                fct *= op._factor.real
             else:
                 opsnew.append(op)
         if fct != 1.:

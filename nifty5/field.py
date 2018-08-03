@@ -47,11 +47,13 @@ class Field(object):
     """
 
     def __init__(self, domain, val):
+        self._uni = None
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
         if not isinstance(val, dobj.data_object):
             if np.isscalar(val):
-                val = dobj.from_local_data((), np.full((), val))
+                self._uni = val
+                val = dobj.uniform_full(domain.shape, val)
             else:
                 raise TypeError("val must be of type dobj.data_object")
         if domain.shape != val.shape:
@@ -88,7 +90,7 @@ class Field(object):
         if not (np.isreal(val) or np.iscomplex(val)):
             raise TypeError("need arithmetic scalar")
         domain = DomainTuple.make(domain)
-        return Field(domain, dobj.full(domain.shape, fill_value=val))
+        return Field(domain, val)
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
@@ -391,10 +393,14 @@ class Field(object):
         return self
 
     def __neg__(self):
-        return Field(self._domain, -self._val)
+        if self._uni is None:
+            return Field(self._domain, -self._val)
+        return Field(self._domain, -self._uni)
 
     def __abs__(self):
-        return Field(self._domain, abs(self._val))
+        if self._uni is None:
+            return Field(self._domain, abs(self._val))
+        return Field(self._domain, abs(self._uni))
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
@@ -621,7 +627,9 @@ class Field(object):
         return self + other
 
     def positive_tanh(self):
-        return 0.5*(1.+self.tanh())
+        if self._uni is None:
+            return 0.5*(1.+self.tanh())
+        return Field(self._domain, 0.5*(1.+np.tanh(self._uni)))
 
 
 for op in ["__add__", "__radd__",
@@ -662,7 +670,11 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
 for f in ["sqrt", "exp", "log", "tanh"]:
     def func(f):
         def func2(self):
-            fu = getattr(dobj, f)
-            return Field(domain=self._domain, val=fu(self.val))
+            if self._uni is None:
+                fu = getattr(dobj, f)
+                return Field(domain=self._domain, val=fu(self.val))
+            else:
+                fu = getattr(np, f)
+                return Field(domain=self._domain, val=fu(self._uni))
         return func2
     setattr(Field, f, func(f))
