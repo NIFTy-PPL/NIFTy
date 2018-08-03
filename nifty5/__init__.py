@@ -46,6 +46,7 @@ from .operators.multi_adaptor import MultiAdaptor
 from .operators.null_operator import NullOperator
 from .operators.power_distributor import PowerDistributor
 from .operators.qht_operator import QHTOperator
+from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
