@@ -98,7 +98,7 @@ class DiagonalOperator(EndomorphicOperator):
 
     def _fill_rest(self):
         self._ldiag.flags.writeable = False
-        self._complex = np.issubdtype(self._ldiag.dtype, np.complexfloating)
+        self._complex = utilities.iscomplextype(self._ldiag.dtype)
         if not self._complex:
             lmin = self._ldiag.min() if self._ldiag.size > 0 else 1.
             self._diagmin = dobj.np_allreduce_min(np.array(lmin))[()]

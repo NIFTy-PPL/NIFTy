@@ -136,7 +136,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     if len(spaces) == 0:
         raise ValueError("No space for analysis specified.")
 
-    field_real = not np.issubdtype(field.dtype, np.complexfloating)
+    field_real = not utilities.iscomplextype(field.dtype)
     if (not field_real) and keep_phase_information:
         raise ValueError("cannot keep phase from real-valued input Field")
 

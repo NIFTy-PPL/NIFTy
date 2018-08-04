@@ -80,7 +80,7 @@ class HartleyOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if np.issubdtype(x.dtype, np.complexfloating):
+        if utilities.iscomplextype(x.dtype):
             return (self._apply_cartesian(x.real, mode) +
                     1j*self._apply_cartesian(x.imag, mode))
         else:

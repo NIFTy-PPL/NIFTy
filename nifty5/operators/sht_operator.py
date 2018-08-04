@@ -87,7 +87,7 @@ class SHTOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if np.issubdtype(x.dtype, np.complexfloating):
+        if utilities.iscomplextype(x.dtype):
             return (self._apply_spherical(x.real, mode) +
                     1j*self._apply_spherical(x.imag, mode))
         else:

@@ -219,14 +219,14 @@ class Field(object):
     @property
     def real(self):
         """Field : The real part of the field"""
-        if not np.issubdtype(self.dtype, np.complexfloating):
-            return self
-        return Field(self._domain, self._val.real)
+        if utilities.iscomplextype(self.dtype):
+            return Field(self._domain, self._val.real)
+        return self
 
     @property
     def imag(self):
         """Field : The imaginary part of the field"""
-        if not np.issubdtype(self.dtype, np.complexfloating):
+        if not utilities.iscomplextype(self.dtype):
             raise ValueError(".imag called on a non-complex Field")
         return Field(self._domain, self._val.imag)
 
@@ -384,7 +384,7 @@ class Field(object):
         Field
             The complex conjugated field.
         """
-        if np.issubdtype(self._val.dtype, np.complexfloating):
+        if utilities.iscomplextype(self._val.dtype):
             return Field(self._domain, self._val.conjugate())
         return self
 
@@ -571,7 +571,7 @@ class Field(object):
             return self._contraction_helper('var', spaces)
         # MR FIXME: not very efficient or accurate
         m1 = self.mean(spaces)
-        if np.issubdtype(self.dtype, np.complexfloating):
+        if utilities.iscomplextype(self.dtype):
             sq = abs(self-m1)**2
         else:
             sq = (self-m1)**2

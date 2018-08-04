@@ -30,7 +30,7 @@ from .compat import *
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
            "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb",
-           "my_product", "frozendict", "special_add_at"]
+           "my_product", "frozendict", "special_add_at", "iscomplextype"]
 
 
 def my_sum(iterable):
@@ -212,7 +212,7 @@ def hartley(a, axes=None):
     if axes is not None and \
             not all(axis < len(a.shape) for axis in axes):
         raise ValueError("Provided axes do not match array shape")
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         raise TypeError("Hartley transform requires real-valued arrays.")
 
     from pyfftw.interfaces.numpy_fft import rfftn
@@ -256,7 +256,7 @@ def my_fftn_r2c(a, axes=None):
     if axes is not None and \
             not all(axis < len(a.shape) for axis in axes):
         raise ValueError("Provided axes do not match array shape")
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         raise TypeError("Transform requires real-valued input arrays.")
 
     from pyfftw.interfaces.numpy_fft import rfftn
@@ -345,7 +345,7 @@ def special_add_at(a, axis, index, b):
     sz3 = int(np.prod(a.shape[axis+1:]))
     a2 = a.reshape([sz1, -1, sz3])
     b2 = b.reshape([sz1, -1, sz3])
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         dt2 = a.real.dtype
         a2 = a2.view(dt2)
         b2 = b2.view(dt2)
@@ -355,6 +355,11 @@ def special_add_at(a, axis, index, b):
             a2[i1, :, i3] += np.bincount(index, b2[i1, :, i3],
                                          minlength=a2.shape[1])
 
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         a2 = a2.view(a.dtype)
     return a2.reshape(a.shape)
+
+
+_iscomplex_tpl = (np.complex64, np.complex128)
+def iscomplextype(dtype):
+    return dtype.type in _iscomplex_tpl

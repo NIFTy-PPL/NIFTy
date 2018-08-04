@@ -84,7 +84,7 @@ class ScalingOperator(EndomorphicOperator):
 
         if trafo == 0:
             return self
-        if trafo == ADJ and np.issubdtype(type(self._factor), np.floating):
+        if trafo == ADJ and not np.iscomplex(self._factor):
             return self
         if trafo == ADJ:
             return ScalingOperator(np.conj(self._factor), self._domain)
