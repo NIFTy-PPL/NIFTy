@@ -33,14 +33,12 @@ if __name__ == '__main__':
 
     # Setting up an amplitude model
     A = ift.AmplitudeModel(position_space, 16, 1, 10, -4., 1, 0., 1.)
-    dummy = ift.from_random('normal', A.domain)
 
     # Building the model for a correlated signal
     harmonic_space = position_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
-    dummy = ift.Field.from_random('normal', harmonic_space)
     domain = ift.MultiDomain.union(
         (A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
 
