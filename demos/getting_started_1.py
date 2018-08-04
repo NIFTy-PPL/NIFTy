@@ -107,7 +107,7 @@ if __name__ == '__main__':
         ift.plot([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
                  label=['Mock signal', 'Data', 'Reconstruction'],
                  alpha=[1, .3, 1])
-        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
+        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
         ift.plot_finish(nx=2, ny=1, xsize=10, ysize=4,
                         title="getting_started_1")
     else:
@@ -115,6 +115,6 @@ if __name__ == '__main__':
         ift.plot(mask_to_nan(mask, (GR.chain(Mask)).adjoint(data)),
                  title='Data')
         ift.plot(HT(m), title='Reconstruction')
-        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)))
+        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
         ift.plot_finish(nx=2, ny=2, xsize=10, ysize=10,
                         title="getting_started_1")
