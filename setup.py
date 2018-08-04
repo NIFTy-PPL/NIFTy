@@ -21,7 +21,7 @@ from setuptools import find_packages, setup
 
 def write_version():
     import subprocess
-    p = subprocess.Popen(["git", "describe", "--dirty", "--tags"],
+    p = subprocess.Popen(["git", "describe", "--dirty", "--tags", "--always"],
                          stdout=subprocess.PIPE)
     res = p.communicate()[0].strip().decode('utf-8')
     with open("nifty5/git_version.py", "w") as file:
