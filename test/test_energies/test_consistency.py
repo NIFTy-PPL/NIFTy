@@ -102,4 +102,4 @@ class Energy_Tests(unittest.TestCase):
         d = np.random.binomial(1, 0.1, size=space.shape)
         d = ift.Field.from_global_data(space, d)
         energy = ift.BernoulliEnergy(ift.positive_tanh, d)
-        ift.extra.check_value_gradient_consistency(energy, model, tol=1e-7)
+        ift.extra.check_value_gradient_consistency(energy, model, tol=2e-7)
