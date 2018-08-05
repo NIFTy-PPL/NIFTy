@@ -113,7 +113,7 @@ class SumOperator(LinearOperator):
         ops = opsnew
         neg = negnew
         # Step 5: combine BlockDiagonalOperators where possible
-        from ..multi.block_diagonal_operator import BlockDiagonalOperator
+        from .block_diagonal_operator import BlockDiagonalOperator
         processed = [False] * len(ops)
         opsnew = []
         negnew = []

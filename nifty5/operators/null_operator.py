@@ -20,7 +20,7 @@ from __future__ import absolute_import, division, print_function
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from ..multi.multi_field import MultiField
+from ..multi_field import MultiField
 from ..operators.linear_operator import LinearOperator
 
 

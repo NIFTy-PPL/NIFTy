@@ -28,9 +28,9 @@ from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
 from .logger import logger
-from .multi.block_diagonal_operator import BlockDiagonalOperator
-from .multi.multi_domain import MultiDomain
-from .multi.multi_field import MultiField
+from .operators.block_diagonal_operator import BlockDiagonalOperator
+from .multi_domain import MultiDomain
+from .multi_field import MultiField
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.power_distributor import PowerDistributor
 

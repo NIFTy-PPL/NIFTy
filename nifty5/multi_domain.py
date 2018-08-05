@@ -18,9 +18,9 @@
 
 from __future__ import absolute_import, division, print_function
 
-from ..compat import *
-from ..domain_tuple import DomainTuple
-from ..utilities import frozendict
+from .compat import *
+from .domain_tuple import DomainTuple
+from .utilities import frozendict
 
 
 class MultiDomain(object):

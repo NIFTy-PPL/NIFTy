@@ -20,8 +20,8 @@ from __future__ import absolute_import, division, print_function
 
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..multi.multi_field import MultiField
-from ..multi.multi_domain import MultiDomain
+from ..multi_field import MultiField
+from ..multi_domain import MultiDomain
 from ..operators.domain_distributor import DomainDistributor
 from ..operators.harmonic_transform_operator import HarmonicTransformOperator
 from ..operators.power_distributor import PowerDistributor

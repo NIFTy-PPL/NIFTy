@@ -24,7 +24,7 @@ from scipy.stats import invgamma, norm
 from ..compat import *
 from ..field import Field
 from ..models.model import Model
-from ..multi.multi_field import MultiField
+from ..multi_field import MultiField
 from ..operators.selection_operator import SelectionOperator
 from ..sugar import makeOp
 from ..utilities import memo

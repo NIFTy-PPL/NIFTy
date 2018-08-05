@@ -24,8 +24,8 @@ from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..multi.multi_field import MultiField
-from ..multi.multi_domain import MultiDomain
+from ..multi_field import MultiField
+from ..multi_domain import MultiDomain
 from ..sugar import makeOp, sqrt
 from ..operators.operator import Operator
 

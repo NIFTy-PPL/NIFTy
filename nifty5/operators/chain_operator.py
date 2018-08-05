@@ -87,7 +87,7 @@ class ChainOperator(LinearOperator):
                 opsnew.append(op)
         ops = opsnew
         # Step 5: combine BlockDiagonalOperators where possible
-        from ..multi.block_diagonal_operator import BlockDiagonalOperator
+        from .block_diagonal_operator import BlockDiagonalOperator
         opsnew = []
         for op in ops:
             if (len(opsnew) > 0 and

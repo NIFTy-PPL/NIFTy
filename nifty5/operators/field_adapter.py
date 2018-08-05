@@ -2,8 +2,8 @@ from __future__ import absolute_import, division, print_function
 
 from ..compat import *
 from .linear_operator import LinearOperator
-from ..multi.multi_domain import MultiDomain
-from ..multi.multi_field import MultiField
+from ..multi_domain import MultiDomain
+from ..multi_field import MultiField
 from ..field import Field
 
 

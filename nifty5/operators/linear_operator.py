@@ -211,7 +211,7 @@ class LinearOperator(Operator):
     def __call__(self, x):
         """Same as :meth:`times`"""
         from ..field import Field
-        from ..multi.multi_field import MultiField
+        from ..multi_field import MultiField
         if isinstance(x, (Field, MultiField)):
             return self.apply(x, self.TIMES)
         from ..linearization import Linearization

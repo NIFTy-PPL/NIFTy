@@ -24,8 +24,8 @@ from ..compat import *
 from ..utilities import my_sum
 from .linear_operator import LinearOperator
 from ..sugar import domain_union
-from ..multi.multi_domain import MultiDomain
-from ..multi.multi_field import MultiField
+from ..multi_domain import MultiDomain
+from ..multi_field import MultiField
 
 
 class RelaxedSumOperator(LinearOperator):

@@ -4,7 +4,7 @@ import numpy as np
 
 from .compat import *
 from .field import Field
-from .multi.multi_field import MultiField
+from .multi_field import MultiField
 from .sugar import makeOp
 from .domain_tuple import DomainTuple
 

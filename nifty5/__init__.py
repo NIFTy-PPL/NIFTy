@@ -14,7 +14,9 @@ from .domains.dof_space import DOFSpace
 from .domains.log_rg_space import LogRGSpace
 
 from .domain_tuple import DomainTuple
+from .multi_domain import MultiDomain
 from .field import Field
+from .multi_field import MultiField
 
 from .operators.operator import Operator
 from .operators.central_zero_padder import CentralZeroPadder
@@ -44,6 +46,7 @@ from .operators.slope_operator import SlopeOperator
 from .operators.smoothness_operator import SmoothnessOperator
 from .operators.symmetrizing_operator import SymmetrizingOperator
 from .operators.vdot_operator import VdotOperator
+from .operators.block_diagonal_operator import BlockDiagonalOperator
 
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
@@ -84,10 +87,6 @@ from . import extra
 from .utilities import memo, frozendict
 
 from .logger import logger
-
-from .multi.multi_domain import MultiDomain
-from .multi.multi_field import MultiField
-from .multi.block_diagonal_operator import BlockDiagonalOperator
 
 from .energies.kl import SampledKullbachLeiblerDivergence
 from .energies.hamiltonian import Hamiltonian

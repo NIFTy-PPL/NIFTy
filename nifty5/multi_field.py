@@ -20,10 +20,10 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from ..compat import *
-from ..field import Field
+from .compat import *
+from .field import Field
 from .multi_domain import MultiDomain
-from .. import utilities
+from . import utilities
 
 
 class MultiField(object):

@@ -23,7 +23,7 @@ import numpy as np
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
-from ..multi.multi_field import MultiField
+from ..multi_field import MultiField
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 
