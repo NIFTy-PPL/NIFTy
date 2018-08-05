@@ -56,18 +56,18 @@ class Energy_Tests(unittest.TestCase):
 
         def d_model():
             if nonlinearity == "":
-                return R.chain(ht.chain(ift.makeOp(A)))
+                return R(ht(ift.makeOp(A)))
             else:
-                tmp = ht.chain(ift.makeOp(A))
+                tmp = ht(ift.makeOp(A))
                 nonlin = getattr(tmp, nonlinearity)()
-                return R.chain(nonlin)
+                return R(nonlin)
 
         d = d_model()(xi0) + n
 
         if noise == 1:
             N = None
 
-        energy = ift.GaussianEnergy(d, N).chain(d_model())
+        energy = ift.GaussianEnergy(d, N)(d_model())
         if nonlinearity == "":
             ift.extra.check_value_gradient_metric_consistency(
                 energy, xi0, ntries=10)

@@ -56,9 +56,9 @@ class SandwichOperator(EndomorphicOperator):
             raise TypeError("cheese must be a linear operator")
         if cheese is None:
             cheese = ScalingOperator(1., bun.target)
-            op = bun.adjoint.chain(bun)
+            op = bun.adjoint(bun)
         else:
-            op = bun.adjoint.chain(cheese).chain(bun)
+            op = bun.adjoint(cheese(bun))
 
         # if our sandwich is diagonal, we can return immediately
         if isinstance(op, (ScalingOperator, DiagonalOperator)):

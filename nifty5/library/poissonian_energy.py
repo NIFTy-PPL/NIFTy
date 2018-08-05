@@ -41,7 +41,7 @@ class PoissonianEnergy(Operator):
     def target(self):
         return DomainTuple.scalar_domain()
 
-    def __call__(self, x):
+    def apply(self, x):
         x = self._op(x)
         res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):

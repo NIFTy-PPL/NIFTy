@@ -54,4 +54,4 @@ def SmoothnessOperator(domain, strength=1., logarithmic=True, space=None):
     if strength == 0.:
         return ScalingOperator(0., domain)
     laplace = LaplaceOperator(domain, logarithmic=logarithmic, space=space)
-    return (strength**2)*laplace.adjoint.chain(laplace)
+    return (strength**2)*laplace.adjoint(laplace)

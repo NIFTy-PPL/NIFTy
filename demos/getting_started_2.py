@@ -70,16 +70,16 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    sky = ift.exp(HT.chain(ift.makeOp(A)))
+    sky = ift.exp(HT(ift.makeOp(A)))
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response
-    R = GR.chain(M)
+    R = GR(M)
 
     # Generate mock data
     d_space = R.target[0]
-    lamb = R.chain(sky)
+    lamb = R(sky)
     mock_position = ift.from_random('normal', domain)
     data = lamb(mock_position)
     data = np.random.poisson(data.to_global_data().astype(np.float64))

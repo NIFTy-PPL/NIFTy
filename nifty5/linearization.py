@@ -46,8 +46,8 @@ class Linearization(object):
 
     def __neg__(self):
         return Linearization(
-            -self._val, self._jac.chain(-1),
-            None if self._metric is None else self._metric.chain(-1))
+            -self._val, self._jac*(-1),
+            None if self._metric is None else self._metric*(-1))
 
     def __add__(self, other):
         if isinstance(other, Linearization):
@@ -77,24 +77,24 @@ class Linearization(object):
             d2 = makeOp(other._val)
             return Linearization(
                 self._val*other._val,
-                d2.chain(self._jac) + d1.chain(other._jac))
+                d2(self._jac) + d1(other._jac))
         if isinstance(other, (int, float, complex)):
             # if other == 0:
             #     return ...
-            met = None if self._metric is None else self._metric.chain(other)
-            return Linearization(self._val*other, self._jac.chain(other), met)
+            met = None if self._metric is None else self._metric(other)
+            return Linearization(self._val*other, self._jac(other), met)
         if isinstance(other, (Field, MultiField)):
             d2 = makeOp(other)
-            return Linearization(self._val*other, d2.chain(self._jac))
+            return Linearization(self._val*other, d2(self._jac))
         raise TypeError
 
     def __rmul__(self, other):
         from .sugar import makeOp
         if isinstance(other, (int, float, complex)):
-            return Linearization(self._val*other, self._jac.chain(other))
+            return Linearization(self._val*other, self._jac(other))
         if isinstance(other, (Field, MultiField)):
             d1 = makeOp(other)
-            return Linearization(self._val*other, d1.chain(self._jac))
+            return Linearization(self._val*other, d1(self._jac))
 
     def vdot(self, other):
         from .domain_tuple import DomainTuple
@@ -102,11 +102,11 @@ class Linearization(object):
         if isinstance(other, (Field, MultiField)):
             return Linearization(
                 Field(DomainTuple.scalar_domain(),self._val.vdot(other)),
-                VdotOperator(other).chain(self._jac))
+                VdotOperator(other)(self._jac))
         return Linearization(
             Field(DomainTuple.scalar_domain(),self._val.vdot(other._val)),
-            VdotOperator(self._val).chain(other._jac) +
-            VdotOperator(other._val).chain(self._jac))
+            VdotOperator(self._val)(other._jac) +
+            VdotOperator(other._val)(self._jac))
 
     def sum(self):
         from .domain_tuple import DomainTuple
@@ -114,24 +114,24 @@ class Linearization(object):
         from .sugar import full
         return Linearization(
             Field(DomainTuple.scalar_domain(), self._val.sum()),
-            SumReductionOperator(self._jac.target).chain(self._jac))
+            SumReductionOperator(self._jac.target)(self._jac))
 
     def exp(self):
         tmp = self._val.exp()
-        return Linearization(tmp, makeOp(tmp).chain(self._jac))
+        return Linearization(tmp, makeOp(tmp)(self._jac))
 
     def log(self):
         tmp = self._val.log()
-        return Linearization(tmp, makeOp(1./self._val).chain(self._jac))
+        return Linearization(tmp, makeOp(1./self._val)(self._jac))
 
     def tanh(self):
         tmp = self._val.tanh()
-        return Linearization(tmp, makeOp(1.-tmp**2).chain(self._jac))
+        return Linearization(tmp, makeOp(1.-tmp**2)(self._jac))
 
     def positive_tanh(self):
         tmp = self._val.tanh()
         tmp2 = 0.5*(1.+tmp)
-        return Linearization(tmp2, makeOp(0.5*(1.-tmp**2)).chain(self._jac))
+        return Linearization(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
 
     def add_metric(self, metric):
         return Linearization(self._val, self._jac, metric)

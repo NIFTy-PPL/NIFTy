@@ -142,9 +142,6 @@ class LinearOperator(Operator):
         from .chain_operator import ChainOperator
         return ChainOperator.make([self, other2])
 
-    def chain(self, other):
-        return self.__matmul__(other)
-
     def __rmatmul__(self, other):
         if np.isscalar(other) and other == 1.:
             return self
@@ -213,10 +210,14 @@ class LinearOperator(Operator):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
+        from ..field import Field
+        from ..multi.multi_field import MultiField
+        if isinstance(x, (Field, MultiField)):
+            return self.apply(x, self.TIMES)
         from ..linearization import Linearization
         if isinstance(x, Linearization):
-            return Linearization(self(x._val), self.chain(x._jac))
-        return self.apply(x, self.TIMES)
+            return Linearization(self(x._val), self(x._jac))
+        return self.__matmul__(x)
 
     def times(self, x):
         """ Applies the Operator to a given Field.

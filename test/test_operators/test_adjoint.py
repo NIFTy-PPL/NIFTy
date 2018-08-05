@@ -53,7 +53,7 @@ class Consistency_Tests(unittest.TestCase):
                                                        dtype=dtype))
         op = ift.SandwichOperator.make(a, b)
         ift.extra.consistency_check(op, dtype, dtype)
-        op = a.chain(b)
+        op = a(b)
         ift.extra.consistency_check(op, dtype, dtype)
         op = a+b
         ift.extra.consistency_check(op, dtype, dtype)

@@ -55,7 +55,7 @@ class GaussianEnergy(Operator):
     def target(self):
         return DomainTuple.scalar_domain()
 
-    def __call__(self, x):
+    def apply(self, x):
         residual = x if self._mean is None else x-self._mean
         icovres = residual if self._icov is None else self._icov(residual)
         res = .5*residual.vdot(icovres)

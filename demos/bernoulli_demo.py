@@ -53,7 +53,7 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    sky = HT.chain(ift.makeOp(A)).positive_tanh()
+    sky = HT(ift.makeOp(A)).positive_tanh()
 
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response
@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     # Generate mock data
     d_space = R.target[0]
-    p = R.chain(sky)
+    p = R(sky)
     mock_position = ift.from_random('normal', harmonic_space)
     pp = p(mock_position)
     data = np.random.binomial(1, pp.to_global_data().astype(np.float64))

@@ -130,7 +130,7 @@ class AmplitudeModel(Operator):
         cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
 
         ceps = makeOp(sqrt(cepstrum))
-        self._smooth_op = sym.chain(qht).chain(ceps)
+        self._smooth_op = sym(qht(ceps))
         self._keys = tuple(keys)
 
     @property
@@ -141,7 +141,7 @@ class AmplitudeModel(Operator):
     def target(self):
         return self._target
 
-    def __call__(self, x):
+    def apply(self, x):
         smooth_spec = self._smooth_op(x[self._keys[0]])
         phi = x[self._keys[1]] + self._norm_phi_mean
         linear_spec = self._slope(phi)

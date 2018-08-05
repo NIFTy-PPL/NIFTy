@@ -39,7 +39,7 @@ class BernoulliEnergy(Operator):
     def target(self):
         return DomainTuple.scalar_domain()
 
-    def __call__(self, x):
+    def apply(self, x):
         x = self._p(x)
         v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
         if not isinstance(x, Linearization):

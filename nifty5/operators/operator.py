@@ -33,26 +33,13 @@ class Operator(NiftyMetaBase()):
             return NotImplemented
         return _OpProd.make((self, x))
 
-    def chain(self, x):
-        res = self.__matmul__(x)
-        if res == NotImplemented:
-            raise TypeError("operator expected")
-        return res
+    def apply(self, x):
+        raise NotImplementedError
 
     def __call__(self, x):
-        """Returns transformed x
-
-        Parameters
-        ----------
-        x : Linearization
-            input
-
-        Returns
-        -------
-        Linearization
-            output
-        """
-        raise NotImplementedError
+       if isinstance(x, Operator):
+           return _OpChain.make((self, x))
+       return self.apply(x)
 
 
 for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
@@ -78,7 +65,7 @@ class _FunctionApplier(Operator):
     def target(self):
         return self._domain
 
-    def __call__(self, x):
+    def apply(self, x):
         return getattr(x, self._funcname)()
 
 
@@ -117,7 +104,7 @@ class _OpChain(_CombinedOperator):
     def target(self):
         return self._ops[0].target
 
-    def __call__(self, x):
+    def apply(self, x):
         for op in reversed(self._ops):
             x = op(x)
         return x
@@ -135,7 +122,7 @@ class _OpProd(_CombinedOperator):
     def target(self):
         return self._ops[0].target
 
-    def __call__(self, x):
+    def apply(self, x):
         from ..utilities import my_product
         return my_product(map(lambda op: op(x), self._ops))
 
@@ -154,7 +141,7 @@ class _OpSum(_CombinedOperator):
     def target(self):
         return self._target
 
-    def __call__(self, x):
+    def apply(self, x):
         raise NotImplementedError
 
 
@@ -193,7 +180,7 @@ class QuadraticFormOperator(Operator):
     def target(self):
         return self._target
 
-    def __call__(self, x):
+    def apply(self, x):
         if isinstance(x, Linearization):
             jac = self._op(x)
             val = Field(self._target, 0.5 * x.vdot(jac))

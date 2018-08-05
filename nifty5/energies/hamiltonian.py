@@ -40,7 +40,7 @@ class Hamiltonian(Operator):
     def target(self):
         return DomainTuple.scalar_domain()
 
-    def __call__(self, x):
+    def apply(self, x):
         if self._ic_samp is None or not isinstance(x, Linearization):
             return self._lh(x) + self._prior(x)
         else:

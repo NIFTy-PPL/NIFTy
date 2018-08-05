@@ -23,6 +23,8 @@ from itertools import product
 
 import numpy as np
 from future.utils import with_metaclass
+import pyfftw
+from pyfftw.interfaces.numpy_fft import rfftn, fftn
 
 from .compat import *
 
@@ -201,9 +203,11 @@ _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE')
 
 
 def fft_prep():
-    import pyfftw
-    pyfftw.interfaces.cache.enable()
-    pyfftw.interfaces.cache.set_keepalive_time(1000.)
+    if not fft_prep._initialized:
+        pyfftw.interfaces.cache.enable()
+        pyfftw.interfaces.cache.set_keepalive_time(1000.)
+        fft_prep._initialized = True
+fft_prep._initialized = False
 
 
 def hartley(a, axes=None):
@@ -214,7 +218,6 @@ def hartley(a, axes=None):
     if iscomplextype(a.dtype):
         raise TypeError("Hartley transform requires real-valued arrays.")
 
-    from pyfftw.interfaces.numpy_fft import rfftn
     tmp = rfftn(a, axes=axes, threads=nthreads(), **_fft_extra_args)
 
     def _fill_array(tmp, res, axes):
@@ -258,7 +261,6 @@ def my_fftn_r2c(a, axes=None):
     if iscomplextype(a.dtype):
         raise TypeError("Transform requires real-valued input arrays.")
 
-    from pyfftw.interfaces.numpy_fft import rfftn
     tmp = rfftn(a, axes=axes, threads=nthreads(), **_fft_extra_args)
 
     def _fill_complex_array(tmp, res, axes):
@@ -293,7 +295,6 @@ def my_fftn_r2c(a, axes=None):
 
 
 def my_fftn(a, axes=None):
-    from pyfftw.interfaces.numpy_fft import fftn
     return fftn(a, axes=axes, **_fft_extra_args)
 
 

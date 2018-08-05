@@ -44,8 +44,8 @@ if __name__ == '__main__':
     domain = ift.MultiDomain.union(
         (A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
 
-    correlated_field = ht.chain(
-        power_distributor.chain(A)*ift.FieldAdapter(domain, "xi"))
+    correlated_field = ht(
+        power_distributor(A)*ift.FieldAdapter(domain, "xi"))
     # alternatively to the block above one can do:
     # correlated_field = ift.CorrelatedField(position_space, A)
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     R = ift.LOSResponse(position_space, starts=LOS_starts,
                         ends=LOS_ends)
     # build signal response model and model likelihood
-    signal_response = R.chain(signal)
+    signal_response = R(signal)
     # specify noise
     data_space = R.target
     noise = .001
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
     # set up model likelihood
     likelihood = ift.GaussianEnergy(
-        mean=data, covariance=N).chain(signal_response)
+        mean=data, covariance=N)(signal_response)
 
     # set up minimization and inversion schemes
     ic_cg = ift.GradientNormController(iteration_limit=10)

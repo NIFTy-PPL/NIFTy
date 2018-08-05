@@ -58,7 +58,7 @@ class CorrelatedField(Operator):
     def target(self):
         return self._ht.target
 
-    def __call__(self, x):
+    def apply(self, x):
         A = self._power_distributor(self._amplitude_model(x))
         correlated_field_h = A * x["xi"]
         correlated_field = self._ht(correlated_field_h)
