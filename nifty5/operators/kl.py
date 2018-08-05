@@ -19,33 +19,25 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..operators.operator import Operator
-from ..library.gaussian_energy import GaussianEnergy
-from ..operators.sampling_enabler import SamplingEnabler
-from ..linearization import Linearization
+from .operator import EnergyOperator
+from ..utilities import my_sum
 
 
-class Hamiltonian(Operator):
-    def __init__(self, lh, ic_samp=None):
-        super(Hamiltonian, self).__init__()
-        self._lh = lh
-        self._prior = GaussianEnergy(domain=lh.domain)
-        self._ic_samp = ic_samp
+class SampledKullbachLeiblerDivergence(EnergyOperator):
+    def __init__(self, h, res_samples):
+        """
+        # MR FIXME: does h have to be a Hamiltonian? Couldn't it be any energy?
+        h: Hamiltonian
+        N: Number of samples to be used
+        """
+        super(SampledKullbachLeiblerDivergence, self).__init__()
+        self._h = h
+        self._res_samples = tuple(res_samples)
 
     @property
     def domain(self):
-        return self._lh.domain
-
-    @property
-    def target(self):
-        return DomainTuple.scalar_domain()
+        return self._h.domain
 
     def apply(self, x):
-        if self._ic_samp is None or not isinstance(x, Linearization):
-            return self._lh(x) + self._prior(x)
-        else:
-            lhx = self._lh(x)
-            prx = self._prior(x)
-            mtr = SamplingEnabler(lhx.metric, prx.metric.inverse,
-                                  self._ic_samp, prx.metric.inverse)
-            return (lhx+prx).add_metric(mtr)
+        return (my_sum(map(lambda v: self._h(x+v), self._res_samples)) *
+                (1./len(self._res_samples)))

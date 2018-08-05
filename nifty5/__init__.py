@@ -47,6 +47,11 @@ from .operators.smoothness_operator import SmoothnessOperator
 from .operators.symmetrizing_operator import SymmetrizingOperator
 from .operators.vdot_operator import VdotOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
+from .operators.kl import SampledKullbachLeiblerDivergence
+from .operators.hamiltonian import Hamiltonian
+from .operators.gaussian_energy import GaussianEnergy
+from .operators.poissonian_energy import PoissonianEnergy
+from .operators.bernoulli_energy import BernoulliEnergy
 
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
@@ -68,29 +73,23 @@ from .minimization.scipy_minimizer import (ScipyMinimizer, NewtonCG, L_BFGS_B,
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.line_energy import LineEnergy
+from .minimization.energy_adapter import EnergyAdapter
 
 from .sugar import *
 from .plotting.plot import plot, plot_finish
 
 from .library.amplitude_model import AmplitudeModel
-from .library.gaussian_energy import GaussianEnergy
 from .library.los_response import LOSResponse
 # from .library.point_sources import PointSources
-from .library.poissonian_energy import PoissonianEnergy
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.correlated_fields import CorrelatedField
 #                                         make_mf_correlated_field)
-from .library.bernoulli_energy import BernoulliEnergy
 
 from . import extra
 
 from .utilities import memo, frozendict
 
 from .logger import logger
-
-from .energies.kl import SampledKullbachLeiblerDivergence
-from .energies.hamiltonian import Hamiltonian
-from .energies.energy_adapter import EnergyAdapter
 
 from .linearization import Linearization
 
