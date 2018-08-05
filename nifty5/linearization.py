@@ -6,6 +6,7 @@ from .compat import *
 from .field import Field
 from .multi.multi_field import MultiField
 from .sugar import makeOp
+from .domain_tuple import DomainTuple
 
 
 class Linearization(object):
@@ -109,7 +110,6 @@ class Linearization(object):
             VdotOperator(other._val)(self._jac))
 
     def sum(self):
-        from .domain_tuple import DomainTuple
         from .operators.vdot_operator import SumReductionOperator
         from .sugar import full
         return Linearization(

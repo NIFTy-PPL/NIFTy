@@ -19,25 +19,20 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..operators.operator import Operator
+from ..operators.operator import EnergyOperator
 from ..operators.sandwich_operator import SandwichOperator
 from ..sugar import makeOp
 from ..linearization import Linearization
 
 
-class BernoulliEnergy(Operator):
+class BernoulliEnergy(EnergyOperator):
     def __init__(self, p, d):
-        super(BernoulliEnergy, self).__init__()
         self._p = p
         self._d = d
 
     @property
     def domain(self):
         return self._p.domain
-
-    @property
-    def target(self):
-        return DomainTuple.scalar_domain()
 
     def apply(self, x):
         x = self._p(x)

@@ -21,25 +21,19 @@ from __future__ import absolute_import, division, print_function
 from numpy import inf, isnan
 
 from ..compat import *
-from ..operators.operator import Operator
+from ..operators.operator import EnergyOperator
 from ..operators.sandwich_operator import SandwichOperator
 from ..sugar import makeOp
 from ..linearization import Linearization
 
 
-class PoissonianEnergy(Operator):
+class PoissonianEnergy(EnergyOperator):
     def __init__(self, op, d):
-        super(PoissonianEnergy, self).__init__()
-        self._op = op
-        self._d = d
+        self._op, self._d = op, d
 
     @property
     def domain(self):
         return self._op.domain
-
-    @property
-    def target(self):
-        return DomainTuple.scalar_domain()
 
     def apply(self, x):
         x = self._op(x)

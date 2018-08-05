@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..utilities import NiftyMetaBase
+from ..utilities import NiftyMetaBase, my_product
+from ..domain_tuple import DomainTuple
 
 
 class Operator(NiftyMetaBase()):
@@ -50,6 +51,13 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
         return func2
     setattr(Operator, f, func(f))
 
+
+class EnergyOperator(Operator):
+    _target = DomainTuple.scalar_domain()
+
+    @property
+    def target(self):
+        return EnergyOperator._target
 
 class _FunctionApplier(Operator):
     def __init__(self, domain, funcname):
@@ -123,7 +131,6 @@ class _OpProd(_CombinedOperator):
         return self._ops[0].target
 
     def apply(self, x):
-        from ..utilities import my_product
         return my_product(map(lambda op: op(x), self._ops))
 
 
@@ -145,40 +152,30 @@ class _OpSum(_CombinedOperator):
         raise NotImplementedError
 
 
-class SquaredNormOperator(Operator):
+class SquaredNormOperator(EnergyOperator):
     def __init__(self, domain):
         super(SquaredNormOperator, self).__init__()
         self._domain = domain
-        self._target = DomainTuple.scalar_domain()
 
     @property
     def domain(self):
         return self._domain
 
-    @property
-    def target(self):
-        return self._target
-
-    def __call__(self, x):
+    def apply(self, x):
         return Field(self._target, x.vdot(x))
 
 
-class QuadraticFormOperator(Operator):
+class QuadraticFormOperator(EnergyOperator):
     def __init__(self, op):
         from .endomorphic_operator import EndomorphicOperator
         super(QuadraticFormOperator, self).__init__()
         if not isinstance(op, EndomorphicOperator):
             raise TypeError("op must be an EndomorphicOperator")
         self._op = op
-        self._target = DomainTuple.scalar_domain()
 
     @property
     def domain(self):
         return self._op.domain
-
-    @property
-    def target(self):
-        return self._target
 
     def apply(self, x):
         if isinstance(x, Linearization):

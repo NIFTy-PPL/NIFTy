@@ -19,13 +19,13 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..operators.operator import Operator
+from ..operators.operator import EnergyOperator
 from ..operators.sandwich_operator import SandwichOperator
 from ..domain_tuple import DomainTuple
 from ..linearization import Linearization
 
 
-class GaussianEnergy(Operator):
+class GaussianEnergy(EnergyOperator):
     def __init__(self, mean=None, covariance=None, domain=None):
         super(GaussianEnergy, self).__init__()
         self._domain = None
@@ -50,10 +50,6 @@ class GaussianEnergy(Operator):
     @property
     def domain(self):
         return self._domain
-
-    @property
-    def target(self):
-        return DomainTuple.scalar_domain()
 
     def apply(self, x):
         residual = x if self._mean is None else x-self._mean
