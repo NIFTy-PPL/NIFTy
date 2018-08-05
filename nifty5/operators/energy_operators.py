@@ -22,6 +22,7 @@ from ..compat import *
 from ..domain_tuple import DomainTuple
 from .operator import Operator
 from .sandwich_operator import SandwichOperator
+from .sampling_enabler import SamplingEnabler
 from ..sugar import makeOp
 from ..linearization import Linearization
 from .. import utilities
