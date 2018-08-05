@@ -204,9 +204,6 @@ class data_object(object):
         elif np.isscalar(other):
             a = a._data
             b = other
-        elif isinstance(other, np.ndarray):
-            a = a._data
-            b = other
         else:
             return NotImplemented
 

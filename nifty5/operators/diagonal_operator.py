@@ -140,15 +140,15 @@ class DiagonalOperator(EndomorphicOperator):
         self._check_input(x, mode)
         # shortcut for most common cases
         if mode == 1 or (not self._complex and mode == 2):
-            return Field(x.domain, val=x.val*self._ldiag)
+            return Field.from_local_data(x.domain, x.local_data*self._ldiag)
 
         xdiag = self._ldiag
         if self._complex and (mode & 10):  # adjoint or inverse adjoint
             xdiag = xdiag.conj()
 
         if mode & 3:
-            return Field(x.domain, val=x.val*xdiag)
-        return Field(x.domain, val=x.val/xdiag)
+            return Field.from_local_data(x.domain, x.local_data*xdiag)
+        return Field.from_local_data(x.domain, x.local_data/xdiag)
 
     @property
     def domain(self):
@@ -176,6 +176,7 @@ class DiagonalOperator(EndomorphicOperator):
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
         if from_inverse:
-            return res/np.sqrt(self._ldiag)
+            res = res.local_data/np.sqrt(self._ldiag)
         else:
-            return res*np.sqrt(self._ldiag)
+            res = res.local_data*np.sqrt(self._ldiag)
+        return Field.from_local_data(self._domain, res)

@@ -654,8 +654,6 @@ class Field(object):
             if self._uni is None:
                 return Field(self._domain, self._val+other)
             return Field(self._domain, self._uni+other)
-        if isinstance(other, (dobj.data_object, np.ndarray)):
-            return Field(self._domain, self._val+other)
         return NotImplemented
 
     def __radd__(self, other):
@@ -683,8 +681,6 @@ class Field(object):
             if self._uni is None:
                 return Field(self._domain, self._val-other)
             return Field(self._domain, self._uni-other)
-        if isinstance(other, (dobj.data_object, np.ndarray)):
-            return Field(self._domain, self._val-other)
         return NotImplemented
 
     def __mul__(self, other):
@@ -717,8 +713,6 @@ class Field(object):
                     return Field(self._domain, other)
                 return Field(self._domain, self._val*other)
             return Field(self._domain, self._uni*other)
-        if isinstance(other, (dobj.data_object, np.ndarray)):
-            return Field(self._domain, self._val*other)
         return NotImplemented
 
 
@@ -737,12 +731,9 @@ for op in ["__rsub__",
                     raise ValueError("domains are incompatible.")
                 tval = getattr(self._val, op)(other._val)
                 return Field(self._domain, tval)
-
-            if (np.isscalar(other) or
-                    isinstance(other, (dobj.data_object, np.ndarray))):
+            if np.isscalar(other):
                 tval = getattr(self._val, op)(other)
                 return Field(self._domain, tval)
-
             return NotImplemented
         return func2
     setattr(Field, op, func(op))
