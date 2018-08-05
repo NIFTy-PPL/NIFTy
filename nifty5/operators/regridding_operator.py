@@ -22,13 +22,9 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import aslinearoperator
 
-from .. import dobj, utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..domains.rg_space import RGSpace
-from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..sugar import from_global_data
 from .linear_operator import LinearOperator
 
 
@@ -40,8 +36,8 @@ class RegriddingOperator(LinearOperator):
 
         # domain: fine domain
         # target: coarse domain
-        distances_dom = tuple([domain[0].distances[0], domain[1].distances[0]])
-        distances_tgt = tuple([target[0].distances[0], target[1].distances[0]])
+        distances_dom = sum([list(dom.distances) for dom in self.domain], [])
+        distances_tgt = sum([list(dom.distances) for dom in self.target], [])
 
         # index arrays
         dom_indices = np.arange(self.domain.size).reshape(self.domain.shape)
@@ -57,30 +53,22 @@ class RegriddingOperator(LinearOperator):
         for xx in range(domain.shape[0]):
             for yy in range(domain.shape[1]):
                 # Find neighbours
-                xx_in_tgt = xx*distances_dom[0]/distances_tgt[0]
-                yy_in_tgt = yy*distances_dom[1]/distances_tgt[1]
                 p = np.array([xx, yy])
-                p_in_tgt = np.array([xx_in_tgt, yy_in_tgt])
-                xx_neigh = int(xx*distances_dom[0]/distances_tgt[0])
-                yy_neigh = int(yy*distances_dom[1]/distances_tgt[1])
+                p_in_tgt = p*distances_dom/distances_tgt
+                tmp = p_in_tgt.astype(int)
                 neighbours = [
-                    np.array([xx_neigh, yy_neigh]),
-                    np.array([xx_neigh+1, yy_neigh]),
-                    np.array([xx_neigh, yy_neigh+1]),
-                    np.array([xx_neigh+1, yy_neigh+1])
+                    tmp, tmp+np.array([0, 1]), tmp+np.array([1, 0]),
+                    tmp+np.array([1, 1])
                 ]
                 for n in neighbours:
                     ws[ind] = np.prod(1-np.abs(n-p_in_tgt))
-                    if any(n == self.target.shape):
-                        rs[ind], cs[ind] = -1, -1
-                    else:
-                        rs[ind] = tgt_indices[tuple(n)]
-                        cs[ind] = dom_indices[tuple(p)]
+                    rs[ind] = tgt_indices[tuple(n % self.target.shape)]
+                    cs[ind] = dom_indices[tuple(p % self.domain.shape)]
                     ind += 1
             print('{}%'.format(np.round(xx/domain.shape[0]*100, 1)))
 
-        # FIXME?
-        mask = np.logical_and(rs != -1, ws != 0)
+        # Throw away zero weights
+        mask = ws != 0
         rs, cs, ws = rs[mask], cs[mask], ws[mask]
 
         smat = csr_matrix(
