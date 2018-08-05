@@ -52,13 +52,6 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
     setattr(Operator, f, func(f))
 
 
-class EnergyOperator(Operator):
-    _target = DomainTuple.scalar_domain()
-
-    @property
-    def target(self):
-        return EnergyOperator._target
-
 class _FunctionApplier(Operator):
     def __init__(self, domain, funcname):
         from ..sugar import makeDomain
@@ -150,36 +143,3 @@ class _OpSum(_CombinedOperator):
 
     def apply(self, x):
         raise NotImplementedError
-
-
-class SquaredNormOperator(EnergyOperator):
-    def __init__(self, domain):
-        super(SquaredNormOperator, self).__init__()
-        self._domain = domain
-
-    @property
-    def domain(self):
-        return self._domain
-
-    def apply(self, x):
-        return Field(self._target, x.vdot(x))
-
-
-class QuadraticFormOperator(EnergyOperator):
-    def __init__(self, op):
-        from .endomorphic_operator import EndomorphicOperator
-        super(QuadraticFormOperator, self).__init__()
-        if not isinstance(op, EndomorphicOperator):
-            raise TypeError("op must be an EndomorphicOperator")
-        self._op = op
-
-    @property
-    def domain(self):
-        return self._op.domain
-
-    def apply(self, x):
-        if isinstance(x, Linearization):
-            jac = self._op(x)
-            val = Field(self._target, 0.5 * x.vdot(jac))
-            return Linearization(val, jac)
-        return Field(self._target, 0.5 * x.vdot(self._op(x)))

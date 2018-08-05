@@ -47,11 +47,9 @@ from .operators.smoothness_operator import SmoothnessOperator
 from .operators.symmetrizing_operator import SymmetrizingOperator
 from .operators.vdot_operator import VdotOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
-from .operators.kl import SampledKullbachLeiblerDivergence
-from .operators.hamiltonian import Hamiltonian
-from .operators.gaussian_energy import GaussianEnergy
-from .operators.poissonian_energy import PoissonianEnergy
-from .operators.bernoulli_energy import BernoulliEnergy
+from .operators.energy_operators import (
+    EnergyOperator, GaussianEnergy, PoissonianEnergy, BernoulliEnergy,
+    Hamiltonian, SampledKullbachLeiblerDivergence)
 
 from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
