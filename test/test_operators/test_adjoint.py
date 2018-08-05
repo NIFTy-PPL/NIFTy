@@ -248,3 +248,10 @@ class Consistency_Tests(unittest.TestCase):
         tgt = ift.DomainTuple.make(args[0])
         op = ift.QHTOperator(tgt, args[1])
         ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand([[ift.RGSpace(13, 52, 40), ift.RGSpace(4, 6, 25)],
+             [ift.RGSpace(128, 128), ift.RGSpace(45, 48)],
+             [ift.RGSpace(13), ift.RGSpace(7)]])
+    def testRegridding(self, domain, target):
+        op = ift.RegriddingOperator(domain, target)
+        ift.extra.consistency_check(op)

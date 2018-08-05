@@ -33,6 +33,8 @@ class RegriddingOperator(LinearOperator):
         super(RegriddingOperator, self).__init__()
         self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.make(target)
+        if any(np.array(self.domain.shape) < np.array(self.target.shape)):
+            print('Warning: The regridding operator is not intended to be used for upsampling.')
 
         # domain: fine domain
         # target: coarse domain
@@ -69,6 +71,8 @@ class RegriddingOperator(LinearOperator):
         # Throw away zero weights and flatten at the same time
         mask = ws != 0
         rs, cs, ws = rs[mask], cs[mask], ws[mask]
+        if np.sum(ws) != self.domain.size:
+            raise RuntimeError
 
         smat = csr_matrix(
             (ws, (rs, cs)), shape=(self.target.size, self.domain.size))
