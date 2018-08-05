@@ -26,17 +26,14 @@ from .operators.domain_distributor import DomainDistributor
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
 from .operators.fft_operator import FFTOperator
-from .operators.field_adapter import FieldAdapter
 from .operators.field_zero_padder import FieldZeroPadder
 from .operators.hartley_operator import HartleyOperator
 from .operators.harmonic_smoothing_operator import HarmonicSmoothingOperator
-from .operators.geometry_remover import GeometryRemover
 from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.inversion_enabler import InversionEnabler
 from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
-from .operators.null_operator import NullOperator
 from .operators.power_distributor import PowerDistributor
 from .operators.qht_operator import QHTOperator
 from .operators.sampling_enabler import SamplingEnabler
@@ -45,8 +42,10 @@ from .operators.scaling_operator import ScalingOperator
 from .operators.slope_operator import SlopeOperator
 from .operators.smoothness_operator import SmoothnessOperator
 from .operators.symmetrizing_operator import SymmetrizingOperator
-from .operators.vdot_operator import VdotOperator
 from .operators.block_diagonal_operator import BlockDiagonalOperator
+from .operators.simple_linear_operators import (
+    VdotOperator, SumReductionOperator, ConjugationOperator, Realizer,
+    FieldAdapter, GeometryRemover, NullOperator)
 from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, BernoulliEnergy,
     Hamiltonian, SampledKullbachLeiblerDivergence)

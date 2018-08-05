@@ -42,7 +42,7 @@ class Linearization(object):
         return self._metric
 
     def __getitem__(self, name):
-        from .operators.field_adapter import FieldAdapter
+        from .operators.simple_linear_operators import FieldAdapter
         return Linearization(self._val[name], FieldAdapter(self.domain, name))
 
     def __neg__(self):
@@ -99,7 +99,7 @@ class Linearization(object):
 
     def vdot(self, other):
         from .domain_tuple import DomainTuple
-        from .operators.vdot_operator import VdotOperator
+        from .operators.simple_linear_operators import VdotOperator
         if isinstance(other, (Field, MultiField)):
             return Linearization(
                 Field(DomainTuple.scalar_domain(),self._val.vdot(other)),
@@ -110,7 +110,7 @@ class Linearization(object):
             VdotOperator(other._val)(self._jac))
 
     def sum(self):
-        from .operators.vdot_operator import SumReductionOperator
+        from .operators.simple_linear_operators import SumReductionOperator
         from .sugar import full
         return Linearization(
             Field(DomainTuple.scalar_domain(), self._val.sum()),
@@ -143,5 +143,5 @@ class Linearization(object):
 
     @staticmethod
     def make_const(field):
-        from .operators.null_operator import NullOperator
+        from .operators.simple_linear_operators import NullOperator
         return Linearization(field, NullOperator({}, field.domain))

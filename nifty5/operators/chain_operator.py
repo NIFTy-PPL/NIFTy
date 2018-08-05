@@ -22,7 +22,7 @@ import numpy as np
 
 from ..compat import *
 from .linear_operator import LinearOperator
-from .null_operator import NullOperator
+from .simple_linear_operators import NullOperator
 
 
 class ChainOperator(LinearOperator):

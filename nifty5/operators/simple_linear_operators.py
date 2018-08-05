@@ -22,11 +22,13 @@ import numpy as np
 
 from ..compat import *
 from ..domain_tuple import DomainTuple
+from ..multi_domain import MultiDomain
 from ..domains.unstructured_domain import UnstructuredDomain
 from .linear_operator import LinearOperator
 from .endomorphic_operator import EndomorphicOperator
 from ..sugar import full
 from ..field import Field
+from ..multi_field import MultiField
 
 
 class VdotOperator(LinearOperator):
@@ -113,3 +115,115 @@ class Realizer(EndomorphicOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         return x.real
+
+
+class FieldAdapter(LinearOperator):
+    def __init__(self, dom, name_dom):
+        self._domain = MultiDomain.make(dom)
+        self._name = name_dom
+        self._target = dom[name_dom]
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+
+        if mode == self.TIMES:
+            return x[self._name]
+        values = tuple(Field.full(dom, 0.) if key != self._name else x
+                       for key, dom in self._domain.items())
+        return MultiField(self._domain, values)
+
+
+class GeometryRemover(LinearOperator):
+    """Operator which transforms between a structured and an unstructured
+    domain.
+
+    Parameters
+    ----------
+    domain: Domain, tuple of Domain, or DomainTuple:
+        the full input domain of the operator.
+
+    Notes
+    -----
+    The operator will convert every sub-domain of its input domain to an
+    UnstructuredDomain with the same shape. No weighting by volume factors
+    is carried out.
+    """
+
+    def __init__(self, domain):
+        super(GeometryRemover, self).__init__()
+        self._domain = DomainTuple.make(domain)
+        target_list = [UnstructuredDomain(dom.shape) for dom in self._domain]
+        self._target = DomainTuple.make(target_list)
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            return x.cast_domain(self._target)
+        return x.cast_domain(self._domain)
+
+
+class NullOperator(LinearOperator):
+    """Operator corresponding to a matrix of all zeros.
+
+    Parameters
+    ----------
+    domain : DomainTuple or MultiDomain
+        input domain
+    target : DomainTuple or MultiDomain
+        output domain
+    """
+
+    def __init__(self, domain, target):
+        from ..sugar import makeDomain
+        self._domain = makeDomain(domain)
+        self._target = makeDomain(target)
+
+    @staticmethod
+    def _nullfield(dom):
+        if isinstance(dom, DomainTuple):
+            return Field.full(dom, 0)
+        else:
+            return MultiField.full(dom, 0)
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+
+        if mode == self.TIMES:
+            return self._nullfield(self._target)
+        return self._nullfield(self._domain)
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
