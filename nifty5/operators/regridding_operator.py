@@ -38,36 +38,35 @@ class RegriddingOperator(LinearOperator):
         # target: coarse domain
         distances_dom = sum([list(dom.distances) for dom in self.domain], [])
         distances_tgt = sum([list(dom.distances) for dom in self.target], [])
+        dim = len(distances_tgt)
 
         # index arrays
         dom_indices = np.arange(self.domain.size).reshape(self.domain.shape)
         tgt_indices = np.arange(self.target.size).reshape(self.target.shape)
 
         # Input for sparse matrix
-        foo = self.domain.size*2**len(self.domain.shape)
+        foo = (self.domain.size, 2**len(self.domain.shape))
         rs, cs, ws = np.zeros(foo), np.zeros(foo), np.zeros(foo)
-        ind = 0
 
         print('Initializing...')
-        # Loop through all points in fine grid (domain) and compute weights
-        for xx in range(domain.shape[0]):
-            for yy in range(domain.shape[1]):
-                # Find neighbours
-                p = np.array([xx, yy])
-                p_in_tgt = p*distances_dom/distances_tgt
-                tmp = p_in_tgt.astype(int)
-                neighbours = [
-                    tmp, tmp+np.array([0, 1]), tmp+np.array([1, 0]),
-                    tmp+np.array([1, 1])
-                ]
-                for n in neighbours:
-                    ws[ind] = np.prod(1-np.abs(n-p_in_tgt))
-                    rs[ind] = tgt_indices[tuple(n % self.target.shape)]
-                    cs[ind] = dom_indices[tuple(p % self.domain.shape)]
-                    ind += 1
-            print('{}%'.format(np.round(xx/domain.shape[0]*100, 1)))
+        # Calculate weights
+        fac = np.array(distances_dom)/distances_tgt
+        find_neighbours = np.array(
+            np.meshgrid(*[[0, 1] for _ in range(dim)])).T.reshape(-1, dim)
+        for ind, global_index in np.ndenumerate(dom_indices):
+            p_in_tgt = np.outer(ind*fac, np.ones(2**dim)).T
+            neighbours = p_in_tgt.astype(int)+find_neighbours
+            ws[global_index] = np.prod(1-np.abs(neighbours-p_in_tgt), axis=1)
+            cs[global_index] = dom_indices[tuple(
+                np.array(ind) % self.domain.shape)]
+            rs[global_index] = [
+                tgt_indices[tuple(n % self.target.shape)] for n in neighbours
+            ]
+            if global_index % 10000 == 9999:
+                print('{}%'.format(np.round(global_index/dom_indices.size*100), 3))
+        print('Done')
 
-        # Throw away zero weights
+        # Throw away zero weights and flatten at the same time
         mask = ws != 0
         rs, cs, ws = rs[mask], cs[mask], ws[mask]
 
