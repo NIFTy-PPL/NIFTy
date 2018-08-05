@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -44,7 +42,6 @@ class IterationController(NiftyMetaBase()):
 
     CONVERGED, CONTINUE, ERROR = list(range(3))
 
-    @abc.abstractmethod
     def start(self, energy):
         """Starts the iteration.
 
@@ -59,7 +56,6 @@ class IterationController(NiftyMetaBase()):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def check(self, energy):
         """Checks the state of the iteration. Called after every step.
 

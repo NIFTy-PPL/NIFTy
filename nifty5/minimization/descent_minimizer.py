@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 from ..compat import *
 from ..logger import logger
 from .line_search_strong_wolfe import LineSearchStrongWolfe
@@ -108,7 +106,6 @@ class DescentMinimizer(Minimizer):
     def reset(self):
         pass
 
-    @abc.abstractmethod
     def get_descent_direction(self, energy):
         """ Calculates the next descent direction.
 

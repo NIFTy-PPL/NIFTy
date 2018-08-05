@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import abc
 
 from ..compat import *
 from ..utilities import NiftyMetaBase
@@ -10,14 +9,14 @@ class Operator(NiftyMetaBase()):
     domain, and can also provide the Jacobian.
     """
 
-    @abc.abstractproperty
+    @property
     def domain(self):
         """DomainTuple or MultiDomain : the operator's input domain
 
             The domain on which the Operator's input Field lives."""
         raise NotImplementedError
 
-    @abc.abstractproperty
+    @property
     def target(self):
         """DomainTuple or MultiDomain : the operator's output domain
 
@@ -157,3 +156,46 @@ class _OpSum(_CombinedOperator):
 
     def __call__(self, x):
         raise NotImplementedError
+
+
+class SquaredNormOperator(Operator):
+    def __init__(self, domain):
+        super(SquaredNormOperator, self).__init__()
+        self._domain = domain
+        self._target = DomainTuple.scalar_domain()
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def target(self):
+        return self._target
+
+    def __call__(self, x):
+        return Field(self._target, x.vdot(x))
+
+
+class QuadraticFormOperator(Operator):
+    def __init__(self, op):
+        from .endomorphic_operator import EndomorphicOperator
+        super(QuadraticFormOperator, self).__init__()
+        if not isinstance(op, EndomorphicOperator):
+            raise TypeError("op must be an EndomorphicOperator")
+        self._op = op
+        self._target = DomainTuple.scalar_domain()
+
+    @property
+    def domain(self):
+        return self._op.domain
+
+    @property
+    def target(self):
+        return self._target
+
+    def __call__(self, x):
+        if isinstance(x, Linearization):
+            jac = self._op(x)
+            val = Field(self._target, 0.5 * x.vdot(jac))
+            return Linearization(val, jac)
+        return Field(self._target, 0.5 * x.vdot(self._op(x)))

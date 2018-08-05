@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -31,7 +29,6 @@ class Domain(NiftyMetaBase()):
     def __init__(self):
         self._hash = None
 
-    @abc.abstractmethod
     def __repr__(self):
         raise NotImplementedError
 
@@ -84,7 +81,7 @@ class Domain(NiftyMetaBase()):
         """Returns the opposite of :meth:`.__eq__()`"""
         return not self.__eq__(x)
 
-    @abc.abstractproperty
+    @property
     def shape(self):
         """tuple of int: number of pixels along each axis
 
@@ -103,7 +100,7 @@ class Domain(NiftyMetaBase()):
         from ..dobj import local_shape
         return local_shape(self.shape)
 
-    @abc.abstractproperty
+    @property
     def size(self):
         """int: total number of pixels.
 

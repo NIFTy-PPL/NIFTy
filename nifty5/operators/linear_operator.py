@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 import numpy as np
 
 from ..compat import *
@@ -179,7 +177,7 @@ class LinearOperator(Operator):
         other = self._toOperator(other, self.domain)
         return SumOperator.make([other, self], [False, True])
 
-    @abc.abstractproperty
+    @property
     def capability(self):
         """int : the supported operation modes
 
@@ -189,7 +187,6 @@ class LinearOperator(Operator):
         """
         raise NotImplementedError
 
-    @abc.abstractmethod
     def apply(self, x, mode):
         """ Applies the Operator to a given `x`, in a specified `mode`.
 

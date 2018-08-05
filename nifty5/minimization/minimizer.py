@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -28,7 +26,6 @@ class Minimizer(NiftyMetaBase()):
     """ A base class used by all minimizers."""
 
     # MR FIXME: the docstring is partially ignored by Sphinx. Why?
-    @abc.abstractmethod
     def __call__(self, energy, preconditioner=None):
         """ Performs the minimization of the provided Energy functional.
 

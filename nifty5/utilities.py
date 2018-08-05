@@ -18,7 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
 import collections
 from itertools import product
 
@@ -178,7 +177,7 @@ class _DocStringInheritor(type):
                                                         bases, clsdict)
 
 
-class NiftyMeta(_DocStringInheritor, abc.ABCMeta):
+class NiftyMeta(_DocStringInheritor):
     pass
 
 

@@ -24,6 +24,7 @@ from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.unstructured_domain import UnstructuredDomain
 from .linear_operator import LinearOperator
+from .endomorphic_operator import EndomorphicOperator
 from ..sugar import full
 from ..field import Field
 
@@ -76,3 +77,39 @@ class SumReductionOperator(LinearOperator):
         if mode == self.TIMES:
             return Field(self._target, x.sum())
         return full(self._domain, x.local_data[()])
+
+
+class ConjugationOperator(EndomorphicOperator):
+    def __init__(self, domain):
+        super(ConjugationOperator, self).__init__()
+        self._domain = domain
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def capability(self):
+        return self._all_ops
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return x.conjugate()
+
+
+class Realizer(EndomorphicOperator):
+    def __init__(self, domain):
+        super(Realizer, self).__init__()
+        self._domain = domain
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def capability(self):
+        return self.TIMES | self.ADJOINT_TIMES
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        return x.real
