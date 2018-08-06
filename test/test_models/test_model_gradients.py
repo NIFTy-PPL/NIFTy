@@ -113,22 +113,20 @@ class Model_Tests(unittest.TestCase):
         pos = S.draw_sample()
         ift.extra.check_value_gradient_consistency(model2, pos)
 
-#     @expand(product(
-#         [ift.GLSpace(15),
-#          ift.RGSpace(64, distances=.789),
-#          ift.RGSpace([32, 32], distances=.789)],
-#         [4, 78, 23]))
-#     def testPointModel(seld, space, seed):
-#
-#         S = ift.ScalingOperator(1., space)
-#         pos = ift.MultiField.from_dict(
-#                 {'points': S.draw_sample()})
-#         alpha = 1.5
-#         q = 0.73
-#         model = ift.InverseGammaModel(pos, alpha, q, 'points')
-#         # FIXME All those cdfs and ppfs are not very accurate
-#         ift.extra.check_value_gradient_consistency(model, tol=1e-5)
-#
+    @expand(product(
+        [ift.GLSpace(15),
+         ift.RGSpace(64, distances=.789),
+         ift.RGSpace([32, 32], distances=.789)],
+        [4, 78, 23]))
+    def testPointModel(self, space, seed):
+        S = ift.ScalingOperator(1., space)
+        pos = S.draw_sample()
+        alpha = 1.5
+        q = 0.73
+        model = ift.InverseGammaModel(space, alpha, q)
+        # FIXME All those cdfs and ppfs are not very accurate
+        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2)
+
 #     @expand(product(
 #         ['Variable', 'Constant'],
 #         [ift.GLSpace(15),

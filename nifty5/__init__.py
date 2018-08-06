@@ -76,6 +76,7 @@ from .sugar import *
 from .plotting.plot import plot, plot_finish
 
 from .library.amplitude_model import AmplitudeModel
+from .library.inverse_gamma_model import InverseGammaModel
 from .library.los_response import LOSResponse
 
 #from .library.inverse_gamma_model import InverseGammaModel
