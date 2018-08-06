@@ -34,6 +34,11 @@ class Operator(NiftyMetaBase()):
         from .simple_linear_operators import ConjugationOperator
         return ConjugationOperator(self.target)(self)
 
+    @property
+    def real(self):
+        from .simple_linear_operators import Realizer
+        return Realizer(self.target)(self)
+
     def __neg__(self):
         return self.scale(-1)
 

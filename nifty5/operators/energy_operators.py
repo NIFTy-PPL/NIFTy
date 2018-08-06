@@ -26,6 +26,8 @@ from .sampling_enabler import SamplingEnabler
 from ..sugar import makeOp
 from ..linearization import Linearization
 from .. import utilities
+from ..field import Field
+from .simple_linear_operators import VdotOperator
 
 
 class EnergyOperator(Operator):
@@ -46,6 +48,10 @@ class SquaredNormOperator(EnergyOperator):
         return self._domain
 
     def apply(self, x):
+        if isinstance(x, Linearization):
+            val = Field(self._target, x.val.vdot(x.val))
+            jac = VdotOperator(2*x.val)(x.jac)
+            return Linearization(val, jac)
         return Field(self._target, x.vdot(x))
 
 
@@ -63,10 +69,11 @@ class QuadraticFormOperator(EnergyOperator):
 
     def apply(self, x):
         if isinstance(x, Linearization):
-            jac = self._op(x)
-            val = Field(self._target, 0.5 * x.vdot(jac))
+            t1 = self._op(x.val)
+            jac = VdotOperator(t1)(x.jac)
+            val = Field(self._target, 0.5*x.val.vdot(t1))
             return Linearization(val, jac)
-        return Field(self._target, 0.5 * x.vdot(self._op(x)))
+        return Field(self._target, 0.5*x.vdot(self._op(x)))
 
 
 class GaussianEnergy(EnergyOperator):
@@ -82,6 +89,10 @@ class GaussianEnergy(EnergyOperator):
         if self._domain is None:
             raise ValueError("no domain given")
         self._mean = mean
+        if covariance is None:
+            self._op = SquaredNormOperator(self._domain).scale(0.5)
+        else:
+            self._op = QuadraticFormOperator(covariance.inverse)
         self._icov = None if covariance is None else covariance.inverse
 
     def _checkEquivalence(self, newdom):
@@ -97,8 +108,7 @@ class GaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         residual = x if self._mean is None else x-self._mean
-        icovres = residual if self._icov is None else self._icov(residual)
-        res = .5*residual.vdot(icovres)
+        res = self._op(residual)
         if not isinstance(x, Linearization):
             return res
         metric = SandwichOperator.make(x.jac, self._icov)

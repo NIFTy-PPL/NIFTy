@@ -50,6 +50,15 @@ class Linearization(object):
             -self._val, -self._jac,
             None if self._metric is None else -self._metric)
 
+    def conjugate(self):
+        return Linearization(
+            self._val.conjugate(), self._jac.conjugate(),
+            None if self._metric is None else self._metric.conjugate())
+
+    @property
+    def real(self):
+        return Linearization(self._val.real, self._jac.real)
+
     def __add__(self, other):
         if isinstance(other, Linearization):
             from .operators.relaxed_sum_operator import RelaxedSumOperator

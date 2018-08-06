@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 from ..compat import *
 from ..minimization.energy import Energy
 from ..linearization import Linearization
+import numpy as np
 
 
 class EnergyAdapter(Energy):
@@ -16,7 +17,9 @@ class EnergyAdapter(Energy):
 
     def _fill_all(self):
         tmp = self._op(Linearization.make_var(self._position))
-        self._val = tmp.val.local_data[()]
+        self._val = tmp.val
+        if not np.isscalar(self._val):
+            self._val = self._val.local_data[()]
         self._grad = tmp.gradient
         self._metric = tmp.metric
 
@@ -24,6 +27,8 @@ class EnergyAdapter(Energy):
     def value(self):
         if self._val is None:
             self._val = self._op(self._position)
+            if not np.isscalar(self._val):
+                self._val = self._val.local_data[()]
         return self._val
 
     @property
