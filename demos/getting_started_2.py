@@ -99,6 +99,6 @@ if __name__ == '__main__':
     H, convergence = minimizer(H)
 
     # Plot results
-    ift.plot(sky(H.position))
-    ift.plot_finish()
-    # FIXME PLOTTING
+    ift.plot(sky(H.position), title='Reconstruction')
+    ift.plot(GR.adjoint(data), title='Data')
+    ift.plot_finish(name='getting_started_2.png', xsize=16, ysize=16)
