@@ -127,7 +127,7 @@ class PoissonianEnergy(EnergyOperator):
         x = self._op(x)
         res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
-            return res
+            return Field(self._target, res)
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
         return res.add_metric(metric)
 
@@ -145,7 +145,7 @@ class BernoulliEnergy(EnergyOperator):
         x = self._p(x)
         v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
         if not isinstance(x, Linearization):
-            return v
+            return Field(self._target, v)
         met = makeOp(1./(x.val*(1.-x.val)))
         met = SandwichOperator.make(x.jac, met)
         return v.add_metric(met)
@@ -164,7 +164,7 @@ class Hamiltonian(EnergyOperator):
 
     def apply(self, x):
         if self._ic_samp is None or not isinstance(x, Linearization):
-            return self._lh(x) + self._prior(x)
+            return self._lh(x)+self._prior(x)
         else:
             lhx = self._lh(x)
             prx = self._prior(x)
@@ -189,5 +189,6 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
         return self._h.domain
 
     def apply(self, x):
-        return (utilities.my_sum(map(lambda v: self._h(x+v), self._res_samples)) *
-                (1./len(self._res_samples)))
+        res = (utilities.my_sum(map(lambda v: self._h(x+v), self._res_samples)) *
+               (1./len(self._res_samples)))
+        return res

@@ -17,18 +17,14 @@ class EnergyAdapter(Energy):
 
     def _fill_all(self):
         tmp = self._op(Linearization.make_var(self._position))
-        self._val = tmp.val
-        if not np.isscalar(self._val):
-            self._val = self._val.local_data[()]
+        self._val = tmp.val.local_data[()]
         self._grad = tmp.gradient
         self._metric = tmp.metric
 
     @property
     def value(self):
         if self._val is None:
-            self._val = self._op(self._position)
-            if not np.isscalar(self._val):
-                self._val = self._val.local_data[()]
+            self._val = self._op(self._position).local_data[()]
         return self._val
 
     @property
