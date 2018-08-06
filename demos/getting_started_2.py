@@ -104,4 +104,4 @@ if __name__ == '__main__':
     result_sky = sky.at(H.position).value
     ift.plot(result_sky, title='Reconstruction')
     ift.plot(GR.adjoint(data), title='Data')
-    ift.plot_finish(name='getting_stated_2.png', xsize=16, ysize=16)
+    ift.plot_finish(name='getting_started_2.png', xsize=16, ysize=16)
