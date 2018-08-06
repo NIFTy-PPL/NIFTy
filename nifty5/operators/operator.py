@@ -24,6 +24,19 @@ class Operator(NiftyMetaBase()):
             The domain on which the Operator's output Field lives."""
         raise NotImplementedError
 
+    def scale(self, factor):
+        if factor == 1:
+            return self
+        from .scaling_operator import ScalingOperator
+        return ScalingOperator(factor, self.target)(self)
+
+    def conjugate(self):
+        from .simple_linear_operators import ConjugationOperator
+        return ConjugationOperator(self.target)(self)
+
+    def __neg__(self):
+        return self.scale(-1)
+
     def __matmul__(self, x):
         if not isinstance(x, Operator):
             return NotImplemented

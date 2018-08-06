@@ -47,8 +47,8 @@ class Linearization(object):
 
     def __neg__(self):
         return Linearization(
-            -self._val, self._jac*(-1),
-            None if self._metric is None else self._metric*(-1))
+            -self._val, -self._jac,
+            None if self._metric is None else -self._metric)
 
     def __add__(self, other):
         if isinstance(other, Linearization):
@@ -74,28 +74,19 @@ class Linearization(object):
     def __mul__(self, other):
         from .sugar import makeOp
         if isinstance(other, Linearization):
-            d1 = makeOp(self._val)
-            d2 = makeOp(other._val)
             return Linearization(
                 self._val*other._val,
-                d2(self._jac) + d1(other._jac))
-        if isinstance(other, (int, float, complex)):
-            # if other == 0:
-            #     return ...
-            met = None if self._metric is None else self._metric(other)
-            return Linearization(self._val*other, self._jac(other), met)
+                makeOp(other._val)(self._jac) + makeOp(self._val)(other._jac))
+        if np.isscalar(other):
+            if other == 1:
+                return self
+            met = None if self._metric is None else self._metric.scale(other)
+            return Linearization(self._val*other, self._jac.scale(other), met)
         if isinstance(other, (Field, MultiField)):
-            d2 = makeOp(other)
-            return Linearization(self._val*other, d2(self._jac))
-        raise TypeError
+            return Linearization(self._val*other, makeOp(other)(self._jac))
 
     def __rmul__(self, other):
-        from .sugar import makeOp
-        if isinstance(other, (int, float, complex)):
-            return Linearization(self._val*other, self._jac(other))
-        if isinstance(other, (Field, MultiField)):
-            d1 = makeOp(other)
-            return Linearization(self._val*other, d1(self._jac))
+        return self.__mul__(other)
 
     def vdot(self, other):
         from .domain_tuple import DomainTuple
