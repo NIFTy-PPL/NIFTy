@@ -82,7 +82,7 @@ from .plotting.plot import plot, plot_finish
 from .library.amplitude_model import make_amplitude_model
 from .library.gaussian_energy import GaussianEnergy
 from .library.los_response import LOSResponse
-from .library.point_sources import PointSources
+from .library.inverse_gamma_model import InverseGammaModel
 from .library.poissonian_energy import PoissonianEnergy
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.correlated_fields import (make_correlated_field,
