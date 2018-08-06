@@ -47,7 +47,7 @@ class InverseGammaModel(Operator):
         val = x.val.local_data if lin else x.local_data
         # MR FIXME?!
         points = np.clip(val, None, 8.2)
-        points = self.IG(points)
+        points = invgamma.ppf(norm.cdf(points), self._alpha, scale=self._q)
         points = Field.from_local_data(self._domain, points)
         if not lin:
             return points
@@ -63,11 +63,12 @@ class InverseGammaModel(Operator):
         jac = jac(x.jac)
         return Linearization(points, jac)
 
-    def IG(self, field):
-        return invgamma.ppf(norm.cdf(field), self._alpha, scale=self._q)
+    @staticmethod
+    def IG(self, field, alpha, q):
+        foo = invgamma.ppf(norm.cdf(field.local_data), alpha, scale=q)
+        return Field.from_local_data(field.domain, foo)
 
-# MR FIXME: Do we need this?
-#     def inverseIG(self, u):
-#         return Field.from_local_data(
-#             u.domain, norm.ppf(invgamma.cdf(u.local_data, self._alpha,
-#                                             scale=self._q)))
+    @staticmethod
+    def inverseIG(self, u, alpha, q):
+        res = norm.ppf(invgamma.cdf(u.local_data, alpha, scale=q))
+        return Field.from_local_data(u.domain, res)
