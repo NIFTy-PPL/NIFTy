@@ -96,8 +96,7 @@ if __name__ == '__main__':
                    for _ in range(N_samples)]
 
         KL = ift.SampledKullbachLeiblerDivergence(H, samples)
-        KL = ift.EnergyAdapter(position, KL)
-        KL = KL.make_invertible(ic_cg)
+        KL = ift.EnergyAdapter(position, KL, ic_cg)
         KL, convergence = minimizer(KL)
         position = KL.position
 

@@ -78,8 +78,7 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
-    H = ift.EnergyAdapter(position, H)
-    H = H.make_invertible(ic_cg)
+    H = ift.EnergyAdapter(position, H, ic_cg)
     # minimizer = ift.SteepestDescent(ic_newton)
     H, convergence = minimizer(H)
 

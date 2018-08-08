@@ -25,7 +25,6 @@ from .line_search_strong_wolfe import LineSearchStrongWolfe
 
 
 class L_BFGS(DescentMinimizer):
-
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
                  max_history_length=5):
         super(L_BFGS, self).__init__(controller=controller,

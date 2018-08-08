@@ -7,19 +7,35 @@ import numpy as np
 
 
 class EnergyAdapter(Energy):
-    def __init__(self, position, op):
+    def __init__(self, position, op, controller=None, preconditioner=None):
         super(EnergyAdapter, self).__init__(position)
         self._op = op
         self._val = self._grad = self._metric = None
+        self._controller = controller
+        self._preconditioner = preconditioner
 
     def at(self, position):
-        return EnergyAdapter(position, self._op)
+        return EnergyAdapter(position, self._op, self._controller,
+                             self._preconditioner)
 
     def _fill_all(self):
         tmp = self._op(Linearization.make_var(self._position))
         self._val = tmp.val.local_data[()]
         self._grad = tmp.gradient
-        self._metric = tmp.metric
+        if self._controller is not None:
+            from ..operators.linear_operator import LinearOperator
+            from ..operators.inversion_enabler import InversionEnabler
+
+            if self._preconditioner is None:
+                precond = None
+            elif isinstance(self._preconditioner, LinearOperator):
+                precond = self._preconditioner
+            elif isinstance(self._preconditioner, Energy):
+                precond = self._preconditioner.at(self._position).metric
+            self._metric = InversionEnabler(tmp._metric, self._controller,
+                                            precond)
+        else:
+            self._metric = tmp._metric
 
     @property
     def value(self):
