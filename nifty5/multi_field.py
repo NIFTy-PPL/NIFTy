@@ -199,22 +199,10 @@ class MultiField(object):
                 return True
         return False
 
-    def isEquivalentTo(self, other):
-        """Determines (as quickly as possible) whether `self`'s content is
-        identical to `other`'s content."""
-        if self is other:
-            return True
-        if not isinstance(other, MultiField):
-            return False
-        if self._domain is not other._domain:
-            return False
-        for v1, v2 in zip(self._val, other._val):
-            if not v1.isEquivalentTo(v2):
-                return False
-        return True
-
     def extract(self, subset):
         if isinstance(subset, MultiDomain):
+            if subset is self._domain:
+                return self
             return MultiField(subset,
                               tuple(self[key] for key in subset.keys()))
         else:

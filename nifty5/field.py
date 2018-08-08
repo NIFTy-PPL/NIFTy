@@ -608,17 +608,6 @@ class Field(object):
                self._domain.__str__() + \
                "\n- val         = " + repr(self._val)
 
-    def isEquivalentTo(self, other):
-        """Determines (as quickly as possible) whether `self`'s content is
-        identical to `other`'s content."""
-        if self is other:
-            return True
-        if not isinstance(other, Field):
-            return False
-        if self._domain is not other._domain:
-            return False
-        return (self._val == other._val).all()
-
     def extract(self, dom):
         if dom is not self._domain:
             raise ValueError("domain mismatch")

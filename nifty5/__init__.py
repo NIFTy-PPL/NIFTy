@@ -25,11 +25,10 @@ from .operators.dof_distributor import DOFDistributor
 from .operators.domain_distributor import DomainDistributor
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
-from .operators.fft_operator import FFTOperator
+from .operators.harmonic_operators import (
+    FFTOperator, HartleyOperator, SHTOperator, HarmonicTransformOperator,
+    HarmonicSmoothingOperator)
 from .operators.field_zero_padder import FieldZeroPadder
-from .operators.hartley_operator import HartleyOperator
-from .operators.harmonic_smoothing_operator import HarmonicSmoothingOperator
-from .operators.harmonic_transform_operator import HarmonicTransformOperator
 from .operators.inversion_enabler import InversionEnabler
 from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
