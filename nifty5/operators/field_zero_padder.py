@@ -25,9 +25,8 @@ class FieldZeroPadder(LinearOperator):
             raise ValueError("Shape mismatch")
         if any([a < b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must be larger than old shape")
-        tgt = RGSpace(new_shape, dom.distances)
         self._target = list(self._domain)
-        self._target[self._space] = tgt
+        self._target[self._space] = RGSpace(new_shape, dom.distances)
         self._target = DomainTuple.make(self._target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 

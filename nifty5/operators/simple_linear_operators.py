@@ -119,9 +119,7 @@ class GeometryRemover(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if mode == self.TIMES:
-            return x.cast_domain(self._target)
-        return x.cast_domain(self._domain)
+        return x.cast_domain(self._tgt(mode))
 
 
 class NullOperator(LinearOperator):
@@ -150,7 +148,4 @@ class NullOperator(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-
-        if mode == self.TIMES:
-            return self._nullfield(self._target)
-        return self._nullfield(self._domain)
+        return self._nullfield(self._tgt(mode))
