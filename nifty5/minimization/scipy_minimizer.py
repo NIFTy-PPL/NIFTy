@@ -26,12 +26,12 @@ from .iteration_controller import IterationController
 from .minimizer import Minimizer
 
 
-def _toNdarray(fld):
+def _toArray(fld):
     return fld.to_global_data().reshape(-1)
 
 
-def _toFlatNdarray(fld):
-    return fld.val.flatten()
+def _toArray_rw(fld):
+    return fld.to_global_data_rw().reshape(-1)
 
 
 def _toField(arr, dom):
@@ -54,12 +54,12 @@ class _MinHelper(object):
 
     def jac(self, x):
         self._update(x)
-        return _toFlatNdarray(self._energy.gradient)
+        return _toArray_rw(self._energy.gradient)
 
     def hessp(self, x, p):
         self._update(x)
         res = self._energy.metric(_toField(p, self._domain))
-        return _toFlatNdarray(res)
+        return _toArray_rw(res)
 
 
 class ScipyMinimizer(Minimizer):
@@ -95,7 +95,7 @@ class ScipyMinimizer(Minimizer):
             else:
                 raise ValueError("unrecognized bounds")
 
-        x = hlp._energy.position.val.flatten()
+        x = _toArray_rw(hlp._energy.position)
         hessp = hlp.hessp if self._need_hessp else None
         r = opt.minimize(hlp.fun, x, method=self._method, jac=hlp.jac,
                          hessp=hessp, options=self._options, bounds=bounds)
@@ -147,11 +147,11 @@ class ScipyCG(Minimizer):
                 self._op = op
 
             def __call__(self, inp):
-                return _toNdarray(self._op(_toField(inp, self._op.domain)))
+                return _toArray(self._op(_toField(inp, self._op.domain)))
 
         op = energy._A
-        b = _toNdarray(energy._b)
-        sx = _toNdarray(energy.position)
+        b = _toArray(energy._b)
+        sx = _toArray(energy.position)
         sci_op = scipy_linop(shape=(op.domain.size, op.target.size),
                              matvec=mymatvec(op))
         prec_op = None

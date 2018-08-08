@@ -47,13 +47,11 @@ class Field(object):
     """
 
     def __init__(self, domain, val):
-        self._uni = None
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
-        if not isinstance(val, dobj.data_object):
+        if type(val) is not dobj.data_object:
             if np.isscalar(val):
-                self._uni = val
-                val = dobj.uniform_full(domain.shape, val)
+                val = dobj.full(domain.shape, val)
             else:
                 raise TypeError("val must be of type dobj.data_object")
         if domain.shape != val.shape:
@@ -394,14 +392,10 @@ class Field(object):
         return self
 
     def __neg__(self):
-        if self._uni is None:
-            return Field(self._domain, -self._val)
-        return Field(self._domain, -self._uni)
+        return Field(self._domain, -self._val)
 
     def __abs__(self):
-        if self._uni is None:
-            return Field(self._domain, abs(self._val))
-        return Field(self._domain, abs(self._uni))
+        return Field(self._domain, abs(self._val))
 
     def _contraction_helper(self, op, spaces):
         if spaces is None:
@@ -617,96 +611,12 @@ class Field(object):
         return self + other
 
     def positive_tanh(self):
-        if self._uni is None:
-            return 0.5*(1.+self.tanh())
-        return Field(self._domain, 0.5*(1.+np.tanh(self._uni)))
-
-    def __add__(self, other):
-        # if other is a field, make sure that the domains match
-        if isinstance(other, Field):
-            if other._domain is not self._domain:
-                raise ValueError("domains are incompatible.")
-            if self._uni is None:
-                if other._uni is None:
-                    return Field(self._domain, self._val+other._val)
-                if other._uni == 0:
-                    return self
-                return Field(self._domain, self._val+other._uni)
-            else:
-                if self._uni == 0:
-                    return other
-                if other._uni is None:
-                    return Field(self._domain, other._val+self._uni)
-                return Field(self._domain, self._uni+other._uni)
-
-        if np.isscalar(other):
-            if self._uni is None:
-                return Field(self._domain, self._val+other)
-            return Field(self._domain, self._uni+other)
-        return NotImplemented
-
-    def __radd__(self, other):
-        return self.__add__(other)
-
-    def __sub__(self, other):
-        # if other is a field, make sure that the domains match
-        if isinstance(other, Field):
-            if other._domain is not self._domain:
-                raise ValueError("domains are incompatible.")
-            if self._uni is None:
-                if other._uni is None:
-                    return Field(self._domain, self._val-other._val)
-                if other._uni == 0:
-                    return self
-                return Field(self._domain, self._val-other._uni)
-            else:
-                if self._uni == 0:
-                    return -other
-                if other._uni is None:
-                    return Field(self._domain, self._uni-other._val)
-                return Field(self._domain, self._uni-other._uni)
-
-        if np.isscalar(other):
-            if self._uni is None:
-                return Field(self._domain, self._val-other)
-            return Field(self._domain, self._uni-other)
-        return NotImplemented
-
-    def __mul__(self, other):
-        # if other is a field, make sure that the domains match
-        if isinstance(other, Field):
-            if other._domain is not self._domain:
-                raise ValueError("domains are incompatible.")
-            if self._uni is None:
-                if other._uni is None:
-                    return Field(self._domain, self._val*other._val)
-                if other._uni == 1:
-                    return self
-                if other._uni == 0:
-                    return other
-                return Field(self._domain, self._val*other._uni)
-            else:
-                if self._uni == 1:
-                    return other
-                if self._uni == 0:
-                    return self
-                if other._uni is None:
-                    return Field(self._domain, other._val*self._uni)
-                return Field(self._domain, self._uni*other._uni)
-
-        if np.isscalar(other):
-            if self._uni is None:
-                if other == 1:
-                    return self
-                if other == 0:
-                    return Field(self._domain, other)
-                return Field(self._domain, self._val*other)
-            return Field(self._domain, self._uni*other)
-        return NotImplemented
+        return 0.5*(1.+self.tanh())
 
 
-for op in ["__rsub__",
-           "__rmul__",
+for op in ["__add__", "__radd__",
+           "__sub__", "__rsub__",
+           "__mul__", "__rmul__",
            "__div__", "__rdiv__",
            "__truediv__", "__rtruediv__",
            "__floordiv__", "__rfloordiv__",
@@ -739,11 +649,7 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
 for f in ["sqrt", "exp", "log", "tanh"]:
     def func(f):
         def func2(self):
-            if self._uni is None:
-                fu = getattr(dobj, f)
-                return Field(domain=self._domain, val=fu(self.val))
-            else:
-                fu = getattr(np, f)
-                return Field(domain=self._domain, val=fu(self._uni))
+            fu = getattr(dobj, f)
+            return Field(domain=self._domain, val=fu(self.val))
         return func2
     setattr(Field, f, func(f))

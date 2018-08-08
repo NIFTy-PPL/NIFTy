@@ -102,10 +102,10 @@ class Linearization(object):
         from .operators.simple_linear_operators import VdotOperator
         if isinstance(other, (Field, MultiField)):
             return Linearization(
-                Field(DomainTuple.scalar_domain(),self._val.vdot(other)),
+                Field(DomainTuple.scalar_domain(), self._val.vdot(other)),
                 VdotOperator(other)(self._jac))
         return Linearization(
-            Field(DomainTuple.scalar_domain(),self._val.vdot(other._val)),
+            Field(DomainTuple.scalar_domain(), self._val.vdot(other._val)),
             VdotOperator(self._val)(other._jac) +
             VdotOperator(other._val)(self._jac))
 
