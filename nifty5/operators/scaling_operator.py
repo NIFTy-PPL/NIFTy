@@ -83,10 +83,6 @@ class ScalingOperator(EndomorphicOperator):
         return ScalingOperator(fct, self._domain)
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
     def capability(self):
         return self._all_ops
 

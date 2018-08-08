@@ -59,11 +59,3 @@ class MaskOperator(LinearOperator):
     @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target

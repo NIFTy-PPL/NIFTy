@@ -38,7 +38,7 @@ class EndomorphicOperator(LinearOperator):
 
         Returns `self.domain`, because this is also the target domain
         for endomorphic operators."""
-        return self.domain
+        return self._domain
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         """Generate a zero-mean sample

@@ -109,6 +109,7 @@ class MultiDomain(object):
     @staticmethod
     def union(inp):
         res = {}
+        # FIXME speed up!
         for dom in inp:
             for key, subdom in zip(dom._keys, dom._domains):
                 if key in res:

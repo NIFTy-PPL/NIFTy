@@ -60,14 +60,6 @@ class QHTOperator(LinearOperator):
             self._target[self._space].get_default_codomain()
         self._domain = DomainTuple.make(self._domain)
 
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
     def apply(self, x, mode):
         self._check_input(x, mode)
         dom = self._domain[self._space]

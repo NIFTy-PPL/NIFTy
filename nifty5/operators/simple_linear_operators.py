@@ -35,15 +35,8 @@ class VdotOperator(LinearOperator):
     def __init__(self, field):
         super(VdotOperator, self).__init__()
         self._field = field
+        self._domain = field.domain
         self._target = DomainTuple.scalar_domain()
-
-    @property
-    def domain(self):
-        return self._field.domain
-
-    @property
-    def target(self):
-        return self._target
 
     @property
     def capability(self):
@@ -63,14 +56,6 @@ class SumReductionOperator(LinearOperator):
         self._target = DomainTuple.scalar_domain()
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
 
@@ -87,10 +72,6 @@ class ConjugationOperator(EndomorphicOperator):
         self._domain = domain
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
     def capability(self):
         return self._all_ops
 
@@ -103,10 +84,6 @@ class Realizer(EndomorphicOperator):
     def __init__(self, domain):
         super(Realizer, self).__init__()
         self._domain = domain
-
-    @property
-    def domain(self):
-        return self._domain
 
     @property
     def capability(self):
@@ -122,14 +99,6 @@ class FieldAdapter(LinearOperator):
         self._domain = MultiDomain.make(dom)
         self._name = name_dom
         self._target = dom[name_dom]
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
 
     @property
     def capability(self):
@@ -166,14 +135,6 @@ class GeometryRemover(LinearOperator):
         self._domain = DomainTuple.make(domain)
         target_list = [UnstructuredDomain(dom.shape) for dom in self._domain]
         self._target = DomainTuple.make(target_list)
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
 
     @property
     def capability(self):
@@ -215,14 +176,6 @@ class NullOperator(LinearOperator):
         if mode == self.TIMES:
             return self._nullfield(self._target)
         return self._nullfield(self._domain)
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
 
     @property
     def capability(self):

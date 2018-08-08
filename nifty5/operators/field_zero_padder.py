@@ -32,14 +32,6 @@ class FieldZeroPadder(LinearOperator):
         self._target = DomainTuple.make(self._target)
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
 

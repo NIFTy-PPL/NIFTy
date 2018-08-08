@@ -144,13 +144,5 @@ class DOFDistributor(LinearOperator):
         return self._times(x) if mode == self.TIMES else self._adjoint_times(x)
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES

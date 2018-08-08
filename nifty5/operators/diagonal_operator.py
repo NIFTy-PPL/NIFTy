@@ -151,10 +151,6 @@ class DiagonalOperator(EndomorphicOperator):
         return Field.from_local_data(x.domain, x.local_data/xdiag)
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
     def capability(self):
         return self._all_ops
 

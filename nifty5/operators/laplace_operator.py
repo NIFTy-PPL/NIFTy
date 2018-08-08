@@ -69,10 +69,6 @@ class LaplaceOperator(EndomorphicOperator):
         self._dposc *= 0.5
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
 

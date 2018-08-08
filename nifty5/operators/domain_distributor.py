@@ -36,14 +36,6 @@ class DomainDistributor(LinearOperator):
                         if i in self._spaces]
         self._domain = DomainTuple.make(self._domain)
 
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:

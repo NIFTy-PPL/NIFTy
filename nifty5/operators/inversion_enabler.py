@@ -55,10 +55,7 @@ class InversionEnabler(EndomorphicOperator):
         self._op = op
         self._ic = iteration_controller
         self._approximation = approximation
-
-    @property
-    def domain(self):
-        return self._op.domain
+        self._domain = op.domain
 
     @property
     def capability(self):

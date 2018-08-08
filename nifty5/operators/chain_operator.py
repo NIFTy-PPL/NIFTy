@@ -36,6 +36,8 @@ class ChainOperator(LinearOperator):
         self._capability = self._all_ops
         for op in ops:
             self._capability &= op.capability
+        self._domain = self._ops[-1].domain
+        self._target = self._ops[0].target
 
     @staticmethod
     def simplify(ops):
@@ -116,14 +118,6 @@ class ChainOperator(LinearOperator):
         if len(ops) == 1:
             return ops[0]
         return ChainOperator(ops, _callingfrommake=True)
-
-    @property
-    def domain(self):
-        return self._ops[-1].domain
-
-    @property
-    def target(self):
-        return self._ops[0].target
 
     def _flip_modes(self, trafo):
         ADJ = self.ADJOINT_BIT

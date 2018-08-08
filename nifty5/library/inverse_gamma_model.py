@@ -30,17 +30,9 @@ from ..sugar import makeOp
 
 class InverseGammaModel(Operator):
     def __init__(self, domain, alpha, q):
-        self._domain = domain
+        self._domain = self._target = domain
         self._alpha = alpha
         self._q = q
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._domain
 
     def apply(self, x):
         lin = isinstance(x, Linearization)

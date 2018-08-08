@@ -160,14 +160,6 @@ class SumOperator(LinearOperator):
         return SumOperator(ops, neg, dom, tgt, _callingfrommake=True)
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
     def adjoint(self):
         return self.make([op.adjoint for op in self._ops], self._neg)
 

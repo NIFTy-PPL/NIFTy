@@ -46,10 +46,6 @@ class BlockDiagonalOperator(EndomorphicOperator):
                 self._cap &= op.capability
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
     def capability(self):
         return self._cap
 

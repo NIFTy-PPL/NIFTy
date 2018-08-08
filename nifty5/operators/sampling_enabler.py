@@ -56,6 +56,7 @@ class SamplingEnabler(EndomorphicOperator):
         self._prior = prior
         self._ic = iteration_controller
         self._approximation = approximation
+        self._domain = self._op.domain
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
@@ -75,10 +76,6 @@ class SamplingEnabler(EndomorphicOperator):
             else:
                 energy, convergence = inverter(energy)
             return energy.position
-
-    @property
-    def domain(self):
-        return self._op.domain
 
     @property
     def capability(self):

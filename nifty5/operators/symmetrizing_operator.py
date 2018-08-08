@@ -35,10 +35,6 @@ class SymmetrizingOperator(EndomorphicOperator):
         if not (isinstance(dom, LogRGSpace) and not dom.harmonic):
             raise TypeError("nonharmonic LogRGSpace needed")
 
-    @property
-    def domain(self):
-        return self._domain
-
     def apply(self, x, mode):
         self._check_input(x, mode)
         tmp = x.val.copy()

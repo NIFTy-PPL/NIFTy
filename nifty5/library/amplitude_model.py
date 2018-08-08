@@ -133,14 +133,6 @@ class AmplitudeModel(Operator):
         self._smooth_op = sym(qht(ceps))
         self._keys = tuple(keys)
 
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
     def apply(self, x):
         smooth_spec = self._smooth_op(x[self._keys[0]])
         phi = x[self._keys[1]] + self._norm_phi_mean

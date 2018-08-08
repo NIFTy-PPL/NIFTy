@@ -50,14 +50,6 @@ class CorrelatedField(Operator):
             (self._amplitude_model.domain,
              MultiDomain.make({"xi": self._h_space})))
 
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._ht.target
-
     def apply(self, x):
         A = self._power_distributor(self._amplitude_model(x))
         correlated_field_h = A * x["xi"]

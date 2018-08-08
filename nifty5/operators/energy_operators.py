@@ -33,19 +33,11 @@ from .simple_linear_operators import VdotOperator
 class EnergyOperator(Operator):
     _target = DomainTuple.scalar_domain()
 
-    @property
-    def target(self):
-        return EnergyOperator._target
-
 
 class SquaredNormOperator(EnergyOperator):
     def __init__(self, domain):
         super(SquaredNormOperator, self).__init__()
         self._domain = domain
-
-    @property
-    def domain(self):
-        return self._domain
 
     def apply(self, x):
         if isinstance(x, Linearization):
@@ -62,10 +54,7 @@ class QuadraticFormOperator(EnergyOperator):
         if not isinstance(op, EndomorphicOperator):
             raise TypeError("op must be an EndomorphicOperator")
         self._op = op
-
-    @property
-    def domain(self):
-        return self._op.domain
+        self._domain = op.domain
 
     def apply(self, x):
         if isinstance(x, Linearization):
@@ -102,10 +91,6 @@ class GaussianEnergy(EnergyOperator):
             if self._domain is not newdom:
                 raise ValueError("domain mismatch")
 
-    @property
-    def domain(self):
-        return self._domain
-
     def apply(self, x):
         residual = x if self._mean is None else x-self._mean
         res = self._op(residual)
@@ -118,10 +103,7 @@ class GaussianEnergy(EnergyOperator):
 class PoissonianEnergy(EnergyOperator):
     def __init__(self, op, d):
         self._op, self._d = op, d
-
-    @property
-    def domain(self):
-        return self._op.domain
+        self._domain = d.domain
 
     def apply(self, x):
         x = self._op(x)
@@ -136,10 +118,7 @@ class BernoulliEnergy(EnergyOperator):
     def __init__(self, p, d):
         self._p = p
         self._d = d
-
-    @property
-    def domain(self):
-        return self._p.domain
+        self._domain = d.domain
 
     def apply(self, x):
         x = self._p(x)
@@ -157,10 +136,7 @@ class Hamiltonian(EnergyOperator):
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain)
         self._ic_samp = ic_samp
-
-    @property
-    def domain(self):
-        return self._lh.domain
+        self._domain = lh.domain
 
     def apply(self, x):
         if self._ic_samp is None or not isinstance(x, Linearization):
@@ -182,11 +158,8 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
         """
         super(SampledKullbachLeiblerDivergence, self).__init__()
         self._h = h
+        self._domain = h.domain
         self._res_samples = tuple(res_samples)
-
-    @property
-    def domain(self):
-        return self._h.domain
 
     def apply(self, x):
         res = (utilities.my_sum(map(lambda v: self._h(x+v), self._res_samples)) *

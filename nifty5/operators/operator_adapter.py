@@ -50,14 +50,8 @@ class OperatorAdapter(LinearOperator):
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
             raise ValueError("invalid operator transformation")
-
-    @property
-    def domain(self):
-        return self._op._dom(1 << self._trafo)
-
-    @property
-    def target(self):
-        return self._op._tgt(1 << self._trafo)
+        self._domain = self._op._dom(1 << self._trafo)
+        self._target = self._op._tgt(1 << self._trafo)
 
     @property
     def capability(self):

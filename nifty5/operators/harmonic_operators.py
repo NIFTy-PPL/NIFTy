@@ -128,14 +128,6 @@ class FFTOperator(LinearOperator):
         return Tval if fct == 1 else Tval*fct
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
     def capability(self):
         return self._all_ops
 
@@ -246,14 +238,6 @@ class HartleyOperator(LinearOperator):
         else:
             fct = self._target[self._space].scalar_dvol
         return Tval if fct == 1 else Tval*fct
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
 
     @property
     def capability(self):
@@ -368,14 +352,6 @@ class SHTOperator(LinearOperator):
         return Field(tdom, odat)
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
     def capability(self):
         return self.TIMES | self.ADJOINT_TIMES
 
@@ -421,18 +397,12 @@ class HarmonicTransformOperator(LinearOperator):
             self._op = HartleyOperator(domain, target, space)
         else:
             self._op = SHTOperator(domain, target, space)
+        self._domain = self._op.domain
+        self._target = self._op.target
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         return self._op.apply(x, mode)
-
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def target(self):
-        return self._op.target
 
     @property
     def capability(self):

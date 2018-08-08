@@ -84,14 +84,6 @@ class ExpTransform(LinearOperator):
         self._domain[self._space] = log_space
         self._domain = DomainTuple.make(self._domain)
 
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
     def apply(self, x, mode):
         self._check_input(x, mode)
         x = x.val

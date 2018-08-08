@@ -47,14 +47,6 @@ class RelaxedSumOperator(LinearOperator):
         #        self._ops += [op]
 
     @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
     def adjoint(self):
         return RelaxedSumOperator([op.adjoint for op in self._ops])
 

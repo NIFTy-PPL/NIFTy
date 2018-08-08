@@ -38,6 +38,7 @@ class SandwichOperator(EndomorphicOperator):
         self._bun = bun
         self._cheese = cheese
         self._op = op
+        self._domain = op.domain
 
     @staticmethod
     def make(bun, cheese=None):
@@ -64,10 +65,6 @@ class SandwichOperator(EndomorphicOperator):
         if isinstance(op, (ScalingOperator, DiagonalOperator)):
             return op
         return SandwichOperator(bun, cheese, op, _callingfrommake=True)
-
-    @property
-    def domain(self):
-        return self._op.domain
 
     @property
     def capability(self):
