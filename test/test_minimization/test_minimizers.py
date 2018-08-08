@@ -99,14 +99,11 @@ class Test_Minimizers(unittest.TestCase):
                 class RBCurv(ift.EndomorphicOperator):
                     def __init__(self, loc):
                         self._loc = loc.to_global_data_rw()
+                        self._capability = self.TIMES
 
                     @property
                     def domain(self):
                         return space
-
-                    @property
-                    def capability(self):
-                        return self.TIMES
 
                     def apply(self, x, mode):
                         self._check_input(x, mode)

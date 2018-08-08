@@ -36,7 +36,6 @@ class EnergyOperator(Operator):
 
 class SquaredNormOperator(EnergyOperator):
     def __init__(self, domain):
-        super(SquaredNormOperator, self).__init__()
         self._domain = domain
 
     def apply(self, x):
@@ -50,7 +49,6 @@ class SquaredNormOperator(EnergyOperator):
 class QuadraticFormOperator(EnergyOperator):
     def __init__(self, op):
         from .endomorphic_operator import EndomorphicOperator
-        super(QuadraticFormOperator, self).__init__()
         if not isinstance(op, EndomorphicOperator):
             raise TypeError("op must be an EndomorphicOperator")
         self._op = op
@@ -67,7 +65,6 @@ class QuadraticFormOperator(EnergyOperator):
 
 class GaussianEnergy(EnergyOperator):
     def __init__(self, mean=None, covariance=None, domain=None):
-        super(GaussianEnergy, self).__init__()
         self._domain = None
         if mean is not None:
             self._checkEquivalence(mean.domain)
@@ -132,7 +129,6 @@ class BernoulliEnergy(EnergyOperator):
 
 class Hamiltonian(EnergyOperator):
     def __init__(self, lh, ic_samp=None):
-        super(Hamiltonian, self).__init__()
         self._lh = lh
         self._prior = GaussianEnergy(domain=lh.domain)
         self._ic_samp = ic_samp
@@ -156,7 +152,6 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
         h: Hamiltonian
         N: Number of samples to be used
         """
-        super(SampledKullbachLeiblerDivergence, self).__init__()
         self._h = h
         self._domain = h.domain
         self._res_samples = tuple(res_samples)

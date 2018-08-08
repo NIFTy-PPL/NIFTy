@@ -59,6 +59,7 @@ class QHTOperator(LinearOperator):
         self._domain[self._space] = \
             self._target[self._space].get_default_codomain()
         self._domain = DomainTuple.make(self._domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -76,7 +77,3 @@ class QHTOperator(LinearOperator):
             if i == ax:
                 x = dobj.redistribute(x, dist=ax)
         return Field(self._tgt(mode), val=x)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES

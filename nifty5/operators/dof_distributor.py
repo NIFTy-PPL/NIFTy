@@ -54,8 +54,6 @@ class DOFDistributor(LinearOperator):
     """
 
     def __init__(self, dofdex, target=None, space=None):
-        super(DOFDistributor, self).__init__()
-
         if target is None:
             target = dofdex.domain
         self._target = DomainTuple.make(target)
@@ -98,6 +96,7 @@ class DOFDistributor(LinearOperator):
         dom = list(self._target)
         dom[self._space] = other_space
         self._domain = DomainTuple.make(dom)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
         if dobj.default_distaxis() in self._domain.axes[self._space]:
             dofdex = dobj.local_data(dofdex)
@@ -142,7 +141,3 @@ class DOFDistributor(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         return self._times(x) if mode == self.TIMES else self._adjoint_times(x)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES

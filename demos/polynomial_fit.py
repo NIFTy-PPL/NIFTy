@@ -38,13 +38,13 @@ class PolynomialResponse(ift.LinearOperator):
     """
 
     def __init__(self, domain, sampling_points):
-        super(PolynomialResponse, self).__init__()
         if not (isinstance(domain, ift.UnstructuredDomain)
                 and isinstance(x, np.ndarray)):
             raise TypeError
         self._domain = ift.DomainTuple.make(domain)
         tgt = ift.UnstructuredDomain(sampling_points.shape)
         self._target = ift.DomainTuple.make(tgt)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
         sh = (self.target.size, domain.size)
         self._mat = np.empty(sh)
@@ -61,10 +61,6 @@ class PolynomialResponse(ift.LinearOperator):
             # FIXME Can this be optimized?
             out = self._mat.conj().T.dot(val)
         return ift.from_global_data(self._tgt(mode), out)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
 
 
 # Generate some mock data

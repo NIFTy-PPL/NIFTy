@@ -33,6 +33,7 @@ from ..utilities import infer_space, special_add_at
 class ExpTransform(LinearOperator):
     def __init__(self, target, dof, space=0):
         self._target = DomainTuple.make(target)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
         self._space = infer_space(self._target, space)
         tgt = self._target[self._space]
         if not ((isinstance(tgt, RGSpace) and tgt.harmonic) or
@@ -115,7 +116,3 @@ class ExpTransform(LinearOperator):
             if d == ax:
                 x = dobj.redistribute(x, dist=ax)
         return Field(self._tgt(mode), val=x)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES

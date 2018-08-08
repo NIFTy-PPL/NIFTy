@@ -51,15 +51,11 @@ class InversionEnabler(EndomorphicOperator):
     """
 
     def __init__(self, op, iteration_controller, approximation=None):
-        super(InversionEnabler, self).__init__()
         self._op = op
         self._ic = iteration_controller
         self._approximation = approximation
         self._domain = op.domain
-
-    @property
-    def capability(self):
-        return self._addInverse[self._op.capability]
+        self._capability = self._addInverse[self._op.capability]
 
     def apply(self, x, mode):
         self._check_mode(mode)

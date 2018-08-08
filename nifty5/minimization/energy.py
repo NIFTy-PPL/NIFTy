@@ -47,7 +47,6 @@ class Energy(NiftyMetaBase()):
     """
 
     def __init__(self, position):
-        super(Energy, self).__init__()
         self._position = position
         self._gradnorm = None
 

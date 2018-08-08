@@ -32,7 +32,6 @@ class RelaxedSumOperator(LinearOperator):
     """Class representing sums of operators with compatible domains."""
 
     def __init__(self, ops):
-        super(RelaxedSumOperator, self).__init__()
         self._ops = ops
         self._domain = domain_union([op.domain for op in ops])
         self._target = domain_union([op.target for op in ops])
@@ -49,10 +48,6 @@ class RelaxedSumOperator(LinearOperator):
     @property
     def adjoint(self):
         return RelaxedSumOperator([op.adjoint for op in self._ops])
-
-    @property
-    def capability(self):
-        return self._capability
 
     def apply(self, x, mode):
         self._check_input(x, mode)

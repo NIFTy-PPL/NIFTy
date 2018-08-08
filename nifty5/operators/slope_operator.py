@@ -37,6 +37,7 @@ class SlopeOperator(LinearOperator):
 
         self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.make(target)
+        self._capability =  self.TIMES | self.ADJOINT_TIMES
 
         if self.domain[0].shape != (len(self.target[0].shape) + 1,):
             raise AssertionError("Shape mismatch!")
@@ -74,7 +75,3 @@ class SlopeOperator(LinearOperator):
         for i in range(self.ndim):
             res[i] = np.sum(self.pos[i] * xglob) * self._sigmas[i]
         return Field.from_global_data(self.domain, res)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES

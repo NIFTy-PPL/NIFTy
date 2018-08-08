@@ -34,11 +34,11 @@ class SandwichOperator(EndomorphicOperator):
     def __init__(self, bun, cheese, op, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
-        super(SandwichOperator, self).__init__()
         self._bun = bun
         self._cheese = cheese
         self._op = op
         self._domain = op.domain
+        self._capability = op._capability
 
     @staticmethod
     def make(bun, cheese=None):
@@ -65,10 +65,6 @@ class SandwichOperator(EndomorphicOperator):
         if isinstance(op, (ScalingOperator, DiagonalOperator)):
             return op
         return SandwichOperator(bun, cheese, op, _callingfrommake=True)
-
-    @property
-    def capability(self):
-        return self._op.capability
 
     def apply(self, x, mode):
         return self._op.apply(x, mode)

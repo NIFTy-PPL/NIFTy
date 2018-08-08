@@ -25,10 +25,6 @@ from ..utilities import NiftyMetaBase
 class Domain(NiftyMetaBase()):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
-
-    def __init__(self):
-        self._hash = None
-
     def __repr__(self):
         raise NotImplementedError
 
@@ -40,7 +36,9 @@ class Domain(NiftyMetaBase()):
         Only members that are explicitly added to
         :attr:`._needed_for_hash` will be used for hashing.
         """
-        if self._hash is None:
+        try:
+            return self._hash
+        except AttributeError:
             h = 0
             for key in self._needed_for_hash:
                 h ^= hash(vars(self)[key])

@@ -57,10 +57,9 @@ class FFTOperator(LinearOperator):
     """
 
     def __init__(self, domain, target=None, space=None):
-        super(FFTOperator, self).__init__()
-
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
+        self._capability = self._all_ops
         self._space = utilities.infer_space(self._domain, space)
 
         adom = self._domain[self._space]
@@ -127,10 +126,6 @@ class FFTOperator(LinearOperator):
             fct *= self._target[self._space].scalar_dvol
         return Tval if fct == 1 else Tval*fct
 
-    @property
-    def capability(self):
-        return self._all_ops
-
 
 class HartleyOperator(LinearOperator):
     """Transforms between a pair of position and harmonic RGSpaces.
@@ -162,10 +157,9 @@ class HartleyOperator(LinearOperator):
     """
 
     def __init__(self, domain, target=None, space=None):
-        super(HartleyOperator, self).__init__()
-
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
+        self._capability = self._all_ops
         self._space = utilities.infer_space(self._domain, space)
 
         adom = self._domain[self._space]
@@ -239,10 +233,6 @@ class HartleyOperator(LinearOperator):
             fct = self._target[self._space].scalar_dvol
         return Tval if fct == 1 else Tval*fct
 
-    @property
-    def capability(self):
-        return self._all_ops
-
 
 class SHTOperator(LinearOperator):
     """Transforms between a harmonic domain on the sphere and a position
@@ -272,10 +262,9 @@ class SHTOperator(LinearOperator):
     """
 
     def __init__(self, domain, target=None, space=None):
-        super(SHTOperator, self).__init__()
-
         # Initialize domain and target
         self._domain = DomainTuple.make(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
         self._space = utilities.infer_space(self._domain, space)
 
         hspc = self._domain[self._space]
@@ -351,10 +340,6 @@ class SHTOperator(LinearOperator):
             odat = dobj.redistribute(odat, dist=dobj.distaxis(x.val))
         return Field(tdom, odat)
 
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
-
 
 class HarmonicTransformOperator(LinearOperator):
     """Transforms between a harmonic domain and a position domain counterpart.
@@ -384,8 +369,6 @@ class HarmonicTransformOperator(LinearOperator):
     """
 
     def __init__(self, domain, target=None, space=None):
-        super(HarmonicTransformOperator, self).__init__()
-
         domain = DomainTuple.make(domain)
         space = utilities.infer_space(domain, space)
 
@@ -399,14 +382,11 @@ class HarmonicTransformOperator(LinearOperator):
             self._op = SHTOperator(domain, target, space)
         self._domain = self._op.domain
         self._target = self._op.target
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         return self._op.apply(x, mode)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
 
 
 def HarmonicSmoothingOperator(domain, sigma, space=None):

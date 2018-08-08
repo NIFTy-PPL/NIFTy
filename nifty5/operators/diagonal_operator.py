@@ -57,8 +57,6 @@ class DiagonalOperator(EndomorphicOperator):
     """
 
     def __init__(self, diagonal, domain=None, spaces=None):
-        super(DiagonalOperator, self).__init__()
-
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
         if domain is None:
@@ -99,6 +97,7 @@ class DiagonalOperator(EndomorphicOperator):
     def _fill_rest(self):
         self._ldiag.flags.writeable = False
         self._complex = utilities.iscomplextype(self._ldiag.dtype)
+        self._capability = self._all_ops
         if not self._complex:
             lmin = self._ldiag.min() if self._ldiag.size > 0 else 1.
             self._diagmin = dobj.np_allreduce_min(np.array(lmin))[()]
@@ -149,10 +148,6 @@ class DiagonalOperator(EndomorphicOperator):
         if mode & 3:
             return Field.from_local_data(x.domain, x.local_data*xdiag)
         return Field.from_local_data(x.domain, x.local_data/xdiag)
-
-    @property
-    def capability(self):
-        return self._all_ops
 
     def _flip_modes(self, trafo):
         xdiag = self._ldiag

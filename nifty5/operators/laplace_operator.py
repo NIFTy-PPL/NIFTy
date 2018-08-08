@@ -47,8 +47,8 @@ class LaplaceOperator(EndomorphicOperator):
     """
 
     def __init__(self, domain, space=None, logarithmic=True):
-        super(LaplaceOperator, self).__init__()
         self._domain = DomainTuple.make(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
         self._space = infer_space(self._domain, space)
 
         if not isinstance(self._domain[self._space], PowerSpace):
@@ -67,10 +67,6 @@ class LaplaceOperator(EndomorphicOperator):
         self._dposc[-1] = 0.
         self._dposc[1:] += self._dpos
         self._dposc *= 0.5
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
 
     def _times(self, x):
         axes = x.domain.axes[self._space]

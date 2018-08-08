@@ -31,7 +31,6 @@ class SumOperator(LinearOperator):
     def __init__(self, ops, neg, dom, tgt, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
-        super(SumOperator, self).__init__()
         self._ops = ops
         self._neg = neg
         self._domain = dom
@@ -162,10 +161,6 @@ class SumOperator(LinearOperator):
     @property
     def adjoint(self):
         return self.make([op.adjoint for op in self._ops], self._neg)
-
-    @property
-    def capability(self):
-        return self._capability
 
     def apply(self, x, mode):
         self._check_mode(mode)

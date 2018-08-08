@@ -30,6 +30,7 @@ from .. import utilities
 class SymmetrizingOperator(EndomorphicOperator):
     def __init__(self, domain, space=0):
         self._domain = DomainTuple.make(domain)
+        self._capability =  self.TIMES | self.ADJOINT_TIMES
         self._space = utilities.infer_space(self._domain, space)
         dom = self._domain[self._space]
         if not (isinstance(dom, LogRGSpace) and not dom.harmonic):
@@ -48,7 +49,3 @@ class SymmetrizingOperator(EndomorphicOperator):
             if i == ax:
                 tmp = dobj.redistribute(tmp, dist=ax)
         return Field(self.target, val=tmp)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES

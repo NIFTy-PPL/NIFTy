@@ -145,7 +145,7 @@ class LinearOperator(Operator):
         :attr:`INVERSE_TIMES`, and :attr:`ADJOINT_INVERSE_TIMES`,
         joined together by the "|" operator.
         """
-        raise NotImplementedError
+        return self._capability
 
     def apply(self, x, mode):
         """ Applies the Operator to a given `x`, in a specified `mode`.

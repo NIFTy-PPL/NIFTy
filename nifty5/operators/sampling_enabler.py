@@ -50,13 +50,13 @@ class SamplingEnabler(EndomorphicOperator):
 
     def __init__(self, likelihood, prior, iteration_controller,
                  approximation=None):
-        super(SamplingEnabler, self).__init__()
         self._op = likelihood + prior
         self._likelihood = likelihood
         self._prior = prior
         self._ic = iteration_controller
         self._approximation = approximation
         self._domain = self._op.domain
+        self._capability = self._op.capability
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         try:
@@ -76,10 +76,6 @@ class SamplingEnabler(EndomorphicOperator):
             else:
                 energy, convergence = inverter(energy)
             return energy.position
-
-    @property
-    def capability(self):
-        return self._op.capability
 
     def apply(self, x, mode):
         return self._op.apply(x, mode)

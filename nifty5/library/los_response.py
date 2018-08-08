@@ -134,9 +134,8 @@ class LOSResponse(LinearOperator):
     """
 
     def __init__(self, domain, starts, ends, sigmas_low=None, sigmas_up=None):
-
-        super(LOSResponse, self).__init__()
         self._domain = DomainTuple.make(domain)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
         if ((not isinstance(self.domain[0], RGSpace)) or
                 (len(self._domain) != 1)):
@@ -220,10 +219,6 @@ class LOSResponse(LinearOperator):
                        shape=(nlos, np.prod(self._local_shape))))
 
         self._target = DomainTuple.make(UnstructuredDomain(nlos))
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)

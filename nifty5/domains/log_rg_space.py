@@ -32,8 +32,6 @@ class LogRGSpace(StructuredDomain):
     _needed_for_hash = ['_shape', '_bindistances', '_t_0', '_harmonic']
 
     def __init__(self, shape, bindistances, t_0, harmonic=False):
-        super(LogRGSpace, self).__init__()
-
         self._harmonic = bool(harmonic)
 
         if np.isscalar(shape):

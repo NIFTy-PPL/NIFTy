@@ -48,7 +48,6 @@ class LMSpace(StructuredDomain):
     _needed_for_hash = ["_lmax", "_mmax"]
 
     def __init__(self, lmax, mmax=None):
-        super(LMSpace, self).__init__()
         self._lmax = np.int(lmax)
         if self._lmax < 0:
             raise ValueError("lmax must be >=0.")

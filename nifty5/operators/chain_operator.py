@@ -31,7 +31,6 @@ class ChainOperator(LinearOperator):
     def __init__(self, ops, _callingfrommake=False):
         if not _callingfrommake:
             raise NotImplementedError
-        super(ChainOperator, self).__init__()
         self._ops = ops
         self._capability = self._all_ops
         for op in ops:
@@ -131,10 +130,6 @@ class ChainOperator(LinearOperator):
         if trafo == ADJ | INV:
             return self.make([op._flip_modes(trafo) for op in self._ops])
         raise ValueError("invalid operator transformation")
-
-    @property
-    def capability(self):
-        return self._capability
 
     def apply(self, x, mode):
         self._check_mode(mode)

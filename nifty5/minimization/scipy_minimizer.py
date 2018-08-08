@@ -74,7 +74,6 @@ class ScipyMinimizer(Minimizer):
     """
 
     def __init__(self, method, options, need_hessp, bounds):
-        super(ScipyMinimizer, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
         self._method = method
@@ -130,7 +129,6 @@ def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
 
 class ScipyCG(Minimizer):
     def __init__(self, tol, maxiter):
-        super(ScipyCG, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
         self._tol = tol

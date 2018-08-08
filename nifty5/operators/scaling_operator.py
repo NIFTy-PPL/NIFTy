@@ -54,12 +54,12 @@ class ScalingOperator(EndomorphicOperator):
 
     def __init__(self, factor, domain):
         from ..sugar import makeDomain
-        super(ScalingOperator, self).__init__()
 
         if not np.isscalar(factor):
             raise TypeError("Scalar required")
         self._factor = factor
         self._domain = makeDomain(domain)
+        self._capability = self._all_ops
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -81,10 +81,6 @@ class ScalingOperator(EndomorphicOperator):
         if trafo & self.INVERSE_BIT:
             fct = 1./fct
         return ScalingOperator(fct, self._domain)
-
-    @property
-    def capability(self):
-        return self._all_ops
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         fct = self._factor

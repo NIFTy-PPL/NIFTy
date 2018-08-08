@@ -51,8 +51,6 @@ class RGSpace(StructuredDomain):
     _needed_for_hash = ["_distances", "_shape", "_harmonic"]
 
     def __init__(self, shape, distances=None, harmonic=False):
-        super(RGSpace, self).__init__()
-
         self._harmonic = bool(harmonic)
         if np.isscalar(shape):
             shape = (shape,)

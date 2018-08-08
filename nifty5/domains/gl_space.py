@@ -43,8 +43,6 @@ class GLSpace(StructuredDomain):
     _needed_for_hash = ["_nlat", "_nlon"]
 
     def __init__(self, nlat, nlon=None):
-        super(GLSpace, self).__init__()
-
         self._nlat = int(nlat)
         if self._nlat < 1:
             raise ValueError("nlat must be a positive number.")

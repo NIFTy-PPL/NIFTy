@@ -42,7 +42,6 @@ class DescentMinimizer(Minimizer):
     """
 
     def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
-        super(DescentMinimizer, self).__init__()
         self._controller = controller
         self.line_searcher = line_searcher
 

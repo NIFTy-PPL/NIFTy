@@ -33,21 +33,16 @@ class BlockDiagonalOperator(EndomorphicOperator):
             dictionary with operators domain names as keys and
             LinearOperators as items
         """
-        super(BlockDiagonalOperator, self).__init__()
         if not isinstance(domain, MultiDomain):
             raise TypeError("MultiDomain expected")
         if not isinstance(operators, tuple):
             raise TypeError("tuple expected")
         self._domain = domain
         self._ops = operators
-        self._cap = self._all_ops
+        self._capability = self._all_ops
         for op in self._ops:
             if op is not None:
-                self._cap &= op.capability
-
-    @property
-    def capability(self):
-        return self._cap
+                self._capability &= op.capability
 
     def apply(self, x, mode):
         self._check_input(x, mode)
