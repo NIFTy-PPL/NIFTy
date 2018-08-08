@@ -43,7 +43,7 @@ if __name__ == '__main__':
     #
     # # One dimensional regular grid with uniform exposure
     # position_space = ift.RGSpace(1024)
-    # exposure = np.ones(position_space.shape)
+    # exposure = ift.Field.full(position_space, 1.)
 
     # Two-dimensional regular grid with inhomogeneous exposure
     position_space = ift.RGSpace([512, 512])
@@ -98,6 +98,10 @@ if __name__ == '__main__':
     H, convergence = minimizer(H)
 
     # Plot results
-    ift.plot(sky(H.position), title='Reconstruction')
+    signal = sky(mock_position)
+    reconst = sky(H.position)
+    ift.plot(signal, title='Signal')
     ift.plot(GR.adjoint(data), title='Data')
+    ift.plot(reconst, title='Reconstruction')
+    ift.plot(reconst - signal, title='Residuals')
     ift.plot_finish(name='getting_started_2.png', xsize=16, ysize=16)
