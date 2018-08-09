@@ -59,3 +59,8 @@ class EndomorphicOperator(LinearOperator):
             A sample from the Gaussian of given covariance.
         """
         raise NotImplementedError
+
+    def _check_input(self, x, mode):
+        self._check_mode(mode)
+        if self.domain is not x.domain:
+            raise ValueError("The operator's and field's domains don't match.")

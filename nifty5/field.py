@@ -26,6 +26,8 @@ from .domain_tuple import DomainTuple
 
 
 class Field(object):
+    _scalar_dom = DomainTuple.scalar_domain()
+
     """ The discrete representation of a continuous field over multiple spaces.
 
     In NIFTy, Fields are used to store data arrays and carry all the needed
@@ -55,10 +57,14 @@ class Field(object):
             else:
                 raise TypeError("val must be of type dobj.data_object")
         if domain.shape != val.shape:
-            raise ValueError("mismatch between the shapes of val and domain")
+            raise ValueError("shape mismatch between val and domain")
         self._domain = domain
         self._val = val
         dobj.lock(self._val)
+
+    @staticmethod
+    def scalar(val):
+        return Field(Field._scalar_dom, val)
 
     # prevent implicit conversion to bool
     def __nonzero__(self):

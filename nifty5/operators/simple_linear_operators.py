@@ -39,9 +39,9 @@ class VdotOperator(LinearOperator):
         self._capability =  self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
-        self._check_input(x, mode)
+        self._check_mode(mode)
         if mode == self.TIMES:
-            return Field(self._target, self._field.vdot(x))
+            return Field.scalar(self._field.vdot(x))
         return self._field*x.local_data[()]
 
 
@@ -54,7 +54,7 @@ class SumReductionOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         if mode == self.TIMES:
-            return Field(self._target, x.sum())
+            return Field.scalar(x.sum())
         return full(self._domain, x.local_data[()])
 
 
@@ -90,7 +90,7 @@ class FieldAdapter(LinearOperator):
 
         if mode == self.TIMES:
             return x[self._name]
-        values = tuple(Field.full(dom, 0.) if key != self._name else x
+        values = tuple(Field(dom, 0.) if key != self._name else x
                        for key, dom in self._domain.items())
         return MultiField(self._domain, values)
 
@@ -142,7 +142,7 @@ class NullOperator(LinearOperator):
     @staticmethod
     def _nullfield(dom):
         if isinstance(dom, DomainTuple):
-            return Field.full(dom, 0)
+            return Field(dom, 0)
         else:
             return MultiField.full(dom, 0)
 

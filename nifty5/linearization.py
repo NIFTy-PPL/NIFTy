@@ -34,7 +34,7 @@ class Linearization(object):
     @property
     def gradient(self):
         """Only available if target is a scalar"""
-        return self._jac.adjoint_times(Field(self._jac.target, 1.))
+        return self._jac.adjoint_times(Field.scalar(1.))
 
     @property
     def metric(self):
@@ -102,10 +102,10 @@ class Linearization(object):
         from .operators.simple_linear_operators import VdotOperator
         if isinstance(other, (Field, MultiField)):
             return Linearization(
-                Field(DomainTuple.scalar_domain(), self._val.vdot(other)),
+                Field.scalar(self._val.vdot(other)),
                 VdotOperator(other)(self._jac))
         return Linearization(
-            Field(DomainTuple.scalar_domain(), self._val.vdot(other._val)),
+            Field.scalar(self._val.vdot(other._val)),
             VdotOperator(self._val)(other._jac) +
             VdotOperator(other._val)(self._jac))
 
@@ -113,7 +113,7 @@ class Linearization(object):
         from .operators.simple_linear_operators import SumReductionOperator
         from .sugar import full
         return Linearization(
-            Field(DomainTuple.scalar_domain(), self._val.sum()),
+            Field.scalar(self._val.sum()),
             SumReductionOperator(self._jac.target)(self._jac))
 
     def exp(self):

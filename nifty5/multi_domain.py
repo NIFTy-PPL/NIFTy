@@ -108,8 +108,10 @@ class MultiDomain(object):
 
     @staticmethod
     def union(inp):
+        inp = set(inp)
+        if len(inp) == 1:  # all domains are identical
+            return inp.pop()
         res = {}
-        # FIXME speed up!
         for dom in inp:
             for key, subdom in zip(dom._keys, dom._domains):
                 if key in res:

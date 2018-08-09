@@ -40,10 +40,10 @@ class SquaredNormOperator(EnergyOperator):
 
     def apply(self, x):
         if isinstance(x, Linearization):
-            val = Field(self._target, x.val.vdot(x.val))
+            val = Field.scalar(x.val.vdot(x.val))
             jac = VdotOperator(2*x.val)(x.jac)
             return Linearization(val, jac)
-        return Field(self._target, x.vdot(x))
+        return Field.scalar(x.vdot(x))
 
 
 class QuadraticFormOperator(EnergyOperator):
@@ -58,9 +58,9 @@ class QuadraticFormOperator(EnergyOperator):
         if isinstance(x, Linearization):
             t1 = self._op(x.val)
             jac = VdotOperator(t1)(x.jac)
-            val = Field(self._target, 0.5*x.val.vdot(t1))
+            val = Field.scalar(0.5*x.val.vdot(t1))
             return Linearization(val, jac)
-        return Field(self._target, 0.5*x.vdot(self._op(x)))
+        return Field.scalar(0.5*x.vdot(self._op(x)))
 
 
 class GaussianEnergy(EnergyOperator):
@@ -106,7 +106,7 @@ class PoissonianEnergy(EnergyOperator):
         x = self._op(x)
         res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
-            return Field(self._target, res)
+            return Field.scalar(res)
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
         return res.add_metric(metric)
 
@@ -121,7 +121,7 @@ class BernoulliEnergy(EnergyOperator):
         x = self._p(x)
         v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
         if not isinstance(x, Linearization):
-            return Field(self._target, v)
+            return Field.scalar(v)
         met = makeOp(1./(x.val*(1.-x.val)))
         met = SandwichOperator.make(x.jac, met)
         return v.add_metric(met)
