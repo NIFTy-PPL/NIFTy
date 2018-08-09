@@ -27,15 +27,14 @@ __all__ = ["check_value_gradient_consistency",
 
 
 def _get_acceptable_location(op, loc, lin):
-    val = lin.val
-    if not np.isfinite(val.sum()):
+    if not np.isfinite(lin.val.sum()):
         raise ValueError('Initial value must be finite')
     dir = from_random("normal", loc.domain)
     dirder = lin.jac(dir)
     if dirder.norm() == 0:
-        dir = dir * val.norm() * 1e-5
+        dir = dir * (lin.val.norm()*1e-5)
     else:
-        dir = dir * val.norm() * (1e-5/dirder.norm())
+        dir = dir * (lin.val.norm()*1e-5/dirder.norm())
     # Find a step length that leads to a "reasonable" location
     for i in range(50):
         try:
@@ -51,54 +50,37 @@ def _get_acceptable_location(op, loc, lin):
     return loc2, lin2
 
 
-def check_value_gradient_consistency(op, loc, tol=1e-8, ntries=100):
+def _check_consistency(op, loc, tol, ntries, do_metric):
     for _ in range(ntries):
         lin = op(Linearization.make_var(loc))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
-        val = lin.val
-        dir = loc2 - loc
+        dir = loc2-loc
         locnext = loc2
         dirnorm = dir.norm()
         for i in range(50):
             locmid = loc + 0.5*dir
             linmid = op(Linearization.make_var(locmid))
             dirder = linmid.jac(dir)/dirnorm
-            numgrad = (lin2.val-val)/dirnorm
+            numgrad = (lin2.val-lin.val)/dirnorm
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-            if (abs(numgrad-dirder) <= xtol).all():
+            cond = (abs(numgrad-dirder) <= xtol).all()
+            if do_metric:
+                dgrad = linmid.metric(dir)/dirnorm
+                dgrad2 = (lin2.gradient-lin.gradient)/dirnorm
+                cond = cond and (abs(dgrad-dgrad2) <= xtol).all()
+            if cond:
                 break
             dir = dir*0.5
             dirnorm *= 0.5
-            loc2 = locmid
-            lin2 = linmid
+            loc2, lin2 = locmid, linmid
         else:
             raise ValueError("gradient and value seem inconsistent")
         loc = locnext
+
+
+def check_value_gradient_consistency(op, loc, tol=1e-8, ntries=100):
+    _check_consistency(op, loc, tol, ntries, False)
 
 
 def check_value_gradient_metric_consistency(op, loc, tol=1e-8, ntries=100):
-    for _ in range(ntries):
-        lin = op(Linearization.make_var(loc))
-        loc2, lin2 = _get_acceptable_location(op, loc, lin)
-        val = lin.val
-        dir = loc2 - loc
-        locnext = loc2
-        dirnorm = dir.norm()
-        for i in range(50):
-            locmid = loc + 0.5*dir
-            linmid = op(Linearization.make_var(locmid))
-            dirder = linmid.jac(dir)/dirnorm
-            numgrad = (lin2.val-val)/dirnorm
-            dgrad = linmid.metric(dir)/dirnorm
-            dgrad2 = (lin2.gradient-lin.gradient)/dirnorm
-            xtol = tol * dirder.norm() / np.sqrt(dirder.size)
-            if ((abs(numgrad-dirder) <= xtol).all() and
-                    (abs(dgrad-dgrad2) <= xtol).all()):
-                break
-            dir = dir*0.5
-            dirnorm *= 0.5
-            loc2 = locmid
-            lin2 = linmid
-        else:
-            raise ValueError("gradient and value seem inconsistent")
-        loc = locnext
+    _check_consistency(op, loc, tol, ntries, True)
