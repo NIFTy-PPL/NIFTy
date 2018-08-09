@@ -129,8 +129,7 @@ class AmplitudeModel(Operator):
         kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)
         cepstrum = create_cepstrum_amplitude_field(dof_space, kern)
 
-        ceps = makeOp(sqrt(cepstrum))
-        self._smooth_op = sym(qht(ceps))
+        self._smooth_op = sym(qht(makeOp(sqrt(cepstrum))))
         self._keys = tuple(keys)
 
     def apply(self, x):

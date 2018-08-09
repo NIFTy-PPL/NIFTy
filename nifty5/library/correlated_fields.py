@@ -39,22 +39,16 @@ class CorrelatedField(Operator):
     amplitude_model : model for correlation structure
     '''
     def __init__(self, s_space, amplitude_model):
-        self._s_space = s_space
-        self._amplitude_model = amplitude_model
-        self._h_space = s_space.get_default_codomain()
-        self._ht = HarmonicTransformOperator(self._h_space, s_space)
-        self._p_space = amplitude_model.target[0]
-        self._power_distributor = PowerDistributor(self._h_space,
-                                                   self._p_space)
+        h_space = s_space.get_default_codomain()
+        self._ht = HarmonicTransformOperator(h_space, s_space)
+        p_space = amplitude_model.target[0]
+        power_distributor = PowerDistributor(h_space, p_space)
+        self._A = power_distributor(amplitude_model)
         self._domain = MultiDomain.union(
-            (self._amplitude_model.domain,
-             MultiDomain.make({"xi": self._h_space})))
+            (amplitude_model.domain, MultiDomain.make({"xi": h_space})))
 
     def apply(self, x):
-        A = self._power_distributor(self._amplitude_model(x))
-        correlated_field_h = A * x["xi"]
-        correlated_field = self._ht(correlated_field_h)
-        return correlated_field
+        return self._ht(self._A(x)*x["xi"])
 
 
 # def make_mf_correlated_field(s_space_spatial, s_space_energy,
