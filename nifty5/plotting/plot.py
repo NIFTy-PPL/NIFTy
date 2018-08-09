@@ -226,14 +226,10 @@ def _plot(f, ax, **kwargs):
             return
         elif len(dom.shape) == 2:
             f = f[0]
-            nx = dom.shape[0]
-            ny = dom.shape[1]
-            dx = dom.distances[0]
-            dy = dom.distances[1]
-            xc = np.arange(nx, dtype=np.float64)*dx
-            yc = np.arange(ny, dtype=np.float64)*dy
-            im = ax.imshow(fld.to_global_data(),
-                           extent=[xc[0], xc[-1], yc[0], yc[-1]],
+            nx, ny = dom.shape
+            dx, dy = dom.distances
+            im = ax.imshow(fld.to_global_data().T,
+                           extent=[0, nx*dx, 0, ny*dy],
                            vmin=kwargs.get("zmin"),
                            vmax=kwargs.get("zmax"), cmap=cmap, origin="lower",
                            **norm)
