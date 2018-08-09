@@ -31,6 +31,11 @@ class Test_Functionality(unittest.TestCase):
         f2 = ift.from_random("normal", domain=dom, dtype=np.complex128)
         assert_allclose(f1.vdot(f2), np.conj(f2.vdot(f1)))
 
+    def test_func(self):
+        f1 = ift.from_random("normal", domain=dom, dtype=np.complex128)
+        assert_allclose(ift.log(ift.exp((f1)))["d1"].local_data,
+                        f1["d1"].local_data)
+
     def test_dataconv(self):
         f1 = ift.full(dom, 27)
         f2 = ift.from_global_data(dom, f1.to_global_data())
