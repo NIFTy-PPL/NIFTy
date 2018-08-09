@@ -200,26 +200,29 @@ class MultiField(object):
         return False
 
     def extract(self, subset):
-        if isinstance(subset, MultiDomain):
-            if subset is self._domain:
-                return self
-            return MultiField(subset,
-                              tuple(self[key] for key in subset.keys()))
-        else:
-            return MultiField.from_dict({key: self[key] for key in subset})
+        if subset is self._domain:
+            return self
+        return MultiField(subset,
+                          tuple(self[key] for key in subset.keys()))
 
     def unite(self, other):
         if self._domain is other._domain:
             return self + other
-        return self.combine((self, other))
-
-    @staticmethod
-    def combine(fields):
-        res = {}
-        for f in fields:
-            for key, val in f.items():
-                res[key] = res[key]+val if key in res else val
+        res = self.to_dict()
+        for key, val in other.items():
+            res[key] = res[key]+val if key in res else val
         return MultiField.from_dict(res)
+
+    def _binary_op(self, other, op):
+        f = getattr(Field, op)
+        if isinstance(other, MultiField):
+            if self._domain is not other._domain:
+                raise ValueError("domain mismatch")
+            val = tuple(f(v1, v2)
+                        for v1, v2 in zip(self._val, other._val))
+        else:
+            val = tuple(f(v1, other) for v1 in self._val)
+        return MultiField(self._domain, val)
 
 
 for op in ["__add__", "__radd__",
@@ -232,14 +235,7 @@ for op in ["__add__", "__radd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            if isinstance(other, MultiField):
-                if self._domain is not other._domain:
-                    raise ValueError("domain mismatch")
-                val = tuple(getattr(v1, op)(v2)
-                            for v1, v2 in zip(self._val, other._val))
-            else:
-                val = tuple(getattr(v1, op)(other) for v1 in self._val)
-            return MultiField(self._domain, val)
+            return self._binary_op(other, op)
         return func2
     setattr(MultiField, op, func(op))
 

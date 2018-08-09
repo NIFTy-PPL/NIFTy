@@ -619,6 +619,16 @@ class Field(object):
     def positive_tanh(self):
         return 0.5*(1.+self.tanh())
 
+    def _binary_op(self, other, op):
+        # if other is a field, make sure that the domains match
+        f = getattr(self._val, op)
+        if isinstance(other, Field):
+            if other._domain is not self._domain:
+                raise ValueError("domains are incompatible.")
+            return Field(self._domain, f(other._val))
+        if np.isscalar(other):
+            return Field(self._domain, f(other))
+        return NotImplemented
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",
@@ -630,16 +640,7 @@ for op in ["__add__", "__radd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            # if other is a field, make sure that the domains match
-            if isinstance(other, Field):
-                if other._domain is not self._domain:
-                    raise ValueError("domains are incompatible.")
-                tval = getattr(self._val, op)(other._val)
-                return Field(self._domain, tval)
-            if np.isscalar(other):
-                tval = getattr(self._val, op)(other)
-                return Field(self._domain, tval)
-            return NotImplemented
+            return self._binary_op(other, op)
         return func2
     setattr(Field, op, func(op))
 
@@ -655,7 +656,6 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
 for f in ["sqrt", "exp", "log", "tanh"]:
     def func(f):
         def func2(self):
-            fu = getattr(dobj, f)
-            return Field(domain=self._domain, val=fu(self.val))
+            return Field(self._domain, getattr(dobj, f)(self.val))
         return func2
     setattr(Field, f, func(f))
