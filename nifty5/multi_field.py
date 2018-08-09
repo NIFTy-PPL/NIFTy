@@ -257,8 +257,8 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
 for f in ["sqrt", "exp", "log", "tanh"]:
     def func(f):
         def func2(self):
-            fu = getattr(dobj, f)
+            fu = getattr(Field, f)
             return MultiField(self.domain,
-                              tuple(func2(val) for val in self.values()))
+                              tuple(fu(val) for val in self.values()))
         return func2
     setattr(MultiField, f, func(f))
