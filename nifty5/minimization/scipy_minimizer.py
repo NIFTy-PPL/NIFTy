@@ -61,7 +61,7 @@ def _toArray_rw(fld):
 def _toField(arr, template):
     if isinstance(template, Field):
         return Field.from_local_data(template.domain,
-                                     arr.reshape(dom.shape).copy())
+                                     arr.reshape(template.shape).copy())
     ofs = 0
     res = []
     for v in template.values():
