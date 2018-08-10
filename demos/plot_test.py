@@ -4,7 +4,7 @@ import numpy as np
 
 def plot_test():
     rg_space1 = ift.makeDomain(ift.RGSpace((100,)))
-    rg_space2 = ift.makeDomain(ift.RGSpace((80, 80)))
+    rg_space2 = ift.makeDomain(ift.RGSpace((80, 60), distances=1))
     hp_space = ift.makeDomain(ift.HPSpace(64))
     gl_space = ift.makeDomain(ift.GLSpace(128))
 
@@ -13,7 +13,7 @@ def plot_test():
     field_rg1_1 = ift.Field.from_global_data(rg_space1, np.random.randn(100))
     field_rg1_2 = ift.Field.from_global_data(rg_space1, np.random.randn(100))
     field_rg2 = ift.Field.from_global_data(
-        rg_space2, np.random.randn(80 ** 2).reshape((80, 80)))
+        rg_space2, np.random.randn(80*60).reshape((80, 60)))
     field_hp = ift.Field.from_global_data(hp_space, np.random.randn(12*64**2))
     field_gl = ift.Field.from_global_data(gl_space, np.random.randn(32640))
     field_ps = ift.power_analyze(fft.times(field_rg2))
