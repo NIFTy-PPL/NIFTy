@@ -59,11 +59,8 @@ from .minimization.gradient_norm_controller import GradientNormController
 from .minimization.minimizer import Minimizer
 from .minimization.conjugate_gradient import ConjugateGradient
 from .minimization.nonlinear_cg import NonlinearCG
-from .minimization.descent_minimizer import DescentMinimizer
-from .minimization.steepest_descent import SteepestDescent
-from .minimization.vl_bfgs import VL_BFGS
-from .minimization.l_bfgs import L_BFGS
-from .minimization.relaxed_newton import RelaxedNewton
+from .minimization.descent_minimizers import (
+    DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton)
 from .minimization.scipy_minimizer import (ScipyMinimizer, NewtonCG, L_BFGS_B,
                                            ScipyCG)
 from .minimization.energy import Energy
