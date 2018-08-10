@@ -132,18 +132,16 @@ class _OpProd(Operator):
         from ..linearization import Linearization
         from ..sugar import makeOp
         lin = isinstance(x, Linearization)
+        v = x._val if lin else x
+        v1 = v.extract(self._op1.domain)
+        v2 = v.extract(self._op2.domain)
         if not lin:
-            r1 = self._op1(x.extract(self._op1.domain))
-            r2 = self._op2(x.extract(self._op2.domain))
-            return r1*r2
-        lin1 = self._op1(
-            Linearization.make_var(x._val.extract(self._op1.domain)))
-        lin2 = self._op2(
-            Linearization.make_var(x._val.extract(self._op2.domain)))
+            return self._op1(v1) * self._op2(v2)
+        lin1 = self._op1(Linearization.make_var(v1))
+        lin2 = self._op2(Linearization.make_var(v2))
         op = (makeOp(lin1._val)(lin2._jac))._myadd(
             makeOp(lin2._val)(lin1._jac), False)
-        jac = op(x.jac)
-        return Linearization(lin1._val*lin2._val, jac)
+        return Linearization(lin1._val*lin2._val, op(x.jac))
 
 
 class _OpSum(_CombinedOperator):

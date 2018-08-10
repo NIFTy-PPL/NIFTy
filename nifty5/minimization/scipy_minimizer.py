@@ -18,24 +18,53 @@
 
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 from .. import dobj
 from ..compat import *
 from ..field import Field
+from ..multi_field import MultiField
+from ..domain_tuple import DomainTuple
 from ..logger import logger
 from .iteration_controller import IterationController
 from .minimizer import Minimizer
 
 
+def _multiToArray(fld):
+    szall = 0
+    for val in fld.values():
+        if val.dtype != np.float64:
+            raise TypeError("need float64 fields")
+        szall += val.size
+    res = np.empty(szall, dtype=np.float64)
+    ofs = 0
+    for val in fld.values():
+        res[ofs:ofs+val.size] = val.local_data.reshape(-1)
+        ofs += val.size
+    return res
+
+
 def _toArray(fld):
-    return fld.to_global_data().reshape(-1)
+    if isinstance(fld, Field):
+        return fld.local_data.reshape(-1)
+    return _multiToArray(fld)
 
 
 def _toArray_rw(fld):
-    return fld.to_global_data_rw().reshape(-1)
+    if isinstance(fld, Field):
+        return fld.local_data.copy().reshape(-1)
+    return _multiToArray(fld)
 
 
 def _toField(arr, dom):
-    return Field.from_global_data(dom, arr.reshape(dom.shape).copy())
+    if isinstance(dom, DomainTuple):
+        return Field.from_local_data(dom, arr.reshape(dom.shape).copy())
+    ofs = 0
+    res = []
+    for d in dom.domains():
+        res.append(Field.from_local_data(
+            d, arr[ofs:ofs+d.size].copy().reshape(d.shape)))
+        ofs += d.size
+    return MultiField(dom, tuple(res))
 
 
 class _MinHelper(object):

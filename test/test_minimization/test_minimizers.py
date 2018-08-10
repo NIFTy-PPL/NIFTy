@@ -100,10 +100,7 @@ class Test_Minimizers(unittest.TestCase):
                     def __init__(self, loc):
                         self._loc = loc.to_global_data_rw()
                         self._capability = self.TIMES
-
-                    @property
-                    def domain(self):
-                        return space
+                        self._domain = space
 
                     def apply(self, x, mode):
                         self._check_input(x, mode)
