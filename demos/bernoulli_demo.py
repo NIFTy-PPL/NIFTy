@@ -47,25 +47,20 @@ if __name__ == '__main__':
     def sqrtpspec(k):
         return 1. / (20. + k**2)
 
-    p_space = ift.PowerSpace(harmonic_space)
-    pd = ift.PowerDistributor(harmonic_space, p_space)
-    a = ift.PS_field(p_space, sqrtpspec)
-    A = pd(a)
+    A = ift.create_power_operator(harmonic_space, sqrtpspec)
 
     # Set up a sky model
-    sky = HT(ift.makeOp(A)).positive_tanh()
+    sky = ift.positive_tanh(HT(A))
 
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response
     R = GR
 
     # Generate mock data
-    d_space = R.target[0]
     p = R(sky)
     mock_position = ift.from_random('normal', harmonic_space)
-    pp = p(mock_position)
-    data = np.random.binomial(1, pp.to_global_data().astype(np.float64))
-    data = ift.Field.from_global_data(d_space, data)
+    data = np.random.binomial(1, p(mock_position).local_data.astype(np.float64))
+    data = ift.Field.from_local_data(R.target, data)
 
     # Compute likelihood and Hamiltonian
     position = ift.from_random('normal', harmonic_space)
@@ -79,7 +74,7 @@ if __name__ == '__main__':
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
     H = ift.EnergyAdapter(position, H, ic_cg)
-    # minimizer = ift.SteepestDescent(ic_newton)
+    # minimizer = ift.L_BFGS(ic_newton)
     H, convergence = minimizer(H)
 
     reconstruction = sky(H.position)

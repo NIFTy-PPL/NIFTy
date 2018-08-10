@@ -69,7 +69,7 @@ class Model_Tests(unittest.TestCase):
         pos = ift.from_random("normal", dom)
         ift.extra.check_value_gradient_consistency(model, pos)
         model = ift.FieldAdapter(dom, "s1").scale(3.)
-        pos = ift.from_random("normal", dom)
+        pos = ift.from_random("normal", dom1)
         ift.extra.check_value_gradient_consistency(model, pos)
         model = ift.ScalingOperator(2.456, space)(
             ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
