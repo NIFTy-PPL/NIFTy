@@ -49,7 +49,7 @@ from .operators.energy_operators import (
     EnergyOperator, GaussianEnergy, PoissonianEnergy, BernoulliEnergy,
     Hamiltonian, SampledKullbachLeiblerDivergence)
 
-from .probing.utils import probe_with_posterior_samples, probe_diagonal, \
+from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
 
 from .minimization.line_search import LineSearch

@@ -150,5 +150,4 @@ class Linearization(object):
     @staticmethod
     def make_const(field):
         from .operators.simple_linear_operators import NullOperator
-        from .operators.scaling_operator import ScalingOperator
-        return Linearization(field, ScalingOperator(0., field.domain))
+        return Linearization(field, NullOperator(field.domain, field.domain))

@@ -18,8 +18,8 @@
 
 from __future__ import absolute_import, division, print_function
 
-from ..compat import *
-from ..field import Field
+from .compat import *
+from .field import Field
 
 
 class StatCalculator(object):
