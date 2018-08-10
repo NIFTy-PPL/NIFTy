@@ -44,7 +44,7 @@ class ChainOperator(LinearOperator):
         from .diagonal_operator import DiagonalOperator
         # Step 1: verify domains
         for i in range(len(ops)-1):
-            if ops[i+1].target is not ops[i].domain:
+            if ops[i+1].target != ops[i].domain:
                 raise ValueError("domain mismatch")
         # Step 2: unpack ChainOperators
         opsnew = []

@@ -26,11 +26,12 @@ from ..operators.domain_distributor import DomainDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.power_distributor import PowerDistributor
 from ..operators.operator import Operator
+from ..operators.simple_linear_operators import FieldAdapter
 
 
-class CorrelatedField(Operator):
+def CorrelatedField(s_space, amplitude_model):
     '''
-    Class for construction of correlated fields
+    Function for construction of correlated fields
 
     Parameters
     ----------
@@ -38,17 +39,14 @@ class CorrelatedField(Operator):
 
     amplitude_model : model for correlation structure
     '''
-    def __init__(self, s_space, amplitude_model):
-        h_space = s_space.get_default_codomain()
-        self._ht = HarmonicTransformOperator(h_space, s_space)
-        p_space = amplitude_model.target[0]
-        power_distributor = PowerDistributor(h_space, p_space)
-        self._A = power_distributor(amplitude_model)
-        self._domain = MultiDomain.union(
-            (amplitude_model.domain, MultiDomain.make({"xi": h_space})))
-
-    def apply(self, x):
-        return self._ht(self._A(x)*x["xi"])
+    h_space = s_space.get_default_codomain()
+    ht = HarmonicTransformOperator(h_space, s_space)
+    p_space = amplitude_model.target[0]
+    power_distributor = PowerDistributor(h_space, p_space)
+    A = power_distributor(amplitude_model)
+    domain = MultiDomain.union(
+        (amplitude_model.domain, MultiDomain.make({"xi": h_space})))
+    return ht(A*FieldAdapter(domain, "xi"))
 
 
 # def make_mf_correlated_field(s_space_spatial, s_space_energy,

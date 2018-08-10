@@ -60,13 +60,13 @@ def _check_consistency(op, loc, tol, ntries, do_metric):
         for i in range(50):
             locmid = loc + 0.5*dir
             linmid = op(Linearization.make_var(locmid))
-            dirder = linmid.jac(dir)/dirnorm
-            numgrad = (lin2.val-lin.val)/dirnorm
+            dirder = linmid.jac(dir)
+            numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)
             cond = (abs(numgrad-dirder) <= xtol).all()
             if do_metric:
-                dgrad = linmid.metric(dir)/dirnorm
-                dgrad2 = (lin2.gradient-lin.gradient)/dirnorm
+                dgrad = linmid.metric(dir)
+                dgrad2 = (lin2.gradient-lin.gradient)
                 cond = cond and (abs(dgrad-dgrad2) <= xtol).all()
             if cond:
                 break

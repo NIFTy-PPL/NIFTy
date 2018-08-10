@@ -116,10 +116,16 @@ class LinearOperator(Operator):
             return ChainOperator.make([other, self])
         return Operator.__rmatmul__(self, other)
 
+    def _myadd(self, other, oneg):
+        if self.domain == other.domain and self.target == other.target:
+            from .sum_operator import SumOperator
+            return SumOperator.make((self, other), (False, oneg))
+        from .relaxed_sum_operator import RelaxedSumOperator
+        return RelaxedSumOperator((self, -other if oneg else other))
+
     def __add__(self, other):
         if isinstance(other, LinearOperator):
-            from .sum_operator import SumOperator
-            return SumOperator.make([self, other], [False, False])
+            return self._myadd(other, False)
         return Operator.__add__(self, other)
 
     def __radd__(self, other):
@@ -127,14 +133,12 @@ class LinearOperator(Operator):
 
     def __sub__(self, other):
         if isinstance(other, LinearOperator):
-            from .sum_operator import SumOperator
-            return SumOperator.make([self, other], [False, True])
+            return self._myadd(other, True)
         return Operator.__sub__(self, other)
 
     def __rsub__(self, other):
         if isinstance(other, LinearOperator):
-            from .sum_operator import SumOperator
-            return SumOperator.make([other, self], [False, True])
+            return other._myadd(self, True)
         return Operator.__rsub__(self, other)
 
     @property
@@ -260,5 +264,5 @@ class LinearOperator(Operator):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        if self._dom(mode) is not x.domain:
+        if self._dom(mode) != x.domain:
             raise ValueError("The operator's and field's domains don't match.")

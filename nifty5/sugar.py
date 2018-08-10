@@ -246,7 +246,7 @@ def makeOp(input):
 
 def domain_union(domains):
     if isinstance(domains[0], DomainTuple):
-        if any(dom is not domains[0] for dom in domains[1:]):
+        if any(dom != domains[0] for dom in domains[1:]):
             raise ValueError("domain mismatch")
         return domains[0]
     return MultiDomain.union(domains)

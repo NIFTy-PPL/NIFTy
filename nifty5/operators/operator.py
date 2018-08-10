@@ -50,15 +50,15 @@ class Operator(NiftyMetaBase()):
     def __mul__(self, x):
         if not isinstance(x, Operator):
             return NotImplemented
-        return _OpProd.make((self, x))
+        return _OpProd(self, x)
 
     def apply(self, x):
         raise NotImplementedError
 
     def __call__(self, x):
-       if isinstance(x, Operator):
-           return _OpChain.make((self, x))
-       return self.apply(x)
+        if isinstance(x, Operator):
+            return _OpChain.make((self, x))
+        return self.apply(x)
 
 
 for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
@@ -108,6 +108,9 @@ class _OpChain(_CombinedOperator):
         super(_OpChain, self).__init__(ops, _callingfrommake)
         self._domain = self._ops[-1].domain
         self._target = self._ops[0].target
+        for i in range(1, len(self._ops)):
+            if self._ops[i-1].domain != self._ops[i].target:
+                raise ValueError("domain mismatch")
 
     def apply(self, x):
         for op in reversed(self._ops):
@@ -115,21 +118,44 @@ class _OpChain(_CombinedOperator):
         return x
 
 
-class _OpProd(_CombinedOperator):
-    def __init__(self, ops, _callingfrommake=False):
-        super(_OpProd, self).__init__(ops, _callingfrommake)
-        self._domain = self._ops[0].domain
-        self._target = self._ops[0].target
+class _OpProd(Operator):
+    def __init__(self, op1, op2):
+        from ..sugar import domain_union
+        self._domain = domain_union((op1.domain, op2.domain))
+        self._target = op1.target
+        if op1.target != op2.target:
+            raise ValueError("target mismatch")
+        self._op1 = op1
+        self._op2 = op2
 
     def apply(self, x):
-        return my_product(map(lambda op: op(x), self._ops))
+        from ..linearization import Linearization
+        from ..sugar import makeOp
+        lin = isinstance(x, Linearization)
+        if not lin:
+            r1 = self._op1(x.extract(self._op1.domain))
+            r2 = self._op2(x.extract(self._op2.domain))
+            return r1*r2
+        lin1 = self._op1(
+            Linearization.make_var(x._val.extract(self._op1.domain)))
+        lin2 = self._op2(
+            Linearization.make_var(x._val.extract(self._op2.domain)))
+        op = (makeOp(lin1._val)(lin2._jac))._myadd(
+            makeOp(lin2._val)(lin1._jac), False)
+        jac = op(x.jac)
+        return Linearization(lin1._val*lin2._val, jac)
 
 
 class _OpSum(_CombinedOperator):
     def __init__(self, ops, _callingfrommake=False):
+        from ..sugar import domain_union
         super(_OpSum, self).__init__(ops, _callingfrommake)
         self._domain = domain_union([op.domain for op in self._ops])
         self._target = domain_union([op.target for op in self._ops])
 
     def apply(self, x):
-        raise NotImplementedError
+        res = None
+        for op in self._ops:
+            tmp = op(x.extract(op.domain))
+            res = tmp if res is None else res.unite(tmp)
+        return res

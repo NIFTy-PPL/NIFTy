@@ -85,7 +85,7 @@ class GaussianEnergy(EnergyOperator):
         if self._domain is None:
             self._domain = newdom
         else:
-            if self._domain is not newdom:
+            if self._domain != newdom:
                 raise ValueError("domain mismatch")
 
     def apply(self, x):
@@ -157,6 +157,5 @@ class SampledKullbachLeiblerDivergence(EnergyOperator):
         self._res_samples = tuple(res_samples)
 
     def apply(self, x):
-        res = (utilities.my_sum(map(lambda v: self._h(x+v), self._res_samples)) *
-               (1./len(self._res_samples)))
-        return res
+        mymap = map(lambda v: self._h(x+v), self._res_samples)
+        return utilities.my_sum(mymap) * (1./len(self._res_samples))

@@ -13,6 +13,8 @@ class Linearization(object):
     def __init__(self, val, jac, metric=None):
         self._val = val
         self._jac = jac
+        if self._val.domain != self._jac.target:
+            raise ValueError("domain mismatch")
         self._metric = metric
 
     @property
@@ -61,13 +63,12 @@ class Linearization(object):
 
     def __add__(self, other):
         if isinstance(other, Linearization):
-            from .operators.relaxed_sum_operator import RelaxedSumOperator
             met = None
             if self._metric is not None and other._metric is not None:
-                met = RelaxedSumOperator((self._metric, other._metric))
+                met = self._metric._myadd(other._metric, False)
             return Linearization(
                 self._val.unite(other._val),
-                RelaxedSumOperator((self._jac, other._jac)), met)
+                self._jac._myadd(other._jac, False), met)
         if isinstance(other, (int, float, complex, Field, MultiField)):
             return Linearization(self._val+other, self._jac, self._metric)
 
@@ -83,15 +84,20 @@ class Linearization(object):
     def __mul__(self, other):
         from .sugar import makeOp
         if isinstance(other, Linearization):
+            if self.target != other.target:
+                raise ValueError("domain mismatch")
             return Linearization(
                 self._val*other._val,
-                makeOp(other._val)(self._jac) + makeOp(self._val)(other._jac))
+                (makeOp(other._val)(self._jac))._myadd(
+                 makeOp(self._val)(other._jac), False))
         if np.isscalar(other):
             if other == 1:
                 return self
             met = None if self._metric is None else self._metric.scale(other)
             return Linearization(self._val*other, self._jac.scale(other), met)
         if isinstance(other, (Field, MultiField)):
+            if self.target != other.domain:
+                raise ValueError("domain mismatch")
             return Linearization(self._val*other, makeOp(other)(self._jac))
 
     def __rmul__(self, other):

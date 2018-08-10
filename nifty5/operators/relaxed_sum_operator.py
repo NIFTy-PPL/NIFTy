@@ -38,12 +38,6 @@ class RelaxedSumOperator(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
         for op in ops:
             self._capability &= op.capability
-        #self._ops = []
-        #for op in ops:
-        #    if isinstance(op, RelaxedSumOperator):
-        #        self._ops += op._ops
-        #    else:
-        #        self._ops += [op]
 
     @property
     def adjoint(self):

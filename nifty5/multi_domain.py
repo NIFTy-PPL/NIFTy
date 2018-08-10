@@ -95,7 +95,7 @@ class MultiDomain(object):
     def __eq__(self, x):
         if self is x:
             return True
-        return self is MultiDomain.make(x)
+        return self.items() == x.items()
 
     def __ne__(self, x):
         return not self.__eq__(x)
@@ -115,7 +115,7 @@ class MultiDomain(object):
         for dom in inp:
             for key, subdom in zip(dom._keys, dom._domains):
                 if key in res:
-                    if res[key] is not subdom:
+                    if res[key] != subdom:
                         raise ValueError("domain mismatch")
                 else:
                     res[key] = subdom

@@ -57,14 +57,14 @@ class BlockDiagonalOperator(EndomorphicOperator):
 #        return MultiField(self._domain, val)
 
     def _combine_chain(self, op):
-        if self._domain is not op._domain:
+        if self._domain != op._domain:
             raise ValueError("domain mismatch")
         res = tuple(v1(v2) for v1, v2 in zip(self._ops, op._ops))
         return BlockDiagonalOperator(self._domain, res)
 
     def _combine_sum(self, op, selfneg, opneg):
         from ..operators.sum_operator import SumOperator
-        if self._domain is not op._domain:
+        if self._domain != op._domain:
             raise ValueError("domain mismatch")
         res = tuple(SumOperator.make([v1, v2], [selfneg, opneg])
                     for v1, v2 in zip(self._ops, op._ops))

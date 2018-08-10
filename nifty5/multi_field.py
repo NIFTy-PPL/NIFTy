@@ -42,7 +42,7 @@ class MultiField(object):
             raise ValueError("length mismatch")
         for d, v in zip(domain._domains, val):
             if isinstance(v, Field):
-                if v._domain is not d:
+                if v._domain != d:
                     raise ValueError("domain mismatch")
             else:
                 raise TypeError("bad entry in val (must be Field)")
@@ -103,7 +103,7 @@ class MultiField(object):
                           for dom in domain._domains))
 
     def _check_domain(self, other):
-        if other._domain is not self._domain:
+        if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
 
     def vdot(self, x):
@@ -216,7 +216,7 @@ class MultiField(object):
     def _binary_op(self, other, op):
         f = getattr(Field, op)
         if isinstance(other, MultiField):
-            if self._domain is not other._domain:
+            if self._domain != other._domain:
                 raise ValueError("domain mismatch")
             val = tuple(f(v1, v2)
                         for v1, v2 in zip(self._val, other._val))

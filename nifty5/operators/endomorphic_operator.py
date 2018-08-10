@@ -62,5 +62,5 @@ class EndomorphicOperator(LinearOperator):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        if self.domain is not x.domain:
+        if self.domain != x.domain:
             raise ValueError("The operator's and field's domains don't match.")

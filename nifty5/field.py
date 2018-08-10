@@ -348,7 +348,7 @@ class Field(object):
             raise TypeError("The dot-partner must be an instance of " +
                             "the NIFTy field class")
 
-        if x._domain is not self._domain:
+        if x._domain != self._domain:
             raise ValueError("Domain mismatch")
 
         ndom = len(self._domain)
@@ -609,7 +609,7 @@ class Field(object):
                "\n- val         = " + repr(self._val)
 
     def extract(self, dom):
-        if dom is not self._domain:
+        if dom != self._domain:
             raise ValueError("domain mismatch")
         return self
 
@@ -623,12 +623,13 @@ class Field(object):
         # if other is a field, make sure that the domains match
         f = getattr(self._val, op)
         if isinstance(other, Field):
-            if other._domain is not self._domain:
+            if other._domain != self._domain:
                 raise ValueError("domains are incompatible.")
             return Field(self._domain, f(other._val))
         if np.isscalar(other):
             return Field(self._domain, f(other))
         return NotImplemented
+
 
 for op in ["__add__", "__radd__",
            "__sub__", "__rsub__",

@@ -65,7 +65,7 @@ class DiagonalOperator(EndomorphicOperator):
             self._domain = DomainTuple.make(domain)
         if spaces is None:
             self._spaces = None
-            if diagonal.domain is not self._domain:
+            if diagonal.domain != self._domain:
                 raise ValueError("domain mismatch")
         else:
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))

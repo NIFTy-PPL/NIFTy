@@ -141,7 +141,7 @@ class DomainTuple(object):
     def __eq__(self, x):
         if self is x:
             return True
-        return self is DomainTuple.make(x)
+        return self._dom == x._dom
 
     def __ne__(self, x):
         return not self.__eq__(x)
