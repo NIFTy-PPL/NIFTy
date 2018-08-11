@@ -21,7 +21,7 @@ from .multi_field import MultiField
 from .operators.operator import Operator
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
-from .operators.dof_distributor import DOFDistributor
+from .operators.distributors import DOFDistributor, PowerDistributor
 from .operators.domain_distributor import DomainDistributor
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
@@ -33,7 +33,6 @@ from .operators.inversion_enabler import InversionEnabler
 from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
-from .operators.power_distributor import PowerDistributor
 from .operators.qht_operator import QHTOperator
 from .operators.sampling_enabler import SamplingEnabler
 from .operators.sandwich_operator import SandwichOperator

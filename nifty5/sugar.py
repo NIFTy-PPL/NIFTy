@@ -32,7 +32,7 @@ from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
 from .operators.diagonal_operator import DiagonalOperator
-from .operators.power_distributor import PowerDistributor
+from .operators.distributors import PowerDistributor
 
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',

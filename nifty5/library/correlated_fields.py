@@ -24,7 +24,7 @@ from ..multi_field import MultiField
 from ..multi_domain import MultiDomain
 from ..operators.domain_distributor import DomainDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
-from ..operators.power_distributor import PowerDistributor
+from ..operators.distributors import PowerDistributor
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import FieldAdapter
 
