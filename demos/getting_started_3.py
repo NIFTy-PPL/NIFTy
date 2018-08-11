@@ -50,7 +50,7 @@ if __name__ == '__main__':
     # correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
-    signal = correlated_field.positive_tanh()
+    signal = ift.positive_tanh(correlated_field)
 
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
@@ -76,7 +76,8 @@ if __name__ == '__main__':
     ic_sampling = ift.GradientNormController(iteration_limit=100)
     ic_newton = ift.GradientNormController(name='Newton', iteration_limit=100)
     minimizer = ift.RelaxedNewton(ic_newton)
-    # minimizer = ift.NewtonCG(1e-5, 10, True)
+    # minimizer = ift.VL_BFGS(ic_newton)
+    # minimizer = ift.NewtonCG(1e-10, 100, True)
     # minimizer = ift.L_BFGS_B(1e-10, 1e-5, 100, 10, True)
 
     # build model Hamiltonian
