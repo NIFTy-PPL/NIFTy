@@ -132,9 +132,20 @@ class AmplitudeModel(Operator):
         self._smooth_op = sym(qht(makeOp(sqrt(cepstrum))))
         self._keys = tuple(keys)
 
+        self._qht = qht
+        self._ceps = makeOp(sqrt(cepstrum))
+
     def apply(self, x):
         smooth_spec = self._smooth_op(x[self._keys[0]])
         phi = x[self._keys[1]] + self._norm_phi_mean
         linear_spec = self._slope(phi)
         loglog_spec = smooth_spec + linear_spec
         return self._exp_transform((0.5*loglog_spec).exp())
+
+    @property
+    def qht(self):
+        return self._qht
+
+    @property
+    def ceps(self):
+        return self._ceps

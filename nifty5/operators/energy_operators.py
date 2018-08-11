@@ -90,7 +90,7 @@ class GaussianEnergy(EnergyOperator):
 
     def apply(self, x):
         residual = x if self._mean is None else x-self._mean
-        res = self._op(residual)
+        res = self._op(residual).real
         if not isinstance(x, Linearization):
             return res
         metric = SandwichOperator.make(x.jac, self._icov)
