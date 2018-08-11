@@ -68,8 +68,8 @@ class LogRGSpace(StructuredDomain):
         return np.array(self._t_0)
 
     def __repr__(self):
-        return ("LogRGSpace(shape=%r, harmonic=%r)"
-                % (self.shape, self.harmonic))
+        return ("LogRGSpace(shape={}, harmonic={})"
+                .format(self.shape, self.harmonic))
 
     def get_default_codomain(self):
         codomain_bindistances = 1. / (self.bindistances * self.shape)

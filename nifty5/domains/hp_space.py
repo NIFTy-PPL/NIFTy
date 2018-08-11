@@ -45,7 +45,7 @@ class HPSpace(StructuredDomain):
             raise ValueError("nside must be >=1.")
 
     def __repr__(self):
-        return ("HPSpace(nside=%r)" % self.nside)
+        return "HPSpace(nside={})".format(self.nside)
 
     @property
     def harmonic(self):

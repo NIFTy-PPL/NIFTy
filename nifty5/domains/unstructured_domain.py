@@ -44,7 +44,7 @@ class UnstructuredDomain(Domain):
             self._shape = (int(shape), )
 
     def __repr__(self):
-        return "UnstructuredDomain(shape=%r)" % (self.shape, )
+        return "UnstructuredDomain(shape={})".format(self.shape)
 
     @property
     def shape(self):

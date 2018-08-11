@@ -39,10 +39,9 @@ class Domain(NiftyMetaBase()):
         try:
             return self._hash
         except AttributeError:
-            h = 0
-            for key in self._needed_for_hash:
-                h ^= hash(vars(self)[key])
-            self._hash = h
+            v = vars(self)
+            self._hash = reduce(lambda x, y: x ^ y, (hash(v[key])
+                                for key in self._needed_for_hash), 0)
         return self._hash
 
     def __eq__(self, x):

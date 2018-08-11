@@ -44,9 +44,9 @@ class DomainTuple(object):
             raise NotImplementedError
         self._dom = self._parse_domain(domain)
         self._axtuple = self._get_axes_tuple()
-        shape_tuple = tuple(sp.shape for sp in self._dom)
-        self._shape = reduce(lambda x, y: x + y, shape_tuple, ())
-        self._size = reduce(lambda x, y: x * y, self._shape, 1)
+        self._shape = reduce(lambda x, y: x+y, (sp.shape for sp in self._dom),
+                             ())
+        self._size = reduce(lambda x, y: x*y, self._shape, 1)
 
     def _get_axes_tuple(self):
         i = 0
@@ -139,18 +139,14 @@ class DomainTuple(object):
         return self._dom.__hash__()
 
     def __eq__(self, x):
-        if self is x:
-            return True
-        return self._dom == x._dom
+        return (self is x) or (self._dom == x._dom)
 
     def __ne__(self, x):
         return not self.__eq__(x)
 
     def __str__(self):
-        res = "DomainTuple, len: " + str(len(self))
-        for i in self:
-            res += "\n" + str(i)
-        return res
+        return ("DomainTuple, len: {}\n".format(len(self)) +
+                "\n".join(str(i) for i in self))
 
     @staticmethod
     def scalar_domain():

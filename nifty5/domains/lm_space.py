@@ -48,17 +48,17 @@ class LMSpace(StructuredDomain):
     _needed_for_hash = ["_lmax", "_mmax"]
 
     def __init__(self, lmax, mmax=None):
-        self._lmax = np.int(lmax)
+        self._lmax = int(lmax)
         if self._lmax < 0:
             raise ValueError("lmax must be >=0.")
         if mmax is None:
             mmax = self._lmax
-        self._mmax = np.int(mmax)
+        self._mmax = int(mmax)
         if self._mmax < 0 or self._mmax > self._lmax:
             raise ValueError("mmax must be >=0 and <=lmax.")
 
     def __repr__(self):
-        return ("LMSpace(lmax=%r, mmax=%r)" % (self.lmax, self.mmax))
+        return "LMSpace(lmax={}, mmax={})".format(self.lmax, self.mmax)
 
     @property
     def harmonic(self):
@@ -66,12 +66,11 @@ class LMSpace(StructuredDomain):
 
     @property
     def shape(self):
-        return (self.size, )
+        return (self.size,)
 
     @property
     def size(self):
-        l = self._lmax
-        m = self._mmax
+        l, m = self._lmax, self._mmax
         # the LMSpace consists of the full triangle (including -m's!),
         # minus two little triangles if mmax < lmax
         return (l+1)**2 - (l-m)*(l-m+1)

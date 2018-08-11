@@ -207,8 +207,8 @@ class PowerSpace(StructuredDomain):
             self._powerIndexCache[key]
 
     def __repr__(self):
-        return ("PowerSpace(harmonic_partner=%r, binbounds=%r)"
-                % (self.harmonic_partner, self._binbounds))
+        return ("PowerSpace(harmonic_partner={}, binbounds={})"
+                .format(self.harmonic_partner, self._binbounds))
 
     @property
     def harmonic(self):

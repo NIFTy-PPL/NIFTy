@@ -55,7 +55,7 @@ class GLSpace(StructuredDomain):
         self._dvol = None
 
     def __repr__(self):
-        return ("GLSpace(nlat=%r, nlon=%r)" % (self.nlat, self.nlon))
+        return "GLSpace(nlat={}, nlon={})".format(self.nlat, self.nlon)
 
     @property
     def harmonic(self):

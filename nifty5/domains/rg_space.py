@@ -72,8 +72,8 @@ class RGSpace(StructuredDomain):
         self._size = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
-        return ("RGSpace(shape=%r, distances=%r, harmonic=%r)"
-                % (self.shape, self.distances, self.harmonic))
+        return ("RGSpace(shape={}, distances={}, harmonic={})"
+                .format(self.shape, self.distances, self.harmonic))
 
     @property
     def harmonic(self):
