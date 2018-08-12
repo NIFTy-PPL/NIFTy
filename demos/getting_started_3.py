@@ -95,7 +95,6 @@ if __name__ == '__main__':
     N_samples = 20
     for i in range(2):
         metric = H(ift.Linearization.make_var(position)).metric
-        print(metric)
         samples = [metric.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
 
