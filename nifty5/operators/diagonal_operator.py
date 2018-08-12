@@ -157,17 +157,21 @@ class DiagonalOperator(EndomorphicOperator):
             xdiag = 1./xdiag
         return self._from_ldiag((), xdiag)
 
+    def process_sample(self, samp, from_inverse):
+        if (self._complex or (self._diagmin < 0.) or
+            (self._diagmin == 0. and from_inverse)):
+                raise ValueError("operator not positive definite")
+        if from_inverse:
+            res = samp.local_data/np.sqrt(self._ldiag)
+        else:
+            res = samp.local_data*np.sqrt(self._ldiag)
+        return Field.from_local_data(self._domain, res)
+
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        if self._complex:
-            raise ValueError("operator not positive definite")
-        if self._diagmin < 0.:
-            raise ValueError("operator not positive definite")
-        if self._diagmin == 0. and from_inverse:
-            raise ValueError("operator not positive definite")
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
-        if from_inverse:
-            res = res.local_data/np.sqrt(self._ldiag)
-        else:
-            res = res.local_data*np.sqrt(self._ldiag)
-        return Field.from_local_data(self._domain, res)
+        return self.process_sample(res, from_inverse)
+
+    def __repr__(self):
+        subs = utilities.indent(self._domain.__repr__())
+        return "DiagonalOperator:\n  Spaces={}\n".format(self._spaces) + subs

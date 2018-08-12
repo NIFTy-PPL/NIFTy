@@ -79,3 +79,11 @@ class SamplingEnabler(EndomorphicOperator):
 
     def apply(self, x, mode):
         return self._op.apply(x, mode)
+
+    def __repr__(self):
+        from ..utilities import indent
+        return "\n".join((
+            "SamplingEnabler:",
+            indent("\n".join((
+                "Likelihood:", self._likelihood.__repr__(),
+                "Prior:", self._prior.__repr__())))))
