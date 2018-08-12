@@ -22,8 +22,6 @@ import numpy as np
 
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..field import Field
-from ..multi_field import MultiField
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
 
@@ -82,13 +80,17 @@ class ScalingOperator(EndomorphicOperator):
             fct = 1./fct
         return ScalingOperator(fct, self._domain)
 
-    def draw_sample(self, from_inverse=False, dtype=np.float64):
+    def _get_fct(self, from_inverse):
         fct = self._factor
-        if fct.imag != 0. or fct.real < 0.:
-            raise ValueError("operator not positive definite")
-        if fct.real == 0. and from_inverse:
-            raise ValueError("operator not positive definite")
-        fct = 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
-        cls = Field if isinstance(self._domain, DomainTuple) else MultiField
-        return cls.from_random(
-            random_type="normal", domain=self._domain, std=fct, dtype=dtype)
+        if (fct.imag != 0. or fct.real < 0. or
+                (fct.real == 0. and from_inverse)):
+                    raise ValueError("operator not positive definite")
+        return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
+
+    def process_sample(self, samp, from_inverse):
+        return samp*self._get_fct(from_inverse)
+
+    def draw_sample(self, from_inverse=False, dtype=np.float64):
+        from ..sugar import from_random
+        return from_random(random_type="normal", domain=self._domain,
+                           std=self._get_fct(from_inverse), dtype=dtype)

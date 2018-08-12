@@ -60,6 +60,12 @@ class EndomorphicOperator(LinearOperator):
         """
         raise NotImplementedError
 
+    def _dom(self, mode):
+        return self._domain
+
+    def _tgt(self, mode):
+        return self._domain
+
     def _check_input(self, x, mode):
         self._check_mode(mode)
         if self.domain != x.domain:

@@ -20,6 +20,7 @@ from __future__ import absolute_import, division, print_function
 
 from .compat import *
 from .domains.domain import Domain
+from . import utilities
 
 
 class DomainTuple(object):
@@ -153,3 +154,7 @@ class DomainTuple(object):
         if DomainTuple._scalarDomain is None:
             DomainTuple._scalarDomain = DomainTuple.make(())
         return DomainTuple._scalarDomain
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._dom)
+        return "DomainTuple:\n"+utilities.indent(subs)
