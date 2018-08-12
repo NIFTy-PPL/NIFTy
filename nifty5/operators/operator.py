@@ -52,6 +52,11 @@ class Operator(NiftyMetaBase()):
             return NotImplemented
         return _OpProd(self, x)
 
+    def __add__(self, x):
+        if not isinstance(x, Operator):
+            return NotImplemented
+        return _OpSum.make([self, x])
+
     def apply(self, x):
         raise NotImplementedError
 
