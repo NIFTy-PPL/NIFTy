@@ -24,7 +24,7 @@ from ..multi_field import MultiField
 from ..multi_domain import MultiDomain
 from ..operators.domain_distributor import DomainDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
-from ..operators.power_distributor import PowerDistributor
+from ..operators.distributors import PowerDistributor
 from ..operators.operator import Operator
 from ..operators.simple_linear_operators import FieldAdapter
 
@@ -59,14 +59,14 @@ def CorrelatedField(s_space, amplitude_model):
 #     h_space = DomainTuple.make((h_space_spatial, h_space_energy))
 #     ht1 = HarmonicTransformOperator(h_space, space=0)
 #     ht2 = HarmonicTransformOperator(ht1.target, space=1)
-#     ht = ht2*ht1
+#     ht = ht2(ht1)
 #
-#     p_space_spatial = amplitude_model_spatial.value.domain[0]
-#     p_space_energy = amplitude_model_energy.value.domain[0]
+#     p_space_spatial = amplitude_model_spatial.target[0]
+#     p_space_energy = amplitude_model_energy.target[0]
 #
 #     pd_spatial = PowerDistributor(h_space, p_space_spatial, 0)
 #     pd_energy = PowerDistributor(pd_spatial.domain, p_space_energy, 1)
-#     pd = pd_spatial*pd_energy
+#     pd = pd_spatial(pd_energy)
 #
 #     dom_distr_spatial = DomainDistributor(pd.domain, 0)
 #     dom_distr_energy = DomainDistributor(pd.domain, 1)
@@ -76,9 +76,7 @@ def CorrelatedField(s_space, amplitude_model):
 #     a = a_spatial*a_energy
 #     A = pd(a)
 #
-#     position = MultiField.from_dict(
-#         {'xi': Field.from_random('normal', h_space)})
-#     xi = Variable(position)['xi']
-#     correlated_field_h = A*xi
-#     correlated_field = ht(correlated_field_h)
-#     return PointwiseExponential(correlated_field)
+#     domain = MultiDomain.union(
+#         (amplitude_model_spatial.domain, amplitude_model_energy.domain,
+#          MultiDomain.make({"xi": h_space})))
+#     return exp(ht(A*FieldAdapter(domain, "xi")))

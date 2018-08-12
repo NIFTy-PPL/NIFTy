@@ -66,3 +66,9 @@ class OperatorAdapter(LinearOperator):
         if self._trafo & self.INVERSE_BIT:
             return self._op.draw_sample(not from_inverse, dtype)
         return self._op.draw_sample(from_inverse, dtype)
+
+    def __repr__(self):
+        from ..utilities import indent
+        mode = ["adjoint", "inverse", "adjoint inverse"][self._trafo]
+        res = "OperatorAdapter: {}\n".format(mode)
+        return res + indent(self._op.__repr__())

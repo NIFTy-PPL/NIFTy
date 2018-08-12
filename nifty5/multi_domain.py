@@ -20,7 +20,7 @@ from __future__ import absolute_import, division, print_function
 
 from .compat import *
 from .domain_tuple import DomainTuple
-from .utilities import frozendict
+from .utilities import frozendict, indent
 
 
 class MultiDomain(object):
@@ -120,3 +120,8 @@ class MultiDomain(object):
                 else:
                     res[key] = subdom
         return MultiDomain.make(res)
+
+    def __repr__(self):
+        subs = "\n".join("{}:\n  {}".format(key, dom.__repr__())
+                         for key, dom in self.items())
+        return "MultiDomain:\n"+indent(subs)

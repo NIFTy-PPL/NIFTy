@@ -22,6 +22,9 @@ import numpy as np
 
 from ..compat import *
 from .linear_operator import LinearOperator
+from .. import utilities
+from .scaling_operator import ScalingOperator
+from .diagonal_operator import DiagonalOperator
 from .simple_linear_operators import NullOperator
 
 
@@ -40,24 +43,19 @@ class ChainOperator(LinearOperator):
 
     @staticmethod
     def simplify(ops):
-        from .scaling_operator import ScalingOperator
-        from .diagonal_operator import DiagonalOperator
-        # Step 1: verify domains
+        # verify domains
         for i in range(len(ops)-1):
             if ops[i+1].target != ops[i].domain:
                 raise ValueError("domain mismatch")
-        # Step 2: unpack ChainOperators
+        # unpack ChainOperators
         opsnew = []
         for op in ops:
-            if isinstance(op, ChainOperator):
-                opsnew += op._ops
-            else:
-                opsnew.append(op)
+            opsnew += op._ops if isinstance(op, ChainOperator) else [op]
         ops = opsnew
-        # Step 2.5: check for NullOperators
+        # check for NullOperators
         if any(isinstance(op, NullOperator) for op in ops):
             ops = (NullOperator(ops[-1].domain, ops[0].target),)
-        # Step 3: collect ScalingOperators
+        # collect ScalingOperators
         fct = 1.
         opsnew = []
         lastdom = ops[-1].domain
@@ -77,7 +75,7 @@ class ChainOperator(LinearOperator):
             # have to add the scaling operator at the end
             opsnew.append(ScalingOperator(fct, lastdom))
         ops = opsnew
-        # Step 4: combine DiagonalOperators where possible
+        # combine DiagonalOperators where possible
         opsnew = []
         for op in ops:
             if (len(opsnew) > 0 and
@@ -87,7 +85,7 @@ class ChainOperator(LinearOperator):
             else:
                 opsnew.append(op)
         ops = opsnew
-        # Step 5: combine BlockDiagonalOperators where possible
+        # combine BlockDiagonalOperators where possible
         from .block_diagonal_operator import BlockDiagonalOperator
         opsnew = []
         for op in ops:
@@ -137,3 +135,18 @@ class ChainOperator(LinearOperator):
         for op in t_ops:
             x = op.apply(x, mode)
         return x
+
+#     def draw_sample(self, from_inverse=False, dtype=np.float64):
+#         from ..sugar import from_random
+#         if len(self._ops) == 1:
+#             return self._ops[0].draw_sample(from_inverse, dtype)
+#
+#         samp = from_random(random_type="normal", domain=self._domain,
+#                            dtype=dtype)
+#         for op in self._ops:
+#             samp = op.process_sample(samp, from_inverse)
+#         return samp
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._ops)
+        return "ChainOperator:\n"+utilities.indent(subs)

@@ -25,22 +25,21 @@ from ..field import Field
 from ..multi_field import MultiField
 from ..domain_tuple import DomainTuple
 from ..logger import logger
-from .iteration_controller import IterationController
+from .iteration_controllers import IterationController
 from .minimizer import Minimizer
 from ..utilities import iscomplextype
 
 
 def _multiToArray(fld):
-    szall = 0
-    for val in fld.values():
-        szall += 2*val.size if iscomplextype(val.dtype) else val.size
+    szall = sum(2*v.size if iscomplextype(v.dtype) else v.size
+                for v in fld.values())
     res = np.empty(szall, dtype=np.float64)
     ofs = 0
     for val in fld.values():
         sz2 = 2*val.size if iscomplextype(val.dtype) else val.size
         locdat = val.local_data.reshape(-1)
         if iscomplextype(val.dtype):
-            locdat = locdat.astype(np.complex128).view(np.float64)
+            locdat = locdat.view(locdat.real.dtype)
         res[ofs:ofs+sz2] = locdat
         ofs += sz2
     return res

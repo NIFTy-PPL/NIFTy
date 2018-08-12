@@ -65,6 +65,9 @@ class Operator(NiftyMetaBase()):
             return _OpChain.make((self, x))
         return self.apply(x)
 
+    def __repr__(self):
+        return self.__class__.__name__
+
 
 for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
     def func(f):
@@ -149,16 +152,16 @@ class _OpProd(Operator):
         return Linearization(lin1._val*lin2._val, op(x.jac))
 
 
-class _OpSum(_CombinedOperator):
-    def __init__(self, ops, _callingfrommake=False):
-        from ..sugar import domain_union
-        super(_OpSum, self).__init__(ops, _callingfrommake)
-        self._domain = domain_union([op.domain for op in self._ops])
-        self._target = domain_union([op.target for op in self._ops])
-
-    def apply(self, x):
-        res = None
-        for op in self._ops:
-            tmp = op(x.extract(op.domain))
-            res = tmp if res is None else res.unite(tmp)
-        return res
+# class _OpSum(_CombinedOperator):
+#     def __init__(self, ops, _callingfrommake=False):
+#         from ..sugar import domain_union
+#         super(_OpSum, self).__init__(ops, _callingfrommake)
+#         self._domain = domain_union([op.domain for op in self._ops])
+#         self._target = domain_union([op.target for op in self._ops])
+#
+#     def apply(self, x):
+#         res = None
+#         for op in self._ops:
+#             tmp = op(x.extract(op.domain))
+#             res = tmp if res is None else res.unite(tmp)
+#         return res

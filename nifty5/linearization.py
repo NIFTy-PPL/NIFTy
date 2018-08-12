@@ -61,22 +61,28 @@ class Linearization(object):
     def real(self):
         return Linearization(self._val.real, self._jac.real)
 
-    def __add__(self, other):
+    def _myadd(self, other, neg):
         if isinstance(other, Linearization):
             met = None
             if self._metric is not None and other._metric is not None:
-                met = self._metric._myadd(other._metric, False)
+                met = self._metric._myadd(other._metric, neg)
             return Linearization(
-                self._val.unite(other._val),
-                self._jac._myadd(other._jac, False), met)
+                self._val.flexible_addsub(other._val, neg),
+                self._jac._myadd(other._jac, neg), met)
         if isinstance(other, (int, float, complex, Field, MultiField)):
-            return Linearization(self._val+other, self._jac, self._metric)
+            if neg:
+                return Linearization(self._val-other, self._jac, self._metric)
+            else:
+                return Linearization(self._val+other, self._jac, self._metric)
+
+    def __add__(self, other):
+        return self._myadd(other, False)
 
     def __radd__(self, other):
-        return self.__add__(other)
+        return self._myadd(other, False)
 
     def __sub__(self, other):
-        return self.__add__(-other)
+        return self._myadd(other, True)
 
     def __rsub__(self, other):
         return (-self).__add__(other)

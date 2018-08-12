@@ -28,8 +28,8 @@ from .scaling_operator import ScalingOperator
 
 
 class SandwichOperator(EndomorphicOperator):
-    """Operator which is equivalent to the expression `bun.adjoint*cheese*bun`.
-    """
+    """Operator which is equivalent to the expression
+    `bun.adjoint(cheese(bun))`."""
 
     def __init__(self, bun, cheese, op, _callingfrommake=False):
         if not _callingfrommake:
@@ -54,7 +54,7 @@ class SandwichOperator(EndomorphicOperator):
         if not isinstance(bun, LinearOperator):
             raise TypeError("bun must be a linear operator")
         if cheese is not None and not isinstance(cheese, LinearOperator):
-            raise TypeError("cheese must be a linear operator")
+            raise TypeError("cheese must be a linear operator or None")
         if cheese is None:
             cheese = ScalingOperator(1., bun.target)
             op = bun.adjoint(bun)
@@ -70,9 +70,9 @@ class SandwichOperator(EndomorphicOperator):
         return self._op.apply(x, mode)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        # Inverse samples from general sandwiches is not possible
+        # Inverse samples from general sandwiches are not possible
         if from_inverse:
-            if self._bun.capabilities & self._bun.INVERSE_TIMES:
+            if self._bun.capability & self._bun.INVERSE_TIMES:
                 try:
                     s = self._cheese.draw_sample(from_inverse, dtype)
                     return self._bun.inverse_times(s)
@@ -84,3 +84,11 @@ class SandwichOperator(EndomorphicOperator):
         # Samples from general sandwiches
         return self._bun.adjoint_times(
             self._cheese.draw_sample(from_inverse, dtype))
+
+    def __repr__(self):
+        from ..utilities import indent
+        return "\n".join((
+            "SandwichOperator:",
+            indent("\n".join((
+                "Cheese:", self._cheese.__repr__(),
+                "Bun:", self._bun.__repr__())))))

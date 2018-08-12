@@ -30,7 +30,7 @@ from .compat import *
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
-           "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb",
+           "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb", "indent",
            "my_product", "frozendict", "special_add_at", "iscomplextype"]
 
 
@@ -363,3 +363,7 @@ def special_add_at(a, axis, index, b):
 _iscomplex_tpl = (np.complex64, np.complex128)
 def iscomplextype(dtype):
     return dtype.type in _iscomplex_tpl
+
+
+def indent(inp):
+    return "\n".join((("  "+s).rstrip() for s in inp.splitlines()))
