@@ -25,7 +25,7 @@ from ..field import Field
 from ..multi_field import MultiField
 from ..domain_tuple import DomainTuple
 from ..logger import logger
-from .iteration_controller import IterationController
+from .iteration_controllers import IterationController
 from .minimizer import Minimizer
 from ..utilities import iscomplextype
 

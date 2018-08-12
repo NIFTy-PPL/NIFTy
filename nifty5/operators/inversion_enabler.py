@@ -23,7 +23,7 @@ import numpy as np
 from ..compat import *
 from ..logger import logger
 from ..minimization.conjugate_gradient import ConjugateGradient
-from ..minimization.iteration_controller import IterationController
+from ..minimization.iteration_controllers import IterationController
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
