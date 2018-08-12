@@ -24,6 +24,7 @@ from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
+from .. import utilities
 
 
 class ScalingOperator(EndomorphicOperator):
@@ -94,3 +95,7 @@ class ScalingOperator(EndomorphicOperator):
         from ..sugar import from_random
         return from_random(random_type="normal", domain=self._domain,
                            std=self._get_fct(from_inverse), dtype=dtype)
+
+    def __repr__(self):
+        subs = utilities.indent(self._domain.__repr__())
+        return "ScalingOperator:\n  Factor={}\n".format(self._factor) + subs

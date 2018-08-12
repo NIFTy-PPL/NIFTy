@@ -21,7 +21,7 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 
 from ..compat import *
-from ..utilities import my_sum
+from ..utilities import my_sum, indent
 from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator
 from .diagonal_operator import DiagonalOperator
@@ -196,3 +196,7 @@ class SumOperator(LinearOperator):
             tmp = op.draw_sample(from_inverse, dtype)
             res = tmp if res is None else res.unite(tmp)
         return res
+
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._ops)
+        return "SumOperator:\n"+indent(subs)
