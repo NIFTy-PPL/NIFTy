@@ -60,6 +60,9 @@ class Operator(NiftyMetaBase()):
             return _OpChain.make((self, x))
         return self.apply(x)
 
+    def __repr__(self):
+        return self.__class__.__name__
+
 
 for f in ["sqrt", "exp", "log", "tanh", "positive_tanh"]:
     def func(f):

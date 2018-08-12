@@ -88,8 +88,8 @@ class ScalingOperator(EndomorphicOperator):
                     raise ValueError("operator not positive definite")
         return 1./np.sqrt(fct) if from_inverse else np.sqrt(fct)
 
-    def process_sample(self, samp, from_inverse):
-        return samp*self._get_fct(from_inverse)
+#     def process_sample(self, samp, from_inverse):
+#         return samp*self._get_fct(from_inverse)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         from ..sugar import from_random
@@ -97,5 +97,4 @@ class ScalingOperator(EndomorphicOperator):
                            std=self._get_fct(from_inverse), dtype=dtype)
 
     def __repr__(self):
-        subs = utilities.indent(self._domain.__repr__())
-        return "ScalingOperator:\n  Factor={}\n".format(self._factor) + subs
+        return "ScalingOperator ({})".format(self._factor)

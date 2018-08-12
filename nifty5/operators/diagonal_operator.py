@@ -173,5 +173,4 @@ class DiagonalOperator(EndomorphicOperator):
         return self.process_sample(res, from_inverse)
 
     def __repr__(self):
-        subs = utilities.indent(self._domain.__repr__())
-        return "DiagonalOperator:\n  Spaces={}\n".format(self._spaces) + subs
+        return "DiagonalOperator"

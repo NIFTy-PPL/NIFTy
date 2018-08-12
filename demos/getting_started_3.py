@@ -74,7 +74,8 @@ if __name__ == '__main__':
     # set up minimization and inversion schemes
     ic_cg = ift.GradientNormController(iteration_limit=10)
     ic_sampling = ift.GradientNormController(iteration_limit=100)
-    ic_newton = ift.GradientNormController(name='Newton', iteration_limit=100)
+    ic_newton = ift.DeltaEnergyController(
+        name='Newton', tol_rel_deltaE=1e-8, iteration_limit=100)
     minimizer = ift.RelaxedNewton(ic_newton)
     # minimizer = ift.VL_BFGS(ic_newton)
     # minimizer = ift.NewtonCG(xtol=1e-10, maxiter=100, disp=True)
