@@ -213,6 +213,17 @@ class MultiField(object):
             res[key] = res[key]+val if key in res else val
         return MultiField.from_dict(res)
 
+    def flexible_addsub(self, other, neg):
+        if self._domain is other._domain:
+            return self-other if neg else self+other
+        res = self.to_dict()
+        for key, val in other.items():
+            if key in res:
+                res[key] = res[key]-val if neg else res[key]+val
+            else:
+                res[key] = -val if neg else val
+        return MultiField.from_dict(res)
+
     def _binary_op(self, other, op):
         f = getattr(Field, op)
         if isinstance(other, MultiField):

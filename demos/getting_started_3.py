@@ -77,8 +77,8 @@ if __name__ == '__main__':
     ic_newton = ift.GradientNormController(name='Newton', iteration_limit=100)
     minimizer = ift.RelaxedNewton(ic_newton)
     # minimizer = ift.VL_BFGS(ic_newton)
-    # minimizer = ift.NewtonCG(1e-10, 100, True)
-    # minimizer = ift.L_BFGS_B(1e-10, 1e-5, 100, 10, True)
+    # minimizer = ift.NewtonCG(xtol=1e-10, maxiter=100, disp=True)
+    # minimizer = ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=100, maxcor=20, disp=True)
 
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
@@ -95,6 +95,7 @@ if __name__ == '__main__':
     N_samples = 20
     for i in range(2):
         metric = H(ift.Linearization.make_var(position)).metric
+        print(metric)
         samples = [metric.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
 

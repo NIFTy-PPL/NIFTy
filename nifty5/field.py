@@ -614,7 +614,10 @@ class Field(object):
         return self
 
     def unite(self, other):
-        return self + other
+        return self+other
+
+    def flexible_addsub(self, other, neg):
+        return self-other if neg else self+other
 
     def positive_tanh(self):
         return 0.5*(1.+self.tanh())

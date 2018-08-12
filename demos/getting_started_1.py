@@ -53,7 +53,7 @@ if __name__ == '__main__':
         mask = np.ones(position_space.shape)
     elif mode == 1:
         # Two dimensional regular grid with chess mask
-        position_space = ift.RGSpace([128, 128])
+        position_space = ift.RGSpace([4096, 4096])
         mask = make_chess_mask(position_space)
     else:
         # Sphere with half of its locations randomly masked
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     j = R.adjoint_times(N.inverse_times(data))
     D_inv = R.adjoint(N.inverse(R)) + S.inverse
     # Make it invertible
-    IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3)
+    IC = ift.GradientNormController(iteration_limit=500, tol_abs_gradnorm=1e-3, name="blah")
     D = ift.InversionEnabler(D_inv, IC, approximation=S.inverse).inverse
 
     # WIENER FILTER

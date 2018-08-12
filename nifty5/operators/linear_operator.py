@@ -81,9 +81,6 @@ class LinearOperator(Operator):
     def _tgt(self, mode):
         return self.domain if (mode & 6) else self.target
 
-    def __init__(self):
-        pass
-
     def _flip_modes(self, trafo):
         from .operator_adapter import OperatorAdapter
         return self if trafo == 0 else OperatorAdapter(self, trafo)
@@ -117,11 +114,8 @@ class LinearOperator(Operator):
         return Operator.__rmatmul__(self, other)
 
     def _myadd(self, other, oneg):
-        if self.domain == other.domain and self.target == other.target:
-            from .sum_operator import SumOperator
-            return SumOperator.make((self, other), (False, oneg))
-        from .relaxed_sum_operator import RelaxedSumOperator
-        return RelaxedSumOperator((self, -other if oneg else other))
+        from .sum_operator import SumOperator
+        return SumOperator.make((self, other), (False, oneg))
 
     def __add__(self, other):
         if isinstance(other, LinearOperator):
