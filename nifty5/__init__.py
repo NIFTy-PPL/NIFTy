@@ -75,8 +75,7 @@ from .library.inverse_gamma_model import InverseGammaModel
 from .library.los_response import LOSResponse
 
 from .library.wiener_filter_curvature import WienerFilterCurvature
-from .library.correlated_fields import CorrelatedField
-#                                         make_mf_correlated_field)
+from .library.correlated_fields import CorrelatedField, MfCorrelatedField
 
 from . import extra
 
