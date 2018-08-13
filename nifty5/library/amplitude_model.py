@@ -24,7 +24,6 @@ from ..compat import *
 from ..domains.power_space import PowerSpace
 from ..domains.unstructured_domain import UnstructuredDomain
 from ..field import Field
-from ..multi_field import MultiField
 from ..multi_domain import MultiDomain
 from ..sugar import makeOp, sqrt
 from ..operators.operator import Operator
@@ -149,3 +148,7 @@ class AmplitudeModel(Operator):
     @property
     def ceps(self):
         return self._ceps
+
+    @property
+    def norm_phi_mean(self):
+        return self._norm_phi_mean

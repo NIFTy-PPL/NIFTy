@@ -64,3 +64,11 @@ class InverseGammaModel(Operator):
     def inverseIG(self, u, alpha, q):
         res = norm.ppf(invgamma.cdf(u.local_data, alpha, scale=q))
         return Field.from_local_data(u.domain, res)
+
+    @property
+    def alpha(self):
+        return self._alpha
+
+    @property
+    def q(self):
+        return self._q
