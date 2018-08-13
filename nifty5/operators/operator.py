@@ -162,7 +162,6 @@ class _OpSum(Operator):
 
     def apply(self, x):
         from ..linearization import Linearization
-        from ..sugar import makeOp
         lin = isinstance(x, Linearization)
         v = x._val if lin else x
         v1 = v.extract(self._op1.domain)
