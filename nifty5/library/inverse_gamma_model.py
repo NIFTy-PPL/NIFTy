@@ -56,12 +56,12 @@ class InverseGammaModel(Operator):
         return Linearization(points, jac)
 
     @staticmethod
-    def IG(self, field, alpha, q):
+    def IG(field, alpha, q):
         foo = invgamma.ppf(norm.cdf(field.local_data), alpha, scale=q)
         return Field.from_local_data(field.domain, foo)
 
     @staticmethod
-    def inverseIG(self, u, alpha, q):
+    def inverseIG(u, alpha, q):
         res = norm.ppf(invgamma.cdf(u.local_data, alpha, scale=q))
         return Field.from_local_data(u.domain, res)
 
