@@ -39,7 +39,8 @@ class CentralZeroPadder(LinearOperator):
     ---------
 
     domain: Domain, tuple of Domains or DomainTuple
-            The domain of the data that is input by "times" and output by "adjoint_times" 
+            The domain of the data that is input by "times" and output by
+            "adjoint_times"
     new_shape: tuple
                Shape of the target domain.
     space: int, optional
@@ -48,7 +49,7 @@ class CentralZeroPadder(LinearOperator):
            `domain[space]` must be an RGSpace.
 
     """
-    
+
     def __init__(self, domain, new_shape, space=0):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
@@ -69,10 +70,10 @@ class CentralZeroPadder(LinearOperator):
         self._target = list(self._domain)
         self._target[self._space] = tgt
         self._target = DomainTuple.make(self._target)
-        
+
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
-        # define the axes along which the input filed is sliced
+        # define the axes along which the input field is sliced
         slicer = []
         axes = self._target.axes[self._space]
         for i in range(len(self._domain.shape)):
