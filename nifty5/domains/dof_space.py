@@ -40,7 +40,6 @@ class DOFSpace(StructuredDomain):
     _needed_for_hash = ["_dvol"]
 
     def __init__(self, dof_weights):
-        super(DOFSpace, self).__init__()
         self._dvol = tuple(dof_weights)
 
     @property

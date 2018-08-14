@@ -38,14 +38,13 @@ class UnstructuredDomain(Domain):
     _needed_for_hash = ["_shape"]
 
     def __init__(self, shape):
-        super(UnstructuredDomain, self).__init__()
         try:
             self._shape = tuple([int(i) for i in shape])
         except TypeError:
             self._shape = (int(shape), )
 
     def __repr__(self):
-        return "UnstructuredDomain(shape=%r)" % (self.shape, )
+        return "UnstructuredDomain(shape={})".format(self.shape)
 
     @property
     def shape(self):

@@ -23,7 +23,7 @@ import numpy as np
 from ..compat import *
 from ..logger import logger
 from ..minimization.conjugate_gradient import ConjugateGradient
-from ..minimization.iteration_controller import IterationController
+from ..minimization.iteration_controllers import IterationController
 from ..minimization.quadratic_energy import QuadraticEnergy
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
@@ -51,18 +51,11 @@ class InversionEnabler(EndomorphicOperator):
     """
 
     def __init__(self, op, iteration_controller, approximation=None):
-        super(InversionEnabler, self).__init__()
         self._op = op
         self._ic = iteration_controller
         self._approximation = approximation
-
-    @property
-    def domain(self):
-        return self._op.domain
-
-    @property
-    def capability(self):
-        return self._addInverse[self._op.capability]
+        self._domain = op.domain
+        self._capability = self._addInverse[self._op.capability]
 
     def apply(self, x, mode):
         self._check_mode(mode)

@@ -18,24 +18,59 @@
 
 from __future__ import absolute_import, division, print_function
 
+import numpy as np
 from .. import dobj
 from ..compat import *
 from ..field import Field
+from ..multi_field import MultiField
+from ..domain_tuple import DomainTuple
 from ..logger import logger
-from .iteration_controller import IterationController
+from .iteration_controllers import IterationController
 from .minimizer import Minimizer
+from ..utilities import iscomplextype
 
 
-def _toNdarray(fld):
-    return fld.to_global_data().reshape(-1)
+def _multiToArray(fld):
+    szall = sum(2*v.size if iscomplextype(v.dtype) else v.size
+                for v in fld.values())
+    res = np.empty(szall, dtype=np.float64)
+    ofs = 0
+    for val in fld.values():
+        sz2 = 2*val.size if iscomplextype(val.dtype) else val.size
+        locdat = val.local_data.reshape(-1)
+        if iscomplextype(val.dtype):
+            locdat = locdat.view(locdat.real.dtype)
+        res[ofs:ofs+sz2] = locdat
+        ofs += sz2
+    return res
 
 
-def _toFlatNdarray(fld):
-    return fld.val.flatten()
+def _toArray(fld):
+    if isinstance(fld, Field):
+        return fld.local_data.reshape(-1)
+    return _multiToArray(fld)
 
 
-def _toField(arr, dom):
-    return Field.from_global_data(dom, arr.reshape(dom.shape).copy())
+def _toArray_rw(fld):
+    if isinstance(fld, Field):
+        return fld.local_data.copy().reshape(-1)
+    return _multiToArray(fld)
+
+
+def _toField(arr, template):
+    if isinstance(template, Field):
+        return Field.from_local_data(template.domain,
+                                     arr.reshape(template.shape).copy())
+    ofs = 0
+    res = []
+    for v in template.values():
+        sz2 = 2*v.size if iscomplextype(v.dtype) else v.size
+        locdat = arr[ofs:ofs+sz2].copy()
+        if iscomplextype(v.dtype):
+            locdat = locdat.view(np.complex128)
+        res.append(Field.from_local_data(v.domain, locdat.reshape(v.shape)))
+        ofs += sz2
+    return MultiField(template.domain, tuple(res))
 
 
 class _MinHelper(object):
@@ -44,7 +79,7 @@ class _MinHelper(object):
         self._domain = energy.position.domain
 
     def _update(self, x):
-        pos = _toField(x, self._domain)
+        pos = _toField(x, self._energy.position)
         if (pos != self._energy.position).any():
             self._energy = self._energy.at(pos)
 
@@ -54,12 +89,12 @@ class _MinHelper(object):
 
     def jac(self, x):
         self._update(x)
-        return _toFlatNdarray(self._energy.gradient)
+        return _toArray_rw(self._energy.gradient)
 
     def hessp(self, x, p):
         self._update(x)
-        res = self._energy.metric(_toField(p, self._domain))
-        return _toFlatNdarray(res)
+        res = self._energy.metric(_toField(p, self._energy.position))
+        return _toArray_rw(res)
 
 
 class ScipyMinimizer(Minimizer):
@@ -74,7 +109,6 @@ class ScipyMinimizer(Minimizer):
     """
 
     def __init__(self, method, options, need_hessp, bounds):
-        super(ScipyMinimizer, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
         self._method = method
@@ -95,7 +129,7 @@ class ScipyMinimizer(Minimizer):
             else:
                 raise ValueError("unrecognized bounds")
 
-        x = hlp._energy.position.val.flatten()
+        x = _toArray_rw(hlp._energy.position)
         hessp = hlp.hessp if self._need_hessp else None
         r = opt.minimize(hlp.fun, x, method=self._method, jac=hlp.jac,
                          hessp=hessp, options=self._options, bounds=bounds)
@@ -130,7 +164,6 @@ def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
 
 class ScipyCG(Minimizer):
     def __init__(self, tol, maxiter):
-        super(ScipyCG, self).__init__()
         if not dobj.is_numpy():
             raise NotImplementedError
         self._tol = tol
@@ -147,11 +180,11 @@ class ScipyCG(Minimizer):
                 self._op = op
 
             def __call__(self, inp):
-                return _toNdarray(self._op(_toField(inp, self._op.domain)))
+                return _toArray(self._op(_toField(inp, energy.position)))
 
         op = energy._A
-        b = _toNdarray(energy._b)
-        sx = _toNdarray(energy.position)
+        b = _toArray(energy._b)
+        sx = _toArray(energy.position)
         sci_op = scipy_linop(shape=(op.domain.size, op.target.size),
                              matvec=mymatvec(op))
         prec_op = None
@@ -162,4 +195,4 @@ class ScipyCG(Minimizer):
                        maxiter=self._maxiter)
         stat = (IterationController.CONVERGED if stat >= 0 else
                 IterationController.ERROR)
-        return energy.at(_toField(res, op.domain)), stat
+        return energy.at(_toField(res, energy.position)), stat

@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 import numpy as np
 
 from ..compat import *
@@ -34,7 +32,7 @@ class StructuredDomain(Domain):
     are needed for power spectrum analysis and smoothing.
     """
 
-    @abc.abstractproperty
+    @property
     def scalar_dvol(self):
         """float or None : uniform cell volume, if applicable
 
@@ -63,7 +61,7 @@ class StructuredDomain(Domain):
         tmp = self.dvol
         return self.size * tmp if np.isscalar(tmp) else np.sum(tmp)
 
-    @abc.abstractproperty
+    @property
     def harmonic(self):
         """bool : True iff this domain is a harmonic domain."""
         raise NotImplementedError

@@ -50,7 +50,6 @@ class LineEnergy(object):
     """
 
     def __init__(self, line_position, energy, line_direction, offset=0.):
-        super(LineEnergy, self).__init__()
         self._line_position = float(line_position)
         self._line_direction = line_direction
 

@@ -18,9 +18,9 @@
 
 from __future__ import absolute_import, division, print_function
 
-from ..compat import *
-from ..domain_tuple import DomainTuple
-from ..utilities import frozendict
+from .compat import *
+from .domain_tuple import DomainTuple
+from .utilities import frozendict, indent
 
 
 class MultiDomain(object):
@@ -95,7 +95,7 @@ class MultiDomain(object):
     def __eq__(self, x):
         if self is x:
             return True
-        return self is MultiDomain.make(x)
+        return self.items() == x.items()
 
     def __ne__(self, x):
         return not self.__eq__(x)
@@ -108,12 +108,20 @@ class MultiDomain(object):
 
     @staticmethod
     def union(inp):
+        inp = set(inp)
+        if len(inp) == 1:  # all domains are identical
+            return inp.pop()
         res = {}
         for dom in inp:
             for key, subdom in zip(dom._keys, dom._domains):
                 if key in res:
-                    if res[key] is not subdom:
+                    if res[key] != subdom:
                         raise ValueError("domain mismatch")
                 else:
                     res[key] = subdom
         return MultiDomain.make(res)
+
+    def __repr__(self):
+        subs = "\n".join("{}:\n  {}".format(key, dom.__repr__())
+                         for key, dom in self.items())
+        return "MultiDomain:\n"+indent(subs)

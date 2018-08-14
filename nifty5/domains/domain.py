@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -27,11 +25,6 @@ from ..utilities import NiftyMetaBase
 class Domain(NiftyMetaBase()):
     """The abstract class repesenting a (structured or unstructured) domain.
     """
-
-    def __init__(self):
-        self._hash = None
-
-    @abc.abstractmethod
     def __repr__(self):
         raise NotImplementedError
 
@@ -43,11 +36,12 @@ class Domain(NiftyMetaBase()):
         Only members that are explicitly added to
         :attr:`._needed_for_hash` will be used for hashing.
         """
-        if self._hash is None:
-            h = 0
-            for key in self._needed_for_hash:
-                h ^= hash(vars(self)[key])
-            self._hash = h
+        try:
+            return self._hash
+        except AttributeError:
+            v = vars(self)
+            self._hash = reduce(lambda x, y: x ^ y, (hash(v[key])
+                                for key in self._needed_for_hash), 0)
         return self._hash
 
     def __eq__(self, x):
@@ -84,7 +78,7 @@ class Domain(NiftyMetaBase()):
         """Returns the opposite of :meth:`.__eq__()`"""
         return not self.__eq__(x)
 
-    @abc.abstractproperty
+    @property
     def shape(self):
         """tuple of int: number of pixels along each axis
 
@@ -103,7 +97,7 @@ class Domain(NiftyMetaBase()):
         from ..dobj import local_shape
         return local_shape(self.shape)
 
-    @abc.abstractproperty
+    @property
     def size(self):
         """int: total number of pixels.
 

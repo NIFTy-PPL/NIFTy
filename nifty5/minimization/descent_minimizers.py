@@ -19,10 +19,188 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-
 from ..compat import *
-from .descent_minimizer import DescentMinimizer
+from ..logger import logger
 from .line_search_strong_wolfe import LineSearchStrongWolfe
+from .minimizer import Minimizer
+
+
+class DescentMinimizer(Minimizer):
+    """ A base class used by gradient methods to find a local minimum.
+
+    Descent minimization methods are used to find a local minimum of a scalar
+    function by following a descent direction. This class implements the
+    minimization procedure once a descent direction is known. The descent
+    direction has to be implemented separately.
+
+    Parameters
+    ----------
+    controller : IterationController
+        Object that decides when to terminate the minimization.
+    line_searcher : callable *optional*
+        Function which infers the step size in the descent direction
+        (default : LineSearchStrongWolfe()).
+    """
+
+    def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
+        self._controller = controller
+        self.line_searcher = line_searcher
+
+    def __call__(self, energy):
+        """ Performs the minimization of the provided Energy functional.
+
+        Parameters
+        ----------
+        energy : Energy
+           Energy object which provides value, gradient and metric at a
+           specific position in parameter space.
+
+        Returns
+        -------
+        Energy
+            Latest `energy` of the minimization.
+        int
+            Can be controller.CONVERGED or controller.ERROR
+
+        Notes
+        -----
+        The minimization is stopped if
+            * the controller returns controller.CONVERGED or controller.ERROR,
+            * a perfectly flat point is reached,
+            * according to the line-search the minimum is found,
+        """
+        f_k_minus_1 = None
+        controller = self._controller
+        status = controller.start(energy)
+        if status != controller.CONTINUE:
+            return energy, status
+
+        while True:
+            # check if position is at a flat point
+            if energy.gradient_norm == 0:
+                return energy, controller.CONVERGED
+
+            # compute a step length that reduces energy.value sufficiently
+            new_energy, success = self.line_searcher.perform_line_search(
+                energy=energy, pk=self.get_descent_direction(energy),
+                f_k_minus_1=f_k_minus_1)
+            if not success:
+                self.reset()
+
+            f_k_minus_1 = energy.value
+
+            if new_energy.value > energy.value:
+                logger.error("Error: Energy has increased")
+                return energy, controller.ERROR
+
+            if new_energy.value == energy.value:
+                logger.warning(
+                    "Warning: Energy has not changed. Assuming convergence...")
+                return new_energy, controller.CONVERGED
+
+            energy = new_energy
+            status = self._controller.check(energy)
+            if status != controller.CONTINUE:
+                return energy, status
+
+    def reset(self):
+        pass
+
+    def get_descent_direction(self, energy):
+        """ Calculates the next descent direction.
+
+        Parameters
+        ----------
+        energy : Energy
+            An instance of the Energy class which shall be minimized. The
+            position of `energy` is used as the starting point of minimization.
+
+        Returns
+        -------
+        Field
+           The descent direction.
+        """
+        raise NotImplementedError
+
+
+class SteepestDescent(DescentMinimizer):
+    """ Implementation of the steepest descent minimization scheme.
+
+    Also known as 'gradient descent'. This algorithm simply follows the
+    functional's gradient for minimization.
+    """
+
+    def get_descent_direction(self, energy):
+        return -energy.gradient
+
+
+class RelaxedNewton(DescentMinimizer):
+    """ Calculates the descent direction according to a Newton scheme.
+
+    The descent direction is determined by weighting the gradient at the
+    current parameter position with the inverse local metric.
+    """
+
+    def __init__(self, controller, line_searcher=None):
+        if line_searcher is None:
+            line_searcher = LineSearchStrongWolfe(
+                preferred_initial_step_size=1.)
+        super(RelaxedNewton, self).__init__(controller=controller,
+                                            line_searcher=line_searcher)
+
+    def get_descent_direction(self, energy):
+        return -energy.metric.inverse_times(energy.gradient)
+
+
+class L_BFGS(DescentMinimizer):
+    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
+                 max_history_length=5):
+        super(L_BFGS, self).__init__(controller=controller,
+                                     line_searcher=line_searcher)
+        self.max_history_length = max_history_length
+
+    def __call__(self, energy):
+        self.reset()
+        return super(L_BFGS, self).__call__(energy)
+
+    def reset(self):
+        self._k = 0
+        self._s = [None]*self.max_history_length
+        self._y = [None]*self.max_history_length
+
+    def get_descent_direction(self, energy):
+        x = energy.position
+        s = self._s
+        y = self._y
+        k = self._k
+        maxhist = self.max_history_length
+        gradient = energy.gradient
+
+        nhist = min(k, maxhist)
+        alpha = [None]*maxhist
+        p = -gradient
+        if k > 0:
+            idx = (k-1) % maxhist
+            s[idx] = x-self._lastx
+            y[idx] = gradient-self._lastgrad
+        if nhist > 0:
+            for i in range(k-1, k-nhist-1, -1):
+                idx = i % maxhist
+                alpha[idx] = s[idx].vdot(p)/s[idx].vdot(y[idx])
+                p = p - alpha[idx]*y[idx]
+            idx = (k-1) % maxhist
+            fact = s[idx].vdot(y[idx]) / y[idx].vdot(y[idx])
+            if fact <= 0.:
+                logger.error("L-BFGS curvature not positive definite!")
+            p = p*fact
+            for i in range(k-nhist, k):
+                idx = i % maxhist
+                beta = y[idx].vdot(p) / s[idx].vdot(y[idx])
+                p = p + (alpha[idx]-beta)*s[idx]
+        self._lastx = x
+        self._lastgrad = gradient
+        self._k += 1
+        return p
 
 
 class VL_BFGS(DescentMinimizer):

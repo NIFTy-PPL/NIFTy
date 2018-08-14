@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # Two-dimensional regular grid with inhomogeneous exposure
     position_space = ift.RGSpace([512, 512])
 
-    # # Sphere with with uniform exposure
+    #  Sphere with uniform exposure
     # position_space = ift.HPSpace(128)
     # exposure = ift.Field.full(position_space, 1.)
 
@@ -41,38 +41,30 @@ if __name__ == '__main__':
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
-    domain = ift.MultiDomain.make({'xi': harmonic_space})
-    position = ift.from_random('normal', domain)
+    position = ift.from_random('normal', harmonic_space)
 
     # Define power spectrum and amplitudes
     def sqrtpspec(k):
         return 1. / (20. + k**2)
 
-    p_space = ift.PowerSpace(harmonic_space)
-    pd = ift.PowerDistributor(harmonic_space, p_space)
-    a = ift.PS_field(p_space, sqrtpspec)
-    A = pd(a)
+    A = ift.create_power_operator(harmonic_space, sqrtpspec)
 
     # Set up a sky model
-    xi = ift.Variable(position)['xi']
-    logsky_h = xi * A
-    logsky = HT(logsky_h)
-    sky = ift.PointwisePositiveTanh(logsky)
+    sky = ift.positive_tanh(HT(A))
 
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response
     R = GR
 
     # Generate mock data
-    d_space = R.target[0]
     p = R(sky)
-    mock_position = ift.from_random('normal', p.position.domain)
-    pp = p.at(mock_position).value
-    data = np.random.binomial(1, pp.to_global_data().astype(np.float64))
-    data = ift.Field.from_global_data(d_space, data)
+    mock_position = ift.from_random('normal', harmonic_space)
+    tmp = p(mock_position).to_global_data().astype(np.float64)
+    data = np.random.binomial(1, tmp)
+    data = ift.Field.from_global_data(R.target, data)
 
     # Compute likelihood and Hamiltonian
-    position = ift.from_random('normal', p.position.domain)
+    position = ift.from_random('normal', harmonic_space)
     likelihood = ift.BernoulliEnergy(p, data)
     ic_cg = ift.GradientNormController(iteration_limit=50)
     ic_newton = ift.GradientNormController(name='Newton', iteration_limit=30,
@@ -82,14 +74,14 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
-    H = H.make_invertible(ic_cg)
-    # minimizer = ift.SteepestDescent(ic_newton)
+    H = ift.EnergyAdapter(position, H, ic_cg)
+    # minimizer = ift.L_BFGS(ic_newton)
     H, convergence = minimizer(H)
 
-    reconstruction = sky.at(H.position).value
+    reconstruction = sky(H.position)
 
     ift.plot(reconstruction, title='reconstruction')
     ift.plot(GR.adjoint_times(data), title='data')
-    ift.plot(sky.at(mock_position).value, title='truth')
+    ift.plot(sky(mock_position), title='truth')
     ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
                     name="bernoulli.png")
