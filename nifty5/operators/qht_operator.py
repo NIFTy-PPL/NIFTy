@@ -64,7 +64,7 @@ class QHTOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         dom = self._domain[self._space]
-        x = x.val * dom.scalar_dvol()
+        x = x.val * dom.scalar_dvol
         n = self._domain.axes[self._space]
         rng = n if mode == self.TIMES else reversed(n)
         ax = dobj.distaxis(x)
