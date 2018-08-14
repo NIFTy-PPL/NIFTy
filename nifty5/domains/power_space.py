@@ -158,8 +158,6 @@ class PowerSpace(StructuredDomain):
             return PowerSpace.linear_binbounds(nbin, lbound, rbound)
 
     def __init__(self, harmonic_partner, binbounds=None):
-        super(PowerSpace, self).__init__()
-
         if not (isinstance(harmonic_partner, StructuredDomain) and
                 harmonic_partner.harmonic):
             raise ValueError("harmonic_partner must be a harmonic space.")
@@ -209,8 +207,8 @@ class PowerSpace(StructuredDomain):
             self._powerIndexCache[key]
 
     def __repr__(self):
-        return ("PowerSpace(harmonic_partner=%r, binbounds=%r)"
-                % (self.harmonic_partner, self._binbounds))
+        return ("PowerSpace(harmonic_partner={}, binbounds={})"
+                .format(self.harmonic_partner, self._binbounds))
 
     @property
     def harmonic(self):

@@ -18,19 +18,20 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
 import collections
 from itertools import product
 
 import numpy as np
 from future.utils import with_metaclass
+import pyfftw
+from pyfftw.interfaces.numpy_fft import rfftn, fftn
 
 from .compat import *
 
 __all__ = ["get_slice_list", "safe_cast", "parse_spaces", "infer_space",
            "memo", "NiftyMetaBase", "fft_prep", "hartley", "my_fftn_r2c",
-           "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb",
-           "my_product", "frozendict", "special_add_at"]
+           "my_fftn", "my_sum", "my_lincomb_simple", "my_lincomb", "indent",
+           "my_product", "frozendict", "special_add_at", "iscomplextype"]
 
 
 def my_sum(iterable):
@@ -178,7 +179,7 @@ class _DocStringInheritor(type):
                                                         bases, clsdict)
 
 
-class NiftyMeta(_DocStringInheritor, abc.ABCMeta):
+class NiftyMeta(_DocStringInheritor):
     pass
 
 
@@ -202,9 +203,11 @@ _fft_extra_args = dict(planner_effort='FFTW_ESTIMATE')
 
 
 def fft_prep():
-    import pyfftw
-    pyfftw.interfaces.cache.enable()
-    pyfftw.interfaces.cache.set_keepalive_time(1000.)
+    if not fft_prep._initialized:
+        pyfftw.interfaces.cache.enable()
+        pyfftw.interfaces.cache.set_keepalive_time(1000.)
+        fft_prep._initialized = True
+fft_prep._initialized = False
 
 
 def hartley(a, axes=None):
@@ -212,10 +215,9 @@ def hartley(a, axes=None):
     if axes is not None and \
             not all(axis < len(a.shape) for axis in axes):
         raise ValueError("Provided axes do not match array shape")
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         raise TypeError("Hartley transform requires real-valued arrays.")
 
-    from pyfftw.interfaces.numpy_fft import rfftn
     tmp = rfftn(a, axes=axes, threads=nthreads(), **_fft_extra_args)
 
     def _fill_array(tmp, res, axes):
@@ -256,10 +258,9 @@ def my_fftn_r2c(a, axes=None):
     if axes is not None and \
             not all(axis < len(a.shape) for axis in axes):
         raise ValueError("Provided axes do not match array shape")
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         raise TypeError("Transform requires real-valued input arrays.")
 
-    from pyfftw.interfaces.numpy_fft import rfftn
     tmp = rfftn(a, axes=axes, threads=nthreads(), **_fft_extra_args)
 
     def _fill_complex_array(tmp, res, axes):
@@ -294,7 +295,6 @@ def my_fftn_r2c(a, axes=None):
 
 
 def my_fftn(a, axes=None):
-    from pyfftw.interfaces.numpy_fft import fftn
     return fftn(a, axes=axes, **_fft_extra_args)
 
 
@@ -327,7 +327,7 @@ class frozendict(collections.Mapping):
         return len(self._dict)
 
     def __repr__(self):
-        return '<%s %r>' % (self.__class__.__name__, self._dict)
+        return '<{} {}>'.format(self.__class__.__name__, self._dict)
 
     def __hash__(self):
         if self._hash is None:
@@ -345,7 +345,7 @@ def special_add_at(a, axis, index, b):
     sz3 = int(np.prod(a.shape[axis+1:]))
     a2 = a.reshape([sz1, -1, sz3])
     b2 = b.reshape([sz1, -1, sz3])
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         dt2 = a.real.dtype
         a2 = a2.view(dt2)
         b2 = b2.view(dt2)
@@ -355,6 +355,15 @@ def special_add_at(a, axis, index, b):
             a2[i1, :, i3] += np.bincount(index, b2[i1, :, i3],
                                          minlength=a2.shape[1])
 
-    if np.issubdtype(a.dtype, np.complexfloating):
+    if iscomplextype(a.dtype):
         a2 = a2.view(a.dtype)
     return a2.reshape(a.shape)
+
+
+_iscomplex_tpl = (np.complex64, np.complex128)
+def iscomplextype(dtype):
+    return dtype.type in _iscomplex_tpl
+
+
+def indent(inp):
+    return "\n".join((("  "+s).rstrip() for s in inp.splitlines()))

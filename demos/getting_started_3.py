@@ -32,26 +32,25 @@ if __name__ == '__main__':
     position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
-    A, amplitude_internals = ift.make_amplitude_model(
-        position_space, 16, 1, 10, -4., 1, 0., 1.)
+    A = ift.AmplitudeModel(position_space, 16, 1, 10, -4., 1, 0., 1.)
+    dummy = ift.from_random('normal', A.domain)
 
     # Building the model for a correlated signal
     harmonic_space = position_space.get_default_codomain()
     ht = ift.HarmonicTransformOperator(harmonic_space, position_space)
-    power_space = A.value.domain[0]
+    power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
-    position = ift.MultiField.from_dict(
-        {'xi': ift.Field.from_random('normal', harmonic_space)})
+    dummy = ift.Field.from_random('normal', harmonic_space)
+    domain = ift.MultiDomain.union(
+        (A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
 
-    xi = ift.Variable(position)['xi']
-    Amp = power_distributor(A)
-    correlated_field_h = Amp * xi
-    correlated_field = ht(correlated_field_h)
+    correlated_field = ht(
+        power_distributor(A)*ift.FieldAdapter(domain, "xi"))
     # alternatively to the block above one can do:
-    # correlated_field,_ = ift.make_correlated_field(position_space, A)
+    # correlated_field = ift.CorrelatedField(position_space, A)
 
     # apply some nonlinearity
-    signal = ift.PointwisePositiveTanh(correlated_field)
+    signal = ift.positive_tanh(correlated_field)
 
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
@@ -65,55 +64,57 @@ if __name__ == '__main__':
     N = ift.ScalingOperator(noise, data_space)
 
     # generate mock data
-    MOCK_POSITION = ift.from_random('normal', signal.position.domain)
-    data = signal_response.at(MOCK_POSITION).value + N.draw_sample()
+    MOCK_POSITION = ift.from_random('normal', domain)
+    data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
-    likelihood = ift.GaussianEnergy(signal_response, mean=data, covariance=N)
+    likelihood = ift.GaussianEnergy(
+        mean=data, covariance=N)(signal_response)
 
     # set up minimization and inversion schemes
     ic_cg = ift.GradientNormController(iteration_limit=10)
     ic_sampling = ift.GradientNormController(iteration_limit=100)
-    ic_newton = ift.GradientNormController(name='Newton', iteration_limit=100)
+    ic_newton = ift.DeltaEnergyController(
+        name='Newton', tol_rel_deltaE=1e-8, iteration_limit=100)
     minimizer = ift.RelaxedNewton(ic_newton)
+    # minimizer = ift.VL_BFGS(ic_newton)
+    # minimizer = ift.NewtonCG(xtol=1e-10, maxiter=100, disp=True)
+    # minimizer = ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=100, maxcor=20, disp=True)
 
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
 
-    INITIAL_POSITION = ift.from_random('normal', H.position.domain)
+    INITIAL_POSITION = ift.from_random('normal', domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal.at(MOCK_POSITION).value, title='ground truth')
+    ift.plot(signal(MOCK_POSITION), title='ground truth')
     ift.plot(R.adjoint_times(data), title='data')
-    ift.plot([A.at(MOCK_POSITION).value], title='power')
+    ift.plot([A(MOCK_POSITION)], title='power')
     ift.plot_finish(nx=3, xsize=16, ysize=5, title="setup", name="setup.png")
 
     # number of samples used to estimate the KL
     N_samples = 20
     for i in range(2):
-        H = H.at(position)
-        samples = [H.metric.draw_sample(from_inverse=True)
+        metric = H(ift.Linearization.make_var(position)).metric
+        samples = [metric.draw_sample(from_inverse=True)
                    for _ in range(N_samples)]
 
         KL = ift.SampledKullbachLeiblerDivergence(H, samples)
-        KL = KL.make_invertible(ic_cg)
+        KL = ift.EnergyAdapter(position, KL, ic_cg)
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal.at(position).value, title="reconstruction")
-
-        ift.plot([A.at(position).value, A.at(MOCK_POSITION).value],
-                 title="power")
+        ift.plot(signal(position), title="reconstruction")
+        ift.plot([A(position), A(MOCK_POSITION)], title="power")
         ift.plot_finish(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
 
     sc = ift.StatCalculator()
     for sample in samples:
-        sc.add(signal.at(sample+position).value)
+        sc.add(signal(sample+position))
     ift.plot(sc.mean, title="mean")
     ift.plot(ift.sqrt(sc.var), title="std deviation")
 
-    powers = [A.at(s+position).value for s in samples]
-    ift.plot([A.at(position).value, A.at(MOCK_POSITION).value]+powers,
-             title="power")
+    powers = [A(s+position) for s in samples]
+    ift.plot([A(position), A(MOCK_POSITION)]+powers, title="power")
     ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
                     name="results.png")

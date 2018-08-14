@@ -57,8 +57,6 @@ class DiagonalOperator(EndomorphicOperator):
     """
 
     def __init__(self, diagonal, domain=None, spaces=None):
-        super(DiagonalOperator, self).__init__()
-
         if not isinstance(diagonal, Field):
             raise TypeError("Field object required")
         if domain is None:
@@ -67,7 +65,7 @@ class DiagonalOperator(EndomorphicOperator):
             self._domain = DomainTuple.make(domain)
         if spaces is None:
             self._spaces = None
-            if diagonal.domain is not self._domain:
+            if diagonal.domain != self._domain:
                 raise ValueError("domain mismatch")
         else:
             self._spaces = utilities.parse_spaces(spaces, len(self._domain))
@@ -94,11 +92,13 @@ class DiagonalOperator(EndomorphicOperator):
             self._ldiag = self._ldiag.reshape(self._reshaper)
         else:
             self._ldiag = diagonal.local_data
-        self._update_diagmin()
+        self._fill_rest()
 
-    def _update_diagmin(self):
+    def _fill_rest(self):
         self._ldiag.flags.writeable = False
-        if not np.issubdtype(self._ldiag.dtype, np.complexfloating):
+        self._complex = utilities.iscomplextype(self._ldiag.dtype)
+        self._capability = self._all_ops
+        if not self._complex:
             lmin = self._ldiag.min() if self._ldiag.size > 0 else 1.
             self._diagmin = dobj.np_allreduce_min(np.array(lmin))[()]
 
@@ -110,7 +110,7 @@ class DiagonalOperator(EndomorphicOperator):
         else:
             res._spaces = tuple(set(self._spaces) | set(spc))
         res._ldiag = ldiag
-        res._update_diagmin()
+        res._fill_rest()
         return res
 
     def _scale(self, fct):
@@ -137,56 +137,40 @@ class DiagonalOperator(EndomorphicOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
+        # shortcut for most common cases
+        if mode == 1 or (not self._complex and mode == 2):
+            return Field.from_local_data(x.domain, x.local_data*self._ldiag)
 
-        if mode == self.TIMES:
-            return Field(x.domain, val=x.val*self._ldiag)
-        elif mode == self.ADJOINT_TIMES:
-            if np.issubdtype(self._ldiag.dtype, np.floating):
-                return Field(x.domain, val=x.val*self._ldiag)
-            else:
-                return Field(x.domain, val=x.val*self._ldiag.conj())
-        elif mode == self.INVERSE_TIMES:
-            return Field(x.domain, val=x.val/self._ldiag)
-        else:
-            if np.issubdtype(self._ldiag.dtype, np.floating):
-                return Field(x.domain, val=x.val/self._ldiag)
-            else:
-                return Field(x.domain, val=x.val/self._ldiag.conj())
+        xdiag = self._ldiag
+        if self._complex and (mode & 10):  # adjoint or inverse adjoint
+            xdiag = xdiag.conj()
 
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def capability(self):
-        return self._all_ops
+        if mode & 3:
+            return Field.from_local_data(x.domain, x.local_data*xdiag)
+        return Field.from_local_data(x.domain, x.local_data/xdiag)
 
     def _flip_modes(self, trafo):
-        ADJ = self.ADJOINT_BIT
-        INV = self.INVERSE_BIT
+        xdiag = self._ldiag
+        if self._complex and (trafo & self.ADJOINT_BIT):
+            xdiag = xdiag.conj()
+        if trafo & self.INVERSE_BIT:
+            xdiag = 1./xdiag
+        return self._from_ldiag((), xdiag)
 
-        if trafo == 0:
-            return self
-        if trafo == ADJ and np.issubdtype(self._ldiag.dtype, np.floating):
-            return self
-        if trafo == ADJ:
-            return self._from_ldiag((), self._ldiag.conjugate())
-        elif trafo == INV:
-            return self._from_ldiag((), 1./self._ldiag)
-        elif trafo == ADJ | INV:
-            return self._from_ldiag((), 1./self._ldiag.conjugate())
-        raise ValueError("invalid operator transformation")
+    def process_sample(self, samp, from_inverse):
+        if (self._complex or (self._diagmin < 0.) or
+            (self._diagmin == 0. and from_inverse)):
+                raise ValueError("operator not positive definite")
+        if from_inverse:
+            res = samp.local_data/np.sqrt(self._ldiag)
+        else:
+            res = samp.local_data*np.sqrt(self._ldiag)
+        return Field.from_local_data(self._domain, res)
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
-        if np.issubdtype(self._ldiag.dtype, np.complexfloating):
-            raise ValueError("operator not positive definite")
-        if self._diagmin < 0.:
-            raise ValueError("operator not positive definite")
-        if self._diagmin == 0. and from_inverse:
-            raise ValueError("operator not positive definite")
         res = Field.from_random(random_type="normal", domain=self._domain,
                                 dtype=dtype)
-        if from_inverse:
-            return res/np.sqrt(self._ldiag)
-        else:
-            return res*np.sqrt(self._ldiag)
+        return self.process_sample(res, from_inverse)
+
+    def __repr__(self):
+        return "DiagonalOperator"

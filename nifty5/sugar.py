@@ -28,11 +28,11 @@ from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
 from .logger import logger
-from .multi.block_diagonal_operator import BlockDiagonalOperator
-from .multi.multi_domain import MultiDomain
-from .multi.multi_field import MultiField
+from .operators.block_diagonal_operator import BlockDiagonalOperator
+from .multi_domain import MultiDomain
+from .multi_field import MultiField
 from .operators.diagonal_operator import DiagonalOperator
-from .operators.power_distributor import PowerDistributor
+from .operators.distributors import PowerDistributor
 
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
@@ -136,7 +136,7 @@ def power_analyze(field, spaces=None, binbounds=None,
     if len(spaces) == 0:
         raise ValueError("No space for analysis specified.")
 
-    field_real = not np.issubdtype(field.dtype, np.complexfloating)
+    field_real = not utilities.iscomplextype(field.dtype)
     if (not field_real) and keep_phase_information:
         raise ValueError("cannot keep phase from real-valued input Field")
 
@@ -246,7 +246,7 @@ def makeOp(input):
 
 def domain_union(domains):
     if isinstance(domains[0], DomainTuple):
-        if any(dom is not domains[0] for dom in domains[1:]):
+        if any(dom != domains[0] for dom in domains[1:]):
             raise ValueError("domain mismatch")
         return domains[0]
     return MultiDomain.union(domains)
@@ -260,7 +260,9 @@ _current_module = sys.modules[__name__]
 for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
     def func(f):
         def func2(x):
-            if isinstance(x, (Field, MultiField)):
+            from .linearization import Linearization
+            from .operators.operator import Operator
+            if isinstance(x, (Field, MultiField, Linearization, Operator)):
                 return getattr(x, f)()
             else:
                 return getattr(np, f)(x)

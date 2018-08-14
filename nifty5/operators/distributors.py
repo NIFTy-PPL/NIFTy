@@ -24,6 +24,7 @@ from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.dof_space import DOFSpace
+from ..domains.power_space import PowerSpace
 from ..field import Field
 from ..utilities import infer_space, special_add_at
 from .linear_operator import LinearOperator
@@ -54,8 +55,6 @@ class DOFDistributor(LinearOperator):
     """
 
     def __init__(self, dofdex, target=None, space=None):
-        super(DOFDistributor, self).__init__()
-
         if target is None:
             target = dofdex.domain
         self._target = DomainTuple.make(target)
@@ -98,6 +97,7 @@ class DOFDistributor(LinearOperator):
         dom = list(self._target)
         dom[self._space] = other_space
         self._domain = DomainTuple.make(dom)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
         if dobj.default_distaxis() in self._domain.axes[self._space]:
             dofdex = dobj.local_data(dofdex)
@@ -118,14 +118,11 @@ class DOFDistributor(LinearOperator):
         oarr = np.zeros(self._hshape, dtype=x.dtype)
         oarr = special_add_at(oarr, 1, self._dofdex, arr)
         if dobj.distaxis(x.val) in x.domain.axes[self._space]:
-            oarr = dobj.np_allreduce_sum(oarr).reshape(self._domain.shape)
-            res = Field.from_global_data(self._domain, oarr)
+            oarr = oarr.reshape(self._domain.shape)
+            res = Field.from_global_data(self._domain, oarr, sum_up=True)
         else:
-            oarr = oarr.reshape(dobj.local_shape(self._domain.shape,
-                                                 dobj.distaxis(x.val)))
-            res = Field(self._domain,
-                        dobj.from_local_data(self._domain.shape, oarr,
-                                             dobj.default_distaxis()))
+            oarr = oarr.reshape(self._domain.local_shape)
+            res = Field.from_local_data(self._domain, oarr)
         return res
 
     def _times(self, x):
@@ -143,14 +140,36 @@ class DOFDistributor(LinearOperator):
         self._check_input(x, mode)
         return self._times(x) if mode == self.TIMES else self._adjoint_times(x)
 
-    @property
-    def domain(self):
-        return self._domain
 
-    @property
-    def target(self):
-        return self._target
+class PowerDistributor(DOFDistributor):
+    """Operator which transforms between a PowerSpace and a harmonic domain.
 
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
+    Parameters
+    ----------
+    target: Domain, tuple of Domain, or DomainTuple
+        the total *target* domain of the operator.
+    power_space: PowerSpace, optional
+        the input sub-domain on which the operator acts.
+        If not supplied, a matching PowerSpace with natural binbounds will be
+        used.
+    space: int, optional:
+       The index of the sub-domain on which the operator acts.
+       Can be omitted if `target` only has one sub-domain.
+    """
+
+    def __init__(self, target, power_space=None, space=None):
+        # Initialize domain and target
+        self._target = DomainTuple.make(target)
+        self._space = infer_space(self._target, space)
+        hspace = self._target[self._space]
+        if not hspace.harmonic:
+            raise ValueError("Operator requires harmonic target space")
+        if power_space is None:
+            power_space = PowerSpace(hspace)
+        else:
+            if not isinstance(power_space, PowerSpace):
+                raise TypeError("power_space argument must be a PowerSpace")
+            if power_space.harmonic_partner != hspace:
+                raise ValueError("power_space does not match its partner")
+
+        self._init2(power_space.pindex, self._space, power_space)

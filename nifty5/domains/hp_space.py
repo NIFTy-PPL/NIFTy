@@ -40,13 +40,12 @@ class HPSpace(StructuredDomain):
     _needed_for_hash = ["_nside"]
 
     def __init__(self, nside):
-        super(HPSpace, self).__init__()
         self._nside = int(nside)
         if self._nside < 1:
             raise ValueError("nside must be >=1.")
 
     def __repr__(self):
-        return ("HPSpace(nside=%r)" % self.nside)
+        return "HPSpace(nside={})".format(self.nside)
 
     @property
     def harmonic(self):

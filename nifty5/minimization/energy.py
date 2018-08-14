@@ -19,14 +19,14 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..utilities import NiftyMetaBase, memo
+from ..utilities import NiftyMetaBase
 
 
 class Energy(NiftyMetaBase()):
     """ Provides the functional used by minimization schemes.
 
-   The Energy object is an implementation of a scalar function including its
-   gradient and metric at some position.
+    The Energy object is an implementation of a scalar function including its
+    gradient and metric at some position.
 
     Parameters
     ----------
@@ -42,18 +42,13 @@ class Energy(NiftyMetaBase()):
     this approach, intermediate results from computing e.g. the gradient can
     safely be reused for e.g. the value or the metric.
 
-    Memorizing the evaluations of some quantities (using the memo decorator)
-    minimizes the computational effort for multiple calls.
-
-    See Also
-    --------
-    memo
-
+    Memorizing the evaluations of some quantities minimizes the computational
+    effort for multiple calls.
     """
 
     def __init__(self, position):
-        super(Energy, self).__init__()
         self._position = position
+        self._gradnorm = None
 
     def at(self, position):
         """ Returns a new Energy object, initialized at `position`.
@@ -97,12 +92,13 @@ class Energy(NiftyMetaBase()):
         raise NotImplementedError
 
     @property
-    @memo
     def gradient_norm(self):
         """
         float : L2-norm of the gradient at given `position`.
         """
-        return self.gradient.norm()
+        if self._gradnorm is None:
+            self._gradnorm = self.gradient.norm()
+        return self._gradnorm
 
     @property
     def metric(self):
@@ -128,74 +124,3 @@ class Energy(NiftyMetaBase()):
             `dir`. If None, the step size is not limited.
         """
         return None
-
-    def make_invertible(self, controller, preconditioner=None):
-        from .iteration_controller import IterationController
-        if not isinstance(controller, IterationController):
-            raise TypeError
-        return MetricInversionEnabler(self, controller, preconditioner)
-
-    def __mul__(self, factor):
-        from .energy_sum import EnergySum
-        if isinstance(factor, (float, int)):
-            return EnergySum.make([self], [factor])
-        return NotImplemented
-
-    def __rmul__(self, factor):
-        return self.__mul__(factor)
-
-    def __add__(self, other):
-        from .energy_sum import EnergySum
-        if isinstance(other, Energy):
-            return EnergySum.make([self, other])
-        return NotImplemented
-
-    def __sub__(self, other):
-        from .energy_sum import EnergySum
-        if isinstance(other, Energy):
-            return EnergySum.make([self, other], [1., -1.])
-        return NotImplemented
-
-    def __neg__(self):
-        from .energy_sum import EnergySum
-        return EnergySum.make([self], [-1.])
-
-
-class MetricInversionEnabler(Energy):
-    def __init__(self, ene, controller, preconditioner):
-        super(MetricInversionEnabler, self).__init__(ene.position)
-        self._energy = ene
-        self._controller = controller
-        self._preconditioner = preconditioner
-
-    def at(self, position):
-        return MetricInversionEnabler(
-            self._energy.at(position), self._controller, self._preconditioner)
-
-    @property
-    def position(self):
-        return self._energy.position
-
-    @property
-    def value(self):
-        return self._energy.value
-
-    @property
-    def gradient(self):
-        return self._energy.gradient
-
-    @property
-    def metric(self):
-        from ..operators.linear_operator import LinearOperator
-        from ..operators.inversion_enabler import InversionEnabler
-        curv = self._energy.metric
-        if self._preconditioner is None:
-            precond = None
-        elif isinstance(self._preconditioner, LinearOperator):
-            precond = self._preconditioner
-        elif isinstance(self._preconditioner, Energy):
-            precond = self._preconditioner.at(self.position).metric
-        return InversionEnabler(curv, self._controller, precond)
-
-    def longest_step(self, dir):
-        return self._energy.longest_step(dir)

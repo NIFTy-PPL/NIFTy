@@ -38,6 +38,7 @@ class MaskOperator(LinearOperator):
         self._domain = DomainTuple.make(mask.domain)
         self._mask = np.logical_not(mask.to_global_data())
         self._target = DomainTuple.make(UnstructuredDomain(self._mask.sum()))
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def data_indices(self):
         if len(self.domain.shape) == 1:
@@ -55,15 +56,3 @@ class MaskOperator(LinearOperator):
         res[self._mask] = x
         res[~self._mask] = 0
         return Field.from_global_data(self.domain, res)
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target

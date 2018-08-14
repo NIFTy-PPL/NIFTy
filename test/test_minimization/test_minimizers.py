@@ -86,11 +86,11 @@ class Test_Minimizers(unittest.TestCase):
 
             @property
             def value(self):
-                return rosen(self._position.to_global_data().copy())
+                return rosen(self._position.to_global_data_rw())
 
             @property
             def gradient(self):
-                inp = self._position.to_global_data().copy()
+                inp = self._position.to_global_data_rw()
                 out = ift.Field.from_global_data(space, rosen_der(inp))
                 return out
 
@@ -98,19 +98,13 @@ class Test_Minimizers(unittest.TestCase):
             def metric(self):
                 class RBCurv(ift.EndomorphicOperator):
                     def __init__(self, loc):
-                        self._loc = loc.to_global_data().copy()
-
-                    @property
-                    def domain(self):
-                        return space
-
-                    @property
-                    def capability(self):
-                        return self.TIMES
+                        self._loc = loc.to_global_data_rw()
+                        self._capability = self.TIMES
+                        self._domain = space
 
                     def apply(self, x, mode):
                         self._check_input(x, mode)
-                        inp = x.to_global_data().copy()
+                        inp = x.to_global_data_rw()
                         out = ift.Field.from_global_data(
                             space, rosen_hess_prod(self._loc.copy(), inp))
                         return out

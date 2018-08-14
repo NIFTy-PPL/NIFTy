@@ -43,13 +43,13 @@ if __name__ == '__main__':
     #
     # # One dimensional regular grid with uniform exposure
     # position_space = ift.RGSpace(1024)
-    # exposure = np.ones(position_space.shape)
+    # exposure = ift.Field.full(position_space, 1.)
 
     # Two-dimensional regular grid with inhomogeneous exposure
     position_space = ift.RGSpace([512, 512])
     exposure = get_2D_exposure()
 
-    # # Sphere with with uniform exposure
+    #  Sphere with uniform exposure
     # position_space = ift.HPSpace(128)
     # exposure = ift.Field.full(position_space, 1.)
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     harmonic_space = position_space.get_default_codomain()
     HT = ift.HarmonicTransformOperator(harmonic_space, position_space)
 
-    domain = ift.MultiDomain.make({'xi': harmonic_space})
+    domain = ift.DomainTuple.make(harmonic_space)
     position = ift.from_random('normal', domain)
 
     # Define power spectrum and amplitudes
@@ -70,21 +70,18 @@ if __name__ == '__main__':
     A = pd(a)
 
     # Set up a sky model
-    xi = ift.Variable(position)['xi']
-    logsky_h = xi * A
-    logsky = HT(logsky_h)
-    sky = ift.PointwiseExponential(logsky)
+    sky = ift.exp(HT(ift.makeOp(A)))
 
     M = ift.DiagonalOperator(exposure)
     GR = ift.GeometryRemover(position_space)
     # Set up instrumental response
-    R = GR * M
+    R = GR(M)
 
     # Generate mock data
     d_space = R.target[0]
     lamb = R(sky)
-    mock_position = ift.from_random('normal', lamb.position.domain)
-    data = lamb.at(mock_position).value
+    mock_position = ift.from_random('normal', domain)
+    data = lamb(mock_position)
     data = np.random.poisson(data.to_global_data().astype(np.float64))
     data = ift.Field.from_global_data(d_space, data)
 
@@ -97,11 +94,14 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood)
-    H = H.make_invertible(ic_cg)
+    H = ift.EnergyAdapter(position, H, ic_cg)
     H, convergence = minimizer(H)
 
     # Plot results
-    result_sky = sky.at(H.position).value
-    ift.plot(result_sky)
-    ift.plot_finish()
-    # FIXME MORE PLOTTING
+    signal = sky(mock_position)
+    reconst = sky(H.position)
+    ift.plot(signal, title='Signal')
+    ift.plot(GR.adjoint(data), title='Data')
+    ift.plot(reconst, title='Reconstruction')
+    ift.plot(reconst - signal, title='Residuals')
+    ift.plot_finish(name='getting_started_2.png', xsize=16, ysize=16)

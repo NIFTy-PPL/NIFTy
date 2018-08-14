@@ -43,8 +43,6 @@ class GLSpace(StructuredDomain):
     _needed_for_hash = ["_nlat", "_nlon"]
 
     def __init__(self, nlat, nlon=None):
-        super(GLSpace, self).__init__()
-
         self._nlat = int(nlat)
         if self._nlat < 1:
             raise ValueError("nlat must be a positive number.")
@@ -57,7 +55,7 @@ class GLSpace(StructuredDomain):
         self._dvol = None
 
     def __repr__(self):
-        return ("GLSpace(nlat=%r, nlon=%r)" % (self.nlat, self.nlon))
+        return "GLSpace(nlat={}, nlon={})".format(self.nlat, self.nlon)
 
     @property
     def harmonic(self):

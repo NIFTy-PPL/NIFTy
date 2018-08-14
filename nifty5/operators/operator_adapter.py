@@ -45,23 +45,13 @@ class OperatorAdapter(LinearOperator):
     """
 
     def __init__(self, op, op_transform):
-        super(OperatorAdapter, self).__init__()
         self._op = op
         self._trafo = int(op_transform)
         if self._trafo < 1 or self._trafo > 3:
             raise ValueError("invalid operator transformation")
-
-    @property
-    def domain(self):
-        return self._op._dom(1 << self._trafo)
-
-    @property
-    def target(self):
-        return self._op._tgt(1 << self._trafo)
-
-    @property
-    def capability(self):
-        return self._capTable[self._trafo][self._op.capability]
+        self._domain = self._op._dom(1 << self._trafo)
+        self._target = self._op._tgt(1 << self._trafo)
+        self._capability = self._capTable[self._trafo][self._op.capability]
 
     def _flip_modes(self, trafo):
         newtrafo = trafo ^ self._trafo
@@ -76,3 +66,9 @@ class OperatorAdapter(LinearOperator):
         if self._trafo & self.INVERSE_BIT:
             return self._op.draw_sample(not from_inverse, dtype)
         return self._op.draw_sample(from_inverse, dtype)
+
+    def __repr__(self):
+        from ..utilities import indent
+        mode = ["adjoint", "inverse", "adjoint inverse"][self._trafo]
+        res = "OperatorAdapter: {}\n".format(mode)
+        return res + indent(self._op.__repr__())
