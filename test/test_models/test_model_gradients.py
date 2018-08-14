@@ -25,44 +25,27 @@ import numpy as np
 
 
 class Model_Tests(unittest.TestCase):
-    def make_model(self, type, **kwargs):
-        if type == 'Constant':
-            np.random.seed(kwargs['seed'])
-            S = ift.ScalingOperator(1., kwargs['space'])
-            s = S.draw_sample()
-            return ift.Constant(
-                ift.MultiField.from_dict({kwargs['space_key']: s}),
-                ift.MultiField.from_dict({kwargs['space_key']: s}))
-        elif type == 'Variable':
-            np.random.seed(kwargs['seed'])
-            S = ift.ScalingOperator(1., kwargs['space'])
-            s = S.draw_sample()
-            return ift.Variable(
-                ift.MultiField.from_dict({kwargs['space_key']: s}))
-        elif type == 'LinearModel':
-            return ift.LinearModel(
-                inp=kwargs['model'], lin_op=kwargs['lin_op'])
-        else:
-            raise ValueError('unknown type passed')
-
-    def make_linear_operator(self, type, **kwargs):
-        if type == 'ScalingOperator':
-            lin_op = ift.ScalingOperator(1., kwargs['space'])
-        else:
-            raise ValueError('unknown type passed')
-        return lin_op
+    @staticmethod
+    def make_linearization(type, space, seed):
+        np.random.seed(seed)
+        S = ift.ScalingOperator(1., space)
+        s = S.draw_sample()
+        if type == "Constant":
+            return ift.Linearization.make_const(s)
+        elif type == "Variable":
+            return ift.Linearization.make_var(s)
+        raise ValueError('unknown type passed')
 
     @expand(product(
-        ['Variable', 'Constant'],
         [ift.GLSpace(15),
          ift.RGSpace(64, distances=.789),
          ift.RGSpace([32, 32], distances=.789)],
         [4, 78, 23]
         ))
-    def testBasics(self, type1, space, seed):
-        model1 = self.make_model(
-            type1, space_key='s1', space=space, seed=seed)['s1']
-        ift.extra.check_value_gradient_consistency(model1)
+    def testBasics(self, space, seed):
+        var = self.make_linearization("Variable", space, seed)
+        model = ift.ScalingOperator(6., var.target)
+        ift.extra.check_value_gradient_consistency(model, var.val)
 
     @expand(product(
         ['Variable', 'Constant'],
@@ -73,43 +56,34 @@ class Model_Tests(unittest.TestCase):
         [4, 78, 23]
         ))
     def testBinary(self, type1, type2, space, seed):
-        model1 = self.make_model(
-            type1, space_key='s1', space=space, seed=seed)['s1']
-        model2 = self.make_model(
-            type2, space_key='s2', space=space, seed=seed+1)['s2']
-        ift.extra.check_value_gradient_consistency(model1*model2)
-        ift.extra.check_value_gradient_consistency(model1+model2)
-        ift.extra.check_value_gradient_consistency(model1*3.)
+        dom1 = ift.MultiDomain.make({'s1': space})
+        lin1 = self.make_linearization(type1, dom1, seed)
+        dom2 = ift.MultiDomain.make({'s2': space})
+        lin2 = self.make_linearization(type2, dom2, seed)
 
-    @expand(product(
-        ['Variable', 'Constant'],
-        [ift.GLSpace(15),
-         ift.RGSpace(64, distances=.789),
-         ift.RGSpace([32, 32], distances=.789)],
-        [4, 78, 23]
-        ))
-    def testLinModel(self, type1, space, seed):
-        model1 = self.make_model(
-            type1, space_key='s1', space=space, seed=seed)['s1']
-        lin_op = self.make_linear_operator('ScalingOperator', space=space)
-        model2 = self.make_model('LinearModel', model=model1, lin_op=lin_op)
-        ift.extra.check_value_gradient_consistency(model1*model2)
-
-    @expand(product(
-        ['Variable', 'Constant'],
-        [ift.GLSpace(15),
-         ift.RGSpace(64, distances=.789),
-         ift.RGSpace([32, 32], distances=.789)],
-        [4, 78, 23]
-        ))
-    def testLocalModel(self, type, space, seed):
-        model = self.make_model(
-            type, space_key='s', space=space, seed=seed)['s']
-        ift.extra.check_value_gradient_consistency(
-            ift.PointwiseExponential(model))
-        ift.extra.check_value_gradient_consistency(ift.PointwiseTanh(model))
-        ift.extra.check_value_gradient_consistency(
-            ift.PointwisePositiveTanh(model))
+        dom = ift.MultiDomain.union((dom1, dom2))
+        model = ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")
+        pos = ift.from_random("normal", dom)
+        ift.extra.check_value_gradient_consistency(model, pos)
+        model = ift.FieldAdapter(dom, "s1")+ift.FieldAdapter(dom, "s2")
+        pos = ift.from_random("normal", dom)
+        ift.extra.check_value_gradient_consistency(model, pos)
+        model = ift.FieldAdapter(dom, "s1").scale(3.)
+        pos = ift.from_random("normal", dom1)
+        ift.extra.check_value_gradient_consistency(model, pos)
+        model = ift.ScalingOperator(2.456, space)(
+            ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
+        pos = ift.from_random("normal", dom)
+        ift.extra.check_value_gradient_consistency(model, pos)
+        model = ift.positive_tanh(ift.ScalingOperator(2.456, space)(
+            ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2")))
+        pos = ift.from_random("normal", dom)
+        ift.extra.check_value_gradient_consistency(model, pos)
+        if isinstance(space, ift.RGSpace):
+            model = ift.FFTOperator(space)(
+                ift.FieldAdapter(dom, "s1")*ift.FieldAdapter(dom, "s2"))
+            pos = ift.from_random("normal", dom)
+            ift.extra.check_value_gradient_consistency(model, pos)
 
     @expand(product(
         [ift.GLSpace(15),
@@ -128,42 +102,40 @@ class Model_Tests(unittest.TestCase):
                          ceps_k, sm, sv, im, iv, seed):
         # tests amplitude model and coorelated field model
         np.random.seed(seed)
-        model = ift.make_amplitude_model(space, Npixdof, ceps_a, ceps_k, sm,
-                                         sv, im, iv)[0]
-        S = ift.ScalingOperator(1., model.position.domain)
-        model = model.at(S.draw_sample())
-        ift.extra.check_value_gradient_consistency(model)
+        model = ift.AmplitudeModel(space, Npixdof, ceps_a, ceps_k, sm,
+                                   sv, im, iv)
+        S = ift.ScalingOperator(1., model.domain)
+        pos = S.draw_sample()
+        ift.extra.check_value_gradient_consistency(model, pos)
 
-        model2 = ift.make_correlated_field(space, model)[0]
-        S = ift.ScalingOperator(1., model2.position.domain)
-        model2 = model2.at(S.draw_sample())
-        ift.extra.check_value_gradient_consistency(model2)
+        model2 = ift.CorrelatedField(space, model)
+        S = ift.ScalingOperator(1., model2.domain)
+        pos = S.draw_sample()
+        ift.extra.check_value_gradient_consistency(model2, pos)
 
     @expand(product(
         [ift.GLSpace(15),
          ift.RGSpace(64, distances=.789),
          ift.RGSpace([32, 32], distances=.789)],
         [4, 78, 23]))
-    def testPointModel(seld, space, seed):
-
+    def testPointModel(self, space, seed):
         S = ift.ScalingOperator(1., space)
-        pos = ift.MultiField.from_dict(
-                {'points': S.draw_sample()})
+        pos = S.draw_sample()
         alpha = 1.5
         q = 0.73
-        model = ift.InverseGammaModel(pos, alpha, q, 'points')
+        model = ift.InverseGammaModel(space, alpha, q)
         # FIXME All those cdfs and ppfs are not very accurate
-        ift.extra.check_value_gradient_consistency(model, tol=1e-5)
+        ift.extra.check_value_gradient_consistency(model, pos, tol=1e-2)
 
-    @expand(product(
-        ['Variable', 'Constant'],
-        [ift.GLSpace(15),
-         ift.RGSpace(64, distances=.789),
-         ift.RGSpace([32, 32], distances=.789)],
-        [4, 78, 23]
-        ))
-    def testMultiModel(self, type, space, seed):
-        model = self.make_model(
-            type, space_key='s', space=space, seed=seed)['s']
-        mmodel = ift.MultiModel(model, 'g')
-        ift.extra.check_value_gradient_consistency(mmodel)
+#     @expand(product(
+#         ['Variable', 'Constant'],
+#         [ift.GLSpace(15),
+#          ift.RGSpace(64, distances=.789),
+#          ift.RGSpace([32, 32], distances=.789)],
+#         [4, 78, 23]
+#         ))
+#     def testMultiModel(self, type, space, seed):
+#         model = self.make_model(
+#             type, space_key='s', space=space, seed=seed)['s']
+#         mmodel = ift.MultiModel(model, 'g')
+#         ift.extra.check_value_gradient_consistency(mmodel)

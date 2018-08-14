@@ -26,6 +26,8 @@ from .domain_tuple import DomainTuple
 
 
 class Field(object):
+    _scalar_dom = DomainTuple.scalar_domain()
+
     """ The discrete representation of a continuous field over multiple spaces.
 
     In NIFTy, Fields are used to store data arrays and carry all the needed
@@ -49,16 +51,20 @@ class Field(object):
     def __init__(self, domain, val):
         if not isinstance(domain, DomainTuple):
             raise TypeError("domain must be of type DomainTuple")
-        if not isinstance(val, dobj.data_object):
+        if type(val) is not dobj.data_object:
             if np.isscalar(val):
-                val = dobj.from_local_data((), np.full((), val))
+                val = dobj.full(domain.shape, val)
             else:
                 raise TypeError("val must be of type dobj.data_object")
         if domain.shape != val.shape:
-            raise ValueError("mismatch between the shapes of val and domain")
+            raise ValueError("shape mismatch between val and domain")
         self._domain = domain
         self._val = val
         dobj.lock(self._val)
+
+    @staticmethod
+    def scalar(val):
+        return Field(Field._scalar_dom, val)
 
     # prevent implicit conversion to bool
     def __nonzero__(self):
@@ -88,7 +94,7 @@ class Field(object):
         if not (np.isreal(val) or np.iscomplex(val)):
             raise TypeError("need arithmetic scalar")
         domain = DomainTuple.make(domain)
-        return Field(domain, dobj.full(domain.shape, fill_value=val))
+        return Field(domain, val)
 
     @staticmethod
     def from_global_data(domain, arr, sum_up=False):
@@ -122,13 +128,18 @@ class Field(object):
         -------
         numpy.ndarray : array containing all field entries.
             Its shape is identical to `self.shape`.
-
-        Notes
-        -----
-        Do not write to the returned array! Depending on whether MPI is
-        active or not, this may or may not change the field's data content.
         """
         return dobj.to_global_data(self._val)
+
+    def to_global_data_rw(self):
+        """Returns a modifiable array containing the full data of the field.
+
+        Returns
+        -------
+        numpy.ndarray : array containing all field entries, which can be
+            modified. Its shape is identical to `self.shape`.
+        """
+        return dobj.to_global_data_rw(self._val)
 
     @property
     def local_data(self):
@@ -152,10 +163,6 @@ class Field(object):
         -------
         Field
             Field living on `new_domain`, but with the same data as `self`.
-
-        Notes
-        -----
-        No copy is made. If needed, use an additional copy() invocation.
         """
         return Field(DomainTuple.make(new_domain), self._val)
 
@@ -216,14 +223,14 @@ class Field(object):
     @property
     def real(self):
         """Field : The real part of the field"""
-        if not np.issubdtype(self.dtype, np.complexfloating):
-            return self
-        return Field(self._domain, self._val.real)
+        if utilities.iscomplextype(self.dtype):
+            return Field(self._domain, self._val.real)
+        return self
 
     @property
     def imag(self):
         """Field : The imaginary part of the field"""
-        if not np.issubdtype(self.dtype, np.complexfloating):
+        if not utilities.iscomplextype(self.dtype):
             raise ValueError(".imag called on a non-complex Field")
         return Field(self._domain, self._val.imag)
 
@@ -341,7 +348,7 @@ class Field(object):
             raise TypeError("The dot-partner must be an instance of " +
                             "the NIFTy field class")
 
-        if x._domain is not self._domain:
+        if x._domain != self._domain:
             raise ValueError("Domain mismatch")
 
         ndom = len(self._domain)
@@ -381,7 +388,7 @@ class Field(object):
         Field
             The complex conjugated field.
         """
-        if np.issubdtype(self._val.dtype, np.complexfloating):
+        if utilities.iscomplextype(self._val.dtype):
             return Field(self._domain, self._val.conjugate())
         return self
 
@@ -564,7 +571,7 @@ class Field(object):
             return self._contraction_helper('var', spaces)
         # MR FIXME: not very efficient or accurate
         m1 = self.mean(spaces)
-        if np.issubdtype(self.dtype, np.complexfloating):
+        if utilities.iscomplextype(self.dtype):
             sq = abs(self-m1)**2
         else:
             sq = (self-m1)**2
@@ -601,27 +608,30 @@ class Field(object):
                self._domain.__str__() + \
                "\n- val         = " + repr(self._val)
 
-    def isEquivalentTo(self, other):
-        """Determines (as quickly as possible) whether `self`'s content is
-        identical to `other`'s content."""
-        if self is other:
-            return True
-        if not isinstance(other, Field):
-            return False
-        if self._domain is not other._domain:
-            return False
-        return (self._val == other._val).all()
-
     def extract(self, dom):
-        if dom is not self._domain:
+        if dom != self._domain:
             raise ValueError("domain mismatch")
         return self
 
     def unite(self, other):
-        return self + other
+        return self+other
+
+    def flexible_addsub(self, other, neg):
+        return self-other if neg else self+other
 
     def positive_tanh(self):
         return 0.5*(1.+self.tanh())
+
+    def _binary_op(self, other, op):
+        # if other is a field, make sure that the domains match
+        f = getattr(self._val, op)
+        if isinstance(other, Field):
+            if other._domain != self._domain:
+                raise ValueError("domains are incompatible.")
+            return Field(self._domain, f(other._val))
+        if np.isscalar(other):
+            return Field(self._domain, f(other))
+        return NotImplemented
 
 
 for op in ["__add__", "__radd__",
@@ -634,19 +644,7 @@ for op in ["__add__", "__radd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            # if other is a field, make sure that the domains match
-            if isinstance(other, Field):
-                if other._domain is not self._domain:
-                    raise ValueError("domains are incompatible.")
-                tval = getattr(self._val, op)(other._val)
-                return Field(self._domain, tval)
-
-            if (np.isscalar(other) or
-                    isinstance(other, (dobj.data_object, np.ndarray))):
-                tval = getattr(self._val, op)(other)
-                return Field(self._domain, tval)
-
-            return NotImplemented
+            return self._binary_op(other, op)
         return func2
     setattr(Field, op, func(op))
 
@@ -662,7 +660,6 @@ for op in ["__iadd__", "__isub__", "__imul__", "__idiv__",
 for f in ["sqrt", "exp", "log", "tanh"]:
     def func(f):
         def func2(self):
-            fu = getattr(dobj, f)
-            return Field(domain=self._domain, val=fu(self.val))
+            return Field(self._domain, getattr(dobj, f)(self.val))
         return func2
     setattr(Field, f, func(f))

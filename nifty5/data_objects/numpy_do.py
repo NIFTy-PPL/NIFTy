@@ -25,6 +25,15 @@ from numpy import ones, sqrt, tanh, vdot, zeros
 
 from .random import Random
 
+__all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
+           "empty", "zeros", "ones", "empty_like", "vdot", "exp",
+           "log", "tanh", "sqrt", "from_object", "from_random",
+           "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
+           "np_allreduce_min", "np_allreduce_max",
+           "distaxis", "from_local_data", "from_global_data", "to_global_data",
+           "redistribute", "default_distaxis", "is_numpy",
+           "lock", "locked", "uniform_full", "to_global_data_rw"]
+
 ntask = 1
 rank = 0
 master = True
@@ -97,6 +106,10 @@ def to_global_data(arr):
     return arr
 
 
+def to_global_data_rw(arr):
+    return arr.copy()
+
+
 def redistribute(arr, dist=None, nodist=None):
     return arr
 
@@ -115,3 +128,7 @@ def lock(arr):
 
 def locked(arr):
     return not arr.flags.writeable
+
+
+def uniform_full(shape, fill_value, dtype=None, distaxis=-1):
+    return np.broadcast_to(fill_value, shape)

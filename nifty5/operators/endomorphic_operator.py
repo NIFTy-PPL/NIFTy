@@ -38,7 +38,7 @@ class EndomorphicOperator(LinearOperator):
 
         Returns `self.domain`, because this is also the target domain
         for endomorphic operators."""
-        return self.domain
+        return self._domain
 
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         """Generate a zero-mean sample
@@ -59,3 +59,14 @@ class EndomorphicOperator(LinearOperator):
             A sample from the Gaussian of given covariance.
         """
         raise NotImplementedError
+
+    def _dom(self, mode):
+        return self._domain
+
+    def _tgt(self, mode):
+        return self._domain
+
+    def _check_input(self, x, mode):
+        self._check_mode(mode)
+        if self.domain != x.domain:
+            raise ValueError("The operator's and field's domains don't match.")

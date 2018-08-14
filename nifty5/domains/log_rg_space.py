@@ -32,8 +32,6 @@ class LogRGSpace(StructuredDomain):
     _needed_for_hash = ['_shape', '_bindistances', '_t_0', '_harmonic']
 
     def __init__(self, shape, bindistances, t_0, harmonic=False):
-        super(LogRGSpace, self).__init__()
-
         self._harmonic = bool(harmonic)
 
         if np.isscalar(shape):
@@ -70,8 +68,8 @@ class LogRGSpace(StructuredDomain):
         return np.array(self._t_0)
 
     def __repr__(self):
-        return ("LogRGSpace(shape=%r, harmonic=%r)"
-                % (self.shape, self.harmonic))
+        return ("LogRGSpace(shape={}, harmonic={})"
+                .format(self.shape, self.harmonic))
 
     def get_default_codomain(self):
         codomain_bindistances = 1. / (self.bindistances * self.shape)
@@ -94,7 +92,7 @@ class LogRGSpace(StructuredDomain):
 
     def get_expk_length_array(self):
         # FIXME This is a hack! Only for plotting. Seems not to be the final version.
-        out = exp(self.get_k_length_array()).to_global_data().copy()
+        out = exp(self.get_k_length_array()).to_global_data_rw()
         out[1:] = out[:-1]
         out[0] = 0
         return Field.from_global_data(self, out)

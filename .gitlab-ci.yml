@@ -37,18 +37,18 @@ build_docker_from_cache:
 test_python2_with_coverage:
   stage: test
   script:
-    - mpiexec -n 2 --bind-to none nosetests -q 2> /dev/null
-    - nosetests -q --with-coverage --cover-package=nifty5 --cover-erase
+    - mpiexec -n 2 --bind-to none pytest -q test 2> /dev/null
+    - pytest -q --cov=nifty5 test
     - >
-      coverage report --omit "*plotting*,*distributed_do*"
+      python -m coverage report --omit "*plotting*,*distributed_do*"
     - >
-      coverage report --omit "*plotting*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
+      python -m coverage report --omit "*plotting*,*distributed_do*" | grep TOTAL | awk '{ print "TOTAL: "$4; }'
 
 test_python3:
   stage: test
   script:
-    - nosetests3 -q
-    - mpiexec -n 2 --bind-to none nosetests3 -q 2> /dev/null
+    - pytest-3 -q
+    - mpiexec -n 2 --bind-to none pytest-3 -q 2> /dev/null
 
 pages:
   stage: release

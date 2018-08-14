@@ -35,14 +35,7 @@ class DomainDistributor(LinearOperator):
         self._domain = [tgt for i, tgt in enumerate(self._target)
                         if i in self._spaces]
         self._domain = DomainTuple.make(self._domain)
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
@@ -57,7 +50,3 @@ class DomainDistributor(LinearOperator):
         else:
             return x.sum([s for s in range(len(x.domain))
                           if s not in self._spaces])
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES

@@ -99,6 +99,7 @@ Combinations of domains
 The fundamental classes described above are often sufficient to specify the
 domain of a field. In some cases, however, it will be necessary to have the
 field live on a product of elementary domains instead of a single one.
+More sophisticated models also require a set of several such fields.
 Some examples are:
 
 - sky emission depending on location and energy. This could be represented by
@@ -107,6 +108,9 @@ Some examples are:
 - a polarised field, which could be modeled as a product of any structured
   domain (representing location) with a four-element
   :class:`UnstructuredDomain` holding Stokes I, Q, U and V components.
+- a model for the sky emission, which holds both the current realization
+  (on a harmonic domain) and a few inferred model parameters (e.g. on an
+  unstructured grid).
 
 Consequently, NIFTy defines a class called :class:`DomainTuple` holding
 a sequence of :class:`Domain` objects, which is used to specify full field
@@ -117,9 +121,14 @@ A :class:`DomainTuple` supports iteration and indexing, and also provides the
 properties :attr:`~DomainTuple.shape`, :attr:`~DomainTuple.size` in analogy to
 the elementary :class:`Domain`.
 
+An aggregation of several :class:`DomainTuple`s, each member identified by a
+name, is described by the :class:`MultiDomain` class.
 
 Fields
 ======
+
+Fields on a single DomainTuple
+------------------------------
 
 A :class:`Field` object consists of the following components:
 
@@ -148,14 +157,44 @@ that are not covered by the provided standard operations, its data content must
 be extracted first, then changed, and a new field has to be created from the
 result.
 
+Fields living on a MultiDomain
+------------------------------
+
+The :class:`MultiField` class can be seen as a dictionary of individual
+:class:`Field`s, each identified by a name, which lives on an associated
+:class:`MultiDomain`.
+
+
+Operators
+=========
+
+All transformations between different NIFTy fields are expressed  (explicitly
+or implicitly) in the form of :class:`Operator` objects. The interface of this
+class is very minimalistic: it has a property called `domain` which returns
+a `Domaintuple` or `MultiDomain` object specifying the structure of the
+`Field`s or `MultiField`s it expects as input, another property `target`
+describing its output, and finally an overloaded `apply` method, which can
+take
+
+- a `Field`/`MultiField`object, in which case it returns the transformed
+  `Field`/`MultiField`
+- a `Linearization` object, in which case it returns the transformed
+  `Linearization`
+
+This is the interface that all objects derived from `Operator` must implement.
+In addition, `Operator` objects can be added/subtracted, multiplied, chained
+(via the `__call__` method) and support pointwise application of functions like
+`exp()`, `log()`, `sqrt()`, `conjugate()` etc.
+
 
 Linear Operators
 ================
 
 A linear operator (represented by NIFTy5's abstract :class:`LinearOperator`
-class) can be interpreted as an (implicitly defined) matrix.
-It can be applied to :class:`Field` instances, resulting in other :class:`Field`
-instances that potentially live on other domains.
+class) is derived from `Operator` and can be interpreted as an
+(implicitly defined) matrix. Since its operation is linear, it can provide some
+additional functionality which is not available for the more generic `Operator`
+class.
 
 
 Operator basics
@@ -163,13 +202,13 @@ Operator basics
 
 There are four basic ways of applying an operator :math:`A` to a field :math:`f`:
 
-- direct multiplication: :math:`A\cdot f`
-- adjoint multiplication: :math:`A^\dagger \cdot f`
-- inverse multiplication: :math:`A^{-1}\cdot f`
-- adjoint inverse multiplication: :math:`(A^\dagger)^{-1}\cdot f`
+- direct application: :math:`A\cdot f`
+- adjoint application: :math:`A^\dagger \cdot f`
+- inverse application: :math:`A^{-1}\cdot f`
+- adjoint inverse application: :math:`(A^\dagger)^{-1}\cdot f`
 
-(For linear operators, inverse adjoint multiplication and adjoint inverse
-multiplication are equivalent.)
+(Because of the linearity, inverse adjoint and adjoint inverse application
+are equivalent.)
 
 These different actions of an operator ``Op`` on a field ``f`` can be invoked
 in various ways:
@@ -190,9 +229,6 @@ enhanced by this approach to support the complete set. This functionality is
 provided by NIFTy's :class:`InversionEnabler` class, which is itself a linear
 operator.
 
-There are two :class:`DomainTuple` objects associated with a
-:class:`LinearOperator`: a :attr:`~LinearOperator.domain` and a
-:attr:`~LinearOperator.target`.
 Direct multiplication and adjoint inverse multiplication transform a field
 living on the operator's :attr:`~LinearOperator.domain` to one living on the operator's :attr:`~LinearOperator.target`, whereas adjoint multiplication
 and inverse multiplication transform from :attr:`~LinearOperator.target` to :attr:`~LinearOperator.domain`.
@@ -221,7 +257,7 @@ operators.
 As an example, if ``A``, ``B`` and ``C`` are of type :class:`LinearOperator`
 and ``f1`` and ``f2`` are of type :class:`Field`, writing::
 
-    X = A*B.inverse*A.adjoint + C
+    X = A(B.inverse(A.adjoint)) + C
     f2 = X(f1)
 
 will perform the operation suggested intuitively by the notation, checking

@@ -16,8 +16,6 @@ from .. import dobj
 #           highest frequency.
 class CentralZeroPadder(LinearOperator):
     def __init__(self, domain, new_shape, space=0):
-        super(CentralZeroPadder, self).__init__()
-
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
         dom = self._domain[self._space]
@@ -35,6 +33,7 @@ class CentralZeroPadder(LinearOperator):
         self._target = list(self._domain)
         self._target[self._space] = tgt
         self._target = DomainTuple.make(self._target)
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
         slicer = []
         axes = self._target.axes[self._space]
@@ -52,18 +51,6 @@ class CentralZeroPadder(LinearOperator):
                     tmp.insert(j, slice(None))
                     self.slicer[i] = tuple(tmp)
         self.slicer = tuple(self.slicer)
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)

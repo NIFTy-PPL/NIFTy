@@ -18,8 +18,6 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 from ..compat import *
 from ..utilities import NiftyMetaBase
 
@@ -37,7 +35,6 @@ class LineSearch(NiftyMetaBase()):
     def __init__(self, preferred_initial_step_size=None):
         self.preferred_initial_step_size = preferred_initial_step_size
 
-    @abc.abstractmethod
     def perform_line_search(self, energy, pk, f_k_minus_1=None):
         """Find step size and advance.
 

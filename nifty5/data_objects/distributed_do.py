@@ -26,6 +26,15 @@ from mpi4py import MPI
 from ..compat import *
 from .random import Random
 
+__all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
+           "empty", "zeros", "ones", "empty_like", "vdot", "exp",
+           "log", "tanh", "sqrt", "from_object", "from_random",
+           "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
+           "np_allreduce_min", "np_allreduce_max",
+           "distaxis", "from_local_data", "from_global_data", "to_global_data",
+           "redistribute", "default_distaxis", "is_numpy",
+           "lock", "locked", "uniform_full", "transpose", "to_global_data_rw"]
+
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
 rank = _comm.Get_rank()
@@ -195,9 +204,6 @@ class data_object(object):
         elif np.isscalar(other):
             a = a._data
             b = other
-        elif isinstance(other, np.ndarray):
-            a = a._data
-            b = other
         else:
             return NotImplemented
 
@@ -241,6 +247,12 @@ for op in ["__add__", "__radd__", "__iadd__",
 def full(shape, fill_value, dtype=None, distaxis=0):
     return data_object(shape, np.full(local_shape(shape, distaxis),
                                       fill_value, dtype), distaxis)
+
+
+def uniform_full(shape, fill_value, dtype=None, distaxis=0):
+    return data_object(
+        shape, np.broadcast_to(fill_value, local_shape(shape, distaxis)),
+        distaxis)
 
 
 def empty(shape, dtype=None, distaxis=0):
@@ -384,6 +396,13 @@ def from_global_data(arr, sum_up=False, distaxis=0):
 def to_global_data(arr):
     if arr._distaxis == -1:
         return arr._data
+    tmp = redistribute(arr, dist=-1)
+    return tmp._data
+
+
+def to_global_data_rw(arr):
+    if arr._distaxis == -1:
+        return arr._data.copy()
     tmp = redistribute(arr, dist=-1)
     return tmp._data
 

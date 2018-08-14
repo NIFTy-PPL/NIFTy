@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     # Documentation build dependencies
     python-sphinx python-sphinx-rtd-theme python-numpydoc \
     # Testing dependencies
-    python-nose python-parameterized \
-    python3-nose python3-parameterized \
+    python-nose python-coverage python-parameterized python-pytest python-pytest-cov \
+    python3-nose python3-coverage python3-parameterized python3-pytest python3-pytest-cov \
     # Optional NIFTy dependencies
     openmpi-bin libopenmpi-dev python-mpi4py python3-mpi4py \
     # Packages needed for NIFTy
@@ -21,7 +21,6 @@ RUN apt-get update && apt-get install -y \
   && pip install git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git \
   && pip3 install git+https://gitlab.mpcdf.mpg.de/ift/pyHealpix.git \
   # Testing dependencies
-  && pip install coverage \
   && rm -rf /var/lib/apt/lists/*
 
 # Needed for demos to be running

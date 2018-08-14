@@ -53,9 +53,16 @@ class Consistency_Tests(unittest.TestCase):
                                                        dtype=dtype))
         op = ift.SandwichOperator.make(a, b)
         ift.extra.consistency_check(op, dtype, dtype)
-        op = a*b
+        op = a(b)
         ift.extra.consistency_check(op, dtype, dtype)
         op = a+b
+        ift.extra.consistency_check(op, dtype, dtype)
+
+    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
+                    [np.float64, np.complex128]))
+    def testVdotOperator(self, sp, dtype):
+        op = ift.VdotOperator(ift.Field.from_random("normal", sp,
+                                                    dtype=dtype))
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product([(ift.RGSpace(10, harmonic=True), 4, 0),
@@ -69,14 +76,6 @@ class Consistency_Tests(unittest.TestCase):
         sig = np.array([0.3, 0.13])
         dom = ift.UnstructuredDomain(2)
         op = ift.SlopeOperator(dom, tgt, sig)
-        ift.extra.consistency_check(op, dtype, dtype)
-
-    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
-                    _h_spaces + _p_spaces + _pow_spaces,
-                    [np.float64, np.complex128]))
-    def testSelectionOperator(self, sp1, sp2, dtype):
-        mdom = ift.MultiDomain.make({'a': sp1, 'b': sp2})
-        op = ift.SelectionOperator(mdom, 'a')
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
@@ -102,13 +101,6 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.NullOperator(sp1, mdom2)
         ift.extra.consistency_check(op, dtype, dtype)
         op = ift.NullOperator(mdom1, sp2)
-        ift.extra.consistency_check(op, dtype, dtype)
-
-    @expand(product(_h_spaces + _p_spaces + _pow_spaces,
-                    [np.float64, np.complex128]))
-    def testMultiAdaptor(self, sp, dtype):
-        mdom = ift.MultiDomain.make({'a': sp})
-        op = ift.MultiAdaptor(mdom)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_p_RG_spaces,

@@ -18,15 +18,13 @@
 
 from __future__ import absolute_import, division, print_function
 
-import abc
-
 import numpy as np
 
 from ..compat import *
-from ..utilities import NiftyMetaBase
+from .operator import Operator
 
 
-class LinearOperator(NiftyMetaBase()):
+class LinearOperator(Operator):
     """NIFTY base class for linear operators.
 
     The base NIFTY operator class is an abstract class from which
@@ -83,24 +81,6 @@ class LinearOperator(NiftyMetaBase()):
     def _tgt(self, mode):
         return self.domain if (mode & 6) else self.target
 
-    def __init__(self):
-        pass
-
-    @abc.abstractproperty
-    def domain(self):
-        # FIXME Adopt documentation to MultiDomains
-        """DomainTuple : the operator's input domain
-
-            The domain on which the Operator's input Field lives."""
-        raise NotImplementedError
-
-    @abc.abstractproperty
-    def target(self):
-        """DomainTuple : the operator's output domain
-
-            The domain on which the Operator's output Field lives."""
-        raise NotImplementedError
-
     def _flip_modes(self, trafo):
         from .operator_adapter import OperatorAdapter
         return self if trafo == 0 else OperatorAdapter(self, trafo)
@@ -121,52 +101,41 @@ class LinearOperator(NiftyMetaBase()):
         the adjoint of this operator."""
         return self._flip_modes(self.ADJOINT_BIT)
 
-    @staticmethod
-    def _toOperator(thing, dom):
-        from .scaling_operator import ScalingOperator
-        if isinstance(thing, LinearOperator):
-            return thing
-        if np.isscalar(thing):
-            return ScalingOperator(thing, dom)
-        return NotImplemented
+    def __matmul__(self, other):
+        if isinstance(other, LinearOperator):
+            from .chain_operator import ChainOperator
+            return ChainOperator.make([self, other])
+        return Operator.__matmul__(self, other)
 
-    def __mul__(self, other):
-        from .chain_operator import ChainOperator
-        if np.isscalar(other) and other == 1.:
-            return self
-        other = self._toOperator(other, self.domain)
-        return ChainOperator.make([self, other])
+    def __rmatmul__(self, other):
+        if isinstance(other, LinearOperator):
+            from .chain_operator import ChainOperator
+            return ChainOperator.make([other, self])
+        return Operator.__rmatmul__(self, other)
 
-    def __rmul__(self, other):
-        from .chain_operator import ChainOperator
-        if np.isscalar(other) and other == 1.:
-            return self
-        other = self._toOperator(other, self.target)
-        return ChainOperator.make([other, self])
+    def _myadd(self, other, oneg):
+        from .sum_operator import SumOperator
+        return SumOperator.make((self, other), (False, oneg))
 
     def __add__(self, other):
-        from .sum_operator import SumOperator
-        if np.isscalar(other) and other == 0.:
-            return self
-        other = self._toOperator(other, self.domain)
-        return SumOperator.make([self, other], [False, False])
+        if isinstance(other, LinearOperator):
+            return self._myadd(other, False)
+        return Operator.__add__(self, other)
 
     def __radd__(self, other):
         return self.__add__(other)
 
     def __sub__(self, other):
-        from .sum_operator import SumOperator
-        if np.isscalar(other) and other == 0.:
-            return self
-        other = self._toOperator(other, self.domain)
-        return SumOperator.make([self, other], [False, True])
+        if isinstance(other, LinearOperator):
+            return self._myadd(other, True)
+        return Operator.__sub__(self, other)
 
     def __rsub__(self, other):
-        from .sum_operator import SumOperator
-        other = self._toOperator(other, self.domain)
-        return SumOperator.make([other, self], [False, True])
+        if isinstance(other, LinearOperator):
+            return other._myadd(self, True)
+        return Operator.__rsub__(self, other)
 
-    @abc.abstractproperty
+    @property
     def capability(self):
         """int : the supported operation modes
 
@@ -174,9 +143,8 @@ class LinearOperator(NiftyMetaBase()):
         :attr:`INVERSE_TIMES`, and :attr:`ADJOINT_INVERSE_TIMES`,
         joined together by the "|" operator.
         """
-        raise NotImplementedError
+        return self._capability
 
-    @abc.abstractmethod
     def apply(self, x, mode):
         """ Applies the Operator to a given `x`, in a specified `mode`.
 
@@ -203,11 +171,14 @@ class LinearOperator(NiftyMetaBase()):
 
     def __call__(self, x):
         """Same as :meth:`times`"""
-        from ..models.model import Model
-        from ..models.linear_model import LinearModel
-        if isinstance(x, Model):
-            return LinearModel(x, self)
-        return self.apply(x, self.TIMES)
+        from ..field import Field
+        from ..multi_field import MultiField
+        if isinstance(x, (Field, MultiField)):
+            return self.apply(x, self.TIMES)
+        from ..linearization import Linearization
+        if isinstance(x, Linearization):
+            return Linearization(self(x._val), self(x._jac))
+        return self.__matmul__(x)
 
     def times(self, x):
         """ Applies the Operator to a given Field.
@@ -287,5 +258,5 @@ class LinearOperator(NiftyMetaBase()):
 
     def _check_input(self, x, mode):
         self._check_mode(mode)
-        if self._dom(mode) is not x.domain:
+        if self._dom(mode) != x.domain:
             raise ValueError("The operator's and field's domains don't match.")

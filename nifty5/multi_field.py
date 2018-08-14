@@ -20,10 +20,10 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from ..compat import *
-from ..field import Field
+from .compat import *
+from .field import Field
 from .multi_domain import MultiDomain
-from .. import utilities
+from . import utilities
 
 
 class MultiField(object):
@@ -42,7 +42,7 @@ class MultiField(object):
             raise ValueError("length mismatch")
         for d, v in zip(domain._domains, val):
             if isinstance(v, Field):
-                if v._domain is not d:
+                if v._domain != d:
                     raise ValueError("domain mismatch")
             else:
                 raise TypeError("bad entry in val (must be Field)")
@@ -54,7 +54,7 @@ class MultiField(object):
         if domain is None:
             domain = MultiDomain.make({key: v._domain
                                        for key, v in dict.items()})
-        res = tuple(dict[key] if key in dict else Field.full(dom, 0)
+        res = tuple(dict[key] if key in dict else Field(dom, 0)
                     for key, dom in zip(domain.keys(), domain.domains()))
         return MultiField(domain, res)
 
@@ -103,7 +103,7 @@ class MultiField(object):
                           for dom in domain._domains))
 
     def _check_domain(self, other):
-        if other._domain is not self._domain:
+        if other._domain != self._domain:
             raise ValueError("domains are incompatible.")
 
     def vdot(self, x):
@@ -124,7 +124,7 @@ class MultiField(object):
     @staticmethod
     def full(domain, val):
         domain = MultiDomain.make(domain)
-        return MultiField(domain, tuple(Field.full(dom, val)
+        return MultiField(domain, tuple(Field(dom, val)
                           for dom in domain._domains))
 
     def to_global_data(self):
@@ -199,40 +199,41 @@ class MultiField(object):
                 return True
         return False
 
-    def isEquivalentTo(self, other):
-        """Determines (as quickly as possible) whether `self`'s content is
-        identical to `other`'s content."""
-        if self is other:
-            return True
-        if not isinstance(other, MultiField):
-            return False
-        if self._domain is not other._domain:
-            return False
-        for v1, v2 in zip(self._val, other._val):
-            if not v1.isEquivalentTo(v2):
-                return False
-        return True
-
     def extract(self, subset):
-        if isinstance(subset, MultiDomain):
-            return MultiField(subset,
-                              tuple(self[key] for key in subset.keys()))
-        else:
-            return MultiField.from_dict({key: self[key] for key in subset})
+        if subset is self._domain:
+            return self
+        return MultiField(subset,
+                          tuple(self[key] for key in subset.keys()))
 
     def unite(self, other):
-        return self.combine((self, other))
-
-    @staticmethod
-    def combine(fields):
-        res = {}
-        for f in fields:
-            for key in f.keys():
-                if key in res:
-                    res[key] = res[key]+f[key]
-                else:
-                    res[key] = f[key]
+        if self._domain is other._domain:
+            return self + other
+        res = self.to_dict()
+        for key, val in other.items():
+            res[key] = res[key]+val if key in res else val
         return MultiField.from_dict(res)
+
+    def flexible_addsub(self, other, neg):
+        if self._domain is other._domain:
+            return self-other if neg else self+other
+        res = self.to_dict()
+        for key, val in other.items():
+            if key in res:
+                res[key] = res[key]-val if neg else res[key]+val
+            else:
+                res[key] = -val if neg else val
+        return MultiField.from_dict(res)
+
+    def _binary_op(self, other, op):
+        f = getattr(Field, op)
+        if isinstance(other, MultiField):
+            if self._domain != other._domain:
+                raise ValueError("domain mismatch")
+            val = tuple(f(v1, v2)
+                        for v1, v2 in zip(self._val, other._val))
+        else:
+            val = tuple(f(v1, other) for v1 in self._val)
+        return MultiField(self._domain, val)
 
 
 for op in ["__add__", "__radd__",
@@ -245,14 +246,7 @@ for op in ["__add__", "__radd__",
            "__lt__", "__le__", "__gt__", "__ge__", "__eq__", "__ne__"]:
     def func(op):
         def func2(self, other):
-            if isinstance(other, MultiField):
-                if self._domain is not other._domain:
-                    raise ValueError("domain mismatch")
-                val = tuple(getattr(v1, op)(v2)
-                            for v1, v2 in zip(self._val, other._val))
-            else:
-                val = tuple(getattr(v1, op)(other) for v1 in self._val)
-            return MultiField(self._domain, val)
+            return self._binary_op(other, op)
         return func2
     setattr(MultiField, op, func(op))
 

@@ -51,8 +51,6 @@ class RGSpace(StructuredDomain):
     _needed_for_hash = ["_distances", "_shape", "_harmonic"]
 
     def __init__(self, shape, distances=None, harmonic=False):
-        super(RGSpace, self).__init__()
-
         self._harmonic = bool(harmonic)
         if np.isscalar(shape):
             shape = (shape,)
@@ -74,8 +72,8 @@ class RGSpace(StructuredDomain):
         self._size = int(reduce(lambda x, y: x*y, self._shape))
 
     def __repr__(self):
-        return ("RGSpace(shape=%r, distances=%r, harmonic=%r)"
-                % (self.shape, self.distances, self.harmonic))
+        return ("RGSpace(shape={}, distances={}, harmonic={})"
+                .format(self.shape, self.distances, self.harmonic))
 
     @property
     def harmonic(self):

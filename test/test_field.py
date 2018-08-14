@@ -66,7 +66,7 @@ class Test_Functionality(unittest.TestCase):
 
         op1 = ift.create_power_operator((space1, space2), _spec1, 0)
         op2 = ift.create_power_operator((space1, space2), _spec2, 1)
-        opfull = op2*op1
+        opfull = op2(op1)
 
         samples = 500
         sc1 = ift.StatCalculator()
@@ -94,7 +94,7 @@ class Test_Functionality(unittest.TestCase):
 
         S_1 = ift.create_power_operator((space1, space2), _spec1, 0)
         S_2 = ift.create_power_operator((space1, space2), _spec2, 1)
-        S_full = S_2*S_1
+        S_full = S_2(S_1)
 
         samples = 500
         sc1 = ift.StatCalculator()

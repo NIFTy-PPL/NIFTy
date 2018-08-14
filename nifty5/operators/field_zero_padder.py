@@ -13,7 +13,6 @@ from .. import utilities
 
 class FieldZeroPadder(LinearOperator):
     def __init__(self, domain, new_shape, space=0):
-        super(FieldZeroPadder, self).__init__()
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
         dom = self._domain[self._space]
@@ -26,22 +25,10 @@ class FieldZeroPadder(LinearOperator):
             raise ValueError("Shape mismatch")
         if any([a < b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must be larger than old shape")
-        tgt = RGSpace(new_shape, dom.distances)
         self._target = list(self._domain)
-        self._target[self._space] = tgt
+        self._target[self._space] = RGSpace(new_shape, dom.distances)
         self._target = DomainTuple.make(self._target)
-
-    @property
-    def domain(self):
-        return self._domain
-
-    @property
-    def target(self):
-        return self._target
-
-    @property
-    def capability(self):
-        return self.TIMES | self.ADJOINT_TIMES
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
