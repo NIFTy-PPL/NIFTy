@@ -18,16 +18,16 @@
 
 from __future__ import absolute_import, division, print_function
 
-import numpy as np
 import itertools
 
+import numpy as np
+
+from .. import dobj, utilities
 from ..compat import *
-from .. import utilities
-from .linear_operator import LinearOperator
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..field import Field
-from .. import dobj
+from .linear_operator import LinearOperator
 
 
 # MR FIXME: for even axis lengths, we probably should split the value at the
@@ -95,7 +95,6 @@ class CentralZeroPadder(LinearOperator):
         self._check_input(x, mode)
         x = x.val
         dax = dobj.distaxis(x)
-        shp_in = x.shape
         shp_out = self._tgt(mode).shape
         axes = self._target.axes[self._space]
         if dax in axes:

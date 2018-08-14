@@ -18,16 +18,15 @@
 
 from __future__ import absolute_import, division, print_function
 
+from collections import defaultdict
+
 import numpy as np
 
 from ..compat import *
-from ..utilities import my_sum, indent
-from .linear_operator import LinearOperator
-from .scaling_operator import ScalingOperator
-from .diagonal_operator import DiagonalOperator
-from .block_diagonal_operator import BlockDiagonalOperator
-from collections import defaultdict
 from ..sugar import domain_union
+from ..utilities import indent
+from .block_diagonal_operator import BlockDiagonalOperator
+from .linear_operator import LinearOperator
 
 
 class SumOperator(LinearOperator):

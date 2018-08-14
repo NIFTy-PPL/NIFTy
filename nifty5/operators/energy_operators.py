@@ -18,15 +18,15 @@
 
 from __future__ import absolute_import, division, print_function
 
+from .. import utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from .operator import Operator
-from .sandwich_operator import SandwichOperator
-from .sampling_enabler import SamplingEnabler
-from ..sugar import makeOp
-from ..linearization import Linearization
-from .. import utilities
 from ..field import Field
+from ..linearization import Linearization
+from ..sugar import makeOp
+from .operator import Operator
+from .sampling_enabler import SamplingEnabler
+from .sandwich_operator import SandwichOperator
 from .simple_linear_operators import VdotOperator
 
 

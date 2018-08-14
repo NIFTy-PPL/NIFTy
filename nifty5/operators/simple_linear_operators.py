@@ -18,17 +18,15 @@
 
 from __future__ import absolute_import, division, print_function
 
-import numpy as np
-
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..multi_domain import MultiDomain
 from ..domains.unstructured_domain import UnstructuredDomain
-from .linear_operator import LinearOperator
-from .endomorphic_operator import EndomorphicOperator
-from ..sugar import full
 from ..field import Field
+from ..multi_domain import MultiDomain
 from ..multi_field import MultiField
+from ..sugar import full
+from .endomorphic_operator import EndomorphicOperator
+from .linear_operator import LinearOperator
 
 
 class VdotOperator(LinearOperator):

@@ -21,10 +21,8 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 
 from ..compat import *
-from ..domain_tuple import DomainTuple
 from ..sugar import full
 from .endomorphic_operator import EndomorphicOperator
-from .. import utilities
 
 
 class ScalingOperator(EndomorphicOperator):

@@ -18,13 +18,11 @@
 
 from __future__ import absolute_import, division, print_function
 
-import numpy as np
-
-from ..compat import *
-from .linear_operator import LinearOperator
 from .. import utilities
-from .scaling_operator import ScalingOperator
+from ..compat import *
 from .diagonal_operator import DiagonalOperator
+from .linear_operator import LinearOperator
+from .scaling_operator import ScalingOperator
 from .simple_linear_operators import NullOperator
 
 
@@ -44,8 +42,8 @@ class ChainOperator(LinearOperator):
     @staticmethod
     def simplify(ops):
         # verify domains
-        for i in range(len(ops)-1):
-            if ops[i+1].target != ops[i].domain:
+        for i in range(len(ops) - 1):
+            if ops[i + 1].target != ops[i].domain:
                 raise ValueError("domain mismatch")
         # unpack ChainOperators
         opsnew = []
@@ -78,9 +76,8 @@ class ChainOperator(LinearOperator):
         # combine DiagonalOperators where possible
         opsnew = []
         for op in ops:
-            if (len(opsnew) > 0 and
-                    isinstance(opsnew[-1], DiagonalOperator) and
-                    isinstance(op, DiagonalOperator)):
+            if (len(opsnew) > 0 and isinstance(opsnew[-1], DiagonalOperator)
+                    and isinstance(op, DiagonalOperator)):
                 opsnew[-1] = opsnew[-1]._combine_prod(op)
             else:
                 opsnew.append(op)
@@ -89,9 +86,9 @@ class ChainOperator(LinearOperator):
         from .block_diagonal_operator import BlockDiagonalOperator
         opsnew = []
         for op in ops:
-            if (len(opsnew) > 0 and
-                    isinstance(opsnew[-1], BlockDiagonalOperator) and
-                    isinstance(op, BlockDiagonalOperator)):
+            if (len(opsnew) > 0
+                    and isinstance(opsnew[-1], BlockDiagonalOperator)
+                    and isinstance(op, BlockDiagonalOperator)):
                 opsnew[-1] = opsnew[-1]._combine_chain(op)
             else:
                 opsnew.append(op)
@@ -123,8 +120,8 @@ class ChainOperator(LinearOperator):
         if trafo == 0:
             return self
         if trafo == ADJ or trafo == INV:
-            return self.make([op._flip_modes(trafo)
-                              for op in reversed(self._ops)])
+            return self.make(
+                [op._flip_modes(trafo) for op in reversed(self._ops)])
         if trafo == ADJ | INV:
             return self.make([op._flip_modes(trafo) for op in self._ops])
         raise ValueError("invalid operator transformation")
@@ -135,6 +132,7 @@ class ChainOperator(LinearOperator):
         for op in t_ops:
             x = op.apply(x, mode)
         return x
+
 
 #     def draw_sample(self, from_inverse=False, dtype=np.float64):
 #         from ..sugar import from_random
@@ -149,4 +147,4 @@ class ChainOperator(LinearOperator):
 
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._ops)
-        return "ChainOperator:\n"+utilities.indent(subs)
+        return "ChainOperator:\n" + utilities.indent(subs)

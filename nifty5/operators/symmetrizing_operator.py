@@ -18,13 +18,12 @@
 
 from __future__ import absolute_import, division, print_function
 
-from .. import dobj
+from .. import dobj, utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.log_rg_space import LogRGSpace
 from ..field import Field
 from .endomorphic_operator import EndomorphicOperator
-from .. import utilities
 
 
 class SymmetrizingOperator(EndomorphicOperator):

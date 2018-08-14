@@ -26,8 +26,8 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace
 from ..field import Field
-from .linear_operator import LinearOperator
 from ..utilities import infer_space, special_add_at
+from .linear_operator import LinearOperator
 
 
 class ExpTransform(LinearOperator):

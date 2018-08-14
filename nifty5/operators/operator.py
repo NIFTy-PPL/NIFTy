@@ -1,8 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..utilities import NiftyMetaBase, my_product
-from ..domain_tuple import DomainTuple
+from ..utilities import NiftyMetaBase
 
 
 class Operator(NiftyMetaBase()):
