@@ -39,7 +39,8 @@ __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
            'full', 'from_global_data', 'from_local_data',
            'makeDomain', 'sqrt', 'exp', 'log', 'tanh', 'positive_tanh',
-           'conjugate', 'get_signal_variance', 'makeOp', 'domain_union']
+           'conjugate', 'get_signal_variance', 'makeOp', 'domain_union',
+           'get_default_codomain']
 
 
 def PS_field(pspace, func):
@@ -268,3 +269,31 @@ for f in ["sqrt", "exp", "log", "tanh", "positive_tanh", "conjugate"]:
                 return getattr(np, f)(x)
         return func2
     setattr(_current_module, f, func(f))
+
+def get_default_codomain(domainoid, space=None):
+    """For `RGSpace`, returns the harmonic partner domain.
+    For `DomainTuple`, returns a copy of the object in which the domain
+    indexed by `space` is substituted by its harmonic partner domain.
+    In this case, if `space` is None, it is set to 0 if the `DomainTuple`
+    contains exactly one domain.
+
+    Parameters
+    ----------
+    domain: `RGSpace` or `DomainTuple`
+        Domain for which to constuct the default harmonic partner
+    space: int
+        Optional index of the subdomain to be replaced by its default
+        codomain. `domain[space]` must be of class `RGSpace`.
+    """
+    from .domains.rg_space import RGSpace
+    if isinstance(domainoid, RGSpace):
+        return domainoid.get_default_codomain()
+    if not isinstance(domainoid, DomainTuple):
+        raise TypeError(
+            'Works only on RGSpaces and DomainTuples containing those')
+    space = utilities.infer_space(domainoid, space)
+    if not isinstance(domainoid[space], RGSpace):
+        raise TypeError("can only codomain RGSpaces")
+    ret = [dom for dom in domainoid]
+    ret[space] = domainoid[space].get_default_codomain()
+    return DomainTuple.make(ret)
