@@ -22,9 +22,9 @@ import collections
 from itertools import product
 
 import numpy as np
-from future.utils import with_metaclass
 import pyfftw
-from pyfftw.interfaces.numpy_fft import rfftn, fftn
+from future.utils import with_metaclass
+from pyfftw.interfaces.numpy_fft import fftn, rfftn
 
 from .compat import *
 

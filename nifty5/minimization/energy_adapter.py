@@ -1,12 +1,10 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from ..minimization.energy import Energy
 from ..linearization import Linearization
-from ..multi_field import MultiField
-from ..operators.scaling_operator import ScalingOperator
+from ..minimization.energy import Energy
 from ..operators.block_diagonal_operator import BlockDiagonalOperator
-import numpy as np
+from ..operators.scaling_operator import ScalingOperator
 
 
 class EnergyAdapter(Energy):

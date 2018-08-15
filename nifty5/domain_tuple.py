@@ -18,9 +18,9 @@
 
 from __future__ import absolute_import, division, print_function
 
+from . import utilities
 from .compat import *
 from .domains.domain import Domain
-from . import utilities
 
 
 class DomainTuple(object):

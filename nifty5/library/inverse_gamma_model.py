@@ -22,9 +22,9 @@ import numpy as np
 from scipy.stats import invgamma, norm
 
 from ..compat import *
-from ..operators.operator import Operator
-from ..linearization import Linearization
 from ..field import Field
+from ..linearization import Linearization
+from ..operators.operator import Operator
 from ..sugar import makeOp
 
 

@@ -28,12 +28,11 @@ from .domain_tuple import DomainTuple
 from .domains.power_space import PowerSpace
 from .field import Field
 from .logger import logger
-from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .multi_domain import MultiDomain
 from .multi_field import MultiField
+from .operators.block_diagonal_operator import BlockDiagonalOperator
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import PowerDistributor
-
 
 __all__ = ['PS_field', 'power_analyze', 'create_power_operator',
            'create_harmonic_smoothing_operator', 'from_random',
