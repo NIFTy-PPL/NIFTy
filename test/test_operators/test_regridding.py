@@ -17,15 +17,21 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 import unittest
+from test.common import expand
 
 from numpy.testing import assert_allclose
 
 import nifty5 as ift
+from itertools import product
 
 
 class Regridding_Tests(unittest.TestCase):
-    def test_value(self):
-        s = ift.RGSpace(8)
+    @expand(product([
+        ift.RGSpace(8, distances=12.9),
+        ift.RGSpace(59, distances=.24, harmonic=True),
+        ift.RGSpace([12, 3])
+    ]))
+    def test_value(self, s):
         Regrid = ift.RegriddingOperator(s, s.shape, 0)
         f = ift.from_random('normal', Regrid.domain)
         assert_allclose(f.to_global_data(), Regrid(f).to_global_data())
