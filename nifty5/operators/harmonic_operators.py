@@ -322,23 +322,19 @@ class SHTOperator(LinearOperator):
     def _apply_spherical(self, x, mode):
         axes = x.domain.axes[self._space]
         axis = axes[0]
-        tval = x.val
-        if dobj.distaxis(tval) == axis:
-            tval = dobj.redistribute(tval, nodist=(axis,))
-        distaxis = dobj.distaxis(tval)
+        v = x.val
+        v, idat = dobj.ensure_not_distributed(v, (axis,))
+        distaxis = dobj.distaxis(v)
 
         p2h = not x.domain[self._space].harmonic
         tdom = self._tgt(mode)
         func = self._slice_p2h if p2h else self._slice_h2p
-        idat = dobj.local_data(tval)
         odat = np.empty(dobj.local_shape(tdom.shape, distaxis=distaxis),
                         dtype=x.dtype)
         for slice in utilities.get_slice_list(idat.shape, axes):
             odat[slice] = func(idat[slice])
         odat = dobj.from_local_data(tdom.shape, odat, distaxis)
-        if distaxis != dobj.distaxis(x.val):
-            odat = dobj.redistribute(odat, dist=dobj.distaxis(x.val))
-        return Field(tdom, odat)
+        return Field(tdom, dobj.ensure_default_distributed(odat))
 
 
 class HarmonicTransformOperator(LinearOperator):

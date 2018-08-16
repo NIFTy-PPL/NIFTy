@@ -34,6 +34,7 @@ from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
 from .operators.qht_operator import QHTOperator
+from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
