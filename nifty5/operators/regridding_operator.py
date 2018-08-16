@@ -58,7 +58,7 @@ class RegriddingOperator(LinearOperator):
         for d in range(ndim):
             tmp = np.arange(new_shape[d])*(newdist[d]/dom.distances[d])
             self._bindex[d] = np.minimum(dom.shape[d]-2, tmp.astype(np.int))
-            self._frac = tmp-self._bindex[d]
+            self._frac[d] = tmp-self._bindex[d]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
