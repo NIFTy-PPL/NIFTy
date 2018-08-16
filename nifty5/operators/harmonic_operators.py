@@ -23,12 +23,12 @@ import numpy as np
 from .. import dobj, utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
-from ..domains.rg_space import RGSpace
-from ..domains.lm_space import LMSpace
 from ..domains.gl_space import GLSpace
+from ..domains.lm_space import LMSpace
+from ..domains.rg_space import RGSpace
 from ..field import Field
-from .linear_operator import LinearOperator
 from .diagonal_operator import DiagonalOperator
+from .linear_operator import LinearOperator
 from .scaling_operator import ScalingOperator
 
 

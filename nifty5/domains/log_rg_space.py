@@ -52,6 +52,7 @@ class LogRGSpace(StructuredDomain):
     def shape(self):
         return self._shape
 
+    @property
     def scalar_dvol(self):
         return self._dvol
 

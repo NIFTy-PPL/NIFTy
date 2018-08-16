@@ -20,12 +20,11 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from .. import dobj
+from .. import utilities
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..field import Field
 from .linear_operator import LinearOperator
-from .. import utilities
 
 
 class DomainDistributor(LinearOperator):

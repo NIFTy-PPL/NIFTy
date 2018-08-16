@@ -19,15 +19,15 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+
 from .. import dobj
 from ..compat import *
 from ..field import Field
-from ..multi_field import MultiField
-from ..domain_tuple import DomainTuple
 from ..logger import logger
+from ..multi_field import MultiField
+from ..utilities import iscomplextype
 from .iteration_controllers import IterationController
 from .minimizer import Minimizer
-from ..utilities import iscomplextype
 
 
 def _multiToArray(fld):

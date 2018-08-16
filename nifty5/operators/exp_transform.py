@@ -26,11 +26,29 @@ from ..domain_tuple import DomainTuple
 from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace
 from ..field import Field
-from .linear_operator import LinearOperator
 from ..utilities import infer_space, special_add_at
+from .linear_operator import LinearOperator
 
 
 class ExpTransform(LinearOperator):
+    """
+    Transforms log-space to target.
+
+    This operator creates a log-space subject to the degrees of freedom and
+    and its target-domain.
+    Then transforms between this log-space and its target, which lives in
+    normal units.
+
+    E.g: A field in log-log-space can be transformed into log-norm-space,
+         that is the y-axis stays logarithmic, but the x-axis is transfromed.
+
+    Parameters
+    ----------
+    target : domain, tuple of domains or DomainTuple
+        The full output domain
+    dof : int
+        The degrees of freedom of the log-domain, i.e. the number of bins.
+    """
     def __init__(self, target, dof, space=0):
         self._target = DomainTuple.make(target)
         self._capability = self.TIMES | self.ADJOINT_TIMES

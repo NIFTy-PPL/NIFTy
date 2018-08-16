@@ -29,6 +29,23 @@ from .linear_operator import LinearOperator
 
 
 class SlopeOperator(LinearOperator):
+    """
+    Creates a slope on target.
+
+    This operator creates a field on a LogRGSpace, which is created
+    according to a slope of given entries, (mean, y-intercept).
+    The slope mean is the powerlaw of the field in normal-space.
+
+    Parameters
+    ----------
+    domain : domain or DomainTuple, shape=(2,)
+        It has to be and UnstructuredDomain.
+        The domain of the slope mean and the y-intercept mean.
+    target : domain or DomainTuple
+        The output domain has to a LogRGSpace
+    sigmas : np.array, shape=(2,)
+        The slope variance and the y-intercept variance.
+    """
     def __init__(self, domain, target, sigmas):
         if not isinstance(target, LogRGSpace):
             raise TypeError
