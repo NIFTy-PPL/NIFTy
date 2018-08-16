@@ -76,7 +76,7 @@ class SandwichOperator(EndomorphicOperator):
     def draw_sample(self, from_inverse=False, dtype=np.float64):
         # Inverse samples from general sandwiches is not possible
         if from_inverse:
-            if self._bun.capabilities & self._bun.INVERSE_TIMES:
+            if self._bun.capability & self._bun.INVERSE_TIMES:
                 try:
                     s = self._cheese.draw_sample(from_inverse, dtype)
                     return self._bun.inverse_times(s)
