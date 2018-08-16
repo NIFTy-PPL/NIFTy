@@ -20,7 +20,7 @@ import unittest
 from itertools import product
 from test.common import expand
 
-from numpy.testing import assert_allclose, assert_equal
+from numpy.testing import assert_allclose
 
 import nifty5 as ift
 
@@ -36,10 +36,3 @@ class Regridding_Tests(unittest.TestCase):
         Regrid = ift.RegriddingOperator(s, s.shape)
         f = ift.from_random('normal', Regrid.domain)
         assert_allclose(f.to_global_data(), Regrid(f).to_global_data())
-
-    def test_value2(self):
-        npix, npix2 = 8, 3
-        sp = ift.RGSpace(npix)
-        Regrid = ift.RegriddingOperator(sp, (npix2,))
-        f = ift.from_random('normal', Regrid.domain)
-        assert_equal(f.integrate(), Regrid(f).integrate())
