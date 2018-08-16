@@ -19,6 +19,7 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+
 from ..compat import *
 from ..logger import logger
 from .line_search_strong_wolfe import LineSearchStrongWolfe

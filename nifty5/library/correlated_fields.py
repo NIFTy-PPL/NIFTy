@@ -21,11 +21,11 @@ from __future__ import absolute_import, division, print_function
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..multi_domain import MultiDomain
+from ..operators.distributors import PowerDistributor
 from ..operators.domain_distributor import DomainDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
-from ..operators.distributors import PowerDistributor
-from ..sugar import exp
 from ..operators.simple_linear_operators import FieldAdapter
+from ..sugar import exp
 
 
 def CorrelatedField(s_space, amplitude_model):

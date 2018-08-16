@@ -17,10 +17,12 @@
 # and financially supported by the Studienstiftung des deutschen Volkes.
 
 from __future__ import absolute_import, division, print_function
-from ..compat import *
+
 import numpy as np
-from ..sugar import from_random
+
+from ..compat import *
 from ..linearization import Linearization
+from ..sugar import from_random
 
 __all__ = ["check_value_gradient_consistency",
            "check_value_gradient_metric_consistency"]

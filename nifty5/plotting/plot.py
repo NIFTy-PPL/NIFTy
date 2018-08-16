@@ -22,13 +22,13 @@ import os
 
 import numpy as np
 
+from .. import dobj
 from ..compat import *
-from ..field import Field
 from ..domains.gl_space import GLSpace
 from ..domains.hp_space import HPSpace
 from ..domains.power_space import PowerSpace
 from ..domains.rg_space import RGSpace
-from .. import dobj
+from ..field import Field
 
 # relevant properties:
 # - x/y size
