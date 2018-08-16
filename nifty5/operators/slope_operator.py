@@ -34,30 +34,24 @@ class SlopeOperator(LinearOperator):
 
     This operator creates a field on a LogRGSpace, which is created
     according to a slope of given entries, (mean, y-intercept).
-    The slope mean is the powerlaw of the field in normal-space.
+    The slope mean is the power law of the field in normal-space.
 
     Parameters
     ----------
     domain : domain or DomainTuple, shape=(2,)
-        It has to be and UnstructuredDomain.
+        It has to be an UnstructuredDomain.
         The domain of the slope mean and the y-intercept mean.
     target : domain or DomainTuple
         The output domain has to a LogRGSpace
     sigmas : np.array, shape=(2,)
         The slope variance and the y-intercept variance.
     """
-    def __init__(self, domain, target, sigmas):
+    def __init__(self, target, sigmas):
         if not isinstance(target, LogRGSpace):
             raise TypeError
-        if not (isinstance(domain, UnstructuredDomain) and domain.shape == (2,)):
-            raise TypeError
-
-        self._domain = DomainTuple.make(domain)
+        self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._target = DomainTuple.make(target)
         self._capability =  self.TIMES | self.ADJOINT_TIMES
-
-        if self.domain[0].shape != (len(self.target[0].shape) + 1,):
-            raise AssertionError("Shape mismatch!")
 
         self._sigmas = sigmas
         self.ndim = len(self.target[0].shape)
