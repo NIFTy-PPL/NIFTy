@@ -43,7 +43,7 @@ class DomainDistributor(LinearOperator):
             shp = []
             for i, tgt in enumerate(self._target):
                 tmp = tgt.shape if i > 0 else tgt.local_shape
-                shp += tmp if i in self._spaces else(1,)*len(tgt.shape)
+                shp += tmp if i in self._spaces else (1,)*len(tgt.shape)
             ldat = np.broadcast_to(ldat.reshape(shp), self._target.local_shape)
             return Field.from_local_data(self._target, ldat)
         else:
