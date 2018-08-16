@@ -78,10 +78,7 @@ class LaplaceOperator(EndomorphicOperator):
         sl_r = prefix + (slice(1, None),)  # "right" slice
         dpos = self._dpos.reshape((1,)*axis + (nval-1,))
         dposc = self._dposc.reshape((1,)*axis + (nval,))
-        locval = x.val
-        if axis == dobj.distaxis(locval):
-            locval = dobj.redistribute(locval, nodist=(axis,))
-        val = dobj.local_data(locval)
+        v, val = dobj.ensure_not_distributed(x.val, (axis,))
         ret = np.empty_like(val)
         if mode == self.TIMES:
             deriv = (val[sl_r]-val[sl_l])/dpos  # defined between points
@@ -99,7 +96,5 @@ class LaplaceOperator(EndomorphicOperator):
             ret[sl_l] = deriv
             ret[prefix + (-1,)] = 0.
             ret[sl_r] -= deriv
-        ret = dobj.from_local_data(locval.shape, ret, dobj.distaxis(locval))
-        if dobj.distaxis(locval) != dobj.distaxis(x.val):
-            ret = dobj.redistribute(ret, dist=dobj.distaxis(x.val))
-        return Field(self.domain, val=ret)
+        ret = dobj.from_local_data(x.shape, ret, dobj.distaxis(v))
+        return Field(self.domain, dobj.ensure_default_distributed(ret))

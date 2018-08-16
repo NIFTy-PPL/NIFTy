@@ -58,13 +58,12 @@ class RegriddingOperator(LinearOperator):
         self._frac = [None] * ndim
         for d in range(ndim):
             tmp = np.arange(new_shape[d])*(newdist[d]/dom.distances[d])
-            self._bindex[d] = np.minimum(dom.shape[d]-2,tmp.astype(np.int))
+            self._bindex[d] = np.minimum(dom.shape[d]-2, tmp.astype(np.int))
             self._frac = tmp-self._bindex[d]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
-        ax = dobj.distaxis(x)
+        v = x.val
         ndim = len(self.target.shape)
         curshp = list(self._dom(mode).shape)
         d0 = self._target.axes[self._space][0]
@@ -72,10 +71,7 @@ class RegriddingOperator(LinearOperator):
             idx = (slice(None),) * d
             wgt = self._frac[d-d0].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
 
-            if d == ax:
-                x = dobj.redistribute(x, nodist=(ax,))
-            curax = dobj.distaxis(x)
-            x = dobj.local_data(x)
+            v, x = dobj.ensure_not_distributed(v, (d,))
 
             if mode == self.ADJOINT_TIMES:
                 shp = list(x.shape)
@@ -88,7 +84,5 @@ class RegriddingOperator(LinearOperator):
                 xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt
 
             curshp[d] = self._tgt(mode).shape[d]
-            x = dobj.from_local_data(curshp, xnew, distaxis=curax)
-            if d == ax:
-                x = dobj.redistribute(x, dist=ax)
-        return Field(self._tgt(mode), val=x)
+            v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))
+        return Field(self._tgt(mode), dobj.ensure_default_distributed(v))
