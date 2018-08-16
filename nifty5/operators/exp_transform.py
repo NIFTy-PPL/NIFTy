@@ -111,7 +111,7 @@ class ExpTransform(LinearOperator):
         curshp = list(self._dom(mode).shape)
         d0 = self._target.axes[self._space][0]
         for d in self._target.axes[self._space]:
-            idx = (slice(None,),) * d
+            idx = (slice(None),) * d
             wgt = self._frac[d-d0].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
 
             if d == ax:
