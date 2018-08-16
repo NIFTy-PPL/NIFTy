@@ -53,7 +53,6 @@ class RegriddingOperator(LinearOperator):
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
         ndim = len(new_shape)
-        bindistances = np.empty(ndim)
         self._bindex = [None] * ndim
         self._frac = [None] * ndim
         for d in range(ndim):
