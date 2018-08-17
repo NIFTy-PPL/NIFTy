@@ -1,3 +1,21 @@
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Copyright(C) 2013-2018 Max-Planck-Society
+#
+# NIFTy is being developed at the Max-Planck-Institut fuer Astrophysik
+# and financially supported by the Studienstiftung des deutschen Volkes.
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -11,9 +29,10 @@ from .linear_operator import LinearOperator
 
 
 class FieldZeroPadder(LinearOperator):
-    def __init__(self, domain, new_shape, space=0):
+    def __init__(self, domain, new_shape, space=0, central=False):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
+        self._central = central
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
@@ -22,7 +41,7 @@ class FieldZeroPadder(LinearOperator):
 
         if len(new_shape) != len(dom.shape):
             raise ValueError("Shape mismatch")
-        if any([a < b for a, b in zip(new_shape, dom.shape)]):
+        if any([a <= b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must be larger than old shape")
         self._target = list(self._domain)
         self._target[self._space] = RGSpace(new_shape, dom.distances)
@@ -31,25 +50,48 @@ class FieldZeroPadder(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
-        dax = dobj.distaxis(x)
-        shp_in = x.shape
-        shp_out = self._tgt(mode).shape
-        axbefore = self._target.axes[self._space][0]
-        axes = self._target.axes[self._space]
-        if dax in axes:
-            x = dobj.redistribute(x, nodist=axes)
-        curax = dobj.distaxis(x)
+        v = x.val
+        curshp = list(self._dom(mode).shape)
+        tgtshp = self._tgt(mode).shape
+        for d in self._target.axes[self._space]:
+            idx = (slice(None),) * d
 
-        if mode == self.ADJOINT_TIMES:
-            newarr = np.empty(dobj.local_shape(shp_out, curax), dtype=x.dtype)
-            sl = tuple(slice(0, shp_out[axis]) for axis in axes)
-            newarr[()] = dobj.local_data(x)[(slice(None),)*axbefore + sl]
-        else:
-            newarr = np.zeros(dobj.local_shape(shp_out, curax), dtype=x.dtype)
-            sl = tuple(slice(0, shp_in[axis]) for axis in axes)
-            newarr[(slice(None),)*axbefore + sl] = dobj.local_data(x)
-        newarr = dobj.from_local_data(shp_out, newarr, distaxis=curax)
-        if dax in axes:
-            newarr = dobj.redistribute(newarr, dist=dax)
-        return Field(self._tgt(mode), val=newarr)
+            v, x = dobj.ensure_not_distributed(v, (d,))
+
+            if mode == self.TIMES:
+                shp = list(x.shape)
+                shp[d] = tgtshp[d]
+                xnew = np.zeros(shp, dtype=x.dtype)
+                if self._central:
+                    Nyquist = x.shape[d]//2
+                    i1 = idx + (slice(0, Nyquist+1),)
+                    xnew[i1] = x[i1]
+                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                    xnew[i1] = x[i1]
+#                     if (x.shape[d] & 1) == 0:  # even number of pixels
+#                         print (Nyquist, x.shape[d]-Nyquist)
+#                         i1 = idx+(Nyquist,)
+#                         xnew[i1] *= 0.5
+#                         i1 = idx+(-Nyquist,)
+#                         xnew[i1] *= 0.5
+                else:
+                    xnew[idx + (slice(0, x.shape[d]),)] = x
+            else:  # ADJOINT_TIMES
+                if self._central:
+                    shp = list(x.shape)
+                    shp[d] = tgtshp[d]
+                    xnew = np.zeros(shp, dtype=x.dtype)
+                    Nyquist = xnew.shape[d]//2
+                    i1 = idx + (slice(0, Nyquist+1),)
+                    xnew[i1] = x[i1]
+                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                    xnew[i1] += x[i1]
+#                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
+#                         i1 = idx+(Nyquist,)
+#                         xnew[i1] *= 0.5
+                else:
+                    xnew = x[idx + (slice(0, tgtshp[d]),)]
+
+            curshp[d] = xnew.shape[d]
+            v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))
+        return Field(self._tgt(mode), dobj.ensure_default_distributed(v))

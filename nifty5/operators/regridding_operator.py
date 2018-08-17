@@ -65,6 +65,7 @@ class RegriddingOperator(LinearOperator):
         v = x.val
         ndim = len(self.target.shape)
         curshp = list(self._dom(mode).shape)
+        tgtshp = self._tgt(mode).shape
         d0 = self._target.axes[self._space][0]
         for d in self._target.axes[self._space]:
             idx = (slice(None),) * d
@@ -74,7 +75,7 @@ class RegriddingOperator(LinearOperator):
 
             if mode == self.ADJOINT_TIMES:
                 shp = list(x.shape)
-                shp[d] = self._tgt(mode).shape[d]
+                shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
                 xnew = special_add_at(xnew, d, self._bindex[d-d0], x*(1.-wgt))
                 xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, x*wgt)
@@ -82,6 +83,6 @@ class RegriddingOperator(LinearOperator):
                 xnew = x[idx + (self._bindex[d-d0],)] * (1.-wgt)
                 xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt
 
-            curshp[d] = self._tgt(mode).shape[d]
+            curshp[d] = xnew.shape[d]
             v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))
         return Field(self._tgt(mode), dobj.ensure_default_distributed(v))

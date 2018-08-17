@@ -52,8 +52,7 @@ class QHTOperator(LinearOperator):
             raise ValueError("target[space] has to be a LogRGSpace!")
 
         if self._target[self._space].harmonic:
-            raise TypeError(
-                "target[space] must be a nonharmonic space")
+            raise TypeError("target[space] must be a nonharmonic space")
 
         self._domain = [dom for dom in self._target]
         self._domain[self._space] = \

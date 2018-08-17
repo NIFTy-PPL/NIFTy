@@ -133,6 +133,9 @@ class ChainOperator(LinearOperator):
             x = op.apply(x, mode)
         return x
 
+    def __repr__(self):
+        subs = "\n".join(sub.__repr__() for sub in self._ops)
+        return "ChainOperator:\n" + utilities.indent(subs)
 
 #     def draw_sample(self, from_inverse=False, dtype=np.float64):
 #         from ..sugar import from_random
@@ -144,7 +147,3 @@ class ChainOperator(LinearOperator):
 #         for op in self._ops:
 #             samp = op.process_sample(samp, from_inverse)
 #         return samp
-
-    def __repr__(self):
-        subs = "\n".join(sub.__repr__() for sub in self._ops)
-        return "ChainOperator:\n" + utilities.indent(subs)

@@ -74,8 +74,7 @@ class Consistency_Tests(unittest.TestCase):
         tmp = ift.ExpTransform(ift.PowerSpace(args[0]), args[1], args[2])
         tgt = tmp.domain[0]
         sig = np.array([0.3, 0.13])
-        dom = ift.UnstructuredDomain(2)
-        op = ift.SlopeOperator(dom, tgt, sig)
+        op = ift.SlopeOperator(tgt, sig)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product(_h_spaces + _p_spaces + _pow_spaces,
@@ -202,19 +201,20 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.SymmetrizingOperator(dom, space)
         ift.extra.consistency_check(op, dtype, dtype)
 
-    @expand(product([0, 2], [2, 2.7], [np.float64, np.complex128]))
-    def testZeroPadder(self, space, factor, dtype):
+    @expand(product([0, 2], [2, 2.7], [np.float64, np.complex128],
+                    [False, True]))
+    def testZeroPadder(self, space, factor, dtype, central):
         dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
                ift.HPSpace(4))
-        newshape = [factor*l for l in dom[space].shape]
-        op = ift.FieldZeroPadder(dom, newshape, space)
+        newshape = [int(factor*l) for l in dom[space].shape]
+        op = ift.FieldZeroPadder(dom, newshape, space, central)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product([0, 2], [2, 2.7], [np.float64, np.complex128]))
     def testZeroPadder2(self, space, factor, dtype):
         dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.RGSpace(7, 12),
                ift.HPSpace(4))
-        newshape = [factor*l for l in dom[space].shape]
+        newshape = [int(factor*l) for l in dom[space].shape]
         op = ift.CentralZeroPadder(dom, newshape, space)
         ift.extra.consistency_check(op, dtype, dtype)
 
@@ -244,7 +244,7 @@ class Consistency_Tests(unittest.TestCase):
     @expand([[ift.RGSpace((13, 52, 40)), (4, 6, 25), None],
              [ift.RGSpace((128, 128)), (45, 48), 0],
              [ift.RGSpace(13), (7,), None],
-             [(ift.HPSpace(3), ift.RGSpace((12, 24),distances=0.3)),
+             [(ift.HPSpace(3), ift.RGSpace((12, 24), distances=0.3)),
               (12, 12), 1]])
     def testRegridding(self, domain, shape, space):
         op = ift.RegriddingOperator(domain, shape, space)
