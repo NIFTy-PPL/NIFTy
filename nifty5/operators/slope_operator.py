@@ -51,7 +51,7 @@ class SlopeOperator(LinearOperator):
             raise TypeError
         self._domain = DomainTuple.make(UnstructuredDomain((2,)))
         self._target = DomainTuple.make(target)
-        self._capability =  self.TIMES | self.ADJOINT_TIMES
+        self._capability = self.TIMES | self.ADJOINT_TIMES
 
         self._sigmas = sigmas
         self.ndim = len(self.target[0].shape)

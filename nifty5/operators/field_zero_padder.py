@@ -29,9 +29,10 @@ from .linear_operator import LinearOperator
 
 
 class FieldZeroPadder(LinearOperator):
-    def __init__(self, domain, new_shape, space=0):
+    def __init__(self, domain, new_shape, space=0, central=False):
         self._domain = DomainTuple.make(domain)
         self._space = utilities.infer_space(self._domain, space)
+        self._central = central
         dom = self._domain[self._space]
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
@@ -40,7 +41,7 @@ class FieldZeroPadder(LinearOperator):
 
         if len(new_shape) != len(dom.shape):
             raise ValueError("Shape mismatch")
-        if any([a < b for a, b in zip(new_shape, dom.shape)]):
+        if any([a <= b for a, b in zip(new_shape, dom.shape)]):
             raise ValueError("New shape must be larger than old shape")
         self._target = list(self._domain)
         self._target[self._space] = RGSpace(new_shape, dom.distances)
@@ -61,9 +62,35 @@ class FieldZeroPadder(LinearOperator):
                 shp = list(x.shape)
                 shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
-                xnew[idx + (slice(0, x.shape[d]),)] = x
+                if self._central:
+                    Nyquist = x.shape[d]//2
+                    i1 = idx + (slice(0, Nyquist+1),)
+                    xnew[i1] = x[i1]
+                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                    xnew[i1] = x[i1]
+#                     if (x.shape[d] & 1) == 0:  # even number of pixels
+#                         print (Nyquist, x.shape[d]-Nyquist)
+#                         i1 = idx+(Nyquist,)
+#                         xnew[i1] *= 0.5
+#                         i1 = idx+(-Nyquist,)
+#                         xnew[i1] *= 0.5
+                else:
+                    xnew[idx + (slice(0, x.shape[d]),)] = x
             else:  # ADJOINT_TIMES
-                xnew = x[idx + (slice(0, tgtshp[d]),)]
+                if self._central:
+                    shp = list(x.shape)
+                    shp[d] = tgtshp[d]
+                    xnew = np.zeros(shp, dtype=x.dtype)
+                    Nyquist = xnew.shape[d]//2
+                    i1 = idx + (slice(0, Nyquist+1),)
+                    xnew[i1] = x[i1]
+                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
+                    xnew[i1] += x[i1]
+#                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
+#                         i1 = idx+(Nyquist,)
+#                         xnew[i1] *= 0.5
+                else:
+                    xnew = x[idx + (slice(0, tgtshp[d]),)]
 
             curshp[d] = xnew.shape[d]
             v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))
