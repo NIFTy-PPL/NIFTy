@@ -170,27 +170,23 @@ class NewtonCG(DescentMinimizer):
         float64eps = np.finfo(np.float64).eps
         grad = energy.gradient
         maggrad = abs(grad).sum()
-        eta = np.min([0.5, np.sqrt(maggrad)])
-        termcond = eta*maggrad
+        termcond = np.min([0.5, np.sqrt(maggrad)]) * maggrad
         xsupi = energy.position*0
         ri = grad
         psupi = -ri
-        i = 0
         dri0 = ri.vdot(ri)
 
+        i = 0
         while True:
             if abs(ri).sum() <= termcond:
                 return xsupi
             Ap = energy.metric(psupi)
             # check curvature
             curv = psupi.vdot(Ap)
-            if 0 <= curv <= 3 * float64eps:
+            if 0 <= curv <= 3*float64eps:
                 return xsupi
             elif curv < 0:
-                if (i > 0):
-                    return xsupi
-                else:
-                    return (dri0/curv) * grad  # fall back to steepest descent
+                return xsupi if i > 0 else (dri0/curv) * grad
             alphai = dri0/curv
             xsupi = xsupi + alphai*psupi
             ri = ri + alphai*Ap
