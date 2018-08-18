@@ -139,17 +139,6 @@ class ScipyMinimizer(Minimizer):
         return hlp._energy, IterationController.CONVERGED
 
 
-def NewtonCG(xtol, maxiter, disp=False):
-    """Returns a ScipyMinimizer object carrying out the Newton-CG algorithm.
-
-    See Also
-    --------
-    ScipyMinimizer
-    """
-    options = {"xtol": xtol, "maxiter": maxiter, "disp": disp}
-    return ScipyMinimizer("Newton-CG", options, True, None)
-
-
 def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):
     """Returns a ScipyMinimizer object carrying out the L-BFGS-B algorithm.
 

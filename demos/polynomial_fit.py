@@ -90,7 +90,7 @@ H = ift.Hamiltonian(likelihood, IC)
 H = ift.EnergyAdapter(params, H, IC)
 
 # Minimize
-minimizer = ift.RelaxedNewton(IC)
+minimizer = ift.NewtonCG(IC)
 H, _ = minimizer(H)
 
 # Draw posterior samples

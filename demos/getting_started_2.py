@@ -87,14 +87,13 @@ if __name__ == '__main__':
 
     # Compute likelihood and Hamiltonian
     likelihood = ift.PoissonianEnergy(lamb, data)
-    ic_cg = ift.GradientNormController(iteration_limit=50)
-    ic_newton = ift.GradientNormController(name='Newton', iteration_limit=50,
-                                           tol_abs_gradnorm=1e-3)
-    minimizer = ift.RelaxedNewton(ic_newton)
+    ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100,
+                                          tol_rel_deltaE=1e-8)
+    minimizer = ift.NewtonCG(ic_newton)
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood)
-    H = ift.EnergyAdapter(position, H, ic_cg)
+    H = ift.EnergyAdapter(position, H)
     H, convergence = minimizer(H)
 
     # Plot results
