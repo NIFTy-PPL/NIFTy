@@ -135,24 +135,6 @@ class SteepestDescent(DescentMinimizer):
         return -energy.gradient
 
 
-class RelaxedNewton(DescentMinimizer):
-    """ Calculates the descent direction according to a Newton scheme.
-
-    The descent direction is determined by weighting the gradient at the
-    current parameter position with the inverse local metric.
-    """
-
-    def __init__(self, controller, line_searcher=None):
-        if line_searcher is None:
-            line_searcher = LineSearchStrongWolfe(
-                preferred_initial_step_size=1.)
-        super(RelaxedNewton, self).__init__(controller=controller,
-                                            line_searcher=line_searcher)
-
-    def get_descent_direction(self, energy):
-        return -energy.metric.inverse_times(energy.gradient)
-
-
 class NewtonCG(DescentMinimizer):
     """ Calculates the descent direction according to a Newton-CG scheme.
 
@@ -180,7 +162,7 @@ class NewtonCG(DescentMinimizer):
         while True:
             if abs(ri).sum() <= termcond:
                 return xsupi
-            Ap = energy.metric(psupi)
+            Ap = energy.apply_metric(psupi)
             # check curvature
             curv = psupi.vdot(Ap)
             if 0 <= curv <= 3*float64eps:

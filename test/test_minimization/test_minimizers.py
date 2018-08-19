@@ -38,7 +38,6 @@ minimizers = ['ift.VL_BFGS(IC)',
               'ift.L_BFGS(IC)',
               'ift.NewtonCG(IC)']
 
-newton_minimizers = ['ift.RelaxedNewton(IC)']
 quadratic_only_minimizers = ['ift.ConjugateGradient(IC)',
                              'ift.ScipyCG(tol=1e-5, maxiter=300)']
 slow_minimizers = ['ift.SteepestDescent(IC)']
@@ -46,8 +45,8 @@ slow_minimizers = ['ift.SteepestDescent(IC)']
 
 class Test_Minimizers(unittest.TestCase):
 
-    @expand(product(minimizers + newton_minimizers +
-                    quadratic_only_minimizers + slow_minimizers, spaces))
+    @expand(product(minimizers + quadratic_only_minimizers + slow_minimizers,
+                    spaces))
     def test_quadratic_minimization(self, minimizer, space):
         np.random.seed(42)
         starting_point = ift.Field.from_random('normal', domain=space)*10
@@ -70,7 +69,7 @@ class Test_Minimizers(unittest.TestCase):
                         1./covariance_diagonal.local_data,
                         rtol=1e-3, atol=1e-3)
 
-    @expand(product(minimizers+newton_minimizers))
+    @expand(product(minimizers))
     def test_rosenbrock(self, minimizer):
         try:
             from scipy.optimize import rosen, rosen_der, rosen_hess_prod
@@ -94,24 +93,11 @@ class Test_Minimizers(unittest.TestCase):
                 out = ift.Field.from_global_data(space, rosen_der(inp))
                 return out
 
-            @property
-            def metric(self):
-                class RBCurv(ift.EndomorphicOperator):
-                    def __init__(self, loc):
-                        self._loc = loc.to_global_data_rw()
-                        self._capability = self.TIMES
-                        self._domain = space
-
-                    def apply(self, x, mode):
-                        self._check_input(x, mode)
-                        inp = x.to_global_data_rw()
-                        out = ift.Field.from_global_data(
-                            space, rosen_hess_prod(self._loc.copy(), inp))
-                        return out
-
-                t1 = ift.GradientNormController(tol_abs_gradnorm=1e-5,
-                                                iteration_limit=1000)
-                return ift.InversionEnabler(RBCurv(self._position), t1)
+            def apply_metric(self, x):
+                inp = x.to_global_data_rw()
+                pos = self._position.to_global_data_rw()
+                return ift.Field.from_global_data(
+                    space, rosen_hess_prod(pos, inp))
 
         try:
             minimizer = eval(minimizer)
@@ -145,12 +131,11 @@ class Test_Minimizers(unittest.TestCase):
                 return ift.Field.full(self.position.domain,
                                       2*x*np.exp(-(x**2)))
 
-            @property
-            def metric(self):
-                x = self.position.to_global_data()[0]
-                v = (2 - 4*x*x)*np.exp(-x**2)
+            def apply_metric(self, x):
+                p = self.position.to_global_data()[0]
+                v = (2 - 4*p*p)*np.exp(-p**2)
                 return ift.DiagonalOperator(
-                    ift.Field.full(self.position.domain, v))
+                    ift.Field.full(self.position.domain, v))(x)
 
         try:
             minimizer = eval(minimizer)
@@ -164,7 +149,7 @@ class Test_Minimizers(unittest.TestCase):
         assert_allclose(energy.position.local_data, 0.,
                         atol=1e-3)
 
-    @expand(product(minimizers+newton_minimizers+slow_minimizers))
+    @expand(product(minimizers+slow_minimizers))
     def test_cosh(self, minimizer):
         space = ift.UnstructuredDomain((1,))
         starting_point = ift.Field.full(space, 3.)
@@ -183,12 +168,11 @@ class Test_Minimizers(unittest.TestCase):
                 x = self.position.to_global_data()[0]
                 return ift.Field.full(self.position.domain, np.sinh(x))
 
-            @property
-            def metric(self):
-                x = self.position.to_global_data()[0]
-                v = np.cosh(x)
+            def apply_metric(self, x):
+                p = self.position.to_global_data()[0]
+                v = np.cosh(p)
                 return ift.DiagonalOperator(
-                    ift.Field.full(self.position.domain, v))
+                    ift.Field.full(self.position.domain, v))(x)
 
         try:
             minimizer = eval(minimizer)

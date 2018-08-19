@@ -74,6 +74,5 @@ class QuadraticEnergy(Energy):
     def gradient(self):
         return self._grad
 
-    @property
-    def metric(self):
-        return self._A
+    def apply_metric(self, x):
+        return self._A(x)

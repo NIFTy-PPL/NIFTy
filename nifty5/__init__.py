@@ -60,8 +60,7 @@ from .minimization.minimizer import Minimizer
 from .minimization.conjugate_gradient import ConjugateGradient
 from .minimization.nonlinear_cg import NonlinearCG
 from .minimization.descent_minimizers import (
-    DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton,
-    NewtonCG)
+    DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, NewtonCG)
 from .minimization.scipy_minimizer import (ScipyMinimizer, L_BFGS_B, ScipyCG)
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
