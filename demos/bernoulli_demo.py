@@ -66,15 +66,14 @@ if __name__ == '__main__':
     # Compute likelihood and Hamiltonian
     position = ift.from_random('normal', harmonic_space)
     likelihood = ift.BernoulliEnergy(p, data)
-    ic_cg = ift.GradientNormController(iteration_limit=50)
-    ic_newton = ift.GradientNormController(name='Newton', iteration_limit=30,
-                                           tol_abs_gradnorm=1e-3)
-    minimizer = ift.RelaxedNewton(ic_newton)
+    ic_newton = ift.DeltaEnergyController(name='Newton', iteration_limit=100,
+                                          tol_rel_deltaE=1e-8)
+    minimizer = ift.NewtonCG(ic_newton)
     ic_sampling = ift.GradientNormController(iteration_limit=100)
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
-    H = ift.EnergyAdapter(position, H, ic_cg)
+    H = ift.EnergyAdapter(position, H)
     # minimizer = ift.L_BFGS(ic_newton)
     H, convergence = minimizer(H)
 

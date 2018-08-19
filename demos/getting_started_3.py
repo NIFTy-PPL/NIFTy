@@ -72,14 +72,10 @@ if __name__ == '__main__':
         mean=data, covariance=N)(signal_response)
 
     # set up minimization and inversion schemes
-    ic_cg = ift.GradientNormController(iteration_limit=10)
     ic_sampling = ift.GradientNormController(iteration_limit=100)
     ic_newton = ift.DeltaEnergyController(
         name='Newton', tol_rel_deltaE=1e-8, iteration_limit=100)
-    minimizer = ift.RelaxedNewton(ic_newton)
-    # minimizer = ift.VL_BFGS(ic_newton)
-    # minimizer = ift.NewtonCG(xtol=1e-10, maxiter=100, disp=True)
-    # minimizer = ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=100, maxcor=20, disp=True)
+    minimizer = ift.NewtonCG(ic_newton)
 
     # build model Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
@@ -100,7 +96,7 @@ if __name__ == '__main__':
                    for _ in range(N_samples)]
 
         KL = ift.SampledKullbachLeiblerDivergence(H, samples)
-        KL = ift.EnergyAdapter(position, KL, ic_cg, constants=["xi"])
+        KL = ift.EnergyAdapter(position, KL)
         KL, convergence = minimizer(KL)
         position = KL.position
 

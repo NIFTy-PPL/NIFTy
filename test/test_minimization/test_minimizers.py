@@ -34,9 +34,9 @@ minimizers = ['ift.VL_BFGS(IC)',
               # 'ift.NonlinearCG(IC, "Hestenes-Stiefel"),
               'ift.NonlinearCG(IC, "Fletcher-Reeves")',
               'ift.NonlinearCG(IC, "5.49")',
-              'ift.NewtonCG(xtol=1e-5, maxiter=1000)',
               'ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=1000)',
-              'ift.L_BFGS(IC)']
+              'ift.L_BFGS(IC)',
+              'ift.NewtonCG(IC)']
 
 newton_minimizers = ['ift.RelaxedNewton(IC)']
 quadratic_only_minimizers = ['ift.ConjugateGradient(IC)',
