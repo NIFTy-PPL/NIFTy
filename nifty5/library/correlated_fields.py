@@ -22,7 +22,7 @@ from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..multi_domain import MultiDomain
 from ..operators.distributors import PowerDistributor
-from ..operators.domain_distributor import DomainDistributor
+from ..operators.domain_tuple_operators import DomainDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import FieldAdapter
 from ..sugar import exp

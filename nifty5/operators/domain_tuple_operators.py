@@ -64,3 +64,30 @@ class DomainDistributor(LinearOperator):
         else:
             return x.sum(
                 [s for s in range(len(x.domain)) if s not in self._spaces])
+
+
+class DomainTupleFieldInserter(LinearOperator):
+    def __init__(self, domain, new_space, ind):
+        '''Writes the content of a field into one slice of a DomainTuple.
+
+        Parameters
+        ----------
+        domain : Domain, tuple of Domain or DomainTuple
+        new_space : Domain, tuple of Domain or DomainTuple
+        ind : Index of the same space as new_space
+        '''
+        # FIXME Add assertions
+        self._domain = DomainTuple.make(domain)
+        self._target = DomainTuple.make(list(self.domain) + [new_space])
+        self._capability = self.TIMES | self.ADJOINT_TIMES
+        self._ind = ind
+
+    def apply(self, x, mode):
+        self._check_input(x, mode)
+        if mode == self.TIMES:
+            res = np.zeros(self.target.shape, dtype=x.dtype)
+            res[..., self._ind] = x.to_global_data()
+            return Field.from_global_data(self.target, res)
+        else:
+            return Field.from_global_data(self.domain,
+                                          x.to_global_data()[..., self._ind])

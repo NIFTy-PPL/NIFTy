@@ -22,7 +22,7 @@ from .operators.operator import Operator
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
-from .operators.domain_distributor import DomainDistributor
+from .operators.domain_tuple_operators import DomainDistributor, DomainTupleFieldInserter
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
 from .operators.harmonic_operators import (
