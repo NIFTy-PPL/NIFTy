@@ -86,15 +86,16 @@ N = ift.DiagonalOperator(ift.from_global_data(d_space, var))
 
 IC = ift.GradientNormController(tol_abs_gradnorm=1e-8)
 likelihood = ift.GaussianEnergy(d, N)(R)
-H = ift.Hamiltonian(likelihood, IC)
-H = ift.EnergyAdapter(params, H, IC)
+Ham = ift.Hamiltonian(likelihood, IC)
+H = ift.EnergyAdapter(params, Ham)
 
 # Minimize
 minimizer = ift.NewtonCG(IC)
 H, _ = minimizer(H)
 
 # Draw posterior samples
-samples = [H.metric.draw_sample(from_inverse=True) + H.position
+metric = Ham(ift.Linearization.make_var(H.position)).metric
+samples = [metric.draw_sample(from_inverse=True) + H.position
            for _ in range(N_samples)]
 
 # Plotting
