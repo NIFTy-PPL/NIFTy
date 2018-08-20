@@ -91,26 +91,21 @@ if __name__ == '__main__':
     # number of samples used to estimate the KL
     N_samples = 20
     for i in range(2):
-        metric = H(ift.Linearization.make_var(position)).metric
-        samples = [metric.draw_sample(from_inverse=True)
-                   for _ in range(N_samples)]
-
-        KL = ift.SampledKullbachLeiblerDivergence(H, samples)
-        KL = ift.EnergyAdapter(position, KL)
+        KL = ift.KL_Energy(position, H, N_samples)
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal(position), title="reconstruction")
-        ift.plot([A(position), A(MOCK_POSITION)], title="power")
+        ift.plot(signal(KL.position), title="reconstruction")
+        ift.plot([A(KL.position), A(MOCK_POSITION)], title="power")
         ift.plot_finish(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
 
     sc = ift.StatCalculator()
-    for sample in samples:
-        sc.add(signal(sample+position))
+    for sample in KL.samples:
+        sc.add(signal(sample+KL.position))
     ift.plot(sc.mean, title="mean")
     ift.plot(ift.sqrt(sc.var), title="std deviation")
 
-    powers = [A(s+position) for s in samples]
-    ift.plot([A(position), A(MOCK_POSITION)]+powers, title="power")
+    powers = [A(s+KL.position) for s in KL.samples]
+    ift.plot([A(KL.position), A(MOCK_POSITION)]+powers, title="power")
     ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
                     name="results.png")

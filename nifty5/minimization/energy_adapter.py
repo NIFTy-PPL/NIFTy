@@ -26,18 +26,6 @@ class EnergyAdapter(Energy):
     def at(self, position):
         return EnergyAdapter(position, self._op, self._constants)
 
-    def _fill_all(self):
-        if len(self._constants) == 0:
-            tmp = self._op(Linearization.make_var(self._position))
-        else:
-            ops = [ScalingOperator(0. if key in self._constants else 1., dom)
-                   for key, dom in self._position.domain.items()]
-            bdop = BlockDiagonalOperator(self._position.domain, tuple(ops))
-            tmp = self._op(Linearization(self._position, bdop))
-        self._val = tmp.val.local_data[()]
-        self._grad = tmp.gradient
-        self._metric = tmp._metric
-
     @property
     def value(self):
         return self._val
