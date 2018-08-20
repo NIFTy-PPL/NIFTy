@@ -188,10 +188,10 @@ class Consistency_Tests(unittest.TestCase):
 
     @expand(product([0, 1, 2, 3, (0, 1), (0, 2), (0, 1, 2), (0, 2, 3), (1, 3)],
                     [np.float64, np.complex128]))
-    def testDomainDistributor(self, spaces, dtype):
+    def testContractionOperator(self, spaces, dtype):
         dom = (ift.RGSpace(10), ift.UnstructuredDomain(13), ift.GLSpace(5),
                ift.HPSpace(4))
-        op = ift.DomainDistributor(dom, spaces)
+        op = ift.ContractionOperator(dom, spaces)
         ift.extra.consistency_check(op, dtype, dtype)
 
     @expand(product([0, 2], [np.float64, np.complex128]))
