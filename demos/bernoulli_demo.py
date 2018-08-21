@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
-    H = ift.EnergyAdapter(position, H)
+    H = ift.EnergyAdapter(position, H, want_metric=True)
     # minimizer = ift.L_BFGS(ic_newton)
     H, convergence = minimizer(H)
 

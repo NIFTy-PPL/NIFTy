@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood)
-    H = ift.EnergyAdapter(position, H)
+    H = ift.EnergyAdapter(position, H, want_metric=True)
     H, convergence = minimizer(H)
 
     # Plot results

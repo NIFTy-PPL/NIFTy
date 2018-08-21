@@ -12,6 +12,7 @@ class EnergyAdapter(Energy):
         super(EnergyAdapter, self).__init__(position)
         self._op = op
         self._constants = constants
+        self._want_metric = want_metric
         if len(self._constants) == 0:
             tmp = self._op(Linearization.make_var(self._position, want_metric))
         else:
@@ -25,7 +26,8 @@ class EnergyAdapter(Energy):
         self._metric = tmp._metric
 
     def at(self, position):
-        return EnergyAdapter(position, self._op, self._constants)
+        return EnergyAdapter(position, self._op, self._constants,
+                             self._want_metric)
 
     @property
     def value(self):
