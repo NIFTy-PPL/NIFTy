@@ -83,10 +83,11 @@ if __name__ == '__main__':
     INITIAL_POSITION = ift.from_random('normal', domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal(MOCK_POSITION), title='ground truth')
-    ift.plot(R.adjoint_times(data), title='data')
-    ift.plot([A(MOCK_POSITION)], title='power')
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="setup", name="setup.png")
+    plot = ift.Plot()
+    plot.add(signal(MOCK_POSITION), title='ground truth')
+    plot.add(R.adjoint_times(data), title='data')
+    plot.add([A(MOCK_POSITION)], title='power')
+    plot.output(nx=3, xsize=16, ysize=5, title="setup", name="setup.png")
 
     # number of samples used to estimate the KL
     N_samples = 20
@@ -100,17 +101,18 @@ if __name__ == '__main__':
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal(position), title="reconstruction")
-        ift.plot([A(position), A(MOCK_POSITION)], title="power")
-        ift.plot_finish(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
+        plot = ift.Plot()
+        plot.add(signal(position), title="reconstruction")
+        plot.add([A(position), A(MOCK_POSITION)], title="power")
+        plot.output(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
 
+    plot = ift.Plot()
     sc = ift.StatCalculator()
     for sample in samples:
         sc.add(signal(sample+position))
-    ift.plot(sc.mean, title="mean")
-    ift.plot(ift.sqrt(sc.var), title="std deviation")
+    plot.add(sc.mean, title="mean")
+    plot.add(ift.sqrt(sc.var), title="std deviation")
 
     powers = [A(s+position) for s in samples]
-    ift.plot([A(position), A(MOCK_POSITION)]+powers, title="power")
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
-                    name="results.png")
+    plot.add([A(position), A(MOCK_POSITION)]+powers, title="power")
+    plot.output(nx=3, xsize=16, ysize=5, title="results", name="results.png")
