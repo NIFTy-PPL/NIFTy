@@ -91,7 +91,7 @@ if __name__ == '__main__':
     # number of samples used to estimate the KL
     N_samples = 20
     for i in range(2):
-        KL = ift.KL_Energy(position, H, N_samples)
+        KL = ift.KL_Energy(position, H, N_samples, want_metric=True)
         KL, convergence = minimizer(KL)
         position = KL.position
 
