@@ -144,11 +144,12 @@ class _OpProd(Operator):
         v2 = v.extract(self._op2.domain)
         if not lin:
             return self._op1(v1) * self._op2(v2)
-        lin1 = self._op1(Linearization.make_var(v1))
-        lin2 = self._op2(Linearization.make_var(v2))
+        wm = x.want_metric
+        lin1 = self._op1(Linearization.make_var(v1, wm))
+        lin2 = self._op2(Linearization.make_var(v2, wm))
         op = (makeOp(lin1._val)(lin2._jac))._myadd(
             makeOp(lin2._val)(lin1._jac), False)
-        return Linearization(lin1._val*lin2._val, op(x.jac))
+        return lin1.new(lin1._val*lin2._val, op(x.jac))
 
 
 class _OpSum(Operator):
@@ -168,10 +169,11 @@ class _OpSum(Operator):
         res = None
         if not lin:
             return self._op1(v1).unite(self._op2(v2))
-        lin1 = self._op1(Linearization.make_var(v1))
-        lin2 = self._op2(Linearization.make_var(v2))
+        wm = x.want_metric
+        lin1 = self._op1(Linearization.make_var(v1, wm))
+        lin2 = self._op2(Linearization.make_var(v2, wm))
         op = lin1._jac._myadd(lin2._jac, False)
-        res = Linearization(lin1._val+lin2._val, op(x.jac))
+        res = lin1.new(lin1._val+lin2._val, op(x.jac))
         if lin1._metric is not None and lin2._metric is not None:
             res = res.add_metric(lin1._metric + lin2._metric)
         return res

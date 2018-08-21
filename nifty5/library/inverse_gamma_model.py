@@ -53,7 +53,7 @@ class InverseGammaModel(Operator):
         outer = 1/outer_inv
         jac = makeOp(Field.from_local_data(self._domain, inner*outer))
         jac = jac(x.jac)
-        return Linearization(points, jac)
+        return x.new(points, jac)
 
     @staticmethod
     def IG(field, alpha, q):

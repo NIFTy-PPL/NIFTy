@@ -9,22 +9,24 @@ from .. import utilities
 
 
 class KL_Energy(Energy):
-    def __init__(self, position, h, nsamp, constants=[], _samples=None):
+    def __init__(self, position, h, nsamp, constants=[], _samples=None,
+                 want_metric=False):
         super(KL_Energy, self).__init__(position)
         self._h = h
         self._constants = constants
+        self._want_metric = want_metric
         if _samples is None:
-            met = h(Linearization.make_var(position)).metric
+            met = h(Linearization.make_var(position, True)).metric
             _samples = tuple(met.draw_sample(from_inverse=True)
                              for _ in range(nsamp))
         self._samples = _samples
         if len(constants) == 0:
-            tmp = Linearization.make_var(position)
+            tmp = Linearization.make_var(position, want_metric)
         else:
             ops = [ScalingOperator(0. if key in constants else 1., dom)
                    for key, dom in position.domain.items()]
             bdop = BlockDiagonalOperator(position.domain, tuple(ops))
-            tmp = Linearization(position, bdop)
+            tmp = Linearization(position, bdop, want_metric=want_metric)
         mymap = map(lambda v: self._h(tmp+v), self._samples)
         tmp = utilities.my_sum(mymap) * (1./len(self._samples))
         self._val = tmp.val.local_data[()]
@@ -32,7 +34,8 @@ class KL_Energy(Energy):
         self._metric = tmp.metric
 
     def at(self, position):
-        return KL_Energy(position, self._h, 0, self._constants, self._samples)
+        return KL_Energy(position, self._h, 0, self._constants, self._samples,
+                         self._want_metric)
 
     @property
     def value(self):
