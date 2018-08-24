@@ -110,6 +110,20 @@ class PoissonianEnergy(EnergyOperator):
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
         return res.add_metric(metric)
 
+class InverseGammaLikelihood(EnergyOperator):
+    def __init__(self, op, d):
+        self._op, self._d = op, d
+        self._domain = d.domain
+
+    def apply(self, x):
+        x = self._op(x)
+        res = 0.5*(x.log().sum() + (0.5/x).vdot(self._d))
+        if not isinstance(x, Linearization):
+            return Field.scalar(res)
+        metric = SandwichOperator.make(x.jac, makeOp(0.5/(x.val**2)))
+        return res.add_metric(metric)
+
+
 
 class BernoulliEnergy(EnergyOperator):
     def __init__(self, p, d):
