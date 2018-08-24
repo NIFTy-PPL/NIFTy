@@ -69,7 +69,7 @@ from .minimization.energy_adapter import EnergyAdapter
 from .minimization.kl_energy import KL_Energy
 
 from .sugar import *
-from .plotting.plot import plot, plot_finish
+from .plotting.plot import Plot
 
 from .library.amplitude_model import AmplitudeModel
 from .library.inverse_gamma_model import InverseGammaModel

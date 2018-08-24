@@ -79,8 +79,9 @@ if __name__ == '__main__':
 
     reconstruction = sky(H.position)
 
-    ift.plot(reconstruction, title='reconstruction')
-    ift.plot(GR.adjoint_times(data), title='data')
-    ift.plot(sky(mock_position), title='truth')
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
-                    name="bernoulli.png")
+    plot = ift.Plot()
+    plot.add(reconstruction, title='reconstruction')
+    plot.add(GR.adjoint_times(data), title='data')
+    plot.add(sky(mock_position), title='truth')
+    plot.output(nx=3, xsize=16, ysize=5, title="results",
+                name="bernoulli.png")

@@ -41,11 +41,12 @@ if __name__ == '__main__':
     power_space = A.target[0]
     power_distributor = ift.PowerDistributor(harmonic_space, power_space)
     dummy = ift.Field.from_random('normal', harmonic_space)
-    domain = ift.MultiDomain.union(
-        (A.domain, ift.MultiDomain.make({'xi': harmonic_space})))
+    domain = ift.MultiDomain.union((A.domain,
+                                    ift.MultiDomain.make({
+                                        'xi': harmonic_space
+                                    })))
 
-    correlated_field = ht(
-        power_distributor(A)*ift.FieldAdapter(domain, "xi"))
+    correlated_field = ht(power_distributor(A)*ift.FieldAdapter(domain, "xi"))
     # alternatively to the block above one can do:
     # correlated_field = ift.CorrelatedField(position_space, A)
 
@@ -54,8 +55,7 @@ if __name__ == '__main__':
 
     # Building the Line of Sight response
     LOS_starts, LOS_ends = get_random_LOS(100)
-    R = ift.LOSResponse(position_space, starts=LOS_starts,
-                        ends=LOS_ends)
+    R = ift.LOSResponse(position_space, starts=LOS_starts, ends=LOS_ends)
     # build signal response model and model likelihood
     signal_response = R(signal)
     # specify noise
@@ -68,8 +68,7 @@ if __name__ == '__main__':
     data = signal_response(MOCK_POSITION) + N.draw_sample()
 
     # set up model likelihood
-    likelihood = ift.GaussianEnergy(
-        mean=data, covariance=N)(signal_response)
+    likelihood = ift.GaussianEnergy(mean=data, covariance=N)(signal_response)
 
     # set up minimization and inversion schemes
     ic_sampling = ift.GradientNormController(iteration_limit=100)
@@ -83,10 +82,11 @@ if __name__ == '__main__':
     INITIAL_POSITION = ift.from_random('normal', domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal(MOCK_POSITION), title='ground truth')
-    ift.plot(R.adjoint_times(data), title='data')
-    ift.plot([A(MOCK_POSITION)], title='power')
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="setup", name="setup.png")
+    plot = ift.Plot()
+    plot.add(signal(MOCK_POSITION), title='Ground Truth')
+    plot.add(R.adjoint_times(data), title='Data')
+    plot.add([A(MOCK_POSITION)], title='Power Spectrum')
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
 
     # number of samples used to estimate the KL
     N_samples = 20
@@ -95,17 +95,20 @@ if __name__ == '__main__':
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal(KL.position), title="reconstruction")
-        ift.plot([A(KL.position), A(MOCK_POSITION)], title="power")
-        ift.plot_finish(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
+        plot = ift.Plot()
+        plot.add(signal(KL.position), title="reconstruction")
+        plot.add([A(KL.position), A(MOCK_POSITION)], title="power")
+        plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
 
+    plot = ift.Plot()
     sc = ift.StatCalculator()
     for sample in KL.samples:
         sc.add(signal(sample+KL.position))
-    ift.plot(sc.mean, title="mean")
-    ift.plot(ift.sqrt(sc.var), title="std deviation")
+    plot.add(sc.mean, title="Posterior Mean")
+    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
     powers = [A(s+KL.position) for s in KL.samples]
-    ift.plot([A(KL.position), A(MOCK_POSITION)]+powers, title="power")
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
-                    name="results.png")
+    plot.add(
+        [A(KL.position), A(MOCK_POSITION)]+powers,
+        title="Sampled Posterior Power Spectrum")
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")
