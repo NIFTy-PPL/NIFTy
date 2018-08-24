@@ -83,10 +83,10 @@ if __name__ == '__main__':
     INITIAL_POSITION = ift.from_random('normal', domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal(MOCK_POSITION), title='ground truth')
-    ift.plot(R.adjoint_times(data), title='data')
-    ift.plot([A(MOCK_POSITION)], title='power')
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="setup", name="setup.png")
+    ift.plot(signal(MOCK_POSITION), title='Ground Truth')
+    ift.plot(R.adjoint_times(data), title='Data')
+    ift.plot([A(MOCK_POSITION)], title='Power Spectrum')
+    ift.plot_finish(ny=1,nx=3, xsize=24, ysize=6, name="setup.png")
 
     # number of samples used to estimate the KL
     N_samples = 20
@@ -102,15 +102,14 @@ if __name__ == '__main__':
 
         ift.plot(signal(position), title="reconstruction")
         ift.plot([A(position), A(MOCK_POSITION)], title="power")
-        ift.plot_finish(nx=2, xsize=12, ysize=6, title="loop", name="loop.png")
+        ift.plot_finish(ny=1, ysize=6, xsize=16, name="loop.png")
 
     sc = ift.StatCalculator()
     for sample in samples:
         sc.add(signal(sample+position))
-    ift.plot(sc.mean, title="mean")
-    ift.plot(ift.sqrt(sc.var), title="std deviation")
+    ift.plot(sc.mean, title="Posterior Mean")
+    ift.plot(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
     powers = [A(s+position) for s in samples]
-    ift.plot([A(position), A(MOCK_POSITION)]+powers, title="power")
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
-                    name="results.png")
+    ift.plot([A(position), A(MOCK_POSITION)]+powers, title="Sampled Posterior Power Spectrum")
+    ift.plot_finish(ny=1, nx=3, xsize=24, ysize=6, name="results.png")
