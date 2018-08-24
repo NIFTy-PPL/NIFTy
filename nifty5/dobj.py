@@ -20,11 +20,16 @@ from __future__ import absolute_import, division, print_function
 
 from .compat import *
 
-try:
-    from mpi4py import MPI
-    if MPI.COMM_WORLD.Get_size() == 1:
+dobj_mpi = False
+
+if dobj_mpi:
+    try:
+        from mpi4py import MPI
+        if MPI.COMM_WORLD.Get_size() == 1:
+            from .data_objects.numpy_do import *
+        else:
+            from .data_objects.distributed_do import *
+    except ImportError:
         from .data_objects.numpy_do import *
-    else:
-        from .data_objects.distributed_do import *
-except ImportError:
+else:
     from .data_objects.numpy_do import *
