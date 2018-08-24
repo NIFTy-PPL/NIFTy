@@ -29,7 +29,7 @@ def get_random_LOS(n_los):
 if __name__ == '__main__':
     # FIXME description of the tutorial
     np.random.seed(42)
-    position_space = ift.RGSpace([512, 512])
+    position_space = ift.RGSpace([128, 128])
 
     # Setting up an amplitude model
     A = ift.AmplitudeModel(position_space, 16, 1, 10, -4., 1, 0., 1.)

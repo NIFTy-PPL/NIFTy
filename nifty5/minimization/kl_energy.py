@@ -30,7 +30,6 @@ def allreduce_sum_field(fld):
         return Field.from_local_data(fld.domain, np_allreduce_sum(fld.local_data))
     res = tuple(Field.from_local_data(f.domain, np_allreduce_sum(f.local_data)) for f in fld.values())
     return MultiField(fld.domain, res)
-    raise NotImplementedError
 
 
 class KL_Energy(Energy):
