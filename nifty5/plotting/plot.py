@@ -262,82 +262,81 @@ def _plot(f, ax, **kwargs):
     raise ValueError("Field type not(yet) supported")
 
 
-_plots = []
-_kwargs = []
+class Plot(object):
+    def __init__(self):
+        self._plots = []
+        self._kwargs = []
 
 
-def plot(f, **kwargs):
-    """Add a figure to the current list of plots.
+    def add(self, f, **kwargs):
+        """Add a figure to the current list of plots.
 
-    Notes
-    -----
-    After doing one or more calls `plot()`, one also needs to call
-    `plot_finish()` to output the result.
+        Notes
+        -----
+        After doing one or more calls `plot()`, one also needs to call
+        `plot_finish()` to output the result.
 
-    Parameters
-    ----------
-    f: Field, or list of Field objects
-        If `f` is a single Field, it must live over a single `RGSpace`,
-        `PowerSpace`, `HPSpace`, `GLSPace`.
-        If it is a list, all list members must be Fields living over the same
-        one-dimensional `RGSpace` or `PowerSpace`.
-    title: string
-        title of the plot
-    xlabel: string
-        label for the x axis
-    ylabel: string
-        label for the y axis
-    [xyz]min, [xyz]max: float
-        limits for the values to plot
-    colormap: string
-        color map to use for the plot (if it is a 2D plot)
-    linewidth: float or list of floats
-        line width
-    label: string of list of strings
-        annotation string
-    alpha: float or list of floats
-        transparency value
-    """
-    _plots.append(f)
-    _kwargs.append(kwargs)
+        Parameters
+        ----------
+        f: Field, or list of Field objects
+            If `f` is a single Field, it must live over a single `RGSpace`,
+            `PowerSpace`, `HPSpace`, `GLSPace`.
+            If it is a list, all list members must be Fields living over the
+            same one-dimensional `RGSpace` or `PowerSpace`.
+        title: string
+            title of the plot
+        xlabel: string
+            label for the x axis
+        ylabel: string
+            label for the y axis
+        [xyz]min, [xyz]max: float
+            limits for the values to plot
+        colormap: string
+            color map to use for the plot (if it is a 2D plot)
+        linewidth: float or list of floats
+            line width
+        label: string of list of strings
+            annotation string
+        alpha: float or list of floats
+            transparency value
+        """
+        self._plots.append(f)
+        self._kwargs.append(kwargs)
 
 
-def plot_finish(**kwargs):
-    """Plot the accumulated list of figures.
+    def output(self, **kwargs):
+        """Plot the accumulated list of figures.
 
-    Parameters
-    ----------
-    title: string
-        title of the full plot
-    nx, ny: integer (default: square root of the numer of plots, rounded up)
-        number of subplots to use in x- and y-direction
-    xsize, ysize: float (default: 6)
-        dimensions of the full plot in inches
-    name: string (default: "")
-        if left empty, the plot will be shown on the screen,
-        otherwise it will be written to a file with the given name.
-        Supported extensions: .png and .pdf
-    """
-    global _plots, _kwargs
-    import matplotlib.pyplot as plt
-    nplot = len(_plots)
-    fig = plt.figure()
-    if "title" in kwargs:
-        plt.suptitle(kwargs.pop("title"))
-    nx = kwargs.pop("nx", int(np.ceil(np.sqrt(nplot))))
-    ny = kwargs.pop("ny", int(np.ceil(np.sqrt(nplot))))
-    if nx*ny < nplot:
-        raise ValueError(
-            'Figure dimensions not sufficient for number of plots. '
-            'Available plot slots: {}, number of plots: {}'
-            .format(nx*ny, nplot))
-    xsize = kwargs.pop("xsize", 6)
-    ysize = kwargs.pop("ysize", 6)
-    fig.set_size_inches(xsize, ysize)
-    for i in range(nplot):
-        ax = fig.add_subplot(ny, nx, i+1)
-        _plot(_plots[i], ax, **_kwargs[i])
-    fig.tight_layout()
-    _makeplot(kwargs.pop("name", None))
-    _plots = []
-    _kwargs = []
+        Parameters
+        ----------
+        title: string
+            title of the full plot
+        nx, ny: integer (default: square root of the numer of plots, rounded up)
+            number of subplots to use in x- and y-direction
+        xsize, ysize: float (default: 6)
+            dimensions of the full plot in inches
+        name: string (default: "")
+            if left empty, the plot will be shown on the screen,
+            otherwise it will be written to a file with the given name.
+            Supported extensions: .png and .pdf
+        """
+        import matplotlib.pyplot as plt
+        nplot = len(self._plots)
+        fig = plt.figure()
+        if "title" in kwargs:
+            plt.suptitle(kwargs.pop("title"))
+        nx = kwargs.pop("nx", int(np.ceil(np.sqrt(nplot))))
+        ny = kwargs.pop("ny", int(np.ceil(np.sqrt(nplot))))
+        if nx*ny < nplot:
+            raise ValueError(
+                'Figure dimensions not sufficient for number of plots. '
+                'Available plot slots: {}, number of plots: {}'
+                .format(nx*ny, nplot))
+        xsize = kwargs.pop("xsize", 6)
+        ysize = kwargs.pop("ysize", 6)
+        fig.set_size_inches(xsize, ysize)
+        for i in range(nplot):
+            ax = fig.add_subplot(ny, nx, i+1)
+            _plot(self._plots[i], ax, **self._kwargs[i])
+        fig.tight_layout()
+        _makeplot(kwargs.pop("name", None))

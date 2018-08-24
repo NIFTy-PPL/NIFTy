@@ -82,10 +82,11 @@ if __name__ == '__main__':
     INITIAL_POSITION = ift.from_random('normal', domain)
     position = INITIAL_POSITION
 
-    ift.plot(signal(MOCK_POSITION), title='Ground Truth')
-    ift.plot(R.adjoint_times(data), title='Data')
-    ift.plot([A(MOCK_POSITION)], title='Power Spectrum')
-    ift.plot_finish(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
+    plot = ift.Plot()
+    plot.add(signal(MOCK_POSITION), title='Ground Truth')
+    plot.add(R.adjoint_times(data), title='Data')
+    plot.add([A(MOCK_POSITION)], title='Power Spectrum')
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
 
     # number of samples used to estimate the KL
     N_samples = 20
@@ -100,18 +101,20 @@ if __name__ == '__main__':
         KL, convergence = minimizer(KL)
         position = KL.position
 
-        ift.plot(signal(position), title="reconstruction")
-        ift.plot([A(position), A(MOCK_POSITION)], title="power")
-        ift.plot_finish(ny=1, ysize=6, xsize=16, name="loop.png")
+        plot = ift.Plot()
+        plot.add(signal(position), title="reconstruction")
+        plot.add([A(position), A(MOCK_POSITION)], title="power")
+        plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
 
+    plot = ift.Plot()
     sc = ift.StatCalculator()
     for sample in samples:
-        sc.add(signal(sample + position))
-    ift.plot(sc.mean, title="Posterior Mean")
-    ift.plot(ift.sqrt(sc.var), title="Posterior Standard Deviation")
+        sc.add(signal(sample+position))
+    plot.add(sc.mean, title="Posterior Mean")
+    plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers = [A(s + position) for s in samples]
-    ift.plot(
-        [A(position), A(MOCK_POSITION)] + powers,
+    powers = [A(s+position) for s in samples]
+    plot.add(
+        [A(position), A(MOCK_POSITION)]+powers,
         title="Sampled Posterior Power Spectrum")
-    ift.plot_finish(ny=1, nx=3, xsize=24, ysize=6, name="results.png")
+    plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")

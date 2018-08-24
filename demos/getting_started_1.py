@@ -103,18 +103,17 @@ if __name__ == '__main__':
 
     # PLOTTING
     rg = isinstance(position_space, ift.RGSpace)
+    plot = ift.Plot()
     if rg and len(position_space.shape) == 1:
-        ift.plot([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
+        plot.add([HT(MOCK_SIGNAL), GR.adjoint(data), HT(m)],
                  label=['Mock signal', 'Data', 'Reconstruction'],
                  alpha=[1, .3, 1])
-        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
-        ift.plot_finish(nx=2, ny=1, xsize=10, ysize=4,
-                        title="getting_started_1")
+        plot.add(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
+        plot.output(nx=2, ny=1, xsize=10, ysize=4, title="getting_started_1")
     else:
-        ift.plot(HT(MOCK_SIGNAL), title='Mock Signal')
-        ift.plot(mask_to_nan(mask, (GR(Mask)).adjoint(data)),
+        plot.add(HT(MOCK_SIGNAL), title='Mock Signal')
+        plot.add(mask_to_nan(mask, (GR(Mask)).adjoint(data)),
                  title='Data')
-        ift.plot(HT(m), title='Reconstruction')
-        ift.plot(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
-        ift.plot_finish(nx=2, ny=2, xsize=10, ysize=10,
-                        title="getting_started_1")
+        plot.add(HT(m), title='Reconstruction')
+        plot.add(mask_to_nan(mask, HT(m-MOCK_SIGNAL)), title='Residuals')
+        plot.output(nx=2, ny=2, xsize=10, ysize=10, title="getting_started_1")
