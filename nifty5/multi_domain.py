@@ -95,7 +95,7 @@ class MultiDomain(object):
     def __eq__(self, x):
         if self is x:
             return True
-        return self.items() == x.items()
+        return list(self.items()) == list(x.items())
 
     def __ne__(self, x):
         return not self.__eq__(x)
