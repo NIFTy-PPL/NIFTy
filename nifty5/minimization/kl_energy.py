@@ -78,8 +78,12 @@ class KL_Energy(Energy):
 
     @property
     def metric(self):
+        if ntask > 1:
+            raise ValueError("not supported when MPI is active")
         return self._metric
 
     @property
     def samples(self):
-        return self._samples
+        res = _comm.allgather(self._samples)
+        res = [item for sublist in res for item in sublist]
+        return res
