@@ -77,5 +77,9 @@ class KL_Energy(Energy):
         return allreduce_sum_field(self._metric(x))
 
     @property
+    def metric(self):
+        return self._metric
+
+    @property
     def samples(self):
         return self._samples
