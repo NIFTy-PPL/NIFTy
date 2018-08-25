@@ -100,6 +100,15 @@ class Energy(NiftyMetaBase()):
             self._gradnorm = self.gradient.norm()
         return self._gradnorm
 
+    @property
+    def metric(self):
+        """
+        LinearOperator : implicitly defined metric.
+            A positive semi-definite operator or function describing the
+            metric of the potential at the given `position`.
+        """
+        raise NotImplementedError
+
     def apply_metric(self, x):
         """
         Parameters

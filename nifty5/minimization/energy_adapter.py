@@ -37,5 +37,9 @@ class EnergyAdapter(Energy):
     def gradient(self):
         return self._grad
 
+    @property
+    def metric(self):
+        return self._metric
+
     def apply_metric(self, x):
         return self._metric(x)

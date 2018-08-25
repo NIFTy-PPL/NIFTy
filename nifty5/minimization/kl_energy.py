@@ -49,5 +49,9 @@ class KL_Energy(Energy):
         return self._metric(x)
 
     @property
+    def metric(self):
+        return self._metric
+
+    @property
     def samples(self):
         return self._samples
