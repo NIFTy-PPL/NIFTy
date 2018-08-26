@@ -41,7 +41,7 @@ def _get_acceptable_location(op, loc, lin):
     for i in range(50):
         try:
             loc2 = loc+dir
-            lin2 = op(Linearization.make_var(loc2))
+            lin2 = op(Linearization.make_var(loc2, lin.want_metric))
             if np.isfinite(lin2.val.sum()) and abs(lin2.val.sum()) < 1e20:
                 break
         except FloatingPointError:
@@ -54,14 +54,14 @@ def _get_acceptable_location(op, loc, lin):
 
 def _check_consistency(op, loc, tol, ntries, do_metric):
     for _ in range(ntries):
-        lin = op(Linearization.make_var(loc))
+        lin = op(Linearization.make_var(loc, do_metric))
         loc2, lin2 = _get_acceptable_location(op, loc, lin)
         dir = loc2-loc
         locnext = loc2
         dirnorm = dir.norm()
         for i in range(50):
             locmid = loc + 0.5*dir
-            linmid = op(Linearization.make_var(locmid))
+            linmid = op(Linearization.make_var(locmid, do_metric))
             dirder = linmid.jac(dir)
             numgrad = (lin2.val-lin.val)
             xtol = tol * dirder.norm() / np.sqrt(dirder.size)

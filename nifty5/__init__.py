@@ -67,6 +67,7 @@ from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.line_energy import LineEnergy
 from .minimization.energy_adapter import EnergyAdapter
+from .minimization.kl_energy import KL_Energy
 
 from .sugar import *
 from .plotting.plot import Plot

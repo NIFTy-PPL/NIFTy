@@ -42,7 +42,7 @@ class SquaredNormOperator(EnergyOperator):
         if isinstance(x, Linearization):
             val = Field.scalar(x.val.vdot(x.val))
             jac = VdotOperator(2*x.val)(x.jac)
-            return Linearization(val, jac)
+            return x.new(val, jac)
         return Field.scalar(x.vdot(x))
 
 
@@ -59,7 +59,7 @@ class QuadraticFormOperator(EnergyOperator):
             t1 = self._op(x.val)
             jac = VdotOperator(t1)(x.jac)
             val = Field.scalar(0.5*x.val.vdot(t1))
-            return Linearization(val, jac)
+            return x.new(val, jac)
         return Field.scalar(0.5*x.vdot(self._op(x)))
 
 
@@ -91,7 +91,7 @@ class GaussianEnergy(EnergyOperator):
     def apply(self, x):
         residual = x if self._mean is None else x-self._mean
         res = self._op(residual).real
-        if not isinstance(x, Linearization):
+        if not isinstance(x, Linearization) or not x.want_metric:
             return res
         metric = SandwichOperator.make(x.jac, self._icov)
         return res.add_metric(metric)
@@ -107,6 +107,8 @@ class PoissonianEnergy(EnergyOperator):
         res = x.sum() - x.log().vdot(self._d)
         if not isinstance(x, Linearization):
             return Field.scalar(res)
+        if not x.want_metric:
+            return res
         metric = SandwichOperator.make(x.jac, makeOp(1./x.val))
         return res.add_metric(metric)
 
@@ -122,6 +124,8 @@ class BernoulliEnergy(EnergyOperator):
         v = x.log().vdot(-self._d) - (1.-x).log().vdot(1.-self._d)
         if not isinstance(x, Linearization):
             return Field.scalar(v)
+        if not x.want_metric:
+            return v
         met = makeOp(1./(x.val*(1.-x.val)))
         met = SandwichOperator.make(x.jac, met)
         return v.add_metric(met)
@@ -135,11 +139,11 @@ class Hamiltonian(EnergyOperator):
         self._domain = lh.domain
 
     def apply(self, x):
-        if self._ic_samp is None or not isinstance(x, Linearization):
+        if (self._ic_samp is None or not isinstance(x, Linearization) or
+                not x.want_metric):
             return self._lh(x)+self._prior(x)
         else:
-            lhx = self._lh(x)
-            prx = self._prior(x)
+            lhx, prx = self._lh(x), self._prior(x)
             mtr = SamplingEnabler(lhx.metric, prx.metric.inverse,
                                   self._ic_samp, prx.metric.inverse)
             return (lhx+prx).add_metric(mtr)

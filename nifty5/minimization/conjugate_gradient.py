@@ -75,7 +75,7 @@ class ConjugateGradient(Minimizer):
             return energy, controller.CONVERGED
 
         while True:
-            q = energy.metric(d)
+            q = energy.apply_metric(d)
             ddotq = d.vdot(q).real
             if ddotq == 0.:
                 logger.error("Error: ConjugateGradient: ddotq==0.")

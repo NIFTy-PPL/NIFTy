@@ -91,30 +91,24 @@ if __name__ == '__main__':
     # number of samples used to estimate the KL
     N_samples = 20
     for i in range(2):
-        metric = H(ift.Linearization.make_var(position)).metric
-        samples = [
-            metric.draw_sample(from_inverse=True) for _ in range(N_samples)
-        ]
-
-        KL = ift.SampledKullbachLeiblerDivergence(H, samples)
-        KL = ift.EnergyAdapter(position, KL)
+        KL = ift.KL_Energy(position, H, N_samples, want_metric=True)
         KL, convergence = minimizer(KL)
         position = KL.position
 
         plot = ift.Plot()
-        plot.add(signal(position), title="reconstruction")
-        plot.add([A(position), A(MOCK_POSITION)], title="power")
+        plot.add(signal(KL.position), title="reconstruction")
+        plot.add([A(KL.position), A(MOCK_POSITION)], title="power")
         plot.output(ny=1, ysize=6, xsize=16, name="loop.png")
 
     plot = ift.Plot()
     sc = ift.StatCalculator()
-    for sample in samples:
-        sc.add(signal(sample+position))
+    for sample in KL.samples:
+        sc.add(signal(sample+KL.position))
     plot.add(sc.mean, title="Posterior Mean")
     plot.add(ift.sqrt(sc.var), title="Posterior Standard Deviation")
 
-    powers = [A(s+position) for s in samples]
+    powers = [A(s+KL.position) for s in KL.samples]
     plot.add(
-        [A(position), A(MOCK_POSITION)]+powers,
+        [A(KL.position), A(MOCK_POSITION)]+powers,
         title="Sampled Posterior Power Spectrum")
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="results.png")

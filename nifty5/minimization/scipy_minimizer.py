@@ -93,7 +93,7 @@ class _MinHelper(object):
 
     def hessp(self, x, p):
         self._update(x)
-        res = self._energy.metric(_toField(p, self._energy.position))
+        res = self._energy.apply_metric(_toField(p, self._energy.position))
         return _toArray_rw(res)
 
 
