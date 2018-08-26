@@ -21,8 +21,8 @@ from __future__ import absolute_import, division, print_function
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..multi_domain import MultiDomain
+from ..operators.contraction_operator import ContractionOperator
 from ..operators.distributors import PowerDistributor
-from ..operators.domain_tuple_operators import DomainDistributor
 from ..operators.harmonic_operators import HarmonicTransformOperator
 from ..operators.simple_linear_operators import FieldAdapter
 from ..sugar import exp
@@ -65,8 +65,8 @@ def MfCorrelatedField(s_space_spatial, s_space_energy, amplitude_model_spatial,
     pd_energy = PowerDistributor(pd_spatial.domain, p_space_energy, 1)
     pd = pd_spatial(pd_energy)
 
-    dom_distr_spatial = DomainDistributor(pd.domain, 0)
-    dom_distr_energy = DomainDistributor(pd.domain, 1)
+    dom_distr_spatial = ContractionOperator(pd.domain, 0).adjoint
+    dom_distr_energy = ContractionOperator(pd.domain, 1).adjoint
 
     a_spatial = dom_distr_spatial(amplitude_model_spatial)
     a_energy = dom_distr_energy(amplitude_model_energy)

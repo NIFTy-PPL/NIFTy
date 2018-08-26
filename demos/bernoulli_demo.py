@@ -73,14 +73,15 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood, ic_sampling)
-    H = ift.EnergyAdapter(position, H)
+    H = ift.EnergyAdapter(position, H, want_metric=True)
     # minimizer = ift.L_BFGS(ic_newton)
     H, convergence = minimizer(H)
 
     reconstruction = sky(H.position)
 
-    ift.plot(reconstruction, title='reconstruction')
-    ift.plot(GR.adjoint_times(data), title='data')
-    ift.plot(sky(mock_position), title='truth')
-    ift.plot_finish(nx=3, xsize=16, ysize=5, title="results",
-                    name="bernoulli.png")
+    plot = ift.Plot()
+    plot.add(reconstruction, title='reconstruction')
+    plot.add(GR.adjoint_times(data), title='data')
+    plot.add(sky(mock_position), title='truth')
+    plot.output(nx=3, xsize=16, ysize=5, title="results",
+                name="bernoulli.png")

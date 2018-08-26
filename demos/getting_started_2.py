@@ -93,14 +93,15 @@ if __name__ == '__main__':
 
     # Minimize the Hamiltonian
     H = ift.Hamiltonian(likelihood)
-    H = ift.EnergyAdapter(position, H)
+    H = ift.EnergyAdapter(position, H, want_metric=True)
     H, convergence = minimizer(H)
 
     # Plot results
     signal = sky(mock_position)
     reconst = sky(H.position)
-    ift.plot(signal, title='Signal')
-    ift.plot(GR.adjoint(data), title='Data')
-    ift.plot(reconst, title='Reconstruction')
-    ift.plot(reconst - signal, title='Residuals')
-    ift.plot_finish(name='getting_started_2.png', xsize=16, ysize=16)
+    plot = ift.Plot()
+    plot.add(signal, title='Signal')
+    plot.add(GR.adjoint(data), title='Data')
+    plot.add(reconst, title='Reconstruction')
+    plot.add(reconst - signal, title='Residuals')
+    plot.output(name='getting_started_2.png', xsize=16, ysize=16)

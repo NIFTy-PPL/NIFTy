@@ -20,21 +20,24 @@ def plot_test():
 
     # Start various plotting tests
 
-    ift.plot(field_rg1_1, title='Single plot')
-    ift.plot_finish()
+    plot = ift.Plot()
+    plot.add(field_rg1_1, title='Single plot')
+    plot.output()
 
-    ift.plot(field_rg2, title='2d rg')
-    ift.plot([field_rg1_1, field_rg1_2], title='list 1d rg', label=['1', '2'])
-    ift.plot(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0.,
+    plot = ift.Plot()
+    plot.add(field_rg2, title='2d rg')
+    plot.add([field_rg1_1, field_rg1_2], title='list 1d rg', label=['1', '2'])
+    plot.add(field_rg1_2, title='1d rg, xmin, ymin', xmin=0.5, ymin=0.,
              xlabel='xmin=0.5', ylabel='ymin=0')
-    ift.plot_finish(title='Three plots')
+    plot.output(title='Three plots')
 
-    ift.plot(field_hp, title='HP planck-color', colormap='Planck-like')
-    ift.plot(field_rg1_2, title='1d rg')
-    ift.plot(field_ps)
-    ift.plot(field_gl, title='GL')
-    ift.plot(field_rg2, title='2d rg')
-    ift.plot_finish(nx=2, ny=3, title='Five plots')
+    plot = ift.Plot()
+    plot.add(field_hp, title='HP planck-color', colormap='Planck-like')
+    plot.add(field_rg1_2, title='1d rg')
+    plot.add(field_ps)
+    plot.add(field_gl, title='GL')
+    plot.add(field_rg2, title='2d rg')
+    plot.output(nx=2, ny=3, title='Five plots')
 
 
 if __name__ == '__main__':

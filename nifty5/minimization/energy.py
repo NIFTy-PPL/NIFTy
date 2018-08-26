@@ -109,6 +109,20 @@ class Energy(NiftyMetaBase()):
         """
         raise NotImplementedError
 
+    def apply_metric(self, x):
+        """
+        Parameters
+        ----------
+        x: Field/MultiField
+            Argument for the metric operator
+
+        Returns
+        -------
+        Field/MultiField:
+            Output of the metric operator
+        """
+        raise NotImplementedError
+
     def longest_step(self, dir):
         """Returns the longest allowed step size along `dir`
 

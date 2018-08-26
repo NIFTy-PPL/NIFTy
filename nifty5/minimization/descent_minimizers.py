@@ -180,7 +180,7 @@ class NewtonCG(DescentMinimizer):
         while True:
             if abs(ri).sum() <= termcond:
                 return xsupi
-            Ap = energy.metric(psupi)
+            Ap = energy.apply_metric(psupi)
             # check curvature
             curv = psupi.vdot(Ap)
             if 0 <= curv <= 3*float64eps:
