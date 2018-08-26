@@ -9,12 +9,16 @@ from .sugar import makeOp
 
 
 class Linearization(object):
-    def __init__(self, val, jac, metric=None):
+    def __init__(self, val, jac, metric=None, want_metric=False):
         self._val = val
         self._jac = jac
         if self._val.domain != self._jac.target:
             raise ValueError("domain mismatch")
+        self._want_metric = want_metric
         self._metric = metric
+
+    def new(self, val, jac, metric=None):
+        return Linearization(val, jac, metric, self._want_metric)
 
     @property
     def domain(self):
@@ -38,41 +42,44 @@ class Linearization(object):
         return self._jac.adjoint_times(Field.scalar(1.))
 
     @property
+    def want_metric(self):
+        return self._want_metric
+
+    @property
     def metric(self):
         """Only available if target is a scalar"""
         return self._metric
 
     def __getitem__(self, name):
         from .operators.simple_linear_operators import FieldAdapter
-        return Linearization(self._val[name], FieldAdapter(self.domain, name))
+        return self.new(self._val[name], FieldAdapter(self.domain, name))
 
     def __neg__(self):
-        return Linearization(
-            -self._val, -self._jac,
-            None if self._metric is None else -self._metric)
+        return self.new(-self._val, -self._jac,
+                        None if self._metric is None else -self._metric)
 
     def conjugate(self):
-        return Linearization(
+        return self.new(
             self._val.conjugate(), self._jac.conjugate(),
             None if self._metric is None else self._metric.conjugate())
 
     @property
     def real(self):
-        return Linearization(self._val.real, self._jac.real)
+        return self.new(self._val.real, self._jac.real)
 
     def _myadd(self, other, neg):
         if isinstance(other, Linearization):
             met = None
             if self._metric is not None and other._metric is not None:
                 met = self._metric._myadd(other._metric, neg)
-            return Linearization(
+            return self.new(
                 self._val.flexible_addsub(other._val, neg),
                 self._jac._myadd(other._jac, neg), met)
         if isinstance(other, (int, float, complex, Field, MultiField)):
             if neg:
-                return Linearization(self._val-other, self._jac, self._metric)
+                return self.new(self._val-other, self._jac, self._metric)
             else:
-                return Linearization(self._val+other, self._jac, self._metric)
+                return self.new(self._val+other, self._jac, self._metric)
 
     def __add__(self, other):
         return self._myadd(other, False)
@@ -98,7 +105,7 @@ class Linearization(object):
         if isinstance(other, Linearization):
             if self.target != other.target:
                 raise ValueError("domain mismatch")
-            return Linearization(
+            return self.new(
                 self._val*other._val,
                 (makeOp(other._val)(self._jac))._myadd(
                  makeOp(self._val)(other._jac), False))
@@ -106,11 +113,11 @@ class Linearization(object):
             if other == 1:
                 return self
             met = None if self._metric is None else self._metric.scale(other)
-            return Linearization(self._val*other, self._jac.scale(other), met)
+            return self.new(self._val*other, self._jac.scale(other), met)
         if isinstance(other, (Field, MultiField)):
             if self.target != other.domain:
                 raise ValueError("domain mismatch")
-            return Linearization(self._val*other, makeOp(other)(self._jac))
+            return self.new(self._val*other, makeOp(other)(self._jac))
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -118,46 +125,48 @@ class Linearization(object):
     def vdot(self, other):
         from .operators.simple_linear_operators import VdotOperator
         if isinstance(other, (Field, MultiField)):
-            return Linearization(
+            return self.new(
                 Field.scalar(self._val.vdot(other)),
                 VdotOperator(other)(self._jac))
-        return Linearization(
+        return self.new(
             Field.scalar(self._val.vdot(other._val)),
             VdotOperator(self._val)(other._jac) +
             VdotOperator(other._val)(self._jac))
 
     def sum(self):
         from .operators.simple_linear_operators import SumReductionOperator
-        return Linearization(
+        return self.new(
             Field.scalar(self._val.sum()),
             SumReductionOperator(self._jac.target)(self._jac))
 
     def exp(self):
         tmp = self._val.exp()
-        return Linearization(tmp, makeOp(tmp)(self._jac))
+        return self.new(tmp, makeOp(tmp)(self._jac))
 
     def log(self):
         tmp = self._val.log()
-        return Linearization(tmp, makeOp(1./self._val)(self._jac))
+        return self.new(tmp, makeOp(1./self._val)(self._jac))
 
     def tanh(self):
         tmp = self._val.tanh()
-        return Linearization(tmp, makeOp(1.-tmp**2)(self._jac))
+        return self.new(tmp, makeOp(1.-tmp**2)(self._jac))
 
     def positive_tanh(self):
         tmp = self._val.tanh()
         tmp2 = 0.5*(1.+tmp)
-        return Linearization(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
+        return self.new(tmp2, makeOp(0.5*(1.-tmp**2))(self._jac))
 
     def add_metric(self, metric):
-        return Linearization(self._val, self._jac, metric)
+        return self.new(self._val, self._jac, metric)
 
     @staticmethod
-    def make_var(field):
+    def make_var(field, want_metric=False):
         from .operators.scaling_operator import ScalingOperator
-        return Linearization(field, ScalingOperator(1., field.domain))
+        return Linearization(field, ScalingOperator(1., field.domain),
+                             want_metric=want_metric)
 
     @staticmethod
-    def make_const(field):
+    def make_const(field, want_metric=False):
         from .operators.simple_linear_operators import NullOperator
-        return Linearization(field, NullOperator(field.domain, field.domain))
+        return Linearization(field, NullOperator(field.domain, field.domain),
+                             want_metric=want_metric)

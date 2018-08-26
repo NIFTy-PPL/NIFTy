@@ -267,7 +267,6 @@ class Plot(object):
         self._plots = []
         self._kwargs = []
 
-
     def add(self, f, **kwargs):
         """Add a figure to the current list of plots.
 
@@ -302,7 +301,6 @@ class Plot(object):
         """
         self._plots.append(f)
         self._kwargs.append(kwargs)
-
 
     def output(self, **kwargs):
         """Plot the accumulated list of figures.

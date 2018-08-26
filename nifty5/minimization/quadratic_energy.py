@@ -77,3 +77,6 @@ class QuadraticEnergy(Energy):
     @property
     def metric(self):
         return self._A
+
+    def apply_metric(self, x):
+        return self._A(x)
