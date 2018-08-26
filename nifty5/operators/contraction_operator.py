@@ -27,40 +27,38 @@ from ..field import Field
 from .linear_operator import LinearOperator
 
 
-class DomainDistributor(LinearOperator):
-    """A linear operator which broadcasts a field to a larger domain.
+class ContractionOperator(LinearOperator):
+    """A linear operator which sums up fields into the direction of subspaces.
 
-    This DomainDistributor broadcasts a field which is defined on a
-    DomainTuple to a DomainTuple which contains the former as a subset. The
-    entries of the field are copied such that they are constant in the
-    direction of the new spaces.
+    This ContractionOperator sums up a field with is defined on a DomainTuple
+    to a DomainTuple which contains the former as a subset.
 
     Parameters
     ----------
-    target : Domain, tuple of Domain or DomainTuple
+    domain : Domain, tuple of Domain or DomainTuple
     spaces : int or tuple of int
-        The elements of "target" which are taken as domain.
+        The elements of "domain" which are taken as target.
     """
 
-    def __init__(self, target, spaces):
-        self._target = DomainTuple.make(target)
-        self._spaces = utilities.parse_spaces(spaces, len(self._target))
-        self._domain = [
-            tgt for i, tgt in enumerate(self._target) if i in self._spaces
+    def __init__(self, domain, spaces):
+        self._domain = DomainTuple.make(domain)
+        self._spaces = utilities.parse_spaces(spaces, len(self._domain))
+        self._target = [
+            dom for i, dom in enumerate(self._domain) if i in self._spaces
         ]
-        self._domain = DomainTuple.make(self._domain)
+        self._target = DomainTuple.make(self._target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        if mode == self.TIMES:
+        if mode == self.ADJOINT_TIMES:
             ldat = x.local_data if 0 in self._spaces else x.to_global_data()
             shp = []
-            for i, tgt in enumerate(self._target):
-                tmp = tgt.shape if i > 0 else tgt.local_shape
-                shp += tmp if i in self._spaces else (1,)*len(tgt.shape)
-            ldat = np.broadcast_to(ldat.reshape(shp), self._target.local_shape)
-            return Field.from_local_data(self._target, ldat)
+            for i, dom in enumerate(self._domain):
+                tmp = dom.shape if i > 0 else dom.local_shape
+                shp += tmp if i in self._spaces else (1,)*len(dom.shape)
+            ldat = np.broadcast_to(ldat.reshape(shp), self._domain.local_shape)
+            return Field.from_local_data(self._domain, ldat)
         else:
             return x.sum(
                 [s for s in range(len(x.domain)) if s not in self._spaces])
