@@ -20,10 +20,10 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from ..compat import *
-from ..field import Field
-from ..linearization import Linearization
-from ..sugar import from_random
+from .compat import *
+from .field import Field
+from .linearization import Linearization
+from .sugar import from_random
 
 __all__ = ["consistency_check", "check_value_gradient_consistency",
            "check_value_gradient_metric_consistency"]
