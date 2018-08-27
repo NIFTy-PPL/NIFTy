@@ -54,6 +54,12 @@ class KL_Energy(Energy):
         self._nsamp = nsamp
         self._constants = constants
         self._want_metric = want_metric
+        if nsamp < ntask:
+            # FIXME We need a better solution here. It is probably not good if
+            # the script just dies. Can we proceed anyways?
+            print('Number of samples: {}, number of MPI tasks: {}'.format(
+                nsamp, ntask))
+            raise RuntimeError('Cannot use more tasks than samples.')
         if _samples is None:
             lo, hi = _shareRange(nsamp, ntask, rank)
             met = h(Linearization.make_var(position, True)).metric
