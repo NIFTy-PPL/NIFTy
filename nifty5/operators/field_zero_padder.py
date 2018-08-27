@@ -69,7 +69,6 @@ class FieldZeroPadder(LinearOperator):
                     i1 = idx + (slice(None, -(Nyquist+1), -1),)
                     xnew[i1] = x[i1]
 #                     if (x.shape[d] & 1) == 0:  # even number of pixels
-#                         print (Nyquist, x.shape[d]-Nyquist)
 #                         i1 = idx+(Nyquist,)
 #                         xnew[i1] *= 0.5
 #                         i1 = idx+(-Nyquist,)
