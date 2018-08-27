@@ -21,11 +21,58 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 
 from ..compat import *
+from ..field import Field
 from ..linearization import Linearization
 from ..sugar import from_random
 
-__all__ = ["check_value_gradient_consistency",
+__all__ = ["consistency_check", "check_value_gradient_consistency",
            "check_value_gradient_metric_consistency"]
+
+
+def _assert_allclose(f1, f2, atol, rtol):
+    if isinstance(f1, Field):
+        return np.testing.assert_allclose(f1.local_data, f2.local_data,
+                                          atol=atol, rtol=rtol)
+    for key, val in f1.items():
+        _assert_allclose(val, f2[key], atol=atol, rtol=rtol)
+
+
+def _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol):
+    needed_cap = op.TIMES | op.ADJOINT_TIMES
+    if (op.capability & needed_cap) != needed_cap:
+        return
+    f1 = from_random("normal", op.domain, dtype=domain_dtype)
+    f2 = from_random("normal", op.target, dtype=target_dtype)
+    res1 = f1.vdot(op.adjoint_times(f2))
+    res2 = op.times(f1).vdot(f2)
+    np.testing.assert_allclose(res1, res2, atol=atol, rtol=rtol)
+
+
+def _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol):
+    needed_cap = op.TIMES | op.INVERSE_TIMES
+    if (op.capability & needed_cap) != needed_cap:
+        return
+    foo = from_random("normal", op.target, dtype=target_dtype)
+    res = op(op.inverse_times(foo))
+    _assert_allclose(res, foo, atol=atol, rtol=rtol)
+
+    foo = from_random("normal", op.domain, dtype=domain_dtype)
+    res = op.inverse_times(op(foo))
+    _assert_allclose(res, foo, atol=atol, rtol=rtol)
+
+
+def _full_implementation(op, domain_dtype, target_dtype, atol, rtol):
+    _adjoint_implementation(op, domain_dtype, target_dtype, atol, rtol)
+    _inverse_implementation(op, domain_dtype, target_dtype, atol, rtol)
+
+
+def consistency_check(op, domain_dtype=np.float64, target_dtype=np.float64,
+                      atol=0, rtol=1e-7):
+    _full_implementation(op, domain_dtype, target_dtype, atol, rtol)
+    _full_implementation(op.adjoint, target_dtype, domain_dtype, atol, rtol)
+    _full_implementation(op.inverse, target_dtype, domain_dtype, atol, rtol)
+    _full_implementation(op.adjoint.inverse, domain_dtype, target_dtype, atol,
+                         rtol)
 
 
 def _get_acceptable_location(op, loc, lin):
