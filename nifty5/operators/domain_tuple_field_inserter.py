@@ -44,10 +44,14 @@ class DomainTupleFieldInserter(LinearOperator):
         tgt.insert(index, new_space)
         self._target = DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        fst_dims = sum([len(dd.shape) for dd in self.domain][:index])
-        last_dims = len(self.domain.shape) - fst_dims
-        self._slc = (slice(None),)*fst_dims + position + (
-            slice(None),)*last_dims
+        fst_dims = sum(len(dd.shape) for dd in self.domain[:index])
+        nshp = new_space.shape
+        if len(position) != len(nshp):
+            raise ValueError("shape mismatch between new_space and position")
+        for s, p in zip(nshp, position):
+            if p < 0 or p >= s:
+                raise ValueError("bad position value")
+        self._slc = (slice(None),)*fst_dims + position
 
     def apply(self, x, mode):
         self._check_input(x, mode)
