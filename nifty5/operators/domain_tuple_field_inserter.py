@@ -35,17 +35,19 @@ class DomainTupleFieldInserter(LinearOperator):
         domain : Domain, tuple of Domain or DomainTuple
         new_space : Domain, tuple of Domain or DomainTuple
         index : Integer
-            Position at which new_space shall be added to domain.
+            Index at which new_space shall be added to domain.
         position : tuple
-            Slice in new_space at which the field shall be inserted.
+            Slice in new_space in which the input field shall be written into.
         '''
         self._domain = DomainTuple.make(domain)
         tgt = list(self.domain)
         tgt.insert(index, new_space)
         self._target = DomainTuple.make(tgt)
         self._capability = self.TIMES | self.ADJOINT_TIMES
-        self._slc = (slice(None),)*index + position + (slice(None),)*(
-            len(self.domain.shape) - index)
+        fst_dims = sum([len(dd.shape) for dd in self.domain][:index])
+        last_dims = len(self.domain.shape) - fst_dims
+        self._slc = (slice(None),)*fst_dims + position + (
+            slice(None),)*last_dims
 
     def apply(self, x, mode):
         self._check_input(x, mode)
