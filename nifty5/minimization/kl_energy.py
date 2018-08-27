@@ -15,25 +15,39 @@ _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
 rank = _comm.Get_rank()
 master = (rank == 0)
+
+
 def _shareRange(nwork, nshares, myshare):
     nbase = nwork//nshares
     additional = nwork % nshares
     lo = myshare*nbase + min(myshare, additional)
     hi = lo + nbase + int(myshare < additional)
     return lo, hi
+
+
 def np_allreduce_sum(arr):
     res = np.empty_like(arr)
     _comm.Allreduce(arr, res, MPI.SUM)
     return res
+
+
 def allreduce_sum_field(fld):
     if isinstance(fld, Field):
-        return Field.from_local_data(fld.domain, np_allreduce_sum(fld.local_data))
-    res = tuple(Field.from_local_data(f.domain, np_allreduce_sum(f.local_data)) for f in fld.values())
+        return Field.from_local_data(fld.domain,
+                                     np_allreduce_sum(fld.local_data))
+    res = tuple(
+        Field.from_local_data(f.domain, np_allreduce_sum(f.local_data))
+        for f in fld.values())
     return MultiField(fld.domain, res)
 
 
 class KL_Energy(Energy):
-    def __init__(self, position, h, nsamp, constants=[], _samples=None,
+    def __init__(self,
+                 position,
+                 h,
+                 nsamp,
+                 constants=[],
+                 _samples=None,
                  want_metric=False):
         super(KL_Energy, self).__init__(position)
         self._h = h
@@ -51,12 +65,14 @@ class KL_Energy(Energy):
         if len(constants) == 0:
             tmp = Linearization.make_var(position, want_metric)
         else:
-            ops = [ScalingOperator(0. if key in constants else 1., dom)
-                   for key, dom in position.domain.items()]
+            ops = [
+                ScalingOperator(0. if key in constants else 1., dom)
+                for key, dom in position.domain.items()
+            ]
             bdop = BlockDiagonalOperator(position.domain, tuple(ops))
             tmp = Linearization(position, bdop, want_metric=want_metric)
-        mymap = map(lambda v: self._h(tmp+v), self._samples)
-        tmp = utilities.my_sum(mymap) * (1./self._nsamp)
+        mymap = map(lambda v: self._h(tmp + v), self._samples)
+        tmp = utilities.my_sum(mymap)*(1./self._nsamp)
         self._val = np_allreduce_sum(tmp.val.local_data)[()]
         self._grad = allreduce_sum_field(tmp.gradient)
         self._metric = tmp.metric
