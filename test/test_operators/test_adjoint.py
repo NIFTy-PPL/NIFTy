@@ -194,13 +194,12 @@ class Consistency_Tests(unittest.TestCase):
         op = ift.ContractionOperator(dom, spaces)
         ift.extra.consistency_check(op, dtype, dtype)
 
-    @expand(product([True, False]))
-    def testDomainTupleFieldInserter(self, infront):
+    def testDomainTupleFieldInserter(self):
         domain = ift.DomainTuple.make((ift.UnstructuredDomain(12),
                                        ift.RGSpace([4, 22])))
         new_space = ift.UnstructuredDomain(7)
-        ind = 5
-        op = ift.DomainTupleFieldInserter(domain, new_space, ind, infront)
+        pos = (5,)
+        op = ift.DomainTupleFieldInserter(domain, new_space, 0, pos)
         ift.extra.consistency_check(op)
 
     @expand(product([0, 2], [np.float64, np.complex128]))
