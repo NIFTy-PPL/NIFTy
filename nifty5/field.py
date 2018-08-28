@@ -360,25 +360,20 @@ class Field(object):
         # For the moment, do this the explicit, non-optimized way
         return (self.conjugate()*x).sum(spaces=spaces)
 
-    def norm(self):
+    def norm(self, ord=2):
         """ Computes the L2-norm of the field values.
+
+        Parameters
+        ----------
+        ord : int, default=2
+            accepted values: 1, 2, ..., np.inf
 
         Returns
         -------
         float
             The L2-norm of the field values.
         """
-        return np.sqrt(abs(self.vdot(x=self)))
-
-    def squared_norm(self):
-        """ Computes the square of the L2-norm of the field values.
-
-        Returns
-        -------
-        float
-            The square of the L2-norm of the field values.
-        """
-        return abs(self.vdot(x=self))
+        return dobj.norm(self._val, ord)
 
     def conjugate(self):
         """ Returns the complex conjugate of the field.
