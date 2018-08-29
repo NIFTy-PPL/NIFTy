@@ -93,7 +93,7 @@ class _MinHelper(object):
 
     def hessp(self, x, p):
         self._update(x)
-        res = self._energy.metric(_toField(p, self._energy.position))
+        res = self._energy.apply_metric(_toField(p, self._energy.position))
         return _toArray_rw(res)
 
 
@@ -137,17 +137,6 @@ class ScipyMinimizer(Minimizer):
             logger.error("Problem in Scipy minimization: {}".format(r.message))
             return hlp._energy, IterationController.ERROR
         return hlp._energy, IterationController.CONVERGED
-
-
-def NewtonCG(xtol, maxiter, disp=False):
-    """Returns a ScipyMinimizer object carrying out the Newton-CG algorithm.
-
-    See Also
-    --------
-    ScipyMinimizer
-    """
-    options = {"xtol": xtol, "maxiter": maxiter, "disp": disp}
-    return ScipyMinimizer("Newton-CG", options, True, None)
 
 
 def L_BFGS_B(ftol, gtol, maxiter, maxcor=10, disp=False, bounds=None):

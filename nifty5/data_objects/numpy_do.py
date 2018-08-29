@@ -32,7 +32,8 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "np_allreduce_min", "np_allreduce_max",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis", "is_numpy",
-           "lock", "locked", "uniform_full", "to_global_data_rw"]
+           "lock", "locked", "uniform_full", "to_global_data_rw",
+           "ensure_not_distributed", "ensure_default_distributed"]
 
 ntask = 1
 rank = 0
@@ -132,3 +133,11 @@ def locked(arr):
 
 def uniform_full(shape, fill_value, dtype=None, distaxis=-1):
     return np.broadcast_to(fill_value, shape)
+
+
+def ensure_not_distributed(arr, axes):
+    return arr, arr
+
+
+def ensure_default_distributed(arr):
+    return arr

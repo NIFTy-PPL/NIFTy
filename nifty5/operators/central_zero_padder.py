@@ -93,14 +93,10 @@ class CentralZeroPadder(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
-        dax = dobj.distaxis(x)
+        v = x.val
         shp_out = self._tgt(mode).shape
-        axes = self._target.axes[self._space]
-        if dax in axes:
-            x = dobj.redistribute(x, nodist=axes)
-        curax = dobj.distaxis(x)
-        x = dobj.local_data(x)
+        v, x = dobj.ensure_not_distributed(v, self._target.axes[self._space])
+        curax = dobj.distaxis(v)
 
         if mode == self.TIMES:
             # slice along each axis and copy the data to an
@@ -114,7 +110,5 @@ class CentralZeroPadder(LinearOperator):
             y = np.empty(dobj.local_shape(shp_out, curax), dtype=x.dtype)
             for i in self.slicer:
                 y[i] = x[i]
-        y = dobj.from_local_data(shp_out, y, distaxis=curax)
-        if dax in axes:
-            y = dobj.redistribute(y, dist=dax)
-        return Field(self._tgt(mode), val=y)
+        v = dobj.from_local_data(shp_out, y, distaxis=dobj.distaxis(v))
+        return Field(self._tgt(mode), dobj.ensure_default_distributed(v))

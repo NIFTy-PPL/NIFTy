@@ -106,23 +106,21 @@ class AmplitudeModel(Operator):
         from ..operators.symmetrizing_operator import SymmetrizingOperator
 
         h_space = s_space.get_default_codomain()
-        p_space = PowerSpace(h_space)
-        self._exp_transform = ExpTransform(p_space, Npixdof)
+        self._exp_transform = ExpTransform(PowerSpace(h_space), Npixdof)
         logk_space = self._exp_transform.domain[0]
         qht = QHTOperator(target=logk_space)
         dof_space = qht.domain[0]
-        param_space = UnstructuredDomain(2)
         sym = SymmetrizingOperator(logk_space)
 
         phi_mean = np.array([sm, im])
         phi_sig = np.array([sv, iv])
 
-        self._slope = SlopeOperator(param_space, logk_space, phi_sig)
-        self._norm_phi_mean = Field.from_global_data(param_space,
+        self._slope = SlopeOperator(logk_space, phi_sig)
+        self._norm_phi_mean = Field.from_global_data(self._slope.domain,
                                                      phi_mean/phi_sig)
 
         self._domain = MultiDomain.make({keys[0]: dof_space,
-                                         keys[1]: param_space})
+                                         keys[1]: self._slope.domain})
         self._target = self._exp_transform.target
 
         kern = lambda k: _ceps_kernel(dof_space, k, ceps_a, ceps_k)

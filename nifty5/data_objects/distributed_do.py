@@ -33,7 +33,8 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "np_allreduce_min", "np_allreduce_max",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
            "redistribute", "default_distaxis", "is_numpy",
-           "lock", "locked", "uniform_full", "transpose", "to_global_data_rw"]
+           "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
+           "ensure_not_distributed", "ensure_default_distributed"]
 
 _comm = MPI.COMM_WORLD
 ntask = _comm.Get_size()
@@ -540,3 +541,15 @@ def lock(arr):
 
 def locked(arr):
     return not arr._data.flags.writeable
+
+
+def ensure_not_distributed(arr, axes):
+    if arr._distaxis in axes:
+        arr = redistribute(arr, nodist=axes)
+    return arr, arr._data
+
+
+def ensure_default_distributed(arr):
+    if arr._distaxis != 0:
+        arr = redistribute(arr, dist=0)
+    return arr

@@ -34,9 +34,9 @@ minimizers = ['ift.VL_BFGS(IC)',
               # 'ift.NonlinearCG(IC, "Hestenes-Stiefel"),
               'ift.NonlinearCG(IC, "Fletcher-Reeves")',
               'ift.NonlinearCG(IC, "5.49")',
-              'ift.NewtonCG(xtol=1e-5, maxiter=1000)',
               'ift.L_BFGS_B(ftol=1e-10, gtol=1e-5, maxiter=1000)',
-              'ift.L_BFGS(IC)']
+              'ift.L_BFGS(IC)',
+              'ift.NewtonCG(IC)']
 
 newton_minimizers = ['ift.RelaxedNewton(IC)']
 quadratic_only_minimizers = ['ift.ConjugateGradient(IC)',
@@ -113,6 +113,12 @@ class Test_Minimizers(unittest.TestCase):
                                                 iteration_limit=1000)
                 return ift.InversionEnabler(RBCurv(self._position), t1)
 
+            def apply_metric(self, x):
+                inp = x.to_global_data_rw()
+                pos = self._position.to_global_data_rw()
+                return ift.Field.from_global_data(
+                    space, rosen_hess_prod(pos, inp))
+
         try:
             minimizer = eval(minimizer)
             energy = RBEnergy(position=starting_point)
@@ -145,12 +151,11 @@ class Test_Minimizers(unittest.TestCase):
                 return ift.Field.full(self.position.domain,
                                       2*x*np.exp(-(x**2)))
 
-            @property
-            def metric(self):
-                x = self.position.to_global_data()[0]
-                v = (2 - 4*x*x)*np.exp(-x**2)
+            def apply_metric(self, x):
+                p = self.position.to_global_data()[0]
+                v = (2 - 4*p*p)*np.exp(-p**2)
                 return ift.DiagonalOperator(
-                    ift.Field.full(self.position.domain, v))
+                    ift.Field.full(self.position.domain, v))(x)
 
         try:
             minimizer = eval(minimizer)
@@ -189,6 +194,12 @@ class Test_Minimizers(unittest.TestCase):
                 v = np.cosh(x)
                 return ift.DiagonalOperator(
                     ift.Field.full(self.position.domain, v))
+
+            def apply_metric(self, x):
+                p = self.position.to_global_data()[0]
+                v = np.cosh(p)
+                return ift.DiagonalOperator(
+                    ift.Field.full(self.position.domain, v))(x)
 
         try:
             minimizer = eval(minimizer)

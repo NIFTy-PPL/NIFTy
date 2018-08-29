@@ -175,7 +175,7 @@ class LinearOperator(Operator):
             return self.apply(x, self.TIMES)
         from ..linearization import Linearization
         if isinstance(x, Linearization):
-            return Linearization(self(x._val), self(x._jac))
+            return x.new(self(x._val), self(x._jac))
         return self.__matmul__(x)
 
     def times(self, x):

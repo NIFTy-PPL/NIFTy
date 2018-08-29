@@ -20,76 +20,68 @@ from __future__ import absolute_import, division, print_function
 
 import numpy as np
 
-from .. import dobj, utilities
+from .. import dobj
 from ..compat import *
 from ..domain_tuple import DomainTuple
 from ..domains.rg_space import RGSpace
 from ..field import Field
+from ..utilities import infer_space, special_add_at
 from .linear_operator import LinearOperator
 
 
-class FieldZeroPadder(LinearOperator):
-    def __init__(self, domain, new_shape, space=0, central=False):
+class RegriddingOperator(LinearOperator):
+    def __init__(self, domain, new_shape, space=0):
         self._domain = DomainTuple.make(domain)
-        self._space = utilities.infer_space(self._domain, space)
-        self._central = central
+        self._space = infer_space(self._domain, space)
         dom = self._domain[self._space]
+
         if not isinstance(dom, RGSpace):
             raise TypeError("RGSpace required")
-        if dom.harmonic:
-            raise TypeError("RGSpace must not be harmonic")
-
         if len(new_shape) != len(dom.shape):
+            print(new_shape, dom.shape)
             raise ValueError("Shape mismatch")
-        if any([a <= b for a, b in zip(new_shape, dom.shape)]):
-            raise ValueError("New shape must be larger than old shape")
+        if any([a > b for a, b in zip(new_shape, dom.shape)]):
+            raise ValueError("New shape must not be larger than old shape")
+
+        newdist = tuple(dom.distances[i]*dom.shape[i]/new_shape[i]
+                        for i in range(len(dom.shape)))
+
+        tgt = RGSpace(new_shape, newdist)
         self._target = list(self._domain)
-        self._target[self._space] = RGSpace(new_shape, dom.distances)
+        self._target[self._space] = tgt
         self._target = DomainTuple.make(self._target)
         self._capability = self.TIMES | self.ADJOINT_TIMES
+
+        ndim = len(new_shape)
+        self._bindex = [None] * ndim
+        self._frac = [None] * ndim
+        for d in range(ndim):
+            tmp = np.arange(new_shape[d])*(newdist[d]/dom.distances[d])
+            self._bindex[d] = np.minimum(dom.shape[d]-2, tmp.astype(np.int))
+            self._frac[d] = tmp-self._bindex[d]
 
     def apply(self, x, mode):
         self._check_input(x, mode)
         v = x.val
+        ndim = len(self.target.shape)
         curshp = list(self._dom(mode).shape)
         tgtshp = self._tgt(mode).shape
+        d0 = self._target.axes[self._space][0]
         for d in self._target.axes[self._space]:
             idx = (slice(None),) * d
+            wgt = self._frac[d-d0].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
 
             v, x = dobj.ensure_not_distributed(v, (d,))
 
-            if mode == self.TIMES:
+            if mode == self.ADJOINT_TIMES:
                 shp = list(x.shape)
                 shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
-                if self._central:
-                    Nyquist = x.shape[d]//2
-                    i1 = idx + (slice(0, Nyquist+1),)
-                    xnew[i1] = x[i1]
-                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
-                    xnew[i1] = x[i1]
-#                     if (x.shape[d] & 1) == 0:  # even number of pixels
-#                         i1 = idx+(Nyquist,)
-#                         xnew[i1] *= 0.5
-#                         i1 = idx+(-Nyquist,)
-#                         xnew[i1] *= 0.5
-                else:
-                    xnew[idx + (slice(0, x.shape[d]),)] = x
-            else:  # ADJOINT_TIMES
-                if self._central:
-                    shp = list(x.shape)
-                    shp[d] = tgtshp[d]
-                    xnew = np.zeros(shp, dtype=x.dtype)
-                    Nyquist = xnew.shape[d]//2
-                    i1 = idx + (slice(0, Nyquist+1),)
-                    xnew[i1] = x[i1]
-                    i1 = idx + (slice(None, -(Nyquist+1), -1),)
-                    xnew[i1] += x[i1]
-#                     if (xnew.shape[d] & 1) == 0:  # even number of pixels
-#                         i1 = idx+(Nyquist,)
-#                         xnew[i1] *= 0.5
-                else:
-                    xnew = x[idx + (slice(0, tgtshp[d]),)]
+                xnew = special_add_at(xnew, d, self._bindex[d-d0], x*(1.-wgt))
+                xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, x*wgt)
+            else:  # TIMES
+                xnew = x[idx + (self._bindex[d-d0],)] * (1.-wgt)
+                xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt
 
             curshp[d] = xnew.shape[d]
             v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))

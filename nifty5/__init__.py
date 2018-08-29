@@ -22,7 +22,8 @@ from .operators.operator import Operator
 from .operators.central_zero_padder import CentralZeroPadder
 from .operators.diagonal_operator import DiagonalOperator
 from .operators.distributors import DOFDistributor, PowerDistributor
-from .operators.domain_distributor import DomainDistributor
+from .operators.domain_tuple_field_inserter import DomainTupleFieldInserter
+from .operators.contraction_operator import ContractionOperator
 from .operators.endomorphic_operator import EndomorphicOperator
 from .operators.exp_transform import ExpTransform
 from .operators.harmonic_operators import (
@@ -34,6 +35,7 @@ from .operators.laplace_operator import LaplaceOperator
 from .operators.linear_operator import LinearOperator
 from .operators.mask_operator import MaskOperator
 from .operators.qht_operator import QHTOperator
+from .operators.regridding_operator import RegriddingOperator
 from .operators.sampling_enabler import SamplingEnabler
 from .operators.sandwich_operator import SandwichOperator
 from .operators.scaling_operator import ScalingOperator
@@ -59,16 +61,17 @@ from .minimization.minimizer import Minimizer
 from .minimization.conjugate_gradient import ConjugateGradient
 from .minimization.nonlinear_cg import NonlinearCG
 from .minimization.descent_minimizers import (
-    DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton)
-from .minimization.scipy_minimizer import (ScipyMinimizer, NewtonCG, L_BFGS_B,
-                                           ScipyCG)
+    DescentMinimizer, SteepestDescent, VL_BFGS, L_BFGS, RelaxedNewton,
+    NewtonCG)
+from .minimization.scipy_minimizer import (ScipyMinimizer, L_BFGS_B, ScipyCG)
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
 from .minimization.line_energy import LineEnergy
 from .minimization.energy_adapter import EnergyAdapter
+from .minimization.kl_energy import KL_Energy
 
 from .sugar import *
-from .plotting.plot import plot, plot_finish
+from .plotting.plot import Plot
 
 from .library.amplitude_model import AmplitudeModel
 from .library.inverse_gamma_model import InverseGammaModel

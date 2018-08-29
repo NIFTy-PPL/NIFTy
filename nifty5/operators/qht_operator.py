@@ -52,8 +52,7 @@ class QHTOperator(LinearOperator):
             raise ValueError("target[space] has to be a LogRGSpace!")
 
         if self._target[self._space].harmonic:
-            raise TypeError(
-                "target[space] must be a nonharmonic space")
+            raise TypeError("target[space] must be a nonharmonic space")
 
         self._domain = [dom for dom in self._target]
         self._domain[self._space] = \
@@ -64,16 +63,11 @@ class QHTOperator(LinearOperator):
     def apply(self, x, mode):
         self._check_input(x, mode)
         dom = self._domain[self._space]
-        x = x.val * dom.scalar_dvol
+        v = x.val * dom.scalar_dvol
         n = self._domain.axes[self._space]
         rng = n if mode == self.TIMES else reversed(n)
-        ax = dobj.distaxis(x)
         for i in rng:
             sl = (slice(None),)*i + (slice(1, None),)
-            if i == ax:
-                x = dobj.redistribute(x, nodist=(ax,))
-            tmp = dobj.local_data(x)
+            v, tmp = dobj.ensure_not_distributed(v, (i,))
             tmp[sl] = hartley(tmp[sl], axes=(i,))
-            if i == ax:
-                x = dobj.redistribute(x, dist=ax)
-        return Field(self._tgt(mode), val=x)
+        return Field(self._tgt(mode), dobj.ensure_default_distributed(v))

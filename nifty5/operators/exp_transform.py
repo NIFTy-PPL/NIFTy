@@ -105,23 +105,20 @@ class ExpTransform(LinearOperator):
 
     def apply(self, x, mode):
         self._check_input(x, mode)
-        x = x.val
-        ax = dobj.distaxis(x)
+        v = x.val
         ndim = len(self.target.shape)
         curshp = list(self._dom(mode).shape)
+        tgtshp = self._tgt(mode).shape
         d0 = self._target.axes[self._space][0]
         for d in self._target.axes[self._space]:
-            idx = (slice(None,),) * d
+            idx = (slice(None),) * d
             wgt = self._frac[d-d0].reshape((1,)*d + (-1,) + (1,)*(ndim-d-1))
 
-            if d == ax:
-                x = dobj.redistribute(x, nodist=(ax,))
-            curax = dobj.distaxis(x)
-            x = dobj.local_data(x)
+            v, x = dobj.ensure_not_distributed(v, (d,))
 
             if mode == self.ADJOINT_TIMES:
                 shp = list(x.shape)
-                shp[d] = self._tgt(mode).shape[d]
+                shp[d] = tgtshp[d]
                 xnew = np.zeros(shp, dtype=x.dtype)
                 xnew = special_add_at(xnew, d, self._bindex[d-d0], x*(1.-wgt))
                 xnew = special_add_at(xnew, d, self._bindex[d-d0]+1, x*wgt)
@@ -129,8 +126,6 @@ class ExpTransform(LinearOperator):
                 xnew = x[idx + (self._bindex[d-d0],)] * (1.-wgt)
                 xnew += x[idx + (self._bindex[d-d0]+1,)] * wgt
 
-            curshp[d] = self._tgt(mode).shape[d]
-            x = dobj.from_local_data(curshp, xnew, distaxis=curax)
-            if d == ax:
-                x = dobj.redistribute(x, dist=ax)
-        return Field(self._tgt(mode), val=x)
+            curshp[d] = xnew.shape[d]
+            v = dobj.from_local_data(curshp, xnew, distaxis=dobj.distaxis(v))
+        return Field(self._tgt(mode), dobj.ensure_default_distributed(v))
