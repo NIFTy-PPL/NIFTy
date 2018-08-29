@@ -137,15 +137,24 @@ class MultiField(object):
             domain, tuple(Field.from_global_data(domain[key], arr[key], sum_up)
                           for key in domain.keys()))
 
-    def norm(self):
-        """ Computes the L2-norm of the field values.
+    def norm(self, ord=2):
+        """ Computes the norm of the field values.
+
+        Parameters
+        ----------
+        ord : int, default=2
+            accepted values: 1, 2, ..., np.inf
 
         Returns
         -------
         norm : float
-            The L2-norm of the field values.
+            The norm of the field values.
         """
-        return np.sqrt(np.abs(self.vdot(x=self)))
+        nrm = np.asarray([f.norm(ord) for f in self._val])
+        if ord == np.inf:
+            return nrm.max()
+        return (nrm ** ord).sum() ** (1./ord)
+#        return np.sqrt(np.abs(self.vdot(x=self)))
 
     def sum(self):
         """ Computes the sum all field values.
@@ -167,16 +176,6 @@ class MultiField(object):
             The sum of the size of the individual fields
         """
         return utilities.my_sum(map(lambda d: d.size, self._domain.domains()))
-
-    def squared_norm(self):
-        """ Computes the square of the L2-norm of the field values.
-
-        Returns
-        -------
-        float
-            The square of the L2-norm of the field values.
-        """
-        return abs(self.vdot(x=self))
 
     def __neg__(self):
         return self._transform(lambda x: -x)

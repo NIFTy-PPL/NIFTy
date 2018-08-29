@@ -41,7 +41,7 @@ def allreduce_sum_field(fld):
     return MultiField(fld.domain, res)
 
 
-class KL_Energy(Energy):
+class KL_Energy_MPI(Energy):
     def __init__(self,
                  position,
                  h,
@@ -49,7 +49,7 @@ class KL_Energy(Energy):
                  constants=[],
                  _samples=None,
                  want_metric=False):
-        super(KL_Energy, self).__init__(position)
+        super(KL_Energy_MPI, self).__init__(position)
         self._h = h
         self._nsamp = nsamp
         self._constants = constants
@@ -68,24 +68,17 @@ class KL_Energy(Energy):
                 np.random.seed(i)
                 _samples.append(met.draw_sample(from_inverse=True))
         self._samples = tuple(_samples)
-        if len(constants) == 0:
-            tmp = Linearization.make_var(position, want_metric)
-        else:
-            ops = [
-                ScalingOperator(0. if key in constants else 1., dom)
-                for key, dom in position.domain.items()
-            ]
-            bdop = BlockDiagonalOperator(position.domain, tuple(ops))
-            tmp = Linearization(position, bdop, want_metric=want_metric)
-        mymap = map(lambda v: self._h(tmp + v), self._samples)
+        self._lin = Linearization.make_partial_var(position, constants,
+                                                   want_metric)
+        mymap = map(lambda v: self._h(self._lin + v), self._samples)
         tmp = utilities.my_sum(mymap)*(1./self._nsamp)
         self._val = np_allreduce_sum(tmp.val.local_data)[()]
         self._grad = allreduce_sum_field(tmp.gradient)
         self._metric = tmp.metric
 
     def at(self, position):
-        return KL_Energy(position, self._h, self._nsamp, self._constants,
-                         self._samples, self._want_metric)
+        return KL_Energy_MPI(position, self._h, self._nsamp, self._constants,
+                             self._samples, self._want_metric)
 
     @property
     def value(self):
@@ -109,3 +102,60 @@ class KL_Energy(Energy):
         res = _comm.allgather(self._samples)
         res = [item for sublist in res for item in sublist]
         return res
+
+
+class KL_Energy(Energy):
+    def __init__(self, position, h, nsamp, constants=[], _samples=None):
+        super(KL_Energy, self).__init__(position)
+        self._h = h
+        self._constants = constants
+        if _samples is None:
+            met = h(Linearization.make_var(position, True)).metric
+            _samples = tuple(met.draw_sample(from_inverse=True)
+                             for _ in range(nsamp))
+        self._samples = _samples
+
+        self._lin = Linearization.make_partial_var(position, constants)
+        v, g = None, None
+        for s in self._samples:
+            tmp = self._h(self._lin+s)
+            if v is None:
+                v = tmp.val.local_data[()]
+                g = tmp.gradient
+            else:
+                v += tmp.val.local_data[()]
+                g = g + tmp.gradient
+        self._val = v / len(self._samples)
+        self._grad = g * (1./len(self._samples))
+        self._metric = None
+
+    def at(self, position):
+        return KL_Energy(position, self._h, 0, self._constants, self._samples)
+
+    @property
+    def value(self):
+        return self._val
+
+    @property
+    def gradient(self):
+        return self._grad
+
+    def _get_metric(self):
+        if self._metric is None:
+            lin = self._lin.with_want_metric()
+            mymap = map(lambda v: self._h(lin+v).metric, self._samples)
+            self._metric = utilities.my_sum(mymap)
+            self._metric = self._metric.scale(1./len(self._samples))
+
+    def apply_metric(self, x):
+        self._get_metric()
+        return self._metric(x)
+
+    @property
+    def metric(self):
+        self._get_metric()
+        return self._metric
+
+    @property
+    def samples(self):
+        return self._samples

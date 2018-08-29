@@ -32,7 +32,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
            "np_allreduce_min", "np_allreduce_max",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
-           "redistribute", "default_distaxis", "is_numpy",
+           "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "transpose", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed"]
 
@@ -553,3 +553,22 @@ def ensure_default_distributed(arr):
     if arr._distaxis != 0:
         arr = redistribute(arr, dist=0)
     return arr
+
+
+def absmax(arr):
+    if arr._data.size == 0:
+        tmp = np.array(0, dtype=arr._data.dtype)
+    else:
+        tmp = np.asarray(np.linalg.norm(arr._data, ord=np.inf))
+    res = np.empty_like(tmp)
+    _comm.Allreduce(tmp, res, MPI.MAX)
+    return res[()]
+
+
+def norm(arr, ord=2):
+    if ord == np.inf:
+        return absmax(arr)
+    tmp = np.asarray(np.linalg.norm(np.atleast_1d(arr._data), ord=ord) ** ord)
+    res = np.empty_like(tmp)
+    _comm.Allreduce(tmp, res, MPI.SUM)
+    return res[()] ** (1./ord)

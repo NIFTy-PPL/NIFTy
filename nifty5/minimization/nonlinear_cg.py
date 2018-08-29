@@ -19,7 +19,7 @@
 from __future__ import absolute_import, division, print_function
 
 from ..compat import *
-from .line_search_strong_wolfe import LineSearchStrongWolfe
+from .line_search import LineSearch
 from .minimizer import Minimizer
 
 
@@ -53,7 +53,7 @@ class NonlinearCG(Minimizer):
                              "'Fletcher-Reeves', 'Hestenes-Stiefel, or '5.49'")
         self._beta_heuristic = beta_heuristics
         self._controller = controller
-        self._line_searcher = LineSearchStrongWolfe(c2=0.1)
+        self._line_searcher = LineSearch(c2=0.1)
 
     def __call__(self, energy):
         controller = self._controller

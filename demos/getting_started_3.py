@@ -72,8 +72,8 @@ if __name__ == '__main__':
 
     # set up minimization and inversion schemes
     ic_sampling = ift.GradientNormController(iteration_limit=100)
-    ic_newton = ift.DeltaEnergyController(
-        name='Newton', tol_rel_deltaE=1e-8, iteration_limit=100)
+    ic_newton = ift.GradInfNormController(
+        name='Newton', tol=1e-7, iteration_limit=1000)
     minimizer = ift.NewtonCG(ic_newton)
 
     # build model Hamiltonian
@@ -91,7 +91,8 @@ if __name__ == '__main__':
     # number of samples used to estimate the KL
     N_samples = 20
     for i in range(2):
-        KL = ift.KL_Energy(position, H, N_samples, want_metric=True)
+#        KL = ift.KL_Energy(position, H, N_samples)
+        KL = ift.KL_Energy_MPI(position, H, N_samples, want_metric=True)
         KL, convergence = minimizer(KL)
         position = KL.position
 
