@@ -55,7 +55,8 @@ from .probing import probe_with_posterior_samples, probe_diagonal, \
 
 from .minimization.line_search import LineSearch
 from .minimization.iteration_controllers import (
-    IterationController, GradientNormController, DeltaEnergyController)
+    IterationController, GradientNormController, DeltaEnergyController,
+    GradInfNormController)
 from .minimization.minimizer import Minimizer
 from .minimization.conjugate_gradient import ConjugateGradient
 from .minimization.nonlinear_cg import NonlinearCG
