@@ -22,7 +22,7 @@ import numpy as np
 
 from ..compat import *
 from ..logger import logger
-from .line_search_strong_wolfe import LineSearchStrongWolfe
+from .line_search import LineSearch
 from .minimizer import Minimizer
 
 
@@ -40,10 +40,10 @@ class DescentMinimizer(Minimizer):
         Object that decides when to terminate the minimization.
     line_searcher : callable *optional*
         Function which infers the step size in the descent direction
-        (default : LineSearchStrongWolfe()).
+        (default : LineSearch()).
     """
 
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe()):
+    def __init__(self, controller, line_searcher=LineSearch()):
         self._controller = controller
         self.line_searcher = line_searcher
 
@@ -144,8 +144,7 @@ class RelaxedNewton(DescentMinimizer):
 
     def __init__(self, controller, line_searcher=None):
         if line_searcher is None:
-            line_searcher = LineSearchStrongWolfe(
-                preferred_initial_step_size=1.)
+            line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(RelaxedNewton, self).__init__(controller=controller,
                                             line_searcher=line_searcher)
 
@@ -161,8 +160,7 @@ class NewtonCG(DescentMinimizer):
 
     def __init__(self, controller, line_searcher=None):
         if line_searcher is None:
-            line_searcher = LineSearchStrongWolfe(
-                preferred_initial_step_size=1.)
+            line_searcher = LineSearch(preferred_initial_step_size=1.)
         super(NewtonCG, self).__init__(controller=controller,
                                        line_searcher=line_searcher)
 
@@ -201,7 +199,7 @@ class NewtonCG(DescentMinimizer):
 
 
 class L_BFGS(DescentMinimizer):
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
+    def __init__(self, controller, line_searcher=LineSearch(),
                  max_history_length=5):
         super(L_BFGS, self).__init__(controller=controller,
                                      line_searcher=line_searcher)
@@ -266,7 +264,7 @@ class VL_BFGS(DescentMinimizer):
     Microsoft
     """
 
-    def __init__(self, controller, line_searcher=LineSearchStrongWolfe(),
+    def __init__(self, controller, line_searcher=LineSearch(),
                  max_history_length=5):
         super(VL_BFGS, self).__init__(controller=controller,
                                       line_searcher=line_searcher)
