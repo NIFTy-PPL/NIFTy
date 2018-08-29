@@ -13,14 +13,8 @@ class EnergyAdapter(Energy):
         self._op = op
         self._constants = constants
         self._want_metric = want_metric
-        if len(self._constants) == 0:
-            tmp = self._op(Linearization.make_var(self._position, want_metric))
-        else:
-            ops = [ScalingOperator(0. if key in self._constants else 1., dom)
-                   for key, dom in self._position.domain.items()]
-            bdop = BlockDiagonalOperator(self._position.domain, tuple(ops))
-            tmp = self._op(Linearization(self._position, bdop,
-                                         want_metric=want_metric))
+        lin = Linearization.make_partial_var(position, constants, want_metric)
+        tmp = self._op(lin)
         self._val = tmp.val.local_data[()]
         self._grad = tmp.gradient
         self._metric = tmp._metric
