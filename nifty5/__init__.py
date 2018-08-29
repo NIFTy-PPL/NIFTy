@@ -47,8 +47,8 @@ from .operators.simple_linear_operators import (
     VdotOperator, SumReductionOperator, ConjugationOperator, Realizer,
     FieldAdapter, GeometryRemover, NullOperator)
 from .operators.energy_operators import (
-    EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood, BernoulliEnergy,
-    Hamiltonian, SampledKullbachLeiblerDivergence)
+    EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
+    BernoulliEnergy, Hamiltonian, SampledKullbachLeiblerDivergence)
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
