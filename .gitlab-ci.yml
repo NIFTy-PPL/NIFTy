@@ -36,8 +36,10 @@ build_docker_from_cache:
 
 test_python2_with_coverage:
   stage: test
+  variables:
+    OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest -q test 2> /dev/null
+    - mpiexec -n 2 --bind-to none pytest test -q 
     - pytest -q --cov=nifty5 test
     - >
       python -m coverage report --omit "*plotting*,*distributed_do*"
@@ -46,9 +48,11 @@ test_python2_with_coverage:
 
 test_python3:
   stage: test
+  variables:
+    OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
     - pytest-3 -q
-    - mpiexec -n 2 --bind-to none pytest-3 -q 2> /dev/null
+    - mpiexec -n 2 --bind-to none pytest-3 -q
 
 pages:
   stage: release
