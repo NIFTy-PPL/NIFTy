@@ -150,6 +150,8 @@ class DiagonalOperator(EndomorphicOperator):
         return Field.from_local_data(x.domain, x.local_data/xdiag)
 
     def _flip_modes(self, trafo):
+        if trafo == self.ADJOINT_BIT and not self._complex:  # shortcut
+            return self
         xdiag = self._ldiag
         if self._complex and (trafo & self.ADJOINT_BIT):
             xdiag = xdiag.conj()
