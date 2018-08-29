@@ -39,7 +39,7 @@ test_python2_with_coverage:
   variables:
     OMPI_MCA_btl_vader_single_copy_mechanism: none
   script:
-    - mpiexec -n 2 --bind-to none pytest test -q 
+    - mpiexec -n 2 --bind-to none pytest -q test
     - pytest -q --cov=nifty5 test
     - >
       python -m coverage report --omit "*plotting*,*distributed_do*"
