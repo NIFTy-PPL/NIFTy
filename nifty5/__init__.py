@@ -54,9 +54,9 @@ from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
 
 from .minimization.line_search import LineSearch
-from .minimization.line_search_strong_wolfe import LineSearchStrongWolfe
 from .minimization.iteration_controllers import (
-    IterationController, GradientNormController, DeltaEnergyController)
+    IterationController, GradientNormController, DeltaEnergyController,
+    GradInfNormController)
 from .minimization.minimizer import Minimizer
 from .minimization.conjugate_gradient import ConjugateGradient
 from .minimization.nonlinear_cg import NonlinearCG
@@ -66,12 +66,11 @@ from .minimization.descent_minimizers import (
 from .minimization.scipy_minimizer import (ScipyMinimizer, L_BFGS_B, ScipyCG)
 from .minimization.energy import Energy
 from .minimization.quadratic_energy import QuadraticEnergy
-from .minimization.line_energy import LineEnergy
 from .minimization.energy_adapter import EnergyAdapter
 from .minimization.kl_energy import KL_Energy
 
 from .sugar import *
-from .plotting.plot import Plot
+from .plot import Plot
 
 from .library.amplitude_model import AmplitudeModel
 from .library.inverse_gamma_model import InverseGammaModel

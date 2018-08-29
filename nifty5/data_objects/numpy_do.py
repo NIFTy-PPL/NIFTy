@@ -31,7 +31,7 @@ __all__ = ["ntask", "rank", "master", "local_shape", "data_object", "full",
            "local_data", "ibegin", "ibegin_from_shape", "np_allreduce_sum",
            "np_allreduce_min", "np_allreduce_max",
            "distaxis", "from_local_data", "from_global_data", "to_global_data",
-           "redistribute", "default_distaxis", "is_numpy",
+           "redistribute", "default_distaxis", "is_numpy", "absmax", "norm",
            "lock", "locked", "uniform_full", "to_global_data_rw",
            "ensure_not_distributed", "ensure_default_distributed"]
 
@@ -141,3 +141,11 @@ def ensure_not_distributed(arr, axes):
 
 def ensure_default_distributed(arr):
     return arr
+
+
+def absmax(arr):
+    return np.linalg.norm(arr, ord=np.inf)
+
+
+def norm(arr, ord=2):
+    return np.linalg.norm(np.atleast_1d(arr), ord=ord)

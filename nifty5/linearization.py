@@ -163,6 +163,9 @@ class Linearization(object):
     def add_metric(self, metric):
         return self.new(self._val, self._jac, metric)
 
+    def with_want_metric(self):
+        return Linearization(self._val, self._jac, self._metric, True)
+
     @staticmethod
     def make_var(field, want_metric=False):
         from .operators.scaling_operator import ScalingOperator
@@ -174,3 +177,15 @@ class Linearization(object):
         from .operators.simple_linear_operators import NullOperator
         return Linearization(field, NullOperator(field.domain, field.domain),
                              want_metric=want_metric)
+
+    @staticmethod
+    def make_partial_var(field, constants, want_metric=False):
+        from .operators.scaling_operator import ScalingOperator
+        from .operators.simple_linear_operators import NullOperator
+        if len(constants) == 0:
+            return Linearization.make_var(field, want_metric)
+        else:
+            ops = [ScalingOperator(0. if key in constants else 1., dom)
+                   for key, dom in field.domain.items()]
+            bdop = BlockDiagonalOperator(fielld.domain, tuple(ops))
+            return Linearization(field, bdop, want_metric=want_metric)
