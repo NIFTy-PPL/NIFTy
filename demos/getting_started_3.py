@@ -89,7 +89,7 @@ if __name__ == '__main__':
     plot.output(ny=1, nx=3, xsize=24, ysize=6, name="setup.png")
 
     # number of samples used to estimate the KL
-    N_samples = 1
+    N_samples = 20
     for i in range(2):
 #        KL = ift.KL_Energy(position, H, N_samples)
         KL = ift.KL_Energy_MPI(position, H, N_samples, want_metric=True)
