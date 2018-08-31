@@ -1,10 +1,10 @@
-from ..operators.energy_operators import InverseGammaLikelihood
+from ..operators.energy_operators import InverseGammaLikelihood,Hamiltonian
 from ..operators.scaling_operator import ScalingOperator
 
-def make_adjust_variances(a,xi,position,samples=[],scaling=None):
-    """ Creates a Likelihood for constant likelihood optimizations.
+def make_adjust_variances(a,xi,position,samples=[],scaling=None,ic_samp=None):
+    """ Creates a Hamiltonian for constant likelihood optimizations.
     
-    Constructs a Likelihood to solve constant likelihood optimizations of the form
+    Constructs a Hamiltonian to solve constant likelihood optimizations of the form
         phi = a * xi
     under the constraint that phi remains constant.
     
@@ -20,11 +20,13 @@ def make_adjust_variances(a,xi,position,samples=[],scaling=None):
         Residual samples of the whole Problem
     scaling : Float
         Optional rescaling of the Likelihood
+    ic_samp : Controller
+        Iteration Controller for Hamiltonian
 
     Returns
     -------
-    InverseGammaLikelihood
-        A Likelihood that can be used for further minimization
+    Hamiltonian
+        A Hamiltonian that can be used for further minimization
     """
 
     d = a * xi
@@ -42,4 +44,4 @@ def make_adjust_variances(a,xi,position,samples=[],scaling=None):
     if scaling is not None:
         x = ScalingOperator(scaling,x.target)(x)
 
-    return InverseGammaLikelihood(x,d_eval)
+    return Hamiltonian(InverseGammaLikelihood(x,d_eval),ic_samp=ic_samp)
