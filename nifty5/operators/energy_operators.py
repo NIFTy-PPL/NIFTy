@@ -120,7 +120,7 @@ class InverseGammaLikelihood(EnergyOperator):
 
     def apply(self, x):
         x = self._op(x)
-        res = 0.5*(x.log().sum() + (0.5/x).vdot(self._d))
+        res = 0.5*(x.log().sum() + (1./x).vdot(self._d))
         if not isinstance(x, Linearization):
             return Field.scalar(res)
         if not x.want_metric:
