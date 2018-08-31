@@ -181,11 +181,11 @@ class Linearization(object):
     @staticmethod
     def make_partial_var(field, constants, want_metric=False):
         from .operators.scaling_operator import ScalingOperator
-        from .operators.simple_linear_operators import NullOperator
+        from .operators.block_diagonal_operator import BlockDiagonalOperator
         if len(constants) == 0:
             return Linearization.make_var(field, want_metric)
         else:
             ops = [ScalingOperator(0. if key in constants else 1., dom)
                    for key, dom in field.domain.items()]
-            bdop = BlockDiagonalOperator(fielld.domain, tuple(ops))
+            bdop = BlockDiagonalOperator(field.domain, tuple(ops))
             return Linearization(field, bdop, want_metric=want_metric)
