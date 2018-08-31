@@ -37,8 +37,8 @@ def make_adjust_variances(a, xi, position, samples=[], scaling=None, ic_samp=Non
         Operator which gives the excitation when evaluated at a position
     postion : Field, MultiField
         Position of the whole problem
-    res_samples : Field, MultiField
-        Residual samples of the whole Problem
+    samples : Field, MultiField
+        Residual samples of the whole problem
     scaling : Float
         Optional rescaling of the Likelihood
     ic_samp : Controller
