@@ -61,6 +61,11 @@ class MultiField(object):
     def to_dict(self):
         return {key: val for key, val in zip(self._domain.keys(), self._val)}
 
+    def update(self, other):
+        foo = self.to_dict()
+        foo.update(other.to_dict())
+        return MultiField.from_dict(foo)
+
     def __getitem__(self, key):
         return self._val[self._domain.idx[key]]
 
