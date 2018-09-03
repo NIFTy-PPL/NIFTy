@@ -110,10 +110,12 @@ class Test_Functionality(unittest.TestCase):
         assert_allclose(sc1.mean.local_data, fp1.local_data, rtol=0.2)
         assert_allclose(sc2.mean.local_data, fp2.local_data, rtol=0.2)
 
-    def test_norm(self):
-        s = ift.RGSpace((10,))
-        f = ift.Field.from_random("normal", domain=s, dtype=np.complex128)
-        gd = f.to_global_data()
+    @expand(product([ift.RGSpace((8,), harmonic=True), (),
+                     ift.RGSpace((8, 8), harmonic=True, distances=0.123),
+                     ift.RGSpace((2, 3, 7))]))
+    def test_norm(self, space):
+        f = ift.Field.from_random("normal", domain=space, dtype=np.complex128)
+        gd = f.to_global_data().reshape(-1)
         assert_allclose(f.norm(), np.linalg.norm(gd))
         assert_allclose(f.norm(1), np.linalg.norm(gd, ord=1))
         assert_allclose(f.norm(2), np.linalg.norm(gd, ord=2))
