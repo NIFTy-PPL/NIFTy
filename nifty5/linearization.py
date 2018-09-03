@@ -93,6 +93,17 @@ class Linearization(object):
     def __rsub__(self, other):
         return (-self).__add__(other)
 
+    def __truediv__(self, other):
+        if isinstance(other, Linearization):
+            return self.__mul__(other.inverse())
+        return self.__mul__(1./other)
+
+    def __rtruediv__(self, other):
+        return self.inverse().__mul__(other)
+
+    def inverse(self):
+        return self.new(1./self._val, makeOp(-1./(self._val**2))(self._jac))
+
     def __mul__(self, other):
         from .sugar import makeOp
         if isinstance(other, Linearization):
@@ -170,11 +181,11 @@ class Linearization(object):
     @staticmethod
     def make_partial_var(field, constants, want_metric=False):
         from .operators.scaling_operator import ScalingOperator
-        from .operators.simple_linear_operators import NullOperator
+        from .operators.block_diagonal_operator import BlockDiagonalOperator
         if len(constants) == 0:
             return Linearization.make_var(field, want_metric)
         else:
             ops = [ScalingOperator(0. if key in constants else 1., dom)
                    for key, dom in field.domain.items()]
-            bdop = BlockDiagonalOperator(fielld.domain, tuple(ops))
+            bdop = BlockDiagonalOperator(field.domain, tuple(ops))
             return Linearization(field, bdop, want_metric=want_metric)

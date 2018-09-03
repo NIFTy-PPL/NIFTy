@@ -56,6 +56,20 @@ class Energy_Tests(unittest.TestCase):
 #         energy = ift.QuadraticEnergy(s[0], ift.makeOp(s[1]), s[2])
 #         ift.extra.check_value_gradient_consistency(energy)
 
+    @expand(
+        product([
+            ift.GLSpace(15),
+            ift.RGSpace(64, distances=.789),
+            ift.RGSpace([32, 32], distances=.789)
+        ], [4, 78, 23]))
+    def testInverseGammaLikelihood(self, space, seed):
+        model = self.make_model(space_key='s1', space=space, seed=seed)['s1']
+        d = np.random.normal(10, size=space.shape)**2
+        d = ift.Field.from_global_data(space, d)
+        energy = ift.InverseGammaLikelihood(ift.exp, d)
+        ift.extra.check_value_gradient_consistency(energy, model, tol=1e-7)
+
+
     @expand(product(
         [ift.GLSpace(15),
          ift.RGSpace(64, distances=.789),
@@ -65,7 +79,6 @@ class Energy_Tests(unittest.TestCase):
     def testPoissonian(self, space, seed):
         model = self.make_model(
             space_key='s1', space=space, seed=seed)['s1']
-        model = ift.exp(model)
         d = np.random.poisson(120, size=space.shape)
         d = ift.Field.from_global_data(space, d)
         energy = ift.PoissonianEnergy(ift.exp, d)
