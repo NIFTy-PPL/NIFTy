@@ -55,7 +55,8 @@ class MultiField(object):
         if domain is None:
             for dd in dict.values():
                 if not isinstance(dd.domain, DomainTuple):
-                    raise TypeError('Values of dictionary need to be Fields defined on DomainTuples.')
+                    raise TypeError('Values of dictionary need to be Fields '
+                                    'defined on DomainTuples.')
             domain = MultiDomain.make({key: v._domain
                                        for key, v in dict.items()})
         res = tuple(dict[key] if key in dict else Field(dom, 0)
