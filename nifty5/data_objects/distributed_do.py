@@ -570,5 +570,8 @@ def norm(arr, ord=2):
         return absmax(arr)
     tmp = np.asarray(np.linalg.norm(arr._data.reshape(-1), ord=ord) ** ord)
     res = np.empty_like(tmp)
-    _comm.Allreduce(tmp, res, MPI.SUM)
+    if len(arr._data.shape) == 0:
+        res = tmp
+    else:
+        _comm.Allreduce(tmp, res, MPI.SUM)
     return res[()] ** (1./ord)
