@@ -47,8 +47,8 @@ from .operators.simple_linear_operators import (
     VdotOperator, SumReductionOperator, ConjugationOperator, Realizer,
     FieldAdapter, GeometryRemover, NullOperator)
 from .operators.energy_operators import (
-    EnergyOperator, GaussianEnergy, PoissonianEnergy, BernoulliEnergy,
-    Hamiltonian, SampledKullbachLeiblerDivergence)
+    EnergyOperator, GaussianEnergy, PoissonianEnergy, InverseGammaLikelihood,
+    BernoulliEnergy, Hamiltonian, SampledKullbachLeiblerDivergence)
 
 from .probing import probe_with_posterior_samples, probe_diagonal, \
     StatCalculator
@@ -78,6 +78,7 @@ from .library.los_response import LOSResponse
 
 from .library.wiener_filter_curvature import WienerFilterCurvature
 from .library.correlated_fields import CorrelatedField, MfCorrelatedField
+from .library.adjust_variances import make_adjust_variances
 
 from . import extra
 
