@@ -222,6 +222,35 @@ class MultiField(object):
             res[key] = res[key]+val if key in res else val
         return MultiField.from_dict(res)
 
+    @staticmethod
+    def union(fields, domain=None):
+        """Returns the union of its input fields
+        Parameters
+        ----------
+        fields: iterable of MultiFields
+            The set of input fields. Their domains need not be identical,
+            but they must not be incompatible, e.g. by having different
+            DomainTuples for the same key.
+        domain: MultiDomain or None
+            If supplied, this mjst be the domain of the resulting field.
+            Providing this domain will accelerate the function.
+
+        Returns
+        -------
+        MultiField
+            The union of the input fields
+
+        Notes
+        -----
+        If the same key occurs more than once in the input fields, the value
+        associated with the last occurrence will be put into the output.
+        No summation is performed!
+        """
+        res = {}
+        for field in fields:
+            res.update(field.to_dict())
+        return MultiField.from_dict(res, domain)
+
     def flexible_addsub(self, other, neg):
         if self._domain is other._domain:
             return self-other if neg else self+other
