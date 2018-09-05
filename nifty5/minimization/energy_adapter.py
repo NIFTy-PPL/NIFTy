@@ -3,8 +3,6 @@ from __future__ import absolute_import, division, print_function
 from ..compat import *
 from ..linearization import Linearization
 from ..minimization.energy import Energy
-from ..operators.block_diagonal_operator import BlockDiagonalOperator
-from ..operators.scaling_operator import ScalingOperator
 
 
 class EnergyAdapter(Energy):
