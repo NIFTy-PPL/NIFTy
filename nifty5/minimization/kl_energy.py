@@ -3,8 +3,6 @@ from __future__ import absolute_import, division, print_function
 from ..compat import *
 from .energy import Energy
 from ..linearization import Linearization
-from ..operators.scaling_operator import ScalingOperator
-from ..operators.block_diagonal_operator import BlockDiagonalOperator
 from .. import utilities
 
 
