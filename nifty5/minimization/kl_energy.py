@@ -7,12 +7,17 @@ from .. import utilities
 
 
 class KL_Energy(Energy):
-    def __init__(self, position, h, nsamp, constants=[], _samples=None):
+    def __init__(self, position, h, nsamp, constants=[],
+                 constants_samples=None, _samples=None):
         super(KL_Energy, self).__init__(position)
         self._h = h
         self._constants = constants
+        if constants_samples is None:
+            constants_samples = constants
+        self._constants_samples = constants_samples
         if _samples is None:
-            met = h(Linearization.make_var(position, True)).metric
+            met = h(Linearization.make_partial_var(
+                position, constants_samples, True)).metric
             _samples = tuple(met.draw_sample(from_inverse=True)
                              for _ in range(nsamp))
         self._samples = _samples
@@ -32,7 +37,8 @@ class KL_Energy(Energy):
         self._metric = None
 
     def at(self, position):
-        return KL_Energy(position, self._h, 0, self._constants, self._samples)
+        return KL_Energy(position, self._h, 0, self._constants,
+                         self._constants_samples, self._samples)
 
     @property
     def value(self):
