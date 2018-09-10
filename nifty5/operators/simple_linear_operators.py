@@ -45,7 +45,7 @@ class VdotOperator(LinearOperator):
 
 class SumReductionOperator(LinearOperator):
     def __init__(self, domain):
-        self._domain = domain
+        self._domain = DomainTuple.make(domain)
         self._target = DomainTuple.scalar_domain()
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
@@ -58,7 +58,7 @@ class SumReductionOperator(LinearOperator):
 
 class ConjugationOperator(EndomorphicOperator):
     def __init__(self, domain):
-        self._domain = domain
+        self._domain = DomainTuple.make(domain)
         self._capability = self._all_ops
 
     def apply(self, x, mode):
@@ -68,7 +68,7 @@ class ConjugationOperator(EndomorphicOperator):
 
 class Realizer(EndomorphicOperator):
     def __init__(self, domain):
-        self._domain = domain
+        self._domain = DomainTuple.make(domain)
         self._capability = self.TIMES | self.ADJOINT_TIMES
 
     def apply(self, x, mode):
