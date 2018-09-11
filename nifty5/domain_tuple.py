@@ -149,6 +149,9 @@ class DomainTuple(object):
         return ("DomainTuple, len: {}\n".format(len(self)) +
                 "\n".join(str(i) for i in self))
 
+    def __reduce__(self):
+        return (_unpickleDomainTuple, (self._dom,))
+
     @staticmethod
     def scalar_domain():
         if DomainTuple._scalarDomain is None:
@@ -158,3 +161,7 @@ class DomainTuple(object):
     def __repr__(self):
         subs = "\n".join(sub.__repr__() for sub in self._dom)
         return "DomainTuple:\n"+utilities.indent(subs)
+
+
+def _unpickleDomainTuple(*args):
+    return DomainTuple.make(*args)
