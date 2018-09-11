@@ -132,6 +132,7 @@ class AmplitudeModel(Operator):
         self._ceps = makeOp(sqrt(cepstrum))
 
     def apply(self, x):
+        self._check_input(x)
         smooth_spec = self._smooth_op(x[self._keys[0]])
         phi = x[self._keys[1]] + self._norm_phi_mean
         linear_spec = self._slope(phi)
